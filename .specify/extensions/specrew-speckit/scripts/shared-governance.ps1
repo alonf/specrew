@@ -7660,21 +7660,24 @@ function Get-SpecrewCoverageDeferralRoot {
 function Test-SpecrewCoverageDeferralPhrase {
     [OutputType([pscustomobject])]
     param([AllowNull()][AllowEmptyString()][string]$Text)
-    $r = [pscustomobject]@{ Matched = $false; Phrase = $null }
+    $r = [pscustomobject]@{ Matched = $false; Phrase = $null; Reason = $null }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
     $trimmed = $Text.Trim()
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
-    # W56 (DRIFT-199-I001-125): the decision lives on its OWN LINE, so a real disposition followed by
-    # an instruction block is not refused as arbitrary prose. Defined locally rather than laddered
-    # from the bootstrap store, because this recognizer must work when only shared-governance is
-    # loaded; the W56 case matrix runs the SAME cases against all three copies, which is what rule 6
-    # actually demands of a rule that lives in more than one file.
-    $firstLine = ([regex]::Split($trimmed, '\r\n|\n|\r', 2))[0]
+    # W56 (DRIFT-199-I001-125) decided on the decision's OWN LINE. PRED-BETA4-022 (B4F-065) narrows
+    # what may follow that line: nothing. A verdict is one line - the phrase, plus at most a same-line
+    # instruction - and a message that continues into content is refused BY REASON, so the capture
+    # table can disclose it. Defined locally rather than laddered from the bootstrap store, because
+    # this recognizer must work when only shared-governance is loaded; the shared case matrix runs the
+    # SAME cases against every copy, which is what rule 6 actually demands of a rule in more than one file.
+    $parts = [regex]::new('\r\n|\n|\r').Split($trimmed, 2)
+    $firstLine = $parts[0]
     $lower = (($firstLine -replace '\s+', ' ').Trim()).ToLowerInvariant()
     if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
     if ($lower.EndsWith('?')) { return $r }
     $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?continue\s+without\s+coverage(?:\s+until\s+the\s+review\s+phase)?\b')
     if (-not $anchor.Success) { return $r }
+    if ($parts.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$parts[1])) { $r.Reason = 'multi-line-refused'; return $r }
     $tail = $lower.Substring($anchor.Length)
     if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
     # W56: this copy never had the round-14 deferral scan at all - found by running the shared matrix

@@ -668,7 +668,12 @@ function Get-SpecrewVerdictCaptureDisclosure {
     else {
         ("'{0}' comes before the phrase" -f $leadShown)
     }
-    $message = ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. It reads as '{2}' because {3}, and the classification is decided by what comes FIRST in the message - not by the first of the verdict lines. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message whose FIRST characters are: {4}" -f $from, $to, [string]$verdict.Action, $because, $phrase)
+    $message = if ([string]$verdict.Action -ceq 'refused-multi-line') {
+        ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. Its first line is the phrase, but the message continues past it, and a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash; a pasted transcript or a block of notes under the phrase is not a verdict. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message that is exactly one line: '{2}' or '{2} - <your instructions>'." -f $from, $to, $phrase)
+    }
+    else {
+        ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. It reads as '{2}' because {3}, and the classification is decided by what comes FIRST in the message - not by the first of the verdict lines. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message whose FIRST characters are: {4}" -f $from, $to, [string]$verdict.Action, $because, $phrase)
+    }
     try {
         $journal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
         $dir = Split-Path -Parent $journal
@@ -963,6 +968,20 @@ function Invoke-SpecrewTypedAuthorityCapture {
         }
         catch { $null = $_ }
     }
+    # PRED-BETA4-022 (B4F-065): a turn that minted NOTHING because its first line was an authority phrase
+    # and the message went on - a pasted transcript, a block of notes - is disclosed here, once for the
+    # turn, whichever writer refused it. Silent refusal is what let a 136-line paste pass unremarked
+    # until it was minted; a refusal that speaks names the one-line retype.
+    if ($mintedBy.Count -eq 0 -and (Get-Command Get-SpecrewAuthorityMultiLineRefusal -ErrorAction SilentlyContinue) -and
+        (Get-Command Write-SpecrewAuthorityMultiLineDrop -ErrorAction SilentlyContinue)) {
+        try {
+            $refusal = Get-SpecrewAuthorityMultiLineRefusal -Text $Response
+            if ($null -ne $refusal) {
+                Write-SpecrewAuthorityMultiLineDrop -ProjectRoot $ProjectRoot -Refusal $refusal -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
     # W71: OBSERVE the second channel, do not block it. If another channel already minted this content
     # on this host, that is the bounded residual the ruling accepts - at most two mints from one typed
     # act - and it is recorded so its rate can be measured rather than assumed.
@@ -1112,6 +1131,20 @@ function Update-SpecrewRollingHandover {
         $disclosure = $null
         if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
             $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source
+        }
+        # PRED-BETA4-022: a typed authority (round approval, pause, reset, deferral) refused for continuing
+        # past its line is said HERE too, in the turn, where the human reads - the drop journal and the
+        # stderr line are the record, this is the disclosure.
+        if ((Get-Command Get-SpecrewAuthorityMultiLineRefusal -ErrorAction SilentlyContinue) -and
+            (Get-Command Get-SpecrewAuthorityMultiLineDisclosure -ErrorAction SilentlyContinue)) {
+            try {
+                $typedRefusal = Get-SpecrewAuthorityMultiLineRefusal -Text $LastUserMessage
+                if ($null -ne $typedRefusal) {
+                    $typedDisclosure = Get-SpecrewAuthorityMultiLineDisclosure -Refusal $typedRefusal
+                    $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $typedDisclosure } else { ([string]$disclosure + "`n" + $typedDisclosure) }
+                }
+            }
+            catch { $null = $_ }
         }
         return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure }
     }

@@ -169,6 +169,30 @@ defect in the message only; the refusal itself is behaving as described above.
 
 Both are fixed in beta5.
 
+## Fixed: a pasted transcript with an approval phrase at its top was recorded as the approval
+
+**What happened.** A verdict is typed as one line - `approved for review round`, or `approved for plan -
+<your instructions>`. Every recognizer decided on that first line, so a message whose first line was the
+phrase and whose next 135 lines were a shell transcript pasted from another project was minted as a live
+review-round approval, twice (once per capture channel), with the whole transcript as its verdict text.
+Nothing read past line one. Measured in the Specrew repository itself, from a reviewer session.
+
+**What changed.** A verdict is one line: the phrase, plus at most the same-line instruction after a dash.
+A message that continues past that line into content is refused - not minted - and the refusal is
+disclosed in the turn with the retype: `'approved for review round' or 'approved for review round - <your
+instructions>'`. It is also journaled (`.specrew/runtime/authority-capture-drops.jsonl`, `reason:
+multi-line`). This applies to round approvals, pause decisions, allowance resets, coverage deferrals and
+boundary verdicts. A typed **withdrawal** is deliberately not under the rule - it removes authority, and
+refusing it would leave an approval you retracted still spendable.
+
+**What this changes for you.** Beta3 accepted an approval followed by a blank line and a block of
+instructions; beta4 refuses that shape and tells you so. Put the instruction on the phrase's line, after a
+dash. Trailing blank lines are fine.
+
+**What stays for beta5.** The two copies of the pasted message were captured through two channels with
+different encodings (an apostrophe reached one channel as a code-page triple), so the cross-channel
+dedupe could not see they were one message; that is a prompt-entry transcoding defect, recorded.
+
 ## Changed: the turn-end declaration, and the token that places it
 
 **The hook no longer scores your agent's prose.** What decided whether a turn had ended properly used to be

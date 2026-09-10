@@ -525,7 +525,7 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
     }
 }
 
-Describe 'W56 an approval followed by an instruction BLOCK is still an approval (round 15 finding)' {
+Describe 'W56 an approval followed by an instruction BLOCK - accepted at round 15, REVERSED by PRED-BETA4-022' {
     # Round-15 finding (DRIFT-199-I001-125, found live and then confirmed by the round): all three
     # authority recognizers collapse whitespace BEFORE deciding, so a paragraph break becomes an
     # ordinary space and a real approval followed by a multi-paragraph instruction block reads as
@@ -533,25 +533,32 @@ Describe 'W56 an approval followed by an instruction BLOCK is still an approval 
     # The reviewer ruled it against FR-003/FR-010 and named the sibling site; rule 6 says prove the
     # fix against every FILE that carries a copy, so this matrix runs against all three.
     #
-    # The rule the fix implements: the approval lives on its OWN LINE. Within that line the closed
-    # tail, the deferral scan and the interrogative test all apply exactly as before (round 14's
-    # same-line deferrals stay refused). What follows a line break is an instruction block - the
-    # settled doctrine already applied to a sentence break in the boundary-verdict recognizer.
+    # W56's rule: the approval lives on its OWN LINE, and what follows a line break is an instruction
+    # block. PRED-BETA4-022 (B4F-065, maintainer ruling 2026-09-10) REVERSES the second half on a
+    # measured cost: that exact rule minted a 136-line Copilot transcript from ANOTHER project, pasted
+    # with the phrase at its top, as a live review-round approval in this repository - twice. A verdict
+    # is ONE line: the phrase, plus at most the documented same-line instruction after a dash. What W56
+    # removed - a SILENT refusal that forced a second bare message - stays removed by a different
+    # means: the refusal now carries a reason, is journaled, and is said in the turn with the one-line
+    # retype. The same-line refusals and the plain shapes below are exactly as round 14 left them.
     BeforeAll {
         . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
         $script:W56Recognizers = @(
-            @{ Name = 'round-approval'; Phrase = 'approved for review round'; Fn = { param($t) (Test-SpecrewReviewRoundApprovalPhrase -Text $t).Matched } }
-            @{ Name = 'allowance-reset'; Phrase = 'approved for allowance reset'; Fn = { param($t) (Test-SpecrewAllowanceResetPhrase -Text $t).Matched } }
-            @{ Name = 'coverage-deferral'; Phrase = 'continue without coverage until the review phase'; Fn = { param($t) (Test-SpecrewCoverageDeferralPhrase -Text $t).Matched } }
+            @{ Name = 'round-approval'; Phrase = 'approved for review round'; Fn = { param($t) (Test-SpecrewReviewRoundApprovalPhrase -Text $t).Matched }; Reason = { param($t) (Test-SpecrewReviewRoundApprovalPhrase -Text $t).Reason } }
+            @{ Name = 'allowance-reset'; Phrase = 'approved for allowance reset'; Fn = { param($t) (Test-SpecrewAllowanceResetPhrase -Text $t).Matched }; Reason = { param($t) (Test-SpecrewAllowanceResetPhrase -Text $t).Reason } }
+            @{ Name = 'coverage-deferral'; Phrase = 'continue without coverage until the review phase'; Fn = { param($t) (Test-SpecrewCoverageDeferralPhrase -Text $t).Matched }; Reason = { param($t) (Test-SpecrewCoverageDeferralPhrase -Text $t).Reason } }
         )
     }
 
-    It 'accepts the live shape: the phrase, a blank line, then conditional INSTRUCTIONS' {
+    It 'REVERSED (PRED-BETA4-022): the phrase, a blank line, then an instruction block is refused BY REASON, in every copy' {
         foreach ($r in $script:W56Recognizers) {
             $text = "$($r.Phrase)`n`nIf it delivers clean: bring the record current and present the packet.`n`nIf it finds more: fix RED-first and stop at the decision point again."
-            & $r.Fn $text | Should -BeTrue -Because "$($r.Name) must not force a second bare message"
-            # A question inside the following block is a follow-up, not an interrogative approval.
-            & $r.Fn "$($r.Phrase)`n`nShould I also refresh the dashboard after?" | Should -BeTrue -Because "$($r.Name): the approval line is declarative"
+            & $r.Fn $text | Should -BeFalse -Because "$($r.Name): a verdict is one line, and this message continues past it"
+            & $r.Reason $text | Should -Be 'multi-line-refused' -Because "$($r.Name): the refusal carries its reason so the capture can disclose it, which is what keeps W56's silence removed"
+            & $r.Fn "$($r.Phrase)`n`nShould I also refresh the dashboard after?" | Should -BeFalse -Because "$($r.Name): a following block is content, whatever it asks"
+            # The instruction the block carried goes on the phrase's own line, after a dash - the documented form.
+            # (Without the block's `if`: a same-line condition is still round 14's deferral, exactly as before.)
+            & $r.Fn "$($r.Phrase) - bring the record current and present the packet" | Should -BeTrue -Because "$($r.Name): the same-line instruction form is the one the docs give, and it still mints"
         }
     }
 
@@ -2353,9 +2360,11 @@ Describe 'W73 round 30: a CONDITIONAL reply is not authority, in every recognize
 
     It 'the UNCONDITIONAL phrases still work - the rule bounds hedges, not humans' {
         # The control that stops this becoming a wedge. Every phrase the docs tell a human to type must
-        # still mint, including W56's approval-followed-by-instructions shape.
+        # still mint. (W56's approval-followed-by-a-block shape is no longer one of them - PRED-BETA4-022
+        # made a verdict one line; the same-line form carries the instruction instead.)
         [bool](Test-SpecrewReviewRoundApprovalPhrase -Text 'approved for review round').Matched | Should -BeTrue
-        [bool](Test-SpecrewReviewRoundApprovalPhrase -Text "approved for review round`n`nRun it with --host codex.").Matched | Should -BeTrue
+        [bool](Test-SpecrewReviewRoundApprovalPhrase -Text 'approved for review round - run it with --host codex').Matched | Should -BeTrue
+        (Test-SpecrewReviewRoundApprovalPhrase -Text "approved for review round`n`nRun it with --host codex.").Reason | Should -Be 'multi-line-refused'
         [bool](Test-SpecrewPauseDecisionPhrase -Text 'stop the review here').Matched | Should -BeTrue
         [bool](Test-SpecrewAllowanceResetPhrase -Text 'approved for allowance reset').Matched | Should -BeTrue
         # And a phrase that merely CONTAINS a condition word about something else is still an approval.
@@ -2479,19 +2488,26 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         }
     }
 
-    It 'RED-FIRST: a following-line instruction does not erase a boundary approval (FR-010)' {
-        # Not my regression - the pre-W73 build rejects this identically, verified at 26f6e4b7. But it
-        # is an FR-010 violation on the boundary-verdict path, which is a wider surface than round
-        # approvals, and the sibling recognizer already solves it by scoping to the approval line.
-        # Method rule 10's exact case, fourth instance: the fix exists, one reader has it, the other
-        # does not.
+    It 'REVERSED by PRED-BETA4-022: a following-line instruction is refused BY REASON, not erased in silence' {
+        # W75 (2026-08-27) made the line break end the approval clause so a following instruction could
+        # not turn a valid verdict into a condition on it - and the verdict minted with the block under
+        # it. PRED-BETA4-022 (B4F-065, 2026-09-10) reverses the second half: the same rule on the
+        # round-approval path minted a pasted 136-line transcript, and a verdict is ONE line. What W75
+        # protected - FR-010, the human is not silently un-approved - is kept by a different means: the
+        # refusal carries a reason, and the prompt-entry disclosure names the one-line retype. The
+        # same-line form carries the instruction.
         foreach ($text in @(
                 ("approved for tasks" + [char]10 + "Run the cleanup when the review finishes.")
                 ("approved for tasks" + [char]10 + "Once that lands, start the retro.")
                 ("approved for plan" + [char]10 + [char]10 + "If anything looks off, tell me."))) {
-            [bool](Test-SpecrewHumanVerdictToken -Text $text).IsApproval |
-                Should -BeTrue -Because ("a leading recognized approval wins over following instruction wording: " + ($text -replace [char]10, ' / '))
+            $v = Test-SpecrewHumanVerdictToken -Text $text
+            [bool]$v.IsApproval | Should -BeFalse -Because ("a verdict is one line: " + ($text -replace [char]10, ' / '))
+            [string]$v.Action | Should -Be 'refused-multi-line' -Because 'the refusal is by reason, so the disclosure can name the retype instead of leaving silence'
         }
+        [bool](Test-SpecrewHumanVerdictToken -Text 'approved for tasks - then start the retro.').IsApproval |
+            Should -BeTrue -Because 'the same-line instruction form is the documented one and still mints'
+        [bool](Test-SpecrewHumanVerdictToken -Text ("approved for tasks" + [char]10 + [char]10)).IsApproval |
+            Should -BeTrue -Because 'trailing blank lines are not content; only a continuation that says something is refused'
     }
 
     It 'a SAME-LINE condition still defers the boundary verdict' {
@@ -2574,5 +2590,189 @@ Describe 'W76 the third surface: the reset advisory names a flag and never the p
         $message | Should -Not -BeNullOrEmpty
         $message | Should -Match 'approval' -Because 'the entitlement surviving is the reassuring half and must stay'
         $message | Should -Match '(?i)\bround\b|\ballowance\b' -Because 'the round IS spent, and a message that omits it lets the human conclude nothing was'
+    }
+}
+
+Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that continues past its phrase is refused, disclosed, never minted' {
+    # Maintainer ruling, 2026-09-10, on a live record in THIS repository: a 136-line Copilot shell
+    # transcript from the router-skill project, pasted into a reviewer session with the human's typed
+    # `approved for review round` still at its top, was minted here as a live review-round approval -
+    # twice (UserPromptSubmit and Stop), under two encodings (one copy's apostrophe mangled to a
+    # code-page triple), with spent_at null. The first line matched; the other 135 were never read.
+    #
+    # The rule: a verdict is the phrase plus at most the documented same-line instruction form; a
+    # message continuing into multi-line content is refused, not minted. And because a refusal nobody
+    # can see is B4F-043's silence again, the refusal carries a reason, is journaled in the
+    # authority-capture-drops ledger the partial-signoff override already uses, and is said in the turn
+    # with the one-line retype.
+    #
+    # The specimen below is the RECORDED SHAPE, not the recorded text: the same first six lines, the
+    # same 136-line length, transcript-like content in between. The recorded text itself is another
+    # project's session and stays in the record.
+    BeforeAll {
+        foreach ($dependency in @('ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+            . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+        }
+        . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+        $script:HandoverProvider = Join-Path $script:RepoRoot 'scripts/internal/specrew-handover-provider.ps1'
+        function script:New-B4F065Specimen {
+            param([string]$Head = 'approved for review round')
+            $lines = [System.Collections.Generic.List[string]]::new()
+            $lines.Add($Head)
+            $lines.Add('Thought for 1s')
+            $lines.Add('')
+            $lines.Add("I'll run the approved final review round against the iteration 002 planning artifacts.")
+            $lines.Add('')
+            $lines.Add('Shell Run approved live planning review 14 lines.')
+            $n = 1
+            while ($lines.Count -lt 133) {
+                $lines.Add(('PS> pwsh -File scripts/specrew-review.ps1 --live --approve-round   # attempt {0}: exit 1' -f $n))
+                $lines.Add('')
+                $n++
+            }
+            $lines.Add("None right now - I'll proceed with the review retry and cursor repair.")
+            $lines.Add('The session cannot move on from here.')
+            return ($lines -join "`n")
+        }
+        function script:New-B4F065Root {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('b4f065-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            return $root
+        }
+        function script:Read-B4F065Drops {
+            param([string]$Root)
+            $p = Join-Path $Root '.specrew/runtime/authority-capture-drops.jsonl'
+            if (-not (Test-Path -LiteralPath $p)) { return @() }
+            return @(Get-Content -LiteralPath $p -Encoding UTF8 | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_ | ConvertFrom-Json })
+        }
+    }
+
+    It '1. the recorded shape is NOT matched, and the refusal names its reason' {
+        $specimen = New-B4F065Specimen
+        @($specimen -split "`n").Count | Should -Be 136 -Because 'the specimen is the recorded length'
+        $r = Test-SpecrewReviewRoundApprovalPhrase -Text $specimen
+        [bool]$r.Matched | Should -BeFalse -Because 'a verdict is one line, and this message has 136'
+        [string]$r.Reason | Should -Be 'multi-line-refused'
+        $sweep = Get-SpecrewAuthorityMultiLineRefusal -Text $specimen
+        $sweep | Should -Not -BeNullOrEmpty
+        [string]$sweep.Kind | Should -Be 'review-round-approval'
+        [int]$sweep.LineCount | Should -Be 136
+        [string]$sweep.FirstLine | Should -Be 'approved for review round'
+    }
+
+    It '2. every MINTING sibling refuses the same shape by reason; the WITHDRAWAL, which removes authority, does not' {
+        $tail = ((New-B4F065Specimen) -split "`n", 2)[1]
+        foreach ($case in @(
+                @{ Fn = 'Test-SpecrewPauseDecisionPhrase'; Head = 'stop the review here' }
+                @{ Fn = 'Test-SpecrewAllowanceResetPhrase'; Head = 'approved for allowance reset' }
+                @{ Fn = 'Test-SpecrewCoverageDeferralPhrase'; Head = 'continue without coverage until the review phase' })) {
+            $r = & $case.Fn -Text ($case.Head + "`n" + $tail)
+            [bool]$r.Matched | Should -BeFalse -Because "$($case.Fn): the one-line rule is one rule, read by every minting recognizer"
+            [string]$r.Reason | Should -Be 'multi-line-refused' -Because "$($case.Fn) refuses by reason"
+            [bool](& $case.Fn -Text $case.Head).Matched | Should -BeTrue -Because "$($case.Fn): the bare phrase still mints"
+        }
+        # The withdrawal's floor cuts the other way - refusing it would fail OPEN, leaving an approval the
+        # human retracted still spendable - so a withdrawal typed above a block of notes still withdraws.
+        [bool](Test-SpecrewApprovalWithdrawalPhrase -Text ('withdraw the review round approval' + "`n" + $tail)).Matched |
+            Should -BeTrue -Because 'the one-line rule bounds what MINTS; a withdrawal removes authority'
+    }
+
+    It '3. the boundary-verdict recognizer refuses the shape by reason too - the cross-project paste is not a boundary verdict either' {
+        $tail = ((New-B4F065Specimen) -split "`n", 2)[1]
+        $v = Test-SpecrewHumanVerdictToken -Text ('approved for plan' + "`n" + $tail)
+        [bool]$v.IsApproval | Should -BeFalse
+        [string]$v.Action | Should -Be 'refused-multi-line'
+        [bool](Test-SpecrewHumanVerdictToken -Text 'approved for plan').IsApproval | Should -BeTrue -Because 'the phrase alone still authorizes'
+        [bool](Test-SpecrewHumanVerdictToken -Text 'approved for plan - then start the retro.').IsApproval | Should -BeTrue -Because 'the same-line instruction form still authorizes'
+    }
+
+    It '4. the writer, handed the specimen at both source events, writes NOTHING; the one table the hooks call discloses it once' {
+        $specimen = New-B4F065Specimen
+        $root = New-B4F065Root
+        try {
+            foreach ($ev in @('UserPromptSubmit', 'Stop')) {
+                $written = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent $ev
+                $written | Should -BeNullOrEmpty -Because "at $ev the writer mints nothing from a continuing message"
+            }
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse -Because 'no pending approval exists - the file the defect produced'
+            $now = '2026-09-10T18:28:54.0000000+00:00'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now 2>$null
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse -Because 'the table, which is what the hooks call, mints nothing either'
+            $drops = @(Read-B4F065Drops -Root $root)
+            $drops.Count | Should -Be 1 -Because 'the refusal is disclosed ONCE for the turn, whichever writer refused it'
+            [string]$drops[0].event | Should -Be 'authority-phrase-matched-but-rejected'
+            [string]$drops[0].phrase | Should -Be 'review-round-approval'
+            [string]$drops[0].reason | Should -Be 'multi-line'
+            [int]$drops[0].line_count | Should -Be 136
+            [string]$drops[0].fix | Should -Match "send exactly one line: 'approved for review round'" -Because 'the journal names the one move that clears it (B4F-064)'
+            [string]$drops[0].source_event | Should -Be 'UserPromptSubmit'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It '4b. the prompt-entry provider says it IN THE TURN, where the human reads, and captures nothing' {
+        $specimen = New-B4F065Specimen
+        $root = New-B4F065Root
+        try {
+            $out = ((& pwsh -NoProfile -File $script:HandoverProvider --project-root $root --host-kind claude --source-event UserPromptSubmit --last-user-message $specimen 2>&1) -join "`n")
+            $out | Should -Match 'NOT recorded as a review-round-approval' -Because 'the disclosure reaches the inject stdout, so it reaches the same turn'
+            $out | Should -Match 'a verdict is ONE line' -Because 'it names the rule'
+            $out | Should -Match "exactly one line: 'approved for review round' or 'approved for review round - <your instructions>'" -Because 'it names the retype, in the words the docs use'
+            $out | Should -Match 'continues for 135 more line' -Because 'it says how far the message went on'
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse
+            @(Read-B4F065Drops -Root $root).Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It '5. the one-line forms still mint, and a clean turn discloses NOTHING - the rule bounds pastes, not humans' {
+        $root = New-B4F065Root
+        try {
+            foreach ($text in @('approved for review round', 'approved for review round.', 'approved for review round - use the codex reviewer', "approved for review round`n`n", "approved for review round`r`n")) {
+                [bool](Test-SpecrewReviewRoundApprovalPhrase -Text $text).Matched | Should -BeTrue -Because ("still a verdict: " + ($text -replace "\r?\n", '\n'))
+                Get-SpecrewAuthorityMultiLineRefusal -Text $text | Should -BeNullOrEmpty -Because 'nothing to disclose'
+            }
+            Get-SpecrewAuthorityMultiLineRefusal -Text "What is the status of the tests directory?`nAnd the lanes?" | Should -BeNullOrEmpty -Because 'ordinary multi-line conversation is not a refused verdict; the sweep fires only when a phrase led'
+            $now = '2026-09-10T18:28:54.0000000+00:00'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round - use the codex reviewer' -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now 2>$null
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeTrue -Because 'the same-line instruction form mints through the table'
+            @(Read-B4F065Drops -Root $root).Count | Should -Be 0 -Because 'a clean turn writes no drop row'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It '6. MUTATION CONTROL: with the continuation guard removed, the SAME specimen mints - the recorded defect, reproduced on demand' {
+        # The guard is what stands between the paste and the ledger. A copy of the store with
+        # Test-SpecrewAuthorityMessageContinues answering "no" to everything is the pre-fix build; in a
+        # child process, so nothing here is mutated. If this case ever goes green-by-accident (the
+        # specimen refused for some OTHER reason), the fix above is not what is being tested.
+        $specimen = New-B4F065Specimen
+        $root = New-B4F065Root
+        $mutant = Join-Path ([IO.Path]::GetTempPath()) ('b4f065-mutant-' + [guid]::NewGuid().ToString('N') + '.ps1')
+        try {
+            $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') -Raw -Encoding UTF8
+            $guardLine = '    return (-not [string]::IsNullOrWhiteSpace([string]$parts[1]))'
+            ([regex]::Matches($source, [regex]::Escape($guardLine))).Count | Should -Be 1 -Because 'the mutation must hit exactly the guard'
+            [IO.File]::WriteAllText($mutant, $source.Replace($guardLine, '    return $false'), [Text.UTF8Encoding]::new($false))
+            $specimenPath = Join-Path $root 'specimen.txt'
+            [IO.File]::WriteAllText($specimenPath, $specimen, [Text.UTF8Encoding]::new($false))
+            $script = @(
+                ('. "{0}"' -f (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'))
+                ('. "{0}"' -f $mutant)
+                ('$s = [IO.File]::ReadAllText("{0}")' -f $specimenPath)
+                ('$w = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot "{0}" -Response $s -HostKind claude -SourceEvent UserPromptSubmit' -f $root)
+                'Write-Output ("minted=" + ($null -ne $w))'
+            ) -join "`n"
+            $out = ((& pwsh -NoProfile -Command $script 2>&1) -join "`n")
+            $out | Should -Match 'minted=True' -Because 'without the guard the first line decides and the paste mints - which is the record'
+            $pending = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
+            Test-Path -LiteralPath $pending | Should -BeTrue -Because 'the file the defect produced, reproduced'
+            $fact = Get-Content -LiteralPath $pending -Raw -Encoding UTF8 | ConvertFrom-Json
+            @(([string]$fact.verdict_text) -split "`n").Count | Should -Be 136 -Because 'the whole transcript became verdict_text, as in the record'
+        }
+        finally {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $mutant -Force -ErrorAction SilentlyContinue
+        }
     }
 }

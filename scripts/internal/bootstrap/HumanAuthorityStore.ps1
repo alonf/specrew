@@ -293,6 +293,109 @@ function Get-SpecrewAuthorityApprovalLine {
     return (($firstLine -replace '\s+', ' ').Trim())
 }
 
+function Test-SpecrewAuthorityMessageContinues {
+    # A VERDICT IS ONE LINE (PRED-BETA4-022, the sharpest authority-corruption case in the beta4 record):
+    # the phrase, plus at most the documented same-line instruction form. W56 made every recognizer decide
+    # on the phrase's own line so an instruction BLOCK below it would not refuse the approval - and that
+    # is exactly how a 136-line Copilot transcript from ANOTHER project, pasted into a reviewer session
+    # with the human's typed phrase still at its top, was minted here as a live review-round approval,
+    # twice, under two encodings. The first line matched; the other 135 were never looked at. A message
+    # that continues past its first line into non-empty content is not a verdict, whatever its first
+    # line says; it is refused, and the refusal is disclosed so the human retypes ONE line.
+    [OutputType([bool])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    # The INSTANCE Split takes a count; the static three-argument form reads a RegexOptions there and
+    # splits everything, which made "the rest" mean line two alone (found by W56's own blank-line case).
+    $parts = [regex]::new('\r\n|\n|\r').Split($Text.Trim(), 2)
+    if ($parts.Count -lt 2) { return $false }
+    return (-not [string]::IsNullOrWhiteSpace([string]$parts[1]))
+}
+
+function Get-SpecrewAuthorityMessageLineCount {
+    [OutputType([int])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return 0 }
+    return @([regex]::Split($Text.Trim(), '\r\n|\n|\r')).Count
+}
+
+function Get-SpecrewAuthorityMultiLineRefusal {
+    # THE SWEEP BEHIND THE DISCLOSURE. Runs the minting recognizers that carry the one-line rule and
+    # names the first that refused THIS text for continuing past its line - so the drop writer below
+    # and the prompt-entry disclosure read one answer, in one place, and a recognizer added later
+    # joins the table here rather than growing its own copy (the W66 lesson, again).
+    #
+    # The WITHDRAWAL is deliberately absent: it REMOVES authority, and its recognizer's own doctrine
+    # is that a false negative runs a review the human said to stop. The one-line rule bounds what
+    # MINTS; refusing a multi-line withdrawal would fail open.
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $table = @(
+        @{ Kind = 'review-round-approval'; Fn = 'Test-SpecrewReviewRoundApprovalPhrase'; Retype = 'approved for review round' }
+        @{ Kind = 'pause-decision'; Fn = 'Test-SpecrewPauseDecisionPhrase'; Retype = 'stop the review here (or: abandon this review campaign)' }
+        @{ Kind = 'allowance-reset'; Fn = 'Test-SpecrewAllowanceResetPhrase'; Retype = 'approved for allowance reset' }
+        @{ Kind = 'coverage-deferral'; Fn = 'Test-SpecrewCoverageDeferralPhrase'; Retype = 'continue without coverage until the review phase' }
+    )
+    foreach ($row in $table) {
+        if (-not (Get-Command ([string]$row.Fn) -ErrorAction SilentlyContinue)) { continue }
+        $r = $null
+        try { $r = & ([string]$row.Fn) -Text $Text } catch { $r = $null }
+        if ($null -eq $r -or [bool]$r.Matched) { continue }
+        if (-not $r.PSObject.Properties['Reason'] -or [string]$r.Reason -cne 'multi-line-refused') { continue }
+        return [pscustomobject]@{
+            Kind      = [string]$row.Kind
+            FirstLine = (Get-SpecrewAuthorityApprovalLine -Text $Text)
+            LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
+            Retype    = [string]$row.Retype
+        }
+    }
+    return $null
+}
+
+function Get-SpecrewAuthorityMultiLineDisclosure {
+    # The sentence the human reads. It names what was refused, why, and the ONE move that clears it,
+    # in the words the docs use - the refusal standard (B4F-009 family, B4F-064), not a code word.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][pscustomobject]$Refusal)
+    $shown = [string]$Refusal.FirstLine
+    if ($shown.Length -gt 80) { $shown = $shown.Substring(0, 77) + '...' }
+    return ("Specrew: your reply was received but NOT recorded as a {0}. Its first line is '{1}', but the message continues for {2} more line(s), and a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash. A pasted transcript or a block of notes under the phrase is not a verdict. Nothing you wrote is lost and no authority was changed. To record it, send a message that is exactly one line: '{3}' or '{3} - <your instructions>'." -f $Refusal.Kind, $shown, ([int]$Refusal.LineCount - 1), $Refusal.Retype)
+}
+
+function Write-SpecrewAuthorityMultiLineDrop {
+    # The disclosure half of the one-line rule: a refusal nobody can see is B4F-043's silence again.
+    # Same journal and event the partial-signoff override uses for "the phrase matched and was then
+    # rejected" (DRIFT-199-I002-034), because that is exactly what this is; plus the stderr line for
+    # hosts that surface it. Returns the disclosure sentence so the prompt-entry provider can put it
+    # in the turn, where the human actually reads. Fail-open: never breaks the end of a turn.
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][pscustomobject]$Refusal,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $message = Get-SpecrewAuthorityMultiLineDisclosure -Refusal $Refusal
+    try {
+        $dropJournal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/authority-capture-drops.jsonl'
+        $dropDir = Split-Path -Parent $dropJournal
+        if ($dropDir -and -not (Test-Path -LiteralPath $dropDir)) { New-Item -ItemType Directory -Path $dropDir -Force | Out-Null }
+        $shown = [string]$Refusal.FirstLine
+        if ($shown.Length -gt 80) { $shown = $shown.Substring(0, 77) + '...' }
+        (([pscustomobject][ordered]@{
+                event = 'authority-phrase-matched-but-rejected'; phrase = [string]$Refusal.Kind; reason = 'multi-line'
+                first_line = $shown; line_count = [int]$Refusal.LineCount
+                host_kind = [string]$HostKind; source_event = [string]$SourceEvent; recorded_at = $NowUtc
+                fix = ("send exactly one line: '{0}' or '{0} - <your instructions>'" -f [string]$Refusal.Retype)
+            }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
+        [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED. {1}" -f ([string]$Refusal.Kind).ToUpperInvariant().Replace('-', ' '), $message))
+    }
+    catch { $null = $_ }
+    return $message
+}
+
 function Get-SpecrewReviewRoundApprovalRoot {
     param([Parameter(Mandatory)][string]$ProjectRoot)
     return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/round-approval'
@@ -406,15 +509,15 @@ function Test-SpecrewReviewRoundApprovalPhrase {
     [OutputType([pscustomobject])]
     param([AllowNull()][AllowEmptyString()][string]$Text)
 
-    $r = [pscustomobject]@{ Matched = $false; Kind = $null; Phrase = $null }
+    $r = [pscustomobject]@{ Matched = $false; Kind = $null; Phrase = $null; Reason = $null }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
     $trimmed = $Text.Trim()
     # Machinery envelopes are not human turns, whatever they contain.
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
 
-    # W56: decide on the approval's OWN LINE. The interrogative test binds to that line, so
-    # "approved for review round?" is still deliberation while a question in a FOLLOWING
-    # instruction block is an ordinary follow-up.
+    # W56 decided on the approval's OWN LINE so that "approved for review round?" is still deliberation
+    # while a question in a FOLLOWING block is a follow-up. PRED-BETA4-022 narrows what a following block
+    # may be: nothing. A verdict is one line; a message that continues is refused, by reason, below.
     $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
     if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
     if ($lower.EndsWith('?')) { return $r }
@@ -423,6 +526,7 @@ function Test-SpecrewReviewRoundApprovalPhrase {
     # review round") never match.
     $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed)\s+(?:for\s+)?(?:a\s+|one\s+|another\s+|a\s+fresh\s+)?review\s+round\b')
     if ($anchor.Success) {
+        if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) { $r.Reason = 'multi-line-refused'; return $r }
         $tail = $lower.Substring($anchor.Length)
         # Closed tail: nothing, or a delimiter followed by instructions. Arbitrary prose directly after
         # the phrase ("...review round seems premature") is not the phrase.
@@ -477,6 +581,8 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         else { return $null }
     }
     $recognized = Test-SpecrewReviewRoundApprovalPhrase -Text $Response
+    # A `Reason` of multi-line-refused is disclosed by the capture table (Invoke-SpecrewTypedAuthorityCapture),
+    # once for the turn, not here per writer.
     if (-not [bool]$recognized.Matched) { return $null }
 
     $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
@@ -1112,6 +1218,7 @@ function Test-SpecrewPauseDecisionPhrase {
     foreach ($shape in $shapes) {
         $anchor = [regex]::Match($lower, [string]$shape.Pattern)
         if (-not $anchor.Success) { continue }
+        if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) { $r | Add-Member -NotePropertyName 'Reason' -NotePropertyValue 'multi-line-refused' -Force; return $r }
         $tail = $lower.Substring($anchor.Length)
         if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
         if (Test-SpecrewConditionalDeferralClause -Text $tail) { return $r }
@@ -1455,6 +1562,9 @@ function Test-SpecrewApprovalWithdrawalPhrase {
     if ([string]::IsNullOrWhiteSpace($lower) -or $lower.EndsWith('?')) { return $r }
     if ($lower -notmatch '^\s*(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?(?:withdraw|revoke|rescind|retract|cancel)\b') { return $r }
     if ($lower -notmatch '\b(approval|approve[d]?|round|authorization|authorisation)\b') { return $r }
+    # PRED-BETA4-022's one-line rule is NOT applied here, on purpose: it bounds what MINTS. A withdrawal
+    # removes authority, and this recognizer's floor cuts the other way - a false negative runs a review
+    # the human said to stop - so a withdrawal typed above a block of notes still withdraws.
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r
 }
@@ -1705,6 +1815,7 @@ function Test-SpecrewAllowanceResetPhrase {
     if ($lower.EndsWith('?')) { return $r }
     $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed)\s+(?:for\s+)?(?:an\s+|the\s+)?allowance\s+reset\b')
     if (-not $anchor.Success) { return $r }
+    if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) { $r | Add-Member -NotePropertyName 'Reason' -NotePropertyValue 'multi-line-refused' -Force; return $r }
     $tail = $lower.Substring($anchor.Length)
     if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
     # Round-14 finding (DRIFT-199-I001-123): the whole TAIL, not element zero of a delimiter split -

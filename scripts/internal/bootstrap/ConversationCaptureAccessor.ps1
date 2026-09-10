@@ -228,6 +228,15 @@ function Test-SpecrewHumanVerdictToken {
     # delimiters, so "approve?" is still deliberation rather than authorization.
     $approvalAnchor = '^\s*(?:(?:option\s*)?([12])\s*[.):\-–—]\s*)?(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
     $leadingApproval = [regex]::Match($lower, $approvalAnchor)
+    $lineParts = [regex]::new('\r\n|\n|\r').Split($t, 2)
+    if ($leadingApproval.Success -and $lineParts.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$lineParts[1])) {
+        # A VERDICT IS ONE LINE (PRED-BETA4-022). The leading clause of this message is an approval and the
+        # message continues past its first line into content - a pasted transcript, a block of prose,
+        # anything. The clause was never the whole act. Refused by reason, so the capture can disclose it
+        # and the human retypes one line; never minted on the strength of its first line.
+        $r.Action = 'refused-multi-line'
+        return $r
+    }
     if ($leadingApproval.Success) {
         $afterApproval = $lower.Substring($leadingApproval.Length)
         # Round-12 finding (DRIFT-199-I001-120): the interrogative rule binds BEFORE EITHER approval

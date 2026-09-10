@@ -3533,3 +3533,69 @@ the one move that clears it in the vocabulary of the surface it appears on - `sp
 checkout -- <file>`, "approved for clarify" - or says plainly that no such move exists and whose act it
 is. The class guard for it is the refusal standard (B4F-009 family) applied to every refusal the product
 can print, not to the ones someone remembered.
+
+## B4F-065 - CROSS-PROJECT VERDICT CAPTURE FROM A PASTED TRANSCRIPT: the capture bound a message by its first line, regardless of what followed (fixed in beta4)
+
+**Read from this repository's own record**: `.specrew/review/round-approval/pending-round-approval.json`
+holds a live (`spent_at: null`) review-round approval whose `verdict_text` is 9169 characters in 136 lines:
+`approved for review round`, then `Thought for 1s`, then a Copilot shell transcript from the router-skill
+project - the maintainer's session there, pasted into the reviewer session here with the typed phrase
+still at its top. It is the maintainer's authorization for ANOTHER project, minted in this one, and it is
+not spent (the statement in this session that it had been was wrong; the approved round refused on
+B4F-027's marker before spending anything).
+
+**The mechanism**: W56 (DRIFT-199-I001-125) made every authority recognizer decide on the phrase's own
+LINE so that an approval followed by an instruction block would not be refused as prose, and W75
+(2026-08-27) did the same on the boundary-verdict path so a following line could not turn a verdict into
+a condition on it. Both were right about what they protected, and both therefore accepted a message
+whose first line is the phrase and whose remaining 135 lines are anything at all. Nothing looked past
+line one.
+
+**Two sub-findings, from `captures.jsonl`**: (1) the same message was captured TWICE, at 18:28:54Z from
+`UserPromptSubmit` and at 18:31:32Z from `Stop` - one typed act, two channels, two mints, which is the
+bounded residual W71 accepted and which the cross-channel dedupe exists to observe; (2) the two copies
+took different encoding paths - the prompt-entry copy carries `IΓÇÖll` (the UTF-8 bytes of a right single
+quote read back as a code page, on the `--last-user-message` argv route) and the Stop copy carries `I’ll`
+(the transcript-file route) - so their content hashes differ and the dedupe could not see they were one
+message. The encoding sub-finding is beta5's: it is an argv-transcoding defect on the prompt-entry
+channel, and a hash that differs on encoding is a dedupe that misses exactly the repeated paste.
+
+**The rule, ruled (2026-09-10)**: a verdict is the phrase plus at most the documented same-line
+instruction form; a message that continues into multi-line content is REFUSED, not minted. Fixed in
+beta4 as PRED-BETA4-022, a bounded change to the capture predicate with a test:
+
+| surface | before | now |
+| --- | --- | --- |
+| `Test-SpecrewReviewRoundApprovalPhrase`, `Test-SpecrewPauseDecisionPhrase`, `Test-SpecrewAllowanceResetPhrase`, `Test-SpecrewCoverageDeferralPhrase` (the shared-governance copy) | decided on line one | line one decides WHETHER it is the phrase; a non-blank continuation refuses with `Reason = multi-line-refused` |
+| `Test-SpecrewHumanVerdictToken` (boundary verdicts) | a leading approval won over anything below it | a leading approval followed by non-blank content returns `Action = refused-multi-line` |
+| `Test-SpecrewApprovalWithdrawalPhrase` | unchanged | **deliberately exempt**: it REMOVES authority; refusing a multi-line withdrawal would fail open (the recognizer's own doctrine) |
+| `Invoke-SpecrewTypedAuthorityCapture` (the one table both hooks call) | a refused turn was silent | a turn that minted nothing because its first line was a phrase and it went on is journaled ONCE in `.specrew/runtime/authority-capture-drops.jsonl` (`authority-phrase-matched-but-rejected`, `reason: multi-line`, `line_count`, `fix`) - the ledger the partial-signoff override already uses for "matched, then rejected" - and a `[specrew-authority] YOUR ... WAS NOT RECORDED` line goes to stderr |
+| the prompt-entry provider (`specrew-handover-provider.ps1`) | disclosed only boundary-verdict misses | says the typed-authority refusal IN THE TURN too, with the one-line retype: `'approved for review round' or 'approved for review round - <your instructions>'` |
+| `Get-SpecrewVerdictCaptureDisclosure` | one sentence, "decided by what comes FIRST" | branches for `refused-multi-line`: the first line was right, the continuation is the problem, retype one line |
+
+**What this reverses, and what it keeps.** W56's accepted shape (phrase, blank line, instruction block)
+and W75's following-line case are now refused - the tests that pinned them are retargeted on the case,
+with the ruling and the date. What W56 and W75 protected is kept by a different means: they removed a
+SILENT refusal that forced a second bare message; the refusal now carries a reason, is journaled, and is
+said in the turn with the retype. The instruction goes on the phrase's line after a dash, which is the
+form the docs have always given.
+
+**Found by the test, not by the build**: the first cut of the continuation guard used the static
+`[regex]::Split($text, $pattern, 2)`, whose third argument is a `RegexOptions`, not a count - so "the rest
+of the message" was line two alone, and a phrase followed by a BLANK line and a block read as "nothing
+follows". The recorded specimen was refused (its line two is `Thought for 1s`); W56's own blank-line case,
+reversed, was the discriminator that caught it. The instance `Split($text, 2)` takes the count. The
+pre-existing W56 code has the same call and is unaffected only because it reads element zero.
+
+**The pending fact in THIS repository is left as it is** - unspent, recorded. The product's only void path
+is the human's own typed withdrawal (`Write-SpecrewApprovalWithdrawal` recognizes `withdraw the review
+round approval` and its verbs), and the ruling is never to hand-edit it.
+
+**Tests**: `tests/unit/round-approval-typed-authority.tests.ps1` (Describe `PRED-BETA4-022 / B4F-065`, six
+cases: the recorded shape refused by reason; every minting sibling refuses and the withdrawal does not;
+the boundary-verdict recognizer refuses by reason; the writer at both source events writes nothing and
+the table discloses once; the prompt-entry provider says it in the turn; the one-line forms still mint
+and a clean turn writes no drop row; and a MUTATION CONTROL that runs the same specimen against a copy of
+the store with the guard removed and asserts it MINTS a 136-line `verdict_text` - the record, reproduced
+on demand); W56 and W75 retargeted; `tests/unit/capture-disclosure.tests.ps1` Cases 6-7 (the boundary
+path's disclosure, and the typed-authority disclosure beside it, both through the provider).

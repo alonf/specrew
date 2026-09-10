@@ -13,6 +13,8 @@
 # stdout.
 #
 # The recognizer is NOT widened: every case below still ends with the crossing un-authorized.
+# PRED-BETA4-022 (cases 6-7): the phrase on line one with a transcript under it is refused BY REASON and the
+# disclosure names the one-line retype - both the boundary path and the typed-authority path, in the turn.
 # Mutations that turn this file red: remove the disclosure call from the prompt-submit branch (cases 1-3);
 # remove the Write-Output from the provider (case 4); widen the trigger so it fires without the phrase (5).
 Set-StrictMode -Version Latest
@@ -105,6 +107,34 @@ $after5 = (Read-Enforcement -Root $f5.Root).last_authorized_boundary
 Assert-True ([string]$after5 -eq 'before-implement') 'a clean phrase at prompt entry authorizes the crossing (the path this disclosure sits beside)'
 Assert-True ($out5 -notmatch 'NOT recorded as a verdict') 'and nothing is disclosed when there is nothing to disclose'
 
-foreach ($f in @($f1, $f2, $f3, $f4, $f5)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+Write-Host 'Case 6 (PRED-BETA4-022): the phrase on line one and a transcript under it - refused BY REASON, and the disclosure names the one-line retype'
+$f6 = New-DisclosureFixture
+$pasteLines = [System.Collections.Generic.List[string]]::new()
+$pasteLines.Add('approved for before-implement'); $pasteLines.Add('Thought for 1s'); $pasteLines.Add('')
+$pasteLines.Add("I'll run the approved round against the iteration 002 planning artifacts.")
+1..40 | ForEach-Object { $pasteLines.Add(('PS> pwsh -File scripts/specrew-review.ps1 --live   # attempt {0}: exit 1' -f $_)) }
+$pasteText = ($pasteLines -join "`n")
+$d6 = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f6.Root -HumanText $pasteText -NowUtc '2026-09-10T18:28:54Z' -Source 'UserPromptSubmit'
+Assert-True (-not [string]::IsNullOrWhiteSpace($d6)) 'the pasted-transcript turn produces a disclosure instead of silence'
+Assert-True ($d6 -match 'NOT recorded as a verdict' -and $d6 -match 'tasks -> before-implement') 'it names what did not happen and which crossing'
+Assert-True ($d6 -match 'a verdict is ONE line') 'it names the rule, not a code word'
+Assert-True ($d6 -match "exactly one line: 'approved for before-implement' or 'approved for before-implement - <your instructions>'") 'it names the one reachable action: the same-line form'
+Assert-True ($d6 -notmatch 'what comes FIRST in the message') 'and it does NOT blame the first line, which was right - the diagnosis is the continuation'
+$j6 = @(Read-Journal -Root $f6.Root -Event 'verdict-not-captured-disclosed')
+Assert-True ($j6.Count -eq 1 -and [string]$j6[0].action -eq 'refused-multi-line') 'the non-capture is journaled with its reason'
+$out6 = ((& pwsh -NoProfile -File $provider --project-root $f6.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $pasteText 2>&1) -join "`n")
+$after6 = (Read-Enforcement -Root $f6.Root).last_authorized_boundary
+Assert-True ($out6 -match 'a verdict is ONE line') 'the provider puts the disclosure in the turn'
+Assert-True ([string]$after6 -eq 'tasks') 'and the crossing stays un-authorized: the paste minted nothing'
+
+Write-Host 'Case 7 (PRED-BETA4-022): a typed ROUND approval with a transcript under it, at prompt entry - disclosed in the turn beside the verdict path'
+$f7 = New-DisclosureFixture
+$roundPaste = 'approved for review round' + "`n" + (($pasteLines | Select-Object -Skip 1) -join "`n")
+$out7 = ((& pwsh -NoProfile -File $provider --project-root $f7.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $roundPaste 2>&1) -join "`n")
+Assert-True ($out7 -match 'NOT recorded as a review-round-approval' -and $out7 -match "exactly one line: 'approved for review round'") 'the typed-authority refusal is said in the turn with the retype'
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $f7.Root '.specrew/review/round-approval/pending-round-approval.json'))) 'no pending round approval was minted from the paste'
+Assert-True ((Test-Path -LiteralPath (Join-Path $f7.Root '.specrew/runtime/authority-capture-drops.jsonl')) -and ((Get-Content -LiteralPath (Join-Path $f7.Root '.specrew/runtime/authority-capture-drops.jsonl') -Raw) -match '"reason":"multi-line"')) 'the drop is journaled where the partial-signoff drops already live'
+
+foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6, $f7)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("capture-disclosure: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'capture-disclosure: all assertions passed' -ForegroundColor Green

@@ -1092,3 +1092,38 @@ the human retypes one line rather than wondering why nothing happened.
 the product's only void path is the human's own typed withdrawal (`Write-SpecrewApprovalWithdrawal`), and
 the maintainer's ruling is never to hand-edit it. The line the product recognizes as a withdrawal is
 reported to the maintainer.
+
+### PRED-BETA4-022 VERDICT - held on the recorded specimen; three deviations from the statement, each recorded
+
+**Measured on the record itself** (the 136-line `verdict_text` read from
+`.specrew/review/round-approval/pending-round-approval.json`, not a stand-in):
+`Test-SpecrewReviewRoundApprovalPhrase` -> `Matched=False Reason=multi-line-refused`; the sweep names
+`review-round-approval`, 136 lines, first line `approved for review round`; the writer at
+`UserPromptSubmit` and at `Stop` returns nothing and no pending file exists; the one table the hooks call
+(`Invoke-SpecrewTypedAuthorityCapture`) mints nothing, writes one drop row (`reason: multi-line`,
+`line_count: 136`) and the stderr line; the only files under the scratch project afterwards are the
+exhausted-turn ledger and the drops journal. **The cross-project verdict cannot be minted again** (part 4).
+
+**Part 1 - held, with one deliberate deviation.** The withdrawal recognizer is NOT under the rule. It
+removes authority; its own doctrine is that a false negative runs a review the human said to stop; a
+multi-line refusal there would fail open. The coverage-deferral recognizer (shared-governance's local
+copy) IS under it, which the statement did not name. **Part 2 - held.** **Part 3 - held, journal renamed**:
+the drop goes to `.specrew/runtime/authority-capture-drops.jsonl` as `authority-phrase-matched-but-rejected`
+with `reason: multi-line`, the ledger and event the partial-signoff override already uses for "the phrase
+matched and was then rejected", written ONCE per turn from the capture table rather than per writer; the
+boundary path journals `verdict-not-captured-disclosed` with `action: refused-multi-line` and its sentence
+is branched so it does not blame the first line. Both disclosures reach the turn through the prompt-entry
+provider's inject stdout (Cases 4b, 6, 7).
+
+**Part 5 - the mutation, as measured.** The statement said "Case 1 goes red and nothing else does"; it was
+written before the cases were designed, and the guard is read by more than one. With
+`Test-SpecrewAuthorityMessageContinues` answering "no" to everything (the pre-fix build), the in-suite
+control (Case 6) mints the specimen into a 136-line `verdict_text` in a child process - the record,
+reproduced. The whole-suite run under that mutation is recorded below the commit.
+
+**What the test caught that the build did not**: the first guard called the static
+`[regex]::Split(text, pattern, 2)` - the `2` is a `RegexOptions` there, not a count - so it examined line
+two only. The recorded specimen was refused anyway (line two is `Thought for 1s`) and every part above
+would have "held"; W56's reversed blank-line case (phrase, blank line, block) went red and named it. A
+prediction that held on the specimen alone would have shipped a guard that any paste with a blank line
+after the phrase walks through.
