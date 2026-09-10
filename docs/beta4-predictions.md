@@ -679,3 +679,42 @@ and a command, and a human would gain nothing from seeing it. The human-facing c
 one: a declaration that goes wrong is now refused with a message that names the line, so the human sees the
 name of a thing they were never shown. The refusal texts say where it comes from ("the hook hands one out at
 each turn start") for exactly that reason.
+
+---
+
+## PRED-BETA4-015 - the census at the final SHA. Stated before the dispatch.
+
+**The SHA**: the branch head at dispatch. Code last moved at `15d702f8`; `79d7585f` and this record are
+docs-only. Since the last green census (`d4a89ab7`, run `34354188094`, 2026-09-09) the tree has gained 30
+non-docs files: fixes 1-4, the fix-2 tail, the timestamp helper, finding 1's closure and B4F-053's registry
+row, and 14 test files (six of them new or rewritten in this arc).
+
+**Before the dispatch, the same sweep the census runs is running locally** - `full-powershell-test-sweep.ps1
+-MaxParallel 4 -PerFileTimeoutSeconds 420`, 407 named files, in flight at 75/407 as this is written. It is
+run first because the touched-surface pass before it found FOUR census subjects red (three stale tests, one
+real regression - `15d702f8`), and a census that reds on something a local sweep would have found spends the
+one sanctioned re-dispatch on nothing. **If the local sweep reds, the census is not dispatched until the red
+is classified and either fixed or predicted.**
+
+### THE PREDICTION
+
+1. **`full-test-census` green, sweep executed, 407 named files, 0 failures.** All three jobs green
+   (`prepublish-validation`, `full-test-census`, `publish-module` in dry-run).
+2. **Every one of the 14 changed test files passes on the runner**, including the two rewritten in this
+   session (`turn-end-session-identity`, 47 assertions; `timestamp-read`, 24) and `conformance-detection`
+   at 89. The identity suite's Case 5 copies the extension scripts into a scratch project and runs the
+   DEPLOYED dispatcher; that path has no dependency the runner lacks.
+3. **The two timing assertions that were runner-bound at `34346555521`** (byte-unchanged since) pass. If
+   either reds AGAIN on the same runner-bound signature and on files byte-unchanged since `d4a89ab7`,
+   that is the single sanctioned re-dispatch with its meaning fixed now: green on re-run confirms
+   runner-bound and the re-run SHA is the tag SHA; red again is a real blocker, and there is no third run.
+   **A red on ANY file changed since `d4a89ab7` is not runner-bound by definition, gets no re-run, and is
+   fixed before any further dispatch.**
+4. **The diagnostics artifact carries exactly one entry on the green run**: `tests\direct-exit.tests.ps1`
+   with `DIRECT-EXIT-SENTINEL`, the known by-product of `full-sweep-direct-exit.tests.ps1` (recorded at
+   PRED-BETA4-006's resolution). A second entry is something new and is read before the verdict is
+   accepted.
+
+**Fixed in advance**: the tag SHA is the SHA the green dispatch ran on, whatever the branch head has moved
+to with records since. Fix 5 is not in this tree and is not what the census measures; it waits on the
+maintainer's word.
