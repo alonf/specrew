@@ -78,14 +78,15 @@ being indistinguishable.
 
 **This does not affect a workshop you are actually running.** It only affects features left at intake.
 
-## Known issue: `/specrew-user-profile` is advertised but not installed
+## Fixed: `/specrew-user-profile` is now installed by `init` and `update`
 
-**Specrew tells you about a command it does not give you.** `init`'s completion message, the session
-banner, and the launch contract all point at `/specrew-user-profile` — and **the skill is not shipped**, so
-in your project the command does not exist.
+**Beta3 told you about a command it did not give you.** `init`'s completion message, the session banner
+and the launch contract all pointed at `/specrew-user-profile`, and the skill shipped to no project — 0 of
+37 skills in three consumer projects. Its backing script had always shipped; only the entry point was
+missing. **Beta4 ships the skill** through the same deployment `init` and `update` already run, so
+`/specrew-user-profile show | edit | reset` works in your project after `specrew update`.
 
-**What to do instead — the settings are real and editable, just not through that command.** Your profile is
-**per-user, not per-project**, and lives at:
+The settings themselves are unchanged. Your profile is **per-user, not per-project**, and lives at:
 
 ```
 ~/.specrew/user-profile.yml
@@ -105,7 +106,7 @@ expertise:
 They control how much Specrew asks, explains, recommends and decides for you, and they apply across every
 Specrew project you work in. Changing the file is enough — nothing needs to be re-run.
 
-**Fixed in beta5** by shipping the skill.
+Editing the file directly still works and needs no re-run.
 
 ## Known issue: clarify refuses on a brand-new feature
 

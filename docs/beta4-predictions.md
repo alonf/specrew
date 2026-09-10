@@ -528,3 +528,38 @@ with no `iterations/` and no `-IterationNumber`; (2) the `plan` refusal names th
 and contains no `{0}`; (3) with `clarify` removed from the exemption, the pre-plan fixture fails and the
 older clarify case - iteration seeded, number passed - stays green, which is precisely how the defect shipped
 through a green suite since `aa25909b`.
+
+---
+
+## PRED-BETA4-013 - fix 4, the advertised-but-unshipped skill. Stated before the code.
+
+**Decision: DEPLOY, not de-advertise**, and why: the backing script `scripts/internal/user-profile.ps1` is
+already in the package FileList, so every consumer install has the functionality and lacks only the entry
+point. Removing the advertisement would remove the door to a room that already exists, and leave users
+hand-editing `~/.specrew/user-profile.yml` - which is what the beta4 release note currently tells them to do.
+The generic deployment route (`squad-templates/skills/<name>.md` -> `specrew-<name>`) is proven by fix 2's
+own skill and needs no catalog change.
+
+**Read from disk first**: the skill exists only in `.claude/skills/` (dogfood); it is absent from
+`squad-templates/skills/`; and its SKILL.md hard-codes `C:\Dev\Specrew\scripts\internal\user-profile.ps1` at
+lines 103, 108 and 112, while line 119 already has the module-resolving form. So it cannot ship as-is.
+
+### THE PREDICTION, four parts
+
+1. After `squad-templates/skills/user-profile.md` is added, `Get-LegacySpecrewSkillDefinitions` enumerates
+   `specrew-user-profile` - the deploy surface includes it with no catalog change.
+2. The shipped template contains **no** `C:\Dev\` path. Falsifiable by grep.
+3. `package-filelist-completeness` passes with the template in the FileList; it FAILS before the entry is
+   added, naming the file - which is the guard doing its job.
+4. A `deploy-squad-runtime.ps1 -DryRun` into a scratch project lists a would-create action for
+   `specrew-user-profile` under every active skill root.
+
+**Fixed in advance**: if (1) fails, the generic route has a filter I have not read and the skill needs a
+catalog entry instead; if (4) fails, the template is enumerated but not deployed, and the advertisement
+stays a lie.
+
+**PRED-BETA4-013 VERDICT: all four parts held.** (1) `Get-LegacySpecrewSkillDefinitions` enumerates
+`specrew-user-profile` as a generic skill scoped to all hosts, 17 definitions total, no catalog change;
+(2) zero `C:\Dev` paths in the shipped template; (3) the package guard FAILED naming the file before the
+FileList entry and passes after; (4) a `-DryRun` deploy into a scratch project lists 12 would-act lines for
+`specrew-user-profile` across the active skill roots.
