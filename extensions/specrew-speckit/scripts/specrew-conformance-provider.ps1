@@ -484,10 +484,20 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [bool]$HasPendingVerdict,
         [AllowNull()][string[]]$WorkshopFeatureCandidates
     )
-    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; phase = $null; agenda_status = $null; question = $null; message_hash = $null; agenda_digest = $null; agenda_binding = $null; agenda_visibility = $null; artifact_path = $null; binding_conflict = $null }
+    # `resolved_via` names WHICH path supplied the answer - 'candidate' or 'start-context' - so a positive
+    # control can assert the path it exercised rather than certify one it never took (B4F-028).
+    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; phase = $null; agenda_status = $null; question = $null; message_hash = $null; agenda_digest = $null; agenda_binding = $null; agenda_visibility = $null; artifact_path = $null; binding_conflict = $null; resolved_via = $null }
     try {
         if ($HasPendingVerdict) { $result.reason = 'lifecycle-boundary-overrides-workshop'; return $result }
-        if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef)) { return $result }
+        # ONLY WHEN THERE IS NOTHING TO RESOLVE FROM - no anchor AND no candidate. This returned on an empty
+        # anchor alone, before the candidate loop below ever ran, so an anchorless multi-feature project with
+        # exactly one open intake reported `workshop-state-unproven` and could not register a question. That
+        # is the registration defect beta4 exists to fix, met one step earlier than fix 1 looked: the release
+        # note says the resolve selects the feature whose intake controller is open, and this case falsified
+        # it as written (second-pass finding 2). An anchorless project is the FIRST thing a new consumer is.
+        $hasCandidates = ($null -ne $WorkshopFeatureCandidates -and
+            @($WorkshopFeatureCandidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count -gt 0)
+        if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef) -and -not $hasCandidates) { return $result }
         if ($StartContextState -eq 'unreadable') { $result.reason = 'workshop-start-context-unreadable'; return $result }
         if ([string]::IsNullOrWhiteSpace($BootstrapDir)) { $result.reason = 'workshop-accessor-unresolved'; return $result }
         $pma = Join-Path $BootstrapDir 'ProjectMetadataAccessor.ps1'
@@ -547,7 +557,12 @@ function Resolve-SpecrewWorkshopQuestionPause {
         $contextIteration = $null
         $contextBlockedReason = $null
         $contextRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
-        if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) {
+        if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef)) {
+            # No anchor: the start-context path has nothing to say, and says so by name. Before this the
+            # candidate path could not even be reached, so no reason was ever recorded for the skip.
+            $contextBlockedReason = 'workshop-no-start-context-feature'
+        }
+        elseif ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) {
             if ([string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $contextBlockedReason = 'workshop-active-iteration-missing' }
             else { $contextScope = 'iteration'; $contextIteration = $ActiveIterationNumber }
         }
@@ -584,12 +599,14 @@ function Resolve-SpecrewWorkshopQuestionPause {
         if ($candidateActive -and -not $contextActive) {
             $ActiveFeatureRef = $intakeCandidate
             $state = $candidateState
+            $result.resolved_via = 'candidate'
         }
         else {
             if ($null -ne $contextBlockedReason) { $result.reason = $contextBlockedReason; return $result }
             $scope = $contextScope
             $iteration = $contextIteration
             $state = $contextState
+            $result.resolved_via = 'start-context'
         }
         $featureRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
 

@@ -268,6 +268,35 @@ try {
     Assert-True ($null -ne $c10 -and -not [bool]$c10.valid) 'two active candidates are not silently reduced to the first one'
     Assert-True ($null -ne $c10 -and [string]$c10.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names ambiguity'
 
+    Write-Host '  --- CASE 11: ANCHORLESS MULTI-FEATURE - no start-context feature, one open intake among two specs ---'
+    # Second-pass finding 2 (B4F-051). The resolve returned `workshop-state-unproven` on an EMPTY anchor
+    # before its own candidate loop ever ran, so a project with no start-context feature and two specs -
+    # one completed, one open - could not register a question at all. Beta4's release note says the resolve
+    # selects the feature whose intake controller is open; this fixture falsified that as written. An
+    # anchorless project is the FIRST thing a new consumer is, so this is the registration defect met one
+    # step earlier than fix 1 looked.
+    $c11 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef '' -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($doneRef, $openRef)
+    Assert-True ($null -ne $c11 -and [bool]$c11.valid) 'with NO anchor and two specs, the sole open intake resolves valid'
+    Assert-True ($null -ne $c11 -and [string]$c11.feature_ref -eq $openRef) 'and it resolves to the OPEN feature, not the completed one'
+    # THE CONTROL NAMES ITS PATH. With no anchor the start-context path has nothing to say, so the ONLY way
+    # this can resolve is through the candidate loop - and the result says so itself, rather than the test
+    # inferring it from what was passed in.
+    Assert-True ($null -ne $c11 -and [string]$c11.resolved_via -eq 'candidate') 'CONTROL NAMES ITS PATH: resolved_via is CANDIDATE - the start-context path could not have supplied this'
+
+    # Its negative: no anchor AND no candidates is still unproven - the early return is narrowed, not removed.
+    $c11n = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef '' -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @()
+    Assert-True ($null -ne $c11n -and -not [bool]$c11n.valid) 'no anchor and no candidates is still unproven'
+    Assert-True ($null -ne $c11n -and [string]$c11n.reason -eq 'workshop-state-unproven') 'with the original reason - nothing to resolve from'
+
+    # And the anchored control now names ITS path too, closing the loop Case 1 opened.
+    Assert-True ($null -ne $c1path -and [string]$c1path.resolved_via -eq 'start-context') 'Case 1 with no candidates resolved via START-CONTEXT, which the result now states rather than the test inferring'
+
     Write-Host '  --- CASE 6: the call site actually supplies candidates (both call sites) ---'
     # The parameter is useless if nothing passes it, and the provider calls the resolve TWICE. A fix
     # applied to the first call site only would be silently half-applied - the two-writers family.
