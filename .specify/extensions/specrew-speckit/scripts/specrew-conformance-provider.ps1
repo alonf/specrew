@@ -405,38 +405,12 @@ function Get-SpecrewMaterialRuntimeState {
         # stop early-exits on this one Test-Path, which is what keeps a first-turn obligation from becoming
         # a per-stop cost (the maintainer's objection to a Stop-side check, 2026-08-18).
         OrientationPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-orientation-rendered.json' } else { 'orientation-rendered.json' })
-        AttributionPath = Join-Path $runtimeRoot 'conformance-material-owner.json'
+        # AttributionPath is gone with the record it addressed: a PROJECT-WIDE file naming one owner for a
+        # question that is per-session. Nothing reads or writes it now.
     }
 }
 
-function Get-SpecrewMaterialOwnerRecord {
-    param([string]$Path)
-    try {
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
-        $record = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-        if ([string]::IsNullOrWhiteSpace([string]$record.key) -or [string]::IsNullOrWhiteSpace([string]$record.owner) -or $null -eq $record.epoch) { return $null }
-        return $record
-    }
-    catch { return $null }
-}
 
-function Set-SpecrewMaterialOwnerRecord {
-    param([string]$Path, [string]$Key, [string]$Owner)
-    if ([string]::IsNullOrWhiteSpace($Key) -or [string]::IsNullOrWhiteSpace($Owner)) { return $false }
-    $temp = $null
-    try {
-        $dir = Split-Path -Parent $Path
-        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
-        $json = [pscustomobject]@{ key = $Key; owner = $Owner; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress
-        [System.IO.File]::WriteAllText($temp, $json, [System.Text.UTF8Encoding]::new($false))
-        [System.IO.File]::Move($temp, $Path, $true)
-        $back = Get-SpecrewMaterialOwnerRecord -Path $Path
-        return ($null -ne $back -and [string]$back.key -eq $Key -and [string]$back.owner -eq $Owner)
-    }
-    catch { return $false }
-    finally { if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }
-}
 
 function Resolve-SpecrewBootstrapDir {
     # The scripts/internal/bootstrap dir (ConversationCaptureAccessor + ProjectMetadataAccessor). Direct candidates
@@ -882,14 +856,22 @@ try {
             if ($null -eq $baseline) { $baseline = New-SpecrewDegradedTurnBaseline -Current $current }
             $sig = Compare-SpecrewTurnSnapshot -Baseline $baseline -Current $current -ProjectRoot $projectRoot
             $satKey = Get-SpecrewMaterialSatisfiedKey -Path $materialRuntime.SatisfiedPath
-            $ownerRecord = Get-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath
-            $decision = Resolve-SpecrewTurnPacketDemand -Delta $sig -SatisfiedKey $satKey -Owner ([string]$materialRuntime.Owner) -OwnerRecord $ownerRecord -OwnerMaxAgeSeconds $script:SpecrewMaterialHandoverMaxAgeSec
+            # MATERIAL-OWNER ATTRIBUTION IS RETIRED - the record, its reader and its writer.
+            #
+            # It answered "who did this work" by reading a diff of the shared worktree and crediting whichever
+            # session's hook observed it first. The independent review reproduced the consequence: session B
+            # edited a file, session A's read-only tool call observed it first, and the record was written with
+            # A as the owner - after which the retained foreign-owner reader could suppress the demand on B,
+            # the session that actually did it.
+            #
+            # This is B4F-049's first member, and it is the same mistake as the other two: asking shared
+            # project state a question only a specific party can answer. A tree diff does not know who edited.
+            # The replacement is not a better inference - attribution is now the DECLARING session, established
+            # by the turn token the hook issues and the script echoes.
+            $decision = Resolve-SpecrewTurnPacketDemand -Delta $sig -SatisfiedKey $satKey -Owner ([string]$materialRuntime.Owner) -OwnerMaxAgeSeconds $script:SpecrewMaterialHandoverMaxAgeSec
             if (-not [bool]$decision.demand) { return }
             $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
             $key = [string]$sig.key
-            if (-not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
-                $null = Set-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath -Key $key -Owner ([string]$materialRuntime.Owner)
-            }
             $nudgedPath = $materialRuntime.NudgedPath
             $nudgedKey = Get-SpecrewMaterialSatisfiedKey -Path $nudgedPath
             if (-not [string]::IsNullOrWhiteSpace($nudgedKey)) {
@@ -1066,12 +1048,10 @@ try {
                 $turnBaseline = Read-SpecrewTurnBaseline -Path $materialBaselinePath
                 if ($null -eq $turnBaseline) { $turnBaseline = New-SpecrewDegradedTurnBaseline -Current $turnCurrentSnapshot }
                 $materialSignal = Compare-SpecrewTurnSnapshot -Baseline $turnBaseline -Current $turnCurrentSnapshot -ProjectRoot $projectRoot
-                $ownerRecord = Get-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath
                 $materialSatisfiedKeyForDecision = Get-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath
-                $materialDecision = Resolve-SpecrewTurnPacketDemand -Delta $materialSignal -SatisfiedKey $materialSatisfiedKeyForDecision -Owner ([string]$materialRuntime.Owner) -OwnerRecord $ownerRecord -OwnerMaxAgeSeconds $script:SpecrewMaterialHandoverMaxAgeSec
-                if ([bool]$materialDecision.demand -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
-                    $null = Set-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath -Key ([string]$materialSignal.key) -Owner ([string]$materialRuntime.Owner)
-                }
+                # No -OwnerRecord: see the retirement note in the PostToolUse lane. Attribution is the
+                # declaring session now, not whichever session's hook saw the diff first.
+                $materialDecision = Resolve-SpecrewTurnPacketDemand -Delta $materialSignal -SatisfiedKey $materialSatisfiedKeyForDecision -Owner ([string]$materialRuntime.Owner) -OwnerMaxAgeSeconds $script:SpecrewMaterialHandoverMaxAgeSec
             }
         }
         catch { $materialSignal = $null; $materialDecision = $null }
@@ -1601,47 +1581,33 @@ try {
         $stopIntentOutcome = 'workshop-intermediate'
         $stopIntentReason = [string]$workshopQuestion.reason
     }
-    if ($blockKind -eq 'material' -and $canAssess -and (-not $workshopRecordOnlyTurn)) {
-        try {
-            if (-not (Get-Command Resolve-ContinuousCoReviewStopIntent -ErrorAction SilentlyContinue) -and -not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
-                $stopIntentPath = Join-Path (Split-Path $bootstrapDir -Parent) 'continuous-co-review/stop-intent-contract.ps1'
-                if (Test-Path -LiteralPath $stopIntentPath -PathType Leaf) { try { . $stopIntentPath } catch { $null = $_ } }
-            }
-            if (Get-Command Resolve-ContinuousCoReviewStopIntent -ErrorAction SilentlyContinue) {
-                $markerIntent = Get-ContinuousCoReviewStopIntentMarkerIntent -Text $lastAssistantText
-                # The GATE half of marker-and-gate: lifecycle confirms an already-authorized phase AND no pending
-                # boundary to cross. The marker alone never self-authorizes; the phase alone never proves work remains.
-                $authorizedWorkRemains = $hasBoundaryAuthorization -and $hasActiveLifecycleBoundary -and (-not $hasPending)
-                # Continue loop-guard: a CHANGED material surface key = intervening progress = read as 0; an UNCHANGED
-                # key accumulates. At the bound the classifier returns 'real' (the runaway-continue fallback to a packet).
-                $stopIntentContinueKey = 'continue|' + [string]$materialSignal.key
-                try {
-                    if (Test-Path -LiteralPath $continueGuardPath -PathType Leaf) {
-                        $cg = Get-Content -LiteralPath $continueGuardPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-                        if (($cg.PSObject.Properties.Name -contains 'key') -and ([string]$cg.key -eq $stopIntentContinueKey) -and ($cg.PSObject.Properties.Name -contains 'count')) {
-                            $stopIntentContinueCount = [int]$cg.count
-                        }
-                    }
-                }
-                catch { $null = $_ }
-                $continueGuardTripped = $stopIntentContinueCount -ge $script:SpecrewContinueLoopGuardBound
-                # v1 primary signals: the current-turn marker contract + the lifecycle boundary gate. UserActionRequired
-                # / AgentBlockedOrHandingBack / RequestedWorkComplete stay at their $false defaults - a same-stop review
-                # request / hand-back / completion is NOT inferred here in v1 (the marker is the agent's explicit continue
-                # assertion, the gate is authorization). OwnedWorkInFlight / RuntimeWorkKnownTerminal are host-native
-                # async signals this provider does not track (an `intermediate` marker is the async fallback).
-                $intent = Resolve-ContinuousCoReviewStopIntent -LifecycleBoundaryPending:$hasPending -MarkerIntent $markerIntent -MarkerFromAssistant:$true -AuthorizedWorkRemains:$authorizedWorkRemains -OwnedWorkInFlight:$false -RuntimeWorkKnownTerminal:$false -ContinueLoopGuardTripped:$continueGuardTripped
-                if ($null -ne $intent -and -not [string]::IsNullOrWhiteSpace([string]$intent.outcome)) {
-                    $stopIntentOutcome = [string]$intent.outcome
-                    $stopIntentReason = [string]$intent.reason
-                }
-            }
-        }
-        catch { $stopIntentOutcome = 'real'; $stopIntentReason = $null }  # FAIL-SAFE: any error -> the existing enforcement.
+    # THE STOP-INTENT MARKER PARSE IS RETIRED. It read `<!-- SPECREW-STOP-INTENT: intermediate -->` out of
+    # the agent's own message and let that classification RELEASE the stop - so any agent still emitting the
+    # old comment satisfied nothing and was let through, with no turn-end record and no named pending item.
+    # The independent review reproduced it: material=true, block_kind=material, dx_turn_end_kind='', and no
+    # block. That is not a leftover; it is a second, older contract still accepting, which makes the
+    # declaration contract optional for anyone who knows the comment.
+    #
+    # It was also the last prose-read decision in this provider, which is the whole point of fix 2: an HTML
+    # comment the agent types is prose, however machine-shaped it looks. The intent it carried now comes
+    # from the DECLARATION - `-Kind in-flight` says the same thing as an artifact, is checked against the
+    # session's own token, and is bounded so it cannot be repeated forever.
+    #
+    # `workshop-intermediate` above is unaffected: it is derived from the workshop controller on disk, not
+    # from anything the agent wrote in a message.
+    if ($turnEndKind -eq 'in-flight' -and -not $turnEndInFlightExhausted) {
+        $stopIntentOutcome = 'intermediate'
+        $stopIntentReason = 'turn-end-declared-in-flight'
     }
+
     # Only a MATERIAL stop can flip these off 'real' (boundary/'none' never reach the classifier), so an unexpected
     # outcome keeps $blockWarranted true (fails toward enforcement). Continue emits its own directive below; intermediate
     # simply ends the turn (its async completion resumes the agent).
+    # `continue` was reachable ONLY through the retired marker, so nothing produces it now. The flag and
+    # its directive stay for one release rather than being torn out in the same change that removed its
+    # only producer - a deletion whose blast radius is a force-continue path deserves its own commit and
+    # its own evidence. An agent with authorized work remaining simply keeps working; it never needed to
+    # tell a Stop hook so.
     $stopIntentContinue = ($stopIntentOutcome -eq 'continue')
     $stopIntentIntermediate = ($stopIntentOutcome -in @('intermediate', 'workshop-intermediate'))
     $blockWarranted = $canAssess -and ($blockKind -ne 'none') -and (-not $stopIntentContinue) -and (-not $stopIntentIntermediate)

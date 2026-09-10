@@ -73,10 +73,18 @@ try {
     # Packet demand stays in the core, including satisfied and foreign-owner suppression.
     $demand = Resolve-SpecrewTurnPacketDemand -Delta $nextEdit -Owner 'claude|one'
     $satisfied = Resolve-SpecrewTurnPacketDemand -Delta $nextEdit -SatisfiedKey ([string]$nextEdit.key) -Owner 'claude|one'
-    $foreign = Resolve-SpecrewTurnPacketDemand -Delta $nextEdit -Owner 'claude|two' -OwnerRecord ([pscustomobject]@{ key = [string]$nextEdit.key; owner = 'claude|one'; epoch = 100 }) -NowEpoch 101
+    # RETIRED 2026-09-10: this asserted that a foreign-owner attribution record suppressed the demand.
+    # The record inferred ownership from the shared worktree and credited whichever session observed the
+    # change first, so it suppressed the session that had actually done the work. The parameter is gone;
+    # what is asserted now is that it CANNOT come back silently - passing it is an error, not a no-op.
+    $retired = $false
+    try { $null = Resolve-SpecrewTurnPacketDemand -Delta $nextEdit -Owner 'claude|two' -OwnerRecord ([pscustomobject]@{ key = 'x'; owner = 'y'; epoch = 100 }) -NowEpoch 101 }
+    catch { $retired = $true }
+    $foreign = Resolve-SpecrewTurnPacketDemand -Delta $nextEdit -Owner 'claude|two' -NowEpoch 101
     Assert-True ([bool]$demand.demand) 'unsatisfied exact delta demands a packet'
     Assert-True (-not [bool]$satisfied.demand -and [bool]$satisfied.already_satisfied) 'satisfied delta does not demand another packet'
-    Assert-True (-not [bool]$foreign.demand -and [bool]$foreign.foreign_owner_suppressed) 'recent foreign owner suppresses cross-session packet billing'
+    Assert-True $retired 'the -OwnerRecord parameter is GONE, not merely unpassed - reviving it is an error, not a silent no-op'
+    Assert-True ([bool]$foreign.demand -and -not [bool]$foreign.foreign_owner_suppressed) 'and with the record retired, the session that did the work is no longer suppressed by another session having observed it first'
 
     # Commit-only progress is material even when the worktree returns clean.
     $commitBaseline = New-SpecrewTurnBaselineRecord -Snapshot (Get-SpecrewTurnSnapshot -ProjectRoot $scratch) -CaptureEvent 'PreInvocation'

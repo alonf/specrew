@@ -219,43 +219,52 @@ Review the result and tell me whether to continue.
 '@
 
 try {
-    # ---- Case (a): CONTINUE. A material, packet-less stop whose CURRENT assistant turn carries the `continue` marker,
-    #                with an authorized-phase start-context (last_authorized_boundary + session_state.boundary_type set)
-    #                and NO pending verdict -> the classifier returns 'continue': the provider SUPPRESSES the five-part
-    #                material packet and instead force-continues with a CONTINUATION DIRECTIVE (perform the next
-    #                authorized action; do NOT render a status packet).
-    $pa = New-Fixture -Working 'plan' -LastAuth 'plan'   # authorized in-phase: boundary_type=plan, last_auth=plan, working==auth -> no pending
+    # ---- Cases (a) and (b) REVERSED 2026-09-10: THE MARKER IS RETIRED, so it suppresses nothing.
+    #
+    # These two cases were the STOP-INTENT marker's own tests, and they were correct for the design they were
+    # written against: an HTML comment in the assistant's message classified the stop and could release it.
+    # An independent review found that lane still live after fix 2 claimed to retire it, and showed what that
+    # cost - `intermediate` released a material stop with NO turn-end record and no named pending item, so the
+    # whole declaration contract was optional for any agent that emitted the old comment. A second, older
+    # contract, still accepting.
+    #
+    # The marker was also the last prose-read decision in the provider. That is the point of the retirement:
+    # an HTML comment the agent types is prose, however machine-shaped it looks.
+    #
+    # So both cases now assert the OPPOSITE, and together they are the retirement's evidence: the marker does
+    # nothing, and the artifact does what the marker used to claim.
+
+    # ---- Case (a): the CONTINUE marker no longer suppresses anything.
+    $pa = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $pa
     New-HandoverSnapshot -Proj $pa -ChangedUserFiles 2
     $ta = New-Transcript -Proj $pa -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = ("I applied the resolver change and updated the three call sites; more authorized in-phase work remains.`n`n" + $continueMarker) })
     $ra = Invoke-Conformance -Proj $pa -TranscriptPath $ta
     if ($ra.Code -ne 0) { Fail "Case (a): provider must exit 0 (got $($ra.Code)); out: $($ra.Out)" }
-    if (-not $ra.Blocked) { Fail "Case (a): a continue-marker stop still force-continues the turn (it emits the STOP-BLOCK sentinel carrying the continuation directive). Out: $($ra.Out)" }
-    if ($ra.Out -match 'declare-turn-end\.ps1') { Fail "Case (a): a continue classification MUST NOT render the five-part material packet. Out: $($ra.Out)" }
-    if ($ra.Out -match 'What I Just Did' -or $ra.Out -match 'What I Need From You') { Fail "Case (a): the continuation directive MUST NOT carry the packet section headings. Out: $($ra.Out)" }
-    if ($ra.Out -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case (a): a non-boundary continue MUST NOT demand a verdict-boundary marker. Out: $($ra.Out)" }
-    if ($ra.Out -notmatch 'CONTINUATION DIRECTIVE') { Fail "Case (a): the output MUST be the continuation directive. Out: $($ra.Out)" }
-    if ($ra.Out -notmatch 'perform the NEXT authorized action') { Fail "Case (a): the continuation directive must instruct the next authorized action. Out: $($ra.Out)" }
-    $guardPath = Join-Path $pa '.specrew\runtime\conformance-continue-guard.json'
-    if (-not (Test-Path -LiteralPath $guardPath)) { Fail "Case (a): the continue loop-guard counter must be written. Out: $($ra.Out)" }
-    $guard = Get-Content -LiteralPath $guardPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ([int]$guard.count -ne 1) { Fail "Case (a): the continue loop-guard count must increment to 1 (got $($guard.count))." }
-    if ([string]$guard.key -notlike 'continue|*') { Fail "Case (a): the continue loop-guard must be keyed 'continue|<surface>' (got $($guard.key))." }
-    Write-Pass "Case (a): a material CONTINUE-marker stop in an authorized phase suppresses the five-part packet and force-continues with a continuation directive (loop-guard incremented to 1)"
+    if (-not $ra.Blocked) { Fail "Case (a): a material stop carrying the retired continue marker and NO declaration MUST block - the marker classifies nothing now. Out: $($ra.Out)" }
+    if ($ra.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case (a): and the block must name the declaration command, not a continuation directive. Out: $($ra.Out)" }
+    if ($ra.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (a): the continuation directive is unreachable now that nothing produces a continue classification. Out: $($ra.Out)" }
+    Write-Pass "Case (a) (reversed): the retired CONTINUE marker suppresses nothing - a material stop with no declaration blocks and names the command"
 
-    # ---- Case (b): INTERMEDIATE. Same authorized-phase material stop, but the CURRENT assistant turn carries the
-    #                `intermediate` marker -> the classifier returns 'intermediate': the block is SUPPRESSED entirely
-    #                (no sentinel, the turn ends; the async work's completion resumes the agent).
+    # ---- Case (b): the INTERMEDIATE marker no longer suppresses; the DECLARATION does.
+    #
+    # This is the pair that matters. The same intent - work is in flight, do not demand a packet - is still
+    # honoured, but only when it arrives as an artifact the hook can check against the session's own token,
+    # and it is bounded so it cannot be repeated forever. The marker had neither property.
     $pb = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $pb
     New-HandoverSnapshot -Proj $pb -ChangedUserFiles 2
     $tb = New-Transcript -Proj $pb -Turns @(@{ role = 'assistant'; text = ("Kicked off the long-running verification suite; it is still running in the background.`n`n" + $intermediateMarker) })
     $rb = Invoke-Conformance -Proj $pb -TranscriptPath $tb
     if ($rb.Code -ne 0) { Fail "Case (b): provider must exit 0 (got $($rb.Code)); out: $($rb.Out)" }
-    if ($rb.Blocked) { Fail "Case (b): an intermediate-marker stop MUST NOT block (async in flight; the turn ends and resumes on completion). Out: $($rb.Out)" }
-    if ($rb.Out -match 'declare-turn-end\.ps1') { Fail "Case (b): an intermediate stop MUST NOT render the material packet. Out: $($rb.Out)" }
-    if ($rb.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (b): an intermediate stop is not a continuation directive. Out: $($rb.Out)" }
-    Write-Pass "Case (b): a material INTERMEDIATE-marker stop is SUPPRESSED (no block, no packet, no directive) - the async completion resumes the agent"
+    if (-not $rb.Blocked) { Fail "Case (b): the retired INTERMEDIATE marker MUST NOT release a material stop - that release is exactly what made the declaration contract optional. Out: $($rb.Out)" }
+
+    # ...and the same turn, DECLARED in-flight, is released.
+    $declarer = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\declare-turn-end.ps1'
+    $null = & pwsh -NoProfile -File $declarer -Kind 'in-flight' -Pending 'the long-running verification suite' -ProjectRoot $pb -AsJson 2>&1
+    $rb2 = Invoke-Conformance -Proj $pb -TranscriptPath $tb
+    if ($rb2.Blocked) { Fail "Case (b): an in-flight DECLARATION must release the same stop the marker no longer can. Out: $($rb2.Out)" }
+    Write-Pass "Case (b) (reversed): the retired INTERMEDIATE marker releases nothing, and the in-flight DECLARATION releases the same stop - the intent survives, the prose channel does not"
 
     # ---- Case (c): NO MARKER -> the FAIL-SAFE / real path. A material, packet-less stop with NO stop-intent marker
     #                classifies as 'real' and the existing five-part material packet fires EXACTLY as before (this is
@@ -286,27 +295,32 @@ try {
     if ($rd.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (d): a boundary stop MUST NOT be downgraded to a continuation directive by the continue marker. Out: $($rd.Out)" }
     Write-Pass "Case (d): a continue marker at a pending boundary is IGNORED - the boundary block still fires (never downgraded across a boundary)"
 
-    # ---- Case (e): RUNAWAY CONTINUE is BOUNDED. Repeated continue markers on the SAME material surface with no
-    #                intervening progress accumulate the continue loop-guard; once it reaches the bound (3) the
-    #                classifier returns 'real' and the standard five-part material packet fires instead - a continue can
-    #                never loop forever. (Distinct messages per fire so the idempotency guard does not dedup them.)
+    # ---- Case (e) REVERSED: the runaway-continue guard now guards an UNREACHABLE path.
+    #
+    # It bounded repeated `continue` classifications so one could never loop forever. Nothing produces a
+    # continue classification any more - the marker that was its only source is retired - so the guard has
+    # nothing to count and the loop it prevented cannot start.
+    #
+    # This asserts the ABSENCE rather than deleting the case, because a guard whose subject is gone is
+    # precisely the vacuous-control shape this batch keeps finding: it would sit there looking like
+    # protection while being satisfied by nothing ever happening. Written down as unreachable it is a
+    # decision someone can read; deleted quietly, the next author re-adds the marker and assumes the bound
+    # still applies to it.
     $pe = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $pe
-    for ($n = 1; $n -le 3; $n++) {
-        New-HandoverSnapshot -Proj $pe -ChangedUserFiles 2   # SAME surface (default file list) -> guard accumulates
+    for ($n = 1; $n -le 4; $n++) {
+        New-HandoverSnapshot -Proj $pe -ChangedUserFiles 2
         $tn = New-Transcript -Proj $pe -Turns @(@{ role = 'assistant'; text = ("In-phase work continues (attempt $n).`n`n" + $continueMarker) })
         $rn = Invoke-Conformance -Proj $pe -TranscriptPath $tn
-        if (-not $rn.Blocked) { Fail "Case (e): continue #$n (within the bound) must force-continue. Out: $($rn.Out)" }
-        if ($rn.Out -notmatch 'CONTINUATION DIRECTIVE') { Fail "Case (e): continue #$n must emit the continuation directive. Out: $($rn.Out)" }
-        if ($rn.Out -match 'declare-turn-end\.ps1') { Fail "Case (e): continue #$n must NOT yet fall back to the material packet. Out: $($rn.Out)" }
+        if ($rn.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (e): attempt $n produced a continuation directive, so the retired marker is still classifying. Out: $($rn.Out)" }
+        if (-not $rn.Blocked) { Fail "Case (e): attempt $n must block for the missing declaration - the marker releases nothing. Out: $($rn.Out)" }
     }
-    New-HandoverSnapshot -Proj $pe -ChangedUserFiles 2
-    $t4 = New-Transcript -Proj $pe -Turns @(@{ role = 'assistant'; text = ("Still the same surface, no progress (attempt 4).`n`n" + $continueMarker) })
-    $r4 = Invoke-Conformance -Proj $pe -TranscriptPath $t4
-    if (-not $r4.Blocked) { Fail "Case (e): the 4th continue (guard tripped) must still block. Out: $($r4.Out)" }
-    if ($r4.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (e): once the guard trips, the classifier returns 'real' - it must NOT keep emitting continuation directives. Out: $($r4.Out)" }
-    if ($r4.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case (e): once the guard trips, the standard five-part material packet MUST fire (runaway-continue fallback). Out: $($r4.Out)" }
-    Write-Pass "Case (e): a runaway continue on the same material surface is BOUNDED - after 3 continues the guard trips and the five-part material packet fires (never an infinite continue loop)"
+    $guardPath = Join-Path $pe '.specrew\\runtime\\conformance-continue-guard.json'
+    if (Test-Path -LiteralPath $guardPath) {
+        $guard = Get-Content -LiteralPath $guardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ([int]$guard.count -gt 0) { Fail "Case (e): the continue loop-guard incremented to $($guard.count), so a continue classification still happens somewhere." }
+    }
+    Write-Pass "Case (e) (reversed): four continue markers on one surface produce no continuation directive and no guard increment - the classification the guard bounded is unreachable, and the stop blocks for the missing declaration instead"
 
     Write-Host "`n=== conformance-stop-intent-wiring.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

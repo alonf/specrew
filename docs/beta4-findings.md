@@ -2929,3 +2929,46 @@ state that more than one party writes, it is inferring, and it will be confident
 **Both were caught by a verify step rather than by a test**, which is the argument for verify steps. The
 durable fix in each case was to stop depending on a type surviving JSON: check presence rather than type,
 and order by a number that cannot be coerced into something else.
+
+---
+
+## B4F-050 - THE SECOND PASS, ITS SEVEN FINDINGS, AND A DISPUTED REVIEWER IDENTITY
+
+**The scoped second pass completed** where the first did not: `candidate-result.json` written (14,449
+bytes), verdict `findings`, areas `b`/`d`/`e` exactly as scoped, 20 paths examined, **7 findings, every one
+at `confidence: certain`**, each with a probe it ran against the real code. It also **withheld** a
+session-token mismatch it encountered, because identity was out of scope - a reviewer that respects a scope
+boundary it could have quietly crossed.
+
+### MODEL PROVENANCE IS DISPUTED, NOT CHOSEN
+
+**The reviewer's identity is the evidence this release leans on**, so the disagreement is recorded rather
+than resolved by picking one:
+
+| source | claim |
+| --- | --- |
+| the run log (`codex-stdout-run5.log`, and run4 before it) | **`gpt-6-astra`** |
+| the result file's own `model` field | **`gpt-6`** |
+| the maintainer's reading | **`gpt-5.1-codex-max`** |
+
+**Searched for directly**: `gpt-5` appears **zero times** in the result file and zero times in either run
+log; the only model tokens present anywhere in those artifacts are `gpt-6` and `gpt-6-astra`. The
+maintainer's value therefore comes from a source not in this export - a client configuration, or a different
+session - and is recorded as a third claim rather than substituted for what the artifacts say. **Three
+claims, none verified against the serving side, and a release note that leans on this must say so.**
+
+### THE SEVEN FINDINGS, ALL CLASSIFIED FIX
+
+| # | area | severity | finding |
+| --- | --- | --- | --- |
+| 4 | d | medium | **the STOP-INTENT parse is live and bypasses the declaration contract** |
+| 5 | d | medium | **material-owner attribution is live and still misattributes across sessions** |
+| 3 | d | medium | the BOUNDARY recovery directive still demands the prose packet and never names the script |
+| 2 | b | medium | the candidate resolver returns before its own loop when there is no anchor |
+| 7 | e | medium | Case 5b is RED, not merely inert |
+| 6 | e | medium | Case 19 is inert - restoring its marker would not change its assertion |
+| 1 | b | low | a boundary assessment that cannot read the transcript is silent - no journal row, no warning |
+
+**None is a record-and-defer and none is disputable**: each names a concrete failure with the code that
+proves it. The order of repair is the maintainer's: **the two retirements first**, because a converted test
+proves nothing about a contract that can be skipped.

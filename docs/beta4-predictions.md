@@ -473,3 +473,30 @@ the hook checks that the script ran for this session and this turn.
 **Fixed in advance**: if (1) fails the build is abandoned rather than patched, because a handshake that can
 drift is a refusal engine. If (2) fails, this is a per-turn cost nobody should accept and the design goes
 back. If (5) shows a live caller, the retirement is a claim and not a fact.
+
+### PRED-BETA4-011 PART 5: **FALSIFIED.**
+
+**The prediction claimed zero live callers for the retired surfaces; both have live callers and one is a
+live bypass.**
+
+Stated as: *"After the change, `Test-SpecrewReentryPacketPresent`, the STOP-INTENT marker parse and the
+material-owner baseline attribution have **zero live callers**, proved by a tree-wide grep."* Of the three,
+only the first was retired. The independent second pass found the other two live and reproduced both:
+
+- **The STOP-INTENT marker parse is live** at `specrew-conformance-provider.ps1:1611`, and it does not
+  merely survive - it **overrides the new requirement**. An `intermediate` classification releases the stop
+  with no turn-end record and no named pending item, so the declaration contract is optional for any agent
+  that emits the old HTML comment. An alternate old contract, still accepting.
+- **Material-owner attribution is live** at lines 885-891 and 1069-1073, still inferring ownership from the
+  shared worktree delta and whichever session observes it first. Its probe wrote `owner='claude|reader-A'`
+  for an edit session B made. **B4F-049's first member is therefore live in production even after the token
+  handshake landed**, which is the part that makes this worse than an unfinished chore.
+
+**What I did wrong, precisely**: I wrote part 5 as a prediction about the finished fix and then reported
+progress against a build in which those two retirements had not been done. The grep that would have
+falsified it was never run, because I had it filed as owed work rather than as a claim already made. **A
+prediction about a later state is not evidence about the current one**, and listing something as "owed" does
+not suspend a claim already written down.
+
+**Consequence for the order of work**: the retirements move to the FRONT of the tail, ahead of every test
+conversion. A converted test proves nothing about a contract that can be skipped.

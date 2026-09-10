@@ -270,7 +270,6 @@ function Resolve-SpecrewTurnPacketDemand {
         [Parameter(Mandatory)]$Delta,
         [AllowNull()][string]$SatisfiedKey,
         [AllowNull()][string]$Owner,
-        [AllowNull()]$OwnerRecord,
         [int]$OwnerMaxAgeSeconds = 300,
         [long]$NowEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     )
@@ -287,15 +286,18 @@ function Resolve-SpecrewTurnPacketDemand {
         $decision.already_satisfied = $true
         return $decision
     }
-    if (-not [string]::IsNullOrWhiteSpace($Owner) -and $null -ne $OwnerRecord -and
-        [string]$OwnerRecord.key -eq [string]$Delta.key -and [string]$OwnerRecord.owner -ne $Owner) {
-        $age = $NowEpoch - [long]$OwnerRecord.epoch
-        if ($age -ge 0 -and $age -le $OwnerMaxAgeSeconds) {
-            $decision.reason = 'turn-delta-owned-by-foreign-session'
-            $decision.foreign_owner_suppressed = $true
-            return $decision
-        }
-    }
+    # THE FOREIGN-OWNER SUPPRESSION IS RETIRED WITH THE RECORD IT READ.
+    #
+    # It suppressed a packet demand when a PROJECT-WIDE attribution record said another session owned this
+    # material surface. The record answered "who did this work" from a diff of the shared worktree and
+    # credited whichever session's hook observed it first - so the independent review reproduced a read-only
+    # session being recorded as the owner of an edit another session made, after which THIS branch would
+    # suppress the demand on the session that actually did it.
+    #
+    # The parameter is removed rather than left unpassed: an unreachable branch with a live signature is an
+    # invitation to revive it, and this whole family exists because inference-from-shared-state looked
+    # reasonable each time. `foreign_owner_suppressed` stays on the returned object as a permanent $false so
+    # existing readers keep their shape while the mechanism behind it is gone.
     $decision.demand = $true
     $decision.reason = 'turn-delta-demands-packet'
     return $decision
