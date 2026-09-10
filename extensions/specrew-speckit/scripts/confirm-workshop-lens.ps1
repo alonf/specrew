@@ -366,3 +366,4 @@ if ($PassThru) {
         validated          = ($Lens -cin @('product-domain', 'code-implementation'))
     }
 }
+# specrew-self-provenance-ok: DRIFT-199-I003-092,DRIFT-199-I003-020; implementation history is recorded for maintainers and is never emitted as consumer instruction
