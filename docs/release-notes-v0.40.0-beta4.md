@@ -169,6 +169,36 @@ defect in the message only; the refusal itself is behaving as described above.
 
 Both are fixed in beta5.
 
+## Fixed: an approval typed before its crossing existed vanished without a word
+
+**What happened.** You typed `approved for before-implement` a moment before the crew had recorded the
+crossing that verdict was for. Nothing was pending, so nothing was recorded - and nothing said so. The hook's
+own later text then told you the approval was still owed, and you typed it again. Three times in one day on
+one project.
+
+**What changed.** A verdict typed while no crossing is pending gets one line back: that nothing is pending,
+what the last authorized boundary is, and to send the phrase again when the crossing is presented. A verdict
+naming a different boundary than the pending crossing gets the pending crossing and the phrase that
+authorizes it. Ordinary conversation still gets nothing. And the always-on rule the crew reads now says it
+plainly: a verdict typed while no crossing is pending authorizes nothing, and an agent may not treat it as
+pending authority - there is no "authority-in-flight".
+
+## Fixed: a readiness sub-agent's BLOCKED was summarized as PASS
+
+**What happened.** The before-implement readiness agent read the ledger and reported "Overall verdict:
+BLOCKED for implementation - no tasks -> before-implement authorization exists", with every artifact check
+passing beneath it. The crew's packet reported the readiness check as PASS, dropped the verdict, and
+announced the first implementation task. The only thing between BLOCKED and product source was a human
+reading the packet.
+
+**What changed.** The overall verdict is now a line a script prints from the boundary ledger
+(`readiness-verdict.ps1`), the readiness command puts it first in its report verbatim, and the coordinator
+quotes it verbatim as the first line of the packet. Passing artifact checks are never the overall verdict.
+
+**What stays for beta5, first item.** The Stop hook will refuse a turn that writes product source while the
+ledger's last authorized boundary precedes before-implement - a control that reads the ledger, which no
+summary can rewrite. Until then that boundary is guarded by the agent's discipline and your read.
+
 ## Fixed: the review advisory was said to every session in the project, including one that wrote nothing
 
 **What happened.** With two sessions open on one project - one working, one reading - every Stop of the

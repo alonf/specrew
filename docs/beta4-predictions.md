@@ -1393,3 +1393,18 @@ line back naming the pending crossing. Both journal `verdict-not-captured-disclo
    no pending crossing and a send-back (`changes needed: ...`) -> nothing. Cases 1-7 of `capture-disclosure`
    stay green.
 4. Mutation (the two new branches removed): parts 1 and 2 go red, nothing else.
+
+### PRED-BETA4-026 VERDICT - held; the fixture had to be the consumer's shape
+
+**Parts 1-3 held**, with one thing learned on the way: the first no-pending fixture kept the cursor one
+boundary ahead of the last authorization (`before-implement` over `tasks`), and `Get-SpecrewPendingVerdictState`
+derives a LEGACY crossing from that gap - so a verdict there was a clean approval, not a lost one, and the
+new branch never ran. The consumer's shape is the cursor still AT the last authorized boundary, the next
+sync not yet run; with that fixture the disclosure fires, names `tasks` and the retype, journals
+`no-pending-crossing`, and reaches the inject stdout. Part 2 (`approved for plan` against a pending
+`tasks -> before-implement`) names the pending crossing and its phrase. Silence controls green. **Part 4**:
+the two branches removed -> 8 red (Cases 8-9's disclosure assertions; the two silence controls and the
+ledger checks stay green, as they should).
+
+**PRED-BETA4-023, field note**: fix 6 held at plan, tasks and before-implement on the router-skill project,
+each sync minting its crossing, extension still at `d4a89ab7`.

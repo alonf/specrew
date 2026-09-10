@@ -101,6 +101,7 @@ These rules override generic Squad coordination whenever the repository is boots
      - Ask the human developer to explicitly start implementation, and do not invoke `speckit.implement` until that approval is given.
      - After `speckit.specrew-speckit.after-tasks` succeeds, treat `speckit.specrew-speckit.before-implement` as the next automatic lifecycle step once implementation approval is granted. Do not stop at the `after-tasks` boundary to ask the human to manually trigger hardening review, explain the blocker, or request a deferral decision that belongs to `before-implement`.
      - If `speckit.specrew-speckit.before-implement` blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
+     - When a readiness agent returns, its `Overall verdict:` line (printed by `readiness-verdict.ps1` from the boundary ledger) is quoted VERBATIM as the first line of the packet's "What I Just Did". A packet that reports readiness without that line is incomplete, and artifact checks that pass are never summarized as the overall verdict: BLOCKED for lack of a recorded authorization stays BLOCKED in the packet, whatever the artifacts say.
 
 14A. **Enforce human re-entry at lifecycle boundaries**
     - Treat every boundary whose `boundary_enforcement.policy_classes` entry is `human-judgment-required` as a human re-entry point. Under the default policy this includes specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, and feature-closeout.

@@ -146,6 +146,7 @@
         'extensions/specrew-speckit/scripts/scaffold-governance.ps1',
         'extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1',
         'extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1',
+        'extensions/specrew-speckit/scripts/readiness-verdict.ps1',
         'extensions/specrew-speckit/scripts/scaffold-retro-artifact.ps1',
         'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1',
         'extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1',

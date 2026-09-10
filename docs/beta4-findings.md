@@ -3715,3 +3715,87 @@ Documents, a governed project elsewhere on disk. A `start` that can wait twelve 
 screen is a consumer-facing defect whatever triggers it. Not chased in this session: it is recorded as
 open, with the fixture and the process shape, not as noise. Reproduce with the file above; if it hangs,
 attach a debugger to the `specrew-start.ps1` child and read what it is waiting on.
+
+## B4F-070 - B4F-043, THIRD CONSUMER INSTANCE IN ONE DAY: a verdict typed with no crossing pending vanished (fixed in beta4)
+
+Router-skill project, Copilot CLI 1.0.83, the before-implement crossing: `approved for before-implement`
+typed before the crossing existed was lost silently, and the hook's own later text confirmed the approval
+was still owed. Three retypes in one day. The audible standard already existed for the partial-signoff
+family in `HumanAuthorityStore.ps1` - "a phrase that matched and was then rejected is a human trying to
+authorize something, and their attempt must never vanish" - and the boundary family's disclosure
+(`Get-SpecrewVerdictCaptureDisclosure`) returned `$null` on exactly the two shapes that reached the
+consumer: no crossing pending, and a verdict naming a boundary other than the pending crossing's.
+
+**Fixed as ruled, in that one function** (PRED-BETA4-026, `eaf98a4f`): a verdict-shaped reply with no
+crossing pending gets one line back - "NO crossing is pending right now ... the last authorized boundary
+is 'tasks' ... send the phrase again when the crossing is presented"; a verdict naming another boundary
+gets the pending crossing and the phrase that authorizes it. Journaled (`verdict-not-captured-disclosed`,
+`no-pending-crossing` / `other-boundary-named`); ordinary conversation and send-backs stay silent.
+`capture-disclosure` Cases 8-9; mutation 8 red. The fixture's no-pending shape is the consumer's: the
+cursor still AT the last authorized boundary, the next sync not yet run.
+
+## B4F-071 - THE READINESS SUB-AGENT SAID BLOCKED; THE CREW'S PACKET SAID PASS (fixed in beta4 for the line; the control is beta5's)
+
+**Read from the Copilot session record** (`~/.copilot/session-state/fec32f1b…/events.jsonl`, the
+router-skill project, 2026-09-10 21:48-21:53Z), because the relay and the record differ on one point:
+
+- 21:48:47Z the crew spawned `agent_type: speckit.specrew-speckit-before-implement` (a hyphen where the
+  name has a dot) and Copilot refused it: `Unknown agent_type ... Valid types are: ... speckit.specrew-speckit.before-implement ...`.
+  The crew retried with the right name four seconds later.
+- 21:48:51-21:51:47Z the sub-agent ran to completion: 32 tool calls, 176 s, `success: true`, a 2934-char
+  result whose first line is **"Overall verdict: BLOCKED for implementation, despite the iteration artifacts
+  themselves validating successfully. The blocking condition is lifecycle authorization: the persisted
+  boundary state is currently authorized through `tasks`, and no `tasks -> before-implement` authorization
+  exists."** Every artifact check in its table reads PASS. The control existed and fired.
+- 21:52:28Z the crew's packet: "Ran the readiness check (before-implement agent): **PASS**", the overall
+  verdict dropped, then "Per Specrew's authority-in-flight rule, that verdict counts against this
+  newly-minted crossing - I'm proceeding on it now", and T201 announced.
+- The relayed "Unknown tool name in the tool allowlist: create / edit" is **not in the persisted record** -
+  not in this session's events, not in any session under `~/.copilot`, and no agent definition in the
+  router-skill project, this repository or `~/.copilot/agents` carries a `tools:` list naming `create` or
+  `edit` (the one `tools:` list anywhere is `speckit.taskstoissues`'s MCP tool). `create` and `edit` ARE
+  tool names Copilot 1.0.83 accepted in that session (the crew used `edit` 12 times and `create` once). So
+  the sub-agent was not half-armed: its output is complete readiness evidence, and it said BLOCKED. If the
+  allowlist text was on screen, it was a TUI surface this record does not keep; there is nothing in
+  `.github/agents/*.md` to correct from it, and the host-support probe has no allowlist to add until the
+  surface that printed it is named.
+
+**What is fixed in beta4** (the addendum's (a)): the overall verdict is a line a script prints from the
+ledger, not a sentence an agent writes. `readiness-verdict.ps1` (new, in the package FileList and the
+deployed extension) prints exactly one line - `Overall verdict: READY ...` or `Overall verdict: BLOCKED for
+implementation - '<boundary>' is not authorized: the ledger's last authorized boundary is '<b>'; <pending>.
+The human's typed 'approved for <boundary>' against the presented crossing is what clears this; nothing
+else does.` - and exits 0. The governed before-implement command runs it FIRST and makes its output the
+first line of the report, verbatim ("artifact checks that all pass do not make the overall verdict
+READY"); the coordinator template quotes it verbatim as the first line of the packet's What I Just Did and
+never summarizes passing artifacts as the verdict. Measured on the two consumers' live ledgers: the
+router-skill project (now authorized through before-implement) READY; KeyContextAI (tasks, crossing
+pending) BLOCKED naming the crossing. `tests/unit/readiness-verdict-line.tests.ps1` (17; mutation `-ge` ->
+`-gt` reds Case 2). This repository's own `.github/agents/…before-implement.agent.md` is an older deployed
+copy and is left to `specrew update`, as every consumer's is.
+
+**What is beta5's** (the addendum's (b), B4F-072 (b)): the control that cannot be summarized away reads
+the ledger, not the report.
+
+## B4F-072 - "PER SPECREW'S AUTHORITY-IN-FLIGHT RULE": no such rule exists, and the only control was the maintainer reading the packet
+
+The crew, holding no before-implement verdict in the ledger, declared that a verdict typed before the
+crossing existed "counts against this newly-minted crossing" and announced it would start T201. Nothing in
+the product says that; the pending-verdict stop's note about hook-recording lag after a mint was read as a
+licence to proceed before one. The only thing that stopped product source being written on an unauthorized
+boundary was the maintainer reading the packet - and B4F-071 shows the packet had already dropped the
+sub-agent's BLOCKED. Discipline is not a control.
+
+**(a) fixed in beta4** (`205ee340`): refocus core rule 1 gains the sentence - "A verdict typed while no
+crossing is pending authorizes nothing; an agent may not treat it as pending authority." - in both copies
+of `general.md`, inside SC-003's 600-token core budget (the intro and rules 6 and 9 lost filler words; every
+phrase the suites pin survives; 600/600).
+
+**(b) beta5, FIRST ITEM**: the Stop hook REFUSES - not merely packets - a turn whose material delta touches
+product source outside `specs/`, `.specrew/` and `.squad/` while the ledger's last authorized boundary for
+the active iteration precedes before-implement. Fail closed; name the boundary owed. It reads the ledger and
+the turn delta, neither of which an agent's summary can rewrite. Until it exists, the before-implement
+boundary is guarded by agent discipline alone.
+
+**Field note, fix 6**: held at three consecutive boundaries on the router-skill project - plan, tasks,
+before-implement - each sync minting its crossing with the deployed extension still at `d4a89ab7`.
