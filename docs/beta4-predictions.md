@@ -1159,3 +1159,63 @@ passed under it and it discriminated nothing. What is proven in-process: the res
 provider's AST and called with the module hidden and the variable unset, returns nothing; with the pin it
 returns the repo's bootstrap dir. The runner is the discriminator for the green, and by ruling this census
 is superseded: the next one, after fix 6, is the one that counts.
+
+## PRED-BETA4-023 - fix 6: one derivation of the plan sync's target iteration. Stated before the code and before either fixture runs.
+
+**Verbatim from the router-skill project**: the plan-boundary sync run as `-BoundaryType plan -IterationNumber
+002` reports `boundary_record_status: established` for 002 and, in the same invocation, WARNs
+`CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT - 'plan' owes plan.md for iteration 003 (expected under
+...iterations\003) and it does not exist`. One invocation, two derivations of the target iteration.
+
+**Read from the code, not from memory - where the second derivation lives**: the sync writes the session
+cursor at `$effectiveIterationNumber` (002) through `Update-SpecrewStartContext`, THEN calls
+`Set-SpecrewPendingBoundaryCrossingScope`, which reads `session_state.iteration_number` (002, just written)
+and hands it to `New-SpecrewPendingCrossingScope` -> `Test-SpecrewBoundaryOwedArtifactsOnDisk`. That check
+carries its own rule: "iteration-closeout -> plan opens the NEXT iteration", `$iteration + 1` -> 003. The
+rule was written for the closeout AUTHORIZATION's rebind (`Add-SpecrewBoundaryAuthorization`), where the
+cursor still sits on the CLOSED iteration (001) and the crossing it opens is for the next one (002). Applied
+to the plan sync, whose cursor already names the target, it overshoots by one. Both callers pass "the
+cursor"; the check cannot tell which one it was handed; so it guesses, and guesses right for one caller.
+
+### The answer to the fixture question, stated BEFORE the run
+
+**Does the check target 003 in fixture (a) - 001 closed and sealed, 002 scaffolded through
+`scaffold-iteration-plan.ps1` in the product's own order, then the plan sync for 002?** YES. The +1 is
+applied to the value the sync itself just wrote; nothing about who scaffolded 002 or when enters it. The
+defect is universal to every second-and-later iteration's plan sync, not a consequence of the pre-scaffold
+the maintainer instructed on the router-skill project. **Fixture (b)** (the router-skill shape, 002 scaffolded
+before the sync) targets 003 too, and adds a second consequence: if the closeout authorization's rebind had
+already minted the closeout -> plan crossing (002/plan.md existed at authorization), the plan sync's
+constructor returns `$null` on the refusal and OVERWRITES `pending_crossing` with null - the sync destroys
+the crossing the verdict opened.
+
+### THE FIX, scoped
+
+`Test-SpecrewBoundaryOwedArtifactsOnDisk` derives nothing: the iteration it is handed IS the iteration the
+entered stage owes. `New-SpecrewPendingCrossingScope` - the one gated constructor every minting path goes
+through - resolves the target ONCE, from a fact the record carries: when the crossing being opened is
+iteration-closeout -> plan and the crossing's WORKING boundary is iteration-closeout (the cursor still on
+the closed iteration: the authorization's rebind, or a closeout re-sync), the target is cursor + 1; when the
+working boundary is plan (the plan sync has moved the cursor), the cursor is the target. The sync derives
+nothing of its own; the value it recorded is the value the check reads.
+
+### THE PREDICTION, four parts
+
+1. **Fixture (a)**, before the fix: the plan sync for 002 exits 0, reports 002 established, WARNs
+   `owes plan.md for iteration 003`, and leaves `pending_crossing` null. After the fix: exits 0, no WARN,
+   `pending_crossing` = `iteration-closeout -> plan` with `working_boundary: plan`, and the journal carries
+   no `crossing-mint-refused` row naming 003.
+2. **Fixture (b)**, before the fix: the closeout authorization mints closeout -> plan (002/plan.md exists);
+   the plan sync for 002 then WARNs on 003 and nulls the crossing. After the fix: the crossing survives the
+   sync - same `from`/`to`, `working_boundary` now plan - and no WARN.
+3. **The closeout authorization's own path is unchanged**: with 002 NOT scaffolded, the rebind still refuses
+   naming `plan.md for iteration 002` (the FR-024 gate, correct target); with 002 scaffolded, it mints.
+   `clarify-refusal-names-the-form` and `gate-preflight` (the check's other readers) stay green.
+4. **Mutation** (`-MutateIndependentDerivation`: the +1 restored inside the check, in a temp copy of the
+   module tree the sync wrapper resolves through): fixtures (a) and (b) both go red on 003, and part 3's
+   "correct target" assertions - which the +1 happened to satisfy - stay green, which is why the mutation
+   is of the check and not of the constructor.
+
+**Then**: a module build from the fixed SHA for the router-skill machine - install only, no `specrew update`
+there; the sync wrapper resolves through the module. The census on `25f3dfaa` is superseded; the next one is
+the one that counts. PRED-BETA4-009's closeout-to-second-iteration extension has its second witness.
