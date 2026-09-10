@@ -221,8 +221,14 @@ For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
     # W72, DIRECTION TWO: WORKSHOP CLOSED. Losing this would be far worse than the interruption removed
     # above, so it is asserted positively rather than left to the absence of a failure.
     Assert-True ($noWorkshop -match 'SPECREW-STOP-BLOCK') 'ordinary material work still blocks with no workshop open'
-    Assert-True ($noWorkshop -match '(?i)this Stop followed material work') 'the ordinary material directive is unchanged when no workshop is open'
-    Assert-True ($noWorkshop -match '## What I Just Did') 'the FIVE-PART PACKET is still required when no workshop is open - the light form is scoped to the workshop case only'
+    # Fix 2 reworded the ordinary material directive: it reports observed changes and names the script
+    # rather than asserting "this Stop followed material work". The subject of this assertion is that the
+    # ORDINARY directive - not the workshop one - is what fires with no workshop open.
+    Assert-True ($noWorkshop -match '(?i)changes were observed in the worktree since this turn began and no turn-end declaration was recorded') 'the ordinary material directive is unchanged when no workshop is open'
+    # The directive no longer dictates the headings - the SCRIPT renders them (fix 2). What the no-workshop
+    # case must still demand is the declaration itself, by command, which is the full form; the light form
+    # is the workshop-scoped "do not render a packet" below, and it must not appear here.
+    Assert-True ($noWorkshop -match 'declare-turn-end\.ps1 -Kind <boundary\|in-flight\|conversational>') 'the FULL declaration is still demanded when no workshop is open - the light form is scoped to the workshop case only'
     Assert-True ($noWorkshop -notmatch '(?i)Do NOT render a context packet') 'the light-form instruction never leaks into the no-workshop case'
     Assert-True ($noWorkshop -notmatch '(?i)design workshop is still open') 'the workshop-aware wording never fires without an active workshop'
 }

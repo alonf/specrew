@@ -107,7 +107,10 @@ Now starting the design workshop.
     New-Item -ItemType Directory -Path (Join-Path $scratch 'src') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'src\thing.txt') -Value 'material work this turn' -Encoding UTF8
     $material = Invoke-Stop -AssistantText 'I refactored the module and tidied the helpers.' -SessionId 'w25-material-session'
-    Assert-True ($material -match '(?i)this Stop followed material work') 'the material demand still fires and is not displaced'
+    # The material refusal's text changed with fix 2: it says what the hook can honestly know - changes were
+    # observed and no declaration was recorded - and names the script, rather than "this Stop followed
+    # material work" (attribution the hook no longer claims). The subject here is unchanged: it FIRES.
+    Assert-True ($material -match '(?i)changes were observed in the worktree since this turn began and no turn-end declaration was recorded') 'the material demand still fires and is not displaced'
     Assert-True ($material -match "(?i)Also: this session's orientation was never shown") 'the orientation rides along on a higher-priority block instead of being lost'
     Remove-Item -LiteralPath (Join-Path $scratch 'src') -Recurse -Force
 

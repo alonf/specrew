@@ -5,8 +5,14 @@
 # real self-host corpus REFUTED it (see specs/197-continuous-co-review/iterations/010/quality/
 # flush-race-forensic.md). This analyzer re-runs the classification on whatever journal corpus exists
 # on THIS machine: if the race signature ever appears, it FAILS with the captured dx record — the
-# reproduction the reverted 4x-tail-200 mitigation was waiting for. Beta3 now uses one bounded tail-8
+# reproduction the reverted 4x-tail-200 mitigation was waiting for. Beta3 used one bounded tail-8
 # recovery read only on that measured signature; old corpus records remain evidence, not current failures.
+#
+# BETA4 RETIRED THE REREAD WITH THE THING IT SERVED. The race was a race between the agent's message
+# flushing and the hook READING it for a packet. The hook no longer reads the message for a packet at all:
+# the packet is a record the agent's script wrote (fix 2, the turn-end declaration), and `packetPresent`
+# is a fact about that record. A mitigation for a read that no longer happens has nothing to mitigate,
+# so the second case below asserts its ABSENCE - and that the fact it protected comes from the record.
 
 Describe 'T109 flush-race forensic analyzer (D-197-I009-003 refuted; reopens on a real signature)' {
 
@@ -69,11 +75,12 @@ Describe 'T109 flush-race forensic analyzer (D-197-I009-003 refuted; reopens on 
         ($suspects -join "`n") | Should -BeNullOrEmpty -Because 'post-mitigation partial reads must attempt and recover through the bounded tail-8 reread; pre-mitigation records remain preserved evidence'
     }
 
-    It 'implements the measured-signature recovery as one bounded tail-8 reread with telemetry' {
+    It 'the tail-8 reread is retired with prose scoring - the packet is a record the script wrote, not a read of the message' {
         $provider = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1') -Raw
-        $provider | Should -Match '\$initialHeaderHits\s+-ge\s+1'
-        $provider | Should -Match 'Get-Content[^\r\n]+-Tail\s+8'
-        $provider | Should -Match 'dx_reread_attempted\s*=\s*\$transcriptRereadAttempted'
-        $provider | Should -Match 'dx_reread_recovered\s*=\s*\$transcriptRereadRecovered'
+        $provider | Should -Not -Match '\$initialHeaderHits\s+-ge\s+1'
+        $provider | Should -Not -Match 'Get-Content[^\r\n]+-Tail\s+8'
+        $provider | Should -Not -Match 'dx_reread_attempted\s*=\s*\$transcriptRereadAttempted'
+        # ...and the fact the reread used to protect is taken from the declaration record.
+        $provider | Should -Match '\$packetPresent\s*=\s*\(\$turnEndKind\s+-eq\s+.boundary.\)'
     }
 }
