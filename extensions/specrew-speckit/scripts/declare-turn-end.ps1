@@ -30,9 +30,9 @@
   paid forever.
 
 .EXAMPLE
-  pwsh -File declare-turn-end.ps1 -Kind conversational
-  pwsh -File declare-turn-end.ps1 -Kind in-flight -Pending 'the census dispatch'
-  pwsh -File declare-turn-end.ps1 -Kind boundary -Summary 'Implemented fix 1 and proved it with four mutations.'
+  pwsh -File declare-turn-end.ps1 -Kind conversational -Token 81efdc6f826e4da0848b9a21432621ad
+  pwsh -File declare-turn-end.ps1 -Kind in-flight -Pending 'the census dispatch' -Token <the turn's token>
+  pwsh -File declare-turn-end.ps1 -Kind boundary -Summary 'Implemented fix 1 and proved it with four mutations.' -Token <the turn's token>
 #>
 [CmdletBinding()]
 param(
@@ -50,6 +50,12 @@ param(
     # verdict options and NO marker and says what is owed instead - the governed rule, moved out of prose
     # into the one place that can actually enforce it.
     [AllowNull()][string[]] $Owed,
+
+    # THE TOKEN THE HOOK HANDED YOU AT THE START OF THIS TURN, in a line beginning `[specrew-turn]`. It is
+    # how this declaration is placed under the session that is actually making it - the hook that issued
+    # the token is the hook that will judge the record. With more than one session live in this project,
+    # a declaration without it cannot be placed and is refused; with exactly one, it is optional.
+    [AllowNull()][AllowEmptyString()][string] $Token,
 
     [AllowNull()][string] $ProjectRoot,
 
@@ -70,15 +76,48 @@ if (-not (Test-Path -LiteralPath $storePath -PathType Leaf)) {
 $root = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { (Get-Location).Path } else { $ProjectRoot }
 $root = [System.IO.Path]::GetFullPath($root)
 
-# IDENTITY COMES FROM THE HOOK'S OWN TOKEN, never from a project-wide file. The marker read that used to
-# stand here put one session's declaration under another session's path; a project-scoped file cannot answer
-# a session-scoped question, so it is gone rather than hardened.
-$turnToken = Find-SpecrewCurrentTurnToken -ProjectRoot $root
-$paths = if (-not [string]::IsNullOrWhiteSpace($turnToken.state_root)) {
-    Get-SpecrewTurnEndPathsForStateRoot -ProjectRoot $root -StateRoot $turnToken.state_root -OwnerHash $turnToken.owner_hash
+# IDENTITY COMES FROM THE TOKEN THE HOOK HANDED THE AGENT, never from a project-wide file and never from a
+# ranking of what is on disk. Two designs stood here and the independent review broke both the same way -
+# a session credited for a declaration another session made. This one refuses rather than guesses: the
+# four outcomes below are the ruling, and the two refusals each say exactly what would resolve them.
+$holder = Resolve-SpecrewTurnTokenHolder -ProjectRoot $root -Token $Token
+$scriptRelativePath = '.specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1'
+switch ([string]$holder.outcome) {
+    'unknown-token' {
+        # FAILS CLOSED, NAMING THE VALUE. A token no live session holds is either a stale line from an
+        # earlier turn (the hook consumed that one at its Stop) or a typo; either way writing under some
+        # other session would be the false credit this exists to prevent.
+        $liveCount = @($holder.live).Count
+        $lines = @(
+            ("Turn-end declaration refused: the token '{0}' matches no live session in this project ({1} live token{2})." -f $Token.Trim(), $liveCount, $(if ($liveCount -eq 1) { '' } else { 's' })),
+            "Use the token from the MOST RECENT line beginning '[specrew-turn]' in this turn - the hook hands one out at each turn start and consumes it at Stop, so an earlier turn's token is no longer live.",
+            ("Then run again: pwsh -File {0} -Kind {1} -Token <that token>" -f $scriptRelativePath, $Kind)
+        )
+        [Console]::Error.WriteLine(($lines -join [Environment]::NewLine))
+        exit 2
+    }
+    'ambiguous' {
+        # REFUSED, NAMING BOTH SESSIONS AND THE PARAMETER. This is the only case the fallback decides, and
+        # it decides by not deciding. A leftover from a crashed session lands here too, and the refusal
+        # names each token's path and issue time so a human who knows a session is gone can remove its
+        # token; nothing here ages one out on its own.
+        $named = @($holder.live | ForEach-Object { '  - ' + (Get-SpecrewTurnTokenSessionLabel -LiveToken $_) })
+        $lines = @(
+            ("Turn-end declaration refused: {0} sessions are live in this project and no -Token was given, so this declaration cannot be placed under the right one:" -f @($holder.live).Count)
+        ) + $named + @(
+            "Pass -Token with the token the hook handed you at the start of this turn (the most recent line beginning '[specrew-turn]'):",
+            ("  pwsh -File {0} -Kind {1} -Token <that token>" -f $scriptRelativePath, $Kind),
+            "A token listed above that belongs to a session you know has ended can be removed at the path shown; it is a leftover, not a live turn."
+        )
+        [Console]::Error.WriteLine(($lines -join [Environment]::NewLine))
+        exit 2
+    }
+}
+$paths = if ([string]$holder.outcome -in @('matched', 'single')) {
+    Get-SpecrewTurnEndPathsForStateRoot -ProjectRoot $root -StateRoot $holder.state_root -OwnerHash $holder.owner_hash
 }
 else {
-    # No token: this host delivered no turn-start event, so there is nothing to echo. The hook will have
+    # Absent: this host delivered no turn-start event, so there is nothing to echo. The hook will have
     # none either, and the two degrade together - absence is not mismatch.
     Get-SpecrewTurnEndPaths -ProjectRoot $root -HostKind '' -SessionId ''
 }
@@ -312,9 +351,9 @@ $record = [pscustomobject][ordered]@{
     schema_version = '1.0'
     kind           = $Kind
     turn_id        = [string]$paths.TurnId
-    # The token the hook issued for this turn, echoed back. At Stop the hook accepts only a record carrying
+    # The token the hook issued for this turn, handed back. At Stop the hook accepts only a record carrying
     # the token IT wrote; anything else is another session's turn and is refused rather than credited.
-    turn_token     = [string]$turnToken.token
+    turn_token     = [string]$holder.token
     owner_hash     = [string]$paths.OwnerHash
     rendered       = (-not [string]::IsNullOrWhiteSpace($rendered))
     render_reason  = [string]$decision.reason
@@ -355,6 +394,8 @@ if ($AsJson) {
         turn_id       = [string]$paths.TurnId
         anchored      = [bool]$paths.Anchored
         record_written = [bool]$written
+        # How the session was resolved: matched (by -Token), single (the one live token), absent (none).
+        identity      = [string]$holder.outcome
         rendered      = [bool]$record.rendered
         render_reason = [string]$decision.reason
         orientation   = [bool]$orientationOwed

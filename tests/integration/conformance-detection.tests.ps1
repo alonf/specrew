@@ -19,6 +19,9 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
 if (-not (Test-Path -LiteralPath $provider)) { Fail "conformance provider not found at $provider" }
 . (Join-Path $repoRoot 'scripts\internal\specrew-consumer-language.ps1')
+# The turn-end store, for the cases that read the token the hook issues (Case 2e). The SAME resolver both
+# product sides dot-source - a test that recomputed the path would be the drift the store exists to prevent.
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\turn-end-store.ps1')
 
 $priorModulePath = $env:SPECREW_MODULE_PATH
 $env:SPECREW_MODULE_PATH = $repoRoot  # so the provider resolves ConversationCaptureAccessor + the false-positive guard
@@ -80,11 +83,12 @@ function New-Declaration {
     # RUNS THE REAL declare-turn-end.ps1. Nothing in this suite writes a turn-end record by hand: the hook now
     # depends on that artifact, so the artifact must come from its producer or the suite proves only that the
     # test can write JSON.
-    param([string]$Proj, [string]$Kind = 'boundary', [string]$Summary = 'fixture turn', [AllowNull()][string]$Pending, [AllowNull()][string]$From, [AllowNull()][string]$To)
+    param([string]$Proj, [string]$Kind = 'boundary', [string]$Summary = 'fixture turn', [AllowNull()][string]$Pending, [AllowNull()][string]$From, [AllowNull()][string]$To, [AllowNull()][string]$Token)
     if (-not [string]::IsNullOrWhiteSpace($From)) { New-PendingVerdictStop -Proj $Proj -From $From -To $To }
     $declarer = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\declare-turn-end.ps1'
     $argsList = @('-NoProfile', '-File', $declarer, '-Kind', $Kind, '-ProjectRoot', $Proj, '-Summary', $Summary, '-AsJson')
     if (-not [string]::IsNullOrWhiteSpace($Pending)) { $argsList += @('-Pending', $Pending) }
+    if (-not [string]::IsNullOrWhiteSpace($Token)) { $argsList += @('-Token', $Token) }
     $out = & pwsh @argsList 2>&1
     $joined = (@($out) -join "`n")
     try { return ($joined | ConvertFrom-Json) } catch { throw ("declare-turn-end failed: " + $joined) }
@@ -608,6 +612,34 @@ try {
     if ($r2d.Out -notmatch 'declare-turn-end' + [char]92 + '.ps1 -Kind boundary') { Fail "Case 2d: and the refusal must demand the boundary declaration. Out: $($r2d.Out)" }
     Write-Pass "Case 2d: an in-flight declaration releases a material stop only - at a pending boundary the verdict packet is still demanded"
 
+    # ---- Case 2e: THE TOKEN ACROSS A BLOCK. The hook hands the token to the agent at turn start, a Stop that
+    # blocks keeps it (the turn has not ended), the forced re-run declares under the SAME token and is credited,
+    # and THAT Stop - the one that ended the turn - consumes it. Consumption is what "live" means for the
+    # identity handshake (turn-end-session-identity.tests.ps1); this is the end-to-end shape on the real
+    # boundary fixture, which is the only one that binds a crossing and so the only one whose block is the
+    # boundary demand rather than the evidence gate.
+    $p2e = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p2e
+    $s2e = 'session-2e'
+    $start2e = Invoke-Conformance -Proj $p2e -Event UserPromptSubmit -SessionId $s2e
+    if ($start2e.Out -notmatch '\[specrew-turn\].*declare-turn-end\.ps1.*-Token [0-9a-f]{32}') { Fail "Case 2e: the turn-start event must hand the agent ONE line with the token. Out: $($start2e.Out)" }
+    $tok2e = [regex]::Match($start2e.Out, '-Token ([0-9a-f]{32})').Groups[1].Value
+    $t2e = New-Transcript -Proj $p2e -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'Plan drafted. Stopping for your verdict.' })
+    $r2e1 = Invoke-Conformance -Proj $p2e -TranscriptPath $t2e -SessionId $s2e
+    if (-not $r2e1.Blocked) { Fail "Case 2e: the pending boundary with no declaration must block. Out: $($r2e1.Out)" }
+    if ($r2e1.Out -notmatch '-Token') { Fail "Case 2e: the boundary directive must carry the -Token parameter, or the agent is told to run a command that the two-session case refuses. Out: $($r2e1.Out)" }
+    $paths2e = Get-SpecrewTurnEndPaths -ProjectRoot $p2e -HostKind 'claude' -SessionId $s2e
+    if ((Read-SpecrewTurnToken -StateRoot $paths2e.StateRoot) -cne $tok2e) { Fail "Case 2e: a BLOCKING Stop must keep the token - the turn has not ended and the re-run it demands declares under this token." }
+    $d2e = New-Declaration -Proj $p2e -Kind 'boundary' -From 'clarify' -To 'plan' -Token $tok2e
+    if (-not $d2e.record_written -or [string]$d2e.identity -cne 'matched') { Fail "Case 2e: the forced re-run with the handed token must be accepted by the script (identity=matched). $($d2e | ConvertTo-Json -Compress)" }
+    $r2e2 = Invoke-Conformance -Proj $p2e -TranscriptPath (New-Transcript -Proj $p2e -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2e.text })) -SessionId $s2e
+    if ($r2e2.Blocked) { Fail "Case 2e: the declaration under the token this session's hook issued MUST be credited. Out: $($r2e2.Out)" }
+    if (-not [string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot $paths2e.StateRoot))) { Fail "Case 2e: the Stop that ended the turn must CONSUME the token - live means unconsumed." }
+    $r2e3 = Invoke-Conformance -Proj $p2e -Event UserPromptSubmit -SessionId $s2e
+    $tok2eNext = [regex]::Match($r2e3.Out, '-Token ([0-9a-f]{32})').Groups[1].Value
+    if ([string]::IsNullOrWhiteSpace($tok2eNext) -or $tok2eNext -ceq $tok2e) { Fail "Case 2e: the next turn start must hand out a FRESH token. Out: $($r2e3.Out)" }
+    Write-Pass "Case 2e: the token is handed to the agent at turn start, survives a blocking Stop, places the forced re-run under this session, and is consumed by the Stop that ends the turn"
+
     # ---- Case 3: cursor caught up. working == authorized, no spec, short msg -> not pending, not substantial -> no block.
     $p3 = New-Fixture -Working 'plan' -LastAuth 'plan'
     $t3 = New-Transcript -Proj $p3 -Turns @(@{ role = 'assistant'; text = 'Plan approved; proceeding.' })
@@ -645,6 +677,7 @@ try {
     # the headings here would pin the very thing fix 2 removed: a format the agent reproduces from memory and
     # a check that recognises the reproduction.
     if ($r4c.Out -notmatch '-Kind <boundary\|in-flight\|conversational>') { Fail "Case 4c: the material directive must name the command's parameters, not a set of headings. Out: $($r4c.Out)" }
+    if ($r4c.Out -notmatch '-Token <') { Fail "Case 4c: the material directive must carry -Token, the parameter that places the declaration under this session. Out: $($r4c.Out)" }
     if ($r4c.Out -match '<!-- SPECREW-VERDICT-BOUNDARY') { Fail "Case 4c: material block must not demand a boundary verdict marker. Out: $($r4c.Out)" }
     Write-Pass "Case 4c: a MATERIAL non-boundary Stop without the context packet emits the stop-block sentinel + five-part directive"
 
@@ -814,14 +847,18 @@ try {
     $baselineB = Get-TestSessionStatePath -Proj $phms -SessionId $sessionB
     if (-not (Test-Path -LiteralPath $baselineA -PathType Leaf) -or -not (Test-Path -LiteralPath $baselineB -PathType Leaf) -or $baselineA -eq $baselineB) { Fail 'Case PH-ms: concurrent sessions did not receive distinct owner-scoped baseline files.' }
     if (Test-Path -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-turn-baseline.json') -PathType Leaf) { Fail 'Case PH-ms: production session dispatch must not write the legacy shared turn baseline.' }
-    # B's turn starts first and A's LAST, on purpose. declare-turn-end resolves to the newest token in the
-    # project - the honest answer to "whose turn is happening now" from where the script stands - so for
-    # A's declaration below to land under A, A's turn must be the most recently started. Two live sessions
-    # in one project is the collision the identity handshake fails CLOSED on; this case sets the order up
-    # rather than depending on it by accident.
-    $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionB
+    # B's turn starts first and A's LAST, on purpose - the order that beat BOTH earlier identity designs
+    # (the project-wide marker, then newest-token-wins: each landed A's declaration under B). Nothing in
+    # the script ranks tokens any more: each hook HANDS its session's token to its own agent in the
+    # turn-start line, and the declaration below passes it back. With two sessions live, a declaration
+    # without it is refused by name (turn-end-session-identity.tests.ps1 Case 1a); with it, A's lands
+    # under A whatever the order.
+    $startB = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionB
     Start-Sleep -Milliseconds 20
-    $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionA
+    $startA = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionA
+    $tokenA = [regex]::Match($startA.Out, '-Token ([0-9a-f]{32})').Groups[1].Value
+    $tokenB = [regex]::Match($startB.Out, '-Token ([0-9a-f]{32})').Groups[1].Value
+    if ([string]::IsNullOrWhiteSpace($tokenA) -or [string]::IsNullOrWhiteSpace($tokenB) -or $tokenA -ceq $tokenB) { Fail "Case PH-ms: each session's turn start must hand its agent a distinct token. A: $($startA.Out) B: $($startB.Out)" }
 
     $ownedFiles = 'src/preexisting.ps1, tests/preexisting.tests.ps1, src/session-b.ps1, tests/session-b.tests.ps1'
     New-HandoverSnapshot -Proj $phms -ChangedUserFiles 4 -FileList $ownedFiles -Source 'PostToolUse'
@@ -839,7 +876,7 @@ try {
     # Session A did nothing material. Under the old design an inference record kept it from being billed for
     # B's files; under the ruling, A says so itself - it DECLARES conversational, and the declaration is what
     # attribution now rests on. A read-only session that declares is never blocked.
-    $declA = New-Declaration -Proj $phms -Kind 'conversational' -Summary 'status only; no changes by this session'
+    $declA = New-Declaration -Proj $phms -Kind 'conversational' -Summary 'status only; no changes by this session' -Token $tokenA
     if (-not $declA.record_written) { Fail "Case PH-ms: session A's conversational declaration was not written. $($declA | ConvertTo-Json -Compress)" }
     $stopA = Invoke-Conformance -Proj $phms -TranscriptPath $statusA -SessionId $sessionA
     if ($stopA.Blocked) { Fail "Case PH-ms: session A DECLARED conversational and must not be billed for session B's surface. Out: $($stopA.Out)" }

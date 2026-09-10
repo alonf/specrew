@@ -128,14 +128,10 @@ try {
     New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
     # An OLDER token record: issued_at only, no issued_ms - the shape from before the number existed.
     [System.IO.File]::WriteAllText((Join-Path $stateRoot 'turn-token.json'), ([ordered]@{ schema_version = '1.0'; token = 'aa'; turn_id = 'turn-1'; issued_at = $instant.ToString('o') } | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
-    $found = Find-SpecrewCurrentTurnToken -ProjectRoot $root
-    Assert-True ([string]$found.token -ceq 'aa') 'the token is found from issued_at alone'
-    # Two tokens 30 ms apart, both ISO-only: the ordering must see the 30 ms, which the string re-parse lost.
-    $stateRoot2 = Join-Path $root '.specrew/runtime/conformance-sessions/def'
-    New-Item -ItemType Directory -Path $stateRoot2 -Force | Out-Null
-    [System.IO.File]::WriteAllText((Join-Path $stateRoot2 'turn-token.json'), ([ordered]@{ schema_version = '1.0'; token = 'bb'; turn_id = 'turn-1'; issued_at = $instant.AddMilliseconds(30).ToString('o') } | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
-    $found2 = Find-SpecrewCurrentTurnToken -ProjectRoot $root
-    Assert-True ([string]$found2.token -ceq 'bb') 'and a token issued 30 ms later, ISO-only, orders as newer - the sub-second part survives the read'
+    $live = @(Get-SpecrewLiveTurnTokens -ProjectRoot $root)
+    Assert-True ($live.Count -eq 1 -and $null -ne $live[0].issued -and ([DateTimeOffset]$live[0].issued) -eq $instant) 'the issue time is read to the millisecond from issued_at alone'
+    $label = Get-SpecrewTurnTokenSessionLabel -LiveToken $live[0]
+    Assert-True ($label -match '2026-09-10 08:49:29 UTC') ('and the refusal label prints it as UTC, invariant: {0}' -f $label)
 }
 finally { if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue } }
 

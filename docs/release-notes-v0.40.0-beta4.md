@@ -129,6 +129,27 @@ defect in the message only; the refusal itself is behaving as described above.
 
 Both are fixed in beta5.
 
+## Changed: the turn-end declaration, and the token that places it
+
+**The hook no longer scores your agent's prose.** What decided whether a turn had ended properly used to be
+a reading of the last message - header phrases, a transcript scan, an HTML comment the agent had to remember.
+Each punished compliant output at least once. Now the agent runs one script as its last action,
+`declare-turn-end.ps1 -Kind <boundary|in-flight|conversational>`, the script renders what is owed from the
+artifacts, and the hook checks one fact: did the script run, for this session, for this turn.
+
+**"For this session" is a token the hook hands the agent.** At the start of every turn the hook injects one
+line, `[specrew-turn] ... -Token <value>`, into the agent's context - not into what you see. The agent passes
+it back. With two sessions open in one project a declaration without it is refused by name; with it, each
+session's declaration lands under its own. A token left behind by a session that crashed shows up in that
+refusal with its file path, so it can be removed. Nothing infers whose turn it is from shared state any more;
+two designs that did were each broken by the independent review in one probe.
+
+**What it costs.** The conformance hook now runs at every prompt, not only at session start - a second
+provider launch beside the existing one, measured at roughly 0.8-1.1 s per prompt on Windows, most of it
+PowerShell startup and a git snapshot. That is the price of the token and of the per-turn baseline that, it
+turned out, had never been captured at prompt in production before this release. Making it lighter is a
+beta5 item.
+
 ## Verification
 
 - Regression test: `tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, in the

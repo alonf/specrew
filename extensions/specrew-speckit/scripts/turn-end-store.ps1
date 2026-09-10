@@ -62,26 +62,38 @@ function Get-SpecrewTurnEndOwnerHash {
     catch { return '' }
 }
 
-# THE IDENTITY HANDSHAKE: THE HOOK DECLARES, THE SCRIPT ECHOES, A MISMATCH FAILS CLOSED.
+# THE IDENTITY HANDSHAKE: THE HOOK HANDS THE TOKEN TO THE AGENT, THE AGENT HANDS IT BACK, AND NOTHING
+# IN BETWEEN GUESSES.
 #
-# What stood here read `.specrew/runtime/session-marker.json` for the declaring session's identity. The
-# independent review broke it in one probe: the marker is PROJECT-WIDE and stamped by whichever session
+# What stood here first read `.specrew/runtime/session-marker.json` for the declaring session's identity.
+# The independent review broke it in one probe: the marker is PROJECT-WIDE and stamped by whichever session
 # started last, so with two sessions open, A declared and the record landed under B's path - A refused for a
-# declaration it made, B credited with one it did not.
+# declaration it made, B credited with one it did not. **A project-scoped file cannot answer a
+# session-scoped question**, so the read went, not repaired.
 #
-# The root of that is not the marker's implementation. **A project-scoped file cannot answer a
-# session-scoped question**, and no amount of care in reading it changes that. So the read is gone, not
-# repaired.
+# What replaced it resolved to the NEWEST token across the project's session directories, and the
+# confirmatory review broke that too, the same way: B started its turn last, A's declaration landed under
+# B, and B's Stop CREDITED it. Newest-wins is the same inference from shared state with a different tiebreak.
+# The ruling on it: crediting the wrong session is worse than refusing, so newest-wins is gone.
 #
-# What replaces it: the party that KNOWS declares. The hook writes a per-turn token into its OWN session
-# directory when the turn starts; declare-turn-end finds that token and stamps it into the record; at Stop
-# the hook accepts only a record carrying the token it wrote itself. Nothing infers whose turn it is from
-# shared state, because inferring it is what failed.
+# What stands now has no inference in it at all:
 #
-# ABSENCE IS NOT MISMATCH, and the difference is what keeps this from bricking honest hosts. A host that
-# delivers no turn-start event writes no token; the script then stamps none, and the hook - which also has
-# none - accepts that. Both sides degrade together. What fails closed is the case where the hook HAS a
-# token and the record carries a different one: that is two sessions, and neither is credited.
+#   - The hook writes a token into its OWN session directory when the turn starts, and HANDS IT TO THE
+#     AGENT in its turn-start output - one line. The party that knows tells the party that acts.
+#   - declare-turn-end takes -Token and writes under the session holding it. A token no live session holds
+#     is refused, naming the value.
+#   - With NO -Token: exactly one live token is unambiguous and is accepted; more than one is REFUSED,
+#     naming both sessions and the parameter - that is the ambiguous case, and it is the only case where the
+#     fallback decides anything. No tokens at all is absence: a host with no turn-start event, and both
+#     sides degrade together.
+#   - LIVE MEANS UNCONSUMED. The hook deletes its session's token at Stop, after judging the declaration
+#     and only when the turn actually ended (a block force-continues the same turn and keeps it). A session
+#     that crashed leaves its token behind, and that leftover costs the next token-less declarer one
+#     refusal - which names the leftover's path, so a human who knows the session is gone can remove it.
+#     Nothing here ages a token out, because "it is old so it must be dead" is inference again.
+#
+# ABSENCE IS STILL NOT MISMATCH: the hook that issued no token accepts a record carrying none. What fails
+# closed is a token PRESENT on the hook side and different in the record.
 
 function Get-SpecrewTurnTokenPath {
     [OutputType([string])]
@@ -92,11 +104,22 @@ function Get-SpecrewTurnTokenPath {
 function Write-SpecrewTurnToken {
     # THE HOOK'S WRITE, at turn start. A fresh random token per turn: it is an identity, not a secret, and
     # it only has to be different from the one another session is holding.
+    #
+    # -ReuseUnconsumed is how the hook calls it. A token still on disk at a turn start means this session's
+    # own Stop has not consumed it: the turn is still open (a SessionStart fired mid-turn on compaction, or a
+    # host delivered two turn-start events for one prompt), or the previous Stop never ran. Either way the
+    # open turn keeps its token, and the line the agent was already handed stays true. Overwriting it here
+    # would make the token in the agent's context unknown to the hook that issued it - one refusal per
+    # session opening, on every host that fires SessionStart and then the first prompt event.
     [OutputType([string])]
-    param([Parameter(Mandatory)][string] $StateRoot, [AllowNull()][string] $TurnId)
+    param([Parameter(Mandatory)][string] $StateRoot, [AllowNull()][string] $TurnId, [switch] $ReuseUnconsumed)
 
     $temp = $null
     try {
+        if ($ReuseUnconsumed) {
+            $existing = Read-SpecrewTurnToken -StateRoot $StateRoot
+            if (-not [string]::IsNullOrWhiteSpace($existing)) { return $existing }
+        }
         if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
         $token = [guid]::NewGuid().ToString('N')
         $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
@@ -133,28 +156,38 @@ function Read-SpecrewTurnToken {
     catch { return '' }
 }
 
-function Find-SpecrewCurrentTurnToken {
-    # THE SCRIPT'S SIDE. It has no host arguments - it is run by a human-facing skill, not the dispatcher -
-    # so it finds the token by looking for the most recently issued one across this project's session
-    # directories. In a single-session project there is exactly one and this is unambiguous.
+function Remove-SpecrewTurnToken {
+    # THE HOOK'S CONSUMPTION, at Stop, after the declaration has been judged and only when the turn actually
+    # ended. This is what "live" means: a token that is still on disk belongs to a turn that has not been
+    # closed by its own hook. Returns whether a token was there to consume, so a hook can tell "consumed"
+    # from "there was nothing" without a second read.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+        Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+        return $true
+    }
+    catch { return $false }
+}
+
+function Get-SpecrewLiveTurnTokens {
+    # Every UNCONSUMED token in this project, one per session directory that holds one. This is the whole
+    # of what the script can see, and it is listed rather than ranked: the ranking was the bug.
     #
-    # With two sessions it resolves to whichever started its turn last, which is the honest answer to "whose
-    # turn is happening right now" from where this script stands. The other session's Stop will then find no
-    # record under its own token and refuse - failing CLOSED, naming the collision, crediting neither - and
-    # that session's NEXT turn issues a fresh token, so it recovers by declaring again rather than by
-    # anything being repaired.
-    [OutputType([pscustomobject])]
+    # THE LEGACY ROOT IS A CANDIDATE TOO. A host that passes no session id keeps its state at the runtime
+    # root itself, and the hook writes its token THERE. The first version scanned only the per-session
+    # directories, so on such a host the hook held a token, the script found none, the record carried
+    # none - and "absence is not mismatch" became a mismatch after all, failing closed on every
+    # declaration. The independent review saw exactly that and withheld it as out of scope; the fix-2 tail
+    # hit it as PH-e. Absence means neither side has a token, not that the script did not look.
+    [OutputType([object[]])]
     param([Parameter(Mandatory)][string] $ProjectRoot)
 
-    $result = [pscustomobject]@{ token = ''; state_root = ''; owner_hash = ''; competitors = 0 }
+    $live = New-Object System.Collections.Generic.List[object]
     try {
         $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
-        # THE LEGACY ROOT IS A CANDIDATE TOO. A host that passes no session id keeps its state at the runtime
-        # root itself, and the hook writes its token THERE. The first version of this scanned only the
-        # per-session directories, so on such a host the hook held a token, the script found none, the record
-        # carried none - and "absence is not mismatch" became a mismatch after all, failing closed on every
-        # declaration. The independent review saw exactly that and withheld it as out of scope; the fix-2
-        # tail hit it as PH-e. Absence means neither side has a token, not that the script did not look.
         $roots = @()
         $roots += [pscustomobject]@{ path = $runtimeRoot; owner = '' }
         $sessionsRoot = Join-Path $runtimeRoot 'conformance-sessions'
@@ -163,35 +196,83 @@ function Find-SpecrewCurrentTurnToken {
                 $roots += [pscustomobject]@{ path = $dir.FullName; owner = $dir.Name }
             }
         }
-        $candidates = @()
         foreach ($rootEntry in $roots) {
             $tokenPath = Get-SpecrewTurnTokenPath -StateRoot $rootEntry.path
             if (-not (Test-Path -LiteralPath $tokenPath -PathType Leaf)) { continue }
             try {
                 $record = Get-Content -LiteralPath $tokenPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
                 if ($null -eq $record -or [string]::IsNullOrWhiteSpace([string]$record.token)) { continue }
-                # Ordered by the instant, READ THROUGH THE ONE HELPER whichever shape the field survived JSON
-                # in - the number first, the ISO string for a token written before the number existed. Never
-                # by re-parsing a coerced value through a string: that is what made two tokens from the same
-                # second indistinguishable.
-                $issuedAt = $null
-                if ($record.PSObject.Properties['issued_ms'] -and $null -ne $record.issued_ms) { $issuedAt = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_ms }
-                if ($null -eq $issuedAt -and $record.PSObject.Properties['issued_at']) { $issuedAt = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_at }
-                $issued = if ($null -ne $issuedAt) { ([DateTimeOffset]$issuedAt).ToUnixTimeMilliseconds() }
-                          else { [DateTimeOffset]::new((Get-Item -LiteralPath $tokenPath).LastWriteTimeUtc, [TimeSpan]::Zero).ToUnixTimeMilliseconds() }
-                $candidates += [pscustomobject]@{ token = [string]$record.token; state_root = $rootEntry.path; owner_hash = $rootEntry.owner; issued = $issued }
+                # The issue time is reported in the refusal so a human can tell a leftover from a live turn. It
+                # is READ THROUGH THE ONE HELPER, whichever shape the field survived JSON in.
+                $issued = $null
+                if ($record.PSObject.Properties['issued_ms'] -and $null -ne $record.issued_ms) { $issued = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_ms }
+                if ($null -eq $issued -and $record.PSObject.Properties['issued_at']) { $issued = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_at }
+                $live.Add([pscustomobject]@{
+                        token      = [string]$record.token
+                        state_root = [string]$rootEntry.path
+                        owner_hash = [string]$rootEntry.owner
+                        turn_id    = $(if ($record.PSObject.Properties['turn_id']) { [string]$record.turn_id } else { '' })
+                        issued     = $issued
+                        path       = [string]$tokenPath
+                    }) | Out-Null
             }
             catch { continue }
         }
-        if ($candidates.Count -eq 0) { return $result }
-        $newest = @($candidates | Sort-Object issued -Descending)[0]
-        $result.token = $newest.token
-        $result.state_root = $newest.state_root
-        $result.owner_hash = $newest.owner_hash
-        $result.competitors = $candidates.Count - 1
+    }
+    catch { $null = $_ }
+    return @($live.ToArray())
+}
+
+function Resolve-SpecrewTurnTokenHolder {
+    # THE SCRIPT'S SIDE, and the four outcomes are the ruling, in order:
+    #
+    #   matched        -Token names a live token: write under the session holding it.
+    #   unknown-token  -Token names no live token: refused, naming the value. Fails CLOSED.
+    #   single         no -Token, exactly one live token: unambiguous, accepted.
+    #   ambiguous      no -Token, more than one live token: refused, naming every session and -Token.
+    #   absent         no tokens at all: a host with no turn-start event; both sides degrade together.
+    #
+    # Nothing here picks. A caller that gets 'ambiguous' or 'unknown-token' has been told exactly what would
+    # resolve it, and the resolution is information only the agent has.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string] $Token
+    )
+
+    $live = @(Get-SpecrewLiveTurnTokens -ProjectRoot $ProjectRoot)
+    $result = [pscustomobject]@{ outcome = 'absent'; token = ''; state_root = ''; owner_hash = ''; live = $live }
+    $wanted = if ([string]::IsNullOrWhiteSpace($Token)) { '' } else { $Token.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($wanted)) {
+        $match = @($live | Where-Object { [string]$_.token -ceq $wanted })
+        if ($match.Count -ge 1) {
+            $result.outcome = 'matched'
+            $result.token = [string]$match[0].token
+            $result.state_root = [string]$match[0].state_root
+            $result.owner_hash = [string]$match[0].owner_hash
+        }
+        else { $result.outcome = 'unknown-token' }
         return $result
     }
-    catch { return $result }
+    if ($live.Count -eq 1) {
+        $result.outcome = 'single'
+        $result.token = [string]$live[0].token
+        $result.state_root = [string]$live[0].state_root
+        $result.owner_hash = [string]$live[0].owner_hash
+    }
+    elseif ($live.Count -gt 1) { $result.outcome = 'ambiguous' }
+    return $result
+}
+
+function Get-SpecrewTurnTokenSessionLabel {
+    # How a session is NAMED in a refusal. The per-session directory is a hash of host|session-id - opaque,
+    # but it is the directory the human can go and look at, and the issue time beside it is what tells a
+    # live turn from a leftover.
+    [OutputType([string])]
+    param([Parameter(Mandatory)]$LiveToken)
+    $where = if ([string]::IsNullOrWhiteSpace([string]$LiveToken.owner_hash)) { 'the runtime root (a host that passes no session id)' } else { ('session ' + ([string]$LiveToken.owner_hash).Substring(0, [Math]::Min(12, ([string]$LiveToken.owner_hash).Length)) + '...') }
+    $when = if ($null -ne $LiveToken.issued) { ([DateTimeOffset]$LiveToken.issued).ToString('yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture) + ' UTC' } else { 'an unknown time' }
+    return ('{0}, token issued {1}, at {2}' -f $where, $when, [string]$LiveToken.path)
 }
 
 function Get-SpecrewTurnCounterPath {

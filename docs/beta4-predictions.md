@@ -563,3 +563,119 @@ stays a lie.
 (2) zero `C:\Dev` paths in the shipped template; (3) the package guard FAILED naming the file before the
 FileList entry and passes after; (4) a `-DryRun` deploy into a scratch project lists 12 would-act lines for
 `specrew-user-profile` across the active skill roots.
+
+## PRED-BETA4-014 - finding 1's closure and the timestamp helper. Stated before the code.
+
+**Ruled**: closure 1 (the hook hands the token to the agent at turn start; `declare-turn-end.ps1 -Token`)
+with closure 2 (refuse when more than one live token exists, naming both) as the fallback for the ambiguous
+case only. Liveness is CONSUMPTION: the hook deletes its session's token at Stop after judging the
+declaration, so live means unconsumed.
+
+**Read from disk first, and it changes the build**: the registry row for the conformance provider
+(`refocus-scopes.json`) lists `Stop, agentStop, stop, SessionStart, PostToolUse` - **not** `UserPromptSubmit`
+or `PreInvocation`. The provider's turn-start lane exists and the tests drive it directly, but the
+dispatcher never invokes it at a turn start. Every live token in this project's runtime was issued by
+`SessionStart` (`capture_event` on the beside-it baseline, four sessions checked), all carrying `turn-1`.
+So in production the token is issued ONCE PER SESSION, not per turn. Consumption at Stop with no
+re-issuance at the next turn start would leave every turn after the first with no token - absence on every
+declaration. The registry row therefore gains the two turn-start events as part of this build, and that is
+B4F-053.
+
+### THE PREDICTION, six parts, each falsifiable
+
+1. **Two sessions, token given**: A and B each hold an unconsumed token; a declaration with `-Token <A>`
+   is written under A's directory and stamps A's token, with B's untouched; A's Stop credits it and B's Stop
+   does not. Symmetric for B.
+2. **Two sessions, no token**: refused - non-zero exit, no record written under either session - and the
+   refusal names BOTH session directories and the `-Token` parameter.
+3. **Unknown token**: `-Token` with a value no live session holds is refused, non-zero, no record, and the
+   refusal names the value it was given.
+4. **Stale-token shape**: one unconsumed token left by a dead session plus one live session. Without
+   `-Token`: refused (it is the two-live shape from where the script stands). With `-Token <live>`:
+   accepted and written under the live session. After the live session's Stop consumes its token, a
+   token-less declaration is refused AGAIN for the same reason - the leftover costs every token-less
+   declarer a refusal until it is removed, and the refusal names the leftover's path so a human can.
+5. **Consumption**: after a Stop that judged the declaration and did not block, the session's token file
+   is gone; a Stop that BLOCKS leaves it in place, so the forced re-run of the same turn declares with the
+   same token and is accepted. The next `UserPromptSubmit` issues a fresh token only when none is present.
+6. **The turn-start line**: at `UserPromptSubmit`/`PreInvocation`/`SessionStart` the provider's stdout is
+   exactly one line, under 240 characters, carrying the token and the script path; the dispatcher wraps it
+   in the host's injection envelope. The elapsed cost of the extra provider launch at each prompt is under
+   one second as run (pwsh startup dominates, as measured for PRED-BETA4-011 part 2).
+
+**The timestamp helper**: one function, `ConvertTo-SpecrewUtcTimestamp`, returns the same instant for the
+four shapes JSON can hand back (ISO string, coerced `[datetime]` of Kind Unspecified, `[DateTimeOffset]`,
+unix milliseconds) - asserted by a test that feeds all four forms of one instant and expects equality - and
+the three sites read through it. The mutation that reverts the cooldown site to the string-cast reparse
+turns the cooldown test red on this machine's zone; the helper's own test stays green under that mutation,
+which is the point: the helper is right and the site was wrong.
+
+**Fixed in advance**: if (2) is not reachable because the dispatcher's B3 gating swallows the
+conformance fragment, the line is being delivered on the wrong path and I have misread `Test-B3ShouldInject`'s
+scope (it is written as refocus-only). If (6) exceeds a second, the lane is doing more than a token write and
+a print, and the extra work moves out of the turn-start path.
+
+**Visibility of the turn-start line to the HUMAN is measured per host, not predicted**: for Claude Code it
+is observed in this session after the deploy; for the other four hosts the host's documented handling of the
+injection envelope is cited and marked as documented rather than observed.
+
+### PRED-BETA4-014 VERDICT: four parts held, two missed on a clause each, the helper's part held.
+
+Suites: `turn-end-session-identity.tests.ps1` (rewritten: 47 assertions), `conformance-detection.tests.ps1`
+(89, Case 2e added), `timestamp-read.tests.ps1` (new, 24), class-guard lane 16 suites green plus the four
+neighbouring conformance suites.
+
+1. **Held.** `-Token <A>` lands under A carrying A's token, B has no record; symmetric for B (Case 1b).
+2. **Held.** Two live, no `-Token`: exit 2, no record under either, the refusal names both session
+   directories, the parameter, and the `[specrew-turn]` line (Case 1a).
+3. **Held.** An unknown token: exit 2, no record, the value named (Case 1c).
+4. **MISSED on its last clause.** Refused without `-Token` while both are live, accepted with it, the
+   leftover's path and issue time named - all held (Case 2). But after the live session's Stop consumes its
+   token, a token-less declaration is **accepted, under the dead session**, because the leftover is then
+   exactly one live token and the ruling accepts exactly one. I predicted "refused again"; the ruling's own
+   text says otherwise and the build follows the ruling. The record is orphaned (that session's hook never
+   runs again), the declarer's own hook finds nothing and refuses at Stop - a refusal, not a false credit -
+   and the next turn start re-issues for the live session, restoring the two-live refusal that names the
+   leftover. The corner that stays open: a host that issues NO token (absence) sharing a project with a
+   crashed token-issuing session declares under the dead session every time and its hook never names the
+   leftover. All five hosts issue tokens; absence arises only when the turn-start hook itself did not run.
+   Recorded in B4F-053 as the residual; the test pins the ruled behaviour so a change to it is a decision.
+5. **Held.** The non-blocking Stop consumes the token; the next `UserPromptSubmit` issues a fresh one and
+   the old one is refused by name (Case 3). A blocking Stop keeps it (identity Case 3b, on the evidence-gate
+   block; detection Case 2e, on the boundary block) and the forced re-run declares under the same token and
+   is credited by the Stop that then consumes it (Case 2e). A second turn-start event for an open turn reuses
+   the unconsumed token rather than orphaning the line already handed out (Case 3).
+6. **Held on shape, MISSED on the bound.** One line, 200 characters, wrapped by the dispatcher in the host
+   envelope (Case 3, Case 5 through the deployed dispatcher). Elapsed as run: **815, 842, 865, 1012,
+   1120 ms** over five runs - two of five over a second. The split, in-process: store load 90 ms, turn-delta
+   load 8 ms, path resolution 23 ms, **git snapshot 136 ms (T070's live baseline)**, baseline write 34 ms,
+   **token write 11 ms**; the provider's own parse and early return 130-220 ms; bare `pwsh` startup
+   280-450 ms. The fixed-in-advance clause assumed the excess would be in the lane. It is not: the token
+   lane is 35 ms. The cost is the provider process itself - a 2,200-line script launched to do a small
+   lane - and the T070 capture that B4F-053 shows was never running at prompt in production. Moving
+   either is structural (a dedicated light turn-start provider, or concurrent provider launches in the
+   dispatcher) and is named for the maintainer rather than done inside this fix.
+
+**The helper: held.** One instant in four shapes reads equal to the millisecond, under `he-IL` too; a bare
+stamp reads as UTC; the three sites read through it and the text assertion proves no site parses on its own.
+The mutation (`-MutateCooldown`, the string-cast re-parse restored) reds exactly the two cooldown
+assertions on this machine's +180-minute zone and nothing else. One correction to the helper's own comment
+from the measurement: the coercion hands back Kind **Local** for a designated string on this pwsh, not
+Unspecified; the helper was already right for both and the comment now says so.
+
+**Visibility of the turn-start line to the human, per host** - the envelope is measured; the human side is
+what each host documents for that envelope, observed only where this crew could observe it:
+
+| host | turn-start event | envelope the dispatcher emits | reaches the agent | visible to the human |
+| --- | --- | --- | --- | --- |
+| Claude Code | `UserPromptSubmit` | `hookSpecificOutput.additionalContext` | observed in this session after the deploy (the line arrives in the agent's context on the next prompt) | documented: `additionalContext` is added to the model's context and is not rendered in the transcript; the human sees it only in verbose/transcript view (Ctrl+O). Not observed from the crew's side - the maintainer's screen is the instrument |
+| Copilot CLI | `userPromptSubmitted` | `additionalContext` | documented | documented: model-facing; not rendered to the human |
+| Codex | `UserPromptSubmit` | `hookSpecificOutput.additionalContext` | documented | documented: model-facing; not rendered |
+| Cursor | `beforeSubmitPrompt` | `additional_context` | documented | documented: model-facing; not rendered |
+| Antigravity | `PreInvocation` | `injectSteps[].ephemeralMessage` | documented | documented: ephemeral, model-facing; not rendered |
+
+So on every host the line is the agent's, not the human's - which is what it should be: it carries a token
+and a command, and a human would gain nothing from seeing it. The human-facing consequence is the opposite
+one: a declaration that goes wrong is now refused with a message that names the line, so the human sees the
+name of a thing they were never shown. The refusal texts say where it comes from ("the hook hands one out at
+each turn start") for exactly that reason.

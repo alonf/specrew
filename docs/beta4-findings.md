@@ -3112,3 +3112,63 @@ the gap, each with a cost the maintainer should weigh rather than the crew:
    turn ends, since a token stays live until its session's next turn start.
 3. **Accept newest-wins**, as now, and document that a second session can be credited for the first's
    declaration. Rejected by the ruling as written, so listed only for completeness.
+
+## B4F-053 - THE TURN TOKEN WAS ISSUED ONCE PER SESSION, because the provider was never registered for the turn start
+
+**Found by reading the record before building finding 1's closure**, not by a test: the tests drive the
+conformance provider directly with `-Event UserPromptSubmit`, and that path works. The dispatcher selects
+providers by the registry row's `events`, and the conformance row in `refocus-scopes.json` has read
+`["Stop", "agentStop", "stop", "SessionStart", "PostToolUse"]` since `f8df5f8a` (198). No `UserPromptSubmit`,
+no `PreInvocation`. The provider's turn-start lane - the T070 live baseline capture AND the fix-2 token
+issue - therefore ran at `SessionStart` only.
+
+**Evidence from this project's own runtime**, four sessions with a token on disk: every `turn-token.json`
+carries `turn_id: turn-1`, and the `turn-baseline.json` beside each says `capture_event: SessionStart`. The
+handover provider, which IS registered for `UserPromptSubmit`, has journal rows with
+`"source":"UserPromptSubmit"` - so the event reaches the dispatcher; it is the conformance row that does not
+subscribe. Case PH-prompt in `conformance-detection.tests.ps1` asserts that "Claude's real UserPromptSubmit
+provider path refreshes the live baseline" and is green, because it calls the provider, not the dispatcher.
+It is a vacuous control of B4F-047's kind: it proves the lane, and the lane was unreachable.
+
+**What it cost before this**: the token was a per-SESSION identity, not per-turn. For the two-session
+collision that is still an identity, so the mismatch check was not wrong; but the per-turn claim in the
+store's comments was false in production, and the T070 baseline was captured at session start rather than at
+each prompt, so the material-work delta compared against the session's opening state for every turn - the
+`exact-turn` attribution mode could only ever be reached in a test.
+
+**Why it is fixed now rather than filed**: finding 1's ruled closure defines liveness by consumption - the
+hook deletes the token at Stop. Without per-turn re-issuance, consumption would leave every turn after the
+first with no token, and the declaration would degrade to absence forever. The registry row gains
+`UserPromptSubmit` and `PreInvocation`; the dispatcher test that reaches the lane THROUGH the dispatcher is
+the control PH-prompt should have been.
+
+**Cost added**: one more provider launch per prompt on every host. Measured in PRED-BETA4-014 part 6.
+
+**Landed, and what it costs now that it runs**: the row gains `UserPromptSubmit` and `PreInvocation`; the
+token is issued once per turn, handed to the agent in one 200-character line, and consumed by the Stop that
+ends the turn. Identity Case 5 reaches the line through the DEPLOYED dispatcher, which is the control
+PH-prompt was not. The per-prompt cost, measured in PRED-BETA4-014 part 6: 815-1120 ms as run, of which
+the token lane is 35 ms; the rest is a `pwsh` launch, the provider's parse, and the T070 git snapshot that
+this finding shows was never taken at prompt in production. **Two per-prompt provider launches now run on
+every host** (handover, then conformance). The lever is structural - a light dedicated turn-start provider,
+or concurrent provider launches in the dispatcher - and is the maintainer's call, named here for beta5.
+
+**Residual, ruled semantics**: a token-issuing session that crashes leaves a token; while another session
+is live the leftover makes every token-less declaration a named refusal (the ruled cost). When no other
+token is live, the leftover is the one live token and a token-less declaration lands under the dead
+session - orphaned, refused at the declarer's own Stop, never credited. A host whose turn-start hook did not
+run (absence) sharing a project with such a leftover hits that every turn and is never told the leftover's
+path. Nothing ages a token out, by ruling; the identity suite pins the behaviour so a change is a decision.
+
+## B4F-052 finding 1, closed as ruled
+
+Closure 1 with closure 2 as the fallback for the ambiguous case only; closure 3 (newest-wins) is gone from
+the store, asserted on the text. The hook hands the token to the agent at turn start (`[specrew-turn]`, one
+line), `declare-turn-end.ps1 -Token` writes under the session holding it, an unknown token fails closed
+naming the value, no token with exactly one live is accepted, no token with more than one is refused naming
+both sessions and the parameter, no tokens is absence. Liveness is consumption: the hook deletes its token
+at the Stop that ends the turn and keeps it across a block. Every directive that names the script carries
+`-Token`. The reviewer's two-session probe runs under all four branches, plus the stale-token shape, in
+`turn-end-session-identity.tests.ps1`; the end-to-end token-across-a-block shape on the real boundary
+fixture is `conformance-detection.tests.ps1` Case 2e. PRED-BETA4-014 holds the verdicts, including the two
+clauses that missed.

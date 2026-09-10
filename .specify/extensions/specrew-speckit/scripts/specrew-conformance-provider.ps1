@@ -838,14 +838,27 @@ try {
             }
         }
         catch { $null = $_ }
-        # THE TURN TOKEN, ISSUED HERE AND NOWHERE ELSE. This is the hook declaring, for this turn, who it
-        # is - into its OWN session directory. declare-turn-end echoes it back and the Stop below accepts
-        # only the token it wrote itself. Nothing downstream has to infer whose turn it is from shared
-        # project state, which is the inference that failed: the project-wide session marker put one
-        # session's declaration under another session's path.
+        # THE TURN TOKEN, ISSUED HERE AND NOWHERE ELSE, AND HANDED TO THE AGENT. This is the hook declaring,
+        # for this turn, who it is - into its OWN session directory - and then TELLING the agent, in one line
+        # of its turn-start output, so declare-turn-end can hand it back with -Token. The party that knows
+        # tells the party that acts; nothing downstream infers whose turn it is from shared project state.
+        # Two inferences of that kind stood here before and the independent review broke both: a
+        # project-wide session marker, then a newest-token ranking. Each credited one session for another's
+        # declaration.
+        #
+        # -ReuseUnconsumed: the Stop below CONSUMES the token when the turn actually ends, so a token still
+        # on disk at a turn start belongs to a turn that is still open - a SessionStart fired mid-turn on
+        # compaction, or a second turn-start event for the same prompt. The open turn keeps its token and the
+        # line the agent already holds stays true.
+        #
+        # ONE LINE, because this is injected into every turn on every host and a per-turn cost is paid
+        # forever. It carries the token and the script's path; the kinds are in the skill and the contract.
         try {
             if ($null -ne $turnEndPaths -and (Get-Command Write-SpecrewTurnToken -ErrorAction SilentlyContinue)) {
-                $null = Write-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId)
+                $issuedToken = [string](Write-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId) -ReuseUnconsumed)
+                if (-not [string]::IsNullOrWhiteSpace($issuedToken)) {
+                    Write-Output ("[specrew-turn] Your last action this turn: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Token {0}" -f $issuedToken)
+                }
             }
         }
         catch { $null = $_ }
@@ -943,7 +956,7 @@ try {
             else {
                 'CURRENTLY DIRTY IN THE WORKTREE ({0} user file(s)); exact per-turn attribution is unavailable.' -f [int]$sig.current_dirty_user_file_count
             }
-            Write-Output ("[specrew-conformance] {0} When you finish, run the turn-end script as your LAST action and output what it returns: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what was done>'. Running it before you stop is the contract; a stop after material work with no declaration gets force-continued." -f $activityLabel)
+            Write-Output ("[specrew-conformance] {0} When you finish, run the turn-end script as your LAST action and output what it returns: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what was done>' -Token <the token from the latest [specrew-turn] line>. Running it before you stop is the contract; a stop after material work with no declaration gets force-continued." -f $activityLabel)
         }
         catch { $null = $_ }
         return
@@ -1824,7 +1837,7 @@ try {
                 # change is WHO renders them. declare-turn-end -Kind boundary renders both from
                 # pending-verdict-stop.md, and the hook then credits the record it wrote.
                 [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last action and output what it returns, verbatim - it renders the six-section packet and the exact verdict marker from the pending-stop artifact:')
-                [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>'")
+                [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine('Do not compose the packet or the marker yourself; the script takes both from .specrew/runtime/pending-verdict-stop.md, never from the phase you intend to enter next.')
                 $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
                 $toBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingToMarkerBoundary } else { [string]$pending.WorkingBoundary }
@@ -2040,7 +2053,7 @@ try {
                     # false - this session did - and saying nothing would leave a correct session refused
                     # for a reason it cannot see.
                     [void]$sb.AppendLine('Specrew: a turn-end declaration was recorded for this turn, but it belongs to a DIFFERENT session working in this project. Two sessions are live here at once, so neither is credited with the other''s declaration.')
-                    [void]$sb.AppendLine('Nothing is wrong with your work. Run the turn-end script again as your last action and this turn will be recorded against this session:')
+                    [void]$sb.AppendLine('Nothing is wrong with your work. Run the turn-end script again as your last action, passing the token from the most recent [specrew-turn] line in THIS conversation, and this turn will be recorded against this session:')
                 }
                 else {
                     # It says CHANGES WERE OBSERVED, not that this session made them: with attribution retired, the hook
@@ -2049,7 +2062,7 @@ try {
                     # that a session which changed nothing declares -Kind conversational and is done.
                     [void]$sb.AppendLine('Specrew: changes were observed in the worktree since this turn began and no turn-end declaration was recorded for it. Run the turn-end script NOW as your last action, then stop again:')
                 }
-                [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>'")
+                [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
                 [void]$sb.AppendLine('Output whatever the script returns, verbatim. It may return nothing, and nothing is a complete answer.')
                 $w52MaterialLine = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { try { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } catch { '' } } else { '' }
@@ -2152,7 +2165,7 @@ try {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
             }
             else {
-                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary and output what it returns; it renders the packet and the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.") | Out-Null
+                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> and output what it returns; it renders the packet and the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.") | Out-Null
             }
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }
@@ -2178,7 +2191,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_token_held = (-not [string]::IsNullOrWhiteSpace($turnEndOwnToken)); dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }
@@ -2213,6 +2226,20 @@ try {
         try { $stepped = Step-SpecrewTurnCounter -StateRoot ([string]$turnEndPaths.StateRoot) } catch { $stepped = -1 }
         if ($stepped -lt 1) {
             [Console]::Error.WriteLine(("[specrew-conformance] WARN TURN_COUNTER_UNWRITABLE cannot advance the turn counter at '{0}'; this turn's declaration will keep satisfying later stops until it can be written." -f ([string]$turnEndPaths.StateRoot)))
+        }
+        # THE TOKEN IS CONSUMED HERE, and only here: the turn ended, its declaration has been judged, and
+        # "live" for the next declarer means "a token whose Stop has not yet run". A block does not reach
+        # this line, so a force-continued turn keeps its token and the re-run declaration it demands is
+        # accepted under the same one. A token that cannot be removed is said out loud for the same reason
+        # the counter is: a leftover that looks live costs every later token-less declaration a refusal.
+        if (Get-Command Remove-SpecrewTurnToken -ErrorAction SilentlyContinue) {
+            $tokenWasLive = $false
+            try { $tokenWasLive = -not [string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot))) } catch { $tokenWasLive = $false }
+            $consumed = $false
+            try { $consumed = [bool](Remove-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot)) } catch { $consumed = $false }
+            if ($tokenWasLive -and -not $consumed) {
+                [Console]::Error.WriteLine(("[specrew-conformance] WARN TURN_TOKEN_UNCONSUMED cannot remove this turn's token at '{0}'; it will look live to the next declaration in this project and cost a token-less one a refusal." -f (Get-SpecrewTurnTokenPath -StateRoot ([string]$turnEndPaths.StateRoot))))
+            }
         }
     }
 
