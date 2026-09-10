@@ -1568,3 +1568,19 @@ approval is never recovered from immutable raw history.
 2. The reviewer's retained fixture, replayed: BLOCKED.
 3. Every existing readiness case (seven) keeps its answer.
 4. Mutation - the raw ledger read restored: part 1 red, nothing else.
+
+### PRED-BETA4-031 VERDICT - held
+
+The correction-API reproduction is a case in `readiness-verdict-line` (25 green): before the correction the
+approval is current and readiness is READY (control); after `Add-SpecrewBoundaryAuthorizationCorrection`
+invalidates it for the scoped crossing - effective authority `tasks`, effective approvals 0, raw history still
+1 - readiness is BLOCKED. The reviewer's retained fixture (`beta4-corrected-01be1aa7…`) replayed: BLOCKED,
+"this iteration's cycle is authorized through 'tasks'". The seven existing cases keep their answers;
+`plan-sync-target-iteration` and `boundary-correction-ledger` green. Mutation - the raw read restored - reds
+the correction case and nothing else.
+
+**Local full sweep, informative (ran while the R1/R2 tree was being edited; `caller_contaminated=True`)**:
+3 red of 412 - `boundary-commit-discipline` (the coordinator mirror, since synced), `validate-governance-changed-only`
+(green on re-run), and `pr-review-integration`, which runs the validator on THIS repository and now meets
+`closed-iteration-edited` on the maintainer's uncommitted `specs/199…/003` edits before it reaches the soft
+warning it looks for - an environment fact of this worktree, green on every census's clean checkout.

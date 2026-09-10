@@ -3843,3 +3843,11 @@ both suites and nothing else.
 
 **Record consistency, as the review noted**: the release notes filed the clarify exemption and the `{0}`
 format as beta5's; they are fix 3 (PRED-BETA4-012) at `sync-boundary-state.ps1`; the notes now say so.
+
+**B4F-073, R2 follow-up (fixed, PRED-BETA4-031)**: the cycle loop I wrote for R2 read raw `verdict_history` -
+which keeps approvals a scoped correction invalidated, on purpose - while `last_authorized_boundary` came
+from the effective projection. The follow-up review reproduced it through the real correction API:
+effective authority `tasks`, effective approvals none, readiness READY. One line: the cycle is derived from
+`EffectiveState['verdict_history']`, the projection every other reader consumes. The reproduction is a suite
+case with its control; the raw read restored reds it. Class closure the reviewer asked for: readiness never
+recovers an invalidated approval from immutable raw history, because it never reads raw history.

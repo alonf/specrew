@@ -53,8 +53,11 @@ try {
         # from the verdicts AFTER the last closeout - the current iteration's own - never from the previous
         # iteration's closeout, which sorts after before-implement in the lifecycle list and read as
         # implementation approval for an iteration that had none.
+        # EFFECTIVE, NOT RAW (the follow-up review of d8be7878): raw verdict_history keeps every approval a
+        # scoped correction invalidated - on purpose, it is the immutable record. The projection every other
+        # reader consumes drops them. Reading raw here recovered an invalidated approval as current authority.
         $cycle = [System.Collections.Generic.List[string]]::new()
-        foreach ($entry in @($state.State['verdict_history'])) {
+        foreach ($entry in @($state.EffectiveState['verdict_history'])) {
             $map = ConvertTo-SpecrewBoundaryMap -Value $entry
             if ($null -eq $map) { continue }
             $to = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$map['to_boundary'])

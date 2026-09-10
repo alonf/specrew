@@ -85,6 +85,36 @@ try {
     $l7 = Invoke-Line -Root $r7
     Assert-True ($l7.Out -match '^Overall verdict: BLOCKED' -and $l7.Out -match "cycle is authorized through 'tasks'") 'the second cycle at tasks: BLOCKED, naming how far this cycle is authorized'
 
+    Write-Host '  --- R2 follow-up (PRED-BETA4-031): an approval invalidated by a scoped correction is not current authority ---'
+    # The reviewer's reproduction through the real correction API, in the boundary-correction-ledger fixture's
+    # shape: a historical tasks -> before-implement approval, the current scoped crossing, a scoped invalidation
+    # resulting in tasks. Effective authority: tasks; effective approvals: none. Raw history still holds the
+    # approval, and readiness must not recover it.
+    . (Join-Path $repoRoot 'scripts/internal/bootstrap/HandoverStore.ps1')
+    $r8 = Join-Path ([IO.Path]::GetTempPath()) ('rvl-corr-' + [guid]::NewGuid().ToString('N').Substring(0, 8)); $roots.Add($r8) | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $r8 '.specrew') -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $r8 'README.md'), "# Fixture`n", [Text.UTF8Encoding]::new($false))
+    $null = & git -C $r8 init -q 2>&1; $null = & git -C $r8 config user.email 'f@f' 2>&1; $null = & git -C $r8 config user.name 'f' 2>&1
+    $null = & git -C $r8 add README.md 2>&1; $null = & git -C $r8 commit -q -m 'fixture' 2>&1
+    $commit8 = ([string](& git -C $r8 rev-parse HEAD)).Trim().ToLowerInvariant()
+    $tree8 = ([string](& git -C $r8 rev-parse 'HEAD^{tree}')).Trim().ToLowerInvariant()
+    $original8 = [ordered]@{ from_boundary = 'tasks'; to_boundary = 'before-implement'; verdict_text = 'approved for before-implement'; authorizing_human = 'human@example.test'; recorded_at = '2026-09-01T10:00:00Z'; auth_commit_hash = $commit8; evidence_source = 'hook-captured-from-transcript'; kind = 'standard' }
+    $originalId8 = Get-SpecrewBoundaryAuthorizationEntryId -Entry $original8
+    $scope8 = New-SpecrewBoundaryCrossingIdentity -FromBoundary 'tasks' -ToBoundary 'before-implement' -WorkingBoundary 'before-implement' -BoundaryCommitHash $commit8 -ArtifactStateId $tree8 -RecordedAt '2026-09-02T10:00:00Z'
+    $ctx8 = [ordered]@{
+        schema = 'v2'
+        session_state = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = '001-fixture'; feature_path = $null; iteration_number = '001'; task_id = $null; auth_commit_hash = $commit8; recorded_at = '2026-09-02T10:00:00Z' }
+        boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = 'before-implement'; pending_next_boundary = $null; pending_crossing = $scope8; policy_classes = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $r8; verdict_history = @($original8); correction_history = @(); bypass_history = @() }
+    }
+    [IO.File]::WriteAllText((Join-Path $r8 '.specrew/start-context.json'), (($ctx8 | ConvertTo-Json -Depth 24) + "`n"), [Text.UTF8Encoding]::new($false))
+    Assert-True ((Invoke-Line -Root $r8).Out -match '^Overall verdict: READY') '(control) before the correction the approval is current and readiness is READY'
+    $written8 = Add-SpecrewBoundaryAuthorizationCorrection -ProjectRoot $r8 -OriginalEntryId $originalId8 -ScopeFromBoundary 'tasks' -ScopeToBoundary 'before-implement' -WorkingBoundary 'before-implement' -ScopeBoundaryCommitHash $commit8 -ScopeArtifactStateId $tree8 -ResultingLastAuthorizedBoundary 'tasks' -CorrectingAuthority 'human@example.test' -AuthorityVerdictText 'approved for tasks' -AuthorityAuthCommitHash $commit8 -Reason 'The approval was for a different scoped crossing and is invalidated for this one.' -RecordedAt '2026-09-02T10:05:00Z'
+    Assert-True ([bool]$written8.Appended) 'the scoped invalidation is recorded through the real correction API'
+    $eff8 = Get-SpecrewBoundaryEnforcementState -ProjectRoot $r8
+    Assert-True ([string]$eff8.EffectiveState['last_authorized_boundary'] -eq 'tasks' -and @($eff8.EffectiveState['verdict_history']).Count -eq 0 -and @($eff8.State['verdict_history']).Count -eq 1) 'effective authority is tasks with no effective approvals, while raw history still holds the one'
+    $l8 = Invoke-Line -Root $r8
+    Assert-True ($l8.Out -match '^Overall verdict: BLOCKED') ('after the correction readiness is BLOCKED - the invalidated approval is not recovered from raw history (got: ' + $l8.Out.Substring(0, [Math]::Min(90, $l8.Out.Length)) + ')')
+
     Write-Host '  --- the surfaces that carry the line ---'
     foreach ($rel in @('extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md', '.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md')) {
         $cmd = Get-Content -LiteralPath (Join-Path $repoRoot $rel) -Raw -Encoding UTF8
