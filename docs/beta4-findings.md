@@ -2932,7 +2932,12 @@ and order by a number that cannot be coerced into something else.
 
 ---
 
-## B4F-050 - THE SECOND PASS, ITS SEVEN FINDINGS, AND A DISPUTED REVIEWER IDENTITY
+## B4F-051 - THE SECOND PASS, ITS SEVEN FINDINGS, AND A DISPUTED REVIEWER IDENTITY
+
+**Numbering note**: commit `b8936d67` cites this entry as B4F-050. It was renumbered when the maintainer
+assigned B4F-050 to the work-kind finding below. This is the SECOND such collision (B4F-047/048 was the
+first), and the cause is that two parties allocate from one sequence. A fix is proposed at the end of
+B4F-050 rather than left to happen a third time.
 
 **The scoped second pass completed** where the first did not: `candidate-result.json` written (14,449
 bytes), verdict `findings`, areas `b`/`d`/`e` exactly as scoped, 20 paths examined, **7 findings, every one
@@ -2972,3 +2977,66 @@ claims, none verified against the serving side, and a release note that leans on
 **None is a record-and-defer and none is disputable**: each names a concrete failure with the code that
 proves it. The order of repair is the maintainer's: **the two retirements first**, because a converted test
 proves nothing about a contract that can be skipped.
+
+---
+
+## B4F-050 - `bug-bash` IS A MARKDOWN CHECKLIST: the contract has no enforcement behind it
+
+**BETA5, above the per-feature work-kind item and entangled with it.** The maintainer's finding, verified at
+source and found to be stronger than stated.
+
+### THE MEASUREMENT
+
+`bug-bash` appears in **exactly one product script** - `work-kind-validator.ps1` (and its `.specify/`
+mirror). **Zero** occurrences in `validate-governance.ps1`, `sync-boundary-state.ps1`,
+`shared-governance.ps1` and `create-governed-feature.ps1`.
+
+**And the one place it does appear enforces nothing.** The validator's own header:
+
+> *"Defaults to ADVISORY (warns, never blocks). **Fail-open everywhere**: malformed/missing input degrades
+> to a WARN, never a crash or a spurious block."*
+
+Its single `bug-bash` branch (line 171) groups the kind **with** `software-feature` rather than giving it
+distinct behaviour, inside a check its own comment calls *best-effort, fail-open*. So the strongest
+statement is not that enforcement is thin - it is that **there is none, in a component that never blocks
+even when it fires**.
+
+**The contract is therefore a markdown checklist, and every gate is built for `software-feature`.**
+
+### THE CONSEQUENCES, ALL OBSERVED IN THIS ARC
+
+| consequence | where it was seen |
+| --- | --- |
+| its five evidence items have **no checker** | this finding |
+| feature creation scaffolds an intake controller the work kind never resolves, which then asserts an open workshop on **every Stop** | B4F-025 |
+| review is named a **required stage** and is unreachable, because campaigns key to an iteration bug-bash never creates | B4F-030, B4F-047 |
+| the declaration is **project-scoped**, so it cannot describe one feature without making the project false | B4F-006, B4F-020 |
+
+**The conclusion, in the maintainer's words**: *choosing `bug-bash` today is opting OUT of enforcement, not
+into a different enforcement, and nothing can tell a disciplined bug-bash from none.* That last clause is
+the vacuous-control test applied to a whole work kind - which puts this finding in the same family as
+B4F-047 rather than beside it.
+
+### THE CANDIDATE RESOLUTION - cheaper than a parallel enforcement path
+
+**The iteration is a CONTAINER, not a ceremony.** Campaigns key to it, the validator scopes to it, closeout
+seals it, the clarify sync needs it. Bug-bash dropped the *plan ritual* and, with it, the *artifact* the
+machinery is keyed to - and those are two different things that were discarded together.
+
+**So: let `bug-bash` scaffold a minimal iteration with no plan ceremony.** One artifact, no ritual, and
+every existing gate keeps working because the thing it keys to exists.
+
+**This requires B4F-044 fixed first**: scaffolding currently advances boundary state while consulting no
+authorization at all, so making the scaffold do more before that is fixed would widen a control that does
+not check anything.
+
+**Evaluate against the alternative before choosing**: teaching every gate a second vocabulary. That is the
+larger change, it multiplies the number of places a work kind can be misread, and each new gate would then
+have to learn two contracts instead of one.
+
+### A NUMBERING FIX, because this has now collided twice
+
+B4F-047/048 and B4F-050/051 both collided, because two parties allocate from one sequence. **Proposal: the
+maintainer's findings take the next free number and mine take `B4F-Cnnn`** (crew), so the two streams cannot
+overlap and no commit citation goes stale again. Adopted only on the maintainer's word - until then I will
+ask before allocating.

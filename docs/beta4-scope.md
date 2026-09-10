@@ -112,3 +112,11 @@ needs `software-feature` again if it carries features rather than defects.
 first.** This is why DRIFT-199-I003-097 narrowed from "systematic across the delivery path" to "one
 boundary" instead of staying vague. It cost one commit. Applies immediately to the question-registration
 test at beta4's first technical lens.
+
+## Why beta4 ran bug-bash conduct under the software-feature contract
+
+**Recorded at the maintainer's direction.** Running bug-bash *conduct* under the `software-feature`
+*contract*, with the deviation recorded rather than hidden, **was correct** - because `software-feature` was
+the only contract with enforcement behind it. `bug-bash` names five evidence items that no checker reads,
+and its one appearance in a product script sits inside a validator that never blocks (B4F-050). Declaring
+the kind that matched the work would have bought a truer label and lost every gate.
