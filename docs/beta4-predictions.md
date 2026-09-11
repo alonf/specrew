@@ -1626,3 +1626,39 @@ consumer's feature contracts); the applicability lives in `quality-evidence.md`'
 7. The audit's own `empty-source` fixture, replayed on the fixed script: exit 0, not-applicable rows.
 8. Mutation: `[AllowEmptyCollection()]` removed from the source-files parameter - parts 3, 6 and 7 go red
    with the audit's exact error; parts 1, 2, 5 stay green.
+
+## PRED-BETA4-034 - the five "Preserving user-edited file" warnings on a fresh project. Stated before the code.
+
+**Read from the code, not from the warning**: `specrew init` runs `deploy-squad-runtime.ps1`, which writes
+`.squad/agents/<role>/charter.md` as the shipped charter template plus a MANAGED BLOCK of directives
+(`<!-- >>> specrew-managed directives >>> -->`) - 5744 characters for the planner on the audit's project -
+and writes no sidecar. `specrew start` then runs `Install-CopilotCrewRuntime`, which decides ownership with
+`Test-SpecrewManagedFile`: a `.specrew-managed` sidecar, or a comment header whose text begins
+`Specrew-managed` at the comment opener. Init's block marker has `>>>` between the opener and the word, so it
+does not match; no sidecar was written; the file is called user-edited, five times, on every start. The
+step that omits the ownership marker is init's charter write. And the two steps do not agree on CONTENT
+either: the handler's canonical translation of `.specrew/team/agents/planner.md` is 3971 characters with
+no directives block - so marking init's file as managed by the sidecar alone would make the first start
+REPLACE the directive-bearing charter with a shorter one.
+
+**The fix, one ownership convention**: the sidecar records the SHA-256 of the content Specrew wrote.
+`Test-SpecrewManagedFile` treats a sidecar whose hash matches the file as Specrew's; a mismatch is a genuine
+user edit and is reported as such - never relabeled; a legacy sidecar without a hash keeps today's meaning.
+Init writes the sidecar beside every charter it composes. The Copilot handler keeps a charter that carries
+init's directives block and matches its sidecar (Specrew's composition, current) without rewriting it;
+a charter without the block is synced from canonical as today.
+
+### THE PREDICTION
+
+1. Init followed by two starts on a fresh project, through the real `specrew-init.ps1` and
+   `specrew-start.ps1 -NoLaunch`: zero "Preserving user-edited file" warnings; the five charters are
+   byte-identical after both starts to what init wrote; five sidecars exist with matching hashes.
+2. A real edit to one charter after init: the next start preserves it, reports it once, accurately, and
+   touches no other charter.
+3. The audit's own project (`C:/Dev/walks/beta4-stage-audit-20260911-01/project`, charters as init left them):
+   `Test-SpecrewManagedFile` on each charter after the fix reads managed... no - it reads NOT managed, because
+   the fix cannot retroactively vouch for files whose sidecar was never written; the field remedy for a
+   project initialized on beta3/beta4-candidate is the warning's own instruction, once. Stated so the
+   prediction is not read as a promise about existing projects.
+4. Mutation: the sidecar write removed from init - part 1 red (five warnings), parts 2 and the existing
+   host-handler suites unchanged.
