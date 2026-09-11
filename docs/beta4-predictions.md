@@ -2009,3 +2009,13 @@ canonical crew there. The rewrite-once consequence applies to projects initializ
 Part 4: Specrew CI on `a6c33c8a` and `9154f72b` - Lint green, Deterministic gate green (131/131), Contract
 lane red on B4F-081, then on B4F-082 (`0faab8a0`); both tests-only, fixed on the branch after the freeze
 (`d1eb2dd6`), the lane's remaining checks green locally; the run on `d1eb2dd6` is the runner's word.
+
+### PRED-BETA4-040 VERDICT - held on the third push: all four Specrew CI jobs green on this branch for the first time
+
+Run `34596760154` on `d1eb2dd6`: Self-leak firewall, Lint, Deterministic gate (131 suites), Contract lane
+(seven checks and the non-interactive first-run regression) - all green. The lane took two stops to get
+there, both of the class part 2 reserved for "its own finding": a suite pinning the rule 28 the product
+replaced on 2026-08-23 (B4F-081) and a live-review test written before the round-approval gate (B4F-082) -
+tests only, the product right both times. Since the branch's first push on 2026-09-09 no run of this
+workflow had passed Lint; none had executed the gate or the lane. The release census (`9154f72b`, PRED-041)
+and the full CI (`d1eb2dd6`, tests and records after it) now both stand green on this branch.
