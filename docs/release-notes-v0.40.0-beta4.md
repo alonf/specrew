@@ -164,6 +164,27 @@ carries no `{0}`. The workaround of passing `-IterationNumber 001` is no longer 
 these notes filed both as beta5; the independent review of `ebb7597f` caught the label - they shipped in
 beta4 at `sync-boundary-state.ps1`.)
 
+## Fixed: the crew charter fix's two missing halves, and what was under them
+
+The audit's recheck of the installed candidate found two things the charter fix above had left undone:
+
+**A change to a canonical charter never reached the crew.** Edit `.specrew/team/agents/<role>.md` and start:
+the runtime charter (`.squad/agents/<role>/charter.md`) was kept as it was, silently. Now a charter Specrew
+wrote is compared with its canonical on every start and rewritten when the canonical changed - its directives
+block kept, its ownership marker re-stamped - and left alone when it is current. Under this sat an older
+defect: on a fresh Copilot project the runtime charters were the squad CLI's own bodies with Specrew's
+directives appended, never the canonical charters at all. Init now writes the canonical base. **On the first
+start of this build, a project initialized on an earlier candidate has its untouched charters rewritten to
+the canonical composition, once** - "Crew runtime synced: 5 agent file(s) written" - and is silent after
+that. A charter you edited is not rewritten.
+
+**The preservation notice recommended a recovery that brought the notice back.** "Delete the sidecar to keep
+it without this notice" left the file unmarked, and the next start reported it again, recommending the
+deletion of a file that was gone. The notice now says the charter stays as you wrote it and names two
+remedies that each end it: `specrew team own <role>` keeps the charter as yours, persistently (a marker in
+its owned form; nothing is deleted); `specrew team resync <role>` returns it to the canonical charter, block
+kept. Both take `--project-path`, which - found on the way - had never bound for any `specrew team` verb.
+
 ## Fixed: three things a stage-demo audit of the installed beta found
 
 An audit of the installed candidate, run as a stage-demo readiness review, is authoritative for this

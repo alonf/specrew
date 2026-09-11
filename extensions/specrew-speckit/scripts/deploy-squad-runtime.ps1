@@ -1098,11 +1098,22 @@ foreach ($baselineRole in $baselineRoles) {
         }
         $charterUntouched = (-not [string]::IsNullOrWhiteSpace($priorHash) -and $priorHash -ceq ((Get-FileHash -LiteralPath $charterPath -Algorithm SHA256).Hash).ToLowerInvariant())
     }
+    if ($ClaimCharterOwnership -and $charterExisted -and -not $DryRun) {
+        # PRED-BETA4-036: THE BASE IS THE CANONICAL CHARTER, NOT WHAT `squad init` WROTE. A .squad this run
+        # created holds `squad init`'s own charter bodies (or the fallback scaffold's one-line placeholders) -
+        # never Specrew's canonical `.specrew/team/agents/<role>.md`, which is seeded from this same template.
+        # Left in place, the canonical planner (its boundary-commit cadence, its implementation-rules
+        # conversion) never reached a fresh Copilot project's runtime: before beta4 the start-time handler
+        # preserved the unmarked file; after PRED-BETA4-034 it kept the marked composition. The composition
+        # written here is the shared writer's shape (canonical, blank line, directives block), so the first
+        # start reads it as current and rewrites nothing.
+        [System.IO.File]::WriteAllText($charterPath, $charterTemplate, [System.Text.UTF8Encoding]::new($false))
+    }
     Set-ManagedBlock -TargetPath $charterPath -BlockName 'directives' -ManagedContent $directiveContent -BaseContentIfMissing $charterTemplate -Actions $actions
     if (-not $DryRun -and (Test-Path -LiteralPath $charterPath -PathType Leaf) -and (-not $charterExisted -or $charterUntouched -or $ClaimCharterOwnership)) {
         # The SAME sidecar text hosts/_team-canonical.ps1's Write-SpecrewManagedSidecar writes (asserted by test).
         $charterHash = ((Get-FileHash -LiteralPath $charterPath -Algorithm SHA256).Hash).ToLowerInvariant()
-        [System.IO.File]::WriteAllText(("{0}.specrew-managed" -f $charterPath), ("Generated from .specrew/team/agents/. Delete this file to retain a user-customized $charterPath on next specrew start.`nsha256: {0}`n" -f $charterHash), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText(("{0}.specrew-managed" -f $charterPath), ("Specrew wrote $charterPath from .specrew/team/agents/ and keeps it in sync while it hashes to the value below; an edit is preserved and reported (specrew team own $($baselineRole.AgentDirectory) keeps it yours, specrew team resync $($baselineRole.AgentDirectory) returns it to canonical).`nsha256: {0}`n" -f $charterHash), [System.Text.UTF8Encoding]::new($false))
     }
 
     # Create history.md for each baseline role

@@ -158,6 +158,12 @@ function Test-SpecrewManagedFile {
     }
     $sidecarPath = "{0}.specrew-managed" -f $Path
     if (Test-Path -LiteralPath $sidecarPath -PathType Leaf) {
+        # THE USER'S BY DISPOSITION (PRED-BETA4-036): a sidecar in its owned form (`owner: user`, written by
+        # `specrew team own <role>`) says the file is the user's - never overwritten, never reported. The
+        # decision is persisted here because a deleted marker cannot distinguish an opt-out from missing
+        # metadata (the auditor's sentence): "delete the sidecar to keep it without this notice" brought the
+        # notice straight back as "no Specrew-managed marker".
+        if (Test-SpecrewUserOwnedSidecar -SidecarPath $sidecarPath) { return $false }
         # OWNERSHIP IS "SPECREW WROTE THIS EXACT CONTENT" (PRED-BETA4-034). A sidecar that records the SHA-256 of
         # what was written vouches for the file only while the file still hashes to it; a mismatch is a genuine
         # user edit and is reported as one, never relabeled. A legacy sidecar with no hash keeps its old meaning.
@@ -195,8 +201,54 @@ function Get-SpecrewManagedContentHash {
 function Get-SpecrewManagedSidecarContent {
     # ONE FORMAT: the sentence, then `sha256: <hex>` of the file as it stands. deploy-squad-runtime.ps1 writes
     # this same text at init (it cannot dot-source this module); a test asserts the two agree byte for byte.
+    # The sentence names the two remedies that CLEAR the notice (PRED-BETA4-036); it no longer says "delete
+    # this file", which only brought the notice back as "no Specrew-managed marker".
     param([Parameter(Mandatory = $true)][string]$Path)
-    return ("Generated from .specrew/team/agents/. Delete this file to retain a user-customized $Path on next specrew start.`nsha256: {0}`n" -f (Get-SpecrewManagedContentHash -Path $Path))
+    $role = Get-SpecrewCharterRoleFromPath -Path $Path
+    return ("Specrew wrote $Path from .specrew/team/agents/ and keeps it in sync while it hashes to the value below; an edit is preserved and reported (specrew team own $role keeps it yours, specrew team resync $role returns it to canonical).`nsha256: {0}`n" -f (Get-SpecrewManagedContentHash -Path $Path))
+}
+
+function Get-SpecrewCharterRoleFromPath {
+    # `.squad/agents/<role>/charter.md` -> `<role>`; the name the `specrew team` remedies take.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $parent = Split-Path -Parent $Path
+    if ([string]::IsNullOrWhiteSpace($parent)) { return '<role>' }
+    $leaf = Split-Path -Leaf $parent
+    if ([string]::IsNullOrWhiteSpace($leaf)) { return '<role>' }
+    return $leaf
+}
+
+function Get-SpecrewUserOwnedSidecarContent {
+    # THE OWNED FORM (PRED-BETA4-036): the persisted disposition `specrew team own <role>` writes. The file
+    # beside it is the user's: preserved as written, never rewritten from canonical, never reported.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $role = Get-SpecrewCharterRoleFromPath -Path $Path
+    return ("This charter is yours: $Path is preserved as you wrote it; specrew start neither rewrites nor reports it (specrew team resync $role returns it to Specrew's canonical charter).`nowner: user`n")
+}
+
+function Write-SpecrewUserOwnedSidecar {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $marker = "{0}.specrew-managed" -f $Path
+    [System.IO.File]::WriteAllText($marker, (Get-SpecrewUserOwnedSidecarContent -Path $Path), [System.Text.UTF8Encoding]::new($false))
+}
+
+function Test-SpecrewUserOwnedSidecar {
+    param([Parameter(Mandatory = $true)][string]$SidecarPath)
+    try {
+        foreach ($line in @(Get-Content -LiteralPath $SidecarPath -Encoding UTF8 -ErrorAction Stop)) {
+            if ($line -match '^\s*owner:\s*user\s*$') { return $true }
+        }
+    }
+    catch { $null = $_ }
+    return $false
+}
+
+function Test-SpecrewUserOwnedFile {
+    # True when the file beside `<Path>.specrew-managed` carries the owned disposition.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $sidecarPath = "{0}.specrew-managed" -f $Path
+    if (-not (Test-Path -LiteralPath $sidecarPath -PathType Leaf)) { return $false }
+    return (Test-SpecrewUserOwnedSidecar -SidecarPath $sidecarPath)
 }
 
 function Get-SpecrewManagedSidecarHash {
@@ -217,6 +269,74 @@ function Test-SpecrewManagedDirectivesBlock {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
     $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
     return (-not [string]::IsNullOrEmpty($content) -and $content -match '<!-- >>> specrew-managed directives >>> -->')
+}
+
+$script:SpecrewDirectivesBlockPattern = '(?s)<!-- >>> specrew-managed directives >>> -->.*?<!-- <<< specrew-managed directives <<< -->'
+
+function Get-SpecrewManagedDirectivesBlockText {
+    # The directives block as it stands in the file, opener through closer, or $null when the charter has
+    # none. The shared writer carries it across a rewrite from canonical so a canonical change never drops it.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrEmpty($content)) { return $null }
+    $m = [regex]::Match($content, $script:SpecrewDirectivesBlockPattern)
+    if (-not $m.Success) { return $null }
+    return $m.Value
+}
+
+function Get-SpecrewCharterCanonicalPart {
+    # The charter's text before its directives block (the whole text when it has none), trailing whitespace
+    # trimmed - the part that must equal the canonical charter for the file to count as current.
+    param([AllowEmptyString()][string]$Content)
+    if ([string]::IsNullOrEmpty($Content)) { return '' }
+    $index = $Content.IndexOf('<!-- >>> specrew-managed directives >>> -->', [System.StringComparison]::Ordinal)
+    $part = if ($index -ge 0) { $Content.Substring(0, $index) } else { $Content }
+    return $part.TrimEnd()
+}
+
+function Test-SpecrewCharterCurrent {
+    # PRED-BETA4-036 (the auditor's finding A): a matching output hash proves the user did not edit the file;
+    # it does not prove its canonical input is current. Current means the text before the block equals the
+    # canonical charter (line endings and trailing whitespace aside). Missing file: not current.
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$CanonicalContent
+    )
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    $have = (Get-SpecrewCharterCanonicalPart -Content $content) -replace "`r`n", "`n"
+    $want = ($CanonicalContent.TrimEnd()) -replace "`r`n", "`n"
+    return ($have -ceq $want)
+}
+
+function Write-SpecrewCharterFromCanonical {
+    <#
+    .SYNOPSIS
+    THE ONE SHARED WRITER (PRED-BETA4-036): the canonical charter, then the charter's existing directives block
+    when it has one, then the managed sidecar re-stamped with the hash of what was written.
+    .DESCRIPTION
+    The composition is byte for byte the shape init's Set-ManagedBlock creates (base, blank line, block, newline),
+    so a charter written here reads as current on the next start and init's deploy step reads it as untouched.
+    Used by Install-CopilotCrewRuntime (create and canonical-changed update) and by `specrew team resync`.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$CanonicalContent,
+        [AllowNull()][AllowEmptyString()][string]$DirectivesBlock = $null
+    )
+    $composed = if ([string]::IsNullOrWhiteSpace($DirectivesBlock)) {
+        $CanonicalContent
+    }
+    else {
+        $CanonicalContent.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $DirectivesBlock.Trim() + [Environment]::NewLine
+    }
+    $parent = Split-Path -Parent $Path
+    if (-not [string]::IsNullOrWhiteSpace($parent) -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    [System.IO.File]::WriteAllText($Path, $composed, [System.Text.UTF8Encoding]::new($false))
+    Write-SpecrewManagedSidecar -Path $Path
 }
 
 function Get-SpecrewHostAgentRoot {

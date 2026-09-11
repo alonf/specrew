@@ -1744,3 +1744,73 @@ user-profile skills under every host dir). That update is the turn-end contract'
 sessions run the deployed providers with the token handshake, the judgment beside the counter and the
 scoped review advisory. The update's own output carried the pre-existing consumer-assumption warnings
 (squad and speckit templates naming GitHub/PowerShell/Node without applicability markers) - not beta4's.
+
+## PRED-BETA4-036 - the charter fix's two missing halves (the auditor's recheck of the installed 4a7585d8). Stated before the code.
+
+**Read from the code.** `Install-CopilotCrewRuntime` (`hosts/copilot/handlers.ps1`) has three branches for an
+existing charter: not Specrew's (sidecar hash mismatch, or no marker) - preserved with a notice; Specrew's and
+carrying init's directives block - `preserved-managed`, never compared with canonical; Specrew's without the
+block - rewritten from canonical every start. The second branch is finding A: a matching output hash proves
+the user did not edit the file, and nothing else - the canonical `.specrew/team/agents/<role>.md` is never
+read against it, so a changed canonical never reaches the runtime. Finding B is the notice's remedy: "delete
+the sidecar to keep it without this notice" - with no sidecar the same test reads "no Specrew-managed
+marker" and the notice returns, now recommending the deletion of a file that is gone. Both are B4F-017's
+family (a remedy that does not clear, or destroys, the condition it names), in a fix written against that
+family.
+
+**The fix.** One shared writer, `Write-SpecrewCharterFromCanonical` (`hosts/_team-canonical.ps1`): the
+canonical charter, then the charter's existing directives block if it has one (init's composition,
+byte-for-byte the shape `Set-ManagedBlock` creates), then the managed sidecar re-stamped with the new hash.
+The handler decides per charter: the user's (an `owner: user` sidecar) - kept silently; edited (hash
+mismatch) or unmarked - kept and reported, with two remedies that each clear the condition; Specrew's and
+current (the text before the block equals canonical) - kept silently, no rewrite; Specrew's and stale -
+rewritten through the shared writer (`updated`). A persisted user-owned disposition replaces the deletion
+advice: `specrew team own <role>` writes the sidecar in its owned form (`owner: user`), `specrew team
+resync <role>` returns the charter to canonical through the same writer. Deleting a marker cannot
+distinguish an opt-out from missing metadata (the auditor's sentence), so no remedy says delete.
+
+### THE PREDICTION
+
+1. Init, change the canonical charter for a role, start (`-NoLaunch`, copilot): the runtime charter carries
+   the new text AND still carries the directives block; its sidecar hashes to the new file; the handler
+   reports `updated` for that role and no notice; the four other charters are untouched, byte for byte.
+   A second start after that: no rewrite, no notice.
+2. Edit a charter, change its canonical, start: the edit is preserved byte for byte, reported once,
+   accurately (`edited since Specrew wrote it`), and the notice names both remedies. A further start
+   without acting: the same one notice again (it is not silenced by being shown).
+3. Follow the notice's own first remedy, `specrew team own <role>`, then start twice: zero notices, the edit
+   preserved. Follow the second remedy, `specrew team resync <role>`, then start twice: the charter carries
+   the canonical text, the block survives, zero notices, no rewrite on the second start.
+4. The auditor's exact three-step probe (`charter-4a7585d8.ps1`, through the handler alone): case 1
+   `applied:true` with an `updated` action; case 2 one notice; the third step is the OLD advice - deleting
+   the sidecar - and the notice returns there by design (the file is then unmarked); the notice it returns
+   with no longer recommends that deletion, and following its remedy instead clears it (part 3).
+5. Existing suites unchanged: `crew-charter-ownership` (zero warnings after init and two starts; charters
+   byte-identical - the current-check reads init's composition as current), the host-registry suite, the
+   two sidecar writers still agree byte for byte.
+6. Mutation, recorded not switched: the current-check removed (every managed charter treated as current)
+   reds part 1 with `applied:false` - the auditor's own reproduction; the owned disposition ignored by the
+   handler reds part 3 with the notice returning after `own`.
+
+### PRED-BETA4-036 VERDICT - held, with one thing found underneath: the base was never canonical
+
+Parts 1-3 held through the real init, ten real starts and the real `specrew team` verbs (45 green, 61 s):
+the canonical change reached the untouched runtime charter with its block after it and its sidecar
+re-stamped, one file synced, the other three byte-identical, the next start silent; the edited charter with
+a changed canonical stayed byte for byte and was reported once, accurately, with both remedies named and no
+deletion; `own` then two starts - zero notices, edit intact, `owner: user` persisted; `resync` - canonical
+text (including the change made while the file was the user's), edit gone, block kept, two silent starts
+with no rewrite. Part 4 held: the auditor's probe on the fix reads `applied:true` with `updated`, one notice
+in case 2, and in case 3 the unmarked notice whose remedy - `own planner`, through `specrew.ps1` with
+`--project-path` - clears it. Part 5 held: the fourteen adjacent suites green, the two writers still agree.
+Part 6 held: the current-check removed reds 2 (the canonical-change assertions), the disposition ignored
+reds 2 (the notice returning after `own`).
+
+**What the statement did not know**: the FIRST run of the suite on the fix redded the PRED-034 assertion
+"five charters byte-identical to what init wrote" - the current-check read init's composition as stale,
+because init's base was `squad init`'s own charter body (1372 characters for the planner), not the canonical
+(3970). The canonical never reached a fresh Copilot project at all (B4F-078). Init now writes the canonical
+base for a `.squad` it created; a third mutation (that write removed) reds the four byte-identical
+assertions - the first start then repairs it. Field consequence: projects initialized on `4a7585d8` or
+earlier get their five untouched charters rewritten to the canonical composition on the first start of this
+build, once. `--project-path` never bound for any `specrew team` verb; it binds now (B4F-077).

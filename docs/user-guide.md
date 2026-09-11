@@ -749,6 +749,11 @@ specrew team update security-analyst `
 
 # Remove a domain-specific member (baseline roles cannot be removed)
 specrew team remove security-analyst
+
+# A crew charter you edited by hand (.squad/agents/<role>/charter.md) is preserved and reported at
+# `specrew start`. Either keep it as yours (the notice ends) or return it to the canonical charter:
+specrew team own reviewer
+specrew team resync reviewer
 ```
 
 Replace `C:\Dev\Specrew` with the actual path where you cloned the Specrew repository.

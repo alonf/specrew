@@ -3927,3 +3927,97 @@ implement approval, a working app, one review-with-finding / fix / sign-off cycl
 feature - elapsed time and unexpected repair prompts counted; zero manual ledger edits, zero fake approvals,
 zero severity loss behind a green result, zero repeated acceptance caused by sign-off records alone. From
 the desktop, Friday.
+
+## B4F-076 - A CANONICAL CHARTER CHANGE NEVER REACHED AN UNTOUCHED RUNTIME CHARTER (B4F-017's family; fixed in beta4)
+
+**The auditor's recheck of the installed `4a7585d8`, finding A (P2).** After init, change the canonical
+reviewer charter in `.specrew/team/agents/reviewer.md`, then synchronize the Copilot crew runtime: the
+untouched host charter, carrying init's directives block and matching its sidecar, was returned as
+`preserved-managed` every time - `applied:false`, `notices:[]` through the real installed handler. The
+canonical was never read against it. The crew ran on the old instructions with no warning.
+
+**Why the fix had this half missing**: PRED-BETA4-034 made the sidecar vouch that Specrew wrote the file
+(its SHA-256), and the handler then KEPT a block-bearing charter that hashed to its sidecar. A matching output
+hash proves the user did not edit the file; it does not prove its canonical input is current (the auditor's
+sentence). The fix conflated the two.
+
+**What was found underneath it (B4F-078)**: the base of init's composition was never the canonical charter.
+`squad init` writes its OWN charter bodies (the squad CLI's planner is 1372 characters; Specrew's canonical
+planner is 3970 - the boundary-commit cadence, the implementation-rules conversion, the stop-and-handoff
+packet format are all in the canonical only), and init's deploy step only APPENDED the directives block to
+what `squad init` wrote; the fallback scaffold's base was a one-line `# Planner`. Then the handler preserved
+that file: before beta4 because it was unmarked, after PRED-034 because it was marked. So the canonical
+planner charter never reached a fresh Copilot project's runtime at all - not a stale input, an input never
+applied. `Initialize-SpecrewTeam` seeds the canonical from the same shipped template init's deploy step
+holds, so the composition init writes now starts from that template (`-ClaimCharterOwnership`, a `.squad`
+this run created, nobody's edits), and the first start reads it as current.
+
+**The fix (PRED-BETA4-036).** One shared writer, `Write-SpecrewCharterFromCanonical`: the canonical charter,
+a blank line, the charter's existing directives block when it has one, a newline - the shape init's
+`Set-ManagedBlock` creates - then the managed sidecar re-stamped with the hash of what was written. The
+handler decides per charter, in order: the user's by disposition (`owner: user` sidecar) - kept silently;
+not Specrew's (hash mismatch, or no marker) - kept and reported with two remedies; Specrew's and CURRENT
+(`Test-SpecrewCharterCurrent`: the text before the block equals the canonical, line endings and trailing
+whitespace aside) - kept silently, no rewrite; Specrew's and stale - rewritten through the writer, action
+`updated`, counted in start's "Crew runtime synced" line. A charter without a block is no longer rewritten
+on every start either; it is compared. `specrew team resync <role>` runs the same writer by hand.
+
+**Field consequence, stated before the walk**: a project initialized on `4a7585d8` or earlier (the audit's
+`project/`, the router-skill project) carries `squad init`'s bodies under valid sidecars; the FIRST start on
+this build rewrites those five to the canonical composition and re-stamps them - "Crew runtime synced: 5
+agent file(s) written" once, then silence. A charter the user edited there is not rewritten; it is reported
+with the remedies below.
+
+Test: `tests/integration/crew-charter-ownership.tests.ps1`, the maintainer's acceptance verbatim through
+the REAL init, the REAL start and the REAL `specrew team` verbs (45): change the canonical, start - the runtime
+charter carries the new text, the block after it, the sidecar re-stamped, one file synced, the three untouched
+charters byte-identical to init's, the next start rewrites nothing; edit a charter, change its canonical,
+start - the edit preserved byte for byte, reported once and accurately. Mutation: the current-check removed
+reds exactly the canonical-change assertions (2) - the auditor's `applied:false`; init's canonical base
+removed reds the four byte-identical assertions (the first start then rewrites all five). The auditor's own
+probe replayed on the fix: case 1 `applied:true` with an `updated` action.
+
+## B4F-077 - THE NOTICE'S REMEDY REPRODUCED THE NOTICE (B4F-017's family; fixed in beta4)
+
+**The auditor's recheck, finding B (P2).** The preservation notice said: "delete the sidecar
+'<path>.specrew-managed' to keep it without this notice". Delete it, start again: "Preserving user-edited
+file ... (no Specrew-managed marker; ... delete the sidecar ...)" - the same notice, now recommending the
+deletion of a file that no longer exists. The edit was intact; the promise was false. **Deleting a marker
+cannot distinguish an intentional opt-out from missing metadata** (the auditor), so no marker-deletion could
+ever have kept that promise. This is B4F-017's family exactly: a message naming a remedy that does not clear
+- there, destroys - the condition it reports; and it was written in a fix (PRED-034) whose finding record
+cites that family by number.
+
+**The fix (PRED-BETA4-036).** The notice says what is true and names two remedies, each persisted, each
+clearing the condition: *"Preserving your charter '<path>' (edited since Specrew wrote it | no
+Specrew-managed marker). It stays as you wrote it. To keep it as yours and end this notice: `specrew team own
+<role>`. To return it to the canonical charter (.specrew/team/agents/<role>.md; your edit is discarded):
+`specrew team resync <role>`."* `own` writes the sidecar in its OWNED form (`owner: user`): the handler keeps
+the charter silently from then on and `Test-SpecrewManagedFile` reads it as not Specrew's to overwrite;
+`resync` returns it to canonical through the shared writer (the directives block survives) and stamps the
+managed form. Both verbs take `--project-path`, which - found on the way - never bound for ANY `specrew team`
+verb (`A parameter cannot be found that matches parameter name '-project-path'`): PowerShell binds
+`--project-path` as a parameter NAMED `-project-path`, and the script's Unix-flag re-invoke handled only
+`--role`/`--charter` (which bind on their own by prefix). One `[Alias('project-path')]` on the parameter.
+The sidecar's own sentence no longer says "delete this file" either; it names the two verbs. The other four
+hosts' handlers say only "delete the file to re-sync from canonical" - a remedy that does clear their
+condition - and offer no keep-and-own path; the owned disposition is shared and available to them (beta5).
+
+Test (same suite): follow the notice's own first instruction - `specrew team own reviewer` - then start
+twice: zero notices, the edit preserved byte for byte, the sidecar reads `owner: user`; follow the second -
+`specrew team resync reviewer` - the charter carries the canonical text including a change made while it
+was the user's, the edit is gone as the notice said, the block survived, two starts silent with no rewrite;
+the old advice replayed (sidecar deleted) yields the unmarked notice once, without the deletion advice, and
+`specrew team own planner --project-path <root>` through `specrew.ps1` clears it. Mutation: the owned
+disposition ignored by the handler reds exactly the two "does not return" assertions (the notice back after
+`own`). The auditor's probe step 3 (the old advice) still shows a notice - by design, the file is unmarked -
+and that notice's remedy clears it, which the old one could not.
+
+## B4F-078 - THE CANONICAL PLANNER NEVER REACHED A FRESH COPILOT PROJECT (found under B4F-076; fixed in beta4)
+
+Recorded separately because it predates both charter fixes: on every fresh Copilot project, `squad init`
+wrote the squad CLI's own charter bodies, init appended the directives block, and the start-time handler
+preserved the result - so `.specrew/team/agents/<role>.md`, the documented single source of truth, was
+never the runtime's base. The canonical planner's boundary-commit cadence and implementation-rules
+conversion, the canonical reviewer's rules, never ran on Copilot from init. Detail and fix under B4F-076;
+the walk from the desktop runs on the canonical crew for the first time.

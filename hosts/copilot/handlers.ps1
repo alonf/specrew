@@ -151,29 +151,40 @@ function Install-CopilotCrewRuntime {
         }
 
         $charterPath = Join-Path $roleDir 'charter.md'
+        if (Test-SpecrewUserOwnedFile -Path $charterPath) {
+            # PRED-BETA4-036: the user said so (`specrew team own <role>`). Kept as written, and not reported -
+            # the disposition is persisted, so the notice does not return.
+            $actions.Add(@{ Action = 'preserved-owned'; Path = $charterPath; Role = $role }) | Out-Null
+            continue
+        }
         if (-not (Test-SpecrewManagedFile -Path $charterPath)) {
+            # PRED-BETA4-036 (the auditor's finding B): both remedies named here CLEAR the notice. The old advice,
+            # "delete the sidecar to keep it without this notice", left the file unmarked and brought the notice
+            # straight back as "no Specrew-managed marker", recommending the deletion of a file already gone.
             $why = if (Test-Path -LiteralPath ("{0}.specrew-managed" -f $charterPath) -PathType Leaf) { 'edited since Specrew wrote it' } else { 'no Specrew-managed marker' }
-            $notices.Add("Preserving user-edited file '$charterPath' ($why; delete the file to re-sync from canonical, or delete the sidecar '$charterPath.specrew-managed' to keep it without this notice).") | Out-Null
+            $notices.Add("Preserving your charter '$charterPath' ($why). It stays as you wrote it. To keep it as yours and end this notice: specrew team own $role. To return it to the canonical charter (.specrew/team/agents/$role.md; your edit is discarded): specrew team resync $role.") | Out-Null
             $actions.Add(@{ Action = 'preserved'; Path = $charterPath; Role = $role }) | Out-Null
             continue
         }
-        if (Test-SpecrewManagedDirectivesBlock -Path $charterPath) {
-            # PRED-BETA4-034: init composed this charter (shipped charter + managed directives block) and it still
-            # hashes to what Specrew wrote. It is current and it is Specrew's; replacing it with the canonical
-            # body alone would drop the directives. Kept, silently.
+        $charterExists = Test-Path -LiteralPath $charterPath -PathType Leaf
+        if ($charterExists -and (Test-SpecrewCharterCurrent -Path $charterPath -CanonicalContent $content)) {
+            # Specrew's, and current: the text before the directives block equals the canonical charter. Kept,
+            # silently, without a rewrite (PRED-BETA4-034 kept init's composition; PRED-BETA4-036 checks it
+            # against canonical first - a matching hash proves no user edit, not a current input).
             $actions.Add(@{ Action = 'preserved-managed'; Path = $charterPath; Role = $role }) | Out-Null
             continue
         }
 
         # Copilot consumes charter.md as the charter body verbatim (no frontmatter / comment header).
         # Use a sidecar marker file instead of an inline comment so Squad CLI parsing isn't affected.
+        # A stale charter (canonical changed since it was written) is rewritten through the one shared writer,
+        # which carries its directives block across and re-stamps the sidecar (the auditor's finding A).
         if ($DryRun) {
-            $actions.Add(@{ Action = 'would-write'; Path = $charterPath; Role = $role }) | Out-Null
+            $actions.Add(@{ Action = $(if ($charterExists) { 'would-update' } else { 'would-write' }); Path = $charterPath; Role = $role }) | Out-Null
         }
         else {
-            [System.IO.File]::WriteAllText($charterPath, $content, [System.Text.UTF8Encoding]::new($false))
-            Write-SpecrewManagedSidecar -Path $charterPath
-            $actions.Add(@{ Action = 'written'; Path = $charterPath; Role = $role }) | Out-Null
+            Write-SpecrewCharterFromCanonical -Path $charterPath -CanonicalContent $content -DirectivesBlock (Get-SpecrewManagedDirectivesBlockText -Path $charterPath)
+            $actions.Add(@{ Action = $(if ($charterExists) { 'updated' } else { 'written' }); Path = $charterPath; Role = $role }) | Out-Null
         }
     }
 

@@ -3426,7 +3426,7 @@ if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
 if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
     try {
         $crewResult = Invoke-CrewBootstrap -ProjectPath $resolvedProjectPath -HostKind $selectedHost
-        $writeCount = @($crewResult.Actions | Where-Object { $_.Action -eq 'written' }).Count
+        $writeCount = @($crewResult.Actions | Where-Object { $_.Action -in @('written', 'updated') }).Count
         if ($writeCount -gt 0) {
             Write-Info ("Crew runtime synced: {0} agent file(s) written to {1}." -f $writeCount, $crewResult.CrewRuntimePath)
         }

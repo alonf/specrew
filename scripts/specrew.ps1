@@ -73,7 +73,7 @@ Commands:
   where    Show the velocity dashboard
   status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
-  team     Manage team members (add, update, remove, list)
+  team     Manage team members (add, update, remove, list, own, resync)
   hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host], doctor)
   handover Author the rolling cross-session handover body (author [--from <file>])
   version  Show the installed Specrew version and slash-command compatibility
@@ -103,6 +103,8 @@ Examples:
   specrew team add security-analyst --role "Security Analyst" --charter "Review security"
   specrew team update security-analyst --charter "Updated charter"
   specrew team remove security-analyst
+  specrew team own reviewer        Keep your edited crew charter as yours (no more sync notices)
+  specrew team resync reviewer     Return a crew charter to the canonical .specrew/team/agents/<role>.md
 
 For detailed command help:
   specrew init --help
@@ -279,7 +281,8 @@ function Assert-TeamArguments {
                 $index++
             }
         }
-        'remove' {
+        { $_ -in @('remove', 'own', 'resync') } {
+            # `own` and `resync` take the shape `remove` does: one role name, optionally --project-path.
             if ($index -lt $normalizedArguments.Count -and -not $normalizedArguments[$index].StartsWith('-')) {
                 $index++
             }
@@ -557,6 +560,8 @@ switch ($Command) {
             Write-Host "  list"
             Write-Host "  update <member-name> [--role <role>] [--charter <charter-text>]"
             Write-Host "  remove <member-name>"
+            Write-Host "  own <role>       keep the edited crew charter as yours; specrew start stops reporting it"
+            Write-Host "  resync <role>    return the crew charter to canonical .specrew/team/agents/<role>.md"
             Write-Host ""
             Write-Host "Examples:" -ForegroundColor Cyan
             Write-Host "  specrew team list"

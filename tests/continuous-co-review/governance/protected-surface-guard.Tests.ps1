@@ -61,8 +61,10 @@ Describe 'Proposal 197 protected surface guard' {
             '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1'
             # Beta4 (2026-09-11) maintainer-authorized, from the stage-demo audit of the installed ef80591d:
             # "establish which step omits the ownership marker, fix that step, never relabel a genuine user
-            # edit" (PRED-BETA4-034). The ownership test and the Copilot charter handler are where ownership
-            # is decided, so these two protected surfaces carry THAT change and stay guarded for every other.
+            # edit" (PRED-BETA4-034), and the auditor's recheck of 4a7585d8 - "write the fix's own missing
+            # halves: a changed canonical reaches an untouched charter; the notice's remedy clears it"
+            # (PRED-BETA4-036). The ownership test and the Copilot charter handler are where ownership is
+            # decided, so these two protected surfaces carry THOSE changes and stay guarded for every other.
             'hosts/_team-canonical.ps1'
             'hosts/copilot/handlers.ps1'
         )
