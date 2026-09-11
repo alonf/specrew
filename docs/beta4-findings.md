@@ -4017,6 +4017,18 @@ never the runtime's base. The canonical planner's boundary-commit cadence and im
 conversion, the canonical reviewer's rules, never ran on Copilot from init. Detail and fix under B4F-076;
 the walk from the desktop runs on the canonical crew for the first time.
 
+**Scope, measured once as the maintainer asked (2026-09-11)**: the maintainer verified on the router-skill
+project and on KeyContextAI that `.specrew/team/agents/<role>.md` carries the canonical byte for byte and
+`.squad/agents/<role>/charter.md` carries `squad init`'s generic role plus the directives block with zero
+canonical phrases - the Copilot path. The Claude host, measured on a fresh project (`specrew-init.ps1
+-Agents claude`, then `specrew-start.ps1 -NoLaunch -HostKind claude`): "Crew runtime synced: 5 agent file(s)
+written to .claude/agents"; each `.claude/agents/<role>.md` is frontmatter (name, description, tools, the
+`# Specrew-managed` header) followed by the canonical charter byte for byte - 5321/3971/5973/6910/4782
+canonical characters for the five roles, `body -ceq canonical` true for all five - and the handler rewrites
+it from canonical on every start (the header marks it Specrew's). **Copilot-only asymmetry.** The Claude crew
+ran on the canonical from its first start; it carries no directives block (the Copilot composition's second
+half), which is a different asymmetry and not this finding.
+
 ## B4F-079 - TWO CI LANES NEVER RAN ON BETA4: a markdown lint red in the records skipped them on every SHA
 
 **Found when the maintainer said "check, there is a failure."** The push-triggered "Specrew CI" workflow has

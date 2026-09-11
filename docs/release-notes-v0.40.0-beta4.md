@@ -176,7 +176,11 @@ defect: on a fresh Copilot project the runtime charters were the squad CLI's own
 directives appended, never the canonical charters at all. Init now writes the canonical base. **On the first
 start of this build, a project initialized on an earlier candidate has its untouched charters rewritten to
 the canonical composition, once** - "Crew runtime synced: 5 agent file(s) written" - and is silent after
-that. A charter you edited is not rewritten.
+that. A charter you edited is not rewritten. **Scope, as measured: the Copilot host only.** On a fresh
+project bootstrapped for Claude (`specrew init --agents claude`, one `specrew start --host claude`), each
+`.claude/agents/<role>.md` carries the canonical `.specrew/team/agents/<role>.md` byte for byte after its
+frontmatter, all five roles, and is rewritten from canonical on every start; the Claude crew never ran on a
+generic body. The other hosts translate the same way; only the Copilot path composed on `squad init`'s file.
 
 **The preservation notice recommended a recovery that brought the notice back.** "Delete the sidecar to keep
 it without this notice" left the file unmarked, and the next start reported it again, recommending the
