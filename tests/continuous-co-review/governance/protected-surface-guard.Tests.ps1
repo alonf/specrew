@@ -65,6 +65,8 @@ Describe 'Proposal 197 protected surface guard' {
             # halves: a changed canonical reaches an untouched charter; the notice's remedy clears it"
             # (PRED-BETA4-036). The ownership test and the Copilot charter handler are where ownership is
             # decided, so these two protected surfaces carry THOSE changes and stay guarded for every other.
+            # shared-governance.ps1 (already listed above) also carries PRED-BETA4-039: the validator's scope
+            # base takes SPECREW_SCOPE_BASE_REF first, because GitHub refuses a workflow's GITHUB_BASE_REF.
             'hosts/_team-canonical.ps1'
             'hosts/copilot/handlers.ps1'
         )

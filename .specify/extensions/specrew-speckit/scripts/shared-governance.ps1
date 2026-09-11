@@ -4646,7 +4646,10 @@ function Resolve-SpecrewGitBaseRefCandidate {
         $normalizedCandidate = "origin/$normalizedCandidate"
     }
 
-    $null = @(& git -C $resolvedProjectRoot rev-parse --verify "$normalizedCandidate" 2>$null)
+    # `^{commit}`: a bare 40-hex string passes `rev-parse --verify` whether or not the object exists (found by
+    # PRED-BETA4-039's fall-through case); requiring a commit object makes an unfetched or mistyped SHA fall
+    # through to the next candidate instead of "resolving" and failing the diff.
+    $null = @(& git -C $resolvedProjectRoot rev-parse --verify "$normalizedCandidate^{commit}" 2>$null)
     if ($LASTEXITCODE -ne 0) {
         return $null
     }
@@ -4686,6 +4689,15 @@ function Get-SpecrewLocalScopeBaseRef {
     }
 
     $candidates = New-Object System.Collections.Generic.List[string]
+
+    # SPECREW_SCOPE_BASE_REF FIRST (B4F-079 / PRED-BETA4-039). GitHub does not let a workflow overwrite its own
+    # GITHUB_* variables, so a push job's `env: GITHUB_BASE_REF: ${{ github.event.before }}` is inert: the step
+    # log showed the SHA and the step read an empty string, and every push validation scoped to origin/main -
+    # full-repo on any branch whose .specrew/config.yml differs from main. A Specrew-owned name carries the base
+    # the caller means; GITHUB_BASE_REF stays next for pull requests, where GitHub sets it itself.
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_SCOPE_BASE_REF)) {
+        $null = $candidates.Add([string]$env:SPECREW_SCOPE_BASE_REF)
+    }
 
     if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_BASE_REF)) {
         $null = $candidates.Add([string]$env:GITHUB_BASE_REF)

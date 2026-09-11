@@ -1907,3 +1907,38 @@ lint exclusion and `86e84ecd`'s verbose CI step (neither in the module). Nothing
 4. On green: the module is installed from this SHA exactly (temp worktree), byte-verified; the router-skill
    project updates once, to that build; its first start rewrites its five untouched charters to the canonical
    composition once (B4F-076's field consequence, stated in PRED-037).
+
+## PRED-BETA4-039 - B4F-079's cause: the push governance step never received its base. Stated before the code.
+
+**Read from the runner, not reasoned** (run `34588394317`, the diagnostic step before the governance step):
+the job log's `env:` block prints `GITHUB_BASE_REF: 6e62fbcd…` for the step, and inside the step
+`$env:GITHUB_BASE_REF` is EMPTY - `before: ` blank, `git rev-parse --verify` "Needed a single revision", exit
+128 - and the validator then reports "fallback to full validation: global-state-changed (base origin/main)".
+GitHub does not let a workflow overwrite its own `GITHUB_*` variables (documented; here observed), so the
+workflow's `env: GITHUB_BASE_REF: ${{ github.event.before }}` has been inert since it was written: on every
+push, `-ChangedOnly` scopes to `origin/main`, and on a long-lived branch whose `.specrew/config.yml` differs
+from main that is always full-repo - 155 iterations, including two sealed ones that fail rules added after
+they closed. The validator's only base source is that variable (`Get-SpecrewLocalScopeBaseRef`); the script
+exposes no base parameter. On pull requests GitHub sets the variable itself (the base branch), which is why
+PR validation scopes and push validation never did.
+
+**The fix**: `Get-SpecrewLocalScopeBaseRef` takes a Specrew-owned variable first, `SPECREW_SCOPE_BASE_REF`,
+then `GITHUB_BASE_REF` (PRs), then `origin/HEAD`, then `origin/main`/`master` - the existing order with one
+name in front. The workflow's push step sets `SPECREW_SCOPE_BASE_REF: ${{ github.event.before }}`. Mirror and
+marker re-stamped this time.
+
+### THE PREDICTION
+
+1. `tests/unit/scope-base-ref-env.tests.ps1`: in a scratch repository with an `origin/main`, the Specrew
+   variable set to a commit SHA resolves to that SHA; set alongside `GITHUB_BASE_REF`, the Specrew one wins;
+   only `GITHUB_BASE_REF` set (a PR) resolves to it as before; neither set resolves to `origin/main` as
+   before; an unresolvable Specrew value falls through to the next candidate. Mutation: the new candidate
+   removed reds exactly the first two cases.
+2. The next push's Specrew CI governance step prints `changed-only to <before-SHA>...HEAD`, validates the
+   iterations the push touched (zero, for a docs/CI push), passes, and the **Deterministic gate** and
+   **Contract lane** execute on this branch for the first time. No prediction of green for those two lanes:
+   they have never run here; their result is new information, read before the release.
+3. `validate-governance-changed-only.tests.ps1` (14 assertions, covers the base fallbacks) unchanged.
+4. Census 9 (running on `afeca26e`) is read for everything it covers; the function changed here is exercised
+   by the sweep only with neither variable set, where its behaviour is identical. The release census is the
+   one on the SHA that carries this fix, dispatched when census 9 has landed and been read.
