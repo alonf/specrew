@@ -166,6 +166,21 @@ jobs:
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -ChangedOnly
 
+      - name: Show the push base the governance step will scope to
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GITHUB_BASE_REF: ${{ github.event.before }}
+        run: |
+          # B4F-079 diagnosis: the push run scoped to origin/main where the same base SHA scopes locally.
+          Write-Host ("before: {0}" -f $env:GITHUB_BASE_REF)
+          & git rev-parse --verify $env:GITHUB_BASE_REF; Write-Host ("rev-parse exit: {0}" -f $LASTEXITCODE)
+          & git cat-file -t $env:GITHUB_BASE_REF; Write-Host ("cat-file exit: {0}" -f $LASTEXITCODE)
+          & git merge-base --is-ancestor $env:GITHUB_BASE_REF HEAD; Write-Host ("is-ancestor exit: {0}" -f $LASTEXITCODE)
+          . ./extensions/specrew-speckit/scripts/shared-governance.ps1
+          Write-Host ("candidate resolves to: [{0}]" -f (Resolve-SpecrewGitBaseRefCandidate -ProjectRoot . -Candidate $env:GITHUB_BASE_REF))
+          Write-Host ("scope base resolves to: [{0}]" -f (Get-SpecrewLocalScopeBaseRef -ProjectRoot .))
+
       - name: Validate iteration governance (push)
         if: github.event_name != 'pull_request'
         timeout-minutes: 25
