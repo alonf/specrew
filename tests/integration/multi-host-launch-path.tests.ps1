@@ -103,15 +103,19 @@ finally {
 Write-Pass 'Antigravity Gemini-deadline warning fires correctly (silent before 2026-06-01; warns near and after 2026-06-18)'
 
 # Test 6: Get-SpecrewHostSkillRoot returns correct paths per host
-$projectRoot = 'C:\fake\project'
+# B4F-080: a Windows drive path here ('C:\fake\project') threw "Cannot find drive" under Linux PowerShell, the
+# first time the deterministic gate ran this suite on beta4 (it runs on ubuntu). Platform-neutral root and
+# separator-neutral expectations; the suite must pass where the gate runs, not only where it was written.
+$projectRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'specrew-fake-project'
+$sep = [regex]::Escape([string][System.IO.Path]::DirectorySeparatorChar)
 $copilotRoot = Get-SpecrewHostSkillRoot -HostKind 'copilot' -ProjectPath $projectRoot
 $claudeRoot = Get-SpecrewHostSkillRoot -HostKind 'claude' -ProjectPath $projectRoot
 $codexRoot = Get-SpecrewHostSkillRoot -HostKind 'codex' -ProjectPath $projectRoot
 $antigravityRoot = Get-SpecrewHostSkillRoot -HostKind 'antigravity' -ProjectPath $projectRoot
-if ($copilotRoot -notlike '*\.github\skills*') { Write-Fail "Copilot skill root wrong: $copilotRoot" }
-if ($claudeRoot -notlike '*\.claude\skills*') { Write-Fail "Claude skill root wrong: $claudeRoot" }
-if ($codexRoot -notlike '*\.agents\skills*') { Write-Fail "Codex skill root wrong: $codexRoot" }
-if ($antigravityRoot -notlike '*\.agents\skills*') { Write-Fail "Antigravity skill root wrong (should be .agents/skills like Codex): $antigravityRoot" }
+if ($copilotRoot -notmatch ($sep + '\.github' + $sep + 'skills')) { Write-Fail "Copilot skill root wrong: $copilotRoot" }
+if ($claudeRoot -notmatch ($sep + '\.claude' + $sep + 'skills')) { Write-Fail "Claude skill root wrong: $claudeRoot" }
+if ($codexRoot -notmatch ($sep + '\.agents' + $sep + 'skills')) { Write-Fail "Codex skill root wrong: $codexRoot" }
+if ($antigravityRoot -notmatch ($sep + '\.agents' + $sep + 'skills')) { Write-Fail "Antigravity skill root wrong (should be .agents/skills like Codex): $antigravityRoot" }
 Write-Pass 'Per-host skill roots resolve correctly (antigravity uses .agents/skills like Codex)'
 
 # Test 7: flag-translation matrix for all 15 cells per research.md Task 2 plus Cursor/Antigravity follow-up

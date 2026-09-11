@@ -4054,3 +4054,15 @@ never run here, and whatever they return is read as new information, before the 
 
 **The class**: a lint over hand-written records gating the product's test lanes. Beta5: the product's own
 drift-log writer should keep the template's structure, and the lanes should not depend on prose formatting.
+
+## B4F-080 - THE DETERMINISTIC GATE'S FIRST RUN ON BETA4: one suite written for Windows only (fixed in beta4)
+
+With the base fixed (PRED-BETA4-039), the Specrew CI governance step scoped for the first time on this branch
+(`changed-only to eae15ee0...HEAD (0 iterations, 1 files in diff)`), Lint went green, and the Deterministic
+gate ran on beta4 for the first time: **130 of 131 suites green**, one red - `multi-host-launch-path.tests.ps1`,
+whose test 6 hands `Get-SpecrewHostSkillRoot` the literal `C:\fake\project` and expects backslashes; under
+Linux PowerShell `Join-Path` threw "Cannot find drive. A drive with the name 'C' does not exist" and the
+script died there, so its later tests never ran either. The suite entered the gate's registry on 2026-08-13
+and had never run where the gate runs (ubuntu). Reproduced under WSL, fixed as a platform-neutral root and
+separator-neutral expectations (tests only), green under WSL and Windows. B4F-079's consequence, made
+concrete: a lane that never runs cannot tell you its suites assume a platform.

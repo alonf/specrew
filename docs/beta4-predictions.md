@@ -1942,3 +1942,21 @@ marker re-stamped this time.
 4. Census 9 (running on `afeca26e`) is read for everything it covers; the function changed here is exercised
    by the sweep only with neither variable set, where its behaviour is identical. The release census is the
    one on the SHA that carries this fix, dispatched when census 9 has landed and been read.
+
+### PRED-BETA4-039 VERDICT - held on the runner; the gate ran and found B4F-080
+
+Part 1 held (6 green; the unpatched resolver reds cases 1-2 as the control; a bare 40-hex string passing
+`rev-parse --verify` without an object was found by case 5 and fixed with `^{commit}`). Part 2 held on run
+`34589654892`: `SPECREW_SCOPE_BASE_REF: eae15ee0…` read inside the step, `scope base resolves to:
+[eae15ee0…]`, the governance step `changed-only to eae15ee0...HEAD (0 iterations, 1 files in diff)`, Lint
+green - the first green Lint on this branch - and the Deterministic gate executed: 130 of 131 green, one
+Windows-only suite red (B4F-080, fixed). Part 3 held (14/14). The Contract lane stays skipped behind the
+gate's red until the next push.
+
+## PRED-BETA4-040 - the gate after B4F-080. Stated before the push.
+
+1. The next push: Lint green; the governance step scoped to the previous push SHA; the Deterministic gate's
+   131 suites green (the one red fixed under WSL, which is the gate's platform); the **Contract lane** then
+   executes on this branch for the first time - no prediction of green for it, same reason as before.
+2. If another suite in the gate or the contract lane fails for the same class (a Windows path assumed), it is
+   fixed the same way and recorded under B4F-080; a failure of any other class is its own finding.
