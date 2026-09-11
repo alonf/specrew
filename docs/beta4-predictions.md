@@ -1728,3 +1728,19 @@ across all three jobs; census 6 on `632bdcd0` is read when it lands, not re-run.
 Two consecutive fully green censuses (`ef80591d`, `632bdcd0`), 411 and 411 files, 0 failures, the dry-run
 publish green both times. Superseded by the frozen SHA before it landed; read, not re-run. It is the
 evidence that the R2 follow-up carried no regression on the runner.
+
+### PRED-BETA4-035 VERDICT - the frozen SHA's census is GREEN; the module and the consumer follow it
+
+**Part 1 held**: census `34548263851` on the frozen `4a7585d8` - `full-test-census` green (414 files, 0
+failures, the three suites added by the audit's items included), `prepublish-validation` green, the dry-run
+publish green. Third consecutive fully green census (`ef80591d`, `632bdcd0`, `4a7585d8`). **Part 2 not
+needed**: nothing red, so the sanctioned re-dispatch stays unspent. **Part 3 held**: the module is installed
+from `4a7585d8` exactly (a temporary worktree at that SHA, because `docs/` is in the FileList and the head
+had moved one docs commit past it): 423 files, byte-verified, stamp `4a7585d8` /
+`8267418f…`. The router-skill project updated ONCE, to that build - `specrew update --specrew` from the
+installed module: exit 0, the deployed extension's integrity marker checked with 0 drifted / 0 missing, the
+beta4 surfaces present in its tree (turn-end store, readiness verdict, timestamp reader, the turn-end and
+user-profile skills under every host dir). That update is the turn-end contract's field test: its next
+sessions run the deployed providers with the token handshake, the judgment beside the counter and the
+scoped review advisory. The update's own output carried the pre-existing consumer-assumption warnings
+(squad and speckit templates naming GitHub/PowerShell/Node without applicability markers) - not beta4's.
