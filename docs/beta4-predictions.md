@@ -1722,3 +1722,9 @@ across all three jobs; census 6 on `632bdcd0` is read when it lands, not re-run.
    fixed first and the SHA is not frozen.
 3. On green: the module is installed from this SHA, byte-verified, and the router-skill project updates once,
    to that build - the turn-end contract's field test.
+
+### PRED-BETA4-032 VERDICT - census 34544020626 on `632bdcd0`: GREEN, all three jobs
+
+Two consecutive fully green censuses (`ef80591d`, `632bdcd0`), 411 and 411 files, 0 failures, the dry-run
+publish green both times. Superseded by the frozen SHA before it landed; read, not re-run. It is the
+evidence that the R2 follow-up carried no regression on the runner.
