@@ -1886,3 +1886,24 @@ red on every SHA of this branch, on markdown lint over the records, and its two 
 beta4. The lint is clean now; the product's own seal check then refused the record edits (a closed iteration
 is preserved history) - reverted as instructed, the sealed directory excluded from the lint; then the same
 missing marker re-stamp failed the governance step there too. The lanes run on `6e62fbcd` for the first time.
+
+## PRED-BETA4-038 - PRED-015 for the RE-FROZEN SHA after census 8's two reds of mine. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `6b937d9c`'s code plus `6e62fbcd` (the deployed
+marker re-stamped for the two edited mirrors; the cursor mirror of the team skill synced), with `670eab0e`'s
+lint exclusion and `86e84ecd`'s verbose CI step (neither in the module). Nothing else changed.
+
+### THE PREDICTION
+
+1. `full-test-census` green - 414 named files, 0 failures: `validate-governance-changed-only` green (14/14
+   locally on the re-stamped marker, where the runner had 3 red); `maintainer-skill-host-parity` green (5/5
+   locally); `crew-charter-ownership` 45 and the thirteen adjacent suites as in dispatch 2; `prepublish-
+   validation` and the dry-run publish green; the artifact carries the sentinel and nothing else.
+2. `psgallery-check` is the one open question: 10178 ms against a 10000 ms bound on an unchanged file. If it
+   reds again, alone, with that signature, the bound is the finding (B4F-080: a wall-clock bound the runner
+   crosses by tenths of a second) and the census is otherwise read as green for the code; it is not re-run
+   to see whether it goes green. The sanctioned re-dispatch stays reserved for the turn-end pair.
+3. Any other red on a changed file is fixed first and the SHA is not frozen.
+4. On green: the module is installed from this SHA exactly (temp worktree), byte-verified; the router-skill
+   project updates once, to that build; its first start rewrites its five untouched charters to the canonical
+   composition once (B4F-076's field consequence, stated in PRED-037).
