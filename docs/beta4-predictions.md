@@ -1992,3 +1992,20 @@ workflow between them (neither in the module).
 4. Separately, Specrew CI on `a6c33c8a` (running) is PRED-040's test; its verdict is recorded when it lands
    and does not gate the census, which is the release's acceptance instrument; a lane red there is fixed on
    the branch after this freeze and re-frozen only if it touches a module file.
+
+### PRED-BETA4-041 VERDICT - census 10 (`34591834612` on `9154f72b`): GREEN, all three jobs; installed; the consumer updated
+
+Part 1 held: `prepublish-validation`, `full-test-census` (416 named files, 0 failures, the artifact carries
+the sentinel and nothing else), dry-run `publish-module` - green. Part 2 unspent. Part 3 done: the module
+installed from `9154f72b` exactly through a temp worktree - build stamp `commit: 9154f72b`, content
+`558d59b9…`, 423 files, the changed files byte-identical to the SHA; the router-skill project (`a0cfd3d`,
+its own uncommitted work untouched) updated once: exit 0, integrity 0 drifted / 0 missing, its deployed
+changes exactly the fix's files (the four team-skill mirrors, `deploy-squad-runtime.ps1`,
+`shared-governance.ps1`, the marker). **Part 3's field consequence, corrected by reading the project**: its
+`.squad/agents/<role>/charter.md` carry NO sidecar - it was initialized before PRED-034's stamp and `specrew
+update` does not create one - so its next start does not rewrite them; it reports each once as "no
+Specrew-managed marker" with the two remedies, and `specrew team resync <role>` (five roles) is the path to the
+canonical crew there. The rewrite-once consequence applies to projects initialized on `4a7585d8`+.
+Part 4: Specrew CI on `a6c33c8a` and `9154f72b` - Lint green, Deterministic gate green (131/131), Contract
+lane red on B4F-081, then on B4F-082 (`0faab8a0`); both tests-only, fixed on the branch after the freeze
+(`d1eb2dd6`), the lane's remaining checks green locally; the run on `d1eb2dd6` is the runner's word.
