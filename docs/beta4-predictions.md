@@ -1593,3 +1593,36 @@ when it lands. The prediction is PRED-030's with part 1 unchanged in substance: 
 every named file, 0 failures; `readiness-verdict-line` at 25; `prepublish-validation` and the dry-run publish
 green; the artifact carries the sentinel only. The module is reinstalled from this SHA, byte-verified, and
 the router-skill project updates once, to this build.
+
+## PRED-BETA4-033 - B4F-060: the mechanical checks on a project with nothing to scan. Stated before the code.
+
+**From the stage-demo audit** (`C:/Dev/walks/beta4-stage-audit-20260911-01/demo-readiness.md`, authoritative
+for release acceptance): `run-mechanical-checks.ps1` on a project with no discoverable source throws `Cannot
+bind argument to parameter 'SourceFiles' because it is an empty array` (the audit's `mechanical-empty-source`
+probe on the installed `ef80591d`, exit 1, no JSON). The three finding functions bind their file arrays to
+mandatory parameters that reject an empty collection.
+
+**The design**: the scans allow empty. Applicability is per gate and per input set - source (dead-field,
+anti-pattern) and tests (test-integrity) separately - and the evidence row says which: `not-applicable`
+naming the roots and extensions searched when the plan does not require the gate; **`failed`** naming the
+same when the plan's Required Quality Gates table requires the gate and there is nothing to check - the
+plan-required-but-missing-implementation case, kept a distinct outcome that readiness reads as a failure,
+never a successful empty scan. A project path that does not exist or cannot be read stays a thrown error.
+The findings JSON keeps the v1 schema (additionalProperties false at its root - the schema lives in each
+consumer's feature contracts); the applicability lives in `quality-evidence.md`'s rows and in a stderr line.
+
+### THE PREDICTION - the audit's acceptance list is the test list
+
+1. A valid JS project (source + test): findings computed, three mechanical gates `passed`, exit 0.
+2. A valid PowerShell project: the same.
+3. Documentation-only work (no source, plan silent on mechanical gates): exit 0, JSON valid with `findings: []`,
+   dead-field / anti-pattern / test-integrity `not-applicable`, each naming the searched roots and extensions.
+4. Source with no tests: dead-field / anti-pattern evaluated (`passed`), test-integrity `not-applicable`
+   naming the test pattern - applicability kept separate.
+5. Invalid root: the existing `Project path ... does not exist` error, exit 1, no evidence written. Unreadable
+   root: a thrown error, not an empty success.
+6. Plan requires the mechanical gates (explicit rows) and no source exists: exit 0 (the scan ran), but the
+   three rows read `failed` naming the plan's requirement and what was searched - readiness reads a failure.
+7. The audit's own `empty-source` fixture, replayed on the fixed script: exit 0, not-applicable rows.
+8. Mutation: `[AllowEmptyCollection()]` removed from the source-files parameter - parts 3, 6 and 7 go red
+   with the audit's exact error; parts 1, 2, 5 stay green.
