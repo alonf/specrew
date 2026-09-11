@@ -19,6 +19,7 @@ renamed. Today this is caught only by clicking through links by hand, or not cau
 ## MVP
 
 A command-line tool that:
+
 - takes a directory,
 - scans every `.md` file beneath it,
 - checks every relative file link and every `#anchor` against the actual files and headings on

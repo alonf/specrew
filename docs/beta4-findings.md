@@ -556,7 +556,6 @@ to one or the other; the 7 in both are permanent class guards. The new test is r
 is fully covered, and adding it to the gate would put it in a 7-file overlap with no reason to be there.
 **No change needed.**
 
-
 ---
 
 ## B4F-010 - REVIEW FINDING ON 905c5601: safety property 1 was false, and the fix could displace the workshop a human was actually answering
@@ -1726,8 +1725,7 @@ The log shows `hook: SessionStart` and `hook: UserPromptSubmit` firing **in the 
 `specrew update` deployed codex hooks **user-level** to `C:\Users\alon\.codex\hooks.json` (13:05 today),
 not per-project - as its own output said at the time: *"codex hooks deployed to C:\Users\alon\.codex\hooks.json"*.
 
-**So the standing probe-hygiene rule - never probe an agentic CLI in a governed cwd, use scratch directories
-- does not fully hold for codex.** The hooks follow the user, not the working directory. Harmless here (a
+**So the standing probe-hygiene rule - never probe an agentic CLI in a governed cwd, use scratch directories - does not fully hold for codex.** The hooks follow the user, not the working directory. Harmless here (a
 scratch directory has no governed state to mutate), but the rule's premise is weaker than it reads and the
 next person relying on it should know. **Beta5, with the deployment-surface items.**
 
@@ -1913,8 +1911,7 @@ second converts the gate into a lottery, on the release the gate exists to prote
 
 The ruling was to re-dispatch **on `22772117`**. The run went out on **`d4a89ab7`**, because the
 PRED-BETA4-008 commit was pushed before dispatching and `workflow_dispatch --ref <branch>` takes the branch
-head. **Measured**: the delta is three commits, two files, **both under `docs/`, zero census subject files**
-- so the run measures identical code and its verdict is valid evidence about the same tree. **The tag SHA is
+head. **Measured**: the delta is three commits, two files, **both under `docs/`, zero census subject files** - so the run measures identical code and its verdict is valid evidence about the same tree. **The tag SHA is
 the maintainer's to settle**, and it is surfaced now rather than discovered at the tag.
 
 ---
@@ -2237,7 +2234,7 @@ two are not the same claim.
 
 ---
 
-# BETA5 ITEM 1 - ABOVE EVERYTHING ELSE DEFERRED
+## BETA5 ITEM 1 - ABOVE EVERYTHING ELSE DEFERRED
 
 **DO NOT START UNTIL BETA4 IS TAGGED.** Recorded now because it is the maintainer's top UX complaint and
 because the measurement is cheap today and expensive to reconstruct later.
@@ -2470,7 +2467,7 @@ the receipt reader and the intake-lens predicate all already exist and are alrea
 
 ---
 
-# BETA4 REOPENS
+## BETA4 REOPENS
 
 **`d4a89ab7` stays as the candidate that FAILED the fresh walk. Nothing is tagged.**
 
@@ -3914,8 +3911,7 @@ line: skipped, never parsed. `tests/unit/closeout-gate-git-warnings.tests.ps1` b
 (a path past 260 characters under `core.longpaths=false`), proves the capture carries a stderr record, and
 asserts the gate still names the dirty file; the unfixed gate reds with the exact message.
 
-**What stays beta5, as the audit states it**: review completion invalidating its own evidence (B4F-054/056/058/061)
-- the ordering repair is **beta4.1** unless the maintainer's demo path enters live sign-off; severity by
+**What stays beta5, as the audit states it**: review completion invalidating its own evidence (B4F-054/056/058/061) - the ordering repair is **beta4.1** unless the maintainer's demo path enters live sign-off; severity by
 heading (B4F-055); workshop correction is not assent (B4F-011/014/015); handoff/sync ordering (B4F-046);
 blocked-task vocabulary (B4F-059); planned-versus-delivered points (B4F-062); the environment-dependent
 startup hang (B4F-069); source-write enforcement at the tool boundary (B4F-072 (b), beta5's first item). The
@@ -3984,8 +3980,7 @@ probe replayed on the fix: case 1 `applied:true` with an `updated` action.
 file ... (no Specrew-managed marker; ... delete the sidecar ...)" - the same notice, now recommending the
 deletion of a file that no longer exists. The edit was intact; the promise was false. **Deleting a marker
 cannot distinguish an intentional opt-out from missing metadata** (the auditor), so no marker-deletion could
-ever have kept that promise. This is B4F-017's family exactly: a message naming a remedy that does not clear
-- there, destroys - the condition it reports; and it was written in a fix (PRED-034) whose finding record
+ever have kept that promise. This is B4F-017's family exactly: a message naming a remedy that does not clear - there, destroys - the condition it reports; and it was written in a fix (PRED-034) whose finding record
 cites that family by number.
 
 **The fix (PRED-BETA4-036).** The notice says what is true and names two remedies, each persisted, each
@@ -4021,3 +4016,29 @@ preserved the result - so `.specrew/team/agents/<role>.md`, the documented singl
 never the runtime's base. The canonical planner's boundary-commit cadence and implementation-rules
 conversion, the canonical reviewer's rules, never ran on Copilot from init. Detail and fix under B4F-076;
 the walk from the desktop runs on the canonical crew for the first time.
+
+## B4F-079 - TWO CI LANES NEVER RAN ON BETA4: a markdown lint red in the records skipped them on every SHA
+
+**Found when the maintainer said "check, there is a failure."** The push-triggered "Specrew CI" workflow has
+been red on every SHA of `201-first-run-experience` since the branch's first push (2026-09-09, 45+ runs), and
+its last green anywhere is `7debb9fd` on main (2026-08-31). The red job is **Lint** - markdownlint over the
+repository's `.md` files - and it fails on records, not on product: 21 hits in the iteration drift-log (bullet
+entries after indented continuation paragraphs, two fences without blank lines, and the template's `## Events`
+heading gone so the first `### DRIFT-` entry increments past H1), seven in the findings record (four wrapped
+prose lines that begin with a dash and a space, two part-divider H1s, one double blank), one in a workshop fixture. The
+records grew; the count grew with them (22 at the first push, 30 by `6b937d9c`). Because the workflow's
+**Deterministic gate** and **Contract lane** declare `needs: lint`, both were SKIPPED on every beta4 SHA - the
+F-198 honesty regression suite, the production-harness dry run, bootstrap-to-iteration, the brownfield and
+asset-blocker suites, and the rest of that lane have not run on beta4 code once. The census (publish-module)
+is the release's acceptance and sweeps every file matching `tests?.ps1`; several of the gate's suites do not
+match that pattern (`bootstrap-to-iteration.ps1`, `f198-regression-suite.ps1`), so the gate carries content
+the census does not. Nobody read the red because the census was green.
+
+**Fixed as formatting only** (`6b937d9c`+1): the four wrapped lines re-joined, the two dividers demoted to H2,
+the drift-log's `## Events` restored from the template and its blank lines inserted by `markdownlint --fix`,
+one blank line in the fixture (its consumer suite still green). No record's words changed. The lanes run on
+the next push for the first time on this branch; **no prediction of green is made for them** - they have
+never run here, and whatever they return is read as new information, before the release, not after.
+
+**The class**: a lint over hand-written records gating the product's test lanes. Beta5: the product's own
+drift-log writer should keep the template's structure, and the lanes should not depend on prose formatting.

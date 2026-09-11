@@ -13,6 +13,8 @@ lessons rather than defects
 
 ---
 
+## Events
+
 ### DRIFT-199-I003-001 — iteration 002's FR-030 cycle fix, field-proved by this iteration's first plan sync (POSITIVE CONTROL EVIDENCE)
 
 **This iteration's first record is the proof of its predecessor's fix, and that is deliberate.** 003 is not
@@ -556,6 +558,7 @@ no reinstall and no `specrew update` at any point. Maintainer's field report, 20
 
   **Scope of the T017 row, stated rather than implied**: *happy path*. The reader ran on a successful
   close. Its refusal behaviour on a malformed lens artifact is still repository-only.
+
 - **Also field-proved in the same pass**: T020's stub rendered **and was correctly explained to the human
   unprompted** - the stub-then-spec ordering doing the thing it was written for rather than merely
   occurring; specify's verdict captured **with its crossing identity** (FR-024); and clarify ran a real
@@ -752,6 +755,7 @@ The two instances I had were mine and recent. They are not the class.
   **No tag-relevant row is unproven.** The rows that remain non-field-proved are the ones scoped out and
   said so: T017's refusal behaviour on a malformed artifact, and the clarify-refusal fix - which is
   deliberately outside the tag (DRIFT-199-I003-014) and therefore not tag-relevant by construction.
+
 - **BOTH PUBLISH GATES COMPLETE.** DRIFT-199-I003-008 asked whether anything had been walked on the bits
   that ship. Both halves of its answer now exist: a fresh project through clarify with zero stops, and the
   recovery branch on the specimen that motivated it.
@@ -827,6 +831,7 @@ recorded with the same weight as a right one.
 3. **A "docs-only confirmed" printed after its own `cd` had failed.** A worktree checkout died on a
    Windows long-path limit; the `cd` that followed failed; the verification command then ran in the wrong
    directory, found nothing staged, and printed a pass.
+
 - **What caught all three: a control that had to move.** The third answer only broke when a known-old file
   (`version-checks.tests.ps1`) was asserted to be *pre-existing at beta2* and the check said otherwise. **A
   verification with no negative control cannot distinguish "nothing is wrong" from "nothing was measured"**
@@ -875,6 +880,7 @@ eleven files that passed the beta2 census in the exact bytes they still have.
 the same local environment. It is not attributable to the beta3 tree.
 
 **The remaining twenty are NOT isolated, and the record says so rather than rounding them into a verdict:**
+
 - **12 pass locally on the tagged tree.** They failed only on the runner, which makes them
   census-environment *candidates* - fresh runner, no installed module, working-directory and path-length
   assumptions. **Candidates, not proof**: my machine is not the runner either, and a pass here is evidence
@@ -1023,6 +1029,7 @@ checked is whether everything in `tests/` is a test.**
 
   (Plus 18 non-provenance sanctioned hits - registry, delivery-assumption, stack-assumption,
   maintainer-id - for 171 annotated overall.)
+
 - **THE BETA4 ITEM IS THE POLICY, NOT THE REWRITE.** "Rewrite 153 comments" is the wrong shape: it treats
   an unadjudicated hatch as a backlog and would leave the hatch open afterwards. The work is **decide the
   granting policy, then classify against it.**
@@ -1054,6 +1061,7 @@ checked is whether everything in `tests/` is a test.**
 2. **The heredoc collapse**, already recorded as the mechanism behind earlier corruptions: this shell
    collapses doubled backslashes inside heredocs, so `chr(92)`, `chr(10)` and forward slashes are used
    instead of escapes in any script that writes governed content.
+
 - **THE RULE, one line covering both**: **read and write BYTES, not text, whenever the claim being made is
   byte-level.** Text mode is a convenience that silently normalises exactly the things a byte-level claim
   is about - line endings, encodings, escapes. A "comments only" claim, a hash-equality claim, and a
@@ -1078,6 +1086,7 @@ checked is whether everything in `tests/` is a test.**
   machine.** A whole-tree gate that runs where the product cannot bootstrap is not measuring the tree.
 - **THE CONSUMER QUESTION, answered at source rather than assumed** (maintainer, 2026-09-02): a real user
   on Node 22 running `specrew init` gets:
+
   ```
   Outdated dependencies:
 
@@ -1086,6 +1095,7 @@ checked is whether everything in `tests/` is a test.**
 
   Install all required dependencies before running specrew init.
   ```
+
   and **exit code 4**. It names the tool, the version found, the version required, one concrete reachable
   action, and it fails closed with a distinct code. **By this batch's own refusal standard that message is
   correct** - `scripts/init/preflight.ps1:85` carries the hint and `scripts/specrew-init.ps1:366` renders
@@ -1262,6 +1272,7 @@ green.** Did its scope ever include the mirrors?
 
   12 survived + 13 new = 25. The four non-mirror entries are `conformance-material-turn-gate`,
   `release-model`, `session-orientation-rendered`, `workshop-material-packet-language`.
+
 - **Why the total rose**: provisioning the runner to the product's own declared floor made the census
   **measure more of the tree**. `boundary-sync-markdownlint-gate` needs markdownlint and could not run
   before; now it does. **More measurement found more findings.** The gate did not weaken - it began
@@ -1289,6 +1300,7 @@ mechanism** - a single-mechanism bug is an instance; three routes to the same co
    `` `n `` separators. The file is **pure CRLF - 170 CRLF, 0 bare LF** - so the LF-form marker is absent
    and the CRLF form present. `IndexOf` returned -1 and the test threw *"the stub block could not be
    located"*, reporting its own defect as the script's.
+
 - **-029's rule covered 1 and 2 and NOT 3.** *"Read and write bytes when the claim is byte-level"* was
   **satisfied** here: the match was byte-level, deliberately. The needle was built in the wrong convention.
 - **THE RULE NEEDS ITS SECOND HALF**:
@@ -1371,6 +1383,7 @@ why it failed.**
   a result object whose `Failed` entries carry their own `ErrorRecord`; the sweep now prints only those,
   keeps the console silent, and propagates the exit code by hand (`Run.Exit` would terminate before the
   reporting runs). **Real reason on failure, nothing on success, no firehose.**
+
 - **The script half is NOT fixed here.** Giving hand-rolled asserts a structured failure location means
   either adopting Pester in 254 files or teaching the helpers to report their caller - both are beta4
   work, and neither belongs in a tag batch. **Recorded as owed, with the Pester half done.**
@@ -1393,6 +1406,7 @@ why it failed.**
 | known-PASSING Pester (`module-packaging-identity`) | **0** | yes | summary `failed=0`, `all named test files green` |
 
   **Both directions preserved. No false green.**
+
 - **IT TOOK TWO FALSE RESULTS TO GET THERE, and both are recorded because the first looked like a
   finding.** (1) The control first invoked the sweep as `pwsh -File sweep.ps1 -ExcludeRelativePath $array`;
   **`-File` cannot bind an array**, so every element after the first became a positional argument, the
@@ -1782,6 +1796,7 @@ corrected by hand is not evidence.*
 | coverage-table rows | 58 |
 
   **This is an instance, not a systemic failure of the batch's proof practice.**
+
 - **AND NO FR IS UNSUPPORTED.** `001/coverage-evidence.md` has 22 FR/SC rows; all 22 cite at least one
   red-at-tag test, and **0 cite ONLY red tests** - every row's conclusion survives on its other citations.
   Overstated, not unsupported. Separately, 26 lines DO name only a red test, but **none carries an FR id**:
@@ -1829,6 +1844,7 @@ level:
 3. **`validate-governance-changed-only`** - red at beta2 and at the tag. The sets are **DISJOINT**: three
    `-FullRun` failures at beta2, three scoping failures at the tag. One file carried a repair and an
    apparent regression inside the same exit code.
+
 - **THE RULE**: red-at-both is an unexamined coincidence of exit codes. **Compare the sets.** It is the
   same defect as counting over the wrong set - a claim resting on a coarser measurement than the claim
   requires - and it belongs beside the count-scope rule in the harness queue.
@@ -2934,6 +2950,7 @@ merely less likely.**
 
   **Thirty-two seconds.** And `auth_commit_hash` in that session state is `16a43c03` itself - **the
   scaffold chore commit**, which is also the commit that created `plan.md`.
+
 - **THE PLAN WAS NEVER AUTHORED.** `iterations/003/plan.md` is titled **"Iteration Plan: 003 (Stub)"** and
   every requirement row carries `-` in its Stories column. `tasks-progress.yml` has an empty `tasks:` key.
   **There were no tasks because none were ever planned**, so a back-filled task table would not be
@@ -3468,6 +3485,7 @@ one it expected.**
 
   **Its two neighbours both stop. It alone does not.** That is a much smaller and more findable fault than a
   broken shared path.
+
 - **WHY STATING THE PREDICTION FIRST MATTERED, and it is the point of the exercise.** Had the expectation
   gone unrecorded, the natural reading of a clean feature-closeout would have been *"the gate works, the
   earlier one was a fluke"* - and the iteration-closeout silence would have softened into an anomaly rather
