@@ -2107,3 +2107,25 @@ repaired and lints clean; MD001 halts naming `bad.md:3`; against the unpatched g
 the walk's own text. Part 3 as stated: the unfixable parser was dead under markdownlint-cli's `error` column
 (B4F-087); optional now. Part 4 held: the gate helpers suite, closeout-gate, lifecycle harness, scope-base,
 changed-only (14/14, 1302 s locally), crossing-mint, plan-sync-target and the protected-surface guard green.
+
+## PRED-BETA4-044 - PRED-015 for the FROZEN SHA carrying the ruling's three items. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `9154f72b` (census 10 green, installed) plus
+`3d3c64a2` (B4F-086: the captured-verdict directive, refocus rule 1), `7a9b14e2` (B4F-083 fix A and B4F-087:
+the lint gate proceeds after its auto-fix, its unfixable halt fires), `17db6499` (`Prerelease = 'beta4'` with
+its release notes), and the tests and records between them. All three ruled items are on the branch; this is
+the one census the ruling allows, dispatched at 18:0x local so it lands after the laptop closes - read Friday
+from the desktop, before the walk.
+
+### THE PREDICTION
+
+1. `full-test-census` green - 417 named files (`lint-gate-autofix-proceeds` is new), 0 failures; the new
+   suites run where markdownlint-cli is installed (the runner installs it); `capture-disclosure` 51 and the
+   banner suite 4 green; `prepublish-validation` and the dry-run publish green with the manifest reading
+   `0.40.0-beta4`; the artifact carries the sentinel and nothing else.
+2. If exactly the timing pair reds with the runner-bound signature and nothing else does, the single
+   sanctioned re-dispatch runs with its meaning fixed; any other red on a changed file is fixed Friday and the
+   SHA is not frozen.
+3. On green, Friday: the module installed from this SHA exactly (temp worktree), byte-verified; the
+   router-skill project updated once more, to this build; then the walk from the desktop, measuring at every
+   boundary of both features: unexpected repair prompts 0, post-verdict asks 0.
