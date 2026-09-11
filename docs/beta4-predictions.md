@@ -1704,3 +1704,21 @@ green. Stated before the walk; nothing here is a result.
 green - the first fully green census of the beta4 arc. Every part held. `ef80591d` was superseded before it
 landed (the R2 follow-up and the audit's two items), so it is not the tag SHA; it is the proof that the
 runner-bound reds of censuses 1-4 are gone. Census 6 (`34544020626`, on `632bdcd0`) is read when it lands.
+
+## PRED-BETA4-035 - PRED-015 for the FROZEN SHA, by ruling: one census, one sanctioned re-dispatch for the timing pair only, install, one consumer update. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `632bdcd0` (the R2 follow-up) plus the stage-demo
+audit's two items and its harness (`c3c3e23f`, B4F-060 / B4F-074 / B4F-075). Census 5 on `ef80591d` was green
+across all three jobs; census 6 on `632bdcd0` is read when it lands, not re-run.
+
+### THE PREDICTION
+
+1. `full-test-census` green - 414 named files, 0 failures - including the three suites added here
+   (`mechanical-checks-applicability` 20, `crew-charter-ownership` 17 through the real init and three real
+   starts, `closeout-gate-git-warnings` 4) and the lifecycle harness with its self-host mirror comparison;
+   `prepublish-validation` and the dry-run publish green; the artifact carries the sentinel and nothing else.
+2. If exactly the timing pair (the two turn-end suites) reds with the runner-bound signature and nothing else
+   does, the single sanctioned re-dispatch runs with its meaning fixed; any other red on a changed file is
+   fixed first and the SHA is not frozen.
+3. On green: the module is installed from this SHA, byte-verified, and the router-skill project updates once,
+   to that build - the turn-end contract's field test.
