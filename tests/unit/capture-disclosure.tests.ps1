@@ -17,6 +17,9 @@
 # disclosure names the one-line retype - both the boundary path and the typed-authority path, in the turn.
 # Mutations that turn this file red: remove the disclosure call from the prompt-submit branch (cases 1-3);
 # remove the Write-Output from the provider (case 4); widen the trigger so it fires without the phrase (5).
+# PRED-BETA4-042 (cases 10-13, B4F-086): a CAPTURED verdict says so in the same turn and names the stage it
+# began and the command that begins it - measured on the 9154f72b walk as "What would you like next?" after
+# every capture. Mutation: the directive dropped from the authorized branch reds cases 10-13 and nothing else.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -29,13 +32,20 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
 function New-DisclosureFixture {
-    param([switch]$NoPendingCrossing)
+    param(
+        [switch]$NoPendingCrossing,
+        # PRED-BETA4-042: the crossing under test. Default is the original tasks -> before-implement shape.
+        [string]$From = 'tasks',
+        [string]$To = 'before-implement'
+    )
     $root = [System.IO.Path]::GetFullPath((Join-Path ([System.IO.Path]::GetTempPath()) ("disclose-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 10))))
     $feature = [System.IO.Path]::GetFullPath((Join-Path $root (Join-Path 'specs' '001-feat')))
     $iter = [System.IO.Path]::GetFullPath((Join-Path $feature (Join-Path 'iterations' '001')))
     New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew/runtime') | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $iter 'quality') | Out-Null
-    Set-Content -LiteralPath (Join-Path $feature 'spec.md') -Value "# Feature Specification: Feat`n`nBody." -Encoding UTF8
+    # spec.md carries a dated Clarifications session so the clarify verdict's stage-evidence contract is met
+    # when the crossing under test is clarify -> plan; the other crossings do not read it.
+    Set-Content -LiteralPath (Join-Path $feature 'spec.md') -Value "# Feature Specification: Feat`n`nBody.`n`n## Clarifications`n`n### Session 2026-08-29`n`n- Q: none. A: none." -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $iter 'plan.md') -Value "# Iteration Plan: 001`n`n**Status**: planning" -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $iter 'state.md') -Value "# Iteration State: 001`n`n**Current Phase**: tasks" -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $iter 'quality/hardening-gate.md') -Value "# Hardening Gate`n`n**Overall Verdict**: ready" -Encoding UTF8
@@ -51,12 +61,12 @@ function New-DisclosureFixture {
         feature_path = $feature
         # -NoPendingCrossing is the router-skill shape: the cursor still AT the last authorized boundary, the
         # next boundary's sync not yet run - so no crossing is derivable, scoped or legacy.
-        session_state = [ordered]@{ active = $true; boundary_type = $(if ($NoPendingCrossing) { 'tasks' } else { 'before-implement' }); feature_ref = '001-feat'; host = 'claude'; iteration_number = '001'; auth_commit_hash = $head; recorded_at = '2026-08-29T00:00:00Z' }
-        boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
+        session_state = [ordered]@{ active = $true; boundary_type = $(if ($NoPendingCrossing) { $From } elseif ($From -eq 'intake') { 'specify' } else { $To }); feature_ref = '001-feat'; host = 'claude'; iteration_number = '001'; auth_commit_hash = $head; recorded_at = '2026-08-29T00:00:00Z' }
+        boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $(if ($From -eq 'intake') { $null } else { $From }); pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
     [System.IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
     if (-not $NoPendingCrossing) {
-        $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $root -WorkingBoundary 'before-implement' -BoundaryCommitHash $head -RecordedAt '2026-08-29T00:00:01Z'
+        $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $root -WorkingBoundary $To -BoundaryCommitHash $head -RecordedAt '2026-08-29T00:00:01Z'
     }
     return [pscustomobject]@{ Root = $root; Head = $head }
 }
@@ -166,5 +176,45 @@ Assert-True ($j9.Count -eq 1 -and [string]$j9[0].action -eq 'other-boundary-name
 Assert-True ([string](Read-Enforcement -Root $f9.Root).last_authorized_boundary -eq 'tasks') 'and the ledger is unchanged'
 
 foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6, $f7, $f8, $f9)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+# ---------------------------------------------------------------------------------------------------
+Write-Host 'Case 10 (PRED-BETA4-042, B4F-086): approved for specify, captured - the turn is told the clarify stage begins now'
+$f10 = New-DisclosureFixture -From 'specify' -To 'clarify'
+$out10 = ((& pwsh -NoProfile -File $provider --project-root $f10.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for clarify' 2>&1) -join "`n")
+$after10 = (Read-Enforcement -Root $f10.Root).last_authorized_boundary
+Assert-True ([string]$after10 -eq 'clarify') 'the clean phrase authorizes the clarify crossing'
+$expected10 = 'Verdict captured: approved for clarify. The plan stage begins in this turn: /speckit.specrew-speckit.before-plan, then /speckit.plan, then /speckit.specrew-speckit.sync-plan. Do not ask the human to start it; the approval was the instruction.'
+Assert-True ($out10.Contains($expected10)) ("and the provider's inject stdout carries the directive VERBATIM for clarify -> plan (got: " + (($out10 -replace '\s+', ' ')).Substring(0, [Math]::Min(160, ($out10 -replace '\s+', ' ').Length)) + ')')
+
+Write-Host 'Case 11 (PRED-BETA4-042): approved for specify - the clarify stage, /speckit.clarify then its sync'
+$f11 = New-DisclosureFixture -From 'intake' -To 'specify'
+$out11 = ((& pwsh -NoProfile -File $provider --project-root $f11.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for specify' 2>&1) -join "`n")
+$after11 = (Read-Enforcement -Root $f11.Root).last_authorized_boundary
+Assert-True ([string]$after11 -eq 'specify') 'the clean phrase authorizes the specify crossing'
+$expected11 = 'Verdict captured: approved for specify. The clarify stage begins in this turn: /speckit.clarify, then /speckit.specrew-speckit.sync-clarify. Do not ask the human to start it; the approval was the instruction.'
+Assert-True ($out11.Contains($expected11)) 'and the directive for specify -> clarify is verbatim as predicted'
+
+Write-Host 'Case 12 (PRED-BETA4-042): approved for before-implement (the original fixture) - implementation begins, /speckit.implement'
+$f12 = New-DisclosureFixture
+$out12 = ((& pwsh -NoProfile -File $provider --project-root $f12.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' 2>&1) -join "`n")
+Assert-True ($out12.Contains('Verdict captured: approved for before-implement. The implementation stage begins in this turn: /speckit.implement.')) 'the before-implement capture names implementation and /speckit.implement'
+Assert-True ($out12 -notmatch '\?') 'and asks nothing - no question mark anywhere in the injected text'
+
+Write-Host 'Case 13 (PRED-BETA4-042): approved for iteration-closeout - both exits named, the record decides, no ask'
+$f13 = New-DisclosureFixture -From 'retro' -To 'iteration-closeout'
+Set-Content -LiteralPath (Join-Path $f13.Root 'specs/001-feat/iterations/001/retro.md') -Value "# Retro`n`ndone" -Encoding UTF8
+$out13 = ((& pwsh -NoProfile -File $provider --project-root $f13.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for iteration-closeout' 2>&1) -join "`n")
+$after13 = (Read-Enforcement -Root $f13.Root).last_authorized_boundary
+Assert-True ([string]$after13 -eq 'iteration-closeout') 'the clean phrase authorizes the iteration-closeout crossing'
+Assert-True ($out13.Contains('Verdict captured: approved for iteration-closeout. Two exits follow and the record decides:') -and $out13.Contains('/speckit.specrew-speckit.before-plan') -and $out13.Contains('/speckit.specrew-speckit.sync-feature-closeout')) 'both exits are named: the next iteration''s plan and feature closeout'
+Assert-True ($out13.Contains('do not ask the human which') -and $out13 -notmatch '\?') 'and it does not ask'
+
+Write-Host 'Case 14 (PRED-BETA4-042): the directive renders as the launch contract does on the host - Codex sync commands in pwsh form'
+$codexLine = Get-SpecrewVerdictCapturedDirective -AuthorizedBoundary 'clarify' -HostKind codex
+Assert-True ($codexLine.Contains('pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType plan') -and -not $codexLine.Contains('/speckit.specrew-speckit.sync-plan')) 'on Codex the sync command is the pwsh form (FR-014), the rest unchanged'
+$claudeLine = Get-SpecrewVerdictCapturedDirective -AuthorizedBoundary 'clarify' -HostKind claude
+Assert-True ($claudeLine.Contains('/speckit.specrew-speckit.sync-plan')) 'on Claude it stays the slash form'
+Assert-True ($null -eq (Get-SpecrewVerdictCapturedDirective -AuthorizedBoundary 'not-a-boundary' -HostKind claude)) 'an unknown boundary yields nothing rather than something wrong'
+foreach ($f in @($f10, $f11, $f12, $f13)) { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+
 if ($script:failCount -gt 0) { throw ("capture-disclosure: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'capture-disclosure: all assertions passed' -ForegroundColor Green

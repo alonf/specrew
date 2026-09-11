@@ -706,6 +706,75 @@ function Get-SpecrewVerdictCaptureDisclosure {
     return $message
 }
 
+function Get-SpecrewVerdictCapturedDirective {
+    # B4F-086 / PRED-BETA4-042: the line the coordinator reads the moment a verdict is CAPTURED. Measured on the
+    # 9154f72b walk: after `approved for specify` the coordinator asked "What would you like next - run
+    # /speckit.clarify, skip straight to plan, or something else?"; after `approved for clarify`, "Next stage is
+    # plan ... that's your call whenever you're ready." Two human turns per boundary, because nothing at capture
+    # told the coordinator that the approval WAS the instruction - rule 14A's "advance, then halt and ask again"
+    # was all it had. This names the stage the approval began and the command that begins it, in the launch
+    # contract's own names; the host's Replace coordinator rules (Codex: sync-* -> pwsh form) render it as the
+    # contract renders on that host. The two closeout crossings, whose next stage branches, name both exits and
+    # never ask. Returns $null for an unknown boundary so an unexpected shape says nothing rather than something
+    # wrong.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$AuthorizedBoundary,
+        [AllowNull()][string]$HostKind
+    )
+    $to = ([string]$AuthorizedBoundary).Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($to)) { return $null }
+    $stages = @{
+        'specify'            = @('clarify', '/speckit.clarify, then /speckit.specrew-speckit.sync-clarify')
+        'clarify'            = @('plan', '/speckit.specrew-speckit.before-plan, then /speckit.plan, then /speckit.specrew-speckit.sync-plan')
+        'plan'               = @('tasks', '/speckit.tasks, then /speckit.specrew-speckit.sync-tasks')
+        'tasks'              = @('before-implement preparation', '/speckit.specrew-speckit.after-tasks, then /speckit.specrew-speckit.before-implement - the packet, then the stop for the human''s verdict')
+        'before-implement'   = @('implementation', '/speckit.implement')
+        'review-signoff'     = @('retro', 'the retrospective, closed by /speckit.specrew-speckit.sync-retro')
+        'retro'              = @('iteration-closeout', '/speckit.specrew-speckit.sync-iteration-closeout')
+    }
+    $line = $null
+    if ($stages.ContainsKey($to)) {
+        $stage = [string]$stages[$to][0]
+        $command = [string]$stages[$to][1]
+        $line = ("Verdict captured: approved for {0}. The {1} stage begins in this turn: {2}. Do not ask the human to start it; the approval was the instruction." -f $to, $stage, $command)
+    }
+    elseif ($to -eq 'iteration-closeout') {
+        $line = "Verdict captured: approved for iteration-closeout. Two exits follow and the record decides: work remaining in the plan begins the next iteration's plan stage (/speckit.specrew-speckit.before-plan); a delivered feature begins feature closeout (/speckit.specrew-speckit.sync-feature-closeout). Begin the one the record supports in this turn; do not ask the human which."
+    }
+    elseif ($to -eq 'feature-closeout') {
+        $line = "Verdict captured: approved for feature-closeout. The feature is closed; nothing is pending. The next feature begins with the design workshop when the human brings one - do not ask them to start a stage."
+    }
+    if ($null -eq $line) { return $null }
+    # Render as the launch contract renders on this host (FR-014: Codex has no slash surface for the sync
+    # commands). The host's coordinator rules are the one source (hosts/<kind>/coordinator-rules.psd1); the
+    # hook context has not loaded the surgery module or the registry, so the file is read directly. Only
+    # Replace rules apply to a single line; Strip rules are for whole directives.
+    if (-not [string]::IsNullOrWhiteSpace($HostKind)) {
+        try {
+            $rules = @()
+            if (Get-Command Get-SpecrewHostCoordinatorRules -ErrorAction SilentlyContinue) {
+                $rules = @(Get-SpecrewHostCoordinatorRules -HostKind $HostKind)
+            }
+            else {
+                $moduleRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))   # bootstrap -> internal -> scripts -> module root
+                $rulesPath = Join-Path (Join-Path (Join-Path $moduleRoot 'hosts') ([string]$HostKind).ToLowerInvariant()) 'coordinator-rules.psd1'
+                if (Test-Path -LiteralPath $rulesPath -PathType Leaf) {
+                    $data = Import-PowerShellDataFile -LiteralPath $rulesPath
+                    if ($data.ContainsKey('Rules')) { $rules = @($data.Rules) }
+                }
+            }
+            foreach ($rule in $rules) {
+                if ([string]$rule.Kind -eq 'Replace' -and -not [string]::IsNullOrWhiteSpace([string]$rule.Pattern)) {
+                    $line = [regex]::Replace($line, [string]$rule.Pattern, [string]$rule.Replacement)
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    return $line
+}
+
 function Write-SpecrewVerdictDisclosureJournal {
     # One row per disclosure, whichever branch produced it; fail-silent bookkeeping.
     param(
@@ -876,6 +945,8 @@ function Invoke-SpecrewBoundaryVerdictCapture {
             Sync-SpecrewPendingVerdictArtifactAfterAuthorization -ProjectRoot $ProjectRoot -NowUtc $NowUtc
             $result.authorized = $true
             $result.reason = 'authorized'
+            # B4F-086: the caller says which stage this began; it needs the boundary the verdict paid.
+            $result | Add-Member -NotePropertyName 'authorized_boundary' -NotePropertyValue ([string]$pendingCrossing.PendingToBoundary) -Force
             return $result
         }
         elseif ($toIdx -gt $authIdx) {
@@ -1173,6 +1244,21 @@ function Update-SpecrewRollingHandover {
         $disclosure = $null
         if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
             $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source
+        }
+        elseif ((Get-Command Get-SpecrewVerdictCapturedDirective -ErrorAction SilentlyContinue)) {
+            # B4F-086 / PRED-BETA4-042: a CAPTURED verdict says so in the turn and names the stage it began. The
+            # boundary just paid is the ledger's newest authorization; the outcome object carries none.
+            try {
+                $justAuthorized = if ($captureOutcome.PSObject.Properties['authorized_boundary']) { [string]$captureOutcome.authorized_boundary } else { '' }
+                if ([string]::IsNullOrWhiteSpace($justAuthorized) -and (Get-Command Get-SpecrewBoundaryEnforcementState -ErrorAction SilentlyContinue)) {
+                    $enf = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+                    if ($null -ne $enf -and $null -ne $enf.EffectiveState) { $justAuthorized = [string]([pscustomobject]$enf.EffectiveState).last_authorized_boundary }
+                }
+                if (-not [string]::IsNullOrWhiteSpace($justAuthorized)) {
+                    $disclosure = Get-SpecrewVerdictCapturedDirective -AuthorizedBoundary $justAuthorized -HostKind $fromHost
+                }
+            }
+            catch { $null = $_ }
         }
         # PRED-BETA4-022: a typed authority (round approval, pause, reset, deferral) refused for continuing
         # past its line is said HERE too, in the turn, where the human reads - the drop journal and the

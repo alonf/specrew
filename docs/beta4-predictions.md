@@ -2019,3 +2019,51 @@ replaced on 2026-08-23 (B4F-081) and a live-review test written before the round
 tests only, the product right both times. Since the branch's first push on 2026-09-09 no run of this
 workflow had passed Lint; none had executed the gate or the lane. The release census (`9154f72b`, PRED-041)
 and the full CI (`d1eb2dd6`, tests and records after it) now both stand green on this branch.
+
+## PRED-BETA4-042 - B4F-086: the captured verdict tells the coordinator the next stage begins now. Stated before the code.
+
+**The ruling** (2026-09-11): B4F-086 fix (1)+(2)+(3), then B4F-083 fix A, then the `Prerelease` line; one
+re-freeze and one census when all three are on the branch, not before; no census on a partial SHA.
+
+**Where the line is produced**: the prompt-entry branch of the handover provider
+(`HandoverStore.ps1`, `prompt-submit-verdict-capture`), which today returns a `disclosure` only when a
+verdict did NOT authorize. When `Invoke-SpecrewBoundaryVerdictCapture` returns `authorized`, the same field
+carries `Get-SpecrewVerdictCapturedDirective`'s line, built from the crossing the capture just paid (`to`),
+the next boundary in `Get-SpecrewBoundaryOrder`, and a table of the commands that begin each stage in the
+launch contract's own names; the host's `Replace` coordinator rules (Codex's `sync-*` -> pwsh form) are
+applied when the surgery module is loaded, so the line renders as the contract does on that host.
+
+### THE PREDICTION
+
+1. The directive's exact text, as the Claude launch contract renders it:
+   - specify -> clarify: `Verdict captured: approved for specify. The clarify stage begins in this turn:
+     /speckit.clarify, then /speckit.specrew-speckit.sync-clarify. Do not ask the human to start it; the
+     approval was the instruction.`
+   - clarify -> plan: `Verdict captured: approved for clarify. The plan stage begins in this turn:
+     /speckit.specrew-speckit.before-plan, then /speckit.plan, then /speckit.specrew-speckit.sync-plan. Do
+     not ask the human to start it; the approval was the instruction.`
+   - iteration-closeout (both exits, no ask): `Verdict captured: approved for iteration-closeout. Two exits
+     follow and the record decides: work remaining in the plan begins the next iteration's plan stage
+     (/speckit.specrew-speckit.before-plan); a delivered feature begins feature closeout
+     (/speckit.specrew-speckit.sync-feature-closeout). Begin the one the record supports in this turn; do
+     not ask the human which.`
+   The other rows: plan -> `/speckit.tasks, then /speckit.specrew-speckit.sync-tasks`; tasks -> the
+   before-implement PREPARATION (`/speckit.specrew-speckit.after-tasks, then
+   /speckit.specrew-speckit.before-implement` - the packet, then the stop for the verdict);
+   before-implement -> `/speckit.implement`; review-signoff -> the retrospective, closed by
+   `/speckit.specrew-speckit.sync-retro`; retro -> `/speckit.specrew-speckit.sync-iteration-closeout`;
+   feature-closeout -> the next feature begins with the design workshop when the human brings one, nothing
+   is pending. On Codex the `sync-*` commands render as `pwsh -File .specify/extensions/specrew-speckit/
+   scripts/sync-boundary-state.ps1 -BoundaryType <x>`, as the contract does.
+2. `tests/unit/capture-disclosure.tests.ps1` gains the captured cases through the REAL provider: a
+   specify -> clarify fixture typing `approved for specify` gets the first line above verbatim and the
+   crossing authorized; clarify -> plan the second; tasks -> before-implement names the preparation;
+   iteration-closeout names both exits and contains no question mark; a non-verdict prompt gets no line
+   (case 3 stands); the FR-010 disclosures (cases 1-2, 4, 6-9) unchanged. Mutation: the directive dropped
+   from the authorized branch reds exactly the captured cases.
+3. `refocus/general.md` rule 1 gains: "A captured approval is the instruction to begin the next stage in the
+   same turn; do not ask the human to start it." - and the digest stays at or under 600 tokens (one existing
+   sentence trimmed); `refocus-digests.tests.ps1` green; the `.specify` mirror synced and the marker
+   re-stamped. B4F-085's sentence folds in ONLY if it costs no token; otherwise beta5.
+4. Friday's walk acceptance (PRED-009's replacement) adds two counts, each measured at every boundary of both
+   features: unexpected repair prompts 0, post-verdict asks 0.
