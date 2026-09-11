@@ -4093,3 +4093,124 @@ recorded as an external label and never as a round the human approved; the host 
 (`requested-host-not-available:not-cataloged:fixture`) and the suite is green. The lane's five other checks
 and the non-interactive first-run regression pass locally. Same class as B4F-080/081: a lane that never ran
 cannot tell you which of its suites the product has moved past.
+
+## B4F-083 - THE ONE REPAIR PROMPT ON THE 9154f72b WALK: the pre-boundary lint gate halts on its own successful auto-fix (open; the maintainer's call)
+
+**The walk** (`C:/Dev/walks/beta4-mdlink-9154f72b`, Claude Code / Sonnet 5, feature `001-mdlink-checker`,
+Light depth): orientation first with the dials; four lenses closed on one typed reply each; six-section
+specify packet; `approved for specify` hook-captured; no gate refusal in the runtime journal; 60 minutes
+init-to-specify. One unexpected repair prompt against zero predicted: at the specify preflight the
+coordinator asked, through a picker, for a commit before the sync could proceed. Commit `5c0a104`
+"chore(lint): auto-fix markdownlint violations" is the first commit of nine files - the three workshop
+records, `product-domain.yml`, `reviewer-hosts.json`, `implementation-rules.yml`, `lens-applicability.json`,
+the spec stub, `exhausted-turns.jsonl` - which is itself a finding: nothing in the workshop had been
+committed at lens close, so the product's lint gate was what first committed the workshop.
+
+**Reproduced from the walk's own bytes.** The lens records are agent-authored - there is no product writer
+for `workshop/<lens>.md`; `confirm-workshop-lens.ps1` requires the record to exist and the skill prescribes
+no format - so "run the writers" has no subject. The pre-fix content is recoverable from the Claude session
+transcript (`~/.claude/projects/C--Dev-walks-beta4-mdlink-9154f72b/e459cb45….jsonl`): the agent's `Write`
+calls for the three records at 12:48, 12:56 and 13:05 UTC, and the gate's throw at 13:06:35 (`[markdownlint-
+gate] Auto-fixed markdownlint violations in 3 file(s) … Please: 1. git diff 2. git add 3. git commit -m
+'chore(lint): …' 4. git push … Boundary-sync HALTED until the lint findings are resolved and committed`).
+Linted with the repo's rule set as written: **MD022 blanks-around-headings ×19** (every `## Heading` with its
+paragraph on the next line, no blank below) and **MD032 blanks-around-lists ×4**; nothing else. Both are
+auto-fixable; `--fix` inserted the blank lines; the halt then demanded a commit of the product's own fix.
+
+**Cause**: Proposal 088's `Invoke-PreBoundaryMarkdownLintGate` (`scripts/internal/sync-boundary-state.ps1`)
+treats a SUCCESSFUL auto-fix as a halt: it throws with a four-step manual git sequence ("git push" included)
+and refuses the sync until the human commits. The files are already repaired on disk when it throws; the
+boundary commit that follows the sync would carry them. The halt is the repair prompt; the picker was the
+coordinator's rendering of it. B4F-017's family again: a message whose remedy is a hand-run sequence for a
+condition the product had already resolved.
+
+**Fixes, sized, not started** (the maintainer's call: beta4, or a known issue with the Friday walk deciding):
+
+- **A. The gate proceeds after an auto-fix.** Auto-fixed files are reported on stderr and in the sync's
+  output (`[markdownlint-gate] auto-fixed N file(s): …`) and the sync continues; the boundary commit carries
+  the repaired files. Unfixable violations still halt with file:line, as today. `scripts/internal/
+  sync-boundary-state.ps1` only (one copy; the extension wrapper calls it), about fifteen lines; one new
+  case in `tests/integration/boundary-sync-markdownlint-gate.tests.ps1` (auto-fixed → the sync runs and
+  names the files; unfixable → halt) with the policy reverted as the mutation. About an hour. A module
+  file: re-freeze, one census (~1 h), install, the router-skill update.
+- **B. The skill tells the agent the shape.** One sentence in `design-workshop.md` ("a blank line after
+  every heading and around every list") - prompt-level, no guarantee with a model that skimmed the agenda
+  template already. Fifteen minutes; also a module file.
+- **C. Known issue.** Ship as is: the walk sees one repair prompt at specify whenever the agent writes
+  headings without a blank line below, costing one commit picker; the records stay correct.
+
+Recommendation: A. The gate's job is lint-clean records at the boundary; it has them when it halts.
+
+## B4F-084 - THE CODE-IMPLEMENTATION LENS ASKS FOR THE REVIEWER HOST INSIDE THE LENS (observed; no fix requested)
+
+The lens renders the installed reviewer-host list and asks the human to pick (by design: "capture their pick
+into `reviewer_preference` as `mode=human-selected`"; a reply of "use the defaults" chooses the marked
+default). On the walk it read as a question and drew an extra reply - the human typed "codex" - and the lens
+stayed open until "move on". Recorded as observed: the pick is designed to be the human's, and the lens's
+close is a separate typed reply; whether the pick should fold into the lens close is a beta5 question.
+
+## B4F-085 - "SKIP STRAIGHT TO PLAN" IS NOT WHAT CLARIFY RULE 3 ALLOWS (observed; no fix requested)
+
+After `approved for specify` the coordinator offered to "skip straight to plan". `refocus/clarify.md` rule
+3: clarify may be skipped only with a recorded rationale written into the spec and approved at the specify
+verdict - the questions are skippable, the boundary is not. The offer has a source: the launch contract's
+rules 11-12 ("Only skip speckit.clarify when resuming an existing feature whose current spec has already been
+clarified …"; "record a concrete dated skip rationale in .squad/decisions.md before speckit.plan") - a
+different home for the rationale than refocus rule 3's "written into the spec, approved at the specify
+verdict", and no word that the clarify BOUNDARY still stops. The spec on the walk was clarified (`19c7d9f`).
+Two texts, one rule: beta5, unless the maintainer folds it into B4F-086's refocus sentence.
+
+## B4F-086 - AFTER EVERY CAPTURED VERDICT THE COORDINATOR ASKED THE HUMAN TO START WHAT THE VERDICT AUTHORIZED (open; sized, not started)
+
+**The walk** (`9154f72b`, Claude Code / Sonnet 5): after `approved for specify` (13:37:25Z,
+hook-captured-from-transcript) - "What would you like next - run /speckit.clarify, skip straight to plan, or
+something else?"; after `approved for clarify` (13:49:26Z) - "Next stage is plan … that's your call whenever
+you're ready." Two human turns per boundary: the verdict, then an instruction to do what the verdict
+authorized. Nine boundaries on the Friday walk would cost nine extra turns.
+
+**Cause, from the corpus**: no prompt-time provider tells the coordinator that a verdict was captured and
+that the next stage begins in the same turn. The prompt-entry capture path
+(`HandoverStore.ps1`, the `prompt-submit-verdict-capture` branch) returns a `disclosure` only when a
+verdict-shaped turn did NOT authorize (FR-010) or a typed authority was refused (PRED-022); a captured
+verdict returns nothing to the agent. What the coordinator reads at that moment is rule 14A ("advance to the
+next single boundary stop, then halt and ask again") and refocus rule 1 ("one approval advances at most ONE
+boundary") - and "advance, then halt" is what it did. The only "next automatic lifecycle step" wording in the
+corpus is the after-tasks -> before-implement line in `specrew-governance.md:102`. CLAUDE.md's "the next
+stage begins after an explicit approved for <boundary> reply" is description, not an instruction delivered at
+capture.
+
+**Fix shape, sized** (the maintainer's ruling: UX is beta4's top priority; the Friday walk measures nine
+boundaries):
+
+1. **At capture, one line to the coordinator**: *"Verdict captured: approved for <boundary>. The <next stage>
+   stage begins in this turn: <its command>. Do not ask the human to start it; the approval was the
+   instruction."* A function beside the disclosure (`Get-SpecrewVerdictCapturedDirective`) reads the captured
+   crossing's `to` boundary, the next boundary from `Get-SpecrewBoundaryOrder`, and a nine-row table of the
+   command that begins each stage in the launch contract's own names (`speckit.clarify`;
+   `speckit.specrew-speckit.before-plan` then `speckit.plan`; `speckit.tasks`;
+   `speckit.specrew-speckit.after-tasks` then `before-implement` preparation; `speckit.implement`; the
+   review, retro and closeout syncs) - the host renders its own form, as it does for the contract. The two
+   closeout crossings, whose next stage branches (next iteration's plan or feature closeout), get the
+   "captured" half and both exits named, never an ask. The prompt-entry branch sets `disclosure` to that line
+   when `authorized` is true - the same field the hook already renders. About forty lines in
+   `scripts/internal/bootstrap/HandoverStore.ps1`; no mirror.
+2. **Refocus rule 1 gains one sentence**: "A captured approval is the instruction to begin the next stage in
+   the same turn; the agent does not ask the human to start it." `refocus/general.md` is at its 600-token
+   budget, so one existing sentence is trimmed to make room (the digest test pins the budget).
+3. **Test**: `tests/integration/capture-disclosure.tests.ps1` gains the captured cases - specify -> the line
+   names clarify and `speckit.clarify`; clarify -> plan and `before-plan`; tasks -> before-implement
+   preparation; iteration-closeout -> both exits, no ask - and the mutation (the directive dropped from the
+   authorized branch) reds them. About thirty lines.
+
+About two hours. A module file: re-freeze, one census (~1 h), install, the router-skill update - **the same
+cycle B4F-083's fix A needs; ruled in together, they ride one census.**
+
+## The version string on a branch-built module reads `0.40.0-beta3`: the tag stamps it (confirmed)
+
+`Specrew.psd1` carries `Prerelease = 'beta3'` in source. `scripts/internal/module-packaging.ps1` derives the
+release stamp from the tag: `v0.40.0-beta4` (or `-beta.4`, normalized) -> `ManifestPrerelease = 'beta4'`;
+`invoke-module-release.ps1` writes it into the STAGED manifest (`Set-SpecrewManifestReleaseMetadata`) and
+throws if the stamped value differs from the expected one. So the gallery beta4 orients as `0.40.0-beta4` when
+the tag says so; the orientation on the walk read beta3 because a local install from a branch has no tag and
+carries the source manifest. If the local/dev-loop label should say beta4 before the tag, the source line is
+a one-line change in a module file (rides the same census as anything else ruled in).
