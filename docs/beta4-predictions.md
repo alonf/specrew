@@ -1856,3 +1856,33 @@ returns is read as PRED-037's verdict. If the runner is lost AGAIN at the same p
 about this SHA's sweep tail (the suites running near the 50-minute mark - the charter suite's ten starts among
 the candidates), investigated from whatever the runner retains, and no third dispatch is made. The sanctioned
 re-dispatch for the timing pair is a different instrument and stays unspent.
+
+### PRED-BETA4-037 VERDICT - dispatch 2 (`34580986943` on `6b937d9c`): NOT green; three reds, two of them mine
+
+`prepublish-validation` green; `full-test-census` 3 red of 414 (the artifact carries the three and nothing else):
+
+1. `validate-governance-changed-only.tests.ps1` (857 s) - three "should pass" assertions red because every
+   iteration reported *"The deployed Specrew machinery under .specify/extensions/specrew-speckit does not match
+   what was installed (modified: scripts/deploy-squad-runtime.ps1, squad-templates/skills/specrew-team/SKILL.md)"*.
+   **Mine**: `e8a2d900` edited those two mirror files and did not re-stamp the deployed marker - the step this
+   session's earlier mirror edits took (`restamp.ps1`) and this one skipped. Part 2 of the statement applies:
+   a red on a changed file; the SHA is not frozen.
+2. `maintainer-skill-host-parity.tests.ps1` - *"specrew-team differs in .cursor/rules"*. **Mine**: the team
+   skill's guidance is mirrored on four host roots; I synced three (`.agents`, `.claude`, `.github`) and missed
+   `.cursor/rules`.
+3. `psgallery-check.tests.ps1` - *"Offline PSGallery failure should stay silent and bounded (<10s).
+   Elapsed=10178 ms"*: 178 ms over a wall-clock bound, on a file nothing in beta4 touched, on the runner. A
+   runner-timing red of the turn-end pair's class but not that pair, so the sanctioned re-dispatch does not
+   apply to it and is not spent on it; it is read again on the next census (which runs anyway for 1 and 2).
+   If it reds there alone, the bound is the finding, not the run.
+
+Both of mine fixed in `6e62fbcd`: marker re-stamped for exactly the two entries (164 entries, 2 hashes
+changed, 0 drifted after), the cursor mirror synced; parity 5/5 locally. Part 1's other claims held: the
+charter suite (45) and the thirteen other adjacent suites were green in the sweep; the void first dispatch
+(runner lost) did not recur.
+
+**Also found by the maintainer's "check, there is a failure"** (B4F-079): the push-triggered Specrew CI has been
+red on every SHA of this branch, on markdown lint over the records, and its two downstream lanes never ran on
+beta4. The lint is clean now; the product's own seal check then refused the record edits (a closed iteration
+is preserved history) - reverted as instructed, the sealed directory excluded from the lint; then the same
+missing marker re-stamp failed the governance step there too. The lanes run on `6e62fbcd` for the first time.
