@@ -1912,7 +1912,7 @@ lint exclusion and `86e84ecd`'s verbose CI step (neither in the module). Nothing
 
 **Read from the runner, not reasoned** (run `34588394317`, the diagnostic step before the governance step):
 the job log's `env:` block prints `GITHUB_BASE_REF: 6e62fbcd…` for the step, and inside the step
-`$env:GITHUB_BASE_REF` is EMPTY - `before: ` blank, `git rev-parse --verify` "Needed a single revision", exit
+`$env:GITHUB_BASE_REF` is EMPTY - the `before:` line blank, `git rev-parse --verify` "Needed a single revision", exit
 128 - and the validator then reports "fallback to full validation: global-state-changed (base origin/main)".
 GitHub does not let a workflow overwrite its own `GITHUB_*` variables (documented; here observed), so the
 workflow's `env: GITHUB_BASE_REF: ${{ github.event.before }}` has been inert since it was written: on every
