@@ -4214,3 +4214,20 @@ throws if the stamped value differs from the expected one. So the gallery beta4 
 the tag says so; the orientation on the walk read beta3 because a local install from a branch has no tag and
 carries the source manifest. If the local/dev-loop label should say beta4 before the tag, the source line is
 a one-line change in a module file (rides the same census as anything else ruled in).
+
+## B4F-087 - THE LINT GATE'S "UNFIXABLE" HALT WAS DEAD: the parser never matched markdownlint-cli's output (fixed in beta4)
+
+Found building PRED-BETA4-043's control: `Invoke-MarkdownLintAutoFix`'s second pass parsed
+`^(.+\.md):(\d+)(?::\d+)?\s+(MD\d+/\S+)` and markdownlint-cli prints `docs/bad.md:3 error MD001/heading-increment
+…` - the `error` column between the line number and the rule id matched nothing, so `UnfixableViolations`
+was always empty and the gate's unfixable branch never fired. The only live behaviour of the gate was the
+halt on its own successful auto-fix (B4F-083); with fix A removing that, the gate would have halted on nothing
+at all. The column is optional in the pattern now; an MD001 record halts the sync naming `bad.md:3`.
+The consumer's `.markdownlintignore` note (B4F-079) applies here too: markdownlint-cli honours the CURRENT
+directory's ignore file and rejects paths outside it, so the gate reads a dirty file as clean when run from
+anywhere but the project root - the sync runs from the project root, and the suite does the same.
+
+**B4F-083's fix A landed with it (PRED-BETA4-043)**: the gate names what it auto-fixed on stderr and
+proceeds; the boundary commit carries the repaired files; an unfixable violation halts naming file:line and
+no longer instructs a git sequence. `tests/unit/lint-gate-autofix-proceeds.tests.ps1` (8) reproduces the
+walk's shape; against the unpatched gate it reds with the walk's own text.

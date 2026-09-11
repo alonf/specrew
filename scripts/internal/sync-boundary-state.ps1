@@ -1381,10 +1381,16 @@ function Get-LatestSpecrewBoundarySyncState {
 
 function Invoke-PreBoundaryMarkdownLintGate {
     # Proposal 088: runs `markdownlint-cli --fix` on changed .md files BEFORE
-    # boundary-sync writes any state. If auto-fixes were applied, throws with a
-    # directive to commit the fixes and re-run sync. If unfixable violations
-    # remain, throws with file:line messages. If markdownlint-cli is unavailable,
-    # emits a warning and proceeds.
+    # boundary-sync writes any state. If unfixable violations remain, throws with
+    # file:line messages. If markdownlint-cli is unavailable, emits a warning and
+    # proceeds.
+    #
+    # B4F-083 / PRED-BETA4-043: a SUCCESSFUL auto-fix no longer halts. It used to throw with a four-step
+    # manual git sequence ("git push" included) and refuse the sync until the human committed the product's
+    # own repair - measured on the 9154f72b walk as the one unexpected repair prompt, a commit picker at the
+    # specify preflight over MD022/MD032 blank lines in three agent-written lens records. The files are
+    # already repaired on disk when the gate runs; the boundary commit that follows the sync carries them.
+    # The gate now says what it fixed and proceeds.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectPath
@@ -1408,37 +1414,24 @@ function Invoke-PreBoundaryMarkdownLintGate {
         return
     }
 
-    # Surface both auto-fix and unfixable findings in a single halt message
-    # (per Copilot review feedback) so the Crew sees the full picture and can
-    # address both classes of issue before re-running, rather than discovering
-    # the unfixable ones in a second pass after committing the auto-fixes.
-    if ($result.AutoFixedFiles.Count -gt 0 -or $result.UnfixableViolations.Count -gt 0) {
+    # Auto-fixed files: said, on stderr (where the sync's other gate notices go), and the sync proceeds; the
+    # boundary commit that follows carries the repaired files (B4F-083).
+    if ($result.AutoFixedFiles.Count -gt 0) {
+        $fixedList = ($result.AutoFixedFiles | ForEach-Object { "  - $_" }) -join "`n"
+        [Console]::Error.WriteLine(("[markdownlint-gate] auto-fixed markdownlint violations in {0} file(s); the boundary commit carries the repaired files:`n{1}" -f $result.AutoFixedFiles.Count, $fixedList))
+    }
+
+    # Unfixable violations are semantic and still halt: the human, or the agent, edits the named lines.
+    if ($result.UnfixableViolations.Count -gt 0) {
         $messageLines = New-Object System.Collections.Generic.List[string]
-        if ($result.AutoFixedFiles.Count -gt 0) {
-            $fileList = ($result.AutoFixedFiles | ForEach-Object { "  - $_" }) -join "`n"
-            $null = $messageLines.Add(("[markdownlint-gate] Auto-fixed markdownlint violations in {0} file(s):" -f $result.AutoFixedFiles.Count))
-            $null = $messageLines.Add($fileList)
-            $null = $messageLines.Add('')
-            $null = $messageLines.Add('Please:')
-            $null = $messageLines.Add('  1. Review the diff: git diff')
-            $null = $messageLines.Add('  2. Stage the fixes: git add <files>')
-            $null = $messageLines.Add("  3. Commit: git commit -m 'chore(lint): auto-fix markdownlint violations'")
-            $null = $messageLines.Add('  4. Push: git push')
-            $null = $messageLines.Add('')
-        }
-
-        if ($result.UnfixableViolations.Count -gt 0) {
-            $violationList = ($result.UnfixableViolations | ForEach-Object { "  - $_" }) -join "`n"
-            $null = $messageLines.Add(("[markdownlint-gate] Unfixable markdownlint violations remain in {0} location(s):" -f $result.UnfixableViolations.Count))
-            $null = $messageLines.Add($violationList)
-            $null = $messageLines.Add('')
-            $null = $messageLines.Add('These violations are semantic (e.g., MD013 line-length, MD024 duplicate-heading)')
-            $null = $messageLines.Add('and require manual editing. Edit those file:line locations.')
-            $null = $messageLines.Add('')
-        }
-
-        $null = $messageLines.Add('Boundary-sync HALTED until the lint findings are resolved and committed. Re-run boundary-sync after committing the fixes.')
-
+        $violationList = ($result.UnfixableViolations | ForEach-Object { "  - $_" }) -join "`n"
+        $null = $messageLines.Add(("[markdownlint-gate] Unfixable markdownlint violations remain in {0} location(s):" -f $result.UnfixableViolations.Count))
+        $null = $messageLines.Add($violationList)
+        $null = $messageLines.Add('')
+        $null = $messageLines.Add('These violations are semantic (e.g., MD013 line-length, MD024 duplicate-heading)')
+        $null = $messageLines.Add('and require manual editing. Edit those file:line locations, then re-run boundary-sync.')
+        $null = $messageLines.Add('')
+        $null = $messageLines.Add('Boundary-sync HALTED until the unfixable lint findings are resolved.')
         throw ($messageLines -join "`n")
     }
 }

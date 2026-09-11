@@ -2067,3 +2067,43 @@ applied when the surgery module is loaded, so the line renders as the contract d
    re-stamped. B4F-085's sentence folds in ONLY if it costs no token; otherwise beta5.
 4. Friday's walk acceptance (PRED-009's replacement) adds two counts, each measured at every boundary of both
    features: unexpected repair prompts 0, post-verdict asks 0.
+
+## PRED-BETA4-043 - B4F-083 fix A: the lint gate proceeds after its own auto-fix. Stated before the code.
+
+1. `Invoke-PreBoundaryMarkdownLintGate` (`scripts/internal/sync-boundary-state.ps1`, one copy): auto-fixed
+   files are named on stderr (`[markdownlint-gate] auto-fixed markdownlint violations in N file(s); the
+   boundary commit carries the repaired files`) and the function returns; unfixable violations still throw
+   with file:line and "Boundary-sync HALTED until the unfixable lint findings are resolved" - no git sequence.
+2. `tests/unit/lint-gate-autofix-proceeds.tests.ps1` builds the walk's shape (a changed record with MD022 and
+   MD032, proven dirty by markdownlint first) and runs the extracted gate FROM THE PROJECT ROOT as the sync
+   does: it proceeds, says what it fixed, the record is repaired and lints clean; a record with MD001 (not
+   auto-fixable) halts naming `bad.md:3`. Run against the unpatched gate as the control it reds case 1 with
+   the walk's own text ("Auto-fixed markdownlint violations in 1 file(s) … Please: … git commit").
+3. Found building the control, stated here because it changes the fix's second half: the helper's unfixable
+   parser expected `file:line MD001/...` and markdownlint-cli prints `file:line error MD001/...` - so
+   UNFIXABLE VIOLATIONS WERE NEVER DETECTED and that halt was dead (B4F-087). With the `error` column made
+   optional, case 2 halts; without it, the gate after fix A would never halt at all.
+4. `boundary-sync-markdownlint-gate.tests.ps1` (helpers) unchanged; the sync's other gate suites unchanged.
+
+### PRED-BETA4-042 VERDICT - held; the directive texts are verbatim as stated
+
+Part 1 held: the provider's inject stdout carries, byte for byte, the specify -> clarify and clarify -> plan
+lines as stated, through the REAL prompt-entry capture on Claude (cases 11 and 10); before-implement names
+`/speckit.implement`; iteration-closeout names both exits and contains no question mark; on Codex the sync
+command renders as the pwsh form, read from `hosts/codex/coordinator-rules.psd1` itself since the hook context
+loads neither the surgery module nor the registry. Part 2 held: 51 green in `capture-disclosure`; the
+directive dropped from the authorized branch reds exactly five assertions in cases 10-13, none elsewhere; the
+FR-010 cases unchanged. Part 3 held: rule 1 carries "A captured approval is the instruction: begin the next
+stage in this turn; do not ask the human to start it." at ~600/600 tokens after trims to rules 2, 3, 4, 5, 6,
+7, 9 and the intro (no fact removed; the three pinned phrases kept); mirror synced; marker re-stamped; the
+35 suites touching the store, the provider and the digest green. B4F-085's sentence did not fit at zero cost:
+beta5, as ruled. One thing found: the capture's outcome object carried no boundary; it now carries
+`authorized_boundary`, with the ledger's effective state as the fallback.
+
+### PRED-BETA4-043 VERDICT - held, and part 3's find is why the second half works at all
+
+Part 1 and 2 held (8 green): the walk's shape proceeds, the auto-fix is named on stderr, the record is
+repaired and lints clean; MD001 halts naming `bad.md:3`; against the unpatched gate the suite reds case 1 with
+the walk's own text. Part 3 as stated: the unfixable parser was dead under markdownlint-cli's `error` column
+(B4F-087); optional now. Part 4 held: the gate helpers suite, closeout-gate, lifecycle harness, scope-base,
+changed-only (14/14, 1302 s locally), crossing-mint, plan-sync-target and the protected-surface guard green.

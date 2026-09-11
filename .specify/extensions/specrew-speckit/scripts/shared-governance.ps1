@@ -4607,7 +4607,10 @@ function Invoke-MarkdownLintAutoFix {
         $checkText = ($checkOutput | ForEach-Object { [string]$_ }) -join "`n"
         $violations = New-Object System.Collections.Generic.List[string]
         foreach ($line in ($checkText -split "`r?`n")) {
-            if ($line -match '^(.+\.md):(\d+)(?::\d+)?\s+(MD\d+/\S+)') {
+            # markdownlint-cli prints `file:line error MD001/heading-increment ...` (the `error` column since
+            # 0.3x); the pattern without it matched nothing, so unfixable violations were never detected and
+            # this branch was dead (B4F-087, found building PRED-BETA4-043's unfixable case). Optional column.
+            if ($line -match '^(.+\.md):(\d+)(?::\d+)?\s+(?:error\s+|warning\s+)?(MD\d+/\S+)') {
                 $null = $violations.Add(("{0}:{1}: {2}" -f $matches[1], $matches[2], $matches[3]))
             }
         }

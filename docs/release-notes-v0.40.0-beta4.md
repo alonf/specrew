@@ -164,6 +164,22 @@ carries no `{0}`. The workaround of passing `-IterationNumber 001` is no longer 
 these notes filed both as beta5; the independent review of `ebb7597f` caught the label - they shipped in
 beta4 at `sync-boundary-state.ps1`.)
 
+## Fixed: two things the first walk on the release candidate met at every boundary
+
+**A verdict cost two turns.** After you typed `approved for specify`, the coordinator asked what you wanted
+next; after `approved for clarify`, whether to start planning. Nothing at the moment of capture told it that
+the approval was the instruction. Now the capture itself says so, in the turn: *"Verdict captured: approved for
+specify. The clarify stage begins in this turn: /speckit.clarify, then /speckit.specrew-speckit.sync-clarify. Do
+not ask the human to start it; the approval was the instruction."* - one line per boundary, naming the stage
+and the command that begins it in your host's form. The two closeout crossings name both exits and never ask.
+The refocus digest carries the same sentence.
+
+**The lint gate halted to ask for a commit of its own fix.** At the specify preflight the pre-boundary lint gate
+repaired blank lines around headings and lists in the workshop records - then stopped the sync with a four-step
+git sequence until you committed them. It now says what it repaired and proceeds; the boundary commit carries
+the files. Unfixable violations still halt, naming the file and line - and, found on the way, that halt had
+never fired: the gate's parser did not recognise markdownlint's output. It does now.
+
 ## Fixed: the crew charter fix's two missing halves, and what was under them
 
 The audit's recheck of the installed candidate found two things the charter fix above had left undone:
