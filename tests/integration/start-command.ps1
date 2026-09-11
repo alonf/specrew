@@ -786,8 +786,13 @@ $promptChecks = @(
     @{ Pattern = 'concrete model ID'; Failure = 'Prompt does not require visible delegated runtime evidence.' },
     @{ Pattern = 'Do not invoke speckit\.implement until the human approves'; Failure = 'Prompt does not require explicit approval before implementation.' },
     @{ Pattern = 'include the hardening-gate verdict and any human-approved deferral status in that readiness summary'; Failure = 'Prompt does not require the hardening-gate verdict in the implementation-readiness summary.' },
-    @{ Pattern = 'After speckit\.specrew-speckit\.after-tasks succeeds, treat speckit\.specrew-speckit\.before-implement as the next automatic lifecycle step'; Failure = 'Prompt does not require the automatic after-tasks to before-implement transition.' },
-    @{ Pattern = 'Do not stop at the .*after-tasks boundary to ask the human to manually trigger hardening review'; Failure = 'Prompt still allows the coordinator to stop at after-tasks for a manual hardening-review request.' },
+    # B4F-081: these two pinned the pre-2026-08-23 rule 28 ("treat before-implement as the next automatic lifecycle
+    # step"), which 847bb1fb replaced on purpose - no product source until the typed before-implement verdict is on
+    # the ledger; preparation proceeds, source changes wait. The contract lane never ran on beta4 (B4F-079), so the
+    # stale pins were first seen on its first run. Pinned to the current contract.
+    @{ Pattern = 'Until the boundary ledger holds the human''s typed `approved for before-implement`, no product source file is created or modified'; Failure = 'Prompt does not state that no product source is written until the typed before-implement approval is on the ledger.' },
+    @{ Pattern = 'proceed without stopping to before-implement PREPARATION'; Failure = 'Prompt does not carry before-implement preparation forward after after-tasks (preparation needs no approval; source changes do).' },
+    @{ Pattern = 'Do not stall at after-tasks asking the human to manually trigger hardening review'; Failure = 'Prompt still allows the coordinator to stall at after-tasks for a manual hardening-review request.' },
     @{ Pattern = 'If speckit\.specrew-speckit\.before-implement blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action'; Failure = 'Prompt does not require proactive blocker explanation before stopping.' },
     @{ Pattern = '`--allow-all` controls tool-call approval only and does not bypass lifecycle boundary approval'; Failure = 'Prompt does not carve --allow-all away from lifecycle boundary approval.' },
     @{ Pattern = 'developer-facing implementation briefing'; Failure = 'Prompt does not require the end-of-feature implementation briefing.' },

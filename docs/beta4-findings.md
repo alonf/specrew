@@ -4066,3 +4066,17 @@ script died there, so its later tests never ran either. The suite entered the ga
 and had never run where the gate runs (ubuntu). Reproduced under WSL, fixed as a platform-neutral root and
 separator-neutral expectations (tests only), green under WSL and Windows. B4F-079's consequence, made
 concrete: a lane that never runs cannot tell you its suites assume a platform.
+
+## B4F-081 - THE CONTRACT LANE'S FIRST RUN ON BETA4: a suite pinning the rule the product replaced on purpose (fixed in beta4)
+
+With the gate green (B4F-080), the Contract lane ran on beta4 for the first time (runs `34591436539`,
+`34591834834`) and failed at `tests/integration/start-command.ps1` test 3: *"Prompt does not require the
+automatic after-tasks to before-implement transition."* The suite pinned the pre-2026-08-23 rule 28 - "treat
+before-implement as the next automatic lifecycle step" - which `847bb1fb` ("no code without approval is now
+enforced, not assumed") replaced deliberately: no product source until the human's typed `approved for
+before-implement` is on the ledger; preparation proceeds, source changes wait. The product was right and the
+test was stale; it sits outside the census's `tests?.ps1` pattern and inside the contract lane, which never ran
+here (B4F-079), so the stale pin was first seen today. Re-pinned to the current rule 28 (the ledger sentence,
+preparation carried forward, no stalling at after-tasks); the suite passes on Windows (the runner's `specify`
+CLI is absent under WSL, where it skips). One thing learned on the way: the generator's double backtick is a
+here-string escape and renders as one; the pin follows the rendered prompt.
