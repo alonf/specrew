@@ -1960,3 +1960,35 @@ gate's red until the next push.
    executes on this branch for the first time - no prediction of green for it, same reason as before.
 2. If another suite in the gate or the contract lane fails for the same class (a Windows path assumed), it is
    fixed the same way and recorded under B4F-080; a failure of any other class is its own finding.
+
+### PRED-BETA4-038 VERDICT - census 9 (`34587558284` on `afeca26e`): GREEN, all three jobs
+
+`prepublish-validation`, `full-test-census` (415 named files, 0 failures; the artifact carries the sentinel
+and nothing else), dry-run `publish-module` - green. Part 1 held: `validate-governance-changed-only` and
+`maintainer-skill-host-parity` green on the re-stamped marker and the synced cursor mirror. Part 2 resolved:
+`psgallery-check` green - the 10178 ms was one runner crossing of a 10000 ms bound, not repeated; no finding
+about the bound is opened on one crossing. Parts 3 and 4: no other red; the module is NOT installed from
+`afeca26e`, because the scope-base fix (PRED-039, `eae15ee0`) changed a module file after it - the release
+census is the next one, on the SHA that carries that fix, and the install follows it.
+
+## PRED-BETA4-041 - PRED-015 for the RE-FROZEN SHA carrying the scope-base fix and B4F-080. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `afeca26e` (census 9 green) plus `eae15ee0`
+(`SPECREW_SCOPE_BASE_REF` first in the validator's scope base; `^{commit}` on the candidate check; mirror and
+marker re-stamped) and `a6c33c8a` (`multi-host-launch-path` test 6 platform-neutral), with the docs and the
+workflow between them (neither in the module).
+
+### THE PREDICTION
+
+1. `full-test-census` green - 416 named files (the scope-base suite is new), 0 failures; the sweep exercises
+   the changed function with neither variable set, where its behaviour is identical to census 9's;
+   `prepublish-validation` and the dry-run publish green; the artifact carries the sentinel and nothing else.
+2. If exactly the timing pair reds with the runner-bound signature and nothing else does, the single
+   sanctioned re-dispatch runs with its meaning fixed; any other red on a changed file is fixed first and the
+   SHA is not frozen.
+3. On green: the module is installed from this SHA exactly (temp worktree), byte-verified; the router-skill
+   project updates once, to that build; its first start rewrites its five untouched charters to the canonical
+   composition once (B4F-076's field consequence).
+4. Separately, Specrew CI on `a6c33c8a` (running) is PRED-040's test; its verdict is recorded when it lands
+   and does not gate the census, which is the release's acceptance instrument; a lane red there is fixed on
+   the branch after this freeze and re-frozen only if it touches a module file.
