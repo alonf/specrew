@@ -272,7 +272,7 @@
     },
     {
       "path": "scripts/deploy-squad-runtime.ps1",
-      "sha256": "a4ef0cd7606960131b2e9cb0e43bff70c586468eeb9fa5cd213670cfb875d22e"
+      "sha256": "cf561d8ed79cff387ffae4e661e815a7508de4c436a66769cbe693e0ef9d5da2"
     },
     {
       "path": "scripts/drift-diff.ps1",
@@ -560,7 +560,7 @@
     },
     {
       "path": "squad-templates/skills/specrew-team/SKILL.md",
-      "sha256": "c5684cbe454d610adaae50ab138f86cc1d8a8b1a615d4826b2815d419122d4b3"
+      "sha256": "73bf28c24dc24be4750f61382b6fba9d9b2ccb1a8cab11955b8ebabec698c1bc"
     },
     {
       "path": "squad-templates/skills/specrew-update/SKILL.md",
