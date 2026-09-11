@@ -3851,3 +3851,79 @@ effective authority `tasks`, effective approvals none, readiness READY. One line
 `EffectiveState['verdict_history']`, the projection every other reader consumes. The reproduction is a suite
 case with its control; the raw read restored reds it. Class closure the reviewer asked for: readiness never
 recovers an invalidated approval from immutable raw history, because it never reads raw history.
+
+## B4F-074 - THE STAGE-DEMO AUDIT OF THE INSTALLED `ef80591d`: what it ruled into beta4, what stays beta5, and the walk that justifies green
+
+**The audit** (`C:/Dev/walks/beta4-stage-audit-20260911-01/demo-readiness.md`, with `results.jsonl` and every
+probe's logs alongside) is authoritative for release acceptance. Its verdict: *"Not yet cleared for a
+fluent, full-lifecycle live demo."* Read whole. Its item 4 (readiness recovering an invalidated approval) is
+closed by `a1696673` in the `632bdcd0` module. Two of its items were ruled into beta4, both reproduced on the
+installed package first:
+
+**(1) B4F-060, closed (PRED-BETA4-033).** `run-mechanical-checks.ps1` on a project with nothing to scan threw
+`Cannot bind argument to parameter 'SourceFiles' because it is an empty array` (the audit's
+`mechanical-empty-source` probe, exit 1, no JSON). The three finding functions allow empty collections now;
+applicability is per gate and per input set - source (dead-field, anti-pattern) and tests (test-integrity)
+separately - and the evidence row says which: `not-applicable` naming the roots and extensions searched
+when the plan does not require the gate, **`failed`** naming the plan's requirement and what was searched
+when the plan's Required Quality Gates table requires the gate and there is nothing to check (the
+plan-required-but-missing-implementation case, kept distinct from a successful empty scan; readiness reads
+a failure). A project path that does not exist or cannot be read stays a thrown error. The findings JSON
+keeps the v1 schema (`additionalProperties: false` at its root, and the schema lives in each consumer's
+feature contracts); applicability lives in `quality-evidence.md` and on stderr. Two things the probe found
+on the way: the evidence renderer derived the plan's gate rows a second time and threw on a table in another
+shape (the audit's `| Gate | Command |`), and the template's placeholder row `[gate ID]` rendered as a gate
+named "[gate ID]" marked planned and kept the default rows from applying - one derivation now,
+`Get-PlanQualityGateRows`. The audit's acceptance list is `tests/unit/mechanical-checks-applicability.tests.ps1`
+(20): valid JS, valid PowerShell, documentation-only, source-without-tests, invalid root, plan-required with
+nothing to check, and the audit's own fixture shape; `[AllowEmptyCollection()]` removed reds exactly the
+empty-source cases with the audit's error. Both audit probes replayed on the fix: `empty-source` exit 0 with
+a valid payload and three not-applicable lines; `valid-js` unchanged.
+
+**(2) The fresh-init charter warnings, closed (PRED-BETA4-034).** Init runs `squad init` (which writes
+`.squad/agents/<role>/charter.md`), then `deploy-squad-runtime.ps1`, which composes each charter as the
+squad baseline plus a `specrew-managed directives` block - and wrote no sidecar. `specrew start`'s
+`Install-CopilotCrewRuntime` decides ownership by the `.specrew-managed` sidecar or a comment header whose
+text begins `Specrew-managed` at the opener; init's block marker has `>>>` between the opener and the word.
+So five untouched charters were "user-edited" on every start. **The step that omitted the marker: init's
+deploy step.** And the two steps did not agree on content either - the handler's canonical translation is
+3971 characters with no directives block against init's 5744 - so a bare sidecar would have made the first
+start replace the composition with the shorter body. One ownership convention now: the sidecar records the
+SHA-256 of what Specrew wrote (`Get-SpecrewManagedSidecarContent`, one format, both writers asserted byte
+for byte); `Test-SpecrewManagedFile` vouches only while the file still hashes to it - a mismatch is a genuine
+user edit, reported as "edited since Specrew wrote it", never relabeled; init writes the sidecar for the
+charters of a `.squad` it created this run (`-ClaimCharterOwnership`), and on update only for a charter it
+created or one that still hashes to its previous sidecar; the Copilot handler keeps a block-bearing charter
+that hashes to its sidecar without rewriting it. `tests/integration/crew-charter-ownership.tests.ps1` runs the
+REAL init and three REAL starts on a scratch project (17): zero warnings after init and two starts, five
+charters byte-identical to what init wrote, one real edit reported exactly once and preserved, no other
+charter touched. The sidecar write removed brings the audit's five back ("got 5").
+
+**The nine-boundary harness runs against a package.** `lifecycle-boundary-sync.tests.ps1` expected
+`.specify/` inside the module; a package has none, so the audit's run exited 1 after its assertions passed.
+It now compares the module's `extension.yml` against a DEPLOYED project's copy - `SPECREW_DEPLOYED_PROJECT`
+(a project bootstrapped from the package) when set, the self-host repo's mirror otherwise - and takes the
+sync wrapper from the deployed project, else the module's own extension copy. Run against the audit's
+`module/` snapshot with its `project/` as the deployed project: 4/4, the comparison green.
+
+**Found by running it from a deep path (B4F-075, fixed)**: `git status --porcelain 2>&1` carried
+`warning: could not open directory ...` as ErrorRecords and `Invoke-PreFeatureCloseoutWorkingTreeGate` read
+`.Length` on one under StrictMode - the feature-closeout sync died with "The property 'Length' cannot be
+found on this object". Any git warning at closeout reached a consumer that way. A warning is not a status
+line: skipped, never parsed. `tests/unit/closeout-gate-git-warnings.tests.ps1` builds the shape that found it
+(a path past 260 characters under `core.longpaths=false`), proves the capture carries a stderr record, and
+asserts the gate still names the dirty file; the unfixed gate reds with the exact message.
+
+**What stays beta5, as the audit states it**: review completion invalidating its own evidence (B4F-054/056/058/061)
+- the ordering repair is **beta4.1** unless the maintainer's demo path enters live sign-off; severity by
+heading (B4F-055); workshop correction is not assent (B4F-011/014/015); handoff/sync ordering (B4F-046);
+blocked-task vocabulary (B4F-059); planned-versus-delivered points (B4F-062); the environment-dependent
+startup hang (B4F-069); source-write enforcement at the tool boundary (B4F-072 (b), beta5's first item). The
+beta5 backlog is not moved into beta4.
+
+**PRED-BETA4-009's acceptance is replaced by the audit's "what would justify green" sequence** (see the
+predictions record): fresh project, intake, one correction, agenda, chosen lenses, spec, plan, tasks, explicit
+implement approval, a working app, one review-with-finding / fix / sign-off cycle, closeout, restart, second
+feature - elapsed time and unexpected repair prompts counted; zero manual ledger edits, zero fake approvals,
+zero severity loss behind a green result, zero repeated acceptance caused by sign-off records alone. From
+the desktop, Friday.

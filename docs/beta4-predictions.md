@@ -1662,3 +1662,45 @@ a charter without the block is synced from canonical as today.
    prediction is not read as a promise about existing projects.
 4. Mutation: the sidecar write removed from init - part 1 red (five warnings), parts 2 and the existing
    host-handler suites unchanged.
+
+### PRED-BETA4-033 VERDICT - held, with two things the probe found on the way
+
+Parts 1-7 held (20 green): valid JS and PowerShell projects pass every gate; documentation-only work exits 0
+with a valid empty payload and three not-applicable rows naming the roots and the twelve extensions; source
+without tests evaluates the source gates and marks test-integrity not-applicable naming the test pattern;
+an invalid root throws by name with no payload; a plan that requires the gates with nothing to check reads
+`failed` naming the requirement; the audit's own fixture shape exits 0 where it had exited 1. Part 8 held:
+`[AllowEmptyCollection()]` removed reds the three empty-source cases (10 assertions) with the audit's exact
+error and nothing else. Found on the way: the renderer derived the plan's gate rows a second time and threw
+on the audit's `| Gate | Command |` table, and the template placeholder row rendered as a gate - one
+derivation now. The audit's two probes replayed: `empty-source` exit 0, `valid-js` unchanged.
+
+### PRED-BETA4-034 VERDICT - held; the step named was half the answer
+
+Part 1 held through the real init and three real starts (17 green): zero warnings, five sidecars with
+matching hashes, charters byte-identical after two starts. Part 2 held: one real edit, one warning naming it
+and why ("edited since Specrew wrote it"), preserved, no other charter touched. Part 3 stands as stated: an
+existing project's charters carry no sidecar and get the notice once. Part 4 held: the sidecar write removed
+brings back exactly the audit's five ("got 5"), 8 red. **What the statement had half right**: the step that
+omits the marker is init's deploy step - but the FIRST writer of the charter is `squad init` (the external
+CLI), and the deploy step only UPDATES it with the directives block; a rule that stamps only created files
+stamps nothing on a fresh project. Init therefore claims ownership of every charter under a `.squad` it
+created this run, and stays conservative on update.
+
+### PRED-BETA4-009, ACCEPTANCE REPLACED BY RULING - the audit's "what would justify green", measured
+
+The re-walk on a fresh project from the desktop, Friday, on the frozen build: intake; one correction; the
+agenda; the chosen lenses; spec; plan; tasks; explicit implement approval; a working app; one review with a
+finding, its fix, and sign-off; closeout; restart; a second feature. Measured: elapsed time and the count of
+unexpected repair prompts. Green requires zero manual ledger edits, zero fake approvals, zero severity loss
+behind a green result, and zero repeated acceptance caused by sign-off records alone. The earlier
+PRED-009 text (the beta4-mdlink re-walk with its closeout-to-second-iteration extension) is subsumed: the
+second feature after restart is that extension, and this sequence is what the audit says would justify
+green. Stated before the walk; nothing here is a result.
+
+### PRED-BETA4-030 VERDICT - census 34542233608 on `ef80591d`: GREEN, all three jobs
+
+`full-test-census` green (411 files, 0 failures), `prepublish-validation` green, the dry-run `publish-module`
+green - the first fully green census of the beta4 arc. Every part held. `ef80591d` was superseded before it
+landed (the R2 follow-up and the audit's two items), so it is not the tag SHA; it is the proof that the
+runner-bound reds of censuses 1-4 are gone. Census 6 (`34544020626`, on `632bdcd0`) is read when it lands.

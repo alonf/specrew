@@ -1530,7 +1530,13 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
     )
 
     $relevantUncommitted = New-Object System.Collections.Generic.List[string]
-    foreach ($line in $statusOutput) {
+    foreach ($rawLine in $statusOutput) {
+        # `2>&1` puts git's STDERR into this array as ErrorRecords - "warning: could not open directory ...",
+        # "warning: in the working copy of ... LF will be replaced by CRLF". Under StrictMode `.Length` on
+        # one of those threw and the feature-closeout sync died (found running the nine-boundary harness
+        # against a package from a deep path). A warning is not a status line: skipped, never parsed.
+        if ($rawLine -is [System.Management.Automation.ErrorRecord]) { continue }
+        $line = [string]$rawLine
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         # Status line format: 'XY path' where XY is the 2-char status code.
         # Strip the leading 3 chars (status + space) to get the path.

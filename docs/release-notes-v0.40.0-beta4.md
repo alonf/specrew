@@ -164,6 +164,32 @@ carries no `{0}`. The workaround of passing `-IterationNumber 001` is no longer 
 these notes filed both as beta5; the independent review of `ebb7597f` caught the label - they shipped in
 beta4 at `sync-boundary-state.ps1`.)
 
+## Fixed: three things a stage-demo audit of the installed beta found
+
+An audit of the installed candidate, run as a stage-demo readiness review, is authoritative for this
+release's acceptance. It found, and this build fixes:
+
+**The mechanical checks threw on a project with nothing to scan.** Documentation-only work, or a stack with no
+discoverable source, hit `Cannot bind argument to parameter 'SourceFiles' because it is an empty array`. Now
+each gate says whether it applied: `not-applicable`, naming the roots and file extensions searched, when the
+plan does not require it; `failed`, naming the plan's requirement, when the plan requires a gate and there is
+nothing to check - so a missing implementation is never a passed scan. A project path that does not exist is
+still an error.
+
+**Five "Preserving user-edited file" warnings on a project you never edited.** Init wrote the crew charters
+without the ownership marker the start command looks for. The marker now records what Specrew wrote, init
+writes it, and start is silent for untouched charters; a charter you actually edited is preserved and the
+notice says so - "edited since Specrew wrote it" - once.
+
+**Feature closeout could die on a git warning.** A `warning:` line on git's stderr at the closeout gate (a
+path too long for `core.longpaths=false`, for one) was read as a status line and the sync stopped with "The
+property 'Length' cannot be found". Warnings are skipped; a dirty tree is still gated.
+
+The audit's remaining findings are beta5's, as it states them - review completion invalidating its own
+evidence, severity that depends on a heading, workshop correction mistaken for assent, and the rest listed in
+the findings record - except the review ordering repair, which is beta4.1 unless the demo path enters live
+sign-off.
+
 ## Fixed: two defects in beta4's own additions, found by an independent review of the beta
 
 An out-of-engine review of `v0.40.0-beta3..ebb7597f` (GPT-6 Astra, the maintainer's) reproduced two defects

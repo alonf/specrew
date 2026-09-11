@@ -272,7 +272,7 @@
     },
     {
       "path": "scripts/deploy-squad-runtime.ps1",
-      "sha256": "f1d0433413ebdbf743cc6e4a9d06dae469c6077124a945961fe29d2fd8ee3305"
+      "sha256": "a4ef0cd7606960131b2e9cb0e43bff70c586468eeb9fa5cd213670cfb875d22e"
     },
     {
       "path": "scripts/drift-diff.ps1",
@@ -360,7 +360,7 @@
     },
     {
       "path": "scripts/run-mechanical-checks.ps1",
-      "sha256": "723617b8487a2c55e8d1bdf7bf1f76f5f0dabb6dee2156961dca88c362b5b305"
+      "sha256": "80f93770a4a6c602ad5958d5cffa36be88de7764b69aac479a0a22d46e728c30"
     },
     {
       "path": "scripts/scaffold-feature-closeout-dashboard.ps1",

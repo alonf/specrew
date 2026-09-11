@@ -174,6 +174,20 @@ function Resolve-QualityEvidenceSource {
     return $resolved
 }
 
+function Get-PlanQualityGateRows {
+    # THE PLAN'S GATE ROWS, DERIVED ONCE (B4F-060). A table under the heading in another shape (the audit's
+    # fixture: `| Gate | Command |`) is not the gates table, and the template's placeholder row (`[gate ID]`)
+    # is not a gate - left in, it rendered as a gate named "[gate ID]" marked planned and kept the product's
+    # default rows from applying. Both the main flow and the evidence renderer read this, so they cannot
+    # disagree about which rows exist.
+    param([AllowEmptyCollection()][AllowNull()][string[]]$PlanLines)
+    $rows = @(Get-MarkdownSectionTable -Lines @($PlanLines) -Heading 'Required Quality Gates')
+    return @($rows | Where-Object {
+            $null -ne $_.PSObject.Properties['Required Quality Gate'] -and
+            (Normalize-MarkdownCell ([string]$_.'Required Quality Gate')) -notmatch '^\[.*\]$'
+        })
+}
+
 function Get-DefaultQualityGateRows {
     return @(
         [pscustomobject]@{ 'Required Quality Gate' = 'dead-field'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
@@ -224,7 +238,14 @@ function Get-MechanicalGateOverrides {
         [Parameter(Mandatory = $true)]
         [object[]]$Findings,
         [Parameter(Mandatory = $true)]
-        [string]$FindingsRef
+        [string]$FindingsRef,
+        # B4F-060: what each gate's input set looked like, and whether the plan requires the gate.
+        [int]$SourceFileCount = -1,
+        [int]$TestFileCount = -1,
+        [AllowNull()][string]$SearchedRoots,
+        [AllowNull()][string]$SearchedExtensions,
+        [AllowNull()][string]$TestPattern,
+        [AllowEmptyCollection()][string[]]$PlanRequiredGateIds = @()
     )
 
     $overrides = @{}
@@ -232,6 +253,38 @@ function Get-MechanicalGateOverrides {
         $gateFindings = @($Findings | Where-Object { [string]$_.gateId -eq $gateId })
         $status = 'passed'
         $exception = '—'
+
+        # APPLICABILITY IS PER GATE AND PER INPUT SET (B4F-060). Source gates read the source set; the test
+        # gate reads the test set; a project with source and no tests is source-applicable and
+        # test-not-applicable. An empty set is `not-applicable` naming what was searched - unless the plan's
+        # Required Quality Gates table requires this gate, in which case nothing to check is a FAILURE: the
+        # plan required an implementation that is not there, and readiness must read that, never a pass.
+        $inputCount = if ($gateId -eq 'test-integrity') { $TestFileCount } else { $SourceFileCount }
+        if ($inputCount -eq 0) {
+            $searched = if ($gateId -eq 'test-integrity') {
+                ('no test files found: {0}, under {1} (extensions {2})' -f $TestPattern, $SearchedRoots, $SearchedExtensions)
+            }
+            else {
+                ('no source files found under {0} (extensions {1})' -f $SearchedRoots, $SearchedExtensions)
+            }
+            if ($PlanRequiredGateIds -contains $gateId) {
+                $overrides[$gateId] = [pscustomobject]@{
+                    Requirement   = (Get-DefaultRequirementRefsForGate -GateId $gateId) -join ', '
+                    EvidenceSource = $FindingsRef
+                    Status        = 'failed'
+                    Exception     = ('required by the plan and nothing to check: ' + $searched)
+                }
+            }
+            else {
+                $overrides[$gateId] = [pscustomobject]@{
+                    Requirement   = (Get-DefaultRequirementRefsForGate -GateId $gateId) -join ', '
+                    EvidenceSource = $FindingsRef
+                    Status        = 'not-applicable'
+                    Exception     = $searched
+                }
+            }
+            continue
+        }
 
         if ($gateFindings.Count -gt 0) {
             $demotedRefs = @(
@@ -295,7 +348,7 @@ function Get-QualityEvidenceContent {
         $presetRefs = '(pending preset selection)'
     }
 
-    $gateRows = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Required Quality Gates')
+    $gateRows = @(Get-PlanQualityGateRows -PlanLines $PlanLines)
     if ($gateRows.Count -eq 0) {
         $gateRows = @(Get-DefaultQualityGateRows)
     }
@@ -314,6 +367,7 @@ function Get-QualityEvidenceContent {
     $null = $lines.Add('| --- | --- | --- | --- | --- |')
 
     foreach ($gateRow in $gateRows) {
+        if ($null -eq $gateRow.PSObject.Properties['Required Quality Gate']) { continue }
         $gateId = Normalize-MarkdownCell ([string]$gateRow.'Required Quality Gate')
         if ([string]::IsNullOrWhiteSpace($gateId)) {
             continue
@@ -546,6 +600,30 @@ function Resolve-MechanicalContext {
         FeatureRef = Convert-ToRepoRelativePath -BasePath $ProjectRoot -TargetPath $resolvedSpecPath
         IterationRef = Convert-ToRepoRelativePath -BasePath $ProjectRoot -TargetPath $resolvedIterationPath
         SurfaceId = $surfaceId
+    }
+}
+
+function Get-CandidateCodeScan {
+    # B4F-060: the scan returns WHAT IT SEARCHED beside what it found, so an empty result can be reported as
+    # "not applicable: no <extensions> under <roots>" rather than as a binding failure or a silent pass. A root
+    # that cannot be read throws here (Stop preference), which stays a distinct error.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $allowedExtensions = @('.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.ps1', '.py', '.cs', '.go', '.java', '.kt')
+    $preferredRoots = @('src', 'server', 'app', 'lib', 'client', 'tests', 'test')
+    $searchRoots = [System.Collections.Generic.List[string]]::new()
+    foreach ($preferredRoot in $preferredRoots) {
+        $candidatePath = Join-Path $ProjectRoot $preferredRoot
+        if (Test-Path -LiteralPath $candidatePath -PathType Container) { $null = $searchRoots.Add($preferredRoot) }
+    }
+    $searchedRootsText = if ($searchRoots.Count -eq 0) { 'the project root (none of src, server, app, lib, client, tests, test exists)' } else { ($searchRoots -join ', ') }
+    return [pscustomobject]@{
+        Files = @(Get-CandidateCodeFiles -ProjectRoot $ProjectRoot)
+        SearchedRoots = $searchedRootsText
+        Extensions = ($allowedExtensions -join ', ')
+        TestPattern = 'files under test/, tests/ or __tests__/, or named *.spec.* / *.test.*'
     }
 }
 
@@ -813,6 +891,9 @@ function Get-DeadFieldFindings {
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
 
+        # B4F-060: an empty set is a real answer ("nothing to scan"), not a binding error - the applicability
+        # of the gate is decided by the caller from what was searched, never by the parameter binder.
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)]
         [System.IO.FileInfo[]]$SourceFiles,
 
@@ -884,6 +965,9 @@ function Get-AntiPatternFindings {
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
 
+        # B4F-060: an empty set is a real answer ("nothing to scan"), not a binding error - the applicability
+        # of the gate is decided by the caller from what was searched, never by the parameter binder.
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)]
         [System.IO.FileInfo[]]$SourceFiles,
 
@@ -944,6 +1028,9 @@ function Get-TestIntegrityFindings {
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
 
+        # B4F-060: an empty set is a real answer ("nothing to scan"), not a binding error - the applicability
+        # of the gate is decided by the caller from what was searched, never by the parameter binder.
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)]
         [System.IO.FileInfo[]]$TestFiles,
 
@@ -1086,7 +1173,8 @@ if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
 
 $context = Resolve-MechanicalContext -ProjectRoot $resolvedProjectPath -FeaturePath $FeaturePath -IterationPath $IterationPath -SpecPath $SpecPath
 $generatorVersion = Get-ExtensionVersion
-$sourceFiles = @(Get-CandidateCodeFiles -ProjectRoot $resolvedProjectPath)
+$codeScan = Get-CandidateCodeScan -ProjectRoot $resolvedProjectPath
+$sourceFiles = @($codeScan.Files)
 $testFiles = @(Get-CandidateTestFiles -ProjectRoot $resolvedProjectPath)
 $ruleDispositions = Get-RuleDispositions -ProjectRoot $resolvedProjectPath -IterationPath $context.IterationPath -DispositionPath $DispositionPath
 
@@ -1121,18 +1209,41 @@ if (-not (Test-Path -LiteralPath $qualityDirectory -PathType Container)) {
 $mechanicalFindingsJson = $payload | ConvertTo-Json -Depth 16
 [System.IO.File]::WriteAllText($mechanicalFindingsPath, $mechanicalFindingsJson, [System.Text.UTF8Encoding]::new($false))
 
-$qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
+$qualityGateRows = @(Get-PlanQualityGateRows -PlanLines $planLines)
+# B4F-060: the gates the PLAN requires, by name, from its own table - a placeholder row (`[gate ID]`) and a
+# table in another shape require nothing; the default rows added below are the product's, not the plan's.
+$planRequiredGateIds = @($qualityGateRows | ForEach-Object {
+        $gateProp = $_.PSObject.Properties['Required Quality Gate']
+        if ($null -eq $gateProp) { return }
+        $id = Normalize-MarkdownCell ([string]$gateProp.Value)
+        if ($id -match '^[a-z][a-z0-9-]*$' -and $id -in @('dead-field', 'anti-pattern', 'test-integrity')) { $id }
+    })
 $qualityContractPath = Join-Path $context.FeaturePath 'contracts\quality-governance-artifacts.md'
 if ($qualityGateRows.Count -eq 0 -and (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)) {
     $qualityGateRows = @(Get-DefaultQualityGateRows)
 }
+# B4F-060: applicability is decided and SAID for every run, whether or not the plan carries a gates table -
+# stdout stays the payload, stderr carries why a gate did not run. The evidence rows below persist the same
+# answer whenever there are rows to write.
+$mechanicalGateOverrides = Get-MechanicalGateOverrides -Findings $payload.findings `
+    -FindingsRef (Convert-ToRepoRelativePath -BasePath $resolvedProjectPath -TargetPath $mechanicalFindingsPath) `
+    -SourceFileCount $sourceFiles.Count -TestFileCount $testFiles.Count `
+    -SearchedRoots ([string]$codeScan.SearchedRoots) -SearchedExtensions ([string]$codeScan.Extensions) -TestPattern ([string]$codeScan.TestPattern) `
+    -PlanRequiredGateIds $planRequiredGateIds
+foreach ($gateKey in @($mechanicalGateOverrides.Keys | Sort-Object)) {
+    $row = $mechanicalGateOverrides[$gateKey]
+    if ([string]$row.Status -in @('not-applicable', 'failed') -and [string]$row.Exception -match 'no (source|test) files found') {
+        [Console]::Error.WriteLine(("[mechanical] {0}: {1} - {2}" -f $gateKey, [string]$row.Status, [string]$row.Exception))
+    }
+}
+
 if ($qualityGateRows.Count -gt 0) {
     $featureId = Split-Path -Leaf $context.FeaturePath
     $iterationNumber = Split-Path -Leaf $context.IterationPath
     $findingsRef = Convert-ToRepoRelativePath -BasePath $resolvedProjectPath -TargetPath $mechanicalFindingsPath
     $evidenceRef = Convert-ToRepoRelativePath -BasePath $resolvedProjectPath -TargetPath $qualityEvidencePath
     $existingEvidenceState = Get-ExistingQualityEvidenceState -QualityEvidencePath $qualityEvidencePath
-    $qualityEvidenceOverrides = Get-MechanicalGateOverrides -Findings $payload.findings -FindingsRef $findingsRef
+    $qualityEvidenceOverrides = $mechanicalGateOverrides
     $reviewedBy = if ([string]::IsNullOrWhiteSpace($existingEvidenceState.ReviewedBy)) { 'Mechanical checks (automated)' } else { $existingEvidenceState.ReviewedBy }
     $reviewedAt = if ([string]::IsNullOrWhiteSpace($existingEvidenceState.ReviewedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $existingEvidenceState.ReviewedAt }
     $qualityEvidenceContent = Get-QualityEvidenceContent `

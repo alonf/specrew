@@ -39,6 +39,8 @@ $files = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tests') -Recurse -Fi
 # alone on the beta3 candidate, so its serial ceiling is 30 minutes. Keep exceptional ceilings explicit and reviewable
 # instead of weakening the default for every other file.
 $fileTimeoutOverrides = @{
+    # PRED-BETA4-034: the real init and three real starts on a scratch project
+    'tests\integration\crew-charter-ownership.tests.ps1' = 600
     'tests\bootstrap\Sc012to015Acceptance.Tests.ps1' = 900
     'tests\continuous-co-review\integration\verification-plan-end-to-end.Tests.ps1' = 1200
     'tests\continuous-co-review\unit\campaign-pause-wiring.Tests.ps1' = 600

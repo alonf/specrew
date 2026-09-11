@@ -899,11 +899,14 @@ if (-not $SpecKitExtensionOnly) {
     Set-IterationConfigAgents -IterationConfigPath $iterationConfigPath -Agents $resolvedAgents -Actions $actions -PreviewOnly:$DryRun
 
     if ($squadSurfaceReady) {
+        # PRED-BETA4-034: a .squad this run created holds nobody's edits yet; its charters are this run's and
+        # carry the ownership sidecar, so the first `specrew start` does not call five fresh files user-edited.
         $squadDeploymentActions = @(
             & $deploySquadRuntimeScript `
                 -ProjectPath $resolvedProjectPath `
                 -DryRun:$DryRun `
-                -PassThru
+                -PassThru `
+                -ClaimCharterOwnership:$shouldInitializeSquad
         )
 
         foreach ($deploymentAction in $squadDeploymentActions) {

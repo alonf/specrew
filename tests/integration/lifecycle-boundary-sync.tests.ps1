@@ -48,7 +48,22 @@ function New-MinimalProject {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
+# THE HARNESS RUNS AGAINST A PACKAGE AS WELL AS THE SELF-HOST REPO (the stage-demo audit of ef80591d ran it
+# against the installed module and it exited 1 expecting `.specify/` INSIDE the module - which no package
+# has). The module under test is $repoRoot (the repo, or an installed module's base). The DEPLOYED project
+# assets it is compared against are, in order: $env:SPECREW_DEPLOYED_PROJECT (a project bootstrapped from
+# the package - the census sets it when running against a package), else the self-host repo's own `.specify/`
+# mirror. The sync wrapper is the deployed project's when one exists, else the module's own extension copy.
+$deployedProjectRoot = if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_DEPLOYED_PROJECT) -and (Test-Path -LiteralPath (Join-Path $env:SPECREW_DEPLOYED_PROJECT '.specify\extensions\specrew-speckit') -PathType Container)) {
+    (Resolve-Path -LiteralPath $env:SPECREW_DEPLOYED_PROJECT).Path
+}
+elseif (Test-Path -LiteralPath (Join-Path $repoRoot '.specify\extensions\specrew-speckit') -PathType Container) { $repoRoot }
+else { $null }
+$deployedExtensionRoot = if ($null -ne $deployedProjectRoot) { Join-Path $deployedProjectRoot '.specify\extensions\specrew-speckit' } else { $null }
+$syncScript = if ($null -ne $deployedExtensionRoot -and (Test-Path -LiteralPath (Join-Path $deployedExtensionRoot 'scripts\sync-boundary-state.ps1') -PathType Leaf)) {
+    Join-Path $deployedExtensionRoot 'scripts\sync-boundary-state.ps1'
+}
+else { Join-Path $repoRoot 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1' }
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 . (Join-Path $repoRoot 'scripts/internal/continuous-co-review/_load.ps1')
 
@@ -178,10 +193,19 @@ Write-Pass 'Late-boundary drift remains visible through restart validation and l
 # F-054: enforce the authoritative lifecycle placement of the surfaced lifecycle-adjacent commands.
 # checklist -> before-plan, analyze -> before-implement (after a complete tasks.md), taskstoissues -> deferred.
 $extensionMetadata = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\extension.yml') -Raw -Encoding UTF8
-$extensionMetadataMirror = Get-Content -LiteralPath (Join-Path $repoRoot '.specify\extensions\specrew-speckit\extension.yml') -Raw -Encoding UTF8
-if ($extensionMetadata -ne $extensionMetadataMirror) {
-    Write-Fail 'extension.yml mirrors (extensions/ and .specify/extensions/) have drifted; lifecycle-adjacent metadata must stay identical.'
-    exit 1
+if ($null -ne $deployedExtensionRoot) {
+    # The module's extension.yml against the DEPLOYED project's copy - the repo's own mirror on a self-host
+    # run, the bootstrapped project's on a package run. A package with no deployed project to compare against
+    # skips the comparison and says so, rather than failing on a directory packages never carry.
+    $extensionMetadataMirror = Get-Content -LiteralPath (Join-Path $deployedExtensionRoot 'extension.yml') -Raw -Encoding UTF8
+    if ($extensionMetadata -ne $extensionMetadataMirror) {
+        Write-Fail ("extension.yml in the module and in the deployed project ({0}) have drifted; lifecycle-adjacent metadata must stay identical." -f $deployedExtensionRoot)
+        exit 1
+    }
+    Write-Pass ("extension.yml in the module matches the deployed project's copy ({0})" -f $deployedExtensionRoot)
+}
+else {
+    Write-Host '[info] no deployed project to compare extension.yml against (set SPECREW_DEPLOYED_PROJECT to a project bootstrapped from this package); comparison skipped.'
 }
 foreach ($placement in @(
         @{ Command = 'speckit.checklist'; Placement = 'before-plan' },

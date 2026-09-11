@@ -156,8 +156,14 @@ function Test-SpecrewManagedFile {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         return $true
     }
-    if (Test-Path -LiteralPath ("{0}.specrew-managed" -f $Path) -PathType Leaf) {
-        return $true
+    $sidecarPath = "{0}.specrew-managed" -f $Path
+    if (Test-Path -LiteralPath $sidecarPath -PathType Leaf) {
+        # OWNERSHIP IS "SPECREW WROTE THIS EXACT CONTENT" (PRED-BETA4-034). A sidecar that records the SHA-256 of
+        # what was written vouches for the file only while the file still hashes to it; a mismatch is a genuine
+        # user edit and is reported as one, never relabeled. A legacy sidecar with no hash keeps its old meaning.
+        $recorded = Get-SpecrewManagedSidecarHash -SidecarPath $sidecarPath
+        if ([string]::IsNullOrWhiteSpace($recorded)) { return $true }
+        return ($recorded -ceq (Get-SpecrewManagedContentHash -Path $Path))
     }
     $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
     if ([string]::IsNullOrEmpty($content)) {
@@ -175,7 +181,42 @@ function Write-SpecrewManagedSidecar {
     #>
     param([Parameter(Mandatory = $true)][string]$Path)
     $marker = "{0}.specrew-managed" -f $Path
-    [System.IO.File]::WriteAllText($marker, "Generated from .specrew/team/agents/. Delete this file to retain a user-customized $Path on next specrew start.`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($marker, (Get-SpecrewManagedSidecarContent -Path $Path), [System.Text.UTF8Encoding]::new($false))
+}
+
+function Get-SpecrewManagedContentHash {
+    # The SHA-256 of the file's bytes, lower-case hex - the one hash both sidecar writers (this module's
+    # handlers and init's deploy-squad-runtime.ps1) record and the one the ownership test compares.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+    return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash).ToLowerInvariant()
+}
+
+function Get-SpecrewManagedSidecarContent {
+    # ONE FORMAT: the sentence, then `sha256: <hex>` of the file as it stands. deploy-squad-runtime.ps1 writes
+    # this same text at init (it cannot dot-source this module); a test asserts the two agree byte for byte.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    return ("Generated from .specrew/team/agents/. Delete this file to retain a user-customized $Path on next specrew start.`nsha256: {0}`n" -f (Get-SpecrewManagedContentHash -Path $Path))
+}
+
+function Get-SpecrewManagedSidecarHash {
+    param([Parameter(Mandatory = $true)][string]$SidecarPath)
+    try {
+        foreach ($line in @(Get-Content -LiteralPath $SidecarPath -Encoding UTF8 -ErrorAction Stop)) {
+            if ($line -match '^\s*sha256:\s*([0-9a-fA-F]{64})\s*$') { return $Matches[1].ToLowerInvariant() }
+        }
+    }
+    catch { $null = $_ }
+    return ''
+}
+
+function Test-SpecrewManagedDirectivesBlock {
+    # Init's composition: the shipped charter plus a `specrew-managed directives` block. A charter carrying it
+    # is Specrew's own; the host handler keeps it rather than replacing it with the shorter canonical body.
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    return (-not [string]::IsNullOrEmpty($content) -and $content -match '<!-- >>> specrew-managed directives >>> -->')
 }
 
 function Get-SpecrewHostAgentRoot {

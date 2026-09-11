@@ -152,8 +152,16 @@ function Install-CopilotCrewRuntime {
 
         $charterPath = Join-Path $roleDir 'charter.md'
         if (-not (Test-SpecrewManagedFile -Path $charterPath)) {
-            $notices.Add("Preserving user-edited file '$charterPath' (no Specrew-managed marker; delete it OR delete the sidecar '$charterPath.specrew-managed' to re-sync from canonical).") | Out-Null
+            $why = if (Test-Path -LiteralPath ("{0}.specrew-managed" -f $charterPath) -PathType Leaf) { 'edited since Specrew wrote it' } else { 'no Specrew-managed marker' }
+            $notices.Add("Preserving user-edited file '$charterPath' ($why; delete the file to re-sync from canonical, or delete the sidecar '$charterPath.specrew-managed' to keep it without this notice).") | Out-Null
             $actions.Add(@{ Action = 'preserved'; Path = $charterPath; Role = $role }) | Out-Null
+            continue
+        }
+        if (Test-SpecrewManagedDirectivesBlock -Path $charterPath) {
+            # PRED-BETA4-034: init composed this charter (shipped charter + managed directives block) and it still
+            # hashes to what Specrew wrote. It is current and it is Specrew's; replacing it with the canonical
+            # body alone would drop the directives. Kept, silently.
+            $actions.Add(@{ Action = 'preserved-managed'; Path = $charterPath; Role = $role }) | Out-Null
             continue
         }
 

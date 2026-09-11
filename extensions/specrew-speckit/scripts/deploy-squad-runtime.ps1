@@ -4,7 +4,12 @@ param(
     [string]$ProjectPath,
 
     [switch]$DryRun,
-    [switch]$PassThru
+    [switch]$PassThru,
+    # PRED-BETA4-034: init passes this when THIS run created .squad - every charter under it is this run's
+    # product (squad init's baseline plus the directives block), so the ownership sidecar is written for all
+    # five. Without it (update/repair on an existing project) a charter is stamped only when created here or
+    # when it still hashes to what a previous sidecar recorded - a user's edit in between keeps its notice.
+    [switch]$ClaimCharterOwnership
 )
 
 Set-StrictMode -Version Latest
@@ -1077,7 +1082,28 @@ foreach ($baselineRole in $baselineRoles) {
         }
     ) -join ([Environment]::NewLine + [Environment]::NewLine)
 
-    Set-ManagedBlock -TargetPath (Join-Path $agentDirectory 'charter.md') -BlockName 'directives' -ManagedContent $directiveContent -BaseContentIfMissing $charterTemplate -Actions $actions
+    $charterPath = Join-Path $agentDirectory 'charter.md'
+    # PRED-BETA4-034: OWNERSHIP TRAVELS WITH THE CHARTER. This composition (shipped charter + directives block) is
+    # Specrew's, and the host handler at `specrew start` decides ownership by the `.specrew-managed` sidecar's
+    # hash. Without it, five fresh charters were called user-edited on every start. The sidecar is written
+    # when this step CREATES the file, and refreshed when the file still hashes to what Specrew last wrote;
+    # a charter the user edited in between keeps no sidecar, so the notice about it stays true.
+    $charterExisted = Test-Path -LiteralPath $charterPath -PathType Leaf
+    $charterUntouched = $false
+    if ($charterExisted) {
+        $priorSidecar = "{0}.specrew-managed" -f $charterPath
+        $priorHash = ''
+        if (Test-Path -LiteralPath $priorSidecar -PathType Leaf) {
+            foreach ($sidecarLine in @(Get-Content -LiteralPath $priorSidecar -Encoding UTF8)) { if ($sidecarLine -match '^\s*sha256:\s*([0-9a-fA-F]{64})\s*$') { $priorHash = $Matches[1].ToLowerInvariant() } }
+        }
+        $charterUntouched = (-not [string]::IsNullOrWhiteSpace($priorHash) -and $priorHash -ceq ((Get-FileHash -LiteralPath $charterPath -Algorithm SHA256).Hash).ToLowerInvariant())
+    }
+    Set-ManagedBlock -TargetPath $charterPath -BlockName 'directives' -ManagedContent $directiveContent -BaseContentIfMissing $charterTemplate -Actions $actions
+    if (-not $DryRun -and (Test-Path -LiteralPath $charterPath -PathType Leaf) -and (-not $charterExisted -or $charterUntouched -or $ClaimCharterOwnership)) {
+        # The SAME sidecar text hosts/_team-canonical.ps1's Write-SpecrewManagedSidecar writes (asserted by test).
+        $charterHash = ((Get-FileHash -LiteralPath $charterPath -Algorithm SHA256).Hash).ToLowerInvariant()
+        [System.IO.File]::WriteAllText(("{0}.specrew-managed" -f $charterPath), ("Generated from .specrew/team/agents/. Delete this file to retain a user-customized $charterPath on next specrew start.`nsha256: {0}`n" -f $charterHash), [System.Text.UTF8Encoding]::new($false))
+    }
 
     # Create history.md for each baseline role
     $historyPath = Join-Path $agentDirectory 'history.md'
