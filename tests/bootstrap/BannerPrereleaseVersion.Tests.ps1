@@ -21,7 +21,8 @@ Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
         $script:Provider = Join-Path $script:RepoRoot 'scripts/internal/specrew-bootstrap-provider.ps1'
         # SC-010 names this value. It is asserted LITERALLY, independent of the manifest under test.
-        $script:ExpectedVersion = '0.40.0-beta3'
+        # Beta4 (ruled 2026-09-11): the channel moved with the Prerelease line; this literal moves with it.
+        $script:ExpectedVersion = '0.40.0-beta4'
         $script:ModuleVersion = '0.40.0'
         $manifest = Import-PowerShellDataFile -Path (Join-Path $script:RepoRoot 'Specrew.psd1')
         $script:ManifestVersionText = '{0}-{1}' -f [string]$manifest.ModuleVersion, ([string]$manifest.PrivateData.PSData.Prerelease).Trim()
@@ -50,7 +51,7 @@ Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)
 
     It 'the shipped manifest declares the version SC-010 requires' {
         # The literal check the derived version could not make: the source identity itself must be
-        # beta3, or every build from this tree tells a consumer they are on the previous channel.
+        # beta4, or every build from this tree tells a consumer they are on the previous channel.
         $script:ManifestVersionText | Should -Be $script:ExpectedVersion
     }
 

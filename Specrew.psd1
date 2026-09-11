@@ -451,20 +451,22 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the 0.40.0 Beta3 candidate. Prerelease is empty for stable;
+            # Source prerelease state for the 0.40.0 Beta4 candidate (ruled 2026-09-11: the walk's orientation read
+            # beta3 from a branch-built module; the tag stamps the staged manifest, this line is the dev-loop's
+            # word). Prerelease is empty for stable;
             # publish-stable stamps it clear from a stable v0.40.0 tag only after a separate promotion gate.
             # The publish-module.yml workflow stamps the actual published version from the git tag at release
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = 'beta3'
+            Prerelease = 'beta4'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
             # Kept in step with Prerelease above. These notes are what a consumer reads on the gallery
             # page before installing, so a stale label here points them at the wrong release's known
             # limitations - which is the one thing they are reading it for.
-            ReleaseNotes = 'Specrew 0.40.0-beta3 stabilizes the continuous co-review campaign: a review round now ENDS in a decision surface that reports what was found, what it cost, and what you may choose - and nothing runs or is spent until you answer. Continuing always takes an explicit reply, and one reply authorizes exactly one round. "Stop here" is a single action that verifies your files as they are, saves remaining findings as follow-ups, and completes review sign-off. Findings the reviewer reported as blocking or major but that state no concrete failure scenario are demoted rather than discarded, and the demotion is named on the surface instead of disappearing into a minor count. Cloud-backed installs work: a OneDrive-style placeholder is downloaded and hash-verified rather than refused, so the default CurrentUser install path can run campaigns. Also: a starter verification plan on `specrew init`, restored review slots are disclosed instead of silently returned, and consumer-facing messages name the next step in plain language. Known limitations are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta3 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
+            ReleaseNotes = 'Specrew 0.40.0-beta4 is the first-run and every-boundary release. A project''s second and later features can open their design workshop (the resolve used to select the previous feature and silently find nothing). A captured approval now tells the coordinator which stage it began and the command that begins it, so a verdict is one human turn, not two; the pre-boundary lint gate repairs blank lines and proceeds instead of halting for a commit of its own fix. Crew charters written by init are Specrew''s canonical charters and stay in sync when the canonical changes; a charter you edit is preserved, reported once, and `specrew team own <role>` or `specrew team resync <role>` ends the notice. An approval typed before its crossing existed, or a pasted transcript with the phrase at its top, is refused with one line saying why. The mechanical checks report not-applicable instead of throwing on a project with nothing to scan; a readiness sub-agent''s BLOCKED is quoted verbatim; the second iteration''s plan sync asks for the second iteration''s plan. Known limitations are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta4 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
         }
     }
 }
