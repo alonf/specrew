@@ -4080,3 +4080,16 @@ here (B4F-079), so the stale pin was first seen today. Re-pinned to the current 
 preparation carried forward, no stalling at after-tasks); the suite passes on Windows (the runner's `specify`
 CLI is absent under WSL, where it skips). One thing learned on the way: the generator's double backtick is a
 here-string escape and renders as one; the pin follows the rendered prompt.
+
+## B4F-082 - THE CONTRACT LANE'S SECOND STOP: a live-review test that predates the round-approval gate (fixed in beta4)
+
+Past B4F-081, the lane stopped at `tests/integration/review-command.ps1` test 5 - "live review REFUSES an
+unregistered host loudly" - because beta4's round-approval gate fires BEFORE host resolution: `specrew review
+--live --host fixture` now refuses with *"This review round needs the human's approval before it can run"*,
+which is the right order (a round costs the human's quota; nothing is resolved before their approval), and
+the test asserted the older, later refusal `requested-host-not-available`. The test supplies the product's
+documented scripted-run authorization (`--authorization-ref <label> --ack-reason "<where it came from>"`),
+recorded as an external label and never as a round the human approved; the host refusal then appears
+(`requested-host-not-available:not-cataloged:fixture`) and the suite is green. The lane's five other checks
+and the non-interactive first-run regression pass locally. Same class as B4F-080/081: a lane that never ran
+cannot tell you which of its suites the product has moved past.

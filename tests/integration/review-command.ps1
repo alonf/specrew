@@ -215,6 +215,11 @@ Invoke-Git -Repository $liveProjectRoot -Arguments @('commit', '-m', 'baseline')
 Add-Content -LiteralPath $liveSourcePath -Value "function Get-SampleAfter { 'after' }" -Encoding UTF8
 
 $liveRunId = 'run-test-live-unregistered'
+# B4F-082: beta4's round-approval gate fires BEFORE host resolution - a live review costs the human a round, so
+# without their approval the refusal is "This review round needs the human's approval", not the host refusal
+# this test is about. The contract lane never ran on beta4 (B4F-079), so this was first seen on its first run.
+# A scripted run supplies its own label and says where it came from, the product's documented path; the
+# refusal under test is then the unregistered host.
 $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'review', '--project-path', $liveProjectRoot,
     '--live',
@@ -222,7 +227,9 @@ $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     '--code-writer-host', 'claude',
     '--feature', '001-live',
     '--iteration', '001',
-    '--run-id', $liveRunId
+    '--run-id', $liveRunId,
+    '--authorization-ref', 'contract-lane-test-5-unregistered-host',
+    '--ack-reason', 'contract-lane fixture: the refusal under test is the unregistered host, not the round'
 )
 if ($liveResult.ExitCode -eq 0) {
     Write-Fail 'specrew review --live with an unregistered --host must exit non-zero (loud refusal)'
