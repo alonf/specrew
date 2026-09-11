@@ -74,7 +74,7 @@ also punish a finished closure for a gate's failure.
 Recorded in full as DRIFT-199-I003-097.
 
 **And this iteration is a NAMED EXCEPTION to its own countermeasure.** If the rule that came out of this
-finding ships - a boundary record must name the verdict receipt that authorized it - **003 fails it**,
+finding ships - a boundary record must name the verdict receipt that authorized it - **003 fails it**, 
 because the ratification is prose here rather than a capture. That is the rule working, not an argument
 against it. Recorded as an exception now, in DRIFT-199-I003-098, so a future run of the rule over history
 finds a knowing decision rather than a silent violation.

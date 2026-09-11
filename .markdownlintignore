@@ -1,3 +1,6 @@
 node_modules/
 .squad/
 .specify/
+# Closed (sealed) iteration records are preserved history: the trust-hardening validator refuses any edit after
+# the closeout seal, so they cannot be reformatted to satisfy the lint (B4F-079). Excluded rather than edited.
+specs/199-beta3-stabilization/iterations/003/
