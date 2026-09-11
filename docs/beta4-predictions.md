@@ -1814,3 +1814,29 @@ base for a `.squad` it created; a third mutation (that write removed) reds the f
 assertions - the first start then repairs it. Field consequence: projects initialized on `4a7585d8` or
 earlier get their five untouched charters rewritten to the canonical composition on the first start of this
 build, once. `--project-path` never bound for any `specrew team` verb; it binds now (B4F-077).
+
+## PRED-BETA4-037 - PRED-015 for the FROZEN SHA after the charter halves, by ruling: freeze, census, install, the router-skill update. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `4a7585d8` (census 7 green, installed, the consumer
+updated) plus the charter fix's two missing halves and what was under them (`e8a2d900`, B4F-076 / B4F-077 /
+B4F-078). Census 7 on `4a7585d8` is the baseline; nothing in it is re-run.
+
+### THE PREDICTION
+
+1. `full-test-census` green - 414 named files, 0 failures - `crew-charter-ownership` now 45 through the real
+   init, ten real starts and the real `specrew team` verbs (61 s locally; under its 600 s override on the
+   runner with or without the squad CLI, since init writes the canonical base on either path); the fourteen
+   adjacent suites (host-registry, squad-duplicate-rows, managed-runtime-sidecar, team-management,
+   slash-command-routing and -distribution, packaged-artifact-deploy, co-review-deploy-completeness,
+   distribution-module-init, host-cursor, managed-skill-stuck-preserving, gate-stop-skill,
+   closeout-gate-git-warnings, the lifecycle harness) unchanged; `prepublish-validation` and the dry-run
+   publish green (no FileList change - no file was added); the artifact carries the sentinel and nothing else.
+2. If exactly the timing pair reds with the runner-bound signature and nothing else does, the single
+   sanctioned re-dispatch runs with its meaning fixed; any other red on a changed file is fixed first and the
+   SHA is not frozen.
+3. On green: the module is installed from this SHA exactly (a temp worktree at the SHA, since docs/ is in the
+   FileList and any later docs commit would stamp itself), byte-verified; the router-skill project updates
+   once, to that build. Its first `specrew start` after that rewrites its five untouched charters to the
+   canonical composition - "Crew runtime synced: 5 agent file(s) written" - once (B4F-076's field
+   consequence, stated here so it is read as the fix landing, not as a regression); a charter edited there is
+   reported with the two remedies, not rewritten.
