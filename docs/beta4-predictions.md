@@ -1840,3 +1840,19 @@ B4F-078). Census 7 on `4a7585d8` is the baseline; nothing in it is re-run.
    canonical composition - "Crew runtime synced: 5 agent file(s) written" - once (B4F-076's field
    consequence, stated here so it is read as the fix landing, not as a regression); a charter edited there is
    reported with the two remedies, not rewritten.
+
+### PRED-BETA4-037, DISPATCH 1 VOID - the hosted runner was lost 53 minutes into the sweep; no verdict exists
+
+Run `34576306084` on `bbf85b46`: `prepublish-validation` green; `full-test-census` ended with GitHub's
+annotation *"The hosted runner lost communication with the server"* at 08:43:54Z, 48 minutes into the sweep
+step (07:55:41Z), with the step still `in_progress`, no log retained and no failure artifact (the upload step
+never ran). The two green censuses before it ran 55 and 59 minutes. Nothing in this run is a test result:
+not the timing pair, not a red on a changed file, not green. It is void, and the census on `bbf85b46` has not
+happened. (The push-triggered "Specrew CI" Lint job is red on every SHA of this branch - markdownlint on the
+findings and drift records - and is not the census.)
+
+**Meaning of the one dispatch that follows, fixed before it runs**: it IS census 8 on `bbf85b46`; whatever it
+returns is read as PRED-037's verdict. If the runner is lost AGAIN at the same point, that is read as a signal
+about this SHA's sweep tail (the suites running near the 50-minute mark - the charter suite's ten starts among
+the candidates), investigated from whatever the runner retains, and no third dispatch is made. The sanctioned
+re-dispatch for the timing pair is a different instrument and stays unspent.
