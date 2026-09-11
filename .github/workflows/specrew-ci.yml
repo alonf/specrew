@@ -172,6 +172,9 @@ jobs:
         shell: pwsh
         env:
           GITHUB_BASE_REF: ${{ github.event.before }}
+          # B4F-079: the push run fell back to full-repo ("global-state-changed") where the same base scopes
+          # locally; verbose mode names the base the fallback used, so the record can say why.
+          SPECREW_VALIDATOR_VERBOSE: '1'
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -ChangedOnly
 
       - name: Integration - legacy state readers
