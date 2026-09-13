@@ -248,7 +248,7 @@
     },
     {
       "path": "scripts/confirm-workshop-agenda.ps1",
-      "sha256": "650af80b214020cd37ab81db57e87744d2f44039a5e5fae372162ae6db5b03cf"
+      "sha256": "0bd68e94c5239057ccbb348a94828b766c9b5356a772a4ab9c45e539bf583c4d"
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
@@ -268,11 +268,11 @@
     },
     {
       "path": "scripts/deploy-speckit-extension.ps1",
-      "sha256": "ec5b92be0abb47bb6110ce8a9b63c5aaab91a3f5c34c63b8059afa6a800add29"
+      "sha256": "3667866d3a1d1539761f941ac9e6cf970beb564db4cbfb5ac00ac8c70837999c"
     },
     {
       "path": "scripts/deploy-squad-runtime.ps1",
-      "sha256": "cf561d8ed79cff387ffae4e661e815a7508de4c436a66769cbe693e0ef9d5da2"
+      "sha256": "e4d2a4f34b9f0428db224261bba14c6f486baec354a26153109a85837832885d"
     },
     {
       "path": "scripts/drift-diff.ps1",
@@ -448,7 +448,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "cea3397ab93ca3679504df747acc10a0fe3f83be6d628d54ff3645601c40596a"
+      "sha256": "68a5866f3a826dd50d0c8609271cf729fa6832df64bfe093a483eab8d597174d"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
@@ -524,7 +524,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "7b1fe2dbc18ba31564c56c047a18b0d96283ecdbd487945465e2f8ea36b9c41d"
+      "sha256": "2957aaa09597bf99d4ac5292bd0e9ed41bb66015a31c8cde71d366ed671b2af3"
     },
     {
       "path": "squad-templates/skills/drift-check.md",

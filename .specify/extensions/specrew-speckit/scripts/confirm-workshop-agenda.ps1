@@ -209,20 +209,20 @@ $agendaReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProje
 if ($null -eq $agendaReceipt -or [string]$agendaReceipt.confirmation -cne 'human-confirmed' -or
     [string]$agendaReceipt.confirmation_scope -cne 'lens-selection') {
     throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The complete selected + skipped agenda has no typed human confirmation receipt.' `
-        -Action 'Run this command with -RenderOnly once, send its complete output, and wait for a typed confirm or change reply.')
+        -Action 'Run this command with -RenderOnly once, paste its complete output into your own message (a tool result is not a message), and wait for one typed reply - confirm, yes, ok, looks right, or a change.')
 }
 # SPECREW-AUTHORITY-CONSUMER: workshop-agenda-question-identity
 $receiptDigestProperty = $agendaReceipt.PSObject.Properties['agenda_digest']
 $receiptBindingProperty = $agendaReceipt.PSObject.Properties['agenda_binding']
 if (-not $receiptDigestProperty -or -not $receiptBindingProperty -or $null -eq $receiptBindingProperty.Value) {
     throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The typed agenda confirmation is not bound to agenda content.' `
-        -Action 'Run this command with -RenderOnly once, send its complete output, and wait for one new typed reply.')
+        -Action 'Run this command with -RenderOnly once, paste its complete output into your own message (a tool result is not a message), and wait for one new typed reply - confirm, yes, ok, looks right, or a change.')
 }
 if ([string]$receiptDigestProperty.Value -cne $agendaDigest) {
     $changedLenses = @(Get-SpecrewWorkshopAgendaChangedLenses -ExpectedBinding $receiptBindingProperty.Value -ActualBinding $agendaBinding)
     $changedLabel = if ($changedLenses.Count -gt 0) { $changedLenses -join ', ' } else { '(content digest changed)' }
     throw (New-SpecrewWorkshopAgendaRefusal -Summary ("The agenda decisions changed after the human reply. Changed lenses: {0}." -f $changedLabel) `
-        -Action 'Render the current complete agenda once with -RenderOnly and wait for a new typed confirmation.')
+        -Action 'Render the current complete agenda once with -RenderOnly, paste it into your own message, and wait for one new typed reply - confirm, yes, ok, looks right, or a change.')
 }
 
 $confirmed = [ordered]@{

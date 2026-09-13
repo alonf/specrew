@@ -208,10 +208,15 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    **Render the authority-bound agenda before asking.** Build one JSON object shaped as
    `{"selected":[{"lens":"architecture-core","depth":"medium","decision":"..."}],"skipped":[{"lens":"ui-ux","reason":"..."}]}`,
    then invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson -RenderOnly`.
-   Send the command's complete output as one unchanged, contiguous block. A short introduction or closing is
-   allowed, but may not replace, paraphrase, or split the canonical block. The hook binds the typed reply to the
-   structured agenda digest after proving that complete block was visible. Wait for the human's
-   typed response. **The moment they confirm, PERSIST it before opening lens 1** by invoking the same
+   **Paste the command's complete output into your own message** as one unchanged, contiguous block - a tool
+   result is not a message. The hook binds the typed reply to the structured agenda digest only after proving
+   that complete block was in the assistant's previous message; an agenda that appears only in a tool call's
+   output binds nothing, the confirmation is dropped, and the human is told so at prompt time. A short
+   introduction or closing is allowed, but may not replace, paraphrase, or split the canonical block. Wait for
+   the human's typed response. **Confirmation vocabulary, one rule:** the agenda accepts a natural typed
+   confirmation the way a lens accepts any typed reply - `confirm`, `yes`, `ok`, `looks right` all bind; only a
+   change request, a skip or a delegation is not a confirmation. Do not ask for a phrase and do not bounce a
+   natural one. **The moment they confirm, PERSIST it before opening lens 1** by invoking the same
    command with the identical `$agendaJson` and without `-RenderOnly`. If the selected set, depths, decisions,
    skipped set, or reasons change, render the new canonical agenda and ask again; an older receipt cannot authorize it.
    The writer changes `agenda_status` to `confirmed` only when selected + skipped cover the whole deployed
