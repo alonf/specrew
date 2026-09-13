@@ -2172,3 +2172,16 @@ one red, `distribution-module-update.ps1`, was `/usr/bin/tar: Cannot connect to 
 Windows' GNU tar first on that PATH reading `C:` as a remote host; re-run from a native PowerShell PATH
 (`C:\Windows\system32\tar.exe`) the suite passes: 131 of 131. (A first run had redded on "caller repository
 contamination" - my own concurrent edit of this record while the harness watched the tree; re-run untouched.)
+
+### PRED-BETA4-045 VERDICT - census 12 (`34731781888` on `79ab618d`): GREEN, all three jobs; installed; the consumer updated
+
+Part 1 held: `prepublish-validation`, `full-test-census` (417 named files, 0 failures, the artifact carries
+the sentinel and nothing else), dry-run `publish-module` green. Part 2 unspent. Part 3: the module installed
+from `79ab618d` exactly through a temp worktree - build stamp `commit: 79ab618d`, content `5eba677a…`, 423
+files; `HandoverStore.ps1`, `sync-boundary-state.ps1`, `shared-governance.ps1`, `refocus/general.md`, the
+two host files and `Specrew.psd1` byte-identical to the SHA; `Get-Module Specrew` reports `0.40.0` prerelease
+`beta4`. The router-skill project (`7f236aa`) updated once: exit 0, integrity 0 drifted / 0 missing - and the
+verification found B4F-088: its refocus digests were not refreshed, by any update, ever (the deploy list
+omits `refocus/`); the fresh walk project is unaffected. **The SHA for the walk: `79ab618d`.** The false
+round approval in this repository is still pending (`spent_at: null`, not withdrawn): the designed path is
+the human's typed withdrawal captured by the hook, and it waits for the maintainer.

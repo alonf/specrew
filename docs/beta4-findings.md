@@ -4231,3 +4231,24 @@ anywhere but the project root - the sync runs from the project root, and the sui
 proceeds; the boundary commit carries the repaired files; an unfixable violation halts naming file:line and
 no longer instructs a git sequence. `tests/unit/lint-gate-autofix-proceeds.tests.ps1` (8) reproduces the
 walk's shape; against the unpatched gate it reds with the walk's own text.
+
+## B4F-088 - `specrew update` NEVER REFRESHES THE REFOCUS DIGESTS (open; sized, not started)
+
+**Found verifying the router-skill update to `79ab618d`** (PRED-045 part 3): after the update, integrity read
+0 drifted / 0 missing, and the project's `.specify/extensions/specrew-speckit/refocus/general.md` still lacked
+B4F-086's sentence - its hash (`44d9623f…`) is older than `4a7585d8`'s digest (`3e8ba28c…`), i.e. from the
+project's init day; two updates today (to `9154f72b` and `79ab618d`) left it untouched, and the marker was
+re-stamped around it, so the integrity check cannot see it. **Cause, read from the deploy**:
+`deploy-speckit-extension.ps1`'s `$itemsToCopy` lists `commands`, `data`, `extension.yml`, `README.md`,
+`refocus-scopes.json`, `hooks`, `knowledge`, `scripts`, `templates`, `squad-templates` - not `refocus/`.
+Reproduced on a scratch `.specify`: the deploy lands everything but the digests (0 files under `refocus/`).
+A fresh `specrew init` gets them because `specify extension add --dev` copies the whole extension directory -
+so the Friday walk's fresh project runs the current digests - but every UPDATED project runs the digests of
+its init day: PRED-026's rule-1 sentence and PRED-042's never reached the router-skill project, and the hook
+reads the project's copy (`Get-RefocusDigestRoot`), not the module's.
+
+**Fix, sized, not started**: one row in `$itemsToCopy` (`@{ Name = 'refocus'; Optional = $false }`) in
+`extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1` and its mirror; marker re-stamp; a test that
+deploys onto a scratch `.specify` and asserts the digests land and a changed digest is refreshed. Twenty
+minutes. A module file: re-freeze and one census. The ruling is the maintainer's - it is the delivery vehicle
+of B4F-086's digest half to updated consumers, and the router-skill project is one.
