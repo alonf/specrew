@@ -2559,9 +2559,9 @@ verification all match, stamp `commit: d8ce3ea9`, the thirteen touched files byt
 The router-skill project updated once more (the update the ruling allowed): before, both markers read
 `0.40.0` (extension.yml's base, from the last update); after, `.specrew-extension-runtime.json` and the
 review-runtime `.specrew-runtime.json` read `0.40.0-beta4`, `version-label.ps1` is deployed beside the
-turn-end script, and the deployed renderer's first line is `**Specrew 0.40.0-beta4 is active on claude.**`
-- PRED-054 part 2 **held**. Part 3 (the installed-module fallback) was not exercised: the update ran from
-the installed module, so the resolver found the manifest by SPECREW_MODULE_PATH-free co-location.
+turn-end script, and the deployed renderer's first line is `**Specrew 0.40.0-beta4 is active on
+claude.**` - PRED-054 part 2 **held**. Part 3 (the installed-module fallback) was not exercised: the update
+ran from the installed module, so the resolver found the manifest by co-location.
 
 **The SHA for the walk: `d8ce3ea9`**, under the re-scoped acceptance (B4F record: the reopened SHA). The
 stopping rule resumes: anything found outside the walk's path is beta4.1.
