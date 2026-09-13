@@ -4278,3 +4278,33 @@ required for it to go in before the walk.
 **For the walk's crew**: after the final round, write and commit `review.md` and the reviewer evidence as
 ONE records-only commit on the reviewed commit and ask for the sign-off verdict at that HEAD - no `plan.md`,
 `spec.md` or workshop edits between the round's result and the captured verdict.
+
+## B4F-089 - THE RESUME ORIENTATION ANNOUNCED WORK THE DISK HAD ALREADY DONE (recorded under the stopping rule; beta4.1)
+
+**Field, router-skill project on `4a22ba8f`, two consecutive resumes (Claude: Fable 5.1, then Opus 5)**: the
+orientation rendered the rolling handover's paragraph - "at iteration-closeout; the session stopped before
+that evidence was committed; starting now: validating and committing" - while disk held the closeout commit
+`c20bef5` (04:25 PDT), the iteration 003 plan commit `9c46508` (04:35), the plan-crossing sync `1732a66`
+(04:36), and `.specrew/runtime/pending-verdict-stop.md` reading `Boundary to ask for: iteration-closeout ->
+plan / Human approval phrase: approved for plan`. Read from the project: `session-handover.md` (recorded
+11:37:32Z, `from_commit: 1732a66`) still carries `active_boundary: iteration-closeout`, its agent-authored
+sections are placeholders, and its "What I just did" is the Stop's mechanical line; the Fable turn was
+interrupted before its Stop, so the narrative was never rewritten, and the next orientation read the
+narrative rather than the ledger's pending crossing or the commits since the handover's `from_commit`.
+
+**Prediction for the fix, when it is taken up (the maintainer's, recorded verbatim in substance)**: the
+orientation names the pending crossing (from `pending-verdict-stop.md` / the ledger) and the commits since
+the handover was written (`from_commit..HEAD`), and its "starting now" line comes from disk, never from a
+narrative older than the ledger. Not fixed on `4a22ba8f`'s successor: the stopping rule is in force -
+beta4.1.
+
+## B4F-090 - THE FIRST-RUN BLURB ON A RESUMED PROJECT (recorded; beta5)
+
+The same orientation showed the first-run sentence ("before I build anything here, I write down what you
+want") on a project resumed at its third iteration. The blurb is conditioned on something other than "this
+project has a feature past specify".
+
+## B4F-091 - DIAL 7 CALLED "MID-LEVEL"; THE EDITOR'S BAND TABLE SAYS 7-10 IS SENIOR (recorded; beta5)
+
+The profile line in the orientation labels dial value 7 "mid-level" where `/specrew-user-profile`'s band
+table places 7-10 in "Senior". Two renderers, two tables; one table.
