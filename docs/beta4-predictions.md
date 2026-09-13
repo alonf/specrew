@@ -2129,3 +2129,46 @@ from the desktop, before the walk.
 3. On green, Friday: the module installed from this SHA exactly (temp worktree), byte-verified; the
    router-skill project updated once more, to this build; then the walk from the desktop, measuring at every
    boundary of both features: unexpected repair prompts 0, post-verdict asks 0.
+
+### PRED-BETA4-044 VERDICT - census 11 (`34614037150` on `942852ed`): red on exactly one file, a wording pin
+
+`prepublish-validation` green; `full-test-census` 1 red of 417: `tests/unit/withhold-discipline.tests.ps1` line
+62 pinned the literal `offers NO options and NO marker`, and `3d3c64a2`'s digest trim (PRED-042 part 3, to
+stay at the 600-token budget) reads `offers no options or marker` in both copies of `general.md`. The clause is
+present; the pin was on wording. Fixed in the test, by meaning: case-insensitive, `and` or `or`, the marker
+with or without its own `no`, anchored to "owes … artifacts … offers no options"; the mutation (the clause
+removed from one digest copy) reds the case and the copy-parity case. The digest is not re-padded.
+
+**Why `tracker-honesty-check` was red once, on `d28323a3` (Specrew CI run `34607438407`), and green after
+(`34613985338`, `34614038303`)**: all eleven of its tests passed; the script then died in its own cleanup -
+`Remove-Item -Recurse -Force $fx` on the fixture's `.git/objects/1b` threw "Could not find a part of the path"
+on the ubuntu gate, a race between the recursive delete and whatever git left running in the fixture, and the
+suite's `$ErrorActionPreference = 'Stop'` turned the cleanup into the verdict. Not the product, not the
+assertions: the cleanup is best-effort now (`-ErrorAction SilentlyContinue`, tests only), so a runner race
+cannot red a suite whose assertions all passed. The gate's other red on those runs was this same
+`withhold-discipline` wording pin.
+
+## PRED-BETA4-045 - PRED-015 for the RE-FROZEN SHA after the wording pin. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `942852ed`'s module content unchanged - the two
+changes are tests only (`withhold-discipline` by meaning; `tracker-honesty-check` cleanup best-effort) - so
+the module built from this SHA is byte-identical in every shipped file to `942852ed`'s, and only the docs and
+the build stamp differ.
+
+### THE PREDICTION
+
+1. `full-test-census` green - 417 named files, 0 failures; `withhold-discipline` green on the trimmed digest;
+   `prepublish-validation` and the dry-run publish green with the manifest at `0.40.0-beta4`; the artifact
+   carries the sentinel and nothing else. The F-198 honesty suite (131) green locally before the push.
+2. If exactly the timing pair reds with the runner-bound signature and nothing else does, the single
+   sanctioned re-dispatch runs with its meaning fixed; any other red on a changed file is fixed first.
+3. On green: the module installed from this SHA exactly (temp worktree), byte-verified as for `9154f72b`; the
+   router-skill project updated once to it; the false round approval in this repository voided by the
+   designed path - the human's typed withdrawal, captured by the hook - before feature 201 reaches sign-off;
+   the SHA reported for the walk.
+
+**F-198 honesty suite, locally, before the push (as ruled)**: 130 of 131 green under the Bash tool's PATH; the
+one red, `distribution-module-update.ps1`, was `/usr/bin/tar: Cannot connect to C: resolve failed` - Git for
+Windows' GNU tar first on that PATH reading `C:` as a remote host; re-run from a native PowerShell PATH
+(`C:\Windows\system32\tar.exe`) the suite passes: 131 of 131. (A first run had redded on "caller repository
+contamination" - my own concurrent edit of this record while the harness watched the tree; re-run untouched.)

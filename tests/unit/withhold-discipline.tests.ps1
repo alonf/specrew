@@ -59,7 +59,10 @@ foreach ($relative in $discipline) {
 }
 foreach ($relative in @('extensions\specrew-speckit\refocus\general.md', '.specify\extensions\specrew-speckit\refocus\general.md')) {
     $text = Get-Content -LiteralPath (Join-Path $repoRoot $relative) -Raw -Encoding UTF8
-    Assert-True ($text -match 'offers NO options and NO marker') ("{0}: carries the withhold clause" -f $relative)
+    # The clause by MEANING, not by wording (census 11 on 942852ed redded on the literal after the digest was
+    # trimmed to its token budget - "offers no options or marker" says the same thing): case-insensitive, "and"
+    # or "or", the marker with or without its own "no". Mutation: the clause removed from one digest copy reds.
+    Assert-True ($text -match '(?i)owes[^.]{0,40}artifacts[^.]{0,60}offers\s+no\s+options\s+(?:and|or)\s+(?:no\s+)?marker') ("{0}: carries the withhold clause (a stage that owes artifacts offers no options and no marker)" -f $relative)
 }
 $lifecycle = Get-Content -LiteralPath (Join-Path $repoRoot 'docs\methodology\lifecycle-discipline.md') -Raw -Encoding UTF8
 Assert-True ($lifecycle -match 'owes artifacts it has not produced.*NO verdict options and NO marker') 'the discipline table has a row for the stage that owes artifacts'

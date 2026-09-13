@@ -176,7 +176,11 @@ if (-not $h.Honest) { Write-Fail "canonical T001->done reconcile (accepted pass)
 else { Write-Pass "canonical reconcile still honest - the fix fails closed on abuse without over-closing the legitimate path" }
 
 Set-Location $repoRoot
-Remove-Item -Recurse -Force $fx
+# Cleanup is not an assertion: on the ubuntu gate (run 34607438407 on d28323a3) the recursive delete of the
+# fixture's .git/objects raced whatever git left running and threw "Could not find a part of the path" AFTER
+# all eleven tests had passed, and $ErrorActionPreference = 'Stop' turned that into the suite's red. Green on
+# the next two runs. The fixture's removal is best-effort; the verdict is the assertions'.
+Remove-Item -Recurse -Force $fx -ErrorAction SilentlyContinue
 
 Write-Host ""
 if ($script:failCount -gt 0) { Write-Host "$script:failCount test(s) FAILED" -ForegroundColor Red; exit 1 }
