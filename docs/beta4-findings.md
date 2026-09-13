@@ -4375,7 +4375,7 @@ exhausted (the W52 stop kept). The iteration check removed reds exactly the `exh
 adjacent suites green. The router project's two inert reset facts and the unspent capture stay as they are:
 records of the human's act, harmless, and the block that asked for them no longer fires.
 
-## B4F-095 - "SPECREW UNKNOWN IS ACTIVE ON THIS HOST": three version resolvers, two wrong (recorded under the stopping rule; sized)
+## B4F-095 - "SPECREW UNKNOWN IS ACTIVE ON THIS HOST": three version resolvers, two wrong (ruled into the reopened SHA; fixed, PRED-054)
 
 **Field, `e9334af1` and reproduced on `9154f72b`'s walk project**: a fresh init's
 `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` carries `specrew_version: "unknown"`;
@@ -4408,3 +4408,59 @@ Same first turn: the coordinator's first reply did not render the orientation; t
 (the owed-orientation backfill) produced it after the first lens had run. The gate worked; the order did not: the human learned the
 project's position after answering a question about it. Recorded against the
 orientation-first rule (CLAUDE.md: "A session opens by orienting the human, not by starting work").
+
+**Ruled in (the reopening ruling, item 1)**: built as PRED-BETA4-054 - `version-label.ps1` is the one
+resolver; 9/9 through the real init; both mutations red their own case and nothing else.
+
+## B4F-097 - A TYPED AGENDA CONFIRM THAT COULD NOT BIND WAS DROPPED WITHOUT A WORD (ruled into the reopened SHA; fixed, PRED-053 + PRED-055 item 3)
+
+**Field, the walk project `C:/Temp/MailSummaryAgent` on `e9334af1`, at the agenda**: the coordinator ran
+`confirm-workshop-agenda.ps1 -RenderOnly` as a tool call (13:32:16Z) and the canonical block lived only in the
+tool result; the assistant turn before the confirm (13:38:50Z) did not contain it; the Stop hook therefore
+bound no `agenda_digest`, and at prompt time `Write-SpecrewWorkshopAuthorityReceipt` took one of its twelve
+silent `return $null` exits - no journal row, no disclosure. The coordinator learned of it when its persist
+call threw, went reading journals, and re-asked. A re-ask at the agenda is the walk's own criterion
+(unexpected repair prompts 0), so the walk was red before the first boundary.
+
+**Two halves.** (a) The silence: `Get-SpecrewWorkshopReceiptDisclosure` says it at prompt entry, with the
+remedy the persist refusal already names (PRED-053; `workshop-confirm-not-bound` 6/6, mutation reds 2).
+(b) The cause: the skill's agenda step said "send the command's complete output as one unchanged,
+contiguous block" - which a coordinator reads as satisfied by a tool result. The step now says **paste the
+command's complete output into your own message**, that a tool result is not a message, and what happens when
+the block is not in the message (PRED-055 item 3; six copies, three refusal Actions).
+
+## B4F-098 - "YES" BOUNCED AT THE AGENDA WHILE A LENS BINDS ANY TYPED REPLY (ruled: one rule; fixed, PRED-055 item 4)
+
+**Field, same walk**: after the agenda was re-rendered, "yes" cost a second ask; the coordinator wanted the
+word `confirm`. **Read from the code**: the recognizer never wanted it - `Get-SpecrewWorkshopResponseAuthority
+-Phase agenda` returns `human-confirmed / lens-selection` for any typed reply that is not a delegation or a
+skip; `confirm`, `yes`, `ok`, `looks right` are the same word to the receipt writer. The asymmetry was in the
+words the coordinator reads: the skill named no vocabulary and the refusal said "a typed confirm or change
+reply".
+
+**The ruling** (the reopening ruling, item 4): the agenda accepts a natural confirmation the way a lens
+accepts any typed reply, and the vocabulary is recorded as ONE rule. The rule, where the coordinator reads
+it (the agenda step, and the three persist refusals' Action texts): *the agenda accepts a natural typed
+confirmation the way a lens accepts any typed reply - `confirm`, `yes`, `ok`, `looks right` all bind; only a
+change request, a skip or a delegation is not a confirmation. Do not ask for a phrase and do not bounce a
+natural one.* Pinned where the receipt is written: `workshop-agenda-vocabulary` (15/15) drives each of the
+four words through the real provider on a visible agenda and reads a `human-confirmed / lens-selection`
+receipt with the digest bound; mutation (the agenda branch narrowed to the literal `confirm`) reds exactly
+`yes`, `ok`, `looks right`. Measured against the prediction: "you decide" on the agenda writes an `invalid`
+receipt row, not no row - the assertion reads "no human-confirmed row", which is the property that matters;
+the prediction's "writes none" was wrong in that detail.
+
+## THE REOPENED SHA AND THE RE-SCOPED ACCEPTANCE (the ruling on the e9334af1 walk)
+
+The walk on `e9334af1` was red by its stated criteria before the first boundary (B4F-095, B4F-097, B4F-098:
+one repair prompt and one re-ask at the agenda, "Specrew unknown" on the first line). The stopping rule
+reopened the SHA for exactly four first-run items, nothing else: (1) one version resolver (PRED-054);
+(2) the prompt-time disclosure when a workshop confirmation cannot bind (PRED-053); (3) the agenda step says
+"paste the -RenderOnly output into your message" (PRED-055); (4) the agenda accepts a natural confirmation,
+one rule (PRED-055). One freeze, one census, install, the router-skill project updated once more.
+
+**Acceptance, re-scoped and recorded as such**: the later half of the lifecycle is witnessed on these builds
+by the router-skill project's iterations 002 and 003, with human verdicts and a held seal on resume; the
+fresh-project walk covers init -> orientation -> product-domain with one correction -> agenda -> first
+technical lens -> specify, then the second feature's first question, with repair prompts 0 and post-verdict
+asks 0. Anything found outside that path is beta4.1.

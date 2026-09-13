@@ -2396,3 +2396,120 @@ test. Prediction: `full-test-census` green, 420 named files, 0 failures; `prepub
 dry-run publish green; the artifact carries the sentinel and nothing else. On green: install byte-verified;
 the router-skill project updated and its coverage state re-measured (`exhausted $false`,
 `campaign_is_active $false`); the SHA for the walk moves to it; the stopping rule resumes.
+
+## PRED-BETA4-053 - a workshop confirmation that cannot bind is said, at prompt entry, with the remedy. Stated before the code.
+
+**Field, the walk project `C:/Temp/MailSummaryAgent` on `e9334af1`, at the agenda**: the canonical agenda
+block was rendered only as a tool result (13:32:16Z); the assistant turn before the confirm (13:38:50Z) did
+not contain it; the typed confirm was dropped at prompt time without a word - no journal row, no disclosure -
+and the coordinator learned of it when its persist call threw, then went reading journals, then re-asked. A
+re-ask at the agenda is the walk's own criterion (unexpected repair prompts 0), so the SHA reopens.
+
+**Mechanism, read from the code**: the Stop hook binds the agenda digest into `workshop-question.json` only
+when `Test-SpecrewWorkshopAgendaVisibleInText` proves the canonical block in the assistant's message
+(`agenda_visibility: not-visible` otherwise, no digest); at prompt entry `Write-SpecrewWorkshopAuthorityReceipt`
+reads the question, finds no `agenda_digest`, and `return $null` - one of its twelve silent exits. The verdict
+path got its disclosure in beta4 (PRED-026); this path kept the silence.
+
+**The fix**: `Get-SpecrewWorkshopReceiptDisclosure` beside the receipt writer: when the human's reply is a
+confirmation for a `workshop-active` question in the agenda phase whose identity carries no agenda digest
+(the block was not in the previous assistant message), it returns one line - *"Specrew: your agenda
+confirmation was received but NOT bound - the canonical agenda block was not in the assistant's previous
+message (a tool result is not a message), so nothing was recorded. Render the block in your message, then ask
+again."* - the remedy the persist refusal already carries; a journal row
+(`workshop-confirmation-not-bound-disclosed`) in the handover journal; the prompt-entry branch appends the
+line to the same `disclosure` field the verdict disclosures use. Lens questions have no visibility proof to
+read (their identity is the message hash), so the lens half is recorded, not built.
+
+### THE PREDICTION
+
+1. `tests/unit/workshop-confirm-not-bound.tests.ps1`: a fixture with the agenda question active and
+   NOT visible (no digest) and a typed confirm, through the REAL handover provider at UserPromptSubmit - the
+   inject stdout carries the line verbatim, the journal has the row, and no receipt is written; the same
+   fixture with the digest bound - no line, the receipt written (the receipt path unchanged); an ordinary
+   reply ("what does lens 2 cover?") - no line. Mutation: the disclosure call dropped from the branch reds
+   the first case's line and journal assertions and nothing else.
+2. `workshop-agenda-confirmation` (26), `workshop-typed-turn-authority`, `workshop-state-transition-table`,
+   the capture-disclosure suite (51) unchanged.
+3. Vocabulary (the maintainer's second observation, recorded not ruled): a lens binds any typed reply; the
+   agenda accepts only the literal confirm - "yes" cost a re-ask. Whether the agenda accepts "yes" is the
+   maintainer's ruling; the recognizer is one regex when it comes.
+4. One freeze after census 17 lands, one census.
+
+## PRED-BETA4-054 - one version resolver behind the markers, config.yml and both orientations. Stated AFTER the code, before the census.
+
+**Order, said plainly**: the ruling reopened the SHA for four first-run items; item (1) was already sized in
+B4F-095 with its test and mutation named, and the code was written (and the suite run) before this statement
+went into the record. The prediction below is therefore not a prediction of the local run - that verdict is
+already in hand - but of the census and the walk; the local numbers are recorded as measured, not predicted.
+
+**The fix**: `extensions/specrew-speckit/scripts/version-label.ps1` (new, in FileList, deployed beside the
+turn-end script) - `Get-SpecrewModuleVersionInfo -ModuleRoot` (manifest `ModuleVersion` plus `Prerelease`;
+resolution: explicit root, `SPECREW_MODULE_PATH`, the module this file belongs to, the highest installed
+module; `Label = ''` with `Source = 'none'` when nothing resolves - never a placeholder) and
+`Get-SpecrewRuntimeVersionLabel -ProjectRoot` (the deployed marker's value when it is version-shaped, else
+the module label). Wired: the bootstrap provider (SessionStart orientation), `declare-turn-end.ps1`'s
+`Get-SpecrewOrientationBlock` (turn-end orientation; guard first, path second - a harness that extracts the
+function has no `$PSScriptRoot`), init's `specify extension add` marker write (the path that stamped no
+version at all), the update deploy's marker write (the module label instead of `extension.yml`'s base), the
+review-runtime marker (the module, never two levels above the TARGET), and init's governance scaffold (the
+base from the same manifest; `config.yml` stays base-only by design, Prop 134).
+
+**Measured, local** (`tests/integration/version-label-one-resolver.tests.ps1`, the REAL init on a scratch
+project): 9/9 - both markers `0.40.0-beta4`, `config.yml` `0.40.0`, both orientations `0.40.0-beta4`, never
+"Specrew unknown". Mutation, both halves restored (init's marker write without the label; the review-runtime
+marker's grandparent lookup): 2 FAILED - case 1 reads `unknown`, case 2 reads `0.40.0` - nothing else;
+restored, control green. `package-filelist-completeness`, `every-suite-is-named-by-a-lane`,
+`extension-deploy-refocus-digests`, `workshop-confirm-not-bound` green after the lane and FileList entries.
+
+### THE PREDICTION
+
+1. The census on the frozen SHA is green with `version-label-one-resolver` and `workshop-confirm-not-bound`
+   in the sweep (both match `tests?\.ps1$`), and the deploy-adjacent suites (`deployed-extension-marker-on-update`,
+   `deploy-extension-missing-source-tolerance`, `refocus-deploy`, `deployed-extension-integrity`,
+   `crossing-mirrors`, `validate-governance-changed-only`) unchanged.
+2. The router-skill project, updated once more on the SHA: its extension marker reads `0.40.0-beta4`
+   (today it reads whatever `extension.yml` said at its last update, base only), and its next turn-end
+   orientation says "Specrew 0.40.0-beta4 is active on claude." The fresh walk project's first orientation
+   says the same label on both surfaces.
+3. If wrong: a project whose marker still says `unknown` after update means the update deploy's marker
+   write did not run the resolver (the `$PSScriptRoot` of the deployed copy has no module above it and
+   `SPECREW_MODULE_PATH` is unset) - then the installed-module fallback is the branch that failed, and the
+   fix is in `Get-SpecrewModuleVersionInfo`'s candidate list, not in the writers.
+
+## PRED-BETA4-055 - the agenda step says "paste the output into your message"; the agenda accepts a natural confirmation, one rule. Stated before the code.
+
+**Field (B4F-097, B4F-098)**: the walk's coordinator ran `confirm-workshop-agenda.ps1 -RenderOnly` as a tool
+call and never carried the block into its message - the skill said "send the command's complete output", and
+a tool result is, to a coordinator, output that was sent. Then "yes" cost a re-ask, while a lens binds any
+typed reply. **Read from the code**: `Get-SpecrewWorkshopResponseAuthority -Phase agenda` already returns
+`human-confirmed / lens-selection` for ANY typed reply that is not a delegation or a skip - "yes", "ok",
+"looks right" and "confirm" are the same word to the receipt writer; what bounced "yes" was the coordinator,
+whose instructions name no vocabulary and whose refusal text says "a typed confirm or change reply". The
+asymmetry is in the words the coordinator reads, not in the recognizer; the rule is stated where the
+coordinator reads it and pinned where the receipt is written.
+
+**The fix**: (3) the skill's agenda step (`design-workshop.md`, its `.specify` mirror and the four host
+copies) says: paste the command's complete output INTO YOUR OWN MESSAGE as one unchanged, contiguous block -
+a tool result is not a message; the hook proves the block in the assistant's previous message, and an agenda
+that appears only in a tool call's output binds nothing, the confirmation is dropped, and the human is told
+so at prompt time (PRED-053). (4) One vocabulary rule, in the same step and in the persist refusal's Action
+texts (`confirm-workshop-agenda.ps1`, three refusals): the agenda accepts a natural typed confirmation the way
+a lens accepts any typed reply - `confirm`, `yes`, `ok`, `looks right` all bind; only a change request, a
+skip or a delegation is not a confirmation; do not ask for a phrase and do not bounce a natural one.
+
+### THE PREDICTION
+
+1. `tests/integration/workshop-agenda-vocabulary.tests.ps1`: through the REAL receipt writer
+   (`Write-SpecrewWorkshopAuthorityReceipt`) on a visible-agenda fixture, each of `confirm`, `yes`, `ok`,
+   `looks right` writes a receipt with `confirmation = human-confirmed`, `confirmation_scope =
+   lens-selection` and the agenda digest bound; `you decide` writes none (delegation is refused on the
+   agenda); the skill source, its mirror and the four host copies carry the paste-into-your-message sentence
+   and the one-rule vocabulary sentence, byte-identical across the six; the three refusal Actions name the
+   same four words. Mutation (recorded, not a switch): the agenda branch of the classifier changed to accept
+   only the literal `confirm` reds `yes`/`ok`/`looks right` and nothing else.
+2. `workshop-agenda-confirmation` (26), `workshop-typed-turn-authority`, `workshop-confirm-not-bound` (6),
+   `maintainer-skill-host-parity` and the instruction-deploy suites unchanged - no recognizer changes, so no
+   receipt-shape change.
+3. No code path changes for (4): if the field reproduces a bounced "yes" on the new SHA with the block in the
+   message, the cause is the coordinator's reading of the skill, not the receipt, and the record says so.
