@@ -180,6 +180,21 @@ git sequence until you committed them. It now says what it repaired and proceeds
 the files. Unfixable violations still halt, naming the file and line - and, found on the way, that halt had
 never fired: the gate's parser did not recognise markdownlint's output. It does now.
 
+## Fixed: `specrew update` now refreshes the refocus digests, and the review's own records no longer stale it
+
+**Updated projects ran the refocus rules of their init day.** The extension deploy's copy list had every item
+but `refocus/`, so no `specrew update` ever refreshed the digests the refocus hook reads; a freshly initialized
+project got them whole, an updated one kept whatever its init shipped, and the integrity marker was re-stamped
+around them. The digests are deployed and refreshed like the scripts now.
+
+**Signing off a review could ask you to decide coverage again.** After the final review round, the reviewer
+scaffold's own output - `dashboard.md`, `security-surface.md` - counted as source that had moved past the
+review, and with the allowance exhausted the stop asked for a coverage decision the sign-off had already made.
+The scaffold's outputs are execution records now, like `review.md` already was; a `plan.md` or `spec.md` edit
+after the round still stales, as it should. Order that keeps sign-off to one turn: after the final round,
+commit `review.md` and the reviewer evidence as one records-only commit on the reviewed commit and ask for the
+verdict at that HEAD. (The iteration seal written at closeout is the last such record still counted; beta4.1.)
+
 ## Fixed: the crew charter fix's two missing halves, and what was under them
 
 The audit's recheck of the installed candidate found two things the charter fix above had left undone:
