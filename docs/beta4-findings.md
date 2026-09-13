@@ -4308,3 +4308,38 @@ project has a feature past specify".
 
 The profile line in the orientation labels dial value 7 "mid-level" where `/specrew-user-profile`'s band
 table places 7-10 in "Senior". Two renderers, two tables; one table.
+
+## B4F-092 - "APPROVED FOR BEFORE-IMPLEMENT" APPROVES A PREPOSITION (beta5 backlog; two fixes sized)
+
+The one verdict phrase named for a position rather than an artifact: the human is approving the readiness
+evidence and authorizing implementation, and the phrase reads as approving "before". Two fixes, sized from
+the code:
+
+**A. The alias, ledger type unchanged (the cheapest honest fix)** - `approved for implementation` accepted as
+an alias of `before-implement` and offered as the packet's sendable line. Read from the code, five places:
+(1) the recognizer's boundary alternation in `ConversationCaptureAccessor.ps1` (`Test-SpecrewHumanVerdictToken`)
+gains `implementation`, and its `NamedBoundaries` are normalized through
+`Normalize-SpecrewCanonicalBoundaryType` (which already maps `implementation` to `before-implement`) before
+the caller cross-checks them against the pending crossing; (2) the phrase composer, `('approved for {0}' -f $toMarkerBoundary)` in
+`sync-boundary-state.ps1:667` and `HandoverStore.ps1:587`, becomes one boundary -> phrase map so the
+before-implement crossing renders `approved for implementation` in `pending-verdict-stop.md` and the packet;
+(3) the capture's phrase match for the pending crossing (`Get-SpecrewVerdictCaptureDisclosure` and the capture
+itself, `'approved for {0}' -f $to`) accepts either form; (4) the three product-code renderings of the old
+literal - launch-contract rules 28 and 30, the conformance provider's unauthorized-source line, the validator's
+`source-without-implement-authorization` message - and `refocus/before-implement.md` say the new line (the old
+one stays recognized, so nothing typed on an older habit is dropped); (5) the B4F-086 directive's
+`approved for before-implement` text. Tests: the recognizer suites gain the alias cases; the fourteen suites
+that pin `approved for before-implement` keep passing because the old phrase stays valid. About two hours
+plus a census. The ledger's `authorized_boundary` stays `before-implement`; nothing migrates.
+
+**B. The stage rename (the full fix)** - e.g. `readiness`: `Get-SpecrewCanonicalBoundaryTypes`, the sync's
+ValidateSet, the boundary order, the stage-evidence contract row, the refocus digest `before-implement.md` and
+its scope key in `refocus-scopes.json`, the governed command `speckit.specrew-speckit.before-implement`
+(deployed under every host's skills/agents mirrors), the closed-iteration index and every reader of
+`verdict_history[].authorized_boundary` / `last_authorized_boundary` / `pending_next_boundary` across
+`start-context.json`, the seals, the handover frontmatter and the crossing scopes - plus a ledger MIGRATION
+that rewrites recorded `before-implement` values in every consumer project's `start-context.json`, seals and
+journals on `specrew update`, with the old name accepted on read forever. Two to three days, a migration
+suite, and every downstream project's records touched. Beta5 at the earliest, behind A.
+
+Recommendation: A in beta5's first cut; B only if the name is wrong for other reasons too.
