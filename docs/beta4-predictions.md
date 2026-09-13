@@ -2379,3 +2379,20 @@ label reads the same fields instead of re-deriving them. The provider's predicat
 2. `coverage-is-a-decision` (12), the provider seam suites and the records-only suites unchanged.
 3. One freeze, one census, green; install byte-verified; the router-skill project updated and its coverage
    state re-measured: `exhausted $false`, `campaign_is_active $false`. The SHA for the walk moves to it.
+
+### PRED-BETA4-051 VERDICT (parts 1-2) - held
+
+The router-shaped store reads `campaign_id` i002, 4 of 4, `campaign_iteration 002`, `active_iteration 003`,
+`campaign_is_active $false`, `exhausted $false`, with source moved (1) and the fresh-allowance line from the
+state's fields; at active iteration 002 the same store reads `exhausted $true`. The iteration check removed
+reds exactly the `exhausted $false` assertion. Eleven adjacent suites green (coverage-is-a-decision 12,
+reviewed-state-digest-cost, review-output-is-quiet, the provider seam, stop-intent wiring, the advisory
+scope, signoff-gate wiring 22, turn-end identity, the guard, the lane). Part 3 is the census.
+
+## PRED-BETA4-052 - PRED-015 for the RE-FROZEN SHA carrying B4F-094. Stated before the dispatch.
+
+Frozen at the branch head after this record's commit: `e9334af1` plus B4F-094's state fields and their
+test. Prediction: `full-test-census` green, 420 named files, 0 failures; `prepublish-validation` and the
+dry-run publish green; the artifact carries the sentinel and nothing else. On green: install byte-verified;
+the router-skill project updated and its coverage state re-measured (`exhausted $false`,
+`campaign_is_active $false`); the SHA for the walk moves to it; the stopping rule resumes.
