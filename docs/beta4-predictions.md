@@ -2185,3 +2185,9 @@ verification found B4F-088: its refocus digests were not refreshed, by any updat
 omits `refocus/`); the fresh walk project is unaffected. **The SHA for the walk: `79ab618d`.** The false
 round approval in this repository is still pending (`spent_at: null`, not withdrawn): the designed path is
 the human's typed withdrawal captured by the hook, and it waits for the maintainer.
+
+**PRED-045 part 3, the void (2026-09-13T03:02:56Z)**: the maintainer typed the withdrawal as a normal chat
+message; the prompt-entry hook captured it on the designed path - `captures.jsonl` carries
+`review-round-approval-withdrawn` with `withdrew_observed_at` naming the 2026-09-10 pasted-transcript approval,
+and `pending-round-approval.json` is deleted (stamp, journal, delete - all three revocation writes landed).
+Nothing was hand-edited. Feature 201 reaches sign-off with no pending round.
