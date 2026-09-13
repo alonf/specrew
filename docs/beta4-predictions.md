@@ -2311,3 +2311,22 @@ dry-run publish green; the artifact carries the sentinel and nothing else. On gr
 byte-verified; the router-skill project updated once more (its digests and this classifier), its coverage
 state re-measured - `source_drift` no longer lists `dashboard.md`; the SHA for the walk. The stopping rule
 of PRED-046 part 5 then applies unchanged.
+
+### PRED-BETA4-049 VERDICT, CENSUS 15 (`34751288769` on `a8dcaef0`): red on one file, a runner race between two suites
+
+`prepublish-validation` green; `full-test-census` 1 red of 419: `host-coupling-firewall.tests.ps1` died in its
+repo-wide `Get-ChildItem -Recurse` with "Could not find a part of the path '.scratch\hook-degradation'" - the
+scratch directory another suite (`hook-degradation-diagnostic`) creates and deletes, vanishing while the
+firewall's walk was inside it. The suite's skip list (`.scratch` among its entries) was applied AFTER the walk,
+so the walk still entered the directory. It never enters it now: the top-level directories minus the skip set
+are enumerated, then each is walked (tests only; 5 assertions, as before). The module's shipped files are
+unchanged from `a8dcaef0`; the SHA's product content is not reopened - the stopping rule stands - and the
+census runs once more because the harness raced, not because anything shipped changed.
+
+## PRED-BETA4-050 - PRED-015 for the RE-FROZEN SHA after the firewall's enumeration. Stated before the dispatch.
+
+Frozen at the branch head after this record's commit: `a8dcaef0`'s module content byte for byte; one test's
+enumeration order changed. Prediction: `full-test-census` green, 419 named files, 0 failures;
+`prepublish-validation` and the dry-run publish green; the artifact carries the sentinel and nothing else. On
+green: PRED-049's part 3 as stated - install byte-verified, the router-skill update, its coverage state
+re-measured, the SHA for the walk.

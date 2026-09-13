@@ -52,11 +52,16 @@ $skipDirs = @(
 )
 
 $violations = New-Object System.Collections.Generic.List[hashtable]
-$scriptFiles = Get-ChildItem -Path $repoRoot -Filter '*.ps1' -Recurse -File | Where-Object {
-    $rel = $_.FullName.Substring($repoRoot.Length + 1).Replace('\', '/')
-    $topLevel = $rel.Split('/')[0]
-    -not ($skipDirs -contains $topLevel)
-}
+# The skip list is applied BEFORE descending, not after: a repo-wide -Recurse walked into .scratch/, where
+# other census suites create and delete their fixtures concurrently, and census 15 on a8dcaef0 died with
+# "Could not find a part of the path '.scratch\hook-degradation'" mid-enumeration - a runner race between
+# two suites, not a product fact. The skipped directories are never entered now.
+$scriptFiles = @(
+    Get-ChildItem -Path $repoRoot -Filter '*.ps1' -File
+    Get-ChildItem -Path $repoRoot -Directory | Where-Object { -not ($skipDirs -contains $_.Name) } | ForEach-Object {
+        Get-ChildItem -Path $_.FullName -Filter '*.ps1' -Recurse -File -ErrorAction SilentlyContinue
+    }
+)
 
 foreach ($file in $scriptFiles) {
     $rel = $file.FullName.Substring($repoRoot.Length + 1).Replace('\', '/')
