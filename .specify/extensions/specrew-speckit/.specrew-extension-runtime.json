@@ -396,7 +396,7 @@
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "6407926476bb0938f2880def5f0575bd5e7ba27b51a8988f21030d98c2794b4e"
+      "sha256": "5a2a53ef7eb74b9698c859acce977096003768afe1e1daa8388d42f950d9866c"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",

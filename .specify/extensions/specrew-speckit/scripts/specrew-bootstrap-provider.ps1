@@ -481,19 +481,14 @@ try {
     # channel they were on (ledger obs-2). Reference implementation:
     # scripts/specrew-start.ps1 :: Get-ManifestSpecrewVersionText. Fail-soft as before: an
     # unreadable manifest leaves this null and the banner falls back to unknown.
+    # PRED-BETA4-054: the ONE version resolver (extensions/specrew-speckit/scripts/version-label.ps1), shared
+    # with the turn-end renderer, the marker writers and init's governance scaffold.
     $specrewVersion = $null
     try {
-        $manifestData = Import-PowerShellDataFile -Path (Join-Path $moduleRoot 'Specrew.psd1')
-        $specrewVersion = [string]$manifestData.ModuleVersion
-        $prereleaseTag = ''
-        if ($manifestData.ContainsKey('PrivateData') -and $null -ne $manifestData.PrivateData -and
-            $manifestData.PrivateData.ContainsKey('PSData') -and $null -ne $manifestData.PrivateData.PSData -and
-            $manifestData.PrivateData.PSData.ContainsKey('Prerelease') -and $null -ne $manifestData.PrivateData.PSData.Prerelease) {
-            $prereleaseTag = ([string]$manifestData.PrivateData.PSData.Prerelease).Trim()
-        }
-        if (-not [string]::IsNullOrWhiteSpace($specrewVersion) -and -not [string]::IsNullOrWhiteSpace($prereleaseTag)) {
-            $specrewVersion = '{0}-{1}' -f $specrewVersion, $prereleaseTag
-        }
+        $labelScript = Join-Path $moduleRoot 'extensions/specrew-speckit/scripts/version-label.ps1'
+        if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+        $info = Get-SpecrewModuleVersionInfo -ModuleRoot $moduleRoot
+        $specrewVersion = if ([string]::IsNullOrWhiteSpace([string]$info.Label)) { $null } else { [string]$info.Label }
     }
     catch { $specrewVersion = $null }
     # F-174 iter-11 (T009, DF-2): resolve the branch HERE (in the fallible-work region, BEFORE the atomic render

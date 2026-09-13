@@ -2533,3 +2533,16 @@ gate and contract lane green on the push. On green: install byte-verified agains
 project updated once more (its extension marker then reads `0.40.0-beta4`, PRED-054 part 2); the SHA for
 the walk moves to it under the re-scoped acceptance; the stopping rule resumes - anything found outside the
 walk's path is beta4.1.
+
+### PRED-BETA4-056, AMENDED - the frozen SHA moves once, for a missed mirror
+
+Specrew CI on `891a35ec` (`34762965420`): Lint green, the deterministic gate red on ONE suite,
+`ProviderMirrorParity.Tests.ps1` - `specrew-bootstrap-provider.ps1` has three copies (`scripts/internal`,
+`extensions/specrew-speckit/scripts`, `.specify/...`) and PRED-054 patched the first only. The same class as
+the missed `.cursor/rules` mirror in census 13: my miss, caught by the gate before the census could. Census
+18 (`34762973549`, dispatched on `891a35ec`) was cancelled at 15 minutes once the cause was known - the sweep
+includes that suite, so its verdict was already determined and the runner was the only thing left to spend.
+The two copies re-synced byte-for-byte, the parity suite 11/11 locally, the marker re-stamped. The frozen
+SHA is the head after this commit; the prediction above stands unchanged for it (423 named files, 0
+failures, the sentinel only; Lint, the deterministic gate and the contract lane green on the push). This is
+the one census on the reopened items.
