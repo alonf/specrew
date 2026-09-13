@@ -268,7 +268,7 @@
     },
     {
       "path": "scripts/deploy-speckit-extension.ps1",
-      "sha256": "81026c0eef96638893077c8774a956c67d0ace4d1198006495bfe2ff01ca33b3"
+      "sha256": "ec5b92be0abb47bb6110ce8a9b63c5aaab91a3f5c34c63b8059afa6a800add29"
     },
     {
       "path": "scripts/deploy-squad-runtime.ps1",

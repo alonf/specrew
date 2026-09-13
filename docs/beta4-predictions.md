@@ -2191,3 +2191,32 @@ message; the prompt-entry hook captured it on the designed path - `captures.json
 `review-round-approval-withdrawn` with `withdrew_observed_at` naming the 2026-09-10 pasted-transcript approval,
 and `pending-round-approval.json` is deleted (stamp, journal, delete - all three revocation writes landed).
 Nothing was hand-edited. Feature 201 reaches sign-off with no pending round.
+
+## PRED-BETA4-046 - B4F-088: `specrew update` refreshes the refocus digests. Stated before the code.
+
+**The fix**: one row, `@{ Name = 'refocus'; Optional = $false }`, in `deploy-speckit-extension.ps1`'s
+`$itemsToCopy` (module and `.specify` mirror), so the digests are deployed and refreshed the way `scripts/`
+and `knowledge/` are; the marker re-stamped for the mirror edit.
+
+### THE PREDICTION
+
+1. `tests/unit/extension-deploy-refocus-digests.tests.ps1`: the deploy onto a scratch `.specify` lands the
+   `refocus/` directory with every digest the module carries (`general.md` among them, byte-identical to the
+   module's); a deployed `general.md` altered on disk is refreshed back to the module's bytes by a second
+   deploy; the deployed marker then reads 0 drifted. Mutation: the row removed reds the first case (0 files
+   under `refocus/`, the reproduction of B4F-088).
+2. The nine deploy-adjacent suites green: `packaged-artifact-deploy`, `co-review-deploy-completeness`,
+   `continuous-co-review-update-resync`, `distribution-module-init`, `distribution-module-update` (native
+   tar), `managed-runtime-sidecar`, `managed-skill-stuck-preserving`, `every-suite-is-named-by-a-lane`, the
+   protected-surface guard.
+3. One freeze, one census: `full-test-census` green, 418 named files, 0 failures; `prepublish-validation`
+   and the dry-run publish green; the artifact carries the sentinel and nothing else.
+4. On green: the module installed from that SHA exactly (temp worktree), byte-verified as for `79ab618d`;
+   the router-skill project updated ONCE MORE - the second update the ruling allows, because B4F-088 is what
+   made the first incomplete - after which BOTH of its `general.md` copies (`.specify/extensions/
+   specrew-speckit/refocus/general.md` and, if present, `extensions/specrew-speckit/refocus/general.md`) are
+   byte-identical to the installed module's `extensions/specrew-speckit/refocus/general.md` and carry rule
+   1's sentence "A captured approval is the instruction: begin the next stage in this turn; do not ask the
+   human to start it."; integrity 0 drifted / 0 missing.
+5. **Stopping rule (ruled)**: after this census only a failure of the walk's green criteria reopens the SHA;
+   anything else found is beta4.1 or beta5, recorded, not fixed.

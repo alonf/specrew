@@ -386,6 +386,10 @@ $itemsToCopy = @(
     @{ Name = 'extension.yml';   Optional = $false }
     @{ Name = 'README.md';       Optional = $false }
     @{ Name = 'refocus-scopes.json'; Optional = $false }
+    # B4F-088 / PRED-BETA4-046: the refocus DIGESTS the hook reads (`Get-RefocusDigestRoot` takes the project's
+    # copy) were never in this list, so `specrew update` never refreshed them - a consumer ran the digests of
+    # its init day (a fresh init gets them whole through `specify extension add`). Refreshed like `scripts/`.
+    @{ Name = 'refocus';         Optional = $false }
     # specrew-self-ok: Specrew's own update path - the module genuinely installs from this registry
     @{ Name = 'hooks';           Optional = $true  }   # PSGallery drops empty .gitkeep dirs
     @{ Name = 'knowledge';       Optional = $false }

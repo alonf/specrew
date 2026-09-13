@@ -4247,8 +4247,12 @@ so the Friday walk's fresh project runs the current digests - but every UPDATED 
 its init day: PRED-026's rule-1 sentence and PRED-042's never reached the router-skill project, and the hook
 reads the project's copy (`Get-RefocusDigestRoot`), not the module's.
 
-**Fix, sized, not started**: one row in `$itemsToCopy` (`@{ Name = 'refocus'; Optional = $false }`) in
-`extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1` and its mirror; marker re-stamp; a test that
-deploys onto a scratch `.specify` and asserts the digests land and a changed digest is refreshed. Twenty
-minutes. A module file: re-freeze and one census. The ruling is the maintainer's - it is the delivery vehicle
-of B4F-086's digest half to updated consumers, and the router-skill project is one.
+**Ruled into beta4 (2026-09-13) and fixed (PRED-BETA4-046)**: one row in `$itemsToCopy`
+(`@{ Name = 'refocus'; Optional = $false }`) in `deploy-speckit-extension.ps1` and its mirror, so the digests
+deploy and refresh the way `scripts/` does (`specrew update` passes `-RefreshExisting`); marker re-stamped.
+`tests/unit/extension-deploy-refocus-digests.tests.ps1` (6): the real deploy onto a scratch `.specify` lands
+all eleven digests, `general.md` byte-identical to the module's and carrying rule 1's captured-approval
+sentence; a deployed digest altered on disk is refreshed back on the `-RefreshExisting` path and the marker
+reads 0 drifted; the row removed reds case 1 with the reproduction (0 of 11). The router-skill project
+updates once more to the SHA that carries this - the second update the ruling allows, because this is what
+made the first incomplete.
