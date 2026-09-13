@@ -2513,3 +2513,23 @@ skip or a delegation is not a confirmation; do not ask for a phrase and do not b
    receipt-shape change.
 3. No code path changes for (4): if the field reproduces a bounced "yes" on the new SHA with the block in the
    message, the cause is the coordinator's reading of the skill, not the receipt, and the record says so.
+
+### PRED-BETA4-052, VERDICT
+
+Census 17, run `34759453131` on `b74f89da`: `full-test-census` green - files=420, pester=148, scripts=272,
+failed=0, caller_contaminated=False; `prepublish-validation` and the dry-run publish green; the artifact
+carries `tests\direct-exit.tests.ps1` and nothing else. **Held.** Not installed and not given to the walk:
+the reopening ruling landed while it ran, and the SHA that carries the four items supersedes it - one
+census on that head, not two.
+
+## PRED-BETA4-056 - PRED-015 for the RE-FROZEN SHA carrying the four reopened items. Stated before the dispatch.
+
+Frozen at the branch head after this record's commit: `b74f89da` plus B4F-095 (PRED-054), B4F-097
+(PRED-053 and PRED-055 item 3), B4F-098 (PRED-055 item 4) and their three suites, registered in the lane.
+Prediction: `full-test-census` green, 423 named files (420 plus `workshop-confirm-not-bound`,
+`version-label-one-resolver`, `workshop-agenda-vocabulary`), 0 failures; `prepublish-validation` and the
+dry-run publish green; the artifact carries the sentinel and nothing else; Specrew CI's Lint, deterministic
+gate and contract lane green on the push. On green: install byte-verified against the SHA; the router-skill
+project updated once more (its extension marker then reads `0.40.0-beta4`, PRED-054 part 2); the SHA for
+the walk moves to it under the re-scoped acceptance; the stopping rule resumes - anything found outside the
+walk's path is beta4.1.
