@@ -2220,3 +2220,7 @@ and `knowledge/` are; the marker re-stamped for the mirror edit.
    human to start it."; integrity 0 drifted / 0 missing.
 5. **Stopping rule (ruled)**: after this census only a failure of the walk's green criteria reopens the SHA;
    anything else found is beta4.1 or beta5, recorded, not fixed.
+
+**PRED-046 dispatch note**: the first `workflow run` after the push resolved the branch to `b00d5a06` (the
+head before the fix - the push had not propagated at dispatch); that run (`34734771853`) was cancelled by me
+as mis-targeted, not read, and the census dispatched again on the frozen head `33763335`: run `34734830302`.
