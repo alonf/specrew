@@ -2243,3 +2243,19 @@ fixture suites carry `refocus/`. Prediction: `full-test-census` green, 418 named
 green: PRED-046 part 4 as stated (install byte-verified; the router-skill project's second update; its
 `general.md` byte-identical to the module's and carrying rule 1's sentence; the SHA for the walk); the
 stopping rule of PRED-046 part 5 then applies.
+
+### PRED-BETA4-047 VERDICT - census 14 (`34737065202` on `4a22ba8f`): GREEN, all three jobs; PRED-046 part 4 done
+
+`prepublish-validation`, `full-test-census` (418 named files, 0 failures, the artifact carries the sentinel
+and nothing else), dry-run `publish-module` - green. The module installed from `4a22ba8f` exactly through a
+temp worktree: 423 packaged files, "byte verification: all 423 packaged files match", stamp verified, content
+`08300b3d…`, the deploy script, the digest, the store, the sync, shared-governance and the manifest
+byte-identical to the SHA. **The router-skill project updated a SECOND time - the second update the ruling
+allows, because B4F-088 is what made the first (to `79ab618d`) incomplete**: exit 0, integrity 0 drifted / 0
+missing, all eleven digests deployed, and its one `general.md` (`.specify/extensions/specrew-speckit/refocus/`;
+the project carries no `extensions/` copy) byte-identical to the installed module's and carrying rule 1's
+sentence "A captured approval is the instruction: begin the next stage in this turn; do not ask the human to
+start it." - B4F-086's digest half reaches the consumer that never had it.
+
+**The SHA for the walk: `4a22ba8f`.** Stopping rule in force (PRED-046 part 5): only a failure of the walk's
+green criteria reopens it; anything else found is beta4.1 or beta5, recorded, not fixed.
