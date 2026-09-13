@@ -4256,3 +4256,25 @@ sentence; a deployed digest altered on disk is refreshed back on the `-RefreshEx
 reads 0 drifted; the row removed reds case 1 with the reproduction (0 of 11). The router-skill project
 updates once more to the SHA that carries this - the second update the ruling allows, because this is what
 made the first incomplete.
+
+## B4F-056, LOCATED ON `4a22ba8f`: the reviewer scaffold's own output counted as uncovered source (fixed in beta4)
+
+The maintainer asked, before the walk, whether `review.md` must be written after the final round (so the
+record moves the tree) or before it, with the run named from the store. **Measured**: after, by design - the
+finalization envelope in `review-signoff-evidence-gate.ps1` accepts one records-only commit on top of the
+reviewed commit - and the post-round `review.md` does NOT stale coverage: it is in the one execution-record
+classifier, and at the router-skill project's review.md commit (`eca921a`) `source_drift_count` reads 0. What
+staled the sign-off there was `iterations/002/dashboard.md` - written by the product's own reviewer scaffold
+(sixth in its reviewer index) and by the closeout auto-render - which the classifier answered `False` for,
+as it did for `security-surface.md`, the scaffold's other output; `plan.md`'s post-round row corrections
+were the other half, counted deliberately (W51: the standard the code was judged against). So the "repeated
+acceptance caused by sign-off records alone" the audit named is the product's review output classified as
+source. Fixed: both names in the record allowlist and in the finalization envelope's evidence set (they
+already claimed to be the same set); `tests/unit/review-output-is-quiet.tests.ps1` (11) reproduces the field
+delta on a real repository - three records after the covered tree, zero source drift; a plan.md edit still
+stales - and the names removed reds it with the field's exact `source:` list. Under the hour, as the ruling
+required for it to go in before the walk.
+
+**For the walk's crew**: after the final round, write and commit `review.md` and the reviewer evidence as
+ONE records-only commit on the reviewed commit and ask for the sign-off verdict at that HEAD - no `plan.md`,
+`spec.md` or workshop edits between the round's result and the captured verdict.

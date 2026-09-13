@@ -8027,9 +8027,14 @@ function Test-SpecrewLifecycleExecutionRecordPath {
 
     # Process records and review OUTPUT. The review-evidence names are the same set the finalization
     # envelope allowlists, so the two cannot disagree about what counts as review evidence.
+    # PRED-BETA4-048 (B4F-056, located): `dashboard.md` and `security-surface.md` are the reviewer scaffold's
+    # own outputs (and the closeout auto-render's), and were absent here - so the product's review output
+    # counted as uncovered source after the final round, and the Stop hook asked for a coverage decision the
+    # sign-off had already made (the router-skill sign-off of 2026-09-13: source_drift = dashboard.md).
     $recordFiles = @(
         'drift-log.md', 'state.md', 'tasks-progress.yml',
         'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
+        'dashboard.md', 'security-surface.md',
         'review-signoff.md', 'retro.md'
     )
     $comparison = [System.StringComparison]::OrdinalIgnoreCase

@@ -2259,3 +2259,55 @@ start it." - B4F-086's digest half reaches the consumer that never had it.
 
 **The SHA for the walk: `4a22ba8f`.** Stopping rule in force (PRED-046 part 5): only a failure of the walk's
 green criteria reopens it; anything else found is beta4.1 or beta5, recorded, not fixed.
+
+## PRED-BETA4-048 - the review-signoff order, measured on `4a22ba8f`, and B4F-056's repair sized under the hour. Stated before the code.
+
+**The maintainer's question**: must `review.md` be written AFTER the final round's result (so the record moves
+the tree past the covered snapshot), or before it, the run named by a block derived from the store?
+
+**Measured, from the code and the field case.** AFTER, by design: `Test-ReviewCampaignFinalizationEnvelope`
+(`review-signoff-evidence-gate.ps1`) accepts a FINALIZATION COMMIT whose single parent is the reviewed commit
+(its tree the run's `reviewed_digest`, machinery stripped) and whose diff touches only the review evidence
+set (`review.md`, `reviewer-index.md`, `code-map.md`, `coverage-evidence.md`, `dependency-report.md`,
+`review-diagrams.md`, status A or M). No store-derived block names the run before the round. And the
+post-round `review.md` write does NOT stale coverage: `Test-SpecrewLifecycleExecutionRecordPath` lists
+`review.md` (and `state.md`, `retro.md`, `review-signoff.md`, the reviewer evidence set, `quality/` …) as
+execution records, quiet to `Get-SpecrewReviewedTreeSourceDrift`; measured on the router-skill project at
+HEAD `eca921a` (the review.md commit, clean tree): `source_drift_count = 0`.
+
+**What DID stale it there.** The current digest of that project carries `iterations/002/dashboard.md` - written
+by the product's own reviewer scaffold (`scaffold-reviewer-artifacts.ps1` names it sixth in the reviewer
+index) and by the closeout auto-render - and the classifier answers `False` for it (and for
+`security-surface.md`, the scaffold's other output): `source_drift = dashboard.md, plan.md`. `plan.md` is the
+crew's post-round row correction, deliberately stale under W51 (the standard the code was judged against).
+`dashboard.md` is the product's own review output counted as uncovered source - the audit's "repeated
+acceptance caused by sign-off records alone", located.
+
+**The repair, sized**: `dashboard.md` and `security-surface.md` added to the execution-record allowlist (the
+ONE classifier: coverage state, records-only exemption, validator staleness) and to the finalization
+envelope's evidence set; mirror; marker. A unit case: both classify as records; a repository with the covered
+tree, then a commit adding `dashboard.md` and `security-surface.md`, reads `source_drift_count = 0`; the names
+removed reds it. Forty-five minutes, one freeze, one census. Under the hour: it goes in before the walk, as
+ruled.
+
+**For the walk's crew, one sentence**: after the final round, write and commit `review.md` and the reviewer
+evidence as ONE records-only commit on the reviewed commit and ask for the sign-off verdict at that HEAD -
+no `plan.md`, `spec.md` or workshop edits between the round's result and the captured verdict (row
+corrections go before the final round, or into the retro stage after it).
+
+### PRED-BETA4-048 VERDICT - held; the control reproduced the field's exact drift list
+
+Run against the unpatched classifier the new suite reds four assertions with `source: …/dashboard.md,
+…/security-surface.md` - the field case's shape; with the two names in the allowlist, 11 green: the three
+records after the covered tree read zero source drift and a plan.md edit still stales. Fourteen adjacent
+suites green (coverage-is-a-decision, review-derived-independence, closed-iterations-are-history, the
+signoff gate suites, the records-only suites, the guard). Mirror synced, marker re-stamped.
+
+## PRED-BETA4-049 - PRED-015 for the RE-FROZEN SHA carrying B4F-056's repair. Stated before the dispatch.
+
+Frozen at the branch head after this record's commit: `4a22ba8f` plus the two allowlist names and their
+test. Prediction: `full-test-census` green, 419 named files, 0 failures; `prepublish-validation` and the
+dry-run publish green; the artifact carries the sentinel and nothing else. On green: install from that SHA
+byte-verified; the router-skill project updated once more (its digests and this classifier), its coverage
+state re-measured - `source_drift` no longer lists `dashboard.md`; the SHA for the walk. The stopping rule
+of PRED-046 part 5 then applies unchanged.

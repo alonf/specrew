@@ -293,7 +293,9 @@ function Test-ReviewCampaignFinalizationEnvelope {
 
     $iterationRoot = "specs/$FeatureId/iterations/$IterationNumber"
     $allowed = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($name in @('review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md')) {
+    # The same review-evidence set Test-SpecrewLifecycleExecutionRecordPath lists (PRED-BETA4-048 added the
+    # scaffold's dashboard.md and security-surface.md to both, so a finalization commit may carry them).
+    foreach ($name in @('review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md', 'dashboard.md', 'security-surface.md')) {
         $null = $allowed.Add("$iterationRoot/$name")
     }
     $changedPaths = [Collections.Generic.List[string]]::new()
