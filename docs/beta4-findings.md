@@ -4374,3 +4374,37 @@ reads `exhausted $false` with the fresh-allowance line; the same store at active
 exhausted (the W52 stop kept). The iteration check removed reds exactly the `exhausted $false` case. Eleven
 adjacent suites green. The router project's two inert reset facts and the unspent capture stay as they are:
 records of the human's act, harmless, and the block that asked for them no longer fires.
+
+## B4F-095 - "SPECREW UNKNOWN IS ACTIVE ON THIS HOST": three version resolvers, two wrong (recorded under the stopping rule; sized)
+
+**Field, `e9334af1` and reproduced on `9154f72b`'s walk project**: a fresh init's
+`.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` carries `specrew_version: "unknown"`;
+`declare-turn-end.ps1:170` reads that marker for the owed-orientation render, so the human's first line is
+"Specrew unknown is active on this host" - while the SessionStart orientation resolves the manifest plus
+`Prerelease` correctly (`specrew-bootstrap-provider.ps1:484-498`, "0.40.0-beta4") and `.specrew/config.yml`
+gets the base "0.40.0" from the governance scaffold. **Read from the code**: the extension marker is written by
+`Write-SpecrewDeployedExtensionMarker`, whose `-SpecrewVersion` defaults to `'unknown'`; init's
+`specify extension add` path (`spec-kit-deploy.ps1:238`) calls it with NO version, and `specrew update`'s path
+(`deploy-speckit-extension.ps1:428`) passes `extension.yml`'s version, base only; the review-runtime marker
+(`deploy-squad-runtime.ps1:946-951`) looks for `Specrew.psd1` two levels above the extension root, which under
+the deployed copy is `.specify/`, and lands the literal fallback. Nothing gates on the marker's string (the
+engine mismatch check is content-hash); the string is what the human reads. `config.yml`'s base-only value
+is by design (Prop 134: the tag check compares the tag's version to it), so the third writer is not wrong -
+the label with the prerelease belongs to the markers and the orientations.
+
+**Fix shape, sized (the maintainer's)**: one resolver - manifest `ModuleVersion` plus `Prerelease`, as the
+bootstrap provider already computes it - in `shared-governance.ps1`, used by the bootstrap provider, by
+`declare-turn-end.ps1`'s render, by both marker writers (init's `specify extension add` path passing the
+label; the update deploy passing the label instead of `extension.yml`'s base) and by `deploy-squad-runtime`'s
+review-runtime marker, resolving from the MODULE root the deploy runs from, never from the deployed copy.
+Test: a project initialized from the installed layout carries the full label in both markers and both
+orientations, and the base in `config.yml`; mutation: the deploy script's fallback path restored reds it.
+About two hours and a census. **Not a walk criterion** (no repair prompt, no ask, no ledger effect) - under
+the stopping rule it is recorded here for beta4.1 unless the maintainer rules it into the walk's SHA.
+
+## B4F-096 - THE FIRST REPLY SKIPPED THE ORIENTATION; THE TURN-END RENDER GATE BACKFILLED IT AFTER THE LENS (recorded; beta4.1)
+
+Same first turn: the coordinator's first reply did not render the orientation; the turn-end render gate
+(the owed-orientation backfill) produced it after the first lens had run. The gate worked; the order did not: the human learned the
+project's position after answering a question about it. Recorded against the
+orientation-first rule (CLAUDE.md: "A session opens by orienting the human, not by starting work").
