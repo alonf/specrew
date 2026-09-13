@@ -7541,6 +7541,12 @@ function Get-SpecrewReviewCoverageState {
         rounds_used = $null
         budget_total = $null
         exhausted = $false
+        # PRED-BETA4-051: the campaign this state was read from belongs to ONE iteration; the allowance that
+        # governs the ACTIVE iteration is its own campaign's. Carried here so the label and the predicate read
+        # one fact (field: the block demanded an allowance reset while its own line said the allowance was fresh).
+        campaign_iteration = $null
+        active_iteration = $null
+        campaign_is_active = $true
         reason = 'not-evaluated'
     }
     $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
@@ -7620,6 +7626,32 @@ function Get-SpecrewReviewCoverageState {
         }
         catch { $null = $_ }
     }
+    # PRED-BETA4-051: a delivered review's campaign belongs to one iteration (`…-i<NNN>`). When the active
+    # iteration is a different one, the counter above is the PREVIOUS campaign's, and the active iteration's
+    # allowance is fresh - so `exhausted` is false here, and the coverage-decision stop does not fire on a
+    # budget the human cannot be asked to reset (they did, twice, on the router-skill project: two inert
+    # reset facts on the new campaign and one unspent capture). The rounds figures stay the delivered
+    # campaign's, and the line says whose they are.
+    $campaignIteration = if ([string]$state.campaign_id -match '-i(?<n>\d+)$') { [string]$Matches['n'] } else { '' }
+    $activeIteration = ''
+    try {
+        $ctxPath = Join-Path $ProjectRoot '.specrew/start-context.json'
+        if (Test-Path -LiteralPath $ctxPath -PathType Leaf) {
+            $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $ss = $ctx.PSObject.Properties['session_state']
+            if ($null -ne $ss -and $null -ne $ss.Value -and $null -ne $ss.Value.PSObject.Properties['iteration_number']) {
+                $activeIteration = [string]$ss.Value.iteration_number
+            }
+        }
+    }
+    catch { $activeIteration = '' }
+    $state.campaign_iteration = $(if ([string]::IsNullOrWhiteSpace($campaignIteration)) { $null } else { $campaignIteration })
+    $state.active_iteration = $(if ([string]::IsNullOrWhiteSpace($activeIteration)) { $null } else { $activeIteration })
+    if (-not [string]::IsNullOrWhiteSpace($campaignIteration) -and -not [string]::IsNullOrWhiteSpace($activeIteration) -and
+        $campaignIteration.TrimStart('0') -ne $activeIteration.TrimStart('0')) {
+        $state.campaign_is_active = $false
+        $state.exhausted = $false
+    }
     $state.available = $true
     $state.reason = 'evaluated'
     return $state
@@ -7645,23 +7677,13 @@ function Get-SpecrewReviewCoverageLine {
     # active iteration is already in session_state, so nothing about WHICH campaign is selected changes -
     # only what the line SAYS about the one it found.
     $campaignId = [string]$state.campaign_id
-    $campaignIteration = if ($campaignId -match '-i(?<n>\d+)$') { $Matches['n'] } else { '' }
-    $activeIteration = ''
-    try {
-        $ctxPath = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/start-context.json'
-        if (Test-Path -LiteralPath $ctxPath -PathType Leaf) {
-            $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            $ss = $ctx.PSObject.Properties['session_state']
-            if ($null -ne $ss -and $null -ne $ss.Value -and $null -ne $ss.Value.PSObject.Properties['iteration_number']) {
-                $activeIteration = [string]$ss.Value.iteration_number
-            }
-        }
-    }
-    catch { $activeIteration = '' }
+    # PRED-BETA4-051: the distinction is the STATE's now (campaign_iteration / active_iteration /
+    # campaign_is_active), read here rather than re-derived, so this line and the predicate agree by construction.
+    $campaignIteration = [string]$state.campaign_iteration
+    $activeIteration = [string]$state.active_iteration
     $roundsText = if ($null -ne $state.rounds_used -and $null -ne $state.budget_total) {
         $remaining = ('{0} of {1} rounds remaining' -f ([Math]::Max(0, [int]$state.budget_total - [int]$state.rounds_used)), [int]$state.budget_total)
-        if (-not [string]::IsNullOrWhiteSpace($campaignIteration) -and -not [string]::IsNullOrWhiteSpace($activeIteration) -and
-            $campaignIteration.TrimStart('0') -ne $activeIteration.TrimStart('0')) {
+        if (-not [bool]$state.campaign_is_active -and -not [string]::IsNullOrWhiteSpace($campaignIteration) -and -not [string]::IsNullOrWhiteSpace($activeIteration)) {
             ('{0} in campaign {1} (iteration {2}); iteration {3} has no campaign yet, so it starts with a fresh allowance' -f $remaining, $campaignId, $campaignIteration, $activeIteration)
         }
         elseif (-not [string]::IsNullOrWhiteSpace($campaignId)) {

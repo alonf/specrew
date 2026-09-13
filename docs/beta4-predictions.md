@@ -2343,3 +2343,39 @@ held. What it lists now is the project's own iteration-003 work since the covere
 and install-test sources, the 002 and 003 plans, the 003 tasks) - real drift, correctly counted - and one
 more product-written record, `iterations/002/.specrew-iteration-seal.json` (B4F-093, recorded under the
 stopping rule). **The SHA for the walk: `e9334af1`.**
+
+## PRED-BETA4-051 - the coverage-decision block read the previous iteration's allowance as the active one. Stated before the code.
+
+**Reading of the ruling**: the field finding names the walk's own criterion - a repair prompt demanding a
+decision that does not apply (twice on the router-skill project, at 002's closeout and 003's first
+implementation stop) - and gives the fix shape, the fixture and the mutation; the walk's second feature meets
+the same stop the moment its first campaign's allowance is spent. That is the stopping rule's own exception
+(a failure of the walk's green criteria), so the SHA reopens for this one repair.
+
+**Mechanism, read from the code**: `Get-SpecrewReviewCoverageState` selects the campaign of the LAST
+DELIVERED review (`cmp-…-i002`, 4 of 4 spent) and reads `exhausted` from that campaign's budget; the provider's
+predicate (`$coverageDecisionState.exhausted -and source_drift_count -gt 0`) blocks on it; the coverage LINE
+was fixed as labelling only (by ruling) and says "iteration 003 has no campaign yet, so it starts with a
+fresh allowance" - the label and the predicate read two facts. Consequence in the field: two
+`round-budget-reset` facts on `cmp-…-i003` (no grants, no spends - inert) and one unspent capture in
+`allowance-reset/pending-allowance-reset.json`.
+
+**The fix**: the state carries the distinction - `campaign_iteration` (from the campaign id), `active_iteration`
+(from `session_state.iteration_number`) and `campaign_is_active`; when both are known and differ, `exhausted`
+is `$false` (the allowance that governs the active iteration is its own campaign's, which is fresh) and the
+label reads the same fields instead of re-deriving them. The provider's predicate is untouched: with
+`exhausted` false it does not block, and the ordinary files-not-reviewed advisory asks for a round.
+
+### THE PREDICTION
+
+1. `tests/unit/coverage-state-active-iteration.tests.ps1` builds the router-skill store's shape on a real
+   repository: campaign i002 with four delivered runs (4 of 4 spent) covering the base tree, campaign i003 with
+   two budget-reset facts and no grants, `session_state.iteration_number = '003'`, source moved since. The
+   state reads `campaign_id` i002, `rounds_used 4/4`, `campaign_iteration 002`, `active_iteration 003`,
+   `campaign_is_active $false`, **`exhausted $false`**; the coverage line still says the fresh-allowance
+   sentence, from the state's fields; with `iteration_number = '002'` the same store reads `exhausted $true`
+   (the original W52 stop, kept). Mutation: the iteration check removed from the state (the predicate reading
+   the previous campaign again) reds the `exhausted $false` case and nothing else.
+2. `coverage-is-a-decision` (12), the provider seam suites and the records-only suites unchanged.
+3. One freeze, one census, green; install byte-verified; the router-skill project updated and its coverage
+   state re-measured: `exhausted $false`, `campaign_is_active $false`. The SHA for the walk moves to it.

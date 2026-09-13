@@ -4351,3 +4351,26 @@ Re-measuring the router-skill project's coverage state on `e9334af1`: `specs/…
 `Test-SpecrewLifecycleExecutionRecordPath`'s record allowlist, so a sealed iteration's own seal reads as
 uncovered source to the coverage state, exactly as `dashboard.md` did before PRED-048. One name in the same
 allowlist; a case beside PRED-048's; not fixed on the walk's SHA by the stopping rule.
+
+## B4F-094 - THE COVERAGE-DECISION BLOCK DEMANDED A RESET OF AN ALLOWANCE ITS OWN LINE CALLED FRESH (fixed in beta4; the stopping rule's exception)
+
+**Field, router-skill project on `e9334af1`, twice** (10:08Z at 002's closeout, 13:03Z at 003's first
+implementation stop): the block asked "approved for allowance reset / continue without coverage / hold"
+while its coverage line said "iteration 003 has no campaign yet, so it starts with a fresh allowance".
+**Mechanism**: `Get-SpecrewReviewCoverageState` selects the last DELIVERED review's campaign (`cmp-…-i002`,
+4 of 4) and reads `exhausted` from its budget; the provider's predicate blocks on `exhausted`; the line had
+been fixed as labelling only, the selection unchanged - two facts. The human did what the block asked: two
+`round-budget-reset` facts on `cmp-…-i003` (no grants, no spends - inert) and one unspent capture in
+`allowance-reset/pending-allowance-reset.json`. The walk's second feature meets the same stop the moment its
+first campaign's allowance is spent - the walk's own criterion - so the SHA reopened for this repair
+(PRED-BETA4-051).
+
+**Fixed**: the state carries `campaign_iteration`, `active_iteration` and `campaign_is_active`; when the
+delivered campaign's iteration differs from the active one, `exhausted` is false and the line reads the same
+fields. The predicate is untouched: it does not block, and the ordinary files-not-reviewed advisory asks for
+a round. `tests/unit/coverage-state-active-iteration.tests.ps1` (8) builds the router store's shape - i002
+with four delivered runs, i003 with two reset facts and no grants, active iteration 003, source moved - and
+reads `exhausted $false` with the fresh-allowance line; the same store at active iteration 002 still reads
+exhausted (the W52 stop kept). The iteration check removed reds exactly the `exhausted $false` case. Eleven
+adjacent suites green. The router project's two inert reset facts and the unspent capture stay as they are:
+records of the human's act, harmless, and the block that asked for them no longer fires.
