@@ -162,13 +162,16 @@ function Get-SpecrewOrientationBlock {
     # scan believed it did.
     param([string] $Root, $Identity)
     $lines = New-Object System.Collections.Generic.List[string]
+    # PRED-BETA4-054: the ONE version resolver (version-label.ps1) - the marker's value when it is a real
+    # version, else the module's manifest label; never the marker's literal 'unknown' (the walk read
+    # "Specrew unknown is active on this host" from exactly that).
     $version = ''
     try {
-        $markerPath = Join-Path $Root '.specify/extensions/specrew-speckit/.specrew-extension-runtime.json'
-        if (Test-Path -LiteralPath $markerPath -PathType Leaf) {
-            $runtime = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-            if ($runtime.PSObject.Properties['specrew_version']) { $version = [string]$runtime.specrew_version }
+        if (-not (Get-Command Get-SpecrewRuntimeVersionLabel -ErrorAction SilentlyContinue)) {
+            $labelScript = Join-Path $PSScriptRoot 'version-label.ps1'
+            if (Test-Path -LiteralPath $labelScript -PathType Leaf) { . $labelScript }
         }
+        if (Get-Command Get-SpecrewRuntimeVersionLabel -ErrorAction SilentlyContinue) { $version = [string](Get-SpecrewRuntimeVersionLabel -ProjectRoot $Root) }
     }
     catch { $version = '' }
 

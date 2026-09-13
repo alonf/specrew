@@ -943,12 +943,19 @@ if (Test-Path -LiteralPath $reviewRuntimeMarkerPath -PathType Leaf) {
 Remove-RetiredManagedRuntimeFiles -TargetRoot $continuousReviewRuntimeTarget `
     -PreviousManagedFiles $previousRuntimeManagedFiles -CurrentManagedFiles $currentRuntimeManagedFiles -Actions $actions
 Copy-ManagedDirectory -SourcePath $continuousReviewRuntimeSource -TargetPath $continuousReviewRuntimeTarget -Actions $actions
-$sourceManifestPath = Join-Path $repositoryRoot 'Specrew.psd1'
+# PRED-BETA4-054: the version comes from the ONE resolver (the module this script runs from, SPECREW_MODULE_PATH,
+# or the installed module) - not from two levels above the TARGET extension root, which under a project's
+# deployed copy is `.specify/` and landed the literal 'unknown' in the marker.
 $sourceVersion = 'unknown'
-if (Test-Path -LiteralPath $sourceManifestPath -PathType Leaf) {
-    $sourceManifest = Import-PowerShellDataFile -LiteralPath $sourceManifestPath
-    $sourceVersion = [string]$sourceManifest.ModuleVersion
+try {
+    $labelScript = Join-Path $PSScriptRoot 'version-label.ps1'
+    if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+    if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) {
+        $resolvedLabel = [string](Get-SpecrewModuleVersionInfo).Label
+        if (-not [string]::IsNullOrWhiteSpace($resolvedLabel)) { $sourceVersion = $resolvedLabel }
+    }
 }
+catch { $null = $_ }
 $reviewRuntimeMarker = [ordered]@{
     schema_version = '1.0'
     # Content identity is authoritative. Version is diagnostic and may be

@@ -425,7 +425,19 @@ Ensure-ExtensionRegistration -ManifestPath $targetExtensionsManifest -ExtensionN
 # load-bearing: keep it above the -PassThru block, not below it.
 if (-not $DryRun) {
     try {
-        $extensionMarker = Write-SpecrewDeployedExtensionMarker -ProjectRoot $resolvedProjectPath -SpecrewVersion $extensionVersion
+        # PRED-BETA4-054: the module's label (manifest plus Prerelease) through the one resolver; extension.yml's
+        # base version only when no manifest resolves (a deployed copy running on its own).
+        $markerLabel = $extensionVersion
+        try {
+            $labelScript = Join-Path $PSScriptRoot 'version-label.ps1'
+            if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+            if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) {
+                $resolvedLabel = [string](Get-SpecrewModuleVersionInfo).Label
+                if (-not [string]::IsNullOrWhiteSpace($resolvedLabel)) { $markerLabel = $resolvedLabel }
+            }
+        }
+        catch { $null = $_ }
+        $extensionMarker = Write-SpecrewDeployedExtensionMarker -ProjectRoot $resolvedProjectPath -SpecrewVersion $markerLabel
         if ($extensionMarker) { Add-DeploymentAction -Actions $actions -Action 'stamped' -Path $extensionMarker }
     }
     catch { Write-Host ("WARN: could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }

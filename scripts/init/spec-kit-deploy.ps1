@@ -235,7 +235,15 @@ function Invoke-SpecKitExtensionDeployment {
             # this run never verified would turn "unknown" into "checked" - the fact would not be
             # observed, only asserted.
             if (Get-Command -Name 'Write-SpecrewDeployedExtensionMarker' -ErrorAction SilentlyContinue) {
-                try { $null = Write-SpecrewDeployedExtensionMarker -ProjectRoot $ProjectPath }
+                # PRED-BETA4-054: this path used to stamp no version at all, and the marker's default
+                # 'unknown' reached the human's orientation. The one resolver, from the module root.
+                try {
+                    $labelScript = Join-Path $RepoRoot 'extensions/specrew-speckit/scripts/version-label.ps1'
+                    if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+                    $label = if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) { [string](Get-SpecrewModuleVersionInfo -ModuleRoot $RepoRoot).Label } else { '' }
+                    if ([string]::IsNullOrWhiteSpace($label)) { $null = Write-SpecrewDeployedExtensionMarker -ProjectRoot $ProjectPath }
+                    else { $null = Write-SpecrewDeployedExtensionMarker -ProjectRoot $ProjectPath -SpecrewVersion $label }
+                }
                 catch { Write-Host ("[info] could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }
             }
             return [pscustomobject]@{

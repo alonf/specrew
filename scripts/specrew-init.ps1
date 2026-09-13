@@ -850,9 +850,21 @@ if (-not $SpecKitExtensionOnly) {
         $resolvedSquadVersion = $SquadVersion
     }
 
+    # PRED-BETA4-054: the base version from the ONE resolver (the module manifest); extension.yml's `version:`
+    # only when no manifest resolves. config.yml carries the BASE by design (Prop 134: the tag check compares
+    # the tag's version to it); the prerelease label lives in the markers and the orientations.
     $specrewManifestContent = Get-Content -LiteralPath $specrewExtensionManifestPath -Raw
     $specrewVersionMatch = [regex]::Match($specrewManifestContent, '(?m)^\s*version:\s*"?(?<version>[^"\r\n]+)')
     $resolvedSpecrewVersion = if ($specrewVersionMatch.Success) { $specrewVersionMatch.Groups['version'].Value.Trim() } else { '0.1.0-dev' }
+    try {
+        $labelScript = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/version-label.ps1'
+        if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+        if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) {
+            $resolvedBase = [string](Get-SpecrewModuleVersionInfo -ModuleRoot $repoRoot).Version
+            if (-not [string]::IsNullOrWhiteSpace($resolvedBase)) { $resolvedSpecrewVersion = $resolvedBase }
+        }
+    }
+    catch { $null = $_ }
 
     Write-Step 'Scaffolding downstream governance'
     $governanceActions = @(

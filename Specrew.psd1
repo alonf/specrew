@@ -164,6 +164,7 @@
         'extensions/specrew-speckit/scripts/timestamp-read.ps1',
         'extensions/specrew-speckit/scripts/validate-governance.ps1',
         'extensions/specrew-speckit/scripts/validate-versions.ps1',
+        'extensions/specrew-speckit/scripts/version-label.ps1',
         'extensions/specrew-speckit/scripts/work-kind-common.ps1',
         'extensions/specrew-speckit/scripts/work-kind-validator.ps1',
         'extensions/specrew-speckit/scripts/workshop-authority-store.ps1',
