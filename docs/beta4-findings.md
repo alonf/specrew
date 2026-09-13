@@ -4343,3 +4343,11 @@ journals on `specrew update`, with the old name accepted on read forever. Two to
 suite, and every downstream project's records touched. Beta5 at the earliest, behind A.
 
 Recommendation: A in beta5's first cut; B only if the name is wrong for other reasons too.
+
+## B4F-093 - THE ITERATION SEAL COUNTS AS SOURCE DRIFT (recorded under the stopping rule; beta4.1, B4F-056's class)
+
+Re-measuring the router-skill project's coverage state on `e9334af1`: `specs/…/iterations/002/
+.specrew-iteration-seal.json` - written by the product at the closeout verdict (B4F-063's seal) - is not in
+`Test-SpecrewLifecycleExecutionRecordPath`'s record allowlist, so a sealed iteration's own seal reads as
+uncovered source to the coverage state, exactly as `dashboard.md` did before PRED-048. One name in the same
+allowlist; a case beside PRED-048's; not fixed on the walk's SHA by the stopping rule.
