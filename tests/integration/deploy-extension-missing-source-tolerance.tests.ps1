@@ -38,6 +38,7 @@ try {
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'scripts')         | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'templates')       | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'squad-templates') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'refocus')         | Out-Null   # required since B4F-088
 
     Set-Content -LiteralPath (Join-Path $fakeModuleRoot 'extension.yml') -Value @'
 schema_version: "1.0"
@@ -113,6 +114,7 @@ requires:
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'scripts')         | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'templates')       | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'squad-templates') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'refocus')         | Out-Null   # required since B4F-088
     Set-Content -LiteralPath (Join-Path $requiredMissingRoot 'extension.yml') -Value @'
 schema_version: "1.0"
 schema: "v1"

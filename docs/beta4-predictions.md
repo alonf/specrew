@@ -2224,3 +2224,22 @@ and `knowledge/` are; the marker re-stamped for the mirror edit.
 **PRED-046 dispatch note**: the first `workflow run` after the push resolved the branch to `b00d5a06` (the
 head before the fix - the push had not propagated at dispatch); that run (`34734771853`) was cancelled by me
 as mis-targeted, not read, and the census dispatched again on the frozen head `33763335`: run `34734830302`.
+
+### PRED-BETA4-046 VERDICT, CENSUS 13 (`34734830302` on `33763335`): red on two fixture suites the statement did not list
+
+Parts 1 and 2 held (6 green; the row removed reds the reproduction; the nine listed suites green). Part 3 did
+not: `prepublish-validation` green, `full-test-census` 2 red of 418 - `deploy-extension-missing-source-
+tolerance` and `extension-registration-format`, which build a synthetic module with "every `$itemsToCopy`
+entry except hooks/" and threw the deploy's own "Required Specrew extension source item missing" on the new
+required `refocus/` - the required-items contract they mirror moved, they did not. Both fixtures gain the
+directory (tests only); the module's shipped files are unchanged from `33763335`. The statement listed nine
+adjacent suites and not these two; the census is what found them.
+
+## PRED-BETA4-047 - PRED-015 for the RE-FROZEN SHA after the two fixtures. Stated before the dispatch.
+
+**Frozen at the branch head after this record's commit**: `33763335`'s module content, byte for byte; the two
+fixture suites carry `refocus/`. Prediction: `full-test-census` green, 418 named files, 0 failures;
+`prepublish-validation` and the dry-run publish green; the artifact carries the sentinel and nothing else. On
+green: PRED-046 part 4 as stated (install byte-verified; the router-skill project's second update; its
+`general.md` byte-identical to the module's and carrying rule 1's sentence; the SHA for the walk); the
+stopping rule of PRED-046 part 5 then applies.
