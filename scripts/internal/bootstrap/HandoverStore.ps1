@@ -1230,10 +1230,16 @@ function Update-SpecrewRollingHandover {
             -TurnPosition 'prompt-entry' -TurnArrival $NowUtc
         # The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
         # evidence rather than authority, and it belongs only to the branch the human types into.
+        $workshopDisclosure = $null
         if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                -HostKind $fromHost -SourceEvent $Source | Out-Null
+            $receipt = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                -HostKind $fromHost -SourceEvent $Source
+            # PRED-BETA4-053: a confirmation the receipt could not bind is said here, in the turn, with the
+            # remedy - not discovered later when the persist throws.
+            if ($null -eq $receipt -and (Get-Command Get-SpecrewWorkshopReceiptDisclosure -ErrorAction SilentlyContinue)) {
+                try { $workshopDisclosure = Get-SpecrewWorkshopReceiptDisclosure -ProjectRoot $ProjectRoot -Response $LastUserMessage } catch { $workshopDisclosure = $null }
+            }
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
@@ -1273,6 +1279,9 @@ function Update-SpecrewRollingHandover {
                 }
             }
             catch { $null = $_ }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$workshopDisclosure)) {
+            $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $workshopDisclosure } else { ([string]$disclosure + "`n" + $workshopDisclosure) }
         }
         return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure }
     }

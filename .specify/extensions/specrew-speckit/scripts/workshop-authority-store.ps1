@@ -538,6 +538,53 @@ function Write-SpecrewWorkshopAuthorityReceipt {
     catch { return $null }
 }
 
+function Get-SpecrewWorkshopReceiptDisclosure {
+    # PRED-BETA4-053: a typed confirmation the receipt writer CANNOT bind is said, in the turn, with the remedy.
+    # Measured on the walk project (e9334af1): the canonical agenda block had been rendered only as a tool
+    # result, the assistant turn before the confirm did not contain it, the Stop hook therefore bound no
+    # agenda digest into workshop-question.json, and Write-SpecrewWorkshopAuthorityReceipt returned $null at
+    # prompt entry - silently, one of its twelve exits. The coordinator learned of it when the persist threw.
+    # The verdict path got this disclosure in beta4 (PRED-026); this is the workshop path's. Narrow by
+    # construction: agenda phase only (the one with a visibility proof to read), a confirmation-shaped reply,
+    # and the question active without a digest. Lens questions carry no visibility proof; not covered here.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [AllowNull()][string] $Response
+    )
+    try {
+        if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
+        $root = [IO.Path]::GetFullPath($ProjectRoot)
+        if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
+        $questionPath = Join-Path $root '.specrew/handover/workshop-question.json'
+        if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { return $null }
+        $question = Get-Content -LiteralPath $questionPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 10 -ErrorAction Stop
+        if ([string]$question.schema -cne 'v3' -or [string]$question.status -cne 'workshop-active' -or [string]$question.phase -cne 'agenda') { return $null }
+        $digestProperty = $question.PSObject.Properties['agenda_digest']
+        if ($digestProperty -and [string]$digestProperty.Value -cmatch '^[a-f0-9]{64}$') { return $null }   # visible and bound: the receipt handles it
+        # A question is not a confirmation, whatever the classifier would bind (it binds any non-skip reply on
+        # the agenda); the disclosure names a confirmation, so it fires only for a reply that reads as one.
+        if (($Response -replace '\s+', ' ').Trim().EndsWith('?')) { return $null }
+        $authority = Get-SpecrewWorkshopResponseAuthority -Phase 'agenda' -Response $Response
+        if ([string]$authority.confirmation -cne 'human-confirmed') { return $null }
+        $line = "Specrew: your agenda confirmation was received but NOT bound - the canonical agenda block was not in the assistant's previous message (a tool result is not a message), so nothing was recorded. Render the block in your message, then ask again."
+        try {
+            $journal = Join-Path $root '.specrew/runtime/handover-journal.jsonl'
+            $dir = Split-Path -Parent $journal
+            if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            $row = [ordered]@{
+                event = 'workshop-confirmation-not-bound-disclosed'; recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
+                feature_ref = [string]$question.feature_ref; phase = 'agenda'; reason = 'agenda-block-not-in-assistant-message'
+                response_hash = (Get-SpecrewWorkshopAuthorityHash -Text $Response)
+            }
+            [IO.File]::AppendAllText($journal, (($row | ConvertTo-Json -Compress -Depth 5) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+        }
+        catch { $null = $_ }
+        return $line
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewWorkshopAuthorityReceipt {
     [CmdletBinding()]
     param(
