@@ -50,3 +50,17 @@ binds, `move on` per lens, a specify packet with real review targets, clarify be
 and the second feature's first question registers. Synthetic replay and a green census do not satisfy
 that acceptance. The stopping rule resumes after the one authorized delivery cycle; further scope
 requires a new ruling.
+
+
+### Verification follow-up inside the same cycle
+
+Freeze: `97e03c80300a0d1305627e78e53b0896c317d62d`. The one census is
+[34808258530](https://github.com/alonf/specrew/actions/runs/34808258530). Package validation passed.
+Documentation-only whitespace fixes were committed in `331aea94`; neither file is packaged.
+
+CI's honesty lane then passed 130 of 131 suites and failed the older agenda test's exact-remedy
+assertion. The agenda was correctly blocked, but the test required the superseded rewrite wording.
+The assertion now requires the new one-line presentation remedy. All receipt, digest, confirmation,
+and refusal checks remain, and the whole agenda suite passes in a focused run. This is a test-only
+correction outside the frozen package. The census on the original test tree retains its actual result;
+no second census is dispatched and no package source changes after the freeze.

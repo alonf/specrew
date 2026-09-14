@@ -204,9 +204,8 @@ try {
 
     $reformatted = Invoke-ShippedWorkshopProvider -AssistantText ("Agenda follows.`n`n" + $bulletSwappedAgenda + "`n`nPlease answer above.")
     Assert-True ($reformatted.ExitCode -eq 0 -and $reformatted.Output -match 'SPECREW-STOP-BLOCK') 'reformatted agenda is refused at the Stop that showed it'
-    Assert-True ($reformatted.Output -match '(?i)agenda you showed was reformatted' -and
-        $reformatted.Output -match '(?i)send the command''s output exactly as printed' -and
-        $reformatted.Output -match '(?i)without changing bullets or spacing') 'reformatted-agenda refusal names the rewrite and the exact-output retry'
+    Assert-True ($reformatted.Output -match '(?m)^Specrew: include the complete workshop agenda in your assistant reply;' -and
+        @($reformatted.Output -split '\r?\n' | Where-Object { $_ -match '^Specrew:' }).Count -eq 1) 'missing canonical agenda gets the one-line agent-authored presentation remedy'
     Assert-True ($reformatted.Output -notmatch '(?i)lens-applicability|controller|digest') 'reformatted-agenda refusal keeps workshop machinery out of the human-facing correction'
     $reformattedQuestion = Get-Content -LiteralPath $reformatted.QuestionPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
     Assert-True ([string]$reformattedQuestion.phase -eq 'agenda' -and -not $reformattedQuestion.PSObject.Properties['agenda_digest']) 'reformatted agenda does not bind confirmation identity'

@@ -340,6 +340,51 @@
         "PASS: All 17 skill template(s) have YAML frontmatter (7 directory-style + 10 generic-style)",
         "Skill templates: all assertions pass"
       ]
+    },
+    "workshop-agenda-confirmation.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "8e1fa20e9c502d8f1163968576e3c3e680628e6b31b8ed4716a9024e96cd82c7",
+      "pass_lines": [
+        "PASS: agenda confirmation writer exists",
+        "PASS: agenda confirmation source and deployed mirror are byte-identical",
+        "PASS: writer refuses model-authored agenda state when no typed human response receipt exists",
+        "PASS: render-only refuses before both product-domain records exist and names the real prerequisite: The product-domain records must be persisted before the technical agenda can be rendered or confirmed. Missing: workshop/product-domain.md, workshop/product-domain.yml. Persist both product-domain records from the typed answer already on record, validate them, then run this same agenda command with -RenderOnly once. Try the action above once. If it does not resolve the situation, do not retry and do not edit this project's workshop records by hand. Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, and what you could not complete without assigning blame. Give one concrete next action you can take and ask the human for approval before taking it.",
+        "PASS: redundant product-domain projection remains a valid pre-agenda state and is never treated as a technical decision",
+        "PASS: writer refuses an agenda that hides omitted lenses",
+        "PASS: incomplete-coverage refusal preserves pending controller state byte-for-byte",
+        "PASS: render-only emits the complete canonical selected + skipped agenda the human must see",
+        "PASS: whitespace-normalized exact agenda remains visible",
+        "PASS: fixture actually substitutes the canonical dash bullets",
+        "PASS: a dash-to-bullet rewrite is not the visible canonical agenda",
+        "PASS: reformatted agenda is refused at the Stop that showed it",
+        "PASS: missing canonical agenda gets the one-line agent-authored presentation remedy",
+        "PASS: reformatted-agenda refusal keeps workshop machinery out of the human-facing correction",
+        "PASS: reformatted agenda does not bind confirmation identity",
+        "PASS: an agenda-phase turn that has not shown the agenda is not accused of reformatting it",
+        "PASS: real conformance provider accepts the visible agenda as the active workshop question",
+        "PASS: real conformance provider writes the agenda question handover",
+        "PASS: real conformance provider binds the rendered agenda content independently of transcript prose hashing",
+        "PASS: a receipt for agenda A cannot authorize changed agenda B and names the changed lens",
+        "PASS: writer reports the exact confirmed agenda coverage",
+        "PASS: confirmed state records typed human authority for the lens selection",
+        "PASS: confirmed state makes both selected and skipped sets reviewable",
+        "PASS: confirmed agenda discards the redundant product-domain projection instead of promoting it to technical authority",
+        "PASS: each skipped lens carries its feature-specific reason",
+        "PASS: strict controller opens lens 1 only after complete coverage and human confirmation",
+        "PASS: a hand-written nested skipped entry is rejected by the production controller reader",
+        "PASS: a plausible flat controller whose content does not match its receipt is rejected",
+        "PASS: real conformance provider accepts the visible agenda as the active workshop question",
+        "PASS: real conformance provider writes the agenda question handover",
+        "PASS: real conformance provider binds the rendered agenda content independently of transcript prose hashing",
+        "PASS: pwsh -File accepts the single JSON agenda payload:  feature_ref    : 002-shell-call state          : confirmed selected_count : 4 skipped_count  : 6 artifact_path  : C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-agenda-confirmation-9b83e7bef1fd4c338317aaeaabc6c463\\specs\\002-shell-call                  \\lens-applicability.json ",
+        "PASS: external shell invocation preserves complete selected/skipped coverage",
+        "PASS: product records persisted without any typed receipt are refused at the Stop instead of passing as an intermediate workshop turn",
+        "PASS: unreceipted-records refusal names the selection channel and the typed prose re-ask",
+        "PASS: unreceipted-records refusal keeps the answers safe and routes the record set-aside through human approval",
+        "PASS: unreceipted-records refusal keeps workshop machinery out of the correction",
+        "PASS: typed-walk fixture mints a genuine product-domain receipt before the records exist",
+        "PASS: product records backed by a typed receipt are not accused of arriving through a selection channel"
+      ]
     }
   },
   "mutation": {
@@ -358,7 +403,12 @@
     ],
     "log_sha256": "8859d4f1d16c410fde9573a7b0f77be9706f92787e70840564856e79b042caab"
   },
-  "census": "not yet dispatched",
+  "census": {
+    "run_id": 34808258530,
+    "head_sha": "97e03c80300a0d1305627e78e53b0896c317d62d",
+    "status": "in_progress",
+    "known_stale_assertion": "workshop-agenda-confirmation expects the replaced rewrite remedy; its block and no-digest assertions pass; expectation updated outside the package and the whole suite passes focused"
+  },
   "install": "not yet performed",
   "router_update": "not yet performed",
   "focused_conformance": {
@@ -372,5 +422,11 @@
     "Markdown lint passed on changed skill templates and validation report",
     "self-leak lint passed",
     "session orientation obligation passed"
-  ]
+  ],
+  "ci": {
+    "first_run": 34808258777,
+    "first_failure": "MD012 in findings and MD047 in predictions; non-packaged whitespace corrected in 331aea94",
+    "second_run": 34808371999,
+    "second_result": "130 of 131 honesty suites passed; only the superseded agenda remedy assertion failed; contract lane skipped"
+  }
 }
