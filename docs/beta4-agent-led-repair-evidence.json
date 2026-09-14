@@ -43,6 +43,28 @@
       "bytes": 2556366,
       "sha256": "0c2b7bada687d36f5bd431df9fc8201c97096684879b2389a133a72331a4d423",
       "note": "Snapshot only; host may append later metadata/turns. Acceptance window is bounded above."
+    },
+    "agenda_receipt_observation": {
+      "first": {
+        "recorded_at": "2026-09-14T15:41:52.4237990+00:00",
+        "receipt_id": "8c7360e0c4fc3d3f49c346eccbc205d58267e6445604feaa2178d1dce45d2705",
+        "response_hash": "fb021f566a5a68a4f4975df6b7c6fa26909cbb8ee046443817f7a704bd3a19a4"
+      },
+      "second": {
+        "recorded_at": "2026-09-14T15:42:00.3389434+00:00",
+        "receipt_id": "4dfa36bca93c3182bb51fbe9c36d54682923acb807d2fd11cea9fa4c01d82a58",
+        "response_hash": "8a798890fe93817163b10b5f7bd2ca4d25d84c52739a645a889c173eee7d9d3d",
+        "response": "yes",
+        "transcript_user_timestamp": "2026-09-14T15:41:58.994Z"
+      },
+      "shared_source_event": "UserPromptSubmit",
+      "shared_host": "claude",
+      "shared_question_hash": "91d1469dea324e54e3064aa35cb0da57976a0c40694da75dc0aff64b1dc8c69e",
+      "shared_agenda_digest": "bb096aa55427b28cfe31c4250797752886ca2db0741e65571e68eb06cea71acb",
+      "controller_binds_to": "second receipt",
+      "explanation": "The store keys receipt identity by feature, phase, lens, question hash, agenda digest and response hash. The two rows have distinct response hashes, so they are distinct receipt identities for one agenda. The persisted controller cites only the second, matching the literal yes in the transcript.",
+      "unresolved": "The first response is not identifiable in the retained transcript. No persisted input at that timestamp or string matching that response hash was found; its originating input/event cannot be attributed from this evidence. Do not claim a repeated yes or two consumed agenda confirmations.",
+      "disposition": "observation retained; no fix or broader acceptance claim"
     }
   },
   "focused": {
@@ -725,7 +747,7 @@
       }
     ]
   },
-  "stopping_rule": "Re-scoped walk accepted GREEN. Release exact 8d3f9906 authorized. Record-only findings: B4F-102 beta4.1, B5F-002/003 beta5; no source repair authorized.",
+  "stopping_rule": "Re-scoped walk accepted GREEN; exact 8d3f9906 released. B4F-102 beta4.1 and B5F-002/003 beta5 remain record-only. New B4F-103 package-stamp disagreement is recorded, awaiting disposition; exact-byte Gallery verification is FAILED. No source repair, retag or republish authorized by these records.",
   "abandoned_transcript": {
     "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
     "baseline_prefix_intact": true,
@@ -764,9 +786,10 @@
     "walk_allowed": true,
     "process_deviation_class": "B4F-027",
     "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
-    "authorized_next": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green.",
+    "authorized_next": "Release request executed; record and report publication plus the failed exact-byte Gallery check. Stopping rule in force; B4F-103 awaits disposition and does not authorize a source repair or release mutation.",
     "walk_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
-    "status": "maintainer accepted re-scoped installed-host walk GREEN and authorized tagging/publishing exact 8d3f9906"
+    "status": "Re-scoped walk GREEN; exact 8d3f9906 tagged and published successfully; Gallery embedded stamp matches but actual package byte/scope verification FAILED (B4F-103).",
+    "correction_authorization_executed": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green."
   },
   "reopened_cycle": {
     "prediction": "PRED-BETA4-058",
@@ -1023,7 +1046,137 @@
   "release": {
     "tag": "v0.40.0-beta4",
     "sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
-    "status": "authorized; tag/publication pending",
-    "gallery_verification": "pending"
+    "status": "published successfully; exact-byte Gallery verification FAILED (B4F-103)",
+    "gallery_verification": {
+      "verified_at": "2026-09-14T17:06:39.0985091+00:00",
+      "local_stamp": {
+        "schema": "specrew-build-stamp/v1",
+        "commit": "8d3f9906",
+        "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+        "content_file_count": 423
+      },
+      "gallery_stamp": {
+        "schema": "specrew-build-stamp/v1",
+        "commit": "8d3f9906",
+        "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+        "content_file_count": 423
+      },
+      "content_file_count": 423,
+      "computed_content_sha256": "0c480fb8381135eef8d5af9ab6bb203e711c407750e3f1b6d587661ad7c92122",
+      "stamp_commit_matches": true,
+      "stamp_hash_matches": true,
+      "stamp_count_matches": true,
+      "computed_hash_matches": false,
+      "missing": [
+        "extensions/specrew-speckit/hooks/.gitkeep",
+        "extensions/specrew-speckit/templates/quality/lenses/.gitkeep",
+        "extensions/specrew-speckit/templates/quality/presets/.gitkeep"
+      ],
+      "different": [
+        "Specrew.psd1"
+      ],
+      "package_metadata_extras": [
+        "[Content_Types].xml",
+        "Specrew.nuspec",
+        "package/services/metadata/core-properties/nuget.psmdcp",
+        "_rels/.rels"
+      ],
+      "success": false,
+      "present_content_file_count": 420,
+      "byte_identical_content_file_count": 419,
+      "manifest_comparison": {
+        "local_bytes": 31092,
+        "gallery_bytes": 31090,
+        "local_sha256": "7819e4900693e19757cc335876983c7a48dc6e639f264d0d0d3d5b4368159be5",
+        "gallery_sha256": "20729334e0b77e3a79c480d1e597f491b8dbd7387e502a17f179011dd0ca44cd",
+        "local_crlf": 473,
+        "gallery_crlf": 471,
+        "local_lf": 473,
+        "gallery_lf": 473,
+        "equal_after_crlf_to_lf": true,
+        "local_bom": false,
+        "gallery_bom": false
+      },
+      "manifest_differing_lines": [
+        3,
+        463
+      ],
+      "metadata_replay_reproduced_gallery_manifest": true,
+      "nuget_exclusion_warnings": "NU5119 for each of the three missing .gitkeep paths, publish log 2026-09-14T17:05:10Z"
+    },
+    "publish_run_id": 34867622327,
+    "publish_run_url": "https://github.com/alonf/specrew/actions/runs/34867622327",
+    "local_content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+    "local_content_file_count": 423,
+    "tag_object_sha": "09f93247cf1264e78a42e29ce21f4da5cf061b94",
+    "tag_peeled_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "publish_run_status": "completed",
+    "publish_run_conclusion": "success",
+    "publish_run_updated_at": "2026-09-14T17:05:44Z",
+    "jobs": [
+      {
+        "name": "prepublish-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-09-14T16:17:05Z",
+        "completedAt": "2026-09-14T16:19:08Z"
+      },
+      {
+        "name": "full-test-census",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-09-14T16:17:07Z",
+        "completedAt": "2026-09-14T17:03:48Z"
+      },
+      {
+        "name": "publish-module",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-09-14T17:03:52Z",
+        "completedAt": "2026-09-14T17:05:39Z"
+      }
+    ],
+    "census": {
+      "files": 424,
+      "pester": 148,
+      "scripts": 276,
+      "failed": 0,
+      "caller_contaminated": false,
+      "summary": "Full PowerShell test sweep: files=424, pester=148, scripts=276, failed=0, caller_contaminated=False",
+      "log_sha256": "b9859a713349161d9fa04c42c2b8ca61ccca3b8886acf5d2f6e975af7bbbb056"
+    },
+    "github_release": {
+      "assets": [
+        {
+          "apiUrl": "https://api.github.com/repos/alonf/specrew/releases/assets/563837012",
+          "contentType": "application/zip",
+          "createdAt": "2026-09-14T17:05:34Z",
+          "downloadCount": 0,
+          "id": "RA_kwDOSFtpt84hm3hU",
+          "label": "",
+          "name": "specrew-0.40.0-beta4.zip",
+          "size": 2831978,
+          "state": "uploaded",
+          "updatedAt": "2026-09-14T17:05:35Z",
+          "url": "https://github.com/alonf/specrew/releases/download/v0.40.0-beta4/specrew-0.40.0-beta4.zip"
+        }
+      ],
+      "isDraft": false,
+      "isPrerelease": true,
+      "publishedAt": "2026-09-14T17:05:35Z",
+      "tagName": "v0.40.0-beta4",
+      "targetCommitish": "main",
+      "url": "https://github.com/alonf/specrew/releases/tag/v0.40.0-beta4"
+    },
+    "github_target_note": "targetCommitish is API metadata main; the existing annotated tag peels to exact 8d3f99061e41396eaa4ac665d3883bcc75f88730, verified remotely after publication and displayed on the release page.",
+    "gallery_url": "https://www.powershellgallery.com/packages/Specrew/0.40.0-beta4",
+    "gallery_download_url": "https://www.powershellgallery.com/api/v2/package/Specrew/0.40.0-beta4",
+    "gallery_push_completed_at": "2026-09-14T17:05:23.5358009Z",
+    "github_published_at": "2026-09-14T17:05:35Z",
+    "nupkg_sha256": "d9c31711f918adfbac1d9230fef82a41e4d7afce25c22fd957d6a0341612c6b6",
+    "nupkg_bytes": 2254740,
+    "publish_log_sha256": "0b056c2f39cb3b9a644dc4e5482ad7220865ae8739f116b91764027fce5f5407",
+    "evidence_directory": "C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-beta4-release-8d3f9906",
+    "disposition": "Tag/publish request executed on exact accepted SHA. Stamp equality passes; actual package byte/scope equality fails. Causes isolated and recorded as B4F-103; no package repair, retag, republish, reinstall, router update or extra census was performed. Stopping rule remains in force."
   }
 }

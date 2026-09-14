@@ -229,8 +229,9 @@ re-scoped acceptance **GREEN**. This is installed-host evidence, supplied by the
 acceptance 5 within that scope and authorizes tagging and publishing exactly `8d3f9906`.
 
 - Orientation appeared once, in the first reply, as `0.40.0-beta4`.
-- The agenda block appeared in the crew's message. `yes` bound at 08:41:52 PDT; a second agenda
-  receipt at 08:42:00 is retained as an observation to explain, not hidden from the green verdict.
+- The agenda block appeared in the crew's message. The maintainer reported agenda receipts at
+  08:41:52 and 08:42:00 PDT; the persisted controller binds the second receipt to the literal `yes`,
+  as detailed below. Both rows remain in the evidence.
 - One `move on` per lens: product-domain 08:32:28, architecture-core 08:43:42, code-implementation
   08:46:25 PDT.
 - The specify packet named review targets, carried three real discussion prompts, ended with the
@@ -247,3 +248,67 @@ in the design-analysis refusal is B4F-102 (beta4.1); a clarify discussion defaul
 mandatory stop is B5F-002 (beta5); authoring/committing the plan and five design artifacts before that
 stop, with a false skipped declaration in `17462e4`, is B5F-003 (beta5). The gate correctly refused
 the skip. These are recorded, not fixed, and do not broaden this release's accepted scope.
+
+## Agenda receipt observation - persisted binding and remaining limit
+
+The authority journal contains two feature-001 agenda receipts with the same question hash and
+agenda digest, both labelled `UserPromptSubmit` / `claude`. They carry different response hashes,
+so the store's identity function gives them different receipt IDs; this is not evidence that the
+same `yes` was captured twice. The controller's `agenda_turn_receipt` names only the second row,
+`4dfa36bca93c3182bb51fbe9c36d54682923acb807d2fd11cea9fa4c01d82a58`, recorded at
+15:42:00.3389434Z. Its response hash is SHA-256 of the literal `yes`, which appears as a user message
+at 15:41:58.994Z in the transcript. The subsequent confirmation invocation persisted that binding.
+
+The first row, `8c7360e0c4fc3d3f49c346eccbc205d58267e6445604feaa2178d1dce45d2705`,
+was recorded at 15:41:52.4237990Z with response hash
+`fb021f566a5a68a4f4975df6b7c6fa26909cbb8ee046443817f7a704bd3a19a4`. No corresponding
+input at that time, or string matching that hash, was found in the retained transcript. Its originating
+input/event remains unattributed. The evidence establishes one persisted agenda binding to `yes`;
+it does not justify inventing an explanation for the earlier input. This observation stays open
+without a repair or an expansion of the accepted path. Full identities are retained in the JSON
+companion evidence record.
+
+## Publication completed - exact-byte Gallery check failed (B4F-103)
+
+The authorized annotated tag `v0.40.0-beta4` was pushed and remotely verified after publication:
+tag object `09f93247cf1264e78a42e29ce21f4da5cf061b94` peels to exactly
+`8d3f99061e41396eaa4ac665d3883bcc75f88730`. The documentation HEAD is past that release SHA;
+these verdict and verification records do not change the tagged source.
+
+[Tag-triggered publication 34867622327](https://github.com/alonf/specrew/actions/runs/34867622327)
+completed successfully. Its mandatory census passed **424/424** (148 Pester, 276 scripts,
+failed 0, caller_contaminated False); prepublish validation and publish-module also passed.
+This is the tag workflow's required gate, not a re-dispatch of the earlier sanctioned census pair.
+PSGallery confirmed publication at 17:05:23Z on 2026-09-14; the GitHub prerelease was published
+at 17:05:35Z with its module zip attached.
+
+Release: [Specrew v0.40.0-beta4](https://github.com/alonf/specrew/releases/tag/v0.40.0-beta4).
+Gallery: [Specrew 0.40.0-beta4](https://www.powershellgallery.com/packages/Specrew/0.40.0-beta4).
+
+The downloaded Gallery `.nupkg` is 2,254,740 bytes, archive SHA-256
+`d9c31711f918adfbac1d9230fef82a41e4d7afce25c22fd957d6a0341612c6b6`.
+Its embedded stamp and the independently re-hashed local installation agree on commit `8d3f9906`,
+423 content files and content SHA-256
+`deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247`.
+**That stamp equality does not pass actual package verification.** Hashing the downloaded content
+with the same algorithm and declared file scope yields
+`0c480fb8381135eef8d5af9ab6bb203e711c407750e3f1b6d587661ad7c92122`:
+
+- Three declared `.gitkeep` files are absent: `extensions/specrew-speckit/hooks/.gitkeep`,
+  `extensions/specrew-speckit/templates/quality/lenses/.gitkeep`, and
+  `extensions/specrew-speckit/templates/quality/presets/.gitkeep`. The publish log records NU5119
+  for each. NuGet's default exclusions removed them. Their local sizes are 0, 2 and 2 bytes.
+- `Specrew.psd1` differs only at line endings on lines 3 (`ModuleVersion`) and 463 (`Prerelease`):
+  CRLF became LF. All text and values are equal after CRLF-to-LF normalization. Applying the existing
+  metadata writer to a temporary copy of the installed manifest reproduces the Gallery manifest
+  hash exactly: `20729334e0b77e3a79c480d1e597f491b8dbd7387e502a17f179011dd0ca44cd`.
+  The release path writes the build stamp before this metadata rewrite.
+- The other **419** present content files are byte-identical. There are **420** actual content files
+  in the declared scope, excluding the stamp. Four NuGet metadata files are outside that scope.
+
+This is a bounded explanation of the failed identity check, not a waiver or a functional-install
+claim. B4F-103 records the stamp/serialized-package disagreement. Publication succeeded; exact-byte
+Gallery verification is **FAILED**. No source repair, retag, republish, installation, router update,
+or extra census was made. The stopping rule remains in force, and the walk's re-scoped GREEN verdict
+is retained separately from this packaging finding. The two pre-existing dirty iteration records
+remain unstaged. Machine identities, timestamps and checks are in the JSON companion record.

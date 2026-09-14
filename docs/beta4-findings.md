@@ -4610,3 +4610,24 @@ walk, the coordinator spent four minutes reading module internals and encountere
 denial before drafting the artifact. **Disposition:** beta4.1, recorded not fixed. A gate refusal
 must name the producing action, as the persist refusal already does; naming the missing file alone
 leaves the coordinator without its next step. Related ordering/default findings are B5F-002/003.
+
+## B4F-103 - PUBLISHED CONTENT DOES NOT REPRODUCE ITS BUILD STAMP (recorded, awaiting disposition)
+
+**Detected:** post-publication Gallery verification of `v0.40.0-beta4` / `8d3f9906`, 2026-09-14.
+The tag-triggered workflow succeeded, including census 424/424. The downloaded package embeds the
+same commit, 423-file count and hash as the verified local installation, but its actual content
+re-hashes differently. Three `.gitkeep` placeholders were excluded by NuGet (each has a NU5119
+warning in the publication log); the metadata writer changed two manifest line endings after the
+release path computed the stamp. Replaying that writer on a temporary local-manifest copy reproduces
+the downloaded manifest hash exactly. The remaining 419 present content files match byte-for-byte.
+
+**Evidence:** [publication and hash comparison](beta4-b4f099-validation.md#publication-completed---exact-byte-gallery-check-failed-b4f-103),
+with full hashes and machine checks in the JSON companion record. NuGet documents the observed
+[default dotfile exclusion](https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5119).
+This is a stamp/scope/serialization failure; the comparison found no other changed file, and does
+not claim a Gallery installation was tested.
+
+**Disposition:** recorded, not fixed; exact-byte Gallery verification remains FAILED. The release
+and tag exist at the authorized SHA. The stopping rule holds. Any bounded follow-up must make the
+stamp describe the final serialized file set and bytes, then verify that agreement through the
+actual packaging route. No release mutation or new candidate is authorized by this record.
