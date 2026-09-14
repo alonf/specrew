@@ -722,5 +722,70 @@
     "process_deviation_class": "B4F-027",
     "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
     "authorized_next": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green."
+  },
+  "reopened_cycle": {
+    "prediction": "PRED-BETA4-058",
+    "prediction_commit": "82a080a1",
+    "prior_test_correction_commits": [
+      "c0d1e148",
+      "4dae0a1b"
+    ],
+    "status": "corrections verified locally; candidate census pending",
+    "receipt": {
+      "decision": "repository receipt was stale; fixture and validator unchanged",
+      "before": {
+        "checked": true,
+        "drifted": [
+          "scripts/specrew-conformance-provider.ps1",
+          "squad-templates/skills/design-workshop.md",
+          "squad-templates/skills/gate-stop.md"
+        ],
+        "missing": [],
+        "marker": "C:\\Dev\\specrew-beta3-stabilization\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+      },
+      "after": {
+        "checked": true,
+        "drifted": [],
+        "missing": [],
+        "marker": "C:\\Dev\\specrew-beta3-stabilization\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+      },
+      "entries_before": 164,
+      "entries_after": 173,
+      "newly_inventoried_existing_files": 9,
+      "version_metadata": "preserved",
+      "sha256": "486f4efc77b36e67c2a9481e31c5fc8189c736db2c754d181c8ee75c69393f23"
+    },
+    "scoped_validator_probe": {
+      "exit_code": 0,
+      "full_suite": false,
+      "log_sha256": "7c9be4f0256ba3842f8eb6af7065bbe62d450fd8ae765fb1ceaaf540b6384ffb",
+      "result_lines": [
+        "[validator-scope] changed-only to origin/main...HEAD (1 iterations, 1 files in diff)",
+        "PASS C:\\Users\\alon\\AppData\\Local\\Temp\\s58-a28a0aa9\\explicit-changed-only\\specs\\013-validator-hardening\\iterations\\001",
+        "[validator-timing] mode=scoped elapsed_ms=64121 iterations_validated=1 trigger_source=local"
+      ]
+    },
+    "psgallery": {
+      "exit_code": 0,
+      "old_bound_ms": 10000,
+      "new_bound_ms": 15000,
+      "scope": "test-only end-to-end startup assertion; no production timeout change",
+      "log_sha256": "9c5e70074d3988f4e2e741f41429b7001ef930a52da193104637f4f5e4aa796b",
+      "pass_lines": [
+        "PASS: specrew init surfaces the PSGallery update warning and seeds the shared cache",
+        "PASS: specrew start reuses the shared PSGallery cache",
+        "PASS: specrew update uses the shared PSGallery warning path",
+        "PASS: --skip-update-check suppresses the PSGallery warning",
+        "PASS: SPECREW_SKIP_UPDATE_CHECK=1 suppresses the PSGallery warning",
+        "PASS: Offline PSGallery failures stay silent and bounded"
+      ]
+    },
+    "install_after_green": {
+      "performed": false
+    },
+    "router_update_after_green": {
+      "performed": false
+    },
+    "walk_allowed": false
   }
 }

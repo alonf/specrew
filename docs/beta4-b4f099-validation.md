@@ -132,3 +132,42 @@ preserved user-authored files; those advisories do not expand this bounded repai
 The authorized cycle is complete. The stopping rule is back in force. Monday's installed-host walk
 remains acceptance 5; B4F-100 and B4F-101 retain the dispositions above. The abandoned d8ce3ea9 walk
 and transcript remain evidence of the failing candidate.
+
+## PRED-BETA4-058 correction evidence before the new census
+
+The prediction and B4F-027 process deviation were committed in `82a080a1` before the new correction.
+The two test-only assertion corrections already exist in `c0d1e148` and `4dae0a1b`; the new candidate
+includes both commits. Production source remains unchanged.
+
+**Decision: re-stamp the repository receipt; leave the fixture and validator unchanged.** The
+validator's own failing output was:
+
+```text
+The deployed Specrew machinery under .specify/extensions/specrew-speckit does not match what was installed
+(modified: scripts/specrew-conformance-provider.ps1, squad-templates/skills/design-workshop.md,
+squad-templates/skills/gate-stop.md).
+```
+
+The repository's integrity checker independently named exactly those three paths and no missing files.
+`Write-SpecrewDeployedExtensionMarker` regenerated the receipt with its existing version metadata.
+It replaced those three hashes and inventoried nine existing but previously unlisted files, taking the
+receipt from 164 to 173 entries. The resulting checker reports checked=true, drifted=0, missing=0.
+This is derived inventory, not a production implementation change or a fabricated per-file digest.
+
+The same positive ChangedOnly fixture setup now receives this validator output and exits 0:
+
+```text
+[validator-scope] changed-only to origin/main...HEAD (1 iterations, 1 files in diff)
+PASS C:\Users\alon\AppData\Local\Temp\s58-a28a0aa9\explicit-changed-only\specs\013-validator-hardening\iterations\001
+[validator-timing] mode=scoped elapsed_ms=64121 iterations_validated=1 trigger_source=local
+```
+
+Existing fixture warnings remain; the integrity refusal is gone. The full scope suite is still owed
+by the new census; this focused reproduction is not described as that full suite.
+
+The complete PSGallery suite passes with a named `offlineStartBoundMilliseconds = 15000` test bound.
+Its timer covers the full child PowerShell/start invocation; exit-code and no-warning assertions
+remain. The production timeout is unchanged. PowerShell parse errors: zero.
+
+The next step is one sanctioned CI/census pair on the committed candidate. Installation and the
+further router update remain withheld until green, and the walk stays on hold.
