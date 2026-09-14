@@ -683,7 +683,7 @@
       }
     ]
   },
-  "stopping_rule": "Back in force after this single cycle. Acceptance 5 remains the maintainer Monday walk. No release, second freeze, second census or wider repair performed.",
+  "stopping_rule": "97e03c80 is not frozen; walk held. New ruled correction cycle under PRED-BETA4-058, green before install/update. B4F-100/101 remain deferred as ruled.",
   "abandoned_transcript": {
     "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
     "baseline_prefix_intact": true,
@@ -713,5 +713,14 @@
     "packaged_paths_changed": 0,
     "verified_against": "97e03c80",
     "scope": "FileList plus module manifest and optional package documents; later tracked changes are tests/docs only, excluding pre-existing user iteration records."
+  },
+  "current_ruling": {
+    "prediction": "PRED-BETA4-058",
+    "prior_sha": "97e03c80",
+    "prior_sha_frozen": false,
+    "walk_allowed": false,
+    "process_deviation_class": "B4F-027",
+    "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
+    "authorized_next": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green."
   }
 }

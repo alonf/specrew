@@ -1,5 +1,10 @@
 # B4F-099 bounded repair
 
+**Current ruling:** census `34808258530` is red; `97e03c80` is not frozen. Its installation and router
+update happened ahead of green and are recorded as a B4F-027 process deviation. The historical delivery
+record below preserves what happened, but its completion/freeze claim is superseded. The walk is on hold
+until PRED-BETA4-058 produces a green candidate followed by verified installation and one further update.
+
 The maintainer ruled B4F-099 into beta4 on 2026-09-14 UTC, limited to the four changes in the
 regression report. PRED-BETA4-057 was committed in `91153385` before implementation. The authorized
 delivery cycle is one freeze, one census, one installation and one router-skill project update.

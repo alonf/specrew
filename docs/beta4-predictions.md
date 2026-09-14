@@ -2640,3 +2640,45 @@ The stopping rule resumes. B4F-100 (whole-draft visibility matching) and B4F-101
 draft path) are recorded for beta4.1; only B4F-100 reopens if Monday's walk trips it, with load-bearing
 line comparison as the bounded alternative. Acceptance 5 remains the maintainer's Monday walk,
 including the second feature's first registered question. The abandoned d8ce3ea9 transcript is preserved.
+
+## PRED-BETA4-058 - repair the four census failures and enforce green before installation. Stated before changes.
+
+**Ruling**: red census `34808258530` invalidates the freeze claim for `97e03c80`. Its premature install
+and router update are recorded as a B4F-027 process deviation. The walk does not run until the new
+candidate is green, byte-verified into the module, and deployed once more to the router project.
+This supersedes PRED-BETA4-057's delivery-complete claim; its measured interaction evidence remains.
+
+**Current baseline**: `4dae0a1b`. The two test-only assertion corrections are already committed in
+`c0d1e148` and `4dae0a1b`; they will be included in the new census SHA without rewriting history.
+The validator's own first-case diagnostic says the deployment does not match what was installed and
+names three modified paths: `scripts/specrew-conformance-provider.ps1`,
+`squad-templates/skills/design-workshop.md`, and `squad-templates/skills/gate-stop.md`. The repository
+integrity checker reproduces exactly those three, with no missing files. The fixture faithfully copies
+that stale receipt; the receipt is wrong, so the fixture and validator remain unchanged.
+
+### Prediction and bounded change
+
+1. Invoke the existing `Write-SpecrewDeployedExtensionMarker` writer on this repository, preserving
+   the receipt's version metadata. It replaces the three stale hashes and inventories the complete
+   current deployment (173 entries versus the old 164, including nine previously unlisted files).
+   No production source changes. The integrity checker will report checked=true, drifted=0, missing=0,
+   and the validator's same positive ChangedOnly case will exit 0 with no integrity refusal.
+2. Name the test-only offline startup bound `offlineStartBoundMilliseconds` and raise it from 10,000
+   to 15,000 ms. This timer measures the whole child PowerShell/start invocation, not network time
+   alone. The observed 10,047 ms overrun motivates scheduling/startup headroom while keeping a finite
+   end-to-end bound. Retain the exit-code and no-warning assertions; change no production timeout.
+3. The two existing corrected assertion suites stay green, the complete PSGallery suite passes,
+   and the full ChangedOnly suite passes with its positive and negative scope assertions retained.
+4. Commit the receipt and test correction into one new candidate SHA. Run the sanctioned CI/census
+   pair on it once. Expected census: 424 files, 148 Pester, 276 scripts, failed=0,
+   caller_contaminated=False; prepublish validation and dry-run publication pass. Expected CI: Lint,
+   Self-leak firewall, Deterministic gate and Contract lane green. A red remains red and is reported;
+   no unchanged re-dispatch substitutes for a correction.
+5. Only after that green evidence, install from a clean checkout of that exact SHA and verify bytes
+   and stamp; update the router-skill project exactly once more; verify deployment integrity, runtime
+   handshake and preservation of existing user records. Then name the SHA for the walk. Until then
+   the existing 97e03c80 installation is a held candidate, not permission to walk it.
+
+The repair stays within tests, the derived deployment receipt and records. The four B4F-099 production
+changes, token identity, receipts, crossing binding, missing-artifact withholding and captured-verdict
+directive are unchanged. B4F-100/101 remain deferred as ruled.

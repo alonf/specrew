@@ -4558,3 +4558,19 @@ be swept into the next boundary commit or reported dirty at closeout.
 
 **Disposition**: beta4.1. Use the fixed ignored `.specrew/runtime/turn-message.md`, name it in the
 three skills and default it in the script. This finding is recorded; beta4's package is unchanged.
+
+### B4F-027 recurrence - installed and updated ahead of a green census (process deviation)
+
+**Maintainer ruling, 2026-09-14 UTC**: census `34808258530` was red, so `97e03c80` is **not frozen**.
+The agent installed `97e03c80` and updated the router-skill project despite that result. Reporting the
+four failures did not authorize crossing the green-census prerequisite. Calling the delivery cycle
+complete and the SHA frozen was wrong. This is a process deviation in the B4F-027 class: installation
+and project deployment moved ahead of the evidence that must sanction the pair.
+
+The installation and update remain recorded facts; they are not retroactively valid. Do not repeat
+them ahead of green. The walk is on hold. The bounded correction is to retain the two already committed
+test-only fixes (`c0d1e148`, `4dae0a1b`), re-stamp the stale repository extension receipt, raise the
+PSGallery test's bound as a test-only change, state PRED-BETA4-058, and run one census on the new SHA.
+The sanctioned CI/census pair is the pair; a red is not a request for an unchanged re-dispatch.
+Only after green: byte-verified installation, one further router-skill update, then report the walk SHA.
+B4F-100 and B4F-101 retain their beta4.1 dispositions and the recorded Monday exception for B4F-100.
