@@ -4590,3 +4590,23 @@ The premature `97e03c80` installation/update remains a process deviation and is 
 later green result. The rule remains green before installation and project update. **Walk SHA:
 8d3f9906**. Acceptance 5 remains unwitnessed until the maintainer's walk; B4F-100/101 keep their ruled
 dispositions. This records compliance in the corrected cycle, not closure of the whole B4F-027 class.
+
+### B4F-099 installed-host acceptance - maintainer GREEN, 2026-09-14
+
+The maintainer accepted the re-scoped walk on `8d3f9906` (08:29-09:11 PDT, claude-opus-5 after an
+initial Fable turn): orientation once in the first reply, visible agenda and binding yes, one scoped
+move-on per lens, substantive specify packet with marker last and in-turn spec commit `9adb8f2`,
+same-turn clarify/plan starts on the captured verdicts, and the second feature's first registered
+question. Counts: unexpected repair prompts 0, post-verdict asks 0, partial acceptances 0.
+Acceptance 5 is GREEN within this path; release of exact `8d3f9906` is authorized. The
+[walk record](beta4-b4f099-validation.md#maintainer-walk-verdict---green-on-the-re-scoped-acceptance)
+retains timestamps, the unexercised correction step (three walks running), and duplicate agenda receipt.
+
+## B4F-102 - DESIGN-ANALYSIS REFUSAL OMITS THE PRODUCING STEP (beta4.1)
+
+**Observed beyond the accepted path:** the plan-stage gate names missing
+`iterations/001/design-analysis.md` but omits the step that produces it. In the 2026-09-14 `8d3f9906`
+walk, the coordinator spent four minutes reading module internals and encountered one classifier
+denial before drafting the artifact. **Disposition:** beta4.1, recorded not fixed. A gate refusal
+must name the producing action, as the persist refusal already does; naming the missing file alone
+leaves the coordinator without its next step. Related ordering/default findings are B5F-002/003.

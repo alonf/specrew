@@ -2,7 +2,49 @@
   "prediction": "PRED-BETA4-057",
   "prediction_commit": "91153385",
   "implementation_baseline": "8dc29187",
-  "acceptance_5": "pending maintainer Monday installed-host walk",
+  "acceptance_5": {
+    "verdict": "GREEN on the re-scoped acceptance",
+    "authority": "maintainer walk verdict, 2026-09-14",
+    "sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "project": "C:/Dev/walks/beta4-final-8d3f9906",
+    "host": "claude-opus-5 after an initial Fable turn",
+    "window_pdt": "2026-09-14 08:29-09:11",
+    "orientation": "once, first reply, 0.40.0-beta4",
+    "agenda": "block in crew message; yes bound",
+    "agenda_receipts_pdt": [
+      "08:41:52",
+      "08:42:00"
+    ],
+    "lens_replies_pdt": {
+      "product-domain": "08:32:28",
+      "architecture-core": "08:43:42",
+      "code-implementation": "08:46:25"
+    },
+    "specify_packet": "named review targets, three real discussion prompts, marker last, no lint picker",
+    "spec_commit": "9adb8f2",
+    "specify_verdict_captured_utc": "2026-09-14T15:52:18Z",
+    "clarify_began_same_turn": true,
+    "clarify_verdict_captured_utc": "2026-09-14T15:56:38Z",
+    "plan_began_same_turn": true,
+    "second_feature": "002-fix-broken-links created with workshop controller and registered product-domain question while feature 1 was parked at clarify with a design-analysis draft",
+    "counts": {
+      "unexpected_repair_prompts": 0,
+      "post_verdict_asks": 0,
+      "partial_acceptances": 0
+    },
+    "limits": [
+      "Product-domain correction step was not exercised, for the third walk running.",
+      "Duplicate agenda receipt remains an observation to explain."
+    ],
+    "release_authorized": true,
+    "release_tag": "v0.40.0-beta4",
+    "transcript_snapshot": {
+      "path": "C:\\Users\\alon\\.claude\\projects\\C--Dev-walks-beta4-final-8d3f9906\\6448e0c0-2d5e-453f-b2b1-ff60c8bfb791.jsonl",
+      "bytes": 2556366,
+      "sha256": "0c2b7bada687d36f5bd431df9fc8201c97096684879b2389a133a72331a4d423",
+      "note": "Snapshot only; host may append later metadata/turns. Acceptance window is bounded above."
+    }
+  },
   "focused": {
     "agent-led-workshop-replay.tests.ps1": {
       "exit_code": 0,
@@ -683,7 +725,7 @@
       }
     ]
   },
-  "stopping_rule": "Back in force after PRED-BETA4-058 green pair, verified installation and one further router update. Walk SHA 8d3f9906; acceptance 5 remains user-owned. B4F-100/101 dispositions unchanged. Prior premature 97e03c80 install/update remains B4F-027 process deviation.",
+  "stopping_rule": "Re-scoped walk accepted GREEN. Release exact 8d3f9906 authorized. Record-only findings: B4F-102 beta4.1, B5F-002/003 beta5; no source repair authorized.",
   "abandoned_transcript": {
     "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
     "baseline_prefix_intact": true,
@@ -724,7 +766,7 @@
     "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
     "authorized_next": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green.",
     "walk_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
-    "status": "fulfilled: green pair preceded verified install and single further router update; acceptance 5 remains pending"
+    "status": "maintainer accepted re-scoped installed-host walk GREEN and authorized tagging/publishing exact 8d3f9906"
   },
   "reopened_cycle": {
     "prediction": "PRED-BETA4-058",
@@ -977,5 +1019,11 @@
     "packaged_implementation_changes": 0,
     "full_changed_only_suite": "passed in the complete 424-file census; local pre-census reproduction was only the first positive case"
   },
-  "current_candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730"
+  "current_candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+  "release": {
+    "tag": "v0.40.0-beta4",
+    "sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "status": "authorized; tag/publication pending",
+    "gallery_verification": "pending"
+  }
 }

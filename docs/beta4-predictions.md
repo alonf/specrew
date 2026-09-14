@@ -2707,3 +2707,18 @@ it is not retroactively sanctioned. The stopping rule resumes after this correct
 the walk is **8d3f9906**. Acceptance 5 remains the maintainer's walk. B4F-100/101 remain beta4.1 with
 the already recorded Monday exception for B4F-100. The final records commit is docs past the tested
 and installed SHA, not a second census or a claim that later HEAD was tested.
+
+### PRED-BETA4-057 acceptance 5 - maintainer GREEN on the re-scoped walk
+
+The maintainer's 2026-09-14 08:29-09:11 PDT walk on `8d3f9906` is GREEN within the re-scoped
+acceptance: orientation once/first reply/version beta4; visible agenda, yes bound; one move-on per
+lens; specify packet with named targets, three real prompts and marker last, spec committed in-turn;
+captured specify and clarify verdicts begin the next stage in the same turn; feature 2's first
+question registers with its controller. Unexpected repair prompts 0, post-verdict asks 0, partial
+acceptances 0. This supplies the installed-host evidence the prediction explicitly reserved for the
+human. The maintainer authorizes tag and publication of exactly `8d3f9906`.
+
+The product-domain correction step remains unexercised (three walks running); the agenda's second
+receipt remains an observation to explain. Findings from the later plan-stage detour are recorded,
+not fixed: B4F-102 refusal remedy in beta4.1; B5F-002 mandatory-stop defaults and B5F-003 inverted
+artifact order/false skipped record in beta5. The green verdict does not claim those paths passed.

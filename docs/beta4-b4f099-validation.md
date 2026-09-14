@@ -5,7 +5,7 @@ CI/census pair is green (424/424 census files), followed by byte-verified instal
 router-skill update. The [final verdict](#pred-beta4-058-verdict---green-before-installation) records the
 order and verification. The earlier red `97e03c80` is not frozen; its premature install/update remains
 a B4F-027 process deviation. Historical claims below preserve that episode and are superseded by this
-current result. Acceptance 5 remains the maintainer's walk; it has not been run by the agent.
+current result. Acceptance 5 is GREEN by the maintainer's 2026-09-14 re-scoped walk verdict; release of this exact SHA is authorized.
 
 The maintainer ruled B4F-099 into beta4 on 2026-09-14 UTC, limited to the four changes in the
 regression report. PRED-BETA4-057 was committed in `91153385` before implementation. The authorized
@@ -220,3 +220,30 @@ PRED-BETA4-058 holds for the bounded correction and ordered delivery. The stoppi
 force. The walk can now use `8d3f9906`; acceptance 5 is still the maintainer's installed-host walk.
 B4F-100 and B4F-101 remain beta4.1, with only B4F-100's recorded exception if that walk trips it.
 The abandoned d8ce3ea9 walk and original transcript remain preserved evidence.
+
+## Maintainer walk verdict - GREEN on the re-scoped acceptance
+
+On 2026-09-14, 08:29-09:11 PDT, the maintainer walked `8d3f9906` in
+`C:/Dev/walks/beta4-final-8d3f9906`, using claude-opus-5 after an initial Fable turn, and ruled the
+re-scoped acceptance **GREEN**. This is installed-host evidence, supplied by the human; it completes
+acceptance 5 within that scope and authorizes tagging and publishing exactly `8d3f9906`.
+
+- Orientation appeared once, in the first reply, as `0.40.0-beta4`.
+- The agenda block appeared in the crew's message. `yes` bound at 08:41:52 PDT; a second agenda
+  receipt at 08:42:00 is retained as an observation to explain, not hidden from the green verdict.
+- One `move on` per lens: product-domain 08:32:28, architecture-core 08:43:42, code-implementation
+  08:46:25 PDT.
+- The specify packet named review targets, carried three real discussion prompts, ended with the
+  marker, and used no lint picker. The spec was committed in-turn as `9adb8f2`.
+- `approved for specify` was captured at 15:52:18Z and clarify began in the same turn;
+  `approved for clarify` was captured at 15:56:38Z and plan began in the same turn.
+- Feature `002-fix-broken-links` was created with its workshop controller and registered its first
+  product-domain question while feature 1 was parked at clarify with a design-analysis draft.
+- Unexpected repair prompts **0**, post-verdict asks **0**, partial acceptances **0**.
+
+**Limits and deferred findings:** the product-domain correction step was not exercised, for the third
+walk running. The subsequent plan-stage detour is beyond the accepted path: missing producer remedy
+in the design-analysis refusal is B4F-102 (beta4.1); a clarify discussion default purported to skip a
+mandatory stop is B5F-002 (beta5); authoring/committing the plan and five design artifacts before that
+stop, with a false skipped declaration in `17462e4`, is B5F-003 (beta5). The gate correctly refused
+the skip. These are recorded, not fixed, and do not broaden this release's accepted scope.
