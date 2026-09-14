@@ -83,15 +83,30 @@ function New-Declaration {
     # RUNS THE REAL declare-turn-end.ps1. Nothing in this suite writes a turn-end record by hand: the hook now
     # depends on that artifact, so the artifact must come from its producer or the suite proves only that the
     # test can write JSON.
-    param([string]$Proj, [string]$Kind = 'boundary', [string]$Summary = 'fixture turn', [AllowNull()][string]$Pending, [AllowNull()][string]$From, [AllowNull()][string]$To, [AllowNull()][string]$Token)
+    param([string]$Proj, [string]$Kind = 'boundary', [string]$Summary = 'fixture turn', [AllowNull()][string]$Pending, [AllowNull()][string]$From, [AllowNull()][string]$To, [AllowNull()][string]$Token, [string]$PacketText)
     if (-not [string]::IsNullOrWhiteSpace($From)) { New-PendingVerdictStop -Proj $Proj -From $From -To $To }
     $declarer = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\declare-turn-end.ps1'
     $argsList = @('-NoProfile', '-File', $declarer, '-Kind', $Kind, '-ProjectRoot', $Proj, '-Summary', $Summary, '-AsJson')
+    $authoredPacket = ''
+    if ($Kind -eq 'boundary') {
+        $authoredPacket = if ([string]::IsNullOrWhiteSpace($PacketText)) { $realPacket } else { $PacketText }
+        if (-not [string]::IsNullOrWhiteSpace($From)) {
+            $authoredPacket = $authoredPacket.Replace('clarify -> plan', ($From + ' -> ' + $To)).Replace('approved for plan', ('approved for ' + $To))
+        }
+        $messagePath = Join-Path $Proj '.specrew/runtime/authored-packet.md'
+        Set-Content -LiteralPath $messagePath -Value $authoredPacket -Encoding UTF8
+        $argsList += @('-MessagePath', $messagePath)
+    }
     if (-not [string]::IsNullOrWhiteSpace($Pending)) { $argsList += @('-Pending', $Pending) }
     if (-not [string]::IsNullOrWhiteSpace($Token)) { $argsList += @('-Token', $Token) }
     $out = & pwsh @argsList 2>&1
     $joined = (@($out) -join "`n")
-    try { return ($joined | ConvertFrom-Json) } catch { throw ("declare-turn-end failed: " + $joined) }
+    try {
+        $result = $joined | ConvertFrom-Json
+        # The fixture agent composes its reply; the script supplies only missing machine lines.
+        $result | Add-Member -NotePropertyName reply -NotePropertyValue ($authoredPacket + [Environment]::NewLine + $result.text)
+        return $result
+    } catch { throw ("declare-turn-end failed: " + $joined) }
 }
 
 function Save-FixtureStructure {
@@ -438,7 +453,7 @@ This is the clarify -> plan boundary. Planning converts the spec into architectu
 
 ## What Needs Your Review
 
-The clarifications section and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
+The clarifications at file:///fixture/spec.md and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
 
 ## What Happens Next
 
@@ -446,11 +461,12 @@ I will author plan.md with the architecture and the FR-to-test mapping. No code 
 
 ## Discussion Prompts
 
-1. Is the locked scope correct? You can approve with the defaults.
+1. I recommend the locked scope because it isolates the host capability changes. Is that scope correct?
 
 ## What I Need From You
 
 Approve as-is, approve with instructions, send back, or discuss prompt #N.
+approved for plan
 
 <!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan -->
 '@
@@ -568,9 +584,9 @@ try {
     if (-not $d2b.record_written) { Fail "Case 2b: the declaration script did not write its record. $($d2b | ConvertTo-Json -Compress)" }
     if (-not (Test-Path -LiteralPath $d2b.record_path -PathType Leaf)) { Fail "Case 2b: the record path the script reported does not exist: $($d2b.record_path)" }
     if ($d2b.record_path -notmatch 'turn-end') { Fail "Case 2b: the record must live under the turn-end store, not somewhere incidental: $($d2b.record_path)" }
-    $t2b = New-Transcript -Proj $p2b -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'Done. Stopping for your verdict.' })
+    $t2b = New-Transcript -Proj $p2b -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2b.reply })
     $r2b = Invoke-Conformance -Proj $p2b -TranscriptPath $t2b
-    if ($r2b.Blocked) { Fail "Case 2b: a DECLARED boundary matching the pending crossing MUST suppress, whatever the message says. Out: $($r2b.Out)" }
+    if ($r2b.Blocked) { Fail "Case 2b: a DECLARED boundary matching the pending crossing must pass only with the authored packet visible. Out: $($r2b.Out)" }
     Write-Pass "Case 2b (positive control): a declared boundary suppresses the block, and the record is at the path the shared store resolves"
 
     # ---- Case 2c (the BOUNDARY update transition): a project on the OLD habit at a pending crossing.
@@ -590,8 +606,8 @@ try {
     # the crew does what it was told: runs the command it was given, for the crossing that is pending
     $d2c = New-Declaration -Proj $p2c -Kind 'boundary' -From 'clarify' -To 'plan'
     if (-not $d2c.record_written) { Fail "Case 2c: the declaration was not written. $($d2c | ConvertTo-Json -Compress)" }
-    if ([string]$d2c.text -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 2c: the script's rendered text must carry the exact pending-crossing marker, because verdict capture reads it from the message. Text: $($d2c.text)" }
-    $t2c2 = New-Transcript -Proj $p2c -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2c.text })
+    if ([string]$d2c.reply -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 2c: the script's rendered text must carry the exact pending-crossing marker, because verdict capture reads it from the message. Text: $($d2c.text)" }
+    $t2c2 = New-Transcript -Proj $p2c -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2c.reply })
     $r2c2 = Invoke-Conformance -Proj $p2c -TranscriptPath $t2c2
     if ($r2c2.Blocked) { Fail "Case 2c: after running the command it was given, the next stop MUST NOT be refused - one refusal, not a loop. Out: $($r2c2.Out)" }
     Write-Pass "Case 2c: the BOUNDARY update transition costs exactly one refusal - it names declare-turn-end -Kind boundary, the script renders packet and marker, and the next stop is accepted"
@@ -632,7 +648,7 @@ try {
     if ((Read-SpecrewTurnToken -StateRoot $paths2e.StateRoot) -cne $tok2e) { Fail "Case 2e: a BLOCKING Stop must keep the token - the turn has not ended and the re-run it demands declares under this token." }
     $d2e = New-Declaration -Proj $p2e -Kind 'boundary' -From 'clarify' -To 'plan' -Token $tok2e
     if (-not $d2e.record_written -or [string]$d2e.identity -cne 'matched') { Fail "Case 2e: the forced re-run with the handed token must be accepted by the script (identity=matched). $($d2e | ConvertTo-Json -Compress)" }
-    $r2e2 = Invoke-Conformance -Proj $p2e -TranscriptPath (New-Transcript -Proj $p2e -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2e.text })) -SessionId $s2e
+    $r2e2 = Invoke-Conformance -Proj $p2e -TranscriptPath (New-Transcript -Proj $p2e -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2e.reply })) -SessionId $s2e
     if ($r2e2.Blocked) { Fail "Case 2e: the declaration under the token this session's hook issued MUST be credited. Out: $($r2e2.Out)" }
     if (-not [string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot $paths2e.StateRoot))) { Fail "Case 2e: the Stop that ended the turn must CONSUME the token - live means unconsumed." }
     $r2e3 = Invoke-Conformance -Proj $p2e -Event UserPromptSubmit -SessionId $s2e
@@ -1136,9 +1152,10 @@ try {
     if ($r7cap2.Out -notmatch 'ENFORCEMENT STOPPED after 3 consecutive blocks') { Fail "Case 7: the capped release MUST announce that enforcement stopped and name the cap. Out: $($r7cap2.Out)" }
     if ($r7cap2.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 7: over the cap, degrade to a plain marker nudge. Out: $($r7cap2.Out)" }
     # A DECLARED stop resets the counter (it was a prose packet before fix 2).
-    $null = New-Declaration -Proj $p7 -Kind 'boundary' -From 'clarify' -To 'plan'
-    $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
-    $null = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
+    $d7 = New-Declaration -Proj $p7 -Kind 'boundary' -From 'clarify' -To 'plan'
+    $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = [string]$d7.reply })
+    $r7ok = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
+    if ($r7ok.Blocked) { Fail "Case 7: the visible authored packet must clear the block before reset is tested. $($r7ok.Out)" }
     $t7re = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (post-reset attempt).' })
     $r7reset = Invoke-Conformance -Proj $p7 -TranscriptPath $t7re
     if (-not $r7reset.Blocked) { Fail "Case 7: after a packet-present stop reset the counter, a fresh packet-less advance MUST re-block. Out: $($r7reset.Out)" }
@@ -1169,8 +1186,8 @@ try {
     #               rendered packet targets the FIRST unauthorized crossing clarify -> plan -> suppress and let capture bind.
     $p9b = New-Fixture -Working 'tasks' -LastAuth 'clarify'
     New-BoundaryStageEvidence -Proj $p9b
-    $null = New-Declaration -Proj $p9b -Kind 'boundary' -From 'clarify' -To 'plan'
-    $t9b = New-Transcript -Proj $p9b -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
+    $d9b = New-Declaration -Proj $p9b -Kind 'boundary' -From 'clarify' -To 'plan'
+    $t9b = New-Transcript -Proj $p9b -Turns @(@{ role = 'assistant'; text = [string]$d9b.reply })
     $r9b = Invoke-Conformance -Proj $p9b -TranscriptPath $t9b
     if ($r9b.Blocked) { Fail "Case 9b: a marker for the first unauthorized crossing clarify -> plan MUST suppress even when working already jumped to tasks. Out: $($r9b.Out)" }
     Write-Pass "Case 9b: multi-gate over-advance suppresses only when the packet names the FIRST unauthorized crossing (clarify -> plan)"
@@ -1181,8 +1198,8 @@ try {
     New-BoundaryStageEvidence -Proj $p9c
     # DECLARED, but for the gate-skipping crossing. The declaration is real; what it names is wrong, and that
     # is the whole point - a declaration is evidence of a render, never of the right one.
-    $null = New-Declaration -Proj $p9c -Kind 'boundary' -From 'plan' -To 'tasks'
-    $t9c = New-Transcript -Proj $p9c -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
+    $d9c = New-Declaration -Proj $p9c -Kind 'boundary' -From 'plan' -To 'tasks'
+    $t9c = New-Transcript -Proj $p9c -Turns @(@{ role = 'assistant'; text = [string]$d9c.reply })
     $r9c = Invoke-Conformance -Proj $p9c -TranscriptPath $t9c
     if (-not $r9c.Blocked) { Fail "Case 9c: a gate-skipping plan -> tasks marker MUST NOT suppress while clarify -> plan is first unauthorized. Out: $($r9c.Out)" }
     if ($r9c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 9c: block must demand the first unauthorized clarify -> plan marker. Out: $($r9c.Out)" }
@@ -1193,9 +1210,9 @@ try {
     $p10 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     New-BoundaryStageEvidence -Proj $p10
     # A STALE declaration: clarify -> plan was declared, then the work advanced to plan -> tasks.
-    $null = New-Declaration -Proj $p10 -Kind 'boundary' -From 'clarify' -To 'plan'
+    $d10 = New-Declaration -Proj $p10 -Kind 'boundary' -From 'clarify' -To 'plan'
     $t10 = New-Transcript -Proj $p10 -Turns @(
-        @{ role = 'assistant'; text = 'Stopping for your verdict.' },
+        @{ role = 'assistant'; text = [string]$d10.reply },
         @{ role = 'user'; text = 'approved for plan' },
         @{ role = 'assistant'; text = 'Plan approved. I have written tasks.md and am starting implementation now in earnest.' }
     )
@@ -1208,8 +1225,8 @@ try {
     #                a plan->tasks packet rendered.
     $p11 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     New-BoundaryStageEvidence -Proj $p11
-    $null = New-Declaration -Proj $p11 -Kind 'boundary' -From 'plan' -To 'tasks'
-    $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'Stopping for your verdict.' })
+    $d11 = New-Declaration -Proj $p11 -Kind 'boundary' -From 'plan' -To 'tasks'
+    $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d11.reply })
     $r11 = Invoke-Conformance -Proj $p11 -TranscriptPath $t11
     if ($r11.Blocked) { Fail "Case 11: a packet whose marker matches the pending crossing is a legitimate awaiting stop - MUST suppress. Out: $($r11.Out)" }
     Write-Pass "Case 11: the RELEVANT packet (plan -> tasks == pending crossing) correctly suppresses the block (guard precision)"
@@ -1218,8 +1235,8 @@ try {
     #                 authorizable crossing is still intake -> specify. That exact marker suppresses.
     $p11b = New-Fixture -Working 'clarify' -LastAuth ''
     New-BoundaryStageEvidence -Proj $p11b
-    $null = New-Declaration -Proj $p11b -Kind 'boundary' -From 'intake' -To 'specify'
-    $t11b = New-Transcript -Proj $p11b -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
+    $d11b = New-Declaration -Proj $p11b -Kind 'boundary' -From 'intake' -To 'specify'
+    $t11b = New-Transcript -Proj $p11b -Turns @(@{ role = 'assistant'; text = [string]$d11b.reply })
     $r11b = Invoke-Conformance -Proj $p11b -TranscriptPath $t11b
     if ($r11b.Blocked) { Fail "Case 11b: first-boundary marker intake -> specify MUST suppress even when working already jumped to clarify. Out: $($r11b.Out)" }
     Write-Pass "Case 11b: first-boundary over-advance suppresses on the marker-only intake -> specify crossing"
@@ -1228,8 +1245,8 @@ try {
     #                 authorization from an empty ledger; it must block and demand intake -> specify.
     $p11c = New-Fixture -Working 'clarify' -LastAuth ''
     New-BoundaryStageEvidence -Proj $p11c
-    $null = New-Declaration -Proj $p11c -Kind 'boundary' -From 'specify' -To 'clarify'
-    $t11c = New-Transcript -Proj $p11c -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
+    $d11c = New-Declaration -Proj $p11c -Kind 'boundary' -From 'specify' -To 'clarify'
+    $t11c = New-Transcript -Proj $p11c -Turns @(@{ role = 'assistant'; text = [string]$d11c.reply })
     $r11c = Invoke-Conformance -Proj $p11c -TranscriptPath $t11c
     if (-not $r11c.Blocked) { Fail "Case 11c: first-boundary wrong marker specify -> clarify MUST block when specify is not authorized yet. Out: $($r11c.Out)" }
     if ($r11c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: intake -> specify') { Fail "Case 11c: block must demand intake -> specify for the first unauthorized boundary. Out: $($r11c.Out)" }
@@ -1765,10 +1782,10 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     $stop19Text = Get-Content -LiteralPath $stop19 -Raw -Encoding UTF8
     $stop19Text = ($stop19Text -split "`r?`n" | Where-Object { $_ -notmatch 'SPECREW-VERDICT-BOUNDARY' -and $_ -notmatch 'Marker last line exactly' }) -join [Environment]::NewLine
     [IO.File]::WriteAllText($stop19, $stop19Text, [Text.UTF8Encoding]::new($false))
-    $d19 = New-Declaration -Proj $p19 -Kind 'boundary' -Summary 'declared without a marker'
+    $d19 = New-Declaration -Proj $p19 -Kind 'boundary' -Summary 'declared without a marker' -PacketText $packetNoMarker
     if (-not $d19.record_written) { Fail "Case 19: the marker-less boundary declaration was not written. $($d19 | ConvertTo-Json -Compress)" }
-    if ([string]$d19.text -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 19 fixture INVALID: the rendered text carries a marker, so the case would not test the missing-marker path. Text: $($d19.text)" }
-    $t19b = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d19.text })
+    if ([string]$d19.reply -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 19 fixture INVALID: the rendered text carries a marker, so the case would not test the missing-marker path. Text: $($d19.text)" }
+    $t19b = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d19.reply })
     $r19b = Invoke-Conformance -Proj $p19 -TranscriptPath $t19b
     if (-not $r19b.Blocked) { Fail "Case 19: a DECLARED boundary that rendered NO marker MUST still block - the declaration names the crossing but verdict capture would have nothing to read. Out: $($r19b.Out)" }
     if ($r19b.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 19: the block must demand the contiguous verdict marker. Out: $($r19b.Out)" }

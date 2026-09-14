@@ -1,25 +1,28 @@
 ---
 name: "specrew-turn-end"
-description: "End every turn by running the turn-end declaration script - it decides what is rendered from the artifacts; you supply the facts and the token the hook handed you. Triggers: turn end, stop, packet, in flight, boundary packet, declare-turn-end, record a design decision."
+description: "Record turn completion and verify the agent-authored reply. Triggers: turn end, stop, packet, in flight, boundary packet, declare-turn-end, record a design decision."
 domain: "lifecycle-governance"
 confidence: "high"
-source: "Specrew beta4 fix 2 - the turn-end declaration replaces prose scoring; every recovery text names this script."
+source: "Specrew turn declaration and agent-authored presentation contract."
 ---
 
 # specrew-turn-end
 
 **Namespace**: `/specrew`
 
-End every turn by running the turn-end script. It decides what is rendered; you supply the facts.
+The script is the **last tool call**, and its return is **for you, never your reply**. You author the
+human-facing question, complete agenda, answer or boundary packet. Save the draft before the last call:
 
 ```powershell
 pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
     -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' `
-    -Token <the token from the latest [specrew-turn] line>
+    -MessagePath <utf8-draft-file> -Token <the token from the latest [specrew-turn] line>
 ```
 
-Output whatever it returns, verbatim. **It may return nothing, and nothing is a complete answer** — a turn
-that discussed something and changed nothing owes the human no ceremony.
+Then send the authored content in your own message. Ordinary declarations emit no human-facing text.
+At a boundary the script verifies the draft and supplies only a missing machine-derived approval line
+and/or marker. Incorporate those into your packet, with the marker last. Stop checks that the prepared
+content actually reached your reply; a tool result alone is not presentation.
 
 ## The token
 
@@ -37,9 +40,9 @@ issue time; if you know that session is gone, its token file can be removed.
 
 | kind | when | extra |
 | --- | --- | --- |
-| `boundary` | the human's judgment decides what happens next | `-Owed '<artifact>'` when the stage owes something it has not produced |
+| `boundary` | a lifecycle stage is ready for the human's verdict | `-Owed '<artifact>'` when the stage owes something it has not produced |
 | `in-flight` | background work is still running | `-Pending '<the work>'` — **required** |
-| `conversational` | nothing material changed | — |
+| `conversational` | an answer or a workshop question awaits the human | `-MessagePath` carries the authored reply |
 
 **`-Owed` matters.** When a stage owes artifacts it has not produced there is nothing to approve, so the
 packet renders with no options and no verdict marker and names what is owed instead. Offering an approval
@@ -48,18 +51,19 @@ phrase for an empty increment is the thing that rule exists to prevent.
 **`-Pending` is required for `in-flight` and only for `in-flight`.** A boundary declaration is checked
 against the pending crossing and a conversational one claims nothing, but "work is in flight" is a
 statement about the world that no artifact confirms. The least it can be asked for is what, by name. Say
-the same thing about the same item on too many consecutive turns and the script stops reporting and starts
-asking — waiting is not a report.
+the same thing about the same item on too many consecutive turns and the existing Stop gate asks you to
+explain what remains pending and what should happen next.
 
-## What you do not do
+## Authorship and declaration
 
-**Do not compose the packet yourself.** The script renders it from the artifacts: the boundary, the
-approval phrase and the verdict marker come from `.specrew/runtime/pending-verdict-stop.md`, never from the
-phase you intend to enter next.
+**Author the packet yourself.** Include the six Rule 46 sections, specific review targets, a
+recommendation and the next step. The pending crossing supplies the approval line and marker; you never
+infer them from your intended next phase. A missing-artifact packet names what is owed and the step you
+will perform, and offers no approval or marker. Opening orientation is yours, once; turn-end never repeats
+it. The orientation gate supplies only an absent dials line.
 
-**Do not skip it because the turn felt small.** The gates decide whether anything is rendered; that is what
-they are for. A declaration that earns no output is still recorded, because "the agent declared and nothing
-was earned" and "the agent declared nothing at all" look identical from outside and mean opposite things.
+**Declare small turns too.** A declaration with no output still records the turn and its session identity.
+Your reply remains your responsibility.
 
 ## Recording a design decision
 

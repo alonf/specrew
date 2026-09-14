@@ -857,7 +857,7 @@ try {
             if ($null -ne $turnEndPaths -and (Get-Command Write-SpecrewTurnToken -ErrorAction SilentlyContinue)) {
                 $issuedToken = [string](Write-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId) -ReuseUnconsumed)
                 if (-not [string]::IsNullOrWhiteSpace($issuedToken)) {
-                    Write-Output ("[specrew-turn] Your last action this turn: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Token {0}" -f $issuedToken)
+                    Write-Output ("[specrew-turn] Last tool call; return is for you, author the reply: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Token {0}" -f $issuedToken)
                 }
             }
         }
@@ -956,7 +956,7 @@ try {
             else {
                 'CURRENTLY DIRTY IN THE WORKTREE ({0} user file(s)); exact per-turn attribution is unavailable.' -f [int]$sig.current_dirty_user_file_count
             }
-            Write-Output ("[specrew-conformance] {0} When you finish, run the turn-end script as your LAST action and output what it returns: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what was done>' -Token <the token from the latest [specrew-turn] line>. Running it before you stop is the contract; a stop after material work with no declaration gets force-continued." -f $activityLabel)
+            Write-Output ("[specrew-conformance] {0} When you finish, run the turn-end script as your LAST tool call; its return is for you, never the human-facing reply: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what was done>' -Token <the token from the latest [specrew-turn] line>. Running it before you stop is the contract; a stop after material work with no declaration gets force-continued." -f $activityLabel)
         }
         catch { $null = $_ }
         return
@@ -1197,7 +1197,7 @@ try {
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState -or $workshopRepairState -or $missingWorkshopController -or $preScaffoldWorkshopCandidate) {
+    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState -or $workshopRepairState -or $missingWorkshopController -or $preScaffoldWorkshopCandidate -or $turnEndDeclared) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
@@ -1237,8 +1237,12 @@ try {
     # part of that existed because the signal was never designed to be read - it was reconstructed.
     #
     # A declaration is designed to be read. The re-read lane, the header scoring and the sleep all go with it.
-    $packetPresent = ($turnEndKind -eq 'boundary')
-    if ($packetPresent -and $hasPending -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
+    $declaredMessage = if ($null -ne $turnEndRecord -and $turnEndRecord.PSObject.Properties['message']) { [string]$turnEndRecord.message } else { '' }
+    $messageVisible = Test-SpecrewTurnMessageVisible -Message $lastAssistantText -Expected $declaredMessage
+    $packetPresent = ($turnEndKind -eq 'boundary' -and $null -ne $turnEndRecord -and
+        $turnEndRecord.PSObject.Properties['packet_valid'] -and [bool]$turnEndRecord.packet_valid -and $messageVisible)
+    $declaredCrossingMatches = $false
+    if ($turnEndKind -eq 'boundary' -and $hasPending -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
         try {
             $declaredBoundary = [string]$turnEndRecord.boundary
             if (-not [string]::IsNullOrWhiteSpace($declaredBoundary) -and $declaredBoundary -match '^\s*(.+?)\s*->\s*(.+?)\s*$') {
@@ -1254,7 +1258,9 @@ try {
                 $declaredMarker = if ($turnEndRecord.PSObject.Properties['marker']) { [string]$turnEndRecord.marker } else { '' }
                 if (-not [string]::IsNullOrWhiteSpace($declaredTo) -and $declaredFrom -eq $expectedFrom -and $declaredTo -eq $expectedTo -and
                     -not [string]::IsNullOrWhiteSpace($declaredMarker) -and $declaredMarker -match 'SPECREW-VERDICT-BOUNDARY') {
-                    $markerForPendingCrossing = $true
+                    $declaredCrossingMatches = $true
+                    $markerForPendingCrossing = $packetPresent -and (Test-SpecrewTurnMessageVisible -Message $lastAssistantText -Expected $declaredMarker) -and
+                        (Test-SpecrewTurnMessageVisible -Message $lastAssistantText -Expected ([string]$turnEndRecord.approval_phrase))
                 }
             }
         }
@@ -1318,6 +1324,18 @@ try {
         catch { $null = $_ }  # a corrupt store already surfaces through its own receipt-invalid repair reasons
     }
     if ($workshopIntermediate -or $workshopConflict -or $workshopRepair) { $rawHit = $false }
+    # A tool-rendered proposal or declared draft must reach the assistant's visible reply. The record
+    # proves what was prepared; this comparison proves presentation, without granting any authority.
+    $presentationMissing = ''
+    if (-not [string]::IsNullOrWhiteSpace($declaredMessage) -and -not $messageVisible) { $presentationMissing = 'declared message' }
+    if ($turnEndKind -eq 'boundary' -and $hasPending -and (-not $packetPresent -or ($hasPending -and -not $markerForPendingCrossing))) { $presentationMissing = 'boundary packet' }
+    if ($workshopIntermediate -and [string]$workshopQuestion.phase -eq 'agenda' -and
+        (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew/handover/workshop-agenda-proposal.json') -PathType Leaf) -and
+        [string]$workshopQuestion.agenda_visibility -eq 'not-visible') { $presentationMissing = 'workshop agenda' }
+
+    # A stale or skipped crossing keeps the existing boundary correction and its exact target.
+    if ($hasPending -and $turnEndKind -eq 'boundary' -and -not $declaredCrossingMatches) { $presentationMissing = '' }
+
     # The old 4x tail-200 mitigation remains removed. The measured 2026-08-10 signature now triggers only the
     # bounded tail-8 recovery above; diagnostics record both attempted and recovered so it cannot fail silently.
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
@@ -1331,7 +1349,7 @@ try {
     # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("wc={0}" -f [int][bool]$workshopConflict), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, $presentationMissing, $declaredMessage, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("wc={0}" -f [int][bool]$workshopConflict), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
     $lastFirePath = $materialRuntime.LastFirePath
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
@@ -1437,6 +1455,7 @@ try {
     #   - and it fails OPEN on every error, unreadable path and unassessable turn.
     $orientationOwed = $false
     $orientationSatisfiedNow = $false
+    $orientationDialsMissing = ''
     if ($canAssess -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.OrientationPath)) {
         try {
             if (-not (Test-Path -LiteralPath ([string]$materialRuntime.OrientationPath) -PathType Leaf)) {
@@ -1496,6 +1515,10 @@ try {
                         if ($namesProduct -and $namesOrientationFact) { $orientationSatisfiedNow = $true; break }
                     }
                     if (-not $orientationSatisfiedNow) { $orientationOwed = $true }
+                    elseif (($orientationCandidates -join ' ') -notmatch '(?i)what I know about you|how I am adapting|software_architecture\s*=|expert on|mid-level on|senior on') {
+                        $orientationDialsMissing = Get-SpecrewOrientationDialsLine
+                        if (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)) { $orientationOwed = $true; $orientationSatisfiedNow = $false }
+                    }
                 }
             }
         }
@@ -1551,7 +1574,7 @@ try {
         }
         catch { $coverageDecisionBlock = $false }
     }
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($coverageDecisionBlock) { 'coverage-decision' } elseif ($turnEndInFlightExhausted) { 'in-flight-exhausted' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif (-not [string]::IsNullOrWhiteSpace($presentationMissing)) { 'presentation' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($coverageDecisionBlock) { 'coverage-decision' } elseif ($turnEndInFlightExhausted) { 'in-flight-exhausted' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1649,7 +1672,7 @@ try {
     # A valid pre-agenda controller normally proves an intermediate question. It must not suppress the targeted
     # repair when the visible turn nevertheless opened a technical lens before the agenda decision: the state is
     # valid precisely because it still says product-domain/pending-confirmation, which is the evidence of drift.
-    $workshopQuestionWins = $workshopIntermediate -and (-not $workshopAgendaPresentationMissing) -and
+    $workshopQuestionWins = (-not $orientationOwed) -and [string]::IsNullOrWhiteSpace($presentationMissing) -and $workshopIntermediate -and (-not $workshopAgendaPresentationMissing) -and
         (-not $workshopProductRecordMissingAgenda) -and (-not $workshopAgendaReformatted) -and
         (-not $workshopProductRecordsUnreceipted) -and
         (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
@@ -1740,6 +1763,7 @@ try {
     elseif ($blockKind -eq 'boundary-evidence-absent' -and $null -ne $pending) {
         ("evidence-absent|{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary)
     }
+    elseif ($blockKind -eq 'presentation') { ('presentation|{0}|{1}' -f $materialRuntime.Owner, $presentationMissing) }
     elseif ($blockKind -eq 'orientation') {
         # Keyed per session so the cap counts THIS session's unshown orientation, not a pooled 'na'.
         ("orientation|{0}" -f [string]$materialRuntime.Owner)
@@ -1808,7 +1832,10 @@ try {
             # this counter, so an unverifiable write must NOT start an uncappable loop.
             # Build the packet directive. At a boundary, include the CONTIGUOUS last_authorized -> successor marker.
             $sb = New-Object System.Text.StringBuilder
-            if ($blockKind -eq 'boundary') {
+            if ($blockKind -eq 'presentation') {
+                [void]$sb.AppendLine(('Specrew: include the complete {0} in your assistant reply; for a boundary, run declare-turn-end.ps1 -Kind boundary -MessagePath <draft> and include the pending approval line and marker.' -f $presentationMissing))
+            }
+            elseif ($blockKind -eq 'boundary') {
                 # FR-032 (T023): a pending crossing is owed by the SESSION THAT RECORDED IT. Three states, one
                 # of which suppresses this demand: owner-differs (a different, live session owns it) gets one
                 # informational line instead. owner-indeterminate FAILS OPEN - the demand renders with a
@@ -1836,9 +1863,9 @@ try {
                 # marker are still what verdict capture reads, so they still have to land in the message; the
                 # change is WHO renders them. declare-turn-end -Kind boundary renders both from
                 # pending-verdict-stop.md, and the hook then credits the record it wrote.
-                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last action and output what it returns, verbatim - it renders the six-section packet and the exact verdict marker from the pending-stop artifact:')
+                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last tool call with -MessagePath <your authored packet file>; include that packet in your reply and add only the missing approval line and marker it supplies:')
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
-                [void]$sb.AppendLine('Do not compose the packet or the marker yourself; the script takes both from .specrew/runtime/pending-verdict-stop.md, never from the phase you intend to enter next.')
+                [void]$sb.AppendLine('Author the packet with specific review targets, a recommendation and the next step; take the approval line and marker only from the pending crossing.')
                 $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
                 $toBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingToMarkerBoundary } else { [string]$pending.WorkingBoundary }
                 [void]$sb.AppendLine('')
@@ -2053,18 +2080,18 @@ try {
                     # false - this session did - and saying nothing would leave a correct session refused
                     # for a reason it cannot see.
                     [void]$sb.AppendLine('Specrew: a turn-end declaration was recorded for this turn, but it belongs to a DIFFERENT session working in this project. Two sessions are live here at once, so neither is credited with the other''s declaration.')
-                    [void]$sb.AppendLine('Nothing is wrong with your work. Run the turn-end script again as your last action, passing the token from the most recent [specrew-turn] line in THIS conversation, and this turn will be recorded against this session:')
+                    [void]$sb.AppendLine('Nothing is wrong with your work. Run the turn-end script again as your last tool call, passing the token from the most recent [specrew-turn] line in THIS conversation, and this turn will be recorded against this session:')
                 }
                 else {
                     # It says CHANGES WERE OBSERVED, not that this session made them: with attribution retired, the hook
                     # cannot know whose edits these are, and a read-only session sharing the project would be told it
                     # had done work it never did. What it can honestly say is that no declaration was recorded, and
                     # that a session which changed nothing declares -Kind conversational and is done.
-                    [void]$sb.AppendLine('Specrew: changes were observed in the worktree since this turn began and no turn-end declaration was recorded for it. Run the turn-end script NOW as your last action, then stop again:')
+                    [void]$sb.AppendLine('Specrew: changes were observed in the worktree since this turn began and no turn-end declaration was recorded for it. Run the turn-end script NOW as your last tool call, then stop again:')
                 }
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
-                [void]$sb.AppendLine('Output whatever the script returns, verbatim. It may return nothing, and nothing is a complete answer.')
+                [void]$sb.AppendLine('The return is for you, never your reply. Author the human-facing answer, agenda, question or packet; pass its draft with -MessagePath.')
                 $w52MaterialLine = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { try { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } catch { '' } } else { '' }
                 if (-not [string]::IsNullOrWhiteSpace($w52MaterialLine)) { [void]$sb.AppendLine(('Pass this line through in -Summary: {0}' -f $w52MaterialLine)) }
             }
@@ -2077,11 +2104,17 @@ try {
                 [void]$sb.AppendLine('Do NOT declare in-flight again for the same item without something new to report.')
             }
             if ($blockKind -eq 'orientation') {
-                [void]$sb.AppendLine('Specrew: this session''s orientation was handed to you and the human never saw it. Render it NOW as visible prose: that Specrew is active with its version and host, where this project stands in the lifecycle, where their artifacts live, what will be asked of them at boundaries, and what you believe about them so they can correct it. Then continue what you were doing.')
+                if (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)) {
+                    [void]$sb.AppendLine(('Specrew: add only the missing dials line to your reply: {0}' -f $orientationDialsMissing))
+                }
+                else { [void]$sb.AppendLine('Specrew: this session''s orientation was handed to you and the human never saw it; render the opening orientation, including what you believe about them so they can correct it, in your assistant reply.') }
                 [void]$sb.AppendLine('Reading it to orient yourself is not rendering it. Do not summarise it as having happened; show it.')
             }
             elseif ($orientationOwed) {
-                [void]$sb.AppendLine('Also: this session''s orientation was never shown to the human - include it in this same message, before the rest, so they learn what this project asks of them now rather than at a boundary they did not expect.')
+                if (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)) {
+                    [void]$sb.AppendLine(('Specrew: add only the missing dials line to your reply: {0}' -f $orientationDialsMissing))
+                }
+                else { [void]$sb.AppendLine('Also: this session''s orientation was never shown; render the opening orientation before the current question.') }
             }            if ($intakeHit) { [void]$sb.AppendLine('Also: an active feature already exists - do NOT ask what to build; continue it.') }
             if ($rawHit) { [void]$sb.AppendLine('Also: do NOT run the raw `specify workflow` SDD engine - route through the governed Specrew flow.') }
             if ($blockReasonOwnerScoped) {
@@ -2165,7 +2198,7 @@ try {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
             }
             else {
-                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> and output what it returns; it renders the packet and the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.") | Out-Null
+                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> with -MessagePath <your authored packet file>; include the packet and supplied pending-crossing approval line and SPECREW-VERDICT-BOUNDARY marker in your reply.") | Out-Null
             }
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }

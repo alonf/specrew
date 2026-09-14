@@ -43,6 +43,12 @@ shown. The failure mode this exists to stop is **menu-before-render**: render + 
 — explain the agenda / diagram / map / options fully in prose first, and make the question and choices
 self-explanatory (not a terse "does this work? — 8 lenses").
 
+**The human-facing reply is yours.** Save the complete question or agenda as a UTF-8 draft before calling
+`declare-turn-end.ps1 -Kind conversational -MessagePath <draft-file> -Token <this-turn-token>` as the last
+tool call. Its return is for you, never the reply. Send the draft in your own assistant message and wait
+for the human. Do not classify a human-answer wait as background work or replace the question with status.
+Stop blocks prepared content that did not reach the assistant message.
+
 **Typed-turn authority rule — every host:** workshop questions are visible prose and the human answers by typing.
 Offer known choices as a **numbered prose list answered by typing** (or ask concise free-form prose); do not call a
 structured question/menu tool anywhere in the product-domain phase, agenda confirmation, or lens work. A picker

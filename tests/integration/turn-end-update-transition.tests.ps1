@@ -69,7 +69,7 @@ $skillText = Get-Content -LiteralPath $skillTemplate -Raw -Encoding UTF8
 Assert-True ($skillText -match 'declare-turn-end\.ps1') 'the deployed skill names the command it is about'
 $contractText = Get-Content -LiteralPath $launchContract -Raw -Encoding UTF8
 Assert-True ($contractText -match 'declare-turn-end\.ps1') 'the launch contract carries the directive sentence'
-Assert-True ($contractText -match 'as the last action of the turn') 'and the directive says WHEN to run it'
+Assert-True ($contractText -match 'last tool call') 'and the directive says WHEN to run it'
 # The heading dictation it replaced is gone: leaving both would give the agent two contracts for one turn.
 Assert-True ($contractText -notmatch 'render a visible five-part context packet') 'the five-heading dictation it replaces is gone from the contract'
 
@@ -186,24 +186,40 @@ Tell me if the plan is wrong.
     Write-Host '  --- the boundary render: four sendable lines, then the marker; or the withhold paragraph ---'
     $stopLines = @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: plan -> tasks', 'Human approval phrase: approved for tasks', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->', '', 'Working boundary: tasks', 'Last authorized boundary: plan', 'Feature: 050-host-neutral-gate')
     [IO.File]::WriteAllText((Join-Path $root '.specrew/runtime/pending-verdict-stop.md'), (($stopLines -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
-    $boundaryOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned the feature' -ProjectRoot $root -AsJson 2>&1) -join "`n")
+    $packet = @'
+## What I Just Did
+Authored the task breakdown for the fixture feature.
+## Why I Stopped
+The tasks crossing needs a human verdict.
+## What Needs Your Review
+Read file:///fixture/tasks.md for task ownership and fixture coverage.
+## What Happens Next
+I will prepare the hardening gate, then stop before implementation for its verdict.
+## Discussion Prompts
+1. I recommend the current task order because extraction is tested before resolution.
+## What I Need From You
+Approve the tasks or name the correction before hardening preparation.
+'@
+    $draftPath = Join-Path $root '.specrew/runtime/packet.md'
+    Set-Content -LiteralPath $draftPath -Value $packet
+    $boundaryOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned the feature' -ProjectRoot $root -MessagePath $draftPath -AsJson 2>&1) -join "`n")
     $boundary = $null
     try { $boundary = ($boundaryOut | ConvertFrom-Json) } catch { $boundary = $null }
     $text = if ($null -ne $boundary) { [string]$boundary.text } else { '' }
-    Assert-True ($text -match '(?m)^What would you like to do\? Type one of these:') 'the boundary render offers the responses as text to type'
-    Assert-True ($text -match '(?m)^  approved for tasks\r?$') 'line 1: the bare approval phrase, from the artifact'
-    Assert-True ($text -match '(?m)^  approved for tasks - <your instructions>\r?$') 'line 2: approve WITH instructions - how a human approves without rubber-stamping'
-    Assert-True ($text -match '(?m)^  changes needed: <what to change>\r?$') 'line 3: changes needed'
-    Assert-True ($text -match '(?m)^  discuss prompt 1\r?$') 'line 4: discuss one prompt without withdrawing the rest'
-    Assert-True ($text -match '(?m)^1\. Anything above') 'and the discussion prompts are numbered, so prompt 1 names something'
+    Assert-True $boundary.packet_valid 'the agent-authored packet is verified'
+    Assert-True ($text -eq ('approved for tasks' + [Environment]::NewLine + '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->')) 'only missing approval and marker lines are supplied'
+    Assert-True ($text -notmatch '##|Anything above') 'no generic packet or discussion is generated'
+    Set-Content -LiteralPath $draftPath -Value ($packet + [Environment]::NewLine + $text)
+    $complete = & pwsh -NoProfile -File $declarer -Kind boundary -ProjectRoot $root -MessagePath $draftPath -AsJson | ConvertFrom-Json
+    Assert-True ($complete.packet_valid -and $complete.text -eq '') 'a complete packet earns no duplicate lines'
     Assert-True ($text -notmatch '(?m)^\s*1\.\s*Approve') 'no numbered verdict option - a number is a control that cannot authorize'
     Assert-True ($text.TrimEnd() -match '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->$') 'the marker is the VERY LAST line'
-    $owedOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned, but tasks.md is not written' -Owed 'tasks.md' -ProjectRoot $root -AsJson 2>&1) -join "`n")
+    $owedOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned, but tasks.md is not written' -Owed 'tasks.md' -MessagePath $draftPath -ProjectRoot $root -AsJson 2>&1) -join "`n")
     $owed = $null
     try { $owed = ($owedOut | ConvertFrom-Json) } catch { $owed = $null }
     $owedText = if ($null -ne $owed) { [string]$owed.text } else { '' }
-    Assert-True ($owedText -match "I am not offering a verdict here: 'plan' owes tasks.md and it does not exist yet") 'with -Owed the withhold paragraph names the stage that owes and what it owes, in the gate-stop skill''s words'
-    Assert-True ($owedText -match 'indistinguishable in the ledger from an approval of real work') 'and says WHY, in the words the machinery uses on its own surface'
+    Assert-True (-not $owed.packet_valid) 'a draft cannot offer approval for missing artifacts'
+    Assert-True (@($owed.owed) -contains 'tasks.md') 'withholding retains the named owed artifact'
     Assert-True ($owedText -notmatch 'approved for tasks' -and $owedText -notmatch 'SPECREW-VERDICT-BOUNDARY') 'and offers NO responses and NO marker'
 }
 finally {

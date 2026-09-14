@@ -4509,3 +4509,23 @@ each captured verdict without another start request, plus the corresponding inte
 Full source comparison, timestamps, limitations and acceptance checks:
 [regression analysis](beta4-agent-led-regression-analysis.md),
 [measured replay and renderer outputs](beta4-agent-led-regression-evidence.json).
+
+
+### B4F-099 ruling and bounded repair, 2026-09-14 UTC
+
+The maintainer ruled the report's four changes into beta4. PRED-BETA4-057 was committed before
+implementation. Agent-authored drafts now survive the final tool call; ordinary declarations emit no
+human-facing text; boundary declarations verify the packet and supply only missing machine lines;
+Stop rejects hidden prepared content; orientation has one owner and a dials-only repair. The workshop
+exemption cannot suppress that opening correction. Authority producers and the captured-verdict
+directive remain unchanged.
+
+The integrated pre-answered walk passes and the disposable mutation fails five assertions. Focused
+identity, crossing, withholding, orientation, capture and package checks retain their authority
+assertions. [Validation and delivery record](beta4-b4f099-validation.md) and
+[repair evidence](beta4-agent-led-repair-evidence.json) carry the results.
+
+**Disposition**: bounded repair candidate; installed-host acceptance remains open. The d8ce3ea9 walk
+is abandoned evidence and its transcript is preserved. One freeze, one census, install and one
+router-skill update are authorized. The stopping rule resumes afterward; acceptance 5 is the
+maintainer's Monday walk, not a claim available from synthetic replay.

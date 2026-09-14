@@ -552,6 +552,53 @@ function Write-SpecrewTurnEndRecord {
     }
 }
 
+function Test-SpecrewTurnMessageVisible {
+    param([AllowNull()][string]$Message, [AllowNull()][string]$Expected)
+    if ([string]::IsNullOrWhiteSpace($Expected)) { return $false }
+    # Host accessors normalize whitespace. Content and order, rather than line endings, bind presentation.
+    $actualText = ([string]$Message -replace '\s+', ' ').Trim()
+    $expectedText = ($Expected -replace '\s+', ' ').Trim()
+    return $actualText.Contains($expectedText, [StringComparison]::Ordinal)
+}
+
+function Test-SpecrewAuthoredPacket {
+    param([AllowNull()][string]$Message)
+    $missing = [Collections.Generic.List[string]]::new()
+    $sections = @{}
+    $headings = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
+    foreach ($heading in $headings) {
+        $match = [regex]::Match([string]$Message, '(?ims)^##\s+' + [regex]::Escape($heading) + '\s*\r?\n(?<body>.*?)(?=^##\s|\z)')
+        $sections[$heading] = $match.Groups['body'].Value.Trim()
+        if ([string]::IsNullOrWhiteSpace($sections[$heading])) { $missing.Add($heading) }
+    }
+    if ($sections['What Needs Your Review'] -notmatch '(?i)file:///\S+|\]\((?:<?[A-Z]:[/\\]|<?/[A-Z]:/|<?/[^)]+)') {
+        $missing.Add('specific review targets with file links')
+    }
+    if ([string]$Message -notmatch '(?i)\brecommend(?:ation|ed)?\b') { $missing.Add('recommendation') }
+    if ($sections['What Happens Next'] -match '(?i)^On .+ the next stage starts\.|^Your reply decides\.?$') {
+        $missing.Add('specific next step')
+    }
+    if ($sections['Discussion Prompts'] -match '(?i)^1\. Anything above you want changed, questioned, or done differently\.?$') {
+        $missing.Add('specific discussion prompt')
+    }
+    return [pscustomobject]@{ valid = ($missing.Count -eq 0); missing = @($missing) }
+}
+
+function Get-SpecrewOrientationDialsLine {
+    param([string]$ProfilePath = (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew/user-profile.yml'))
+    if (-not (Test-Path -LiteralPath $ProfilePath -PathType Leaf)) { return '' }
+    $dials = [Collections.Generic.List[string]]::new()
+    $inExpertise = $false
+    foreach ($line in Get-Content -LiteralPath $ProfilePath -Encoding UTF8) {
+        if ($line -cmatch '^expertise:\s*$') { $inExpertise = $true; continue }
+        if (-not $inExpertise) { continue }
+        if ($line -cmatch '^\s{2,}([a-z_]+):\s*(\S+)\s*$') { $dials.Add(('{0}={1}' -f $Matches[1], $Matches[2])) }
+        elseif ($line -cmatch '^\S') { break }
+    }
+    if ($dials.Count -eq 0) { return '' }
+    return ('How I am adapting to you: {0}; correct me if that is wrong.' -f ($dials -join ', '))
+}
+
 function Get-SpecrewTurnEndRenderDecision {
     # THE THREE GATES, AND THEY LIVE HERE RATHER THAN IN THE AGENT'S HEAD.
     #

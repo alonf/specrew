@@ -24,24 +24,23 @@ stop as a Markdown message. The design workshop is governed by its own skill, wh
 removes the same unsafe picker on Claude and uses typed prose choices. Clarify questions are not
 boundary stops and keep the picker. Only boundary **verdict** stops route through this skill.
 
-## What to render — one command, its output verbatim, then STOP
+## Author the packet, verify it, then send it
 
-**You do not compose the stop. The turn-end script renders it, and you output what it returns:**
+Author the full Rule 46 six-section packet with specific review targets, a recommendation, discussion
+points and the next agent-owned step. Save the UTF-8 draft, then make this the turn's **last tool call**:
 
 ```powershell
 pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
-    -Kind boundary -Summary '<what this turn did>' `
+    -Kind boundary -Summary '<what this turn did>' -MessagePath <draft-file> `
     -Token <the token from the latest [specrew-turn] line>
 ```
 
-Add `-Owed '<artifact>'` when the stage owes something it has not produced. The script takes the boundary,
-the approval phrase and the marker from `.specrew/runtime/pending-verdict-stop.md` — never from the phase
-you intend to enter next — and the Stop hook credits the record it writes. A packet you compose by hand is
-not credited, however complete it looks: the hook verifies artifacts the script wrote, never prose.
+The return is for you, never your reply. The script verifies the packet and supplies only a missing
+approval line and/or marker from the pending crossing. Send your authored packet with those lines added,
+marker last. A tool result or declaration cannot substitute for presentation; Stop verifies the reply.
+Pass `-Owed '<artifact>'` when something is missing, and withhold approval and marker yourself.
 
-**What it renders**, so you can recognise a correct stop and so this contract and the script never
-disagree: the **full Rule 46 six-section re-entry packet** — all six headers, each with real content built
-from the lifecycle state, never a placeholder and never a terse one-liner:
+The six sections, each with content specific to this feature:
 
 1. `## What I Just Did`
 2. `## Why I Stopped`
@@ -56,7 +55,7 @@ terminal hosts hide the clickable target otherwise.
 
 **FIRST, whether a verdict may be offered at all** (FR-024) is decided from the pending-verdict artifact
 and from `-Owed`: when the artifact is absent, or the stage owes artifacts it has not produced, the script
-offers NO verdict options and emits NO marker. It says so plainly instead — naming what the stage owes and
+supplies NO approval line or marker. Your packet says so plainly instead — naming what the stage owes and
 the one step that produces it:
 
 ```text
@@ -71,7 +70,7 @@ That is the whole stop in that case: the six sections, this paragraph, no option
 machinery says the same thing on its own surface when it withholds the artifact, so the two never
 disagree.
 
-**OTHERWISE — the stage has something to approve — the script renders the four responses** as **lines the
+**OTHERWISE — the stage has something to approve — you render the four responses** as **lines the
 human can literally send**, exactly, with the real boundary name in place of `<to>`:
 
 ```text

@@ -1,38 +1,11 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-  The governed TURN-END declaration. The agent supplies facts; this script decides what is rendered.
-
+  Record this turn and verify the agent-authored message. Call as the turn's last tool.
 .DESCRIPTION
-  WHAT THIS REPLACES, and why the replacement is a different KIND of thing rather than a better version of
-  the same thing:
-
-    - a check that scored the agent's prose - four of six header phrases in the flattened last message;
-    - a 200-line transcript scan looking for orientation wording, which told one compliant session 188
-      times that the human had never seen its banner;
-    - an HTML comment the agent had to remember to type to declare intent;
-    - and instruction text asking the agent to judge, unaided, whether a packet was earned.
-
-  Each was a detector inferring intent from its shadow, and each punished correct output at least once.
-  Here the agent passes FACTS as parameters, this script decides what to render and renders it, and the Stop
-  hook asks one question with a yes/no answer: did this script run, for this session, for this turn?
-
-  THE THREE GATES LIVE IN CODE, NOT IN THE AGENT'S JUDGEMENT. Actual work, time since the last render of
-  this kind, and unchanged content were all instructions once. As instructions they produced eight stops in
-  one session, none of them about the code. As a function they are decidable, testable, and the same on
-  every host.
-
-  A NO-OP IS RECORDED, NOT SKIPPED. "The agent declared and nothing was earned" and "the agent declared
-  nothing at all" look identical from outside and mean opposite things, so the record distinguishes them.
-
-  CHEAP AND HOST-NEUTRAL BY CONSTRUCTION. No git, no transcript, no module load, no host branch: a handful
-  of small file reads the session already wrote. This runs at the end of every turn, and a per-turn cost is
-  paid forever.
-
-.EXAMPLE
-  pwsh -File declare-turn-end.ps1 -Kind conversational -Token 81efdc6f826e4da0848b9a21432621ad
-  pwsh -File declare-turn-end.ps1 -Kind in-flight -Pending 'the census dispatch' -Token <the turn's token>
-  pwsh -File declare-turn-end.ps1 -Kind boundary -Summary 'Implemented fix 1 and proved it with four mutations.' -Token <the turn's token>
+  Returns information to the agent, never a replacement reply. Ordinary turns emit no text.
+  Boundary drafts are verified; only missing machine-derived approval/marker lines are supplied.
+  Token ownership, missing-artifact withholding and the pending crossing remain authoritative.
 #>
 [CmdletBinding()]
 param(
@@ -46,9 +19,8 @@ param(
     # decide at a boundary.
     [AllowNull()][AllowEmptyString()][string] $Pending,
 
-    # Artifacts this stage owes and has not produced. When any are named the boundary packet renders with NO
-    # verdict options and NO marker and says what is owed instead - the governed rule, moved out of prose
-    # into the one place that can actually enforce it.
+    # Artifacts this stage owes and has not produced. Approval and marker are withheld;
+    # the agent names the missing artifacts and next step in the drafted packet.
     [AllowNull()][string[]] $Owed,
 
     # THE TOKEN THE HOOK HANDED YOU AT THE START OF THIS TURN, in a line beginning `[specrew-turn]`. It is
@@ -59,8 +31,10 @@ param(
 
     [AllowNull()][string] $ProjectRoot,
 
-    # Emit the decision as JSON on stderr-free stdout instead of the rendered text. For tests and tooling;
-    # the agent never needs it.
+    # Draft of the human-facing reply; the script verifies it but never renders it.
+    [AllowNull()][string] $MessagePath,
+
+    # Emit the verification and any missing machine lines as JSON for tests and tooling.
     [switch] $AsJson
 )
 
@@ -152,274 +126,92 @@ function Read-SpecrewPendingVerdictStop {
     catch { return $result }
 }
 
-function Get-SpecrewOrientationBlock {
-    # (b) THE ORIENTATION, COMPOSED FROM ARTIFACTS RATHER THAN SCANNED FOR IN PROSE.
-    #
-    # What went before read up to 200 transcript lines hunting for banner wording, and got it wrong in the
-    # direction that matters: it told a session whose opening message WAS a full banner that the human had
-    # never seen one. This composes the same facts from the files that hold them - four small reads - and
-    # returns them to be shown. The receipt is then written because this script rendered it, not because a
-    # scan believed it did.
-    param([string] $Root, $Identity)
-    $lines = New-Object System.Collections.Generic.List[string]
-    # PRED-BETA4-054: the ONE version resolver (version-label.ps1) - the marker's value when it is a real
-    # version, else the module's manifest label; never the marker's literal 'unknown' (the walk read
-    # "Specrew unknown is active on this host" from exactly that).
-    $version = ''
-    try {
-        if (-not (Get-Command Get-SpecrewRuntimeVersionLabel -ErrorAction SilentlyContinue)) {
-            $labelScript = Join-Path $PSScriptRoot 'version-label.ps1'
-            if (Test-Path -LiteralPath $labelScript -PathType Leaf) { . $labelScript }
-        }
-        if (Get-Command Get-SpecrewRuntimeVersionLabel -ErrorAction SilentlyContinue) { $version = [string](Get-SpecrewRuntimeVersionLabel -ProjectRoot $Root) }
-    }
-    catch { $version = '' }
-
-    $hostName = if ($null -ne $Identity -and -not [string]::IsNullOrWhiteSpace($Identity.host)) { $Identity.host } else { 'this host' }
-    $versionText = if ([string]::IsNullOrWhiteSpace($version)) { 'Specrew' } else { ('Specrew {0}' -f $version) }
-    $lines.Add(('**{0} is active on {1}.** Work here runs through spec -> plan -> implement -> review -> retro, and every stage boundary waits for your typed approval.' -f $versionText, $hostName)) | Out-Null
-
-    try {
-        $contextPath = Join-Path $Root '.specrew/start-context.json'
-        if (Test-Path -LiteralPath $contextPath -PathType Leaf) {
-            $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-            $featureRef = ''
-            $boundaryType = ''
-            $lastAuthorized = ''
-            if ($context.PSObject.Properties['session_state'] -and $null -ne $context.session_state) {
-                if ($context.session_state.PSObject.Properties['feature_ref']) { $featureRef = [string]$context.session_state.feature_ref }
-                if ($context.session_state.PSObject.Properties['boundary_type']) { $boundaryType = [string]$context.session_state.boundary_type }
-            }
-            if ($context.PSObject.Properties['boundary_enforcement'] -and $null -ne $context.boundary_enforcement) {
-                if ($context.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) { $lastAuthorized = [string]$context.boundary_enforcement.last_authorized_boundary }
-            }
-            if (-not [string]::IsNullOrWhiteSpace($featureRef)) {
-                $lines.Add(('**Where this project stands**: feature `{0}`, working boundary `{1}`, last boundary you authorized `{2}`.' -f $featureRef, $boundaryType, $lastAuthorized)) | Out-Null
-                $lines.Add(('**Your artifacts** live under `specs/{0}/`; the lifecycle position is in `.specrew/start-context.json` and the launch contract in `.specrew/last-start-prompt.md`.' -f $featureRef)) | Out-Null
-            }
-        }
-    }
-    catch { $null = $_ }
-
-    $dials = New-Object System.Collections.Generic.List[string]
-    try {
-        $profilePath = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew/user-profile.yml'
-        if (Test-Path -LiteralPath $profilePath -PathType Leaf) {
-            $inExpertise = $false
-            foreach ($profileLine in @(Get-Content -LiteralPath $profilePath -Encoding UTF8 -ErrorAction Stop)) {
-                if ($profileLine -cmatch '^expertise:\s*$') { $inExpertise = $true; continue }
-                if ($inExpertise) {
-                    if ($profileLine -cmatch '^\s{2,}([a-z_]+):\s*(\S+)\s*$') { $dials.Add(('{0}={1}' -f $Matches[1], $Matches[2])) | Out-Null }
-                    elseif ($profileLine -cmatch '^\S') { break }
-                }
-            }
-        }
-    }
-    catch { $null = $_ }
-    if ($dials.Count -gt 0) {
-        $lines.Add(('**How I am adapting to you** (from `~/.specrew/user-profile.yml`, and correct me if it is wrong): {0}.' -f ($dials -join ', '))) | Out-Null
-    }
-
-    $lines.Add('**At each boundary** the work stops and you are asked for an explicit `approved for <boundary>` reply. Nothing advances on my assessment that the work looks fine.') | Out-Null
-    return ($lines -join [Environment]::NewLine)
+# The agent authors the reply. This declaration verifies the draft and records facts for Stop.
+$message = ''
+if (-not [string]::IsNullOrWhiteSpace($MessagePath)) {
+    $message = Get-Content -LiteralPath $MessagePath -Raw -Encoding UTF8 -ErrorAction Stop
+    if ([Text.Encoding]::UTF8.GetByteCount($message) -gt 131072) { throw 'The authored message exceeds 128 KiB.' }
 }
-
-# --- render -----------------------------------------------------------------------------------------
-$pendingStopPath = Join-Path $root '.specrew/runtime/pending-verdict-stop.md'
 $owedItems = @(@($Owed) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-$body = ''
-# Recorded so the hook can verify a boundary declaration against the pending crossing WITHOUT reading the
-# transcript. Artifact against artifact: the declaration says which crossing it rendered, the gate state says
-# which one is pending, and the two either name the same thing or they do not.
 $declaredBoundary = ''
 $declaredMarker = ''
+$approvalPhrase = ''
+$machineLines = [Collections.Generic.List[string]]::new()
+$packetCheck = [pscustomobject]@{ valid = $false; missing = @() }
 $inFlightRun = 0
 $inFlightExhausted = $false
-
-switch ($Kind) {
-    'conversational' {
-        # Nothing. A turn that discussed something and changed nothing owes the human no ceremony, and
-        # rendering one anyway is the noise this whole fix exists to remove.
-        $body = ''
-    }
-    'in-flight' {
-        # -Pending IS MANDATORY HERE and nowhere else. In-flight is the one kind no artifact can confirm: the
-        # hook can check a boundary declaration against the pending crossing and a conversational one claims
-        # nothing, but "work is in flight" is a statement about the world. The least it can be asked for is
-        # WHAT is in flight, by name - which is also the only thing that makes the bound below meaningful,
-        # since a run of identical waits is only detectable if the waits say what they are waiting for.
-        if ([string]::IsNullOrWhiteSpace($Pending)) {
-            throw "An in-flight turn must name what it is waiting for. Pass -Pending with the work in flight, for example: -Kind in-flight -Pending 'the census dispatch'."
-        }
-        $what = $Pending.Trim()
-        $inFlightRun = Get-SpecrewInFlightRepeatCount -TurnEndRoot $paths.TurnEndRoot -PendingText $what -ExcludePath $paths.RecordPath
-        if ($inFlightRun -gt $script:SpecrewTurnEndInFlightBound) {
-            # THE BOUND TRIPS, and in-flight becomes a real stop. Carried from FR-045a rather than invented:
-            # the same shape - an assertion that work continues, with nothing changing underneath it - already
-            # had an answer, and giving in-flight its own unbounded lane would just move the old cap here.
-            # The refusal NAMES the repeated text, because "you have said this too often" without quoting it
-            # is a refusal the reader has to reconstruct.
-            $inFlightExhausted = $true
-            $body = ("Stopping rather than reporting in flight again. '{0}' has been the pending item on {1} consecutive turns with nothing else recorded, so continuing to wait on it is no longer a report - it is a loop. Say what should happen: keep waiting, check it directly, or abandon it." -f $what, $inFlightRun)
-        }
-        else {
-            $body = ('In flight; continuing when {0} lands; nothing needed.' -f $what)
+if ($Kind -eq 'in-flight') {
+    if ([string]::IsNullOrWhiteSpace($Pending)) { throw 'An in-flight turn must name background work with -Pending.' }
+    $inFlightRun = Get-SpecrewInFlightRepeatCount -TurnEndRoot $paths.TurnEndRoot -PendingText $Pending.Trim() -ExcludePath $paths.RecordPath
+    $inFlightExhausted = $inFlightRun -gt $script:SpecrewTurnEndInFlightBound
+}
+if ($Kind -eq 'boundary') {
+    $packetCheck = Test-SpecrewAuthoredPacket -Message $message
+    $stop = Read-SpecrewPendingVerdictStop -Path (Join-Path $root '.specrew/runtime/pending-verdict-stop.md')
+    if ($owedItems.Count -gt 0) {
+        # Missing artifacts cannot acquire approval text or a marker through a drafted packet either.
+        if ($message -match 'SPECREW-VERDICT-BOUNDARY|(?im)^\s*approved for ') {
+            $packetCheck = [pscustomobject]@{ valid = $false; missing = @('withhold approval and marker while artifacts are owed') }
         }
     }
-    'boundary' {
-        $stop = Read-SpecrewPendingVerdictStop -Path $pendingStopPath
-        if ($stop.present -and $owedItems.Count -eq 0) {
-            $declaredBoundary = [string]$stop.boundary
-            $declaredMarker = [string]$stop.marker
+    elseif ($stop.present) {
+        $declaredBoundary = [string]$stop.boundary
+        $declaredMarker = [string]$stop.marker
+        $approvalPhrase = [string]$stop.approval_phrase
+        $draftMarkers = @([regex]::Matches($message, '<!--\s*SPECREW-VERDICT-BOUNDARY:[^>]*-->') | ForEach-Object { $_.Value })
+        if (@($draftMarkers | Where-Object { $_ -cne $declaredMarker }).Count -gt 0) {
+            $packetCheck = [pscustomobject]@{ valid = $false; missing = @('replace the stale crossing marker with the pending marker') }
         }
-        $sections = New-Object System.Collections.Generic.List[string]
-        $sections.Add('## What I Just Did') | Out-Null
-        $sections.Add($(if ([string]::IsNullOrWhiteSpace($Summary)) { '(no summary was supplied to the turn-end declaration)' } else { $Summary.Trim() })) | Out-Null
-        $sections.Add('') | Out-Null
-        $sections.Add('## Why I Stopped') | Out-Null
-        if ($owedItems.Count -gt 0) {
-            $sections.Add(('This stage owes artifacts it has not produced: {0}. There is nothing to approve yet, so this stop offers no options.' -f ($owedItems -join ', '))) | Out-Null
+        if ($packetCheck.valid) {
+            if (-not (Test-SpecrewTurnMessageVisible -Message $message -Expected $approvalPhrase)) { $machineLines.Add($approvalPhrase) }
+            if (-not (Test-SpecrewTurnMessageVisible -Message $message -Expected $declaredMarker)) { $machineLines.Add($declaredMarker) }
         }
-        elseif ($stop.present) {
-            $sections.Add(('The `{0}` boundary needs your judgment before the next stage starts.' -f $stop.boundary)) | Out-Null
-            if (-not [string]::IsNullOrWhiteSpace($stop.coverage)) { $sections.Add($stop.coverage) | Out-Null }
-        }
-        else {
-            $sections.Add($(if ([string]::IsNullOrWhiteSpace($Pending)) { 'The work reached a point where your judgment decides what happens next.' } else { $Pending.Trim() })) | Out-Null
-        }
-        $sections.Add('') | Out-Null
-        $sections.Add('## What Needs Your Review') | Out-Null
-        if ($stop.present) {
-            $sections.Add(('Feature `{0}`; working boundary `{1}`; last boundary you authorized `{2}`.' -f $stop.feature, $stop.working_boundary, $stop.last_authorized)) | Out-Null
-        }
-        else { $sections.Add('The work described above.') | Out-Null }
-        $sections.Add('') | Out-Null
-        $sections.Add('## What Happens Next') | Out-Null
-        if ($owedItems.Count -gt 0) {
-            $sections.Add(('I produce what is owed - {0} - and come back to you then.' -f ($owedItems -join ', '))) | Out-Null
-        }
-        elseif ($stop.present) {
-            $sections.Add(('On `{0}` the next stage starts. Nothing advances without it.' -f $stop.approval_phrase)) | Out-Null
-        }
-        else { $sections.Add('Your reply decides.') | Out-Null }
-        $sections.Add('') | Out-Null
-        $sections.Add('## Discussion Prompts') | Out-Null
-        # Numbered, because `discuss prompt N` below names one of them; a prompt the human cannot point at
-        # is not a prompt.
-        $sections.Add('1. Anything above you want changed, questioned, or done differently.') | Out-Null
-        $sections.Add('') | Out-Null
-        $sections.Add('## What I Need From You') | Out-Null
-        $stageThatOwes = if ($stop.present -and $stop.boundary -match '^(.+?)\s*->') { $Matches[1].Trim() } elseif (-not [string]::IsNullOrWhiteSpace($stop.last_authorized)) { $stop.last_authorized } else { 'this stage' }
-        if ($owedItems.Count -gt 0) {
-            # NO options and NO marker while the stage owes artifacts - naming what is owed instead, IN THE
-            # WORDS THE GATE-STOP SKILL AND THE MACHINERY'S OWN SURFACE USE (FR-024), so the three never
-            # disagree. The rule existed in prose and nothing enforced it; a marker offered here is an
-            # approval phrase for an empty increment.
-            $sections.Add(("I am not offering a verdict here: '{0}' owes {1} and it does not exist yet, so there is nothing this verdict would approve." -f $stageThatOwes, ($owedItems -join ', '))) | Out-Null
-            $sections.Add('A verdict recorded now would be indistinguishable in the ledger from an approval of real work.') | Out-Null
-            $sections.Add(("Your earlier approvals stand. Produce the owed artifact through the '{0}' stage's normal step, and the verdict options will be offered then." -f $stageThatOwes)) | Out-Null
-        }
-        elseif ($stop.present) {
-            # THE FOUR RESPONSES AS LINES THE HUMAN CAN LITERALLY SEND (maintainer ruling 2026-08-12): no
-            # numbered list, no picker, no menu. Only a typed phrase is captured, so an interface that offers a
-            # selection offers a control that cannot do the thing it names. Approve-with-instructions is how a
-            # human approves without rubber-stamping; discuss-prompt is how they open one item without
-            # withdrawing approval of the rest. All four are kept, and the marker is the very last line.
-            $sections.Add('What would you like to do? Type one of these:') | Out-Null
-            $sections.Add('') | Out-Null
-            $sections.Add(('  {0}' -f $stop.approval_phrase)) | Out-Null
-            $sections.Add(('  {0} - <your instructions>' -f $stop.approval_phrase)) | Out-Null
-            $sections.Add('  changes needed: <what to change>') | Out-Null
-            $sections.Add('  discuss prompt 1') | Out-Null
-            $sections.Add('') | Out-Null
-            $sections.Add($stop.marker) | Out-Null
-        }
-        else { $sections.Add('Your call on the above.') | Out-Null }
-        $body = ($sections -join [Environment]::NewLine)
     }
 }
-
-# --- the gates, then the record ---------------------------------------------------------------------
-$contentHash = Get-SpecrewTurnEndContentHash -Text $body
-$previous = Get-SpecrewTurnEndPreviousRecord -TurnEndRoot $paths.TurnEndRoot -ExcludePath $paths.RecordPath -RenderedOnly
-$decision = Get-SpecrewTurnEndRenderDecision -Kind $Kind -PreviousRecord $previous -ContentHash $contentHash
-if ($inFlightExhausted) {
-    # A tripped bound is a real stop, and a real stop is never rate-limited away. The in-flight gate exists
-    # to stop the same reassurance repeating; suppressing the message that says the repetition has to end
-    # would be the gate defeating its own purpose on the one turn it matters.
-    $decision = [pscustomobject]@{ render = $true; reason = 'in-flight-bound-tripped' }
-}
-
-# The session's FIRST turn-end of any kind, including a conversational one: a session that opens with a
-# question and answers it has still opened, and the human is owed the orientation on that turn rather than
-# whenever work happens to begin.
-$orientationOwed = -not (Test-Path -LiteralPath $paths.OrientationPath -PathType Leaf)
-$orientationText = ''
-if ($orientationOwed) {
-    $orientationText = Get-SpecrewOrientationBlock -Root $root -Identity $null
-}
-
-$rendered = ''
-if ($decision.render -and -not [string]::IsNullOrWhiteSpace($body)) { $rendered = $body }
-if (-not [string]::IsNullOrWhiteSpace($orientationText)) {
-    $rendered = if ([string]::IsNullOrWhiteSpace($rendered)) { $orientationText } else { ($orientationText + [Environment]::NewLine + [Environment]::NewLine + $rendered) }
-}
-
 $record = [pscustomobject][ordered]@{
     schema_version = '1.0'
-    kind           = $Kind
-    turn_id        = [string]$paths.TurnId
-    # The token the hook issued for this turn, handed back. At Stop the hook accepts only a record carrying
-    # the token IT wrote; anything else is another session's turn and is refused rather than credited.
-    turn_token     = [string]$holder.token
-    owner_hash     = [string]$paths.OwnerHash
-    rendered       = (-not [string]::IsNullOrWhiteSpace($rendered))
-    render_reason  = [string]$decision.reason
-    content_hash   = $contentHash
-    boundary       = $declaredBoundary
-    marker         = $declaredMarker
-    # The hook reads these two rather than recomputing the run: the count is a fact about the record set at
-    # the moment of declaring, and a second opinion computed later could disagree with what was rendered.
-    in_flight_run       = $inFlightRun
+    kind = $Kind
+    turn_id = [string]$paths.TurnId
+    turn_token = [string]$holder.token
+    owner_hash = [string]$paths.OwnerHash
+    rendered = $false
+    render_reason = 'agent-authored-message'
+    content_hash = Get-SpecrewTurnEndContentHash -Text $message
+    message = $message
+    packet_valid = [bool]$packetCheck.valid
+    packet_missing = @($packetCheck.missing)
+    boundary = $declaredBoundary
+    marker = $declaredMarker
+    approval_phrase = $approvalPhrase
+    in_flight_run = $inFlightRun
     in_flight_exhausted = $inFlightExhausted
-    owed           = @($owedItems)
-    pending        = $(if ([string]::IsNullOrWhiteSpace($Pending)) { '' } else { $Pending.Trim() })
-    summary        = $(if ([string]::IsNullOrWhiteSpace($Summary)) { '' } else { $Summary.Trim() })
-    orientation    = $orientationOwed
-    rendered_at    = [DateTimeOffset]::UtcNow.ToString('o')
-    rendered_ms    = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    owed = @($owedItems)
+    pending = $(if ([string]::IsNullOrWhiteSpace($Pending)) { '' } else { $Pending.Trim() })
+    summary = [string]$Summary
+    orientation = $false
+    rendered_at = [DateTimeOffset]::UtcNow.ToString('o')
+    rendered_ms = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 }
 $written = Write-SpecrewTurnEndRecord -Path $paths.RecordPath -Record $record
-
-# The orientation receipt is written because THIS SCRIPT rendered the orientation into its return value,
-# which is the only claim the artifact makes. It is written after the record so a failed record write never
-# leaves a session marked oriented with nothing to show for it.
-if ($written -and $orientationOwed -and -not [string]::IsNullOrWhiteSpace($orientationText)) {
-    try {
-        $orientationDir = Split-Path -Parent $paths.OrientationPath
-        if ($orientationDir -and -not (Test-Path -LiteralPath $orientationDir -PathType Container)) {
-            New-Item -ItemType Directory -Path $orientationDir -Force | Out-Null
-        }
-        $receipt = [ordered]@{ schema_version = '1.0'; rendered_at = [DateTimeOffset]::UtcNow.ToString('o'); rendered_by = 'declare-turn-end' } | ConvertTo-Json -Compress
-        [System.IO.File]::WriteAllText($paths.OrientationPath, ($receipt + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
-    }
-    catch { $null = $_ }
-}
-
+$machineText = $machineLines -join [Environment]::NewLine
 if ($AsJson) {
     [pscustomobject][ordered]@{
-        record_path   = [string]$paths.RecordPath
-        turn_id       = [string]$paths.TurnId
-        anchored      = [bool]$paths.Anchored
+        record_path = [string]$paths.RecordPath
+        turn_id = [string]$paths.TurnId
+        anchored = [bool]$paths.Anchored
         record_written = [bool]$written
-        # How the session was resolved: matched (by -Token), single (the one live token), absent (none).
-        identity      = [string]$holder.outcome
-        rendered      = [bool]$record.rendered
-        render_reason = [string]$decision.reason
-        orientation   = [bool]$orientationOwed
-        text          = $rendered
+        identity = [string]$holder.outcome
+        rendered = $false
+        render_reason = 'agent-authored-message'
+        orientation = $false
+        packet_valid = [bool]$packetCheck.valid
+        packet_missing = @($packetCheck.missing)
+        owed = @($owedItems)
+        text = $machineText
     } | ConvertTo-Json -Depth 6
     return
 }
-
-if (-not [string]::IsNullOrWhiteSpace($rendered)) { Write-Output $rendered }
+if ($Kind -eq 'boundary' -and -not $packetCheck.valid) {
+    [Console]::Error.WriteLine(('Packet not verified: {0}; pass the agent-authored packet with -MessagePath, then include it in your reply.' -f ($packetCheck.missing -join ', ')))
+}
+if (-not [string]::IsNullOrWhiteSpace($machineText)) { Write-Output $machineText }

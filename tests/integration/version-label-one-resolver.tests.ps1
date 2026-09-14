@@ -40,19 +40,13 @@ try {
     $cfg = Get-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Raw
     Assert-True ($cfg -match ('(?m)^specrew_version:\s*"?' + [regex]::Escape($expected.Version) + '"?\s*$')) ('config.yml specrew_version is the base {0}' -f $expected.Version)
 
-    Write-Host '  --- case 4: both orientations say the same label ---'
+    Write-Host '  --- case 4: the sole opening orientation carries the label ---'
     $boot = (& pwsh -NoProfile -File (Join-Path $repoRoot 'scripts/internal/specrew-bootstrap-provider.ps1') --project-root $root --host-kind claude 2>&1 | ForEach-Object { [string]$_ }) -join "`n"
     Assert-True ($boot.Contains($expected.Label)) ('the SessionStart orientation carries ' + $expected.Label)
     $turnEnd = Join-Path $root '.specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1'
-    $ast = [System.Management.Automation.Language.Parser]::ParseFile($turnEnd, [ref]$null, [ref]$null)
-    $fn = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-SpecrewOrientationBlock' }, $true) | Select-Object -First 1
-    # the function resolves version-label.ps1 beside itself via $PSScriptRoot; extracted here, the deployed copy is
-    # dot-sourced first exactly as the script's own guard would find it
-    $deployedLabel = Join-Path $root '.specify/extensions/specrew-speckit/scripts/version-label.ps1'
-    Assert-True (Test-Path -LiteralPath $deployedLabel -PathType Leaf) 'init deployed version-label.ps1 beside the turn-end script'
-    $render = & pwsh -NoProfile -Command (". '" + $deployedLabel + "'; " + $fn.Extent.Text + "; (Get-SpecrewOrientationBlock -Root '" + $root + "' -Identity ([pscustomobject]@{ host = 'claude' })) -join `"`n`"")
+    $render = & pwsh -NoProfile -File $turnEnd -ProjectRoot $root -Kind conversational
     $renderText = ($render -join "`n")
-    Assert-True ($renderText.Contains(('**Specrew {0} is active on claude.**' -f $expected.Label))) ('the turn-end orientation says "Specrew ' + $expected.Label + ' is active" (got: ' + (($renderText -replace '\s+', ' ')).Substring(0, [Math]::Min(80, ($renderText -replace '\s+', ' ').Length)) + ')')
+    Assert-True ([string]::IsNullOrWhiteSpace($renderText)) 'turn-end never renders another orientation; SessionStart owns the version label'
     Assert-True ($renderText -notmatch 'Specrew unknown') 'and never "Specrew unknown"'
 }
 finally {
