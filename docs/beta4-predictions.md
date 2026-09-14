@@ -2609,3 +2609,34 @@ report and paired replay saved beside it. No source was changed before this pred
 Implementation uses the existing PowerShell/module/deployment paths and no new dependency. Expected
 proof is at the composed human interaction as well as each authority boundary; passing old isolated
 helper tests alone does not satisfy this prediction.
+
+### PRED-BETA4-057, VERDICT - bounded repair delivered; installed-host acceptance pending
+
+The maintainer reviewed frozen `97e03c80`: all four changes are present and tested as ruled. The
+integrated pre-answered replay passes; restoring the failing text/behavior in a disposable mutation
+fails five assertions. Identity, receipts, crossing binding, missing-artifact withholding and the
+captured-verdict directive retain their existing authority. Parts 1-4 hold in the measured replay;
+that result does not stand in for the Monday walk.
+
+The one census, `34808258530` on `97e03c80`, is **red: 420/424** (148 Pester, 276 scripts,
+caller_contaminated=False); prepublish validation passed and publication was skipped. Two failures
+are superseded test assertions now corrected outside the package and passing focused. One is an
+observed 10,047 ms offline check against a strict limit below 10,000 ms. The fourth is a ChangedOnly
+fixture copying a stale deployment receipt: a scoped reproduction shows the validator refusing the
+three changed mirrored files. No second census and no wider production repair followed.
+
+Branch HEAD is **tests and documentation past the censused SHA**. CI on `c0d1e148` was red for
+MD012 in the validation document; `27b40832` fixed that spacing and passed all CI jobs. Later focused
+passes do not rewrite the original census result. The [delivery record](beta4-b4f099-validation.md)
+contains the four dispositions and exact CI attribution.
+
+Part 5's delivery cycle completed once: installed from a clean detached `97e03c80`, all 424 package
+files byte-verified (stamp content scope 423, excluding the stamp), content hash
+`deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247`; router-skill project updated
+once, deployment integrity clean and review-runtime handshake equal. Six saved user records are
+unchanged; the exhaustion journal preserves its complete baseline plus four host-event appends.
+
+The stopping rule resumes. B4F-100 (whole-draft visibility matching) and B4F-101 (no fixed ignored
+draft path) are recorded for beta4.1; only B4F-100 reopens if Monday's walk trips it, with load-bearing
+line comparison as the bounded alternative. Acceptance 5 remains the maintainer's Monday walk,
+including the second feature's first registered question. The abandoned d8ce3ea9 transcript is preserved.

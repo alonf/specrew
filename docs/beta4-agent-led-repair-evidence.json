@@ -385,6 +385,13 @@
         "PASS: typed-walk fixture mints a genuine product-domain receipt before the records exist",
         "PASS: product records backed by a typed receipt are not accused of arriving through a selection channel"
       ]
+    },
+    "flush-race-forensic.Tests.ps1": {
+      "exit_code": 0,
+      "tests_passed": 2,
+      "tests_failed": 0,
+      "log_sha256": "939189c48dacd73ec438958b731c3676860d7d72390d5c1aafbedd421321d1e1",
+      "scope": "post-freeze test-only assertion correction"
     }
   },
   "mutation": {
@@ -405,16 +412,233 @@
   },
   "census": {
     "run_id": 34808258530,
+    "url": "https://github.com/alonf/specrew/actions/runs/34808258530",
     "head_sha": "97e03c80300a0d1305627e78e53b0896c317d62d",
-    "status": "in_progress",
-    "known_stale_assertion": "workshop-agenda-confirmation expects the replaced rewrite remedy; its block and no-digest assertions pass; expectation updated outside the package and the whole suite passes focused"
+    "status": "completed",
+    "conclusion": "failure",
+    "files": 424,
+    "pester": 148,
+    "scripts": 276,
+    "passed": 420,
+    "failed": 4,
+    "caller_contaminated": false,
+    "prepublish_validation": "success",
+    "publication": "skipped",
+    "reruns": 0,
+    "failures": [
+      {
+        "index": 93,
+        "path": "tests\\continuous-co-review\\unit\\flush-race-forensic.Tests.ps1",
+        "kind": "pester",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 10.6953378,
+        "disposition": "Superseded declaration-only source assertion. Test-only correction verifies packet_valid and messageVisible while retaining no-reread checks; focused Pester 2/2 passed. Original census remains failed."
+      },
+      {
+        "index": 258,
+        "path": "tests\\integration\\psgallery-check.tests.ps1",
+        "kind": "script",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 111.4382832,
+        "disposition": "Only offline timing assertion failed: elapsed 10047 ms against strict <10000 ms. Other assertions passed. No timeout, test or source change; not rerun."
+      },
+      {
+        "index": 304,
+        "path": "tests\\integration\\validate-governance-changed-only.tests.ps1",
+        "kind": "script",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 867.3788106,
+        "disposition": "Three positive exit-code assertions failed. First case reproduced on frozen sources: copied repository extension receipt is stale for provider, design-workshop.md and gate-stop.md. Actual validator refuses integrity mismatch. Other scope assertions passed. No validator/receipt repair or full-suite rerun."
+      },
+      {
+        "index": 312,
+        "path": "tests\\integration\\workshop-agenda-confirmation.tests.ps1",
+        "kind": "script",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 7.3819396,
+        "disposition": "Superseded agenda-remedy text assertion. Blocking and no-digest checks passed. Test-only correction c0d1e148 retains authority checks; focused suite and CI 27b40832 passed. Original census remains failed."
+      }
+    ],
+    "diagnostic_artifact_sha256": "74f20507c032a5efba93bf33f0e3c115981f4edf7a9a340f319131fd99b69378",
+    "scoped_diagnostic": {
+      "scope": "first positive ChangedOnly fixture only, from frozen sources",
+      "exit_code": 1,
+      "log_sha256": "f315d11e49e37a4e44793f8ca78dfa94c055da71a3db3901b6e9c057bef18b43",
+      "failure": "deployed extension integrity receipt mismatch",
+      "drifted": [
+        "scripts/specrew-conformance-provider.ps1",
+        "squad-templates/skills/design-workshop.md",
+        "squad-templates/skills/gate-stop.md"
+      ]
+    },
+    "verdict": "Red on frozen SHA. Branch HEAD is tests and documentation past that SHA; later focused passes and CI do not relabel this census green."
   },
-  "install": "not yet performed",
-  "router_update": "not yet performed",
+  "install": {
+    "performed": true,
+    "count": 1,
+    "source_checkout": "C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-b4f099-freeze-97e03c80",
+    "source_sha": "97e03c80300a0d1305627e78e53b0896c317d62d",
+    "stamp": {
+      "schema": "specrew-build-stamp/v1",
+      "commit": "97e03c80",
+      "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+      "content_file_count": 423
+    },
+    "packaged_files_byte_verified": 424,
+    "count_explanation": "424 installed package files includes build-stamp.json; stamp content_file_count=423 excludes that self-describing file.",
+    "stamp_verified": true
+  },
+  "router_update": {
+    "performed": true,
+    "count": 1,
+    "project": "C:/Dev/agentic-architecture-router-skill",
+    "exit_code": 0,
+    "runtime": {
+      "runtime_root": "C:\\Dev\\agentic-architecture-router-skill\\scripts\\internal\\continuous-co-review",
+      "source": "project-deployed",
+      "bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+      "project_bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+      "marker_present": true
+    },
+    "extension_integrity": {
+      "checked": true,
+      "drifted": [],
+      "missing": [],
+      "marker": "C:\\Dev\\agentic-architecture-router-skill\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+    },
+    "repaired_mirrors": [
+      {
+        "path": "scripts/turn-end-store.ps1",
+        "matches": true
+      },
+      {
+        "path": "scripts/declare-turn-end.ps1",
+        "matches": true
+      },
+      {
+        "path": "scripts/specrew-conformance-provider.ps1",
+        "matches": true
+      },
+      {
+        "path": "squad-templates/skills/turn-end.md",
+        "matches": true
+      },
+      {
+        "path": "squad-templates/skills/gate-stop.md",
+        "matches": true
+      },
+      {
+        "path": "squad-templates/skills/design-workshop.md",
+        "matches": true
+      }
+    ],
+    "preserved_records": [
+      {
+        "path": ".specrew/authority/exhausted-turns.jsonl",
+        "before": "D57DFACEEF4F93A64C295C1F2F5B26B95CF1D4C9C369B1FC757417E1EAE445BD",
+        "after": "267F1CD4FE12504A82A82709D0B39C988EB4A9D820407B615656A6A0AA73AF4E",
+        "unchanged": false
+      },
+      {
+        "path": ".specrew/review/allowance-reset/pending-allowance-reset.json",
+        "before": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+        "after": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+        "unchanged": true
+      },
+      {
+        "path": ".specrew/review/round-approval/captures.jsonl",
+        "before": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+        "after": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+        "unchanged": true
+      },
+      {
+        "path": ".specrew/review/round-approval/pending-round-approval.json",
+        "before": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+        "after": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+        "unchanged": true
+      },
+      {
+        "path": ".squad/decisions.md",
+        "before": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+        "after": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+        "unchanged": true
+      },
+      {
+        "path": "specs/001-agentic-architecture-skills/iterations/003/state.md",
+        "before": "A801AC7B52863B0B40036A9FD9E9013CFFB5A926E8E98FEFEDD579FA5FB09FAA",
+        "after": "A801AC7B52863B0B40036A9FD9E9013CFFB5A926E8E98FEFEDD579FA5FB09FAA",
+        "unchanged": true
+      },
+      {
+        "path": "specs/001-agentic-architecture-skills/iterations/003/tasks-progress.yml",
+        "before": "2B66328FF80F8594BC89E5F549AAE2C7706D4086839CE59EC391E1BD0682EF83",
+        "after": "2B66328FF80F8594BC89E5F549AAE2C7706D4086839CE59EC391E1BD0682EF83",
+        "unchanged": true
+      }
+    ],
+    "journal_preservation": {
+      "baseline_prefix_intact": true,
+      "baseline_lines": 705,
+      "current_lines": 709,
+      "appended": [
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "0f81db4aaf76ad00d2deef56c55526deb2758742d072de7ff6e0312725d3412c",
+          "content_hash": "88d34acbad3d882693a33625e3d81041ba6f091f99a2139ca279dbcb8d1aba9f",
+          "host_kind": "codex",
+          "source_event": "UserPromptSubmit",
+          "minted": "",
+          "observed_at": "2026-09-14T05:28:55.0335341Z"
+        },
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "3a4c9d15d6fbdb2cab8c6ca7cbe1e28c9993b60970e8a7a121b7da751ccb167d",
+          "content_hash": "88d34acbad3d882693a33625e3d81041ba6f091f99a2139ca279dbcb8d1aba9f",
+          "host_kind": "codex",
+          "source_event": "stop-transcript",
+          "minted": "",
+          "observed_at": "2026-09-14T05:29:29.6979125Z"
+        },
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "d0a3e784331ccfb2ebdbafc28765f4771020ae1e2d8f7ddc88b72126beb8a416",
+          "content_hash": "073c1634c496cdb649d1afe0a312bbb4b7e1741b271542e4a436c3b8824b1761",
+          "host_kind": "codex",
+          "source_event": "UserPromptSubmit",
+          "minted": "",
+          "observed_at": "2026-09-14T06:04:05.0178098Z"
+        },
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "a6ad586585b374b983913d2c4ff0a5d7aab23c11e04daccabd2bc8fbe9e47c59",
+          "content_hash": "073c1634c496cdb649d1afe0a312bbb4b7e1741b271542e4a436c3b8824b1761",
+          "host_kind": "codex",
+          "source_event": "stop-transcript",
+          "minted": "",
+          "observed_at": "2026-09-14T06:15:54.0531740Z"
+        }
+      ],
+      "journal_last_write_utc": "2026-09-14T06:15:55.182688+00:00",
+      "update_log_last_write_utc": "2026-09-14T06:16:28.352349+00:00"
+    },
+    "preservation_verdict": "Six baseline records byte-identical; exhaustion journal retains all 705 baseline lines byte-for-byte plus four host-event appends. Nothing restored or discarded.",
+    "advisories": 31,
+    "advisory_disposition": "Consumer-assumption findings reported by updater; user-authored files preserved. No expansion of bounded repair.",
+    "log_sha256": "98168E004423A5193049C33502C246ED23F57E896DC0FBC94F27EB8B433D457A"
+  },
   "focused_conformance": {
     "cases_1_to_18": "passed before the old case-19 fixture was updated to put the agent-authored packet in the reply",
     "cases_19_to_24": "passed in a focused replay after that fixture update",
-    "full_census": "will run the complete final suite on the frozen SHA"
+    "full_census": "Passed in the single census 34808258530 on 97e03c80; not one of its four failed suites.",
+    "full_ci": "Complete suite passed in CI 34808371999 on 331aea94 (same frozen package source)."
   },
   "additional_checks": [
     "provider mirror parity passed",
@@ -427,6 +651,67 @@
     "first_run": 34808258777,
     "first_failure": "MD012 in findings and MD047 in predictions; non-packaged whitespace corrected in 331aea94",
     "second_run": 34808371999,
-    "second_result": "130 of 131 honesty suites passed; only the superseded agenda remedy assertion failed; contract lane skipped"
+    "second_result": "130 of 131 honesty suites passed; only the superseded agenda remedy assertion failed; contract lane skipped",
+    "third_run": 34809695090,
+    "third_head": "c0d1e148",
+    "third_failure": "MD012 (multiple consecutive blank lines) in docs/beta4-b4f099-validation.md; corrected in 27b40832.",
+    "green_run": 34809714198,
+    "green_head": "27b40832",
+    "green_jobs": [
+      "Lint",
+      "Self-leak firewall",
+      "Deterministic gate",
+      "Contract lane"
+    ],
+    "attribution": "This green run covers 27b40832, not the later forensic assertion and evidence-only HEAD; the forensic correction passed its own focused run."
+  },
+  "maintainer_review": {
+    "reviewed_sha": "97e03c80",
+    "verdict": "Four changes present and tested as ruled against PRED-BETA4-057; proceed on census.",
+    "findings": [
+      {
+        "id": "B4F-100",
+        "finding": "Whole whitespace-normalized declared draft must occur in reply; tightening a packet sentence can block presentation|declared message until cap.",
+        "disposition": "beta4.1 unless Monday walk trips it; then compare load-bearing headings, review-target links, question line, approval line and marker.",
+        "implemented": false
+      },
+      {
+        "id": "B4F-101",
+        "finding": "MessagePath lacks fixed/default/cleaned location; draft under specs can enter a boundary commit or dirty closeout.",
+        "disposition": "beta4.1: fixed ignored .specrew/runtime/turn-message.md named in the three skills and defaulted by script.",
+        "implemented": false
+      }
+    ]
+  },
+  "stopping_rule": "Back in force after this single cycle. Acceptance 5 remains the maintainer Monday walk. No release, second freeze, second census or wider repair performed.",
+  "abandoned_transcript": {
+    "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
+    "baseline_prefix_intact": true,
+    "baseline_lines": 208,
+    "current_lines": 213,
+    "current_sha256": "0781024b120a66712eb439bcfa318bf11b3c1b45c9894abe36aca5c7b2e9ce98",
+    "last_write_utc": "2026-09-14T05:06:15.967360+00:00",
+    "appended_metadata": [
+      {
+        "type": "bridge-session"
+      },
+      {
+        "type": "file-history-snapshot"
+      },
+      {
+        "type": "cost-state"
+      },
+      {
+        "type": "last-prompt"
+      },
+      {
+        "type": "cost-state"
+      }
+    ]
+  },
+  "post_freeze_package_delta": {
+    "packaged_paths_changed": 0,
+    "verified_against": "97e03c80",
+    "scope": "FileList plus module manifest and optional package documents; later tracked changes are tests/docs only, excluding pre-existing user iteration records."
   }
 }

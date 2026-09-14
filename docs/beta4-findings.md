@@ -4528,3 +4528,33 @@ assertions. [Validation and delivery record](beta4-b4f099-validation.md) and
 is abandoned evidence and its transcript is preserved. One freeze, one census, install and one
 router-skill update are authorized. The stopping rule resumes afterward; acceptance 5 is the
 maintainer's Monday walk, not a claim available from synthetic replay.
+
+### B4F-099 census and maintainer review, 2026-09-14 UTC
+
+The maintainer reviewed `97e03c80` against PRED-BETA4-057: the four changes are present and tested
+as ruled. The one census is red, 420/424; its four failures and the tests/docs-only HEAD past the
+censused SHA are recorded in the [census verdict](beta4-b4f099-validation.md#census-verdict).
+CI `c0d1e148` was red for MD012 in the validation document; `27b40832` corrected it and passed CI.
+No second freeze or census is authorized by those follow-ups. Installed-host acceptance remains open.
+
+## B4F-100 - WHOLE-DRAFT VISIBILITY CAN REJECT A TIGHTENED PACKET (beta4.1; Monday exception)
+
+**Detected**: maintainer review of `97e03c80` against PRED-BETA4-057, 2026-09-14 UTC.
+**Failure scenario**: `Test-SpecrewTurnMessageVisible` requires the whole declared draft,
+whitespace-normalized, inside the assistant reply. Tightening one sentence after saving the packet
+causes Stop to block with `presentation|declared message`; each miss costs a human-visible turn
+until the cap releases. This is a review finding, not a reproduced Monday-walk failure.
+
+**Disposition**: beta4.1 unless Monday's walk trips it. If it does, compare load-bearing lines
+(headings, review-target links, question line, approval line and marker) instead of the entire
+concatenation. The frozen beta4 package retains its current comparison; no repair was added here.
+
+## B4F-101 - TURN DRAFTS HAVE NO FIXED IGNORED LOCATION (beta4.1)
+
+**Detected**: maintainer review of `97e03c80` against PRED-BETA4-057, 2026-09-14 UTC.
+**Failure scenario**: `-MessagePath` has no fixed location. The three skills say to save the draft
+without naming a path, and the script neither constrains nor cleans it. A draft under `specs/` can
+be swept into the next boundary commit or reported dirty at closeout.
+
+**Disposition**: beta4.1. Use the fixed ignored `.specrew/runtime/turn-message.md`, name it in the
+three skills and default it in the script. This finding is recorded; beta4's package is unchanged.

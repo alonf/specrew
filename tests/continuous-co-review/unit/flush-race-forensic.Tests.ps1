@@ -8,11 +8,8 @@
 # reproduction the reverted 4x-tail-200 mitigation was waiting for. Beta3 used one bounded tail-8
 # recovery read only on that measured signature; old corpus records remain evidence, not current failures.
 #
-# BETA4 RETIRED THE REREAD WITH THE THING IT SERVED. The race was a race between the agent's message
-# flushing and the hook READING it for a packet. The hook no longer reads the message for a packet at all:
-# the packet is a record the agent's script wrote (fix 2, the turn-end declaration), and `packetPresent`
-# is a fact about that record. A mitigation for a read that no longer happens has nothing to mitigate,
-# so the second case below asserts its ABSENCE - and that the fact it protected comes from the record.
+# The heuristic reread remains retired. B4F-099 verifies a declared packet AND its exact presentation;
+# it does not infer a packet from a near-miss header count or add a speculative transcript reread.
 
 Describe 'T109 flush-race forensic analyzer (D-197-I009-003 refuted; reopens on a real signature)' {
 
@@ -75,12 +72,13 @@ Describe 'T109 flush-race forensic analyzer (D-197-I009-003 refuted; reopens on 
         ($suspects -join "`n") | Should -BeNullOrEmpty -Because 'post-mitigation partial reads must attempt and recover through the bounded tail-8 reread; pre-mitigation records remain preserved evidence'
     }
 
-    It 'the tail-8 reread is retired with prose scoring - the packet is a record the script wrote, not a read of the message' {
+    It 'packet visibility uses a verified declaration without heuristic header rereads' {
         $provider = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1') -Raw
         $provider | Should -Not -Match '\$initialHeaderHits\s+-ge\s+1'
         $provider | Should -Not -Match 'Get-Content[^\r\n]+-Tail\s+8'
         $provider | Should -Not -Match 'dx_reread_attempted\s*=\s*\$transcriptRereadAttempted'
-        # ...and the fact the reread used to protect is taken from the declaration record.
-        $provider | Should -Match '\$packetPresent\s*=\s*\(\$turnEndKind\s+-eq\s+.boundary.\)'
+        # Presentation requires both the verified declaration and its visible authored content.
+        $provider | Should -Match '\$packetPresent\s*=\s*\(\$turnEndKind\s+-eq\s+.boundary.\s+-and'
+        $provider | Should -Match '\[bool\]\$turnEndRecord\.packet_valid\s+-and\s+\$messageVisible'
     }
 }
