@@ -51,7 +51,6 @@ and the second feature's first question registers. Synthetic replay and a green 
 that acceptance. The stopping rule resumes after the one authorized delivery cycle; further scope
 requires a new ruling.
 
-
 ### Verification follow-up inside the same cycle
 
 Freeze: `97e03c80300a0d1305627e78e53b0896c317d62d`. The one census is
