@@ -747,7 +747,7 @@
       }
     ]
   },
-  "stopping_rule": "Re-scoped walk accepted GREEN; exact 8d3f9906 released. B4F-102 beta4.1 and B5F-002/003 beta5 remain record-only. New B4F-103 package-stamp disagreement is recorded, awaiting disposition; exact-byte Gallery verification is FAILED. No source repair, retag or republish authorized by these records.",
+  "stopping_rule": "CLOSED by maintainer disposition: beta4 is released. B4F-103 is record-only with no republish; comparison-scope correction belongs to beta4.1 under B4F-018. Previously deferred beta4.1/beta5 findings keep their dispositions; no further beta4 work is authorized.",
   "abandoned_transcript": {
     "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
     "baseline_prefix_intact": true,
@@ -786,9 +786,9 @@
     "walk_allowed": true,
     "process_deviation_class": "B4F-027",
     "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
-    "authorized_next": "Release request executed; record and report publication plus the failed exact-byte Gallery check. Stopping rule in force; B4F-103 awaits disposition and does not authorize a source repair or release mutation.",
+    "authorized_next": "None for beta4: released, stopping rule closed. Record B4F-103 only; no republish. Carry the declared-content-scope check correction into beta4.1 under B4F-018.",
     "walk_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
-    "status": "Re-scoped walk GREEN; exact 8d3f9906 tagged and published successfully; Gallery embedded stamp matches but actual package byte/scope verification FAILED (B4F-103).",
+    "status": "Beta4 released at 8d3f9906; maintainer independent Gallery verification accepted, B4F-103 record-only, no republish, stopping rule closed.",
     "correction_authorization_executed": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green."
   },
   "reopened_cycle": {
@@ -1046,7 +1046,7 @@
   "release": {
     "tag": "v0.40.0-beta4",
     "sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
-    "status": "published successfully; exact-byte Gallery verification FAILED (B4F-103)",
+    "status": "released; maintainer accepted declared-scope verification and Gallery init; B4F-103 record-only, no republish",
     "gallery_verification": {
       "verified_at": "2026-09-14T17:06:39.0985091+00:00",
       "local_stamp": {
@@ -1102,7 +1102,8 @@
         463
       ],
       "metadata_replay_reproduced_gallery_manifest": true,
-      "nuget_exclusion_warnings": "NU5119 for each of the three missing .gitkeep paths, publish log 2026-09-14T17:05:10Z"
+      "nuget_exclusion_warnings": "NU5119 for each of the three missing .gitkeep paths, publish log 2026-09-14T17:05:10Z",
+      "current_disposition": "Historical raw 423-file comparison retained unchanged; superseded as a release blocker by the maintainer declared-scope verification and record-only B4F-103 ruling. See release.maintainer_verification."
     },
     "publish_run_id": 34867622327,
     "publish_run_url": "https://github.com/alonf/specrew/actions/runs/34867622327",
@@ -1177,6 +1178,32 @@
     "nupkg_bytes": 2254740,
     "publish_log_sha256": "0b056c2f39cb3b9a644dc4e5482ad7220865ae8739f116b91764027fce5f5407",
     "evidence_directory": "C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-beta4-release-8d3f9906",
-    "disposition": "Tag/publish request executed on exact accepted SHA. Stamp equality passes; actual package byte/scope equality fails. Causes isolated and recorded as B4F-103; no package repair, retag, republish, reinstall, router update or extra census was performed. Stopping rule remains in force."
+    "disposition": "Maintainer closes beta4 as released. Independent verification: 419/419 shipped content files identical; manifest difference reproduced by metadata replay; NuGet-dropped placeholders and local runtime cache outside declared comparison scope; Gallery init deploys required content. Original raw comparison is retained as historical evidence. B4F-103 is record-only, no republish; comparison-scope correction is beta4.1 under B4F-018. Stopping rule closed.",
+    "maintainer_verification": {
+      "authority": "maintainer B4F-103 disposition and independent verification, 2026-09-14",
+      "source": "human-reported runtime evidence from the maintainer machine; not a new agent-run install",
+      "gallery_version": "0.40.0-beta4",
+      "comparison_build": "byte-verified 8d3f9906 build",
+      "declared_shipped_content_files": 419,
+      "identical_shipped_content_files": 419,
+      "manifest": "Specrew.psd1 differs only by the publish-time stamp; metadata replay reproduces the difference.",
+      "placeholders": "Maintainer reports the three absent files as zero-byte .gitkeep placeholders excluded by NuGet (NU5119).",
+      "runtime_exclusion": ".specrew/version-check-cache.json is written locally by the module and is not package content.",
+      "init": {
+        "source": "Gallery copy",
+        "command": "specrew init",
+        "hook_wiring_deployed": true,
+        "skills_deployed": true,
+        "all_template_directories_with_content_deployed": true,
+        "only_absent_directory": "hooks/",
+        "absent_directory_held_content": false
+      },
+      "release_verdict": "accepted; beta4 is released",
+      "b4f103_disposition": "record-only; no republish",
+      "beta4_1": "Compare the declared content scope under B4F-018: exclude NuGet-dropped zero-byte placeholders and publish-stamped manifest line(s), or stop shipping .gitkeep. Exclude local runtime files from package content.",
+      "stopping_rule": "closed"
+    },
+    "republish_authorized": false,
+    "stopping_rule_closed": true
   }
 }

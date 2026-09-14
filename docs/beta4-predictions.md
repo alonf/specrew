@@ -2722,3 +2722,18 @@ The product-domain correction step remains unexercised (three walks running); th
 receipt remains an observation to explain. Findings from the later plan-stage detour are recorded,
 not fixed: B4F-102 refusal remedy in beta4.1; B5F-002 mandatory-stop defaults and B5F-003 inverted
 artifact order/false skipped record in beta5. The green verdict does not claim those paths passed.
+
+### Beta4 release closure - maintainer B4F-103 disposition
+
+The maintainer closes the stopping rule: **beta4 is released** at `8d3f9906`, tagged
+`v0.40.0-beta4`. Publication run `34867622327` completed green with census 424/424.
+Independent Gallery verification finds 419/419 shipped content files identical, with the manifest's
+publish-time stamp reproduced by metadata replay and NuGet-dropped empty placeholders/local runtime
+cache accounted for outside the comparison scope. Gallery `specrew init` deploys hook wiring, skills
+and all template directories containing content; only the empty `hooks/` directory is absent.
+
+B4F-103 is **record-only, no republish**. Its comparison-scope correction belongs to **beta4.1**:
+exclude NuGet-dropped zero-byte placeholders and the publish-stamped manifest line(s), or stop shipping
+`.gitkeep`, while measuring the declared content scope under B4F-018. The original raw comparison
+remains historical evidence. The [release disposition](beta4-b4f099-validation.md#b4f-103-maintainer-disposition---record-only-beta4-released)
+is final for beta4; no further candidate, census or delivery cycle follows from these records.

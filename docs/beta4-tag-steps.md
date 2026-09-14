@@ -1,5 +1,13 @@
 # Beta4 tag steps
 
+**Completed, 2026-09-14.** Beta4 is released: `v0.40.0-beta4` at `8d3f9906`.
+[Publication run 34867622327](https://github.com/alonf/specrew/actions/runs/34867622327) completed green,
+including census 424/424. The maintainer accepted independent declared-scope Gallery verification
+(419/419 shipped content files identical) and Gallery initialization. B4F-103 is record-only,
+**no republish**; its comparison-scope correction is beta4.1 under B4F-018. **Stopping rule closed.**
+See the [final disposition](beta4-b4f099-validation.md#b4f-103-maintainer-disposition---record-only-beta4-released).
+The pre-release checklist below is historical; it does not reopen a delivery cycle.
+
 **Written before the green run lands, so the order is fixed rather than improvised at the tag.**
 
 Each step names what it verifies. A step that cannot state its verification is not done.

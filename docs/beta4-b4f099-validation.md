@@ -1,11 +1,15 @@
 # B4F-099 bounded repair
 
-**Current walk SHA: `8d3f99061e41396eaa4ac665d3883bcc75f88730`.** PRED-BETA4-058's sanctioned
+**Released SHA: `8d3f99061e41396eaa4ac665d3883bcc75f88730`.** PRED-BETA4-058's sanctioned
 CI/census pair is green (424/424 census files), followed by byte-verified installation and one further
 router-skill update. The [final verdict](#pred-beta4-058-verdict---green-before-installation) records the
 order and verification. The earlier red `97e03c80` is not frozen; its premature install/update remains
 a B4F-027 process deviation. Historical claims below preserve that episode and are superseded by this
-current result. Acceptance 5 is GREEN by the maintainer's 2026-09-14 re-scoped walk verdict; release of this exact SHA is authorized.
+current result. Acceptance 5 is GREEN by the maintainer's 2026-09-14 re-scoped walk verdict.
+**Beta4 is released; the stopping rule is closed.** The maintainer accepted independent Gallery
+verification and initialization, with B4F-103 record-only and no republish. The
+[final disposition](#b4f-103-maintainer-disposition---record-only-beta4-released) supersedes the initial
+raw comparison's pending release disposition; the historical measurements remain intact.
 
 The maintainer ruled B4F-099 into beta4 on 2026-09-14 UTC, limited to the four changes in the
 regression report. PRED-BETA4-057 was committed in `91153385` before implementation. The authorized
@@ -312,3 +316,34 @@ Gallery verification is **FAILED**. No source repair, retag, republish, installa
 or extra census was made. The stopping rule remains in force, and the walk's re-scoped GREEN verdict
 is retained separately from this packaging finding. The two pre-existing dirty iteration records
 remain unstaged. Machine identities, timestamps and checks are in the JSON companion record.
+
+## B4F-103 maintainer disposition - record-only; beta4 released
+
+**Maintainer ruling, 2026-09-14:** B4F-103 is record-only, with **no republish**. The stopping rule is
+**closed**; **beta4 is released** at `8d3f9906` as
+[Specrew v0.40.0-beta4](https://github.com/alonf/specrew/releases/tag/v0.40.0-beta4).
+The original raw comparison above remains a historical measurement, not an unresolved release blocker.
+
+Independent verification on the maintainer's machine compared the Gallery `0.40.0-beta4` package
+against the byte-verified `8d3f9906` build:
+
+- **419 of 419 shipped content files are identical.**
+- `Specrew.psd1` differs only by the publish-time stamp, reproduced by the metadata replay.
+- The maintainer reports the three absent files as zero-byte `.gitkeep` placeholders that NuGet
+  excludes (NU5119). They carry no missing template content. The earlier agent comparison's local
+  placeholder sizes remain in its historical record; this is the maintainer's independent copy.
+- `.specrew/version-check-cache.json` is a runtime file the module writes locally, not package content.
+- `specrew init` from the Gallery copy deploys hook wiring, skills and every template directory that
+  had content. The only absent directory, `hooks/`, held nothing.
+
+These are maintainer-supplied runtime observations; no new installation or initialization was run
+by the agent for this disposition. The narrower accepted claim is declared shipped-content agreement
+plus the observed Gallery initialization, with the publish-time manifest transformation accounted for.
+The original raw hash/count result is not rewritten into a passing check.
+
+**Beta4.1 follow-up:** the exact-byte Gallery comparison excludes NuGet-dropped zero-byte placeholders
+and the publish-stamped manifest line(s), or the package stops shipping `.gitkeep`; either route
+compares the declared content scope. Local runtime files remain outside package content. This is
+[B4F-018's rule](beta4-findings.md#b4f-018---the-spine-finding-a-claim-measured-over-a-narrower-set-than-the-claim-covers),
+carried into B4F-103's comparison correction. The correction is recorded for beta4.1, not implemented
+in beta4. The other beta4.1/beta5 findings retain their ruled dispositions.

@@ -4611,7 +4611,7 @@ denial before drafting the artifact. **Disposition:** beta4.1, recorded not fixe
 must name the producing action, as the persist refusal already does; naming the missing file alone
 leaves the coordinator without its next step. Related ordering/default findings are B5F-002/003.
 
-## B4F-103 - PUBLISHED CONTENT DOES NOT REPRODUCE ITS BUILD STAMP (recorded, awaiting disposition)
+## B4F-103 - GALLERY COMPARISON SCOPE (record-only; beta4.1 correction)
 
 **Detected:** post-publication Gallery verification of `v0.40.0-beta4` / `8d3f9906`, 2026-09-14.
 The tag-triggered workflow succeeded, including census 424/424. The downloaded package embeds the
@@ -4624,10 +4624,22 @@ the downloaded manifest hash exactly. The remaining 419 present content files ma
 **Evidence:** [publication and hash comparison](beta4-b4f099-validation.md#publication-completed---exact-byte-gallery-check-failed-b4f-103),
 with full hashes and machine checks in the JSON companion record. NuGet documents the observed
 [default dotfile exclusion](https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5119).
-This is a stamp/scope/serialization failure; the comparison found no other changed file, and does
-not claim a Gallery installation was tested.
+The initial raw comparison found a stamp/scope/serialization mismatch and no other changed file.
+That agent check did not exercise Gallery initialization; the independent maintainer evidence below does.
 
-**Disposition:** recorded, not fixed; exact-byte Gallery verification remains FAILED. The release
-and tag exist at the authorized SHA. The stopping rule holds. Any bounded follow-up must make the
-stamp describe the final serialized file set and bytes, then verify that agreement through the
-actual packaging route. No release mutation or new candidate is authorized by this record.
+**Maintainer disposition, 2026-09-14:** **record-only, no republish; beta4 is released and the
+stopping rule is closed.** Independent verification of the Gallery `0.40.0-beta4` copy against the
+byte-verified `8d3f9906` build finds **419/419 shipped content files identical**. The manifest differs
+only by the publish-time stamp, reproduced by metadata replay. The maintainer reports three absent
+zero-byte `.gitkeep` placeholders excluded by NuGet (NU5119). The local
+`.specrew/version-check-cache.json` is runtime output, not package content.
+
+The maintainer also ran `specrew init` from the Gallery copy: hook wiring, skills and every template
+directory with content deployed. The only absent directory, `hooks/`, held nothing. The
+[final disposition and evidence](beta4-b4f099-validation.md#b4f-103-maintainer-disposition---record-only-beta4-released)
+records this human-supplied runtime verification separately from the earlier raw comparison.
+
+**Beta4.1:** the exact-byte Gallery check excludes NuGet-dropped zero-byte placeholders and the
+publish-stamped manifest line(s), or the package stops shipping `.gitkeep`. Either way, the check
+compares the declared content scope: **B4F-018's rule**. Runtime files are outside package content.
+This follow-up is recorded only; no beta4 repair or republish is authorized.
