@@ -1,9 +1,11 @@
 # B4F-099 bounded repair
 
-**Current ruling:** census `34808258530` is red; `97e03c80` is not frozen. Its installation and router
-update happened ahead of green and are recorded as a B4F-027 process deviation. The historical delivery
-record below preserves what happened, but its completion/freeze claim is superseded. The walk is on hold
-until PRED-BETA4-058 produces a green candidate followed by verified installation and one further update.
+**Current walk SHA: `8d3f99061e41396eaa4ac665d3883bcc75f88730`.** PRED-BETA4-058's sanctioned
+CI/census pair is green (424/424 census files), followed by byte-verified installation and one further
+router-skill update. The [final verdict](#pred-beta4-058-verdict---green-before-installation) records the
+order and verification. The earlier red `97e03c80` is not frozen; its premature install/update remains
+a B4F-027 process deviation. Historical claims below preserve that episode and are superseded by this
+current result. Acceptance 5 remains the maintainer's walk; it has not been run by the agent.
 
 The maintainer ruled B4F-099 into beta4 on 2026-09-14 UTC, limited to the four changes in the
 regression report. PRED-BETA4-057 was committed in `91153385` before implementation. The authorized
@@ -171,3 +173,50 @@ remain. The production timeout is unchanged. PowerShell parse errors: zero.
 
 The next step is one sanctioned CI/census pair on the committed candidate. Installation and the
 further router update remain withheld until green, and the walk stays on hold.
+
+## PRED-BETA4-058 verdict - green before installation
+
+**Walk SHA: `8d3f99061e41396eaa4ac665d3883bcc75f88730`.** The sanctioned pair ran once on this
+candidate: [census 34813894967](https://github.com/alonf/specrew/actions/runs/34813894967) and
+[CI 34813883244](https://github.com/alonf/specrew/actions/runs/34813883244), both green.
+The complete census reports **files=424, pester=148, scripts=276, failed=0,
+caller_contaminated=False**. All four previously failed files now pass, including the full ChangedOnly
+suite. Prepublish validation and the dry-run stamp/publication step passed. CI passed Lint, Self-leak
+firewall, Deterministic gate and Contract lane. No re-dispatch was used.
+
+The process ordering is recorded from the completed runs and actual invocation timestamps (UTC):
+
+| Event | Time |
+| --- | --- |
+| CI completed green | 2026-09-14 06:56:55 |
+| Census workflow completed green, including dry-run stamp | 2026-09-14 07:26:38 |
+| Installation started | 2026-09-14 07:27:28.4289886 |
+| Installation completed successfully | 2026-09-14 07:27:48.9542563 |
+| Further router update started | 2026-09-14 07:28:38.2241794 |
+| Further router update completed successfully | 2026-09-14 07:28:48.8107569 |
+| Post-update checks completed | 2026-09-14 07:29:49.1843814 |
+
+Both run records were checked for the exact candidate SHA and completed success before the installer
+was invoked. The installed stamp was checked for `8d3f9906` before the router update. Installation
+ran once from the clean detached candidate checkout and byte-verified all 424 package files; the stamp
+covers 423 content files, excluding itself. Content SHA-256 remains
+`deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247` because this correction
+changes tests, a derived repository deployment receipt and records, not packaged implementation.
+
+The single further router update reports `0.40.0-beta4`. Its extension integrity check finds zero
+modified or missing files, all six repaired script/template copies match the module byte-for-byte,
+and both review-runtime hashes are
+`62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf`.
+All seven user records saved immediately before this update are byte-identical afterward. The updater's
+31 consumer-assumption advisories remain recorded without expanding this repair. The source project's
+two pre-existing dirty iteration-003 files remain unstaged.
+
+The old installation ahead of green remains a B4F-027 process deviation, recorded before correction in
+`82a080a1`; the new result does not ratify it. `97e03c80` remains the rejected census candidate.
+This final evidence commit is documentation only, past the censused and installed `8d3f9906`; it does
+not claim another source freeze or another CI/census pair.
+
+PRED-BETA4-058 holds for the bounded correction and ordered delivery. The stopping rule is back in
+force. The walk can now use `8d3f9906`; acceptance 5 is still the maintainer's installed-host walk.
+B4F-100 and B4F-101 remain beta4.1, with only B4F-100's recorded exception if that walk trips it.
+The abandoned d8ce3ea9 walk and original transcript remain preserved evidence.

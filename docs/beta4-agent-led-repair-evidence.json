@@ -683,7 +683,7 @@
       }
     ]
   },
-  "stopping_rule": "97e03c80 is not frozen; walk held. New ruled correction cycle under PRED-BETA4-058, green before install/update. B4F-100/101 remain deferred as ruled.",
+  "stopping_rule": "Back in force after PRED-BETA4-058 green pair, verified installation and one further router update. Walk SHA 8d3f9906; acceptance 5 remains user-owned. B4F-100/101 dispositions unchanged. Prior premature 97e03c80 install/update remains B4F-027 process deviation.",
   "abandoned_transcript": {
     "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
     "baseline_prefix_intact": true,
@@ -712,16 +712,19 @@
   "post_freeze_package_delta": {
     "packaged_paths_changed": 0,
     "verified_against": "97e03c80",
-    "scope": "FileList plus module manifest and optional package documents; later tracked changes are tests/docs only, excluding pre-existing user iteration records."
+    "scope": "FileList plus module manifest and optional package documents; later tracked changes are tests/docs only, excluding pre-existing user iteration records.",
+    "historical_context": "PRED-BETA4-057 delivery record at 4dae0a1b, before the maintainer reopened the red candidate"
   },
   "current_ruling": {
     "prediction": "PRED-BETA4-058",
     "prior_sha": "97e03c80",
     "prior_sha_frozen": false,
-    "walk_allowed": false,
+    "walk_allowed": true,
     "process_deviation_class": "B4F-027",
     "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
-    "authorized_next": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green."
+    "authorized_next": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green.",
+    "walk_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "status": "fulfilled: green pair preceded verified install and single further router update; acceptance 5 remains pending"
   },
   "reopened_cycle": {
     "prediction": "PRED-BETA4-058",
@@ -730,7 +733,7 @@
       "c0d1e148",
       "4dae0a1b"
     ],
-    "status": "corrections verified locally; candidate census pending",
+    "status": "green pair, verified install and one further router update complete",
     "receipt": {
       "decision": "repository receipt was stale; fixture and validator unchanged",
       "before": {
@@ -781,11 +784,198 @@
       ]
     },
     "install_after_green": {
-      "performed": false
+      "performed": true,
+      "count": 1,
+      "gate": {
+        "candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+        "ci_run": 34813883244,
+        "ci_completed_at": "2026-09-14T06:56:55Z",
+        "census_run": 34813894967,
+        "census_completed_at": "2026-09-14T07:26:38Z",
+        "install_started_at": "2026-09-14T07:27:28.4289886Z",
+        "install_count": 1,
+        "install_exit_code": 0,
+        "install_completed_at": "2026-09-14T07:27:48.9542563Z"
+      },
+      "stamp": {
+        "schema": "specrew-build-stamp/v1",
+        "commit": "8d3f9906",
+        "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+        "content_file_count": 423
+      },
+      "packaged_files_byte_verified": 424,
+      "log_sha256": "c47cf0a310e5a310c2a6087994b8c12de0214276359bcb5510f3f44602d08089",
+      "ordered_after_green": true
     },
     "router_update_after_green": {
-      "performed": false
+      "performed": true,
+      "count": 1,
+      "verification": {
+        "verified_at": "2026-09-14T07:29:49.1843814Z",
+        "stamp": {
+          "schema": "specrew-build-stamp/v1",
+          "commit": "8d3f9906",
+          "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+          "content_file_count": 423
+        },
+        "module_root": "C:\\Users\\alon\\OneDrive - Zionet LTD\\Documents\\PowerShell\\Modules\\Specrew\\0.40.0",
+        "project_version": "0.40.0-beta4",
+        "runtime": {
+          "runtime_root": "C:\\Dev\\agentic-architecture-router-skill\\scripts\\internal\\continuous-co-review",
+          "source": "project-deployed",
+          "bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+          "project_bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+          "marker_present": true
+        },
+        "integrity": {
+          "checked": true,
+          "drifted": [],
+          "missing": [],
+          "marker": "C:\\Dev\\agentic-architecture-router-skill\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+        },
+        "preserved": [
+          {
+            "path": ".specrew/authority/exhausted-turns.jsonl",
+            "before": "C6E486C064B8797DE323B1677A033F00A11702182757132CC9AE71496D9A9809",
+            "after": "C6E486C064B8797DE323B1677A033F00A11702182757132CC9AE71496D9A9809",
+            "unchanged": true
+          },
+          {
+            "path": ".specrew/review/allowance-reset/pending-allowance-reset.json",
+            "before": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+            "after": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+            "unchanged": true
+          },
+          {
+            "path": ".specrew/review/round-approval/captures.jsonl",
+            "before": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+            "after": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+            "unchanged": true
+          },
+          {
+            "path": ".specrew/review/round-approval/pending-round-approval.json",
+            "before": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+            "after": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+            "unchanged": true
+          },
+          {
+            "path": ".squad/decisions.md",
+            "before": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+            "after": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+            "unchanged": true
+          },
+          {
+            "path": "specs/001-agentic-architecture-skills/iterations/003/state.md",
+            "before": "8C3E41AB5F76C407D4FDA6AAD331BE910DDF6D661472A2DD6F45E52D2F80C0DC",
+            "after": "8C3E41AB5F76C407D4FDA6AAD331BE910DDF6D661472A2DD6F45E52D2F80C0DC",
+            "unchanged": true
+          },
+          {
+            "path": "specs/001-agentic-architecture-skills/iterations/003/tasks-progress.yml",
+            "before": "8687B6BB785AF8F7538E3C11121E6A7ABCDA2E391A7AC181AA32BEC09F633174",
+            "after": "8687B6BB785AF8F7538E3C11121E6A7ABCDA2E391A7AC181AA32BEC09F633174",
+            "unchanged": true
+          }
+        ],
+        "mirrors": [
+          {
+            "path": "scripts/turn-end-store.ps1",
+            "matches": true
+          },
+          {
+            "path": "scripts/declare-turn-end.ps1",
+            "matches": true
+          },
+          {
+            "path": "scripts/specrew-conformance-provider.ps1",
+            "matches": true
+          },
+          {
+            "path": "squad-templates/skills/turn-end.md",
+            "matches": true
+          },
+          {
+            "path": "squad-templates/skills/gate-stop.md",
+            "matches": true
+          },
+          {
+            "path": "squad-templates/skills/design-workshop.md",
+            "matches": true
+          }
+        ],
+        "update_gate": {
+          "candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+          "update_count": 1,
+          "update_started_at": "2026-09-14T07:28:38.2241794Z",
+          "update_completed_at": "2026-09-14T07:28:48.8107569Z",
+          "update_succeeded": true
+        },
+        "update_log_sha256": "B017490DAB7744705C1A688E32C52003437B6FD026BF8A94B168FC95F25AA8B1"
+      },
+      "preserved_records_unchanged": 7,
+      "advisories": 31,
+      "advisory_disposition": "Reported and left outside the bounded repair; user files preserved."
     },
-    "walk_allowed": false
-  }
+    "walk_allowed": true,
+    "candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "census": {
+      "run_id": 34813894967,
+      "url": "https://github.com/alonf/specrew/actions/runs/34813894967",
+      "head_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-09-14T07:26:38Z",
+      "dispatch_count": 1,
+      "files": 424,
+      "pester": 148,
+      "scripts": 276,
+      "failed": 0,
+      "caller_contaminated": false,
+      "jobs": [
+        {
+          "name": "full-test-census",
+          "conclusion": "success"
+        },
+        {
+          "name": "prepublish-validation",
+          "conclusion": "success"
+        },
+        {
+          "name": "publish-module",
+          "conclusion": "success"
+        }
+      ],
+      "summary": "Full PowerShell test sweep: files=424, pester=148, scripts=276, failed=0, caller_contaminated=False",
+      "log_sha256": "5118975ce190e81ab52a71613d318d8e750e8892e198a4e8cb2a9c568b5b3164"
+    },
+    "ci": {
+      "run_id": 34813883244,
+      "url": "https://github.com/alonf/specrew/actions/runs/34813883244",
+      "head_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-09-14T06:56:55Z",
+      "jobs": [
+        {
+          "name": "Self-leak firewall (deploy surface)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deterministic gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Contract lane",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "packaged_implementation_changes": 0,
+    "full_changed_only_suite": "passed in the complete 424-file census; local pre-census reproduction was only the first positive case"
+  },
+  "current_candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730"
 }

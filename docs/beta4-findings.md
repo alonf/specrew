@@ -4574,3 +4574,19 @@ PSGallery test's bound as a test-only change, state PRED-BETA4-058, and run one 
 The sanctioned CI/census pair is the pair; a red is not a request for an unchanged re-dispatch.
 Only after green: byte-verified installation, one further router-skill update, then report the walk SHA.
 B4F-100 and B4F-101 retain their beta4.1 dispositions and the recorded Monday exception for B4F-100.
+
+### B4F-027 recurrence disposition - corrected sequence witnessed
+
+PRED-BETA4-058 was committed in `82a080a1` before the bounded correction; candidate `8d3f9906`
+passed its sanctioned CI/census pair once (census `34813894967`: 424/424, no caller contamination;
+CI `34813883244`: all jobs green). The census workflow completed at 07:26:38 UTC; installation began
+at 07:27:28 UTC, byte-verified all 424 package files, then the router-skill project was updated once
+more at 07:28:38 UTC. Deployment integrity and runtime match; seven saved user records are unchanged.
+The [delivery record](beta4-b4f099-validation.md) carries the validator's own before/after output and
+sequence evidence. The repository receipt was stale; the fixture remains unchanged. The test-only
+PSGallery bound is 15,000 ms; both earlier assertion corrections are in the candidate.
+
+The premature `97e03c80` installation/update remains a process deviation and is not ratified by this
+later green result. The rule remains green before installation and project update. **Walk SHA:
+8d3f9906**. Acceptance 5 remains unwitnessed until the maintainer's walk; B4F-100/101 keep their ruled
+dispositions. This records compliance in the corrected cycle, not closure of the whole B4F-027 class.

@@ -2682,3 +2682,28 @@ that stale receipt; the receipt is wrong, so the fixture and validator remain un
 The repair stays within tests, the derived deployment receipt and records. The four B4F-099 production
 changes, token identity, receipts, crossing binding, missing-artifact withholding and captured-verdict
 directive are unchanged. B4F-100/101 remain deferred as ruled.
+
+### PRED-BETA4-058, VERDICT - held; walk SHA 8d3f9906
+
+Candidate `8d3f99061e41396eaa4ac665d3883bcc75f88730` passed its one sanctioned pair:
+CI `34813883244` green, census `34813894967` green with exactly 424 files (148 Pester, 276 scripts),
+failed=0, caller_contaminated=False. Prepublish validation and dry-run stamping passed. All four prior
+failed files now pass; the original census on `97e03c80` remains red and that SHA is not frozen.
+
+The receipt was stale, not the fixture: the existing writer replaced the three refused hashes and
+inventoried nine existing files. Its checker reports zero drift/missing; the same positive validator
+case exits 0, and the full ChangedOnly suite passes in the census. The named 15,000 ms test-only
+PSGallery startup bound passes with exit-code/silence assertions retained. The earlier two test-only
+corrections are included through `c0d1e148` and `4dae0a1b`. No packaged implementation changed.
+
+Green preceded installation this time: CI completed 06:56:55 UTC, the census workflow 07:26:38 UTC;
+installation began 07:27:28 UTC and verified all 424 package files and the stamp for `8d3f9906`.
+The single further router update ran 07:28:38-07:28:48 UTC. Deployment integrity is clean, six repaired
+mirrors match, review runtime agrees on both sides, and all seven freshly saved user records are
+unchanged. Exact timestamps, hashes and run links are in the [delivery record](beta4-b4f099-validation.md).
+
+The premature `97e03c80` install/update remains a B4F-027 process deviation, recorded in `82a080a1`;
+it is not retroactively sanctioned. The stopping rule resumes after this corrected cycle. The SHA for
+the walk is **8d3f9906**. Acceptance 5 remains the maintainer's walk. B4F-100/101 remain beta4.1 with
+the already recorded Monday exception for B4F-100. The final records commit is docs past the tested
+and installed SHA, not a second census or a claim that later HEAD was tested.
