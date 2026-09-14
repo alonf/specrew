@@ -4464,3 +4464,48 @@ by the router-skill project's iterations 002 and 003, with human verdicts and a 
 fresh-project walk covers init -> orientation -> product-domain with one correction -> agenda -> first
 technical lens -> specify, then the second feature's first question, with repair prompts 0 and post-verdict
 asks 0. Anything found outside that path is beta4.1.
+
+## B4F-099 - TURN-END DISPLACES THE AGENDA AND WEAKENS THE BOUNDARY CONVERSATION (open; reproduced)
+
+**Detected**: 2026-09-14 UTC, on the maintainer's request to compare the latest release and current beta
+against the `beta4-final-d8ce3ea9` walk. Current source `8dc29187` differs from that walk build only in
+`docs/beta4-predictions.md`.
+
+**Drift type**: violation. **Severity**: critical to the recorded first-run acceptance (zero repair
+prompts). **Work item**: beta4 fix 2 / PRED-BETA4-011, introduced in `dfae6133`.
+**Requirement**: Feature 141 FR-025 (interactive, expertise-adapted per-lens workshop), FR-040 (agenda
+orientation), and current launch-contract rule 46 (substantive boundary review and discussion).
+
+**Evidence**: the product-domain `move on` bound and the checkpoint writer closed that lens. At
+03:37:40Z the agent rendered the complete agenda through the tool. At 03:38:05Z its only following reply
+was the turn-end status, ending `nothing needed`, although agenda confirmation was required. No agenda
+appeared in that reply. The human's 03:43:29Z `yes` therefore had no agenda digest to bind to; the agent
+re-presented it and asked again at 03:44:08Z. The controller remains pending confirmation.
+
+**Cause**: rule 46A and the turn-end skill require the script's output verbatim at every turn end;
+the workshop skill requires the agenda/question in the assistant message. The script has no workshop
+answer-wait kind: conversational has an empty body, in-flight describes background work as needing
+nothing, boundary renders a generic crossing packet. The agent chose in-flight for a human-answer wait.
+The taxonomy and competing response instructions make this more than a missed paste reminder.
+
+**Measured**: isolated replay through the real Stop provider and receipt writer, with identical complete
+prerequisites: status-only reply gives no agenda digest/no `yes` receipt; visible agenda gives both;
+neither reply is Stop-blocked. Direct renderer probes also show empty conversational output and
+boundary sections with cursor metadata/generic discussion instead of targeted review content.
+Agenda-vocabulary, turn-end-update-transition and capture-disclosure suites all pass. They do not cover
+this integrated presentation path. B4F-086's next-stage directive is present and tested; it is not an
+unfixed finding here.
+
+**Resolution path**: human-decision. Proposed repair: keep declaration/authority facts but preserve
+agent-authored interaction content, explicitly represent workshop answer waits, restore substantive
+boundary review sections, and give orientation one owner. No source fix, lifecycle advance or release
+approval was performed in this investigation. B4F-097's disclosure and vocabulary repairs survive;
+its missing-presentation cause remains open under this finding.
+
+**Class closure**: NONE — the current code still reproduces it. Closure requires an installed-host walk
+that preserves the agenda and question through turn-end, binds one reply per scope, and advances after
+each captured verdict without another start request, plus the corresponding integrated regression check.
+
+Full source comparison, timestamps, limitations and acceptance checks:
+[regression analysis](beta4-agent-led-regression-analysis.md),
+[measured replay and renderer outputs](beta4-agent-led-regression-evidence.json).

@@ -2565,3 +2565,47 @@ ran from the installed module, so the resolver found the manifest by co-location
 
 **The SHA for the walk: `d8ce3ea9`**, under the re-scoped acceptance (B4F record: the reopened SHA). The
 stopping rule resumes: anything found outside the walk's path is beta4.1.
+
+## PRED-BETA4-057 - B4F-099: the agent owns the reply, declarations preserve authority. Stated before source changes.
+
+**Maintainer ruling, 2026-09-14 UTC**: B4F-099 is in beta4, bounded to the report's recommended repair.
+Four changes only: turn-end is the last tool call and its return is input to the agent, never the reply;
+in-flight/conversational emit no human-facing text and boundary verifies the agent's packet, supplying
+only missing machine-derived approval/marker lines; Stop blocks a missing rendered workshop question,
+agenda or packet with one-line remedy; agent-owned opening orientation, with only a missing dials line
+filled by the gate. Preserve token identity, receipts, crossing binding, missing-artifact withholding and
+Get-SpecrewVerdictCapturedDirective. This ruling authorizes the bounded implementation and validation.
+
+**Baseline**: 8dc29187 (same product code as abandoned walk d8ce3ea9). The old walk is failed-candidate
+ evidence only; its transcript and project are preserved. The investigation is B4F-099, with the detailed
+report and paired replay saved beside it. No source was changed before this prediction.
+
+### Prediction
+
+1. An integrated replay of the supplied pre-answered Markdown link checker walk drives real
+   prompt/Stop providers, agenda/lens writers and authority capture: one visible agenda, natural yes
+   binds, one scoped move on per selected lens, then an agent-authored specify packet with concrete
+   review targets, recommendation and next step. A captured specify verdict begins clarify without
+   another start request. No receipt or approval is created before its matching human reply.
+2. In-flight and conversational declarations return no human-facing text. Their declarations remain
+   session/turn/token bound. A missing visible agenda, declared lens question or boundary packet is
+   Stop-blocked with a one-line instruction to include that content in the assistant reply. Tool output
+   alone cannot discharge presentation. A true background wait never steals the next question.
+3. The boundary declarer checks the agent's drafted packet and never synthesizes a generic one. It
+   supplies only a missing approval line and/or exact marker from the pending crossing. Owed artifacts
+   still withhold approval lines and markers. Session opening owns orientation; a shown orientation
+   is never repeated at turn end, and only an absent dials line is supplied as a supplement.
+4. Restore the current failing text/behavior as a mutation in disposable test copies: the integrated
+   assertions reject status-only agenda replies, empty conversation substitutions, generic boundary
+   packets and duplicate orientation. Unmutated replay passes. Focused identity, receipt, crossing,
+   missing-artifact and captured-verdict checks retain their authority assertions.
+5. After focused checks and review: one committed freeze, one full-test census, one byte-verified
+   installation of that SHA, and one update of the router-skill project. No edits to the abandoned walk.
+   The stopping rule resumes after that cycle. Acceptance 5 belongs to the maintainer's Monday walk:
+   orientation once, agenda once, yes binds, move on per lens, real review targets at specify, clarify
+   begins on its verdict, and the second feature's first question registers. No claim of that acceptance
+   is made from synthetic replay or the census.
+
+Implementation uses the existing PowerShell/module/deployment paths and no new dependency. Expected
+proof is at the composed human interaction as well as each authority boundary; passing old isolated
+helper tests alone does not satisfy this prediction.
