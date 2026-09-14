@@ -4510,7 +4510,6 @@ Full source comparison, timestamps, limitations and acceptance checks:
 [regression analysis](beta4-agent-led-regression-analysis.md),
 [measured replay and renderer outputs](beta4-agent-led-regression-evidence.json).
 
-
 ### B4F-099 ruling and bounded repair, 2026-09-14 UTC
 
 The maintainer ruled the report's four changes into beta4. PRED-BETA4-057 was committed before
