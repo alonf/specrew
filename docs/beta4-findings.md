@@ -4643,3 +4643,20 @@ records this human-supplied runtime verification separately from the earlier raw
 publish-stamped manifest line(s), or the package stops shipping `.gitkeep`. Either way, the check
 compares the declared content scope: **B4F-018's rule**. Runtime files are outside package content.
 This follow-up is recorded only; no beta4 repair or republish is authorized.
+
+## B4F-104 - UNCHANGED PENDING CROSSING REPAINTED ON EVERY TURN (beta4.1)
+
+**Reported by the maintainer, 2026-09-14:** in a project with a pending crossing, every non-verdict
+turn ends with the full boundary packet repainted and a visible `Stop hook error` line. Reported
+triggers include a side question answered by a skill, a wrong verdict and an orientation request.
+The crossing remains unchanged, but each turn incurs the same boundary re-presentation.
+
+**Required behavior:** boundary re-presentation is owed **once per session while the pending crossing
+is unchanged**, not once per turn. After that presentation, another non-verdict turn must not re-arm
+the same presentation obligation or produce a `Stop hook error` merely because the crossing remains
+pending. A new session still owes its one presentation of the pending crossing; a changed crossing
+has its own presentation obligation. Presentation does not supply a verdict or advance the crossing.
+
+**Disposition:** beta4.1, recorded only. Preserve the reported full-packet repetition and visible
+error as acceptance observations, including all three non-verdict triggers. Beta4 remains released;
+this record does not authorize a repair or republish.
