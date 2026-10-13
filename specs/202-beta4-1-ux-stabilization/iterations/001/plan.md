@@ -1,9 +1,9 @@
-# Iteration Plan: 001 (Stub)
+# Iteration Plan: 001
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 25.5/20 story_points
 **Started**: 2026-10-13
 **Completed**:
 
@@ -21,39 +21,54 @@
 
 ## Scope Summary
 
+Iteration 001 is Tier 1: B4F-108, 104, 106, 096, 107, 100, 102, 105, 109, 089 and 101. Tier 2's FR-022 and FR-023 belong to iteration 002 and are excluded here.
+
 | Requirement | Summary | Stories |
 | ----------- | ------- | ------- |
-| FR-001 | The hook-output journal MUST accept concurrent appends from separate hook processes without failure or torn lines. A share mode that permits concurrent appends is preferred. A per-write cross-process lock on that journal only is permitted when fault-injection case (e) shows the share mode alone is insufficient. | — |
-| FR-002 | A failed journal append MUST be retried within a bounded window as a backup. Only a failure that persists past it enters a degraded state. | — |
-| FR-003 | The degraded state MUST clear on the next successful append and record its recovery time. An unhealthy state left by an older version MUST be treated the same way. | — |
-| FR-004 | While degraded, hook output that cannot be journaled MUST be recorded as hashes in per-process outage-buffer files. The integrity check MUST read them before the next prompt decision, and they MUST be flushed into the journal and removed on recovery. | — |
-| FR-005 | A typed reply MUST be refused as authority only when it matches journaled or buffered hook output. If the buffer write itself fails, only that turn fails closed. | — |
-| FR-006 | Each host adapter MUST normalize its host's payload into a standard turn record (event, typed user text, host, origin) under a declared, tested contract. Origin MUST be one of typed-user, host-injected or unknown. Only typed-user can produce a receipt, and the journal and buffer match MUST apply to every reply. | — |
-| FR-007 | A degraded state MUST be disclosed in the affected turn, stating whether the reply was consumed. It MUST also appear in `specrew status` / `where` while degraded, and in session-start orientation. | — |
-| FR-008 | A health journal MUST record each transition (class, error text, first-seen, count, recovered-at) with hashes only and no user text. | — |
-| FR-009 | When self-recovery fails, the system MUST ask the maintainer one decision, in project terms that pass the banned-noun check and never imply loss when nothing is lost. The recovery action MUST record the receipt of the approving reply. | — |
-| FR-010 | A refusal MUST name the actual cause and never attribute a reply to a channel the maintainer did not use. | — |
-| FR-011 | An unchanged pending crossing MUST be presented in full once per session and again only after a context gap. In between, the pending decision MAY appear at most as a brief mention inside a reply that answers the maintainer: one line naming the decision and its approval phrase, with no verdict options, no marker and no packet sections. It MUST NOT produce a `Stop hook error`. The duration of a "long gap" is a named tuning value set in the plan. | — |
-| FR-012 | The Stop hook MUST NOT block a reply over formatting. It checks substance only: that a needed decision is clear, and that authority is intact. | — |
-| FR-013 | Deterministic text the system can supply, such as the dials line and orientation facts, MUST be filled in by the system, marked as system output, and recorded in the hook-output journal, with 0 human-visible cycles. | — |
-| FR-014 | The orientation MUST reach the maintainer before the first question of a session. The mechanism is chosen at design-analysis. | — |
-| FR-015 | The "presented" check MUST compare a meaning-bearing line set declared once in the shared path: headings, review-target links, question line, approval line, verdict options and marker. It MUST NOT compare the whole draft. | — |
-| FR-016 | The adaptation text MUST be one shared sentence, identical on every host and with no numbers or keys. Only the correction-command reference comes from the adapter. | — |
-| FR-017 | `.specrew/start-context.json` MUST be the single current-feature pointer, MUST record the branch it was written for, and MUST be updated by every writer that creates or advances a feature. | — |
-| FR-018 | When the pointer's branch differs from the current branch, readers MUST treat it as stale, reconcile from the branch and the in-flight work, and disclose the reconciliation. They MUST ask only when two in-flight features genuinely compete. A Shipped or closed feature MUST never be shown as active while one is in flight. | — |
-| FR-019 | The resume "where we are / starting now" lines MUST come from disk only: the pending crossing, `from_commit..HEAD`, and progress. The handover narrative MUST be shown only as context with its age, and flagged when it is stale or names another feature. | — |
-| FR-020 | A gate refusal for a missing artifact MUST name the step that produces it. | — |
-| FR-021 | Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it. | — |
-| FR-026 | `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. A feature is new when it differs from the feature whose feature-closeout was last authorized; a re-sync of the same feature is never a reset. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries. On a new-feature reset, all per-feature runtime state MUST be keyed to the new feature: the crossing, the current-feature pointer, and the review-campaign coverage line shown at boundary stops. The out-of-band specify authorization recorded for 202 (`auth-83b0f0c2...`) MUST stay in the append-only ledger as B4F-109's audit trail; it is never rewritten or removed (B4F-109). | — |
-| FR-022 | Specrew-owned records written after review, such as the iteration seal and the reviewer scaffold output, MUST NOT count as uncovered source drift. The exact review-ordering slices of B4F-054/056/058/061 are set at iteration-2 design analysis, within the bounds of B4F-074 and B4F-093, and approved there. No broader review redesign. | — |
-| FR-023 | The exact-byte package check MUST compare only the declared content scope (B4F-018's rule). No beta4 republish. | — |
-| FR-024 | Real hook payloads from Claude, Codex and Copilot MUST be captured as test fixtures, in scratch directories only and never in a governed worktree. The cross-host tests MUST run through each host's real adapter with those payloads, never by calling the shared path directly. | — |
-| FR-025 | The B4F-108 fault-injection suite MUST cover cases a-e (a: lock released within the retry window; b: lock held beyond it; c: recovery; d: hook output never counts; e: two real processes appending at once), with case (e) on Windows, macOS and Linux. | — |
+| FR-001 | Concurrent journal appends succeed without torn lines (share mode first; lock only if case (e) requires) | US1 |
+| FR-002 | Bounded retry as backup; only persistent failure degrades | US1 |
+| FR-003 | Degraded state self-clears on next append; legacy marker treated the same | US1 |
+| FR-004 | Per-process outage buffer of hashes, read before the next prompt decision, flushed then removed | US1 |
+| FR-005 | Refuse authority only on a real hook-output match; buffer-write failure fails only that turn | US1 |
+| FR-006 | Standard turn record via declared, tested host contract; three-valued origin; only typed-user mints | US1 |
+| FR-007 | Degraded state disclosed same turn (consumed status), in status/where, and in orientation | US1 |
+| FR-008 | Health journal of transitions, hashes only | US1 |
+| FR-009 | One plain recovery decision; no implied loss; approving receipt recorded | US1 |
+| FR-010 | Refusal names the actual cause; never an unused channel | US1 |
+| FR-011 | Unchanged crossing presented once per session and after a context gap; otherwise a one-line mention | US2 |
+| FR-012 | Stop never blocks over formatting; substance only | US2 |
+| FR-013 | Deterministic lines system-filled, marked and journaled; 0 cycles | US2 |
+| FR-014 | Orientation reaches the maintainer before the first question | US2 |
+| FR-015 | Presented check over the declared meaning-line set, not the whole draft | US2 |
+| FR-016 | One shared prose dials sentence on every host | US3 |
+| FR-017 | start-context is the single pointer, records its branch, updated by every feature writer | US4 |
+| FR-018 | Feature precedence: in-flight controller or crossing, pointer for this branch, branch as hint; always disclosed | US4 |
+| FR-019 | Resume lines from disk; narrative only as aged context | US4 |
+| FR-020 | Gate refusal names the producing step | US5 |
+| FR-021 | Per-session ignored draft path resolved by the script; skills name it | US6 |
+| FR-024 | Real payload fixtures (scratch only); cross-host tests through real adapters | US1, US2, US3 |
+| FR-025 | Fault-injection cases a-e; (e) on three operating systems | US1 |
+| FR-026 | New-feature cycle reset; all per-feature runtime state keyed to the new feature; audit entry kept | US4 |
 
 ## Tasks
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | Capture real hook payloads in scratch dirs; measure session-id presence and direct-display of hook output per host | FR-024 | US1 | 1.5 | Implementer | tests/fixtures/hook-payloads/** | planned | | | |
+| T002 | Standard turn record, host field maps, origin rules, transform registry; remove both old normalizers; twin-copy parity test | FR-006 | US1 | 2.5 | Implementer | hosts/*/host.psd1, scripts/internal/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1, scripts/internal/bootstrap/HostEventAdapter.ps1, tests/unit/** | planned | | | |
+| T003 | Journal share mode, bounded retry, outage buffer, health journal, legacy marker migration | FR-001, FR-002, FR-003, FR-004, FR-005, FR-008 | US1 | 3.0 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/workshop-authority-store.ps1, tests/unit/** | planned | | | |
+| T004 | B4F-108 disclosures, status/where health line, recovery question, selection-channel inference removed | FR-007, FR-009, FR-010 | US1 | 2.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/specrew-where.ps1, tests/bootstrap/** | planned | | | |
+| T005 | Cross-host workshop acceptance and fault-injection suite (a-e; e on 3 OS) | FR-024, FR-025 | US1 | 2.5 | Implementer | tests/unit/**, tests/integration/**, .github/workflows/** | planned | | | |
+| T006 | Presented-crossing memory with context-gap rules; one-line mention | FR-011 | US2 | 2.0 | Implementer | extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, tests/unit/** | planned | | | |
+| T007 | Substance-only Stop; declared meaning-line set; system-filled deterministic lines | FR-012, FR-013, FR-015 | US2 | 2.0 | Implementer | extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, extensions/specrew-speckit/scripts/declare-turn-end.ps1, tests/unit/** | planned | | | |
+| T008 | Orientation first via system output; no duplicates on direct-display hosts; session-scoped bootstrap check | FR-014 | US2 | 1.5 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, tests/bootstrap/** | planned | | | |
+| T009 | One shared prose dials sentence; numeric renderer removed | FR-016 | US3 | 1.0 | Implementer | scripts/internal/user-profile.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, tests/unit/** | planned | | | |
+| T010 | Single feature resolver with precedence and disclosure; pointer branch; create-governed-feature writes pointer; status uses resolver | FR-017, FR-018 | US4 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, extensions/specrew-speckit/scripts/create-governed-feature.ps1, scripts/internal/dashboard-renderer.ps1, scripts/specrew-where.ps1, tests/unit/** | planned | | | |
+| T011 | Shared cycle-reset function, feature_ref on new entries and crossings, coverage line per feature | FR-026 | US4 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, tests/unit/** | planned | | | |
+| T012 | Resume from disk; narrative as aged, flagged context | FR-019 | US4 | 1.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/coordinator-resume.ps1, tests/bootstrap/** | planned | | | |
+| T013 | Design-analysis gate refusal names the producing step | FR-020 | US5 | 0.5 | Implementer | scripts/internal/design-analysis-gate.ps1, tests/unit/** | planned | | | |
+| T014 | Draft intake on stdin with explicit UTF-8 (Hebrew test on 3 OS); per-session path; skills name it | FR-021 | US6 | 1.0 | Implementer | extensions/specrew-speckit/scripts/declare-turn-end.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, extensions/specrew-speckit/squad-templates/skills/**, tests/unit/** | planned | | | |
+| T015 | Acceptance evidence: friction table, validator vs baseline, live-walk script | FR-024 | US1 | 1.0 | Implementer | specs/202-beta4-1-ux-stabilization/iterations/001/** | planned | | | |
 
 ## Effort Model
 
@@ -61,42 +76,36 @@
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
 | Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
-| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Iteration Bounding | scope | Tier 1 scope is fixed by the maintainer; overcommit is surfaced, not auto-deferred. |
 | Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
-| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
-| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
-| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+| Overcommit Threshold | 1.0 | 25.5 planned exceeds 20 x 1.0; surfaced at the plan boundary. |
+| Defer Strategy | manual | Any deferral is the maintainer's decision. |
+| Calibration Enabled | true | Retro compares actuals to these estimates. |
 
 ## Concurrency Rationale
 
-- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
-- Technology and scope signals: Mixed frontend and backend/service signals are present in the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
-- Workstream separability: Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.
-- Shared-surface conflict risk: elevated due to shared-state / cross-cutting cues in scope text.
-- Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- **Roster:** Spec Steward, Planner, Implementer, Reviewer (codex), Retro Facilitator.
+- **Conflict risk:** high. The conformance provider, dispatcher and turn-end store are shared by T002, T003, T004, T006, T007 and T008.
+- **Recommendation:** run serially in dependency order. T001 comes first, because T002, T005, T008 and T014 depend on its measurements. Then T002, then T003 and T004, then T006, T007 and T008. T009 to T014 can follow in any order, and T005 and T015 come last. No same-specialty parallel pair is proposed.
 
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | done | Workshop, spec, clarify, design-analysis co-design complete |
+| Discovery/Spikes | 1.5 | T001 payload capture and host measurements |
+| Implementation | 23.0 | T002-T014 |
+| Review | allowance | Governed by the codex round allowance, not SP (199 retro ruling) |
+| Rework | from slack | No SP buffer is planned; the overcommit is surfaced instead |
 
 ## Traceability Summary
 
-- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-026, FR-022, FR-023, FR-024, FR-025
-- User stories represented in current scope: 
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- **Requirement scope:** FR-001 to FR-021 and FR-024 to FR-026. FR-022 and FR-023 are in iteration 002.
+- **User stories represented:** US1 to US6. US7 is in iteration 002.
+- Every task traces to an FR and a story. Every FR in scope has at least one task.
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+- **Capacity:** 25.5 planned against 20. The iteration is scope-bounded by the maintainer's Tier 1 ruling, so nothing is deferred without a decision (plan-boundary prompt 1).
+- **Review:** effort is not priced in SP. Codex reviews within its round allowance.
+- **Design:** see design-analysis.md (Co-Design Record) and the feature plan.md work breakdown W1 to W15, which maps to T001 to T015 one-for-one.
