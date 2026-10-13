@@ -4826,6 +4826,19 @@ shared path without a live walk, and is never called supported-and-validated.
 **Evidence:** specs/202-beta4-1-ux-stabilization/spec.md, "Host support tiers".
 **Disposition:** beta5 candidate, recorded by the maintainer's instruction. No 202 work.
 
+## B4F-111 - THE BOUNDARY SYNC SILENTLY EDITS A PRODUCT FILE (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202. Every boundary sync (specify, then clarify) left `Specrew.psd1`
+modified. Restoring the file only restarted the loop.
+**Cause (maintainer diagnosis):** `sync-boundary-state.ps1` calls `Sort-SpecrewManifestFileList` on
+every sync, at the FR-029 guard, near line 2051. The committed FileList was not sorted, because three
+entries were added out of order during beta4: readiness-verdict.ps1, turn-end-store.ps1 and
+specrew-reseal.ps1. The list was sorted once on the 202 branch in `2cb2231a` (membership unchanged,
+419 entries), which ends the loop for now.
+**Beta5 candidate (not 202 scope):** enforce FileList order with a lint or test check at commit time,
+and remove the sort from the boundary sync. A lifecycle sync must not silently edit product files.
+**Disposition:** beta5 candidate, recorded by the maintainer's instruction. Drift: DRIFT-202-INTAKE-010, 013.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
