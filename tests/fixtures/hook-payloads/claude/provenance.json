@@ -1,0 +1,79 @@
+{
+  "task": "T001 (feature 202, iteration 001)",
+  "host": "claude",
+  "method": "Real host run in a scratch directory outside any repository; a capture hook copied raw stdin bytes. Payloads are byte-exact; environment values are not recorded.",
+  "fixtures": [
+    {
+      "fixture": "print-sessionstart-startup.json",
+      "event": "SessionStart",
+      "captured_utc": "2026-10-13T16:54:35.3895379Z",
+      "host_version": "Claude Code 2.1.296",
+      "entrypoint": "sdk-cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\claude",
+      "stdin_bytes": 495,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "9829a49b516b07f7f062c131b05af852a28abd08562b050e6a0386d68bdc3f41"
+    },
+    {
+      "fixture": "print-stop.json",
+      "event": "Stop",
+      "captured_utc": "2026-10-13T16:55:01.903441Z",
+      "host_version": "Claude Code 2.1.296",
+      "entrypoint": "sdk-cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\claude",
+      "stdin_bytes": 1361,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "a34ef4efee7ac6540eb14bfc06793325de65350003dbb90b58178b3ec22622ae"
+    },
+    {
+      "fixture": "print-userpromptsubmit-typed-hebrew.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-10-13T16:54:37.0379542Z",
+      "host_version": "Claude Code 2.1.296",
+      "entrypoint": "sdk-cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\claude",
+      "stdin_bytes": 1185,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "78c2743cf1043c186e072859ffc190a1c2bd425c12139387e4cf625372802d7f"
+    },
+    {
+      "fixture": "tui-sessionstart-startup.json",
+      "event": "SessionStart",
+      "captured_utc": "2026-10-13T17:05:39.3876643Z",
+      "host_version": "Claude Code 2.1.296",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\claude",
+      "stdin_bytes": 772,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "28eaa039c330bdea745e391db4e950bad35283b4f70ea3fbcc428650511362b1"
+    },
+    {
+      "fixture": "tui-stop.json",
+      "event": "Stop",
+      "captured_utc": "2026-10-13T17:05:55.8524192Z",
+      "host_version": "Claude Code 2.1.296",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\claude",
+      "stdin_bytes": 917,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "d0edc456940d9a9b7176bf6a41f76fbc1cc2169ff71f6a9ee171714409047cb2"
+    },
+    {
+      "fixture": "tui-userpromptsubmit-typed.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-10-13T17:05:53.3808968Z",
+      "host_version": "Claude Code 2.1.296",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\claude",
+      "stdin_bytes": 847,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "f85520feb9a8bbea1d3ae72922a928f6237ad878a1dbf6d2d1d7bed8396d1e6f"
+    }
+  ]
+}

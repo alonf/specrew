@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved)
+**Total drift events**: 5
+**Resolution rate**: 80% (4/5 resolved; DRIFT-004 open)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -48,6 +48,24 @@
 - **Requirement**: FR-025 (case (e) on three operating systems), against the devops-operations skip reason in lens-applicability.json.
 - **Resolution**: human-decision (maintainer, plan verdict 2026-10-13). The workflow change stays. It is kept minimal: only what runs case (e) on the existing OS matrix, with no new jobs, publication or deployment change. T005's acceptance states that the workflow diff is reviewed like code. The skip reason in the confirmed agenda is not rewritten; this entry records the exception.
 - **Class closure**: NONE. This is a scope exception decided by the maintainer, not a defect. T005's acceptance pins the review requirement.
+
+### DRIFT-004 — the tasks verdict was not captured because a context compaction landed between the packet and the reply (open)
+
+- **Observed**: 2026-10-13, tasks boundary. The maintainer replied `approved for tasks - Run T001 first...` after Claude Code had compacted the context. `last_authorized_boundary` stayed `plan`. The read-only capture check returned the older `clarify -> plan` pair; the classifier reads the reply as `approve` for `tasks`.
+- **Requirement**: FR-026 neighbourhood (per-feature capture state), and the governing principle "verdicts stay explicit typed replies".
+- **Resolution**: proceeded on the verdict as the pending-verdict artifact directs ("AUTHORITY IN FLIGHT"). No authorization was written by the agent. The Stop backstop is checked at the end of the turn. If the ledger still lacks the tasks verdict, the maintainer is asked once for the recording path. Recorded as B4F-112 (beta5 candidate).
+- **Class closure**: NONE in 202 unless the maintainer pulls B4F-112 into Tier 1. Capture must survive a compaction and say when a verdict-shaped reply was not captured.
+
+### DRIFT-005 — T001 ran before the before-implement verdict, and measured new host facts (resolved by human decision)
+
+- **Observed**: 2026-10-13. tasks.md places T001 after the before-implement verdict. The maintainer's tasks verdict moved it ahead, as measurement only, in scratch directories with no product code. Results are in research.md, "T001 measurements".
+- **Requirement**: FR-024; DA-3; DA-4.
+- **Resolution**: human-decision. For Claude and Copilot, DA-3 and DA-4 both hold, so the plan needs no amendment for them. Three facts refine task acceptance without changing scope:
+  - Copilot fires the prompt hook before SessionStart (T008 keys "first prompt" on the prompt event).
+  - Copilot dismissals produce no hook event and use the strings "User cancelled the request." and "User responded: <default>", not "User skipped question" (T002 registry fixture; B4F-113).
+  - Hook stdin arrives as UTF-8 while the hook process's console input encoding is `ibm437` (T002 and T014 decode bytes explicitly).
+  - **Codex is unmeasured**: its hooks require persisted hook trust, which is the maintainer's decision.
+- **Class closure**: the T001 fixtures under `tests/fixtures/hook-payloads/` pin these facts for T002's contract test.
 <!--
   Every new ### DRIFT-... event includes:
 

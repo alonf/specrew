@@ -4847,6 +4847,37 @@ specrew-reseal.ps1. The list was sorted once on the 202 branch in `2cb2231a` (me
 and remove the sort from the boundary sync. A lifecycle sync must not silently edit product files.
 **Disposition:** beta5 candidate, recorded by the maintainer's instruction. Drift: DRIFT-202-INTAKE-010, 013.
 
+## B4F-112 - A VERDICT TYPED AFTER A CONTEXT COMPACTION IS NOT CAPTURED (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202, tasks boundary, Claude host. The tasks packet carried the
+`plan -> tasks` marker. Claude Code then compacted the context before the maintainer replied
+`approved for tasks - Run T001 first...`. The reply did not reach the ledger. The read-only capture
+check (`Get-SpecrewCapturedBoundaryVerdict`) returned the earlier `clarify -> plan` pair as `captured`,
+not the tasks verdict. The classifier itself reads the reply as `approve` for `tasks`. The transcript
+shows the compaction summary as a user-role entry, with no parent link, between the packet and the reply.
+**Effect:** a typed verdict was silently not recorded. The human gave the decision once, and the system
+must ask again or record it out of band. This violates "verdicts stay explicit typed replies" in the
+direction that costs the human a message.
+**Beta5 candidate (not 202 scope unless the maintainer pulls it in):** capture must pair a reply with the
+pending crossing's marker across a compaction boundary. When a verdict-shaped reply is not captured, it
+must say so in the same turn (the W54 class), rather than fall back to an older pair.
+**Disposition:** recorded. Drift: 202 iteration 001 DRIFT-004.
+
+## B4F-113 - COPILOT CTRL+O SUBMITS A DEFAULT ANSWER THE HUMAN NEVER CHOSE (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202 T001, Copilot CLI 1.0.96 TUI in a scratch directory. On an
+`ask_user` form, Ctrl+O returned the tool result "User responded: A" (`elicitation_action: accept`), and
+Esc returned "User cancelled the request." (`elicitation_action: cancel`). The literal
+"User skipped question" that the project instructions and the dispatcher name did not occur. Neither
+dismissal produces a hook event.
+**Effect:** authority stores are safe, because receipts mint only from typed prompts. A model reading the
+tool result, however, sees an answer the human did not give. Workshop questions are already prose-only;
+any other `ask_user` use on Copilot inherits the risk.
+**Beta5 candidate:** update the instructions and the transform registry strings to the observed
+1.0.96 results. Treat a Copilot `accept` that arrives without a typed turn as absence wherever an answer
+carries weight. T002 records the current strings in its registry fixture.
+**Disposition:** recorded. Evidence: `tests/fixtures/hook-payloads/copilot/` and 202 research.md T001.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
