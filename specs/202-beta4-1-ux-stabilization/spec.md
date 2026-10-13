@@ -33,6 +33,16 @@ Quality priority for conflicts, highest first: authority integrity, cross-host p
 - **Coding host and reviewer host are separate roles.** Cursor and Antigravity also appear as reviewer hosts. Reviewing is a much smaller surface: run headless and deliver findings. A host can therefore later be validated as a reviewer while it is still experimental as a coding host. This is noted only; there is no 202 work on it.
 - **Beta5 candidate, not 202 scope:** support tiers defined in the user docs and the installer output; coding-host and reviewer-host validation separated; a promotion rule (a host moves to Validated when someone owns its live walk and it passes two consecutive releases). Recorded as B4F-110 in docs/beta4-findings.md.
 
+## Clarifications
+
+### Session 2026-10-13
+
+Clarify ran after the specify verdict. Under the governing principle, a question with a reasonable answer from the workshop records was resolved here and not put to the maintainer. 0 questions were asked.
+
+- Q: What is the "brief mention" of an unchanged pending decision (FR-011)? → A: At most one line naming the pending decision and its approval phrase. It carries no verdict options, no marker and no packet sections (resolved from the ui-ux lens, decision 2).
+- Q: What makes a feature "new" for the B4F-109 cycle reset (FR-026)? → A: The feature being synced differs from the feature whose feature-closeout was last authorized. A re-sync of the same feature is never a reset (resolved from B4F-109's required behavior).
+- Q: How long is the "long gap" that counts as a context gap (FR-011)? → A: Deferred to the plan as a named tuning value, like the journal retry window. The B4F-104 tests drive context gaps explicitly (new session, resume, compaction, external state change), so acceptance does not depend on the value.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - My typed workshop replies count on every host (Priority: P1)
@@ -181,7 +191,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 
 **Tier 1 - stops and presentation (B4F-104, B4F-106, B4F-096, B4F-100)**
 
-- **FR-011**: An unchanged pending crossing MUST be presented in full once per session and again only after a context gap. In between, the pending decision MAY appear at most as a brief mention inside a reply that answers the maintainer, and MUST NOT produce a `Stop hook error`.
+- **FR-011**: An unchanged pending crossing MUST be presented in full once per session and again only after a context gap. In between, the pending decision MAY appear at most as a brief mention inside a reply that answers the maintainer: one line naming the decision and its approval phrase, with no verdict options, no marker and no packet sections. It MUST NOT produce a `Stop hook error`. The duration of a "long gap" is a named tuning value set in the plan.
 - **FR-012**: The Stop hook MUST NOT block a reply over formatting. It checks substance only: that a needed decision is clear, and that authority is intact.
 - **FR-013**: Deterministic text the system can supply, such as the dials line and orientation facts, MUST be filled in by the system, marked as system output, and recorded in the hook-output journal, with 0 human-visible cycles.
 - **FR-014**: The orientation MUST reach the maintainer before the first question of a session. The mechanism is chosen at design-analysis.
@@ -195,7 +205,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 - **FR-019**: The resume "where we are / starting now" lines MUST come from disk only: the pending crossing, `from_commit..HEAD`, and progress. The handover narrative MUST be shown only as context with its age, and flagged when it is stale or names another feature.
 - **FR-020**: A gate refusal for a missing artifact MUST name the step that produces it.
 - **FR-021**: Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it.
-- **FR-026**: `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries (B4F-109).
+- **FR-026**: `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. A feature is new when it differs from the feature whose feature-closeout was last authorized; a re-sync of the same feature is never a reset. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries (B4F-109).
 
 **Tier 2 (iteration 2, after Tier 1 acceptance)**
 
