@@ -38,25 +38,25 @@ Open points this analysis decides with the maintainer:
 
 ## Alternatives
 
-The governing choice is DA-1, the adapter seam, because every other fix lands on the turn record it produces. Options A, B and C are the DA-1 alternatives. DA-2 to DA-5 each had one recommended mechanism weighed against today's failing behavior, listed after the options.
+The governing choice is DA-1, the adapter seam, because every other fix lands on the turn record it produces. Options A (Simplest), B (Reasonable) and C (By-the-book) are the DA-1 alternatives. In the co-design presentation they were listed as c, b and a respectively. DA-2 to DA-5 each had one recommended mechanism weighed against today's failing behavior, listed after the options.
 
-### Option A - Per-host adapter scripts
+### Option A - Simplest: leave normalization in the dispatcher (presented as DA-1 option c)
 
-- **Approach**: one normalization script per host, called by the launcher.
-- **Trade-offs**: an explicit per-host seam, but five scripts to maintain, with logic drifting into adapters and against the placement rule. A new host costs code.
-- **Effort**: about 4 SP. **Reversibility**: medium.
+- **Approach**: no structural change; fix bugs in place.
+- **Trade-offs**: keeps two divergent normalizers, Copilot-specific code inline, and no declared contract, so parity stays untestable. This is B4F-108's root pattern.
+- **Effort**: about 1 SP. **Reversibility**: n/a.
 
-### Option B - Declarative bindings plus one shared normalizer (RECOMMENDED)
+### Option B - Reasonable: declarative bindings plus one shared normalizer (RECOMMENDED; presented as DA-1 option b)
 
 - **Approach**: `host.psd1` declares the input field map and origin rules, and may name one transform from a small shared registry. One `ConvertTo-SpecrewTurnRecord` replaces both existing normalizers.
 - **Trade-offs**: a host stays data, so Cursor and Antigravity remain cheap. The registry covers quirks that data cannot express. The contract is testable through the real launcher and dispatcher.
 - **Effort**: about 2.5 SP. **Reversibility**: high.
 
-### Option C - Leave normalization in the dispatcher
+### Option C - By-the-book: per-host adapter scripts (presented as DA-1 option a)
 
-- **Approach**: no structural change; fix bugs in place.
-- **Trade-offs**: keeps two divergent normalizers, Copilot-specific code inline, and no declared contract, so parity stays untestable. This is B4F-108's root pattern.
-- **Effort**: about 1 SP. **Reversibility**: n/a.
+- **Approach**: one normalization script per host, called by the launcher.
+- **Trade-offs**: an explicit per-host seam, but five scripts to maintain, with logic drifting into adapters and against the placement rule. A new host costs code.
+- **Effort**: about 4 SP. **Reversibility**: medium.
 
 ### DA-2 to DA-5 (one recommended mechanism each, against today's behavior)
 
