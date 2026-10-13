@@ -29202,3 +29202,23 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 006db2b2f959d95d1ef30d6be5465eef10a0b447
 - **Recorded At**: 2026-09-08T22:38:36Z
+
+## 2026-10-13T12:39:49Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3821a05ccbe1657ad5761b3fa86038a7771b53e6
+- **Recorded At**: 2026-10-13T12:39:49Z
+
+## 2026-10-13T12:40:26Z — Boundary enforcement: specify
+
+- **Feature**: 202-beta4-1-ux-stabilization
+- **Boundary Type**: specify
+- **Current Boundary**: intake
+- **Requested Boundary**: specify
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched intake -> specify.
