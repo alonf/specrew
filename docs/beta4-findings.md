@@ -4894,6 +4894,33 @@ or from the feature's start when there is none, not from the tasks authorization
 recorded-evidence fixtures should be classified apart from source.
 **Disposition:** recorded by the maintainer's instruction. Drift: 202 iteration 001 DRIFT-007.
 
+## B4F-115 - A PLANNED CO-REVIEW CHECKPOINT STOPS FOR APPROVAL THE HUMAN ALREADY GAVE (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202 implement, after T002 and T003 (5.5 SP). The iteration plan names
+the checkpoint cadence (about 5 SP), the reviewer (codex, recorded at the code-implementation lens with an
+authorization reference), and the campaign allowance (iteration 001 starts fresh). The crew still stopped and
+asked for `approved for review round`, because the review machinery treats every round as a fresh spend
+decision.
+**Maintainer ruling (verbatim intent):** a planned co-review checkpoint that fits the campaign allowance
+should not stop for approval. The plan named the checkpoint, the reviewer and the allowance, so the human has
+already decided; the round should run and be disclosed afterwards. A stop is justified only when the allowance
+is exhausted, the round is unplanned, the reviewer changes, or a round returns blocking findings.
+**Beta5 candidate:** a round at a planned checkpoint, inside the allowance and with the recorded reviewer, runs
+under the plan's authority and is disclosed in the next message. Any of the four exceptions above still stops.
+This is the governing principle's "a stop message is justified only when the system needs a human decision".
+**Disposition:** recorded by the maintainer's instruction. Not 202 scope.
+
+## B4F-116 - A REVIEW-ROUND APPROVAL IS READ AS A BOUNDARY VERDICT AND REPORTED AS NOT RECORDED (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202 implement. The maintainer typed `approved for review round - ...`, the
+phrase the review machinery itself asks for. The prompt hook classified it as a boundary verdict for `review`
+and answered: "your reply reads as a verdict for 'review', but NO crossing is pending right now, so nothing was
+recorded". The round approval is a different authority with its own capture, so the message misdescribes what
+happened and can make the human think the approval failed.
+**Beta5 candidate:** the verdict classifier recognises `approved for review round` as the round-approval phrase
+and leaves it to the round-approval capture. A boundary-verdict disclosure never fires for it.
+**Disposition:** recorded. Observed in the turn transcript.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
