@@ -29222,3 +29222,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Launch Mode**: (none)
 - **Agent Response Snippet**: (none)
 - **Reason**: No persisted authorization matched intake -> specify.
+
+## 2026-10-13T13:08:07Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: fdef447638908865f92b0d1969ced824e023879a
+- **Recorded At**: 2026-10-13T13:08:02Z
