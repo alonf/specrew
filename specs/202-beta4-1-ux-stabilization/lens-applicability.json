@@ -1,0 +1,226 @@
+{
+  "schema_version": "1.1",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "agenda_contract": "complete-coverage-v1",
+  "human_turn_contract": "typed-turns-v1",
+  "agenda_status": "confirmed",
+  "selected": [
+    "architecture-core",
+    "requirements-nfr",
+    "ui-ux",
+    "observability-resilience",
+    "security-compliance",
+    "data-storage",
+    "code-implementation"
+  ],
+  "agenda": {
+    "architecture-core": {
+      "depth": "light",
+      "decision": "Where each Tier 1 fix lives: the shared hook/conformance path once for all hosts, with host adapters only rendering, so Claude, Codex and Copilot cannot diverge again (B4F-107, B4F-108, B4F-096)."
+    },
+    "requirements-nfr": {
+      "depth": "medium",
+      "decision": "The Tier 1 acceptance evidence and stop: the B4F-108 cross-host workshop test, the per-scenario before/after friction protocol, and what counts as a real decision versus a corrective exchange."
+    },
+    "ui-ux": {
+      "depth": "medium",
+      "decision": "The human-facing contract for repeated and degraded states: one crossing presentation per session (B4F-104), proportionate recovery for a missing dials line (B4F-106), dials as prose on every host (B4F-107), refusals that name the step or cause (B4F-102, B4F-108), and the late orientation demand (B4F-096)."
+    },
+    "observability-resilience": {
+      "depth": "medium",
+      "decision": "How a transient journal-lock failure recovers instead of latching, and how any degraded capture state is disclosed to the human and agent rather than silently consuming turns (B4F-108)."
+    },
+    "security-compliance": {
+      "depth": "light",
+      "decision": "How hook output is still kept from counting as human authority while capture is degraded, without blocking every typed reply (the trust rule behind the B4F-108 marker)."
+    },
+    "data-storage": {
+      "depth": "light",
+      "decision": "Which on-disk record is authoritative for the current feature and work (B4F-105, B4F-089), and the fixed ignored location for turn drafts (B4F-101)."
+    },
+    "code-implementation": {
+      "depth": "light",
+      "decision": "Confirm the inherited PowerShell craft rules and test posture for engine fixes, plus the reviewer host and authorization for this feature."
+    }
+  },
+  "skipped": {
+    "component-design": "No new components; every fix changes behaviour inside existing hook, conformance, status and renderer scripts, and architecture-core already decides placement.",
+    "integration-api": "No new or changed external API or host hook-event contract; host parity is verified by the B4F-108 cross-host test owned by requirements-nfr.",
+    "devops-operations": "No pipeline or deployment change in scope; B4F-103 is a comparison correction with no beta4 republish, and beta4.1 publication is a later separate decision."
+  },
+  "agenda_confirmation": "human-confirmed",
+  "agenda_confirmation_scope": "lens-selection",
+  "agenda_turn_receipt": "1aecb8bb7916951d52e6029c22f735e33796be05b9fa73aaf8bea80f64222e08",
+  "agenda_digest": "4fa2c18195ca20865956395aa67331a4eedae62cb3931bdda352eb6381e27d14",
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Fix placement rule",
+        "Decomposition style",
+        "Structural done-ness"
+      ],
+      "decision": "Agreed with amendments: (1) content and decisions are made once in the shared path; adapters own host mechanics only, namely input normalization into a standard turn record {event, typed user text, host} under a declared tested contract, plus output emission of shared text as-is, and never choose wording or values or decide whether a reply counts; (2) keep the existing layered hook structure, no new components; (3) the cross-host test runs through each real adapter with recorded real Claude/Codex/Copilot hook payloads as fixtures, never a direct shared-path call; B4F-108 adds a fault-injection test (forced journal-lock collision: capture recovers, degraded state disclosed, hook output still cannot count as human).",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/architecture-core.md - turn path adapters/dispatcher/engines/stores, store paths corrected by maintainer",
+      "bindings": {
+        "fix-placement": "shared-path-adapter-mechanics-only",
+        "adapter-input-contract": "standard-turn-record-tested",
+        "decomposition-style": "existing-layered-hooks",
+        "cross-host-test-entry": "real-adapter-recorded-payloads",
+        "b4f108-fault-injection": "required"
+      },
+      "human_turn_receipt": "2b8d17ceb0618e3ecd912aa2af1c385296baa8d3e9cebdc0fe421b0a9ab88719"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Quality-attribute priority",
+        "Friction protocol and baselines",
+        "Per-finding thresholds",
+        "Tier 1 acceptance stop",
+        "Hook payload fixtures"
+      ],
+      "decision": "Agreed with amendments: quality priority is authority integrity, cross-host parity, diagnosability, friction, latency (diagnosability raised above friction because the real cost was a refusal naming the wrong cause). Friction protocol: real decisions vs corrective exchanges vs extra stops, before/after per scenario, elapsed split where observable, null not zero; B4F-108 baselines add Codex several corrective rounds never closed, Claude one round, and the 2026-09-09..2026-10-13 silent outage as not captured. Thresholds: each finding required behavior plus 0 corrective exchanges and 0 extra stops; B4F-108 adds 3 receipts at 1 reply per checkpoint per host and same-turn disclosure with 0 silently consumed turns under injected fault. Iteration-1 closeout verdict is the Tier 1 acceptance. No recorded hook payloads exist; capturing real Claude/Codex/Copilot payloads is a Tier 1 task in scratch directories only.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/requirements-nfr.md - quality-attribute priority table",
+      "bindings": {
+        "quality-priority": "integrity-parity-diagnosability-friction-latency",
+        "tier1-acceptance-stop": "iteration-1-closeout",
+        "payload-fixture-capture": "tier1-task-scratch-dirs-only",
+        "b4f108-fault-disclosure": "same-turn-zero-silent-consumption",
+        "missing-measurement": "null-not-zero"
+      },
+      "human_turn_receipt": "be6d74dfa9c1235f4e8fdc3d0542ffcad0d2bc441ea8002ad765ea39597da691"
+    },
+    "ui-ux": {
+      "agenda": [
+        "Source of UX truth and degraded-state refusals",
+        "Unchanged pending crossing",
+        "Proportionate recovery for owed content",
+        "Dials wording",
+        "Presented-check line set"
+      ],
+      "decision": "Governing UX principle (maintainer, verbatim in ui-ux.md, ranks above all decisions): the human provides intent, reasons, directs and decides; the system analyzes, recommends, implements, validates and diagnoses its own failures; a stop only when a human decision is needed AND context is lacking; a question gets an answer, not a stop; unchanged context needs no packet; nothing needed means no message; packet size follows the context gap; verdicts stay explicit typed replies. Decisions: (1) refusal standard plus orientation contract; in degraded states the system diagnoses, self-recovers and asks only for a decision, and says whether the turn was consumed; (2) B4F-104 by context not frequency: answer questions, at most a brief mention while context is unchanged, full packet only after a context gap; (3) the hook never blocks over formatting, checks substance only, system-filled text is marked as system output and journaled; (4) one shared dials sentence, only the correction command reference from the adapter; (5) the meaning-bearing line set is declared once in the shared path, including verdict options. Applied to all Tier 1 findings; beyond-Tier-1 exposure recorded as B5F-004.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/ui-ux.md - session text-surface timeline and Tier 1 application table",
+      "bindings": {
+        "ux-governing-principle": "human-intent-system-runs-process",
+        "crossing-repeat": "context-gap-sized",
+        "hook-block-scope": "substance-only",
+        "system-filled-text": "marked-and-journaled",
+        "dials-text": "shared-sentence-adapter-command-ref",
+        "presented-check": "declared-meaning-lines-incl-verdict-options",
+        "degraded-recovery": "self-recover-ask-decision-only",
+        "refusal-turn-consumed": "disclosed"
+      },
+      "human_turn_receipt": "e1b1537267b85fced970a2ca4d45ab833e9690b951397a6c005614eefb6d0e0d"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Error classes and collision prevention",
+        "Degraded-state lifetime and migration",
+        "Disclosure points",
+        "Logging",
+        "Fault-injection cases"
+      ],
+      "decision": "Agreed with amendments: (1) prevent the collision rather than only retry it: the dispatcher opens the journal with FileShare.Read so concurrent appends are guaranteed to fail; the write path must permit concurrent writers (compatible share mode or per-write cross-process lock), with bounded retry as a backup; persistent failures are exceptional and enter degraded; (2) degraded state self-clears on the next successful append and records recovery; a human decision only if self-recovery fails; migration: a marker left by an older version is an ordinary degraded state that clears on the next append; (3) disclose in the affected turn (including whether it was consumed), in status/where while degraded, and in session-start orientation; (4) health journal of transitions, hashes only; question passed to security: buffer unjournaled hook output and write it on recovery; (5) fault-injection cases a-d plus (e) two real hook processes appending concurrently both succeed with no degradation.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/observability-resilience.md - journal health lifecycle today vs agreed",
+      "bindings": {
+        "journal-concurrency": "concurrent-appends-permitted",
+        "journal-retry": "bounded-backup-only",
+        "degraded-lifetime": "self-clearing-on-next-append",
+        "legacy-marker-migration": "treat-as-degraded-self-clear",
+        "degraded-disclosure": "turn-status-orientation",
+        "health-journal": "transition-records-hashes-only",
+        "b4f108-fault-injection": "required"
+      },
+      "human_turn_receipt": "7764a2c3530b0cd7de538b20ef347fea527c27341f5dc0563d9d9a0e4fe28721"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Trust rule while degraded",
+        "Turn origin",
+        "Sensitive content in integrity stores",
+        "Audit of recovery actions"
+      ],
+      "decision": "Agreed with corrections: (1) precise fail-closed via a per-process outage buffer of hook-output hashes; the integrity check reads the journal plus buffer files before the next prompt-submit decision (no unchecked window); on recovery the buffer is flushed to the journal and the files are removed; if the buffer write also fails, only that turn fails closed and is disclosed in the same turn with its consumed status; blanket fail-closed and fail-open rejected. (2) Origin is a second line of defense, not a construction guarantee: values typed-user, host-injected and unknown (some hosts, e.g. Copilot 1.0.79, replay hook text as plain user prompts); only typed-user can mint, and the journal/buffer match applies to every reply. (3) The integrity stores hold hashes only. (4) Every human-approved recovery action records its approving receipt.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/security-compliance.md - trust boundary: adapter origin, receipt writer, journal and outage buffer",
+      "bindings": {
+        "degraded-trust-rule": "precise-fail-closed-outage-buffer",
+        "outage-buffer-read": "before-next-prompt-decision",
+        "outage-buffer-flush": "flush-then-remove",
+        "turn-origin": "typed-user-host-injected-unknown",
+        "mint-requires": "typed-user-and-no-hook-output-match",
+        "integrity-store-content": "hashes-only",
+        "recovery-audit": "approving-receipt-recorded"
+      },
+      "human_turn_receipt": "e62eb47f9f9a891147cbef0ed8116a6b2ee48fb9cfdeb1436c0f2f0842149104"
+    },
+    "data-storage": {
+      "agenda": [
+        "Current-feature authority",
+        "Resume narrative source",
+        "Turn-draft location"
+      ],
+      "decision": "Agreed with amendments: (1) start-context.json is the single current-feature pointer (option a), kept current by every writer that creates or advances a feature; guard: the pointer records the branch it was written for, and on a branch mismatch readers treat it as stale, reconcile from the branch and the in-flight controller, and disclose; a Shipped/closed feature is never shown active while one is in flight; the human is asked only when two in-flight features compete; a test proves every feature writer updates the pointer. (2) Resume where-we-are lines come from disk only (pending crossing, from_commit..HEAD, progress); the handover narrative is context shown with its age and flagged when stale or naming another feature. (3) Turn draft per session at .specrew/runtime/turn-end/<session>/turn-message.md, resolved by the draft-saving script so the agent never needs its session id; a host that cannot support this is raised at design-analysis, never as a run-time stop.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/data-storage.md - current-work records table and agreed branch-guarded read path",
+      "bindings": {
+        "current-feature-authority": "start-context-single-pointer",
+        "pointer-branch-guard": "stale-on-branch-mismatch-reconcile-disclose",
+        "pointer-writer-test": "every-feature-writer-updates-pointer",
+        "resume-narrative-source": "disk-only-handover-as-aged-context",
+        "turn-draft-location": "per-session-script-resolved",
+        "turn-draft-session-resolution": "script-owned-never-agent"
+      },
+      "human_turn_receipt": "d1fb1fd201d91c20ab707a455fa5ed8f691f28f7f2ff94c760775eb2e5ff5b37"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Source of code rules",
+        "Concurrency rule vs lens 4",
+        "Consumer language and recovery wording",
+        "Test posture",
+        "Dependencies",
+        "Reviewer host"
+      ],
+      "decision": "Agreed with amendments: (1) inherit the 199 manifest (46 selections, carried custom rules rescoped to feature-202); the remote-main sync rule is replaced for 202 by syncing with the beta4 line origin/201-first-run-experience until the main merge is decided separately. (2) Concurrency scoped exception: share mode permitting concurrent journal appends first; a per-write cross-process lock on the hook-output journal only if fault-injection case (e) proves the share mode insufficient; no generic lock framework; outage buffer on unique per-process files. (3) Keep the banned-noun rule; recovery wording never implies data loss when nothing is lost (reference: Specrew could not record your reply safely. May I clear the stuck error so it can record again? Nothing is deleted.). (4) 199 test posture plus real-adapter recorded-payload cross-host test, fault-injection cases a-e with (e) on three OSes, the pointer-writer test; expected journal failures become disclosed degraded state. (5) No new dependency. (6) Reviewer codex, authorized as workshop-202-beta4-1-ux-stabilization; its file-delivery quirk (empty stdout, findings in .review/findings.jsonl, possible partial label) is not a review failure.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/202-beta4-1-ux-stabilization/workshop/code-implementation.md - design-time inheritance to implement-time guidance and co-review",
+      "bindings": {
+        "code-rules-source": "inherit-199-manifest",
+        "implement-sync-base": "beta4-line-origin-201-first-run-experience",
+        "journal-concurrency": "concurrent-appends-permitted",
+        "journal-lock-exception": "per-write-lock-only-if-case-e-proves-share-mode-insufficient",
+        "recovery-wording": "project-terms-no-implied-loss",
+        "new-dependencies": "none",
+        "reviewer-host": "codex",
+        "b4f108-fault-injection": "required"
+      },
+      "human_turn_receipt": "a455ece50497961c03f61516fe3a2059c471c7ce495381385c26fae373c52be5"
+    }
+  }
+}

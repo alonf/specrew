@@ -1,0 +1,63 @@
+schema_version: "1"
+depth: light
+depth_reason: >-
+  Established product and users; this feature is a bounded defect sweep. The maintainer
+  confirmed the displayed product-domain record at Light depth with the typed reply
+  "move on" on 2026-10-13. The governed checkpoint still must validate its hook-owned receipt.
+context_scope: feature_standalone
+product_id: specrew
+product_context_ref: null
+areas:
+  users_stakeholders: >-
+    Specrew developers and the maintainer working through governed sessions.
+  pain_job: >-
+    Unrelated stops, corrective exchanges, stale work context and refusals without a
+    forward action consume developer time. Current workarounds are manual context
+    reconciliation, packet corrections and artifact re-reading.
+  mvp: >-
+    Tier 1 in iteration 1: B4F-104, B4F-106, B4F-100, B4F-102, B4F-105, B4F-089,
+    B4F-101, B4F-107 and installed-beta4-reproduced B4F-096. Tier 2 in iteration 2,
+    only after Tier 1 is accepted: the narrow B4F-054/056/058/061 ordering slices
+    bounded by B4F-074, B4F-093 and B4F-103.
+  constraints: >-
+    Branch from 24e5701a, not main. Main merge is a separate later human decision.
+    Run the workshop before authoring the spec, stop at specify for the full packet
+    and verdict, and do not plan or implement first. Measure before/after extra
+    stops and replies per scenario, separating real decisions from corrective
+    exchanges; record elapsed time where observable and never treat missing values
+    as zero. Tier 2 is conditional on human acceptance of Tier 1.
+  out_of_scope: >-
+    All other beta5 items, including distinct recorded B4F-039 and B4F-090 triggers,
+    broader review redesign, B4F-091 band semantics, and the historical validator
+    review-evidence, defer-provenance and verdict failures. The latter must be
+    listed as known baseline in the spec. No beta4 republish for B4F-103.
+  success_metrics: >-
+    Per-scenario before/after extra-stop and reply counts, with actual decisions
+    separated from corrective exchanges and elapsed time where captured. Preserve
+    evidence limits and the installed-package baseline. After values require real runs.
+statements:
+  - text: "The maintainer supplied the two-tier scope and confirmed the displayed product record with move on."
+    area: mvp
+    evidence: known
+  - text: "Tier 2 begins only after Tier 1 acceptance."
+    area: constraints
+    evidence: known
+  - text: "B4F-096's controlled installed-beta4 replay reproduces a late orientation demand; it is not a new live model session."
+    area: mvp
+    evidence: known
+  - text: "The records do not establish a shared cause for B4F-039/090 with B4F-104/089."
+    area: out_of_scope
+    evidence: known
+  - text: "Historical validator review-evidence, defer-provenance and verdict failures are excluded baseline."
+    area: out_of_scope
+    evidence: known
+  - text: "Live installed-host acceptance and after-fix friction measurements remain future verification."
+    area: success_metrics
+    evidence: research-needed
+    load_bearing: false
+follow_up_research:
+  - "Resolve technical acceptance scenarios and capture before/after friction on real executions."
+  - "Preserve the controlled-replay limits and add live installed-host acceptance later."
+confirmation: human-confirmed
+confirmation_scope: lens-question
+

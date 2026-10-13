@@ -4660,3 +4660,137 @@ has its own presentation obligation. Presentation does not supply a verdict or a
 **Disposition:** beta4.1, recorded only. Preserve the reported full-packet repetition and visible
 error as acceptance observations, including all three non-verdict triggers. Beta4 remains released;
 this record does not authorize a repair or republish.
+
+## B4F-105 - DEFAULT DASHBOARD AND SAVED LIFECYCLE STATE SELECT DIFFERENT FEATURES (beta4.1 candidate)
+
+**Observed:** 2026-10-13, Codex status session on branch `201-first-run-experience`, HEAD `24e5701a`.
+`specrew status --project-path . --json` selects `001-specrew-product` as the active feature (Shipped);
+`.specrew/start-context.json` names `199-beta3-stabilization` at `feature-closeout`, with an inactive
+session anchor. `.specify/feature.json` has an empty `feature_directory`. The branch and latest delivery
+records describe feature 201 / beta4. These observations establish inconsistent context selection, not
+that either displayed historical feature is the correct feature to resume.
+
+**Symptom:** a status request requires a second investigation to identify which work the dashboard describes.
+**Suspected surface:** default dashboard feature selection and its relationship to lifecycle, feature-pointer,
+branch and inactive-session context. Root cause not investigated in this intake.
+**Cost:** one contradictory active-feature display and additional status reconciliation; elapsed overhead not measured.
+**Disposition:** beta4.1 candidate for the workshop's scope decision. No repair authorized or implemented.
+
+## B4F-106 - A MISSING DIALS LINE COST A FULL CONFORMANCE REPLY CYCLE (beta4.1 candidate)
+
+**Observed:** 2026-10-13, Codex status session, HEAD `24e5701a`. The substantive status reply correctly
+reported the recorded release, stale lifecycle context, and sealed-record validation failure. The Stop
+hook requested only the missing line beginning `How I am adapting to you:`, with four numeric expertise
+values. The next assistant reply supplied that line and changed no status conclusion or lifecycle authority.
+The earlier visible commentary had already described the expertise bands in prose.
+
+**Symptom:** a cosmetic omission produced an additional hook/assistant round trip, with no work decision
+or approval to make. The omission was real; its recovery cost is the finding.
+**Suspected surface:** orientation/adaptation conformance and the recovery policy for a missing presentation line.
+Root cause not investigated in this intake.
+**Cost:** one additional conformance reply cycle, zero substantive decisions; elapsed overhead not measured.
+**Priority:** judge the extra stop as a cost, not as evidence of rigor. Preserve the adaptation contract while
+deciding a proportionate recovery in the workshop.
+**Disposition:** beta4.1 candidate. No conformance relaxation or implementation is authorized by this record.
+
+## B4F-107 - EXPERTISE DIALS USE NUMBERS ON CODEX AND PROSE ON CLAUDE (beta4.1 candidate)
+
+**Observed/reported:** 2026-10-13. Codex's corrective hook line renders
+`software_architecture=10, ui_ux=10, product_management=7, ai_research_project_management=10`.
+The maintainer reports Claude renders the same adaptation contract as prose such as
+`expert on Software Architecture`. Codex output is observed in this session; the Claude comparison is
+maintainer-supplied evidence, not a new cross-host replay.
+
+**Symptom:** the same adaptation contract exposes implementation keys and numeric values on one host,
+and readable expertise descriptions on another.
+**Suspected surface:** host adaptation renderers and conformance expectations for equivalent content.
+Root cause not investigated in this intake.
+**Cost:** inconsistent readability and a translation burden; no separate extra stop measured for this finding.
+**Scope guard:** B4F-091's expertise-band mismatch remains beta5. This candidate concerns host presentation
+of the same values, not changing values, band thresholds or the profile contract.
+**Disposition:** beta4.1 candidate for the workshop's scope decision. No fix implemented.
+
+## B4F-108 - A TRANSIENT JOURNAL-LOCK FAILURE SILENTLY BLOCKS EVERY WORKSHOP RECEIPT (Codex workshop parity; beta4.1 Tier 1)
+
+**Observed:** 2026-10-13, feature 202 product-domain checkpoint. The maintainer's typed replies (the
+full two-tier scope reply and `move on` on Codex, then `move on` on Claude) produced no workshop
+receipt, so the checkpoint could not close on either host. `.specrew/runtime/workshop-authority.jsonl`
+holds 20 receipts, all `host_kind: claude`, the latest at 2026-09-09T01:22Z, and none with
+`host_kind: codex` ever. On Claude the reply was logged as `typed-turn-exhausted` with `minted: ""`.
+
+**Cause (maintainer diagnosis, 2026-10-13):** `.specrew/runtime/hook-output-authority.jsonl.unhealthy`
+had existed since 2026-09-09T07:28:50Z. Its content is a sharing violation on a journal append:
+`The process cannot access the file '...hook-output-authority.jsonl' because it is being used by another
+process.` While the marker exists, `Test-SpecrewWorkshopResponseIsHookOutput` (workshop-authority-store.ps1,
+near line 409) returns true for every reply, so every typed reply is treated as hook output and no
+receipt can be written on any host. Only specrew-hook-dispatcher.ps1 (lines 102-122) writes the marker,
+and nothing clears it. This also explains the first scope reply that missed before any product record
+existed. The marker has been moved, byte-identical, to
+`specs/202-beta4-1-ux-stabilization/workshop/evidence/hook-output-authority.jsonl.unhealthy`
+(SHA-256 `d4278938...4fbc`).
+
+**Three defects:**
+
+1. **A transient journal-lock failure latches permanently.** One sharing violation on one append
+   writes a marker that nothing removes. A momentary lock becomes a permanent project state that
+   survives sessions, hosts and weeks (2026-09-09 to 2026-10-13).
+2. **The latched marker is undisclosed, so turns are consumed silently.** No session start, status,
+   refusal or hook message mentions the marker. Typed replies are recorded as consumed turns with
+   nothing minted. The human sees questions that never close, and the agent sees only an absent receipt.
+3. **The refusal names a "selection channel" instead of the marker.** The conformance Stop told the
+   agent the answers came "through a selection channel". The maintainer typed them and no structured
+   question tool ran. The refusal inferred a channel from the missing receipt instead of naming the
+   condition that suppressed it.
+
+**Related observation:** product records written before any receipt then made the authority store
+refuse a later product-domain receipt (workshop-authority-store.ps1 near line 485). The only way out
+was setting the records aside. This is preserved as a consequence observed during this incident.
+
+**Required behavior:** a transient write failure does not permanently disable receipt capture. Any
+degraded capture state is disclosed to the human and the agent wherever a reply would otherwise be
+silently consumed. A refusal names the actual cause and one recovery action, and never attributes the
+reply to a channel the human did not use. Codex works in the workshop as well as Claude and Copilot do.
+
+**Acceptance:** a cross-host test runs the same workshop flow (product-domain, agenda, one lens) on
+Claude, Codex and Copilot. On each host it must produce receipts and close each checkpoint with the
+same number of human replies. **Codex has not yet been tested on a healthy worktree**: every Codex
+observation so far postdates the 2026-09-09 latch, so Codex parity is unproven, not shown broken.
+
+**Cost (baseline):** on Codex the product-domain checkpoint never closed. It used the scope reply, a
+`move on`, a recovery proposal, a selection-channel Stop cycle, an approval to set records aside and a
+host switch. On Claude it took one more presentation, one `move on` consumed without a receipt, a
+diagnosis stop and an approval to move the marker. Elapsed time not measured.
+**Disposition:** beta4.1 Tier 1, added by the maintainer on 2026-10-13. Records set aside to
+`workshop/preserved-product-answers/` and the marker to `workshop/evidence/` (both moved, not deleted).
+No fix implemented. Drift: DRIFT-202-INTAKE-004 to 006 in the feature's intake-drift-log.md.
+
+## Beta4.1 intake rulings — 2026-10-13
+
+The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
+B4F-100, B4F-102, B4F-105, B4F-089, B4F-101 and B4F-107. **Tier 2**, only after Tier 1 is accepted,
+is the narrow B4F-054/056/058/061 review-ordering slice bounded by B4F-074, B4F-093 and B4F-103.
+No beta5 review redesign enters through the ordering slice. **B4F-108** (Codex workshop parity)
+was added to Tier 1 later the same day, after the Codex product-domain checkpoint deadlocked.
+
+**B4F-096 joins Tier 1 on the conditional reproduction ruling.** A corrected controlled replay against
+the installed beta4 package identified as `8d3f9906`, with a governed workshop controller in a disposable
+fixture, shows a visible product question before orientation and a corrective orientation demand only
+at Stop. Baseline: zero real human decisions, one corrective exchange requested, one extra Stop block.
+The first attempt also hit a missing-working-area refusal and is preserved as confounded evidence.
+This is installed-package event replay, not a new live agent session. See the
+[check and evidence](../specs/202-beta4-1-ux-stabilization/workshop/conditional-findings.md).
+
+**B4F-039 remains explicitly beta5, both sub-findings.** Mid-clarify packets without a pending crossing
+and stale directories counted as live sessions have different recorded prerequisites from B4F-104's
+repeated unchanged crossing. Shared interruption cost alone does not establish one defect.
+
+**B4F-090 remains explicitly beta5.** Wrong first-run prose and a stale resume narrative (B4F-089) are
+separable recorded triggers; the records do not establish a shared cause. B4F-089 still owes an accurate
+current-work description. If later evidence establishes a shared producer without additional scope,
+record that evidence before folding B4F-090 in.
+
+All other beta5 items remain excluded. Per-scenario before/after extra-stop and reply counts must
+separate real decisions from corrective exchanges; elapsed time is recorded where observable. Missing
+measurements are not zero. The remaining historical validator review-evidence, defer-provenance and
+verdict failures are out of scope and must be named as known baseline in the feature's specification.
+These are intake scope decisions, not implementation authorization or approval of a lifecycle boundary.
