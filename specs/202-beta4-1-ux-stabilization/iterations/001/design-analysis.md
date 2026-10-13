@@ -42,21 +42,58 @@ The governing choice is DA-1, the adapter seam, because every other fix lands on
 
 ### Option A - Simplest: leave normalization in the dispatcher (presented as DA-1 option c)
 
-- **Approach**: no structural change; fix bugs in place.
-- **Trade-offs**: keeps two divergent normalizers, Copilot-specific code inline, and no declared contract, so parity stays untestable. This is B4F-108's root pattern.
-- **Effort**: about 1 SP. **Reversibility**: n/a.
+- **Approach**: no structural change. Fix the B4F-108 defects in place and keep host parsing where it is: the dispatcher's inline block, plus `HostEventAdapter.ps1` for bootstrap.
+- **Architectural pattern**: an implicit, in-line host adaptation inside a shared dispatcher.
+- **Quality features considered**: lowest change cost. Weak on parity (two divergent normalizers) and testability (no declared contract), and Copilot code stays in the shared path. This is B4F-108's root pattern.
+- **Effort estimate**: about 1 SP.
+- **Reversibility cost**: none. Nothing new to unwind, but nothing gained.
+- **Trade-offs**: the cross-host test has no contract to assert, so parity stays unprovable.
+
+```mermaid
+flowchart LR
+  host[host payload] --> disp[dispatcher inline parsing incl. Copilot branch]
+  host --> boot[HostEventAdapter.ps1 different session keys]
+  disp --> prov[providers]
+  boot --> prov
+```
 
 ### Option B - Reasonable: declarative bindings plus one shared normalizer (RECOMMENDED; presented as DA-1 option b)
 
-- **Approach**: `host.psd1` declares the input field map and origin rules, and may name one transform from a small shared registry. One `ConvertTo-SpecrewTurnRecord` replaces both existing normalizers.
-- **Trade-offs**: a host stays data, so Cursor and Antigravity remain cheap. The registry covers quirks that data cannot express. The contract is testable through the real launcher and dispatcher.
-- **Effort**: about 2.5 SP. **Reversibility**: high.
+- **Approach**: `host.psd1` declares the input field map and origin rules, and may name one transform from a small shared registry. One `ConvertTo-SpecrewTurnRecord` replaces both normalizers.
+- **Architectural pattern**: a data-driven adapter: declarative host bindings over a single shared normalizer, plus a strategy registry for quirks that data cannot express.
+- **Quality features considered**: parity, because there is one code path; testability, because it is a declared contract and the cross-host test runs through the real launcher and dispatcher; extensibility, because a new host is a data row; and the placement rule, because no logic lives in host bindings.
+- **Effort estimate**: about 2.5 SP.
+- **Reversibility cost**: low. Bindings are additive data, and the old normalizers are removed behind the parity test.
+- **Trade-offs**: the registry must stay small and tested, and each transform needs a recorded payload proving it.
+
+```mermaid
+flowchart LR
+  host[host payload] --> norm[ConvertTo-SpecrewTurnRecord]
+  bind[(host.psd1 field map + origin rules + transform name)] --> norm
+  reg[(shared transform registry)] --> norm
+  norm --> rec[standard turn record]
+  rec --> prov[providers]
+```
 
 ### Option C - By-the-book: per-host adapter scripts (presented as DA-1 option a)
 
-- **Approach**: one normalization script per host, called by the launcher.
-- **Trade-offs**: an explicit per-host seam, but five scripts to maintain, with logic drifting into adapters and against the placement rule. A new host costs code.
-- **Effort**: about 4 SP. **Reversibility**: medium.
+- **Approach**: one normalization script per host, invoked by the launcher, each emitting the standard turn record.
+- **Architectural pattern**: classic ports and adapters, with one adapter module per host.
+- **Quality features considered**: an explicit per-host seam and isolation. But five scripts to maintain, a tendency for logic to drift into adapters (against the placement rule), and higher cost to keep the experimental hosts.
+- **Effort estimate**: about 4 SP.
+- **Reversibility cost**: medium. New per-host files and deploy wiring would have to be unwound.
+- **Trade-offs**: more structure than 202 needs, and it multiplies the surface the cross-host test must cover.
+
+```mermaid
+flowchart LR
+  h1[claude payload] --> a1[claude adapter.ps1]
+  h2[codex payload] --> a2[codex adapter.ps1]
+  h3[copilot payload] --> a3[copilot adapter.ps1]
+  a1 --> rec[standard turn record]
+  a2 --> rec
+  a3 --> rec
+  rec --> prov[providers]
+```
 
 ### DA-2 to DA-5 (one recommended mechanism each, against today's behavior)
 
