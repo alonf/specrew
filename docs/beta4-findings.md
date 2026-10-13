@@ -4921,6 +4921,23 @@ happened and can make the human think the approval failed.
 and leaves it to the round-approval capture. A boundary-verdict disclosure never fires for it.
 **Disposition:** recorded. Observed in the turn transcript.
 
+## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
+
+**Observed:** 2026-10-13, feature 202 implement. The maintainer typed `approved for review round - Also record a
+beta5 finding...` as a normal chat message. The update needed before the round then took one more exchange,
+and the maintainer answered `yes`. `specrew review --live --approve-round` refused with: "The conversation shows
+the phrase arriving from a question UI or picker. Those replies are not captured, by design." No picker was used
+anywhere in the session.
+**Effect:** the refusal names a channel the maintainer did not use. That is the defect FR-010 forbids on the
+workshop path ("never attribute a reply to a channel the maintainer did not use"), here on the review path, and
+it costs the maintainer another typed message. The real cause is most likely that the capture reads only the
+latest human turn, which was `yes`.
+**Beta5 candidate:** the round-approval capture says what it actually found: no `approved for review round` in
+the latest turn, and where the phrase was seen. Decide separately whether an approval typed earlier in the
+same checkpoint, with no round run since, still stands.
+**Disposition:** recorded; 202's FR-010 covers the workshop surfaces only, so this stays beta5 unless the
+maintainer extends it.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
