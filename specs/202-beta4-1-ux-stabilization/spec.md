@@ -112,7 +112,7 @@ B4F-105, B4F-109, B4F-089: status, orientation and resume name the same current 
 **Acceptance Scenarios**:
 
 1. **Given** a pointer written for the current branch, **When** status, orientation or resume run, **Then** all three name that feature.
-2. **Given** a pointer written for a different branch, **When** a reader runs, **Then** it treats the pointer as stale, reconciles from the branch and the in-flight work, and says which record won and why.
+2. **Given** a pointer written for a different branch, **When** a reader runs, **Then** it treats the pointer as stale, resolves the feature from the in-flight controller or pending crossing (the branch name only as a hint), and says which record won and why.
 3. **Given** a Shipped or closed feature and an in-flight one, **When** status runs, **Then** the Shipped feature is never shown as active.
 4. **Given** two in-flight features that genuinely compete, **When** a reader cannot choose from evidence, **Then** it asks the maintainer, and only then.
 5. **Given** a handover narrative older than the ledger, or naming another feature, **When** a session resumes, **Then** the "where we are / starting now" lines come from the pending crossing, the commits since the handover's `from_commit`, and progress. The narrative is shown only as context with its age, and is flagged.
@@ -203,7 +203,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 
 - **FR-016**: The adaptation text MUST be one shared sentence, identical on every host and with no numbers or keys. Only the correction-command reference comes from the adapter.
 - **FR-017**: `.specrew/start-context.json` MUST be the single current-feature pointer, MUST record the branch it was written for, and MUST be updated by every writer that creates or advances a feature.
-- **FR-018**: When the pointer's branch differs from the current branch, readers MUST treat it as stale, reconcile from the branch and the in-flight work, and disclose the reconciliation. They MUST ask only when two in-flight features genuinely compete. A Shipped or closed feature MUST never be shown as active while one is in flight.
+- **FR-018**: The branch is not the feature. Readers MUST resolve the current feature in this order: (1) the in-flight controller or pending crossing; (2) the pointer, if it was written for the current branch; (3) the branch name, as a hint only. A pointer written for another branch is stale. Readers MUST always disclose which source decided (reconciled at design-analysis, iteration 001 DRIFT-001). They MUST ask only when two in-flight features genuinely compete. A Shipped or closed feature MUST never be shown as active while one is in flight.
 - **FR-019**: The resume "where we are / starting now" lines MUST come from disk only: the pending crossing, `from_commit..HEAD`, and progress. The handover narrative MUST be shown only as context with its age, and flagged when it is stale or names another feature.
 - **FR-020**: A gate refusal for a missing artifact MUST name the step that produces it.
 - **FR-021**: Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it.
