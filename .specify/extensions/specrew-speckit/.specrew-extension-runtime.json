@@ -408,11 +408,11 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "b7e2d7151e5b8dcb4872c7bfebfaa3c738e423e07f681ca74f84a2f9be1a8861"
+      "sha256": "c697b07cdf124628cd33707e085920e353e3fbdc6e2ac2dcb7ffde587c7b36ae"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "09ed8dbfd1bc9cd91e73f232d420bb5ca90556fb4c2a51ecb91d17e73f8680a1"
+      "sha256": "e3d23e2218ad8db0cc4ef8ed13abc3b16068be28f5f050f3ec46b624c418858b"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",
@@ -420,7 +420,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "8f734865f009b09963e7eaddf8acb4f37284907ca8c001736f58d5478d96bf2e"
+      "sha256": "abdc8c47b229a1bb1499c83d6d957d006672394e78cce2d673b0c52b5986b06c"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "1c398c85f8afe15791f5e8b5f16bf28a7b3769c7028c7ee8605cbe90a02b2d65"
+      "sha256": "30ecf5b20ec1570217452e0d1ffd27c5f07df0a0762d0b67c185e287f8ca889f"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
