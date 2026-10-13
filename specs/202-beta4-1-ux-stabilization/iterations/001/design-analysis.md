@@ -36,16 +36,38 @@ Open points this analysis decides with the maintainer:
 - **DA-4 Draft path.** How the agent saves a draft without knowing its session (B4F-101).
 - **DA-5 Feature identity.** One rule for which feature is current, used by status, resume, the cycle reset and the coverage line (B4F-105/109/089).
 
-## Alternatives and crew recommendation
+## Alternatives
 
-- **DA-1 Adapter seam.**
-  - (a) Per-host adapter scripts: more code per host, and logic would drift into adapters.
-  - (b) Declarative per-host field maps in `host.psd1` plus one shared normalizer **(recommended)**.
-  - (c) Leave normalization in the dispatcher: keeps two divergent normalizers and an untestable contract.
-- **DA-2 Presentation memory.** Record "presented" per (session, crossing) and clear it on a context gap **(recommended)**, rather than keying on the turn counter, which is today's failure.
-- **DA-3 Orientation ordering.** Supply the finished orientation as system output on the session's first prompt **(recommended)**, rather than demanding it at Stop after the reply, which is today's failure.
-- **DA-4 Draft path.** The script takes the draft on stdin and resolves the per-session path from the token **(recommended)**, rather than having the agent compute the path.
-- **DA-5 Feature identity.** One resolver plus `feature_ref` on new ledger entries **(recommended)**, rather than per-reader rules, which is today's B4F-105/109 spread.
+The governing choice is DA-1, the adapter seam, because every other fix lands on the turn record it produces. Options A, B and C are the DA-1 alternatives. DA-2 to DA-5 each had one recommended mechanism weighed against today's failing behavior, listed after the options.
+
+### Option A - Per-host adapter scripts
+
+- **Approach**: one normalization script per host, called by the launcher.
+- **Trade-offs**: an explicit per-host seam, but five scripts to maintain, with logic drifting into adapters and against the placement rule. A new host costs code.
+- **Effort**: about 4 SP. **Reversibility**: medium.
+
+### Option B - Declarative bindings plus one shared normalizer (RECOMMENDED)
+
+- **Approach**: `host.psd1` declares the input field map and origin rules, and may name one transform from a small shared registry. One `ConvertTo-SpecrewTurnRecord` replaces both existing normalizers.
+- **Trade-offs**: a host stays data, so Cursor and Antigravity remain cheap. The registry covers quirks that data cannot express. The contract is testable through the real launcher and dispatcher.
+- **Effort**: about 2.5 SP. **Reversibility**: high.
+
+### Option C - Leave normalization in the dispatcher
+
+- **Approach**: no structural change; fix bugs in place.
+- **Trade-offs**: keeps two divergent normalizers, Copilot-specific code inline, and no declared contract, so parity stays untestable. This is B4F-108's root pattern.
+- **Effort**: about 1 SP. **Reversibility**: n/a.
+
+### DA-2 to DA-5 (one recommended mechanism each, against today's behavior)
+
+- **DA-2 Presentation memory.** Record "presented" per (session, crossing) and clear it on a context gap, rather than keying on the turn counter, which is today's failure.
+- **DA-3 Orientation ordering.** Supply the finished orientation as system output on the first prompt, rather than demanding it at Stop after the reply, which is today's failure.
+- **DA-4 Draft path.** The script takes the draft on stdin and resolves the per-session path from the token, rather than having the agent compute the path.
+- **DA-5 Feature identity.** One resolver plus `feature_ref` on new ledger entries, rather than per-reader rules (today's B4F-105/109 spread).
+
+## Crew Recommendation
+
+Option B for DA-1, and the recommended mechanism for each of DA-2 to DA-5. Option B is the only DA-1 choice that satisfies the workshop's placement rule (adapters do mechanics only) and gives the B4F-108 cross-host test a declared contract to run through. It also keeps the experimental hosts at the cost of a data row.
 
 ## Co-Design Record
 
@@ -122,6 +144,25 @@ Human-agreed: yes
 
 ### Agreed flows
 
+**Flow: typed workshop reply, healthy and degraded (B4F-108)**
+
+```mermaid
+sequenceDiagram
+  participant H as Host (codex)
+  participant L as Launcher
+  participant D as Dispatcher
+  participant S as Handover receipt writer
+  participant J as Journal + outage buffer
+  H->>L: user-prompt event (stdin)
+  L->>D: event + deployed binding
+  D->>D: ConvertTo-SpecrewTurnRecord (field map, origin rules) -> origin typed-user
+  D->>S: turn record
+  S->>J: integrity check (journal + buffer)
+  J-->>S: no hook-output match
+  S-->>H: receipt minted; checkpoint closes
+  Note over D,J: journal locked -> retry <=5 in 250 ms -> buffer -> degraded disclosed same turn -> clears on next good append
+```
+
 **Typed workshop reply on Codex (B4F-108), healthy:**
 
 ```text
@@ -154,4 +195,16 @@ DA-5's correction changes FR-018 ("reconcile from the branch and the in-flight w
 
 ## Human Decision
 
-*(Pending the plan-boundary verdict, which approves this design together with plan.md.)*
+**Chosen Option**: Option B (DA-1: declarative bindings plus one shared normalizer), with the recommended mechanisms for DA-2 to DA-5.
+**Given**: 2026-10-13, by the maintainer, in one typed reply at the design-analysis co-design, ending with `move on`. The component map was agreed as drawn.
+**Human reason, modifications and instructions (verbatim in substance)**:
+
+- DA-1: "option b, with an escape hatch". A host binding may name a transform from a small shared registry, and origin-detection rules are data too.
+- DA-2: "a moved HEAD is NOT a context gap". Only a changed crossing id or reviewed artifacts, SessionStart new/resume/compact, and the long gap count.
+- DA-3: no duplicate orientation on hosts that show hook output directly.
+- DA-4: explicit UTF-8 for stdin on every OS, with a non-ASCII (Hebrew) test (B4F-065).
+- DA-5: "the branch is not the feature". Precedence: in-flight controller or crossing, then the pointer for this branch, then the branch as a hint, always disclosed.
+- Plan items: the dispatcher/provider parity test; tuning values of 5 attempts in 250 ms and an 8-hour long gap.
+
+**Decision commit**: `b3c622fc` (the commit that first recorded this Co-Design Record).
+**Transcription disclosure**: this decision is agent-transcribed from the maintainer's typed co-design reply in the governing session. It records the design choice only. The plan itself is approved, or not, at the plan boundary with its own typed verdict.
