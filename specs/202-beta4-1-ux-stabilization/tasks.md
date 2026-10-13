@@ -28,7 +28,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 1: Setup (measurement)
 
-- [ ] T001 [owner: Implementer] [sp: 1.5] **Capture real hook payloads and measure host facts.**
+- [x] T001 [owner: Implementer] [sp: 1.5] **Capture real hook payloads and measure host facts.** Done 2026-10-13, before the before-implement verdict, by the maintainer's tasks-verdict instruction (DRIFT-005). Results are in research.md, "T001 measurements".
   - **Work:** in scratch directories only, never a governed worktree (custom rule `feature-202.rule.scratch-probes-only`), record real hook-event payloads from Claude, Codex and Copilot for SessionStart, UserPromptSubmit/PreInvocation and Stop: a typed prompt, a host-injected or replayed text, and Copilot's `User skipped question`. Capture Cursor and Antigravity only as a by-product.
   - **Provenance:** each fixture records the host version, date, scratch path and event.
   - **Measurements:** per validated host, (a) whether the payload carries a session id (DA-4), and (b) which hook output the host shows directly to the user (DA-3). Results go in `research.md` under Open facts.

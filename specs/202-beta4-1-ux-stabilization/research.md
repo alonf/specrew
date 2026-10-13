@@ -30,13 +30,13 @@ Any host that cannot meet the agreed design on these facts is reported at the be
 - **Encoding.** The DA-4 encoding probe had each host's agent pipe `שלום עולם` through its own shell tool into `pwsh`, and recorded the received bytes on disk.
 - **Fixtures.** Payloads are in `tests/fixtures/hook-payloads/<host>/`, with `provenance.json` (host version, UTC time, scratch path, byte count, SHA-256; no environment values).
 
-| Fact | Claude Code 2.1.296 | Copilot CLI 1.0.92 (print) / 1.0.96 (TUI) | Codex CLI 0.162.1 |
+| Fact | Claude Code 2.1.296 | Copilot CLI 1.0.92 (print) / 1.0.96 (TUI) | Codex CLI 0.162.1 (TUI and exec) |
 | --- | --- | --- | --- |
-| Session id in payload (DA-4) | **Yes**, `session_id` on all three events; it also appears as env `CLAUDE_CODE_SESSION_ID` | **Yes**, `sessionId` (camelCase) on all three events | **Not captured.** Codex loaded the three scratch hooks but will not run hooks until they are trusted (TUI: "3 hooks are new or changed... Trust all and continue"). Indirect evidence only: this repo's bootstrap journal records Codex `dedupe_key` values shaped like session UUIDs |
-| Hook output reaches model context (DA-3 precondition) | **Yes**: SessionStart and UserPromptSubmit canaries both answered; recorded as `hook_success` attachments | **Yes**: both canaries answered; the prompt hook's text is appended to the user message as `<system_reminder>` | Not captured (same trust block) |
-| Hook output displayed directly to the user (DA-3) | **No.** The TUI drew only status lines ("running UserPromptSubmit hook", "running Stop hook"), never the hook text. Print mode prints only the reply | **No.** The TUI drew only "Loading: 1 plugin, 6 hooks". Print mode prints only the reply | Not captured (same trust block) |
-| Agent shell to `pwsh` stdin, Hebrew (DA-4) | UTF-8 intact; Bash adds LF, PowerShell adds CRLF; child `[Console]::InputEncoding` is `ibm437` under Bash and `utf-8` under PowerShell | UTF-8 intact, CRLF; child input encoding `ibm437` | UTF-8 intact, CRLF; child input encoding `ibm437` (measured: the probe needs no hook) |
-| Hook stdin encoding | UTF-8 bytes; the hook process's `[Console]::InputEncoding` is `ibm437` | Same | — |
+| Session id in payload (DA-4) | **Yes**, `session_id` on all three events; it also appears as env `CLAUDE_CODE_SESSION_ID` | **Yes**, `sessionId` (camelCase) on all three events | **Yes**, `session_id` (a UUIDv7) on all three events; prompt and Stop events also carry `turn_id` |
+| Hook output reaches model context (DA-3 precondition) | **Yes**: SessionStart and UserPromptSubmit canaries both answered; recorded as `hook_success` attachments | **Yes**: both canaries answered; the prompt hook's text is appended to the user message as `<system_reminder>` | **Yes**: it named both canaries ("PELICAN, MARMOT") in exec mode. In the TUI it answered "I can't disclose hidden hook output.", which acknowledges that the text is present |
+| Hook output displayed directly to the user (DA-3) | **No.** The TUI drew only status lines ("running UserPromptSubmit hook", "running Stop hook"), never the hook text. Print mode prints only the reply | **No.** The TUI drew only "Loading: 1 plugin, 6 hooks". Print mode prints only the reply | **No.** The TUI drew only "Running hooks" status lines, never the hook text |
+| Agent shell to `pwsh` stdin, Hebrew (DA-4) | UTF-8 intact; Bash adds LF, PowerShell adds CRLF; child `[Console]::InputEncoding` is `ibm437` under Bash and `utf-8` under PowerShell | UTF-8 intact, CRLF; child input encoding `ibm437` | UTF-8 intact, CRLF; child input encoding `ibm437` |
+| Hook stdin encoding | UTF-8 bytes; the hook process's `[Console]::InputEncoding` is `ibm437` | Same | Same |
 
 **Further facts T002, T005 and T008 must honor:**
 
@@ -46,8 +46,27 @@ Any host that cannot meet the agreed design on these facts is reported at the be
 - **Payload field names differ by host:** `session_id`, `hook_event_name` and `transcript_path` on Claude; `sessionId`, `timestamp` (epoch ms), `transcriptPath` and `initialPrompt` on Copilot. Claude's Stop payload carries `last_assistant_message`; Copilot's `agentStop` carries `stopReason`.
 - **Not provoked:** a Copilot replayed directive (host-injected text). T002 keeps the existing dispatcher behaviour for it until a real payload is captured, and says so in its test.
 
+**Codex hook trust (maintainer decision at the tasks verdict, option a).** Before trusting, the TUI's hook review listed exactly three hooks needing review, one each on SessionStart, UserPromptSubmit and Stop. All three came from the scratch folder's `.codex/hooks.json` and ran `capture.ps1`. Each event's other hook is Specrew's own, from `~/.codex/hooks.json`, and was already trusted. "Trust all and continue" then added exactly these entries to `~/.codex/config.toml`:
+
+```toml
+[hooks.state.'C:\Users\alon\AppData\Local\Temp\claude\C--Dev-specrew-beta3-stabilization\39558f55-6f4d-436f-a8c3-5369082ea08e\scratchpad\t001\codex\.codex\hooks.json:session_start:0:0']
+trusted_hash = "sha256:d1e48acc920880abdb77827ae8c051949f27e187aef7a60490ece466538f700c"
+
+[hooks.state.'C:\Users\alon\AppData\Local\Temp\claude\C--Dev-specrew-beta3-stabilization\39558f55-6f4d-436f-a8c3-5369082ea08e\scratchpad\t001\codex\.codex\hooks.json:user_prompt_submit:0:0']
+trusted_hash = "sha256:5183abf8d0f20b3ca3c6620315c4b09d3fe7f423b8640348eac6d87a1ca46af0"
+
+[hooks.state.'C:\Users\alon\AppData\Local\Temp\claude\C--Dev-specrew-beta3-stabilization\39558f55-6f4d-436f-a8c3-5369082ea08e\scratchpad\t001\codex\.codex\hooks.json:stop:0:0']
+trusted_hash = "sha256:81ead30f42831f3ef2390a9aec3a05fc4a748478d2b304e46587db46c3699a9d"
+```
+
+**Cleanup (2026-10-13):**
+
+- **Removed from `~/.codex/config.toml`:** the three blocks above, and a `[projects.'…\scratchpad\t001\codex'] trust_level = "trusted"` block that Codex had written earlier in T001, before the pre-trust snapshot. The file now matches the snapshot except for a model-usage counter that Codex owns (`"gpt-6.1-sol"` 3 to 4), which was left alone; Codex still parses it.
+- **Deleted:** the scratch folder (127 files).
+- **Kept, owned by the hosts:** Codex and Copilot session records of the scratch runs. `~/.claude.json` also keeps a project entry for the scratch Claude folder, from accepting Claude's trust dialog in the TUI run. Live Claude sessions write that file, so it is reported here, not edited; it names a folder that no longer exists.
+
 **Verdict per validated host:**
 
 - **Claude:** DA-3 holds (injection yes, direct display no, so the agent renders the supplied orientation). DA-4 holds (a session id is present; UTF-8 bytes arrive intact, and explicit byte-level decoding is required because the console encoding varies).
 - **Copilot:** DA-3 and DA-4 both hold, on the same grounds. The design must key "first prompt" on the prompt event, not on SessionStart ordering.
-- **Codex:** DA-4's encoding half holds. The session-id half and DA-3 are **unmeasured**, because the hook-trust prompt is a human decision.
+- **Codex:** DA-3 and DA-4 both hold. Hook text reaches the model: asked to name the animals the hooks supplied, it answered "PELICAN, MARMOT". The TUI shows only "Running hooks". `session_id` is present on every event.

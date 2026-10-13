@@ -1,0 +1,79 @@
+{
+  "task": "T001 (feature 202, iteration 001)",
+  "host": "codex",
+  "method": "Real host run in a scratch directory outside any repository; a capture hook copied raw stdin bytes. Payloads are byte-exact; environment values are not recorded.",
+  "fixtures": [
+    {
+      "fixture": "exec-sessionstart-startup.json",
+      "event": "SessionStart",
+      "captured_utc": "2026-10-13T18:04:26.6809522Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\codex",
+      "stdin_bytes": 458,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "cfa98e24c2f7b7ae3d01be1305a876b909067cef65d0356b057c6d3b064e0595"
+    },
+    {
+      "fixture": "exec-stop.json",
+      "event": "Stop",
+      "captured_utc": "2026-10-13T18:04:34.7321761Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\codex",
+      "stdin_bytes": 548,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "b96e948e288252889e2fbd0255ea934bb03aa6708f3131c1590cf76f31692682"
+    },
+    {
+      "fixture": "exec-userpromptsubmit-typed.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-10-13T18:04:28.9980729Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\codex",
+      "stdin_bytes": 711,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "d3cca871b15c56bff391d3f9ee6dc9ac971abd0f7ecd57657e995626180376e4"
+    },
+    {
+      "fixture": "tui-sessionstart-startup.json",
+      "event": "SessionStart",
+      "captured_utc": "2026-10-13T18:02:55.4171878Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": null,
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\codex",
+      "stdin_bytes": 448,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "714575eee51e47374c66ae170b593ae4e5a1a2898a4755cbd3cfb9efb392fafe"
+    },
+    {
+      "fixture": "tui-stop.json",
+      "event": "Stop",
+      "captured_utc": "2026-10-13T18:03:01.1621253Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": null,
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\codex",
+      "stdin_bytes": 525,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "89b744efc49a94b97b931929b38ca8ff36de14d7736ce1b09d2fe610e926e4d1"
+    },
+    {
+      "fixture": "tui-userpromptsubmit-typed.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-10-13T18:02:56.6485432Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": null,
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\t001\\codex",
+      "stdin_bytes": 522,
+      "stdin_valid_utf8": true,
+      "console_input_encoding": "ibm437",
+      "sha256": "29971ba08d4f54bae7b59ca571838219ec0273693f96fd9c198c8cf869d6cd5f"
+    }
+  ]
+}
