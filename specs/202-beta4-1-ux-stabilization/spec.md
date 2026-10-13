@@ -15,7 +15,7 @@ Quality priority for conflicts, highest first: authority integrity, cross-host p
 
 ## Scope
 
-- **Tier 1 (iteration 1):** B4F-108, B4F-104, B4F-106, B4F-096, B4F-107, B4F-100, B4F-102, B4F-105, B4F-089, B4F-101.
+- **Tier 1 (iteration 1):** B4F-108, B4F-104, B4F-106, B4F-096, B4F-107, B4F-100, B4F-102, B4F-105, B4F-109, B4F-089, B4F-101. B4F-109 was added by the maintainer after the workshop, on 2026-10-13, when 202's own specify stop could open no crossing.
 - **Tier 2 (iteration 2):** starts only after the maintainer accepts Tier 1 at the iteration-1 closeout. Green tests do not start it. It covers the narrow review-ordering slices of B4F-054/056/058/061, bounded by B4F-074 and B4F-093, and the B4F-103 package-comparison correction (no beta4 republish).
 - **Out of scope (beta5):** both B4F-039 sub-findings; B4F-090; B4F-091 band semantics (B4F-107 changes presentation only); any broader review redesign; any redesign of the hook dispatcher or stores; B5F-004 (Stop reasons outside Tier 1 audited against the substance-only rule); B5F-005 (refusals that name the wrong cause when a path does not resolve); every other beta5 item.
 
@@ -78,7 +78,7 @@ B4F-107: the maintainer sees the same plain sentence about how Specrew adapts to
 
 ### User Story 4 - One answer to "what are we working on", and a resume from disk (Priority: P2)
 
-B4F-105, B4F-089: status, orientation and resume name the same current feature. A resume says where the work stands from what is on disk, not from an older narrative.
+B4F-105, B4F-109, B4F-089: status, orientation and resume name the same current feature. A new feature's specify boundary opens normally after a previous feature closed in the same worktree. A resume says where the work stands from what is on disk, not from an older narrative.
 
 **Why this priority**: during this intake, four records gave four different answers, and the session had to ignore two of them.
 
@@ -92,6 +92,7 @@ B4F-105, B4F-089: status, orientation and resume name the same current feature. 
 4. **Given** two in-flight features that genuinely compete, **When** a reader cannot choose from evidence, **Then** it asks the maintainer, and only then.
 5. **Given** a handover narrative older than the ledger, or naming another feature, **When** a session resumes, **Then** the "where we are / starting now" lines come from the pending crossing, the commits since the handover's `from_commit`, and progress. The narrative is shown only as context with its age, and is flagged.
 6. **Given** any writer that creates or advances a feature, **When** it completes, **Then** the pointer names that feature and the branch.
+7. **Given** a worktree whose last authorized boundary is a previous feature's feature-closeout, **When** a new feature's specify sync runs, **Then** a scoped specify crossing for the new feature is opened. The maintainer's typed `approved for specify` is captured through the normal path, and the closed feature's history neither authorizes nor blocks the new feature (B4F-109).
 
 ---
 
@@ -180,6 +181,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 - **FR-019**: The resume "where we are / starting now" lines MUST come from disk only: the pending crossing, `from_commit..HEAD`, and progress. The handover narrative MUST be shown only as context with its age, and flagged when it is stale or names another feature.
 - **FR-020**: A gate refusal for a missing artifact MUST name the step that produces it.
 - **FR-021**: Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it.
+- **FR-026**: `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries (B4F-109).
 
 **Tier 2 (iteration 2, after Tier 1 acceptance)**
 
@@ -206,7 +208,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 | US1 | B4F-108 | FR-001 to FR-010, FR-024, FR-025 | Implementer; Reviewer (codex); maintainer for the live walk | 1 |
 | US2 | B4F-104, B4F-106, B4F-096, B4F-100 | FR-011 to FR-015, FR-024 | Implementer; Reviewer | 1 |
 | US3 | B4F-107 | FR-016, FR-024 | Implementer; Reviewer | 1 |
-| US4 | B4F-105, B4F-089 | FR-017 to FR-019 | Implementer; Spec Steward (pointer contract) | 1 |
+| US4 | B4F-105, B4F-109, B4F-089 | FR-017 to FR-019, FR-026 | Implementer; Spec Steward (pointer and cycle-reset contract) | 1 |
 | US5 | B4F-102 | FR-020 | Implementer | 1 |
 | US6 | B4F-101 | FR-021 | Implementer | 1 |
 | US7 | B4F-054/056/058/061 (bounded by 074, 093), B4F-103 | FR-022, FR-023 | Implementer; Reviewer; maintainer approves the slice | 2 |
@@ -237,7 +239,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
   A missing measurement is recorded as not captured, never zero, and after-fix values come only from real runs.
 - **SC-004**: For B4F-104, after the first presentation in a session, each of the three recorded triggers produces 0 packet repaints and 0 `Stop hook error` lines.
 - **SC-005**: The adaptation text is byte-identical across the three hosts, apart from the correction-command reference.
-- **SC-006**: Status, orientation and resume name the same feature in every constructed state, including a branch switch and a stale pointer.
+- **SC-006**: Status, orientation and resume name the same feature in every constructed state, including a branch switch and a stale pointer. A second feature's specify sync in a worktree whose previous feature closed opens a crossing, and the verdict is captured with 0 out-of-band authorizations.
 - **SC-007**: Every Tier 1 refusal path names its actual cause and one recovery action.
 - **SC-008**: The validator run at iteration-1 closeout shows no new failures in the known-baseline categories below.
 

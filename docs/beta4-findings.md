@@ -4549,6 +4549,13 @@ until the cap releases. This is a review finding, not a reproduced Monday-walk f
 (headings, review-target links, question line, approval line and marker) instead of the entire
 concatenation. The frozen beta4 package retains its current comparison; no repair was added here.
 
+**Live, 2026-10-13 (feature 202):** twice in one session, at lens 7 and at the specify stop, the
+assistant reply carried every meaning-bearing line of the declared draft but reworded some sentences.
+Stop blocked with "include the complete declared message ... and include the pending approval line and
+marker", and the whole message was rendered a second time. At the specify stop no crossing existed,
+so the demand for an approval line and marker named content that could not legitimately exist.
+See DRIFT-202-INTAKE-012.
+
 ## B4F-101 - TURN DRAFTS HAVE NO FIXED IGNORED LOCATION (beta4.1)
 
 **Detected**: maintainer review of `97e03c80` against PRED-BETA4-057, 2026-09-14 UTC.
@@ -4661,6 +4668,11 @@ has its own presentation obligation. Presentation does not supply a verdict or a
 error as acceptance observations, including all three non-verdict triggers. Beta4 remains released;
 this record does not authorize a repair or republish.
 
+**Live recurrence, 2026-10-13 (feature 202 specify stop, with B4F-100):** the six-section stop rendered
+twice, with a visible `Stop hook error` in between, while it offered no verdict and asked the human
+nothing that the first rendering had not already asked. It violated 202's governing principle
+("Unchanged context needs no packet"). See DRIFT-202-INTAKE-012.
+
 ## B4F-105 - DEFAULT DASHBOARD AND SAVED LIFECYCLE STATE SELECT DIFFERENT FEATURES (beta4.1 candidate)
 
 **Observed:** 2026-10-13, Codex status session on branch `201-first-run-experience`, HEAD `24e5701a`.
@@ -4764,6 +4776,35 @@ diagnosis stop and an approval to move the marker. Elapsed time not measured.
 `workshop/preserved-product-answers/` and the marker to `workshop/evidence/` (both moved, not deleted).
 No fix implemented. Drift: DRIFT-202-INTAKE-004 to 006 in the feature's intake-drift-log.md.
 
+## B4F-109 - A WORKTREE CANNOT OPEN SPECIFY FOR ITS SECOND FEATURE (new-feature cycle reset; beta4.1 Tier 1)
+
+**Observed:** 2026-10-13, feature 202 specify boundary on Claude. The branch was pushed and the boundary
+commit was `3821a05c`. `sync-boundary-state.ps1 -BoundaryType specify -FeatureRef 202-beta4-1-ux-stabilization`
+returned `success: true` and `boundary_record_status: established`, with `pending_verdict_has_pending: false`,
+and wrote no `pending-verdict-stop.md`. The advancement gate meanwhile reports `intake -> specify` blocked
+("No persisted authorization matched"). The gate wants a verdict, but no crossing exists for a typed
+verdict to bind to.
+
+**Cause (maintainer diagnosis, 2026-10-13):** `Get-SpecrewPendingBoundaryCrossing` (shared-governance.ps1)
+resets the lifecycle cycle only for `iteration-closeout -> plan`. In this worktree,
+`last_authorized_boundary` is still feature 199's `feature-closeout`, so 202's `specify` counts as
+already passed and no crossing is minted: `pending_next_boundary` is `specify`, `pending_crossing` is
+null, and `HasPendingVerdict` is false. The authorization writer has the same rule. Authorizing `specify`
+from `feature-closeout` is refused as a backward move, because only the iteration-closeout cycle reset
+is recognized. No worktree can open specify for its second feature.
+
+**Required behavior:** `feature-closeout -> specify` for a new feature is a cycle reset, like
+`iteration-closeout -> plan`. The specify sync for a new feature mints a scoped specify crossing, so the
+human's typed verdict is captured through the normal path. The reset is keyed to the new feature, so a
+closed feature's history can never authorize, or block, another feature's boundaries.
+
+**Relation:** sits next to B4F-105 (stale current-feature pointer). Both come from the per-worktree
+lifecycle state carrying a closed feature's position into a new one.
+**Cost:** one boundary stop that could offer no verdict, a second rendering of the same packet, and a
+Stop hook error, with nothing asked of the human (DRIFT-202-INTAKE-012).
+**Disposition:** beta4.1 Tier 1, added by the maintainer on 2026-10-13. No fix implemented.
+Drift: DRIFT-202-INTAKE-010 and 011.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
@@ -4771,6 +4812,8 @@ B4F-100, B4F-102, B4F-105, B4F-089, B4F-101 and B4F-107. **Tier 2**, only after 
 is the narrow B4F-054/056/058/061 review-ordering slice bounded by B4F-074, B4F-093 and B4F-103.
 No beta5 review redesign enters through the ordering slice. **B4F-108** (Codex workshop parity)
 was added to Tier 1 later the same day, after the Codex product-domain checkpoint deadlocked.
+**B4F-109** (new-feature cycle reset, `feature-closeout -> specify`) was added to Tier 1 next to B4F-105
+the same day, after 202's specify sync could open no crossing.
 
 **B4F-096 joins Tier 1 on the conditional reproduction ruling.** A corrected controlled replay against
 the installed beta4 package identified as `8d3f9906`, with a governed workshop controller in a disposable
