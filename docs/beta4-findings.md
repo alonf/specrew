@@ -4798,6 +4798,14 @@ is recognized. No worktree can open specify for its second feature.
 human's typed verdict is captured through the normal path. The reset is keyed to the new feature, so a
 closed feature's history can never authorize, or block, another feature's boundaries.
 
+**Widened by the maintainer at the clarify verdict (2026-10-13):** on a new-feature reset, all
+per-feature runtime state is keyed to the new feature: the crossing, the current-feature pointer, and
+the review-campaign coverage line. The coverage line on 202's clarify stop named feature 199's campaign
+(`cmp-199-beta3-stabilization-i002`, 148 files changed since); that is the same leak and is folded in
+here. **Audit trail:** the out-of-band specify authorization recorded for 202 (`auth-83b0f0c2...`,
+`out_of_band: true`, with its bypass record) stays in the ledger permanently. The ledger is append-only,
+and that entry is never rewritten or removed.
+
 **Relation:** sits next to B4F-105 (stale current-feature pointer). Both come from the per-worktree
 lifecycle state carrying a closed feature's position into a new one.
 **Cost:** one boundary stop that could offer no verdict, a second rendering of the same packet, and a

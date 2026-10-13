@@ -41,6 +41,7 @@ Clarify ran after the specify verdict. Under the governing principle, a question
 
 - Q: What is the "brief mention" of an unchanged pending decision (FR-011)? → A: At most one line naming the pending decision and its approval phrase. It carries no verdict options, no marker and no packet sections (resolved from the ui-ux lens, decision 2).
 - Q: What makes a feature "new" for the B4F-109 cycle reset (FR-026)? → A: The feature being synced differs from the feature whose feature-closeout was last authorized. A re-sync of the same feature is never a reset (resolved from B4F-109's required behavior).
+- Maintainer instruction with the clarify verdict: the review-coverage leak (199's campaign shown on 202's clarify stop) is folded into B4F-109. FR-026 is widened so that every piece of per-feature runtime state is keyed to the new feature on reset, the coverage line gets its own acceptance check (US4 scenario 8, SC-009), and the out-of-band specify entry stays permanently in the append-only ledger.
 - Q: How long is the "long gap" that counts as a context gap (FR-011)? → A: Deferred to the plan as a named tuning value, like the journal retry window. The B4F-104 tests drive context gaps explicitly (new session, resume, compaction, external state change), so acceptance does not depend on the value.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -117,6 +118,7 @@ B4F-105, B4F-109, B4F-089: status, orientation and resume name the same current 
 5. **Given** a handover narrative older than the ledger, or naming another feature, **When** a session resumes, **Then** the "where we are / starting now" lines come from the pending crossing, the commits since the handover's `from_commit`, and progress. The narrative is shown only as context with its age, and is flagged.
 6. **Given** any writer that creates or advances a feature, **When** it completes, **Then** the pointer names that feature and the branch.
 7. **Given** a worktree whose last authorized boundary is a previous feature's feature-closeout, **When** a new feature's specify sync runs, **Then** a scoped specify crossing for the new feature is opened. The maintainer's typed `approved for specify` is captured through the normal path, and the closed feature's history neither authorizes nor blocks the new feature (B4F-109).
+8. **Given** a new feature whose review campaign has not started, while a closed feature's campaign exists in the same worktree, **When** a boundary stop renders its review-coverage line, **Then** the line names only the new feature's campaign, or states that the new feature has no review coverage yet. It never names, counts or reports the closed feature's campaign, run, tree or remaining rounds (B4F-109).
 
 ---
 
@@ -205,7 +207,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 - **FR-019**: The resume "where we are / starting now" lines MUST come from disk only: the pending crossing, `from_commit..HEAD`, and progress. The handover narrative MUST be shown only as context with its age, and flagged when it is stale or names another feature.
 - **FR-020**: A gate refusal for a missing artifact MUST name the step that produces it.
 - **FR-021**: Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it.
-- **FR-026**: `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. A feature is new when it differs from the feature whose feature-closeout was last authorized; a re-sync of the same feature is never a reset. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries (B4F-109).
+- **FR-026**: `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. A feature is new when it differs from the feature whose feature-closeout was last authorized; a re-sync of the same feature is never a reset. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries. On a new-feature reset, all per-feature runtime state MUST be keyed to the new feature: the crossing, the current-feature pointer, and the review-campaign coverage line shown at boundary stops. The out-of-band specify authorization recorded for 202 (`auth-83b0f0c2...`) MUST stay in the append-only ledger as B4F-109's audit trail; it is never rewritten or removed (B4F-109).
 
 **Tier 2 (iteration 2, after Tier 1 acceptance)**
 
@@ -264,6 +266,7 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 - **SC-004**: For B4F-104, after the first presentation in a session, each of the three recorded triggers produces 0 packet repaints and 0 `Stop hook error` lines.
 - **SC-005**: The adaptation text is byte-identical across the three hosts, apart from the correction-command reference.
 - **SC-006**: Status, orientation and resume name the same feature in every constructed state, including a branch switch and a stale pointer. A second feature's specify sync in a worktree whose previous feature closed opens a crossing, and the verdict is captured with 0 out-of-band authorizations.
+- **SC-009**: In a worktree where a closed feature's review campaign exists, every boundary stop of a new feature shows 0 references to the closed feature's campaign in its review-coverage line (B4F-109, US4 scenario 8).
 - **SC-007**: Every Tier 1 refusal path names its actual cause and one recovery action.
 - **SC-008**: The validator run at iteration-1 closeout shows no new failures in the known-baseline categories below.
 
