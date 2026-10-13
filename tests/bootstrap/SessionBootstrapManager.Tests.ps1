@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 . "$base/HostEventAdapter.ps1"
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 . "$base/SessionStateAccessor.ps1"
 . "$base/ProjectMetadataAccessor.ps1"
 . "$base/HandoverStore.ps1"
@@ -28,7 +29,7 @@ function New-StateFile {
     return $Path
 }
 
-$evt = '{"session_id":"sess-1","source":"startup","hook_event_name":"SessionStart"}'
+$evt = New-SpecrewTestTurnRecord -SessionId 'sess-1'
 $root = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t007-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat-x') -Force | Out-Null
 # Prop-145 round-6 (HIGH): git-init the fixture so it is its OWN repo root. The temp dir lives under a HOME
@@ -39,7 +40,7 @@ New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat-x') -Force | Out
 & git -C $root -c user.email='t@t' -c user.name='t' commit -q --allow-empty -m init 2>$null | Out-Null
 try {
     # No anchor -> full bootstrap, render-first directive, dedupe key from session id.
-    $r1 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
+    $r1 = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
     Assert-Equal $r1.mode 'full' 'no anchor resolves full bootstrap'
     Assert-True $r1.directive.render_first 'directive is render-first'
     Assert-Equal $r1.directive.dedupe_key 'sess-1' 'dedupe key derived from session id'
@@ -48,14 +49,14 @@ try {
     # Cross-platform foreign absolute path (Windows other-drive; POSIX foreign root) - see SessionStateAccessor.Tests.
     $foreignFp = if ($IsWindows) { 'D:/other/worktree/specs/feat-x' } else { '/other/worktree/specs/feat-x' }
     $s2 = New-StateFile -Path (Join-Path $root 's2.json') -FeatureRef 'feat-x' -FeaturePath $foreignFp
-    $r2 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath $s2
+    $r2 = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath $s2
     Assert-Equal $r2.mode 'cleared-anchor' 'non-portable anchor resolves cleared-anchor'
     Assert-Equal $r2.record.anchor_cleared 'non-portable' 'record carries the clear reason'
     Assert-True ($r2.directive.validation_findings.Count -ge 1) 'directive carries validation findings'
 
     # Valid anchor (present, portable, not a git repo) -> welcome-back.
     $s3 = New-StateFile -Path (Join-Path $root 's3.json') -FeatureRef 'feat-x' -FeaturePath (Join-Path $root 'specs/feat-x')
-    $r3 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
+    $r3 = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
     Assert-Equal $r3.mode 'welcome-back' 'valid anchor resolves welcome-back'
 
     # A fresh handover for a different feature is stale context even when specs/<old-feature> still exists.
@@ -64,7 +65,7 @@ try {
     Write-SpecrewHandoverContext -HandoverDir (Join-Path $root '.specrew/handover') -FromHost codex `
         -RecordedAt ((Get-Date).ToUniversalTime().ToString('o')) -ActiveFeature 'feat-old' -ActiveBoundary 'feature-closeout' `
         -Sections @{ 'Recommended next-immediate-step' = 'STALE-WRONG-FEATURE-NEXT' } | Out-Null
-    $r3b = Invoke-SpecrewSessionBootstrap -RawEvent '{"session_id":"sess-1b","source":"startup","hook_event_name":"SessionStart"}' -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
+    $r3b = Invoke-SpecrewSessionBootstrap -TurnRecord (New-SpecrewTestTurnRecord -SessionId 'sess-1b') -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
     Assert-Equal $r3b.mode 'welcome-back' 'wrong-feature handover does not override the valid active anchor'
     Assert-True (-not [bool]$r3b.record.handover_valid) 'wrong-feature handover is rejected as invalid'
     Assert-True ($null -eq $r3b.directive.handover) 'wrong-feature handover is not surfaced in the directive'
@@ -73,20 +74,20 @@ try {
 
     # Journal record is appended when a journal path is supplied.
     $jp = Join-Path $root 'journal/records.jsonl'
-    Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -JournalPath $jp | Out-Null
+    Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -JournalPath $jp | Out-Null
     Assert-True (Test-Path -LiteralPath $jp) 'journal record file written'
     Assert-True ((Get-Content -LiteralPath $jp -Raw) -match '"mode":"full"') 'journal record captures the mode'
 
     # Missing session IDs get per-launch fallback keys in the manager journal, not a shared no-session bucket.
-    $r4 = Invoke-SpecrewSessionBootstrap -RawEvent '{"source":"startup"}' -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
+    $r4 = Invoke-SpecrewSessionBootstrap -TurnRecord (New-SpecrewTestTurnRecord -SessionId $null) -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
     Assert-True ([string]$r4.record.dedupe_key -match '^launch-[a-f0-9]{32}$') 'missing session id gets per-launch dedupe key'
     Assert-True ([string]$r4.record.dedupe_key -ne 'no-session' -and [string]$r4.record.dedupe_key -ne 'unknown') 'dedupe key avoids global fallback buckets'
 
     # Antigravity resume with its own marker should not warn about same-worktree concurrency.
     $antiMarkerPath = Join-Path $root '.specrew/runtime/session-marker.json'
     Write-SpecrewSessionMarker -MarkerPath $antiMarkerPath -HostName antigravity -ProjectRoot $root -Branch 'main' -HeadCommit 'abc123' -SessionId 'anti-conv-1' -StartedAt '2026-06-17T00:00:00Z' | Out-Null
-    $antiEvent = '{"conversationId":"anti-conv-1","workspacePaths":["' + (($root -replace '\\', '/') -replace '"', '\"') + '"],"transcriptPath":"C:/temp/anti-transcript.jsonl"}'
-    $r5 = Invoke-SpecrewSessionBootstrap -RawEvent $antiEvent -HostName antigravity -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc '2026-06-17T00:01:00Z'
+    $antiEvent = New-SpecrewTestTurnRecord -SessionId 'anti-conv-1' -Source $null -HostName antigravity
+    $r5 = Invoke-SpecrewSessionBootstrap -TurnRecord $antiEvent -HostName antigravity -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc '2026-06-17T00:01:00Z'
     Assert-Equal $r5.record.dedupe_key 'anti-conv-1' 'antigravity conversationId drives the bootstrap dedupe key'
     Assert-True (-not [bool]$r5.record.concurrent_session) 'antigravity own marker is not reported concurrent'
     Assert-Equal $r5.record.concurrency_reason 'same-session' 'antigravity own marker classified as same-session'

@@ -6,6 +6,7 @@
 # sequential two-call test could never have caught (it trivially passes the broken scheme). Real codex remains
 # the decisive acceptance; this locks the mechanism.
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 
 . "$PSScriptRoot/../../scripts/internal/bootstrap/LauncherIntegration.ps1"
 . "$PSScriptRoot/../../scripts/internal/bootstrap/HookJournalAccessor.ps1"
@@ -56,9 +57,9 @@ try {
     # ---------------- INTEGRATION: two CONCURRENT provider fires (the real codex double-fire) ----------------
     $provJob = {
         param($Provider, $Evt, $Root)
-        (& pwsh -NoProfile -File $Provider --event-json $Evt --host-kind codex --project-root $Root 2>&1 | Out-String)
+        (& pwsh -NoProfile -File $Provider --turn-record $Evt --host-kind codex --project-root $Root 2>&1 | Out-String)
     }
-    $evt = '{"source":"startup","session_id":"concurrent-dup"}'
+    $evt = ConvertTo-SpecrewTestTurnRecordArgument -SessionId 'concurrent-dup' -Source 'startup'
     $p1 = Start-Job -ScriptBlock $provJob -ArgumentList $provider, $evt, $tmp
     $p2 = Start-Job -ScriptBlock $provJob -ArgumentList $provider, $evt, $tmp
     $null = $p1, $p2 | Wait-Job
@@ -75,17 +76,18 @@ try {
     Assert-Equal $dup.Count 2 "I1c: BOTH fires journaled (forensic count intact) - $($dup.Count) rows for concurrent-dup"
 
     # I2: a DIFFERENT source after the startup pair still renders (claims its own key) -> /clear re-bootstrap safe.
-    $clear = & pwsh -NoProfile -File $provider --event-json '{"source":"clear","session_id":"concurrent-dup"}' --host-kind codex --project-root $tmp 2>&1 | Out-String
+    $clear = & pwsh -NoProfile -File $provider --turn-record (ConvertTo-SpecrewTestTurnRecordArgument -SessionId 'concurrent-dup' -Source 'clear') --host-kind codex --project-root $tmp 2>&1 | Out-String
     Assert-True ($clear -match 'VISIBLE PROSE') 'I2: same session under source=clear RE-RENDERS (its own claim; /clear is never suppressed)'
 
     # I3: no usable host session id gets a per-launch fallback token. Two concurrent missing-id fires therefore
     # use distinct keys, BOTH render, and no global no-session/unknown state is written.
+    # Each fire's record is built here, as the dispatcher builds one per fire: no session id -> its own per-launch token.
     $nsJob = {
-        param($Provider, $Root)
-        (& pwsh -NoProfile -File $Provider --event-json '{"source":"startup"}' --host-kind codex --project-root $Root 2>&1 | Out-String)
+        param($Provider, $Evt, $Root)
+        (& pwsh -NoProfile -File $Provider --turn-record $Evt --host-kind codex --project-root $Root 2>&1 | Out-String)
     }
-    $n1 = Start-Job -ScriptBlock $nsJob -ArgumentList $provider, $tmp2
-    $n2 = Start-Job -ScriptBlock $nsJob -ArgumentList $provider, $tmp2
+    $n1 = Start-Job -ScriptBlock $nsJob -ArgumentList $provider, (ConvertTo-SpecrewTestTurnRecordArgument -SessionId $null -Source 'startup'), $tmp2
+    $n2 = Start-Job -ScriptBlock $nsJob -ArgumentList $provider, (ConvertTo-SpecrewTestTurnRecordArgument -SessionId $null -Source 'startup'), $tmp2
     $null = $n1, $n2 | Wait-Job
     $nsOuts = @(($n1 | Receive-Job), ($n2 | Receive-Job))
     $n1, $n2 | Remove-Job -Force

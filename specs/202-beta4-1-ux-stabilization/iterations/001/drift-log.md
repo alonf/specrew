@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 9
-**Resolution rate**: 89% (8/9 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 10
+**Resolution rate**: 90% (9/10 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -104,6 +104,17 @@
 
   research.md and the hardening gate are updated to match.
 - **Class closure**: T002's contract test names synthetic fixtures as synthetic and never counts them as recorded-host evidence. The provenance `origin` field carries this, and the test asserts it.
+
+### DRIFT-010 — T002 reached two files outside its owned set, and corrected one research note (resolved)
+
+- **Observed**: 2026-10-13, T002 implementation.
+  - **Launcher stdin.** The generated per-machine hook launcher, written by `deploy-refocus-hooks.ps1` (both twins), read hook stdin with `[Console]::In`, exactly like the dispatcher. Under a host's hidden console that decodes UTF-8 as `ibm437`. The RED reproduced it: a Hebrew prompt reached the provider as mojibake on Claude (dispatcher path) and on Copilot (launcher path). The same deployer also has to bake the declared input contract into `-HostBinding`, or deployed projects would never see it (the same trap as StopBlockShape, 145 F1).
+  - **Codex origin note.** research.md's host-injected section said a Codex prompt matching no rule is `unknown`. Under FR-006 that would refuse every typed Codex reply.
+- **Requirement**: FR-006, FR-021 (UTF-8 intake, B4F-065 class), FR-024; T002's owned-file list.
+- **Resolution**:
+  - T002 also owns both `deploy-refocus-hooks.ps1` twins (launcher stdin decode, and binding bake of `InputFieldMap`, `OriginRules`, `InputTransform`) and the bootstrap rewiring files (`SessionBootstrapManager.ps1`, both `specrew-bootstrap-provider.ps1` twins, and the seven bootstrap tests that used the removed normalizer). The rewiring was already in T002's work text; only the owned-file list missed it.
+  - research.md is corrected in place, with the correction marked.
+- **Class closure**: `turn-record-contract.tests.ps1` runs every case through the deployed command under a hidden console, the way hosts spawn hooks, so a `[Console]::In` read anywhere on the path turns the Hebrew cases red. `twin-copy-parity.tests.ps1` fails on any twin drift.
 <!--
   Every new ### DRIFT-... event includes:
 

@@ -1,35 +1,15 @@
 <#
 .SYNOPSIS
-  Normalize a host SessionStart/SessionEnd hook event into a Specrew-internal shape.
+  Read the standard turn record the hook dispatcher hands the bootstrap, and keep session ids path-safe.
 .DESCRIPTION
-  Volatile adapter (IDesign): isolates per-host hook payload differences behind a stable
-  PSCustomObject contract consumed by SessionBootstrapManager. Pure transform - no
-  filesystem or git access. Feature 174 (FR-001, FR-005). Iteration 001 targets the Claude
-  payload; other hosts are added in iteration 003 (T016).
+  Feature 202 T002 (FR-006, DA-1 option B): the hook dispatcher is the ONLY component that reads a host
+  payload. It builds the standard turn record from the host's declared binding (hosts/<host>/host.psd1) and
+  passes it to the bootstrap provider as --turn-record. This adapter only decodes and validates that record;
+  it never normalizes a raw host payload. (Before 202 it did, with its own key list that accepted an `id` key
+  the dispatcher ignored, so the two disagreed about the session.) Pure transform - no filesystem or git access.
 .OUTPUTS
-  [pscustomobject] { host, event_name, source, session_id, safe_session_id, project_root, parsed }
+  [pscustomobject] the turn record, or $null when the argument is absent or not a valid record.
 #>
-
-function Get-SpecrewEventField {
-    # Defensive multi-key read: hosts vary in casing/naming (snake_case vs camelCase), so try each
-    # candidate key in priority order and return the first non-empty. This normalizes the common
-    # variants WITHOUT hardcoding unverified per-host schemas - an unknown field simply yields $null
-    # and the bootstrap degrades to full mode (fail-open). FR-005.
-    param([AllowNull()]$Payload, [Parameter(Mandatory)][string[]] $Names)
-    if ($null -eq $Payload) { return $null }
-    foreach ($n in $Names) {
-        $p = $Payload.PSObject.Properties[$n]
-        if (-not $p -or $null -eq $p.Value) { continue }
-        if ($p.Value -is [System.Array]) {
-            foreach ($item in @($p.Value)) {
-                if (-not [string]::IsNullOrWhiteSpace([string]$item)) { return [string]$item }
-            }
-            continue
-        }
-        if (-not [string]::IsNullOrWhiteSpace([string]$p.Value)) { return $p.Value }
-    }
-    return $null
-}
 
 function New-SpecrewPerLaunchSessionToken {
     return ('launch-{0}' -f ([guid]::NewGuid().ToString('N')))
@@ -50,41 +30,34 @@ function ConvertTo-SpecrewFilesystemSafeSessionId {
     return $clean
 }
 
-function ConvertFrom-SpecrewHostHookEvent {
+function ConvertFrom-SpecrewTurnRecordArgument {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        # Raw hook event payload as the host emits it (JSON text). Empty/garbage is tolerated.
-        [Parameter(Mandatory)][AllowEmptyString()][string] $RawEvent,
-        # The launching host. ('Host' is a PowerShell automatic variable, so this is HostName.)
-        [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9_.-]+$')][string] $HostName,
-        # Optional explicit project root; falls back to the event's cwd.
-        [Parameter()][string] $ProjectRoot
+        # The dispatcher's --turn-record value: base64 of the record's UTF-8 JSON. Empty or garbage yields $null.
+        [Parameter(Mandatory)][AllowEmptyString()][string] $Encoded
     )
 
-    $payload = $null
-    if (-not [string]::IsNullOrWhiteSpace($RawEvent)) {
-        try { $payload = $RawEvent | ConvertFrom-Json -ErrorAction Stop } catch { $payload = $null }
+    if ([string]::IsNullOrWhiteSpace($Encoded)) { return $null }
+    try {
+        $json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Encoded.Trim()))
+        $record = $json | ConvertFrom-Json -ErrorAction Stop
     }
-
-    # Per-host field normalization (FR-005): try snake_case + camelCase variants across hosts.
-    $sessionId = Get-SpecrewEventField $payload @('session_id', 'sessionId', 'conversation_id', 'conversationId', 'id')
-    $source    = Get-SpecrewEventField $payload @('source', 'trigger', 'reason')
-    $eventName = Get-SpecrewEventField $payload @('hook_event_name', 'hookEventName', 'event_name')
-    $cwd       = Get-SpecrewEventField $payload @('cwd', 'workspace_root', 'workspaceRoot', 'workspacePaths', 'project_root', 'projectRoot', 'workingDirectory')
-
-    # Sanitize the session id before it is ever used in a path. Missing or malformed ids get a
-    # per-launch token, never a global "unknown" bucket.
-    $safeSessionId = ConvertTo-SpecrewFilesystemSafeSessionId -RawSessionId $sessionId
-    $resolvedRoot = if ($ProjectRoot) { $ProjectRoot } elseif ($cwd) { $cwd } else { $null }
-
-    [pscustomobject]@{
-        host            = $HostName
-        event_name      = $eventName
-        source          = $source
-        session_id      = $sessionId
-        safe_session_id = $safeSessionId
-        project_root    = $resolvedRoot
-        parsed          = ($null -ne $payload)
+    catch { return $null }
+    if ($null -eq $record -or $record -isnot [psobject]) { return $null }
+    $schema = $record.PSObject.Properties['schema']
+    if (-not $schema -or [string]$schema.Value -cne 'specrew-turn-record/v1') { return $null }
+    # The safe id is re-derived here rather than trusted: it becomes part of a filename.
+    $rawIdProperty = $record.PSObject.Properties['session_id']
+    $safeProperty = $record.PSObject.Properties['safe_session_id']
+    $rawId = if ($rawIdProperty) { [string]$rawIdProperty.Value } else { '' }
+    $safe = if ($safeProperty) { [string]$safeProperty.Value } else { '' }
+    if ([string]::IsNullOrWhiteSpace($rawId)) {
+        if ([string]::IsNullOrWhiteSpace($safe) -or $safe -notmatch '^launch-[0-9a-f]{32}$') { $safe = New-SpecrewPerLaunchSessionToken }
     }
+    else {
+        $safe = ConvertTo-SpecrewFilesystemSafeSessionId -RawSessionId $rawId
+    }
+    $record | Add-Member -NotePropertyName safe_session_id -NotePropertyValue $safe -Force
+    return $record
 }

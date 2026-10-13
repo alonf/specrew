@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 
 # F-171 regression: prove the F-174/F-184 bootstrap/handover/refocus additions
 # are additive. Refocus B1/B2/B3 stay intact and no B4 trigger is introduced.
@@ -49,7 +50,7 @@ Assert-True (($antiTriggers -contains 'b2') -and ($antiTriggers -contains 'b3') 
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t019-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path (Join-Path $tmp '.specrew') -Force | Out-Null
 try {
-    $out = & pwsh -NoProfile -File $provider --event-json '{"source":"compact","session_id":"x"}' --project-root $tmp 2>$null
+    $out = & pwsh -NoProfile -File $provider --turn-record (ConvertTo-SpecrewTestTurnRecordArgument -SessionId 'x' -Source 'compact') --project-root $tmp 2>$null
     Assert-True ([string]::IsNullOrWhiteSpace((($out -join '')).Trim())) 'B1: bootstrap provider silent on compact (B1 stays refocus-only)'
 }
 finally {

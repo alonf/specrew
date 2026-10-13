@@ -141,6 +141,28 @@ function Get-HostRuntimeBindingEncoded {
         # the entire stop-block delivery is inert in the field while the manifest-path tests stay green (145 F1/TI-1).
         StopBlockShape          = [string](Get-ManifestValue -Map $runtime -Key 'StopBlockShape' -Default 'none')
     }
+    # Feature 202 T002 (DA-1, option B): the host's declared input contract rides the baked binding too, for the
+    # same reason as StopBlockShape - the dispatcher decodes the baked binding first, so a contract left out here
+    # would never reach a deployed project. Keys are emitted sorted so a re-deploy stays byte-idempotent.
+    if (Test-ManifestKey -Map $runtime -Key 'InputFieldMap') {
+        $rawFieldMap = Get-ManifestValue -Map $runtime -Key 'InputFieldMap'
+        $fieldMap = [ordered]@{}
+        foreach ($key in @(Get-ManifestKeys -Map $rawFieldMap | Sort-Object)) {
+            $fieldMap[[string]$key] = @(@(Get-ManifestValue -Map $rawFieldMap -Key ([string]$key)) | ForEach-Object { [string]$_ })
+        }
+        $stableRuntime['InputFieldMap'] = $fieldMap
+    }
+    if (Test-ManifestKey -Map $runtime -Key 'OriginRules') {
+        $rules = foreach ($rule in @(Get-ManifestValue -Map $runtime -Key 'OriginRules')) {
+            $stableRule = [ordered]@{}
+            foreach ($key in @(Get-ManifestKeys -Map $rule | Sort-Object)) { $stableRule[[string]$key] = [string](Get-ManifestValue -Map $rule -Key ([string]$key)) }
+            $stableRule
+        }
+        $stableRuntime['OriginRules'] = @($rules)
+    }
+    if (Test-ManifestKey -Map $runtime -Key 'InputTransform') {
+        $stableRuntime['InputTransform'] = [string](Get-ManifestValue -Map $runtime -Key 'InputTransform')
+    }
     $json = $stableRuntime | ConvertTo-Json -Depth 8 -Compress
     return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
 }
@@ -392,7 +414,15 @@ function Find-DispatcherUpTree {
 # must avoid; a try/catch does NOT rescue a blocking read). Mirrors the dispatcher's own guard.
 $raw = ''
 if ([Console]::IsInputRedirected) {
-    try { $raw = [Console]::In.ReadToEnd() } catch { $raw = '' }
+    # Hook payloads are UTF-8, but a host-spawned hook's console input code page is the OEM one (measured ibm437,
+    # 202 research.md T001), and [Console]::In decodes with it - a Hebrew prompt arrived as mojibake. Read the raw
+    # bytes and decode them as UTF-8 explicitly (a leading BOM is dropped).
+    try {
+        $stdinBytes = [IO.MemoryStream]::new()
+        [Console]::OpenStandardInput().CopyTo($stdinBytes)
+        $raw = [Text.UTF8Encoding]::new($false).GetString($stdinBytes.ToArray()).TrimStart([char]0xFEFF)
+    }
+    catch { $raw = '' }
 }
 $payloadCwd = $null
 $payloadRoots = @()

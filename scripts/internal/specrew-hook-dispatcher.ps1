@@ -270,6 +270,11 @@ function ConvertFrom-DispatcherRuntimeBinding {
         #   followup-message  -> {"followup_message":...}              (cursor - best-effort re-triggered turn, NOT a hard same-turn block)
         #   none              -> cannot block; degrades to the cooperative instruction only
         StopBlockShape          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'StopBlockShape' -Default 'none')
+        # Feature 202 T002 (DA-1, option B): the host's declared input contract (host.psd1). $null when the
+        # binding predates it; ConvertTo-SpecrewTurnRecord then uses the host-neutral defaults below.
+        InputFieldMap           = Get-DispatcherMapValue -Map $Runtime -Key 'InputFieldMap'
+        OriginRules             = Get-DispatcherMapValue -Map $Runtime -Key 'OriginRules'
+        InputTransform          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'InputTransform' -Default '')
     }
 }
 
@@ -381,6 +386,185 @@ function Get-SanitizedSessionId {
     $clean = (([string]$RawSessionId) -replace '[^a-zA-Z0-9-]+', '-').Trim('-')
     if ([string]::IsNullOrWhiteSpace($clean)) { return ('launch-{0}' -f ([guid]::NewGuid().ToString('N'))) }
     return $clean
+}
+
+# ---------------------------------------------------------------------------
+# Standard turn record (Feature 202 T002; FR-006; DA-1 option B). The ONE place a host payload is read. Each host
+# declares its input contract as data (hosts/<host>/host.psd1 DispatcherRuntime: InputFieldMap, OriginRules,
+# optional InputTransform); this code applies whatever is declared and names no host. Providers receive the
+# record's fields as clean args (and the bootstrap the whole record), so no provider re-parses the payload.
+# ---------------------------------------------------------------------------
+
+# Host-neutral defaults, used only for a binding that predates the declared contract (a project deployed before
+# 202 and not yet redeployed). They are the union the dispatcher accepted before, so such a project keeps working.
+$script:DefaultTurnInputFieldMap = @{
+    SessionId      = @('session_id', 'sessionId', 'conversation_id', 'conversationId')
+    Prompt         = @('prompt', 'user_prompt', 'userPrompt', 'message', 'text', 'content')
+    TranscriptPath = @('transcript_path', 'transcriptPath')
+    Source         = @('source')
+    ToolName       = @('toolName', 'tool_name')
+    ToolOutcome    = @('toolResult.toolTelemetry.properties.outcome')
+    ToolQuestion   = @('toolResult.toolTelemetry.restrictedProperties.question')
+    StopHookActive = @('stop_hook_active')
+}
+$script:DefaultTurnOriginRules = @(
+    @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
+    @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
+    @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-—]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
+    @{ Origin = 'typed-user'; Rule = 'prompt-present' }
+)
+
+# Shared transform registry: small, named, tested transforms for host quirks a field map cannot express. A host
+# binding names at most one (InputTransform). Each returns an origin, or $null to let the origin rules decide.
+$script:TurnRecordTransforms = @{
+    # A dismissed ask_user form is an absence, never an answer. 1.0.96 emits no hook event for a dismissal
+    # (Esc -> "User cancelled the request.", Ctrl+O -> "User responded: <default>", both tool results; B4F-113);
+    # the legacy "User skipped question" string stays recognized if a host ever submits it as a prompt.
+    'ask-user-dismissal-text' = {
+        param([string]$Text)
+        if ($Text -match '^\s*(?:User skipped question|User cancelled the request\.)\s*$') { return 'host-injected' }
+        return $null
+    }
+}
+
+function Read-DispatcherStdinText {
+    # Hook payloads are UTF-8. A host-spawned hook's console input code page is the OEM one (measured ibm437 on
+    # every validated host, 202 research.md T001) and [Console]::In decodes with it, so a Hebrew prompt reached
+    # the providers as mojibake. Read the raw bytes and decode UTF-8 explicitly; a leading BOM is dropped.
+    $buffer = [IO.MemoryStream]::new()
+    [Console]::OpenStandardInput().CopyTo($buffer)
+    return [Text.UTF8Encoding]::new($false).GetString($buffer.ToArray()).TrimStart([char]0xFEFF)
+}
+
+function Get-DispatcherTurnFieldValue {
+    # First non-empty value among the declared paths. A path may be dotted (toolResult.toolTelemetry.x).
+    param($Payload, [string[]]$Paths)
+    if ($null -eq $Payload) { return $null }
+    foreach ($path in @($Paths)) {
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $node = $Payload
+        foreach ($segment in $path.Split('.')) {
+            if ($null -eq $node -or $node -isnot [psobject] -or $null -eq $node.PSObject.Properties[$segment]) { $node = $null; break }
+            $node = $node.PSObject.Properties[$segment].Value
+        }
+        if ($null -eq $node) { continue }
+        if ($node -is [bool]) { return $node }
+        if ($node -is [string]) { if (-not [string]::IsNullOrWhiteSpace($node)) { return $node }; continue }
+        if ($node -is [psobject] -or $node -is [System.Array]) { continue }
+        if (-not [string]::IsNullOrWhiteSpace([string]$node)) { return [string]$node }
+    }
+    return $null
+}
+
+function Get-DispatcherTurnFieldPaths {
+    # The declared paths for one field; a key the binding does not declare falls back to the host-neutral default.
+    param($Binding, [string]$Field)
+    $declared = Get-DispatcherMapValue -Map $Binding -Key 'InputFieldMap'
+    if ($null -ne $declared -and (Test-DispatcherMapKey -Map $declared -Key $Field)) { return @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $declared -Key $Field)) }
+    return @($script:DefaultTurnInputFieldMap[$Field])
+}
+
+function Test-DispatcherHookOutputJournalText {
+    # 'match' when the text equals output this dispatcher journaled (a host replaying a Stop reason), 'none' when
+    # it does not, 'unavailable' when the journal cannot vouch either way (marked unhealthy or unreadable).
+    param([AllowNull()][string]$ProjectRoot, [AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return 'none' }
+    $journalPath = Join-Path $ProjectRoot '.specrew/runtime/hook-output-authority.jsonl'
+    if (Test-Path -LiteralPath ($journalPath + '.unhealthy') -PathType Leaf) { return 'unavailable' }
+    if (-not (Test-Path -LiteralPath $journalPath -PathType Leaf)) { return 'none' }
+    $hash = Get-DispatcherHookOutputHash -Text $Text
+    try {
+        foreach ($line in [IO.File]::ReadLines($journalPath, [Text.Encoding]::UTF8)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $record = $line | ConvertFrom-Json -ErrorAction Stop
+            if ([string]$record.output_hash -ceq $hash) { return 'match' }
+        }
+    }
+    catch { return 'unavailable' }
+    return 'none'
+}
+
+function Get-DispatcherTurnOrigin {
+    param([string]$EventName, [AllowNull()][string]$TypedText, $Binding, [AllowNull()][string]$ProjectRoot)
+    if ($EventName -notin @('UserPromptSubmit', 'PreInvocation')) { return 'unknown' }
+    if ([string]::IsNullOrWhiteSpace($TypedText)) { return 'unknown' }
+    $transformName = [string](Get-DispatcherMapValue -Map $Binding -Key 'InputTransform' -Default '')
+    if (-not [string]::IsNullOrWhiteSpace($transformName)) {
+        if ($script:TurnRecordTransforms.ContainsKey($transformName)) {
+            $transformed = & $script:TurnRecordTransforms[$transformName] $TypedText
+            if (-not [string]::IsNullOrWhiteSpace([string]$transformed)) { return [string]$transformed }
+        }
+        else {
+            Write-DispatcherWarn -Code 'TURN_TRANSFORM' -Message ("host binding names unknown transform '{0}'; origin rules decide alone" -f $transformName)
+        }
+    }
+    $rules = Get-DispatcherMapValue -Map $Binding -Key 'OriginRules'
+    if ($null -eq $rules) { $rules = $script:DefaultTurnOriginRules }
+    foreach ($rule in @($rules)) {
+        $ruleOrigin = [string](Get-DispatcherMapValue -Map $rule -Key 'Origin')
+        if ($ruleOrigin -notin @('typed-user', 'host-injected', 'unknown')) { continue }
+        switch ([string](Get-DispatcherMapValue -Map $rule -Key 'Rule')) {
+            'hook-output-journal' {
+                $state = Test-DispatcherHookOutputJournalText -ProjectRoot $ProjectRoot -Text $TypedText
+                if ($state -eq 'match') { return $ruleOrigin }
+                # Fail closed: a journal that cannot vouch means this text cannot be proven NOT to be a replay.
+                if ($state -eq 'unavailable') { return 'unknown' }
+            }
+            'prompt-pattern' {
+                $pattern = [string](Get-DispatcherMapValue -Map $rule -Key 'Pattern')
+                if (-not [string]::IsNullOrWhiteSpace($pattern) -and $TypedText -match $pattern) { return $ruleOrigin }
+            }
+            'prompt-present' { return $ruleOrigin }
+        }
+    }
+    return 'unknown'
+}
+
+function ConvertTo-SpecrewTurnRecord {
+    # The single normalizer. Every field comes from the binding's declared paths; the origin from its declared
+    # rules and named transform. Shape: data-model.md "Standard turn record".
+    param(
+        [Parameter(Mandatory)][string]$EventName,
+        [Parameter(Mandatory)][string]$HostName,
+        $Payload,
+        $Binding,
+        [AllowNull()][string]$ProjectRoot
+    )
+    $sessionId = Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'SessionId')
+    $isPromptEvent = $EventName -in @('UserPromptSubmit', 'PreInvocation')
+    $typedText = if ($isPromptEvent) { Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'Prompt') } else { $null }
+    $toolName = Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'ToolName')
+    $tool = $null
+    if (-not [string]::IsNullOrWhiteSpace([string]$toolName)) {
+        $tool = [ordered]@{
+            name     = [string]$toolName
+            outcome  = [string](Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'ToolOutcome'))
+            question = [string](Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'ToolQuestion'))
+        }
+    }
+    $stopHookActive = Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'StopHookActive')
+    return [ordered]@{
+        schema           = 'specrew-turn-record/v1'
+        event            = $EventName
+        host             = $HostName
+        session_id       = if ([string]::IsNullOrWhiteSpace([string]$sessionId)) { $null } else { [string]$sessionId }
+        safe_session_id  = Get-SanitizedSessionId -RawSessionId ([string]$sessionId)
+        source           = $(Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'Source'))
+        typed_text       = $typedText
+        origin           = Get-DispatcherTurnOrigin -EventName $EventName -TypedText $typedText -Binding $Binding -ProjectRoot $ProjectRoot
+        transcript_path  = $(Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'TranscriptPath'))
+        stop_hook_active = ($stopHookActive -eq $true -or [string]$stopHookActive -eq 'True')
+        tool             = $tool
+    }
+}
+
+function ConvertTo-DispatcherTurnRecordArgument {
+    # The record a provider receives on --turn-record: base64 UTF-8 JSON without the prompt text (that rides
+    # --last-user-message) and without tool detail, so the argument stays small and carries no user text.
+    param($TurnRecord)
+    $slim = [ordered]@{}
+    foreach ($key in $TurnRecord.Keys) { if ($key -notin @('typed_text', 'tool')) { $slim[$key] = $TurnRecord[$key] } }
+    return [Convert]::ToBase64String([Text.UTF8Encoding]::new($false).GetBytes(($slim | ConvertTo-Json -Depth 4 -Compress)))
 }
 
 function Get-DispatcherCatalog {
@@ -942,7 +1126,7 @@ try {
     # Host event JSON: -EventJson (tests/bindings) or stdin (Claude hooks).
     $rawEvent = $EventJson
     if ([string]::IsNullOrWhiteSpace($rawEvent) -and -not [Console]::IsInputRedirected) { $rawEvent = '' }
-    elseif ([string]::IsNullOrWhiteSpace($rawEvent)) { $rawEvent = [Console]::In.ReadToEnd() }
+    elseif ([string]::IsNullOrWhiteSpace($rawEvent)) { $rawEvent = Read-DispatcherStdinText }
 
     $hostEvent = $null
     if (-not [string]::IsNullOrWhiteSpace($rawEvent)) {
@@ -954,20 +1138,13 @@ try {
         }
     }
 
-    # Session-id field varies per host contract: session_id (Claude/Codex),
-    # sessionId (Copilot camelCase), conversation_id (Cursor), conversationId
-    # (Antigravity camelCase).
-    $rawSessionId = $null
-    if ($null -ne $hostEvent) {
-        foreach ($idKey in @('session_id', 'sessionId', 'conversation_id', 'conversationId')) {
-            if ($hostEvent.PSObject.Properties[$idKey] -and -not [string]::IsNullOrWhiteSpace([string]$hostEvent.$idKey)) {
-                $rawSessionId = [string]$hostEvent.$idKey
-                break
-            }
-        }
-    }
-    $sessionId = Get-SanitizedSessionId -RawSessionId $rawSessionId
-    $source = if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['source']) { [string]$hostEvent.source } else { $null }
+    # Feature 202 T002: the host's declared binding (baked into the deployed hook, else its manifest) drives the
+    # single normalizer; every field below comes from the standard turn record, never from the raw payload.
+    $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
+    $turnRecord = ConvertTo-SpecrewTurnRecord -EventName $Event -HostName $HostKind -Payload $hostEvent -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
+    $rawSessionId = $turnRecord.session_id
+    $sessionId = $turnRecord.safe_session_id
+    $source = $turnRecord.source
 
     # FR-053 (co-review finding 2): record the sanitized lifecycle receipt as durable proof-of-fire ONLY
     # AFTER the host envelope validated as a GENUINE, well-formed lifecycle fire - a non-null host-shaped JSON
@@ -983,7 +1160,6 @@ try {
         Write-DispatcherHookHealthReceipt -HostKind $HostKind -EventName $Event -ProjectRoot $projectRoot
     }
 
-    $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
     if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) {
         Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $hostRuntimeBinding
@@ -1148,62 +1324,24 @@ try {
             if (-not [string]::IsNullOrWhiteSpace($rawSessionId)) {
                 $commandArgs += @('--session-id', $sessionId)
             }
-            # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
-            # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
-            # re-parsing the event JSON. Field name varies (snake/camel); harmless to providers that ignore the
-            # arg. (Invoke-ProviderProcess delivers it via ProcessStartInfo.ArgumentList, so a path with spaces
-            # survives byte-for-byte - the spaced-home bug this fixed.) Fail-open.
-            if (-not [string]::IsNullOrWhiteSpace($rawEvent)) {
-                try {
-                    $evtObj = $rawEvent | ConvertFrom-Json -ErrorAction Stop
-                    $tpath = $null
-                    foreach ($k in @('transcript_path', 'transcriptPath')) {
-                        $pp = $evtObj.PSObject.Properties[$k]
-                        if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $tpath = [string]$pp.Value; break }
-                    }
-                    if (-not [string]::IsNullOrWhiteSpace($tpath)) { $commandArgs += @('--transcript-path', $tpath) }
-                    if ($Event -in @('UserPromptSubmit', 'PreInvocation')) {
-                        $userPrompt = $null
-                        foreach ($k in @('prompt', 'user_prompt', 'userPrompt', 'message', 'text', 'content')) {
-                            $pp = $evtObj.PSObject.Properties[$k]
-                            if ($pp -and $pp.Value -is [string] -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $userPrompt = [string]$pp.Value; break }
-                        }
-                        if (-not [string]::IsNullOrWhiteSpace($userPrompt)) { $commandArgs += @('--last-user-message', $userPrompt) }
-                    }
-                    if ($providerId -eq 'conformance' -and $Event -eq 'PostToolUse') {
-                        $toolName = $null
-                        foreach ($k in @('toolName', 'tool_name')) {
-                            $pp = $evtObj.PSObject.Properties[$k]
-                            if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $toolName = [string]$pp.Value; break }
-                        }
-                        if ([string]$toolName -ieq 'ask_user') {
-                            $outcome = ''
-                            $question = ''
-                            $toolResultProperty = $evtObj.PSObject.Properties['toolResult']
-                            if ($toolResultProperty -and $null -ne $toolResultProperty.Value) {
-                                $telemetryProperty = $toolResultProperty.Value.PSObject.Properties['toolTelemetry']
-                                if ($telemetryProperty -and $null -ne $telemetryProperty.Value) {
-                                    $propertiesProperty = $telemetryProperty.Value.PSObject.Properties['properties']
-                                    if ($propertiesProperty -and $null -ne $propertiesProperty.Value) {
-                                        $outcomeProperty = $propertiesProperty.Value.PSObject.Properties['outcome']
-                                        if ($outcomeProperty) { $outcome = [string]$outcomeProperty.Value }
-                                    }
-                                    $restrictedProperty = $telemetryProperty.Value.PSObject.Properties['restrictedProperties']
-                                    if ($restrictedProperty -and $null -ne $restrictedProperty.Value) {
-                                        $questionProperty = $restrictedProperty.Value.PSObject.Properties['question']
-                                        if ($questionProperty) { $question = [string]$questionProperty.Value }
-                                    }
-                                }
-                            }
-                            $commandArgs += @('--structured-question-tool', 'ask_user', '--structured-question-outcome', $outcome)
-                            if (-not [string]::IsNullOrWhiteSpace($question)) {
-                                $boundedQuestion = if ($question.Length -gt 1000) { $question.Substring(0, 1000) } else { $question }
-                                $commandArgs += @('--structured-question-text', $boundedQuestion)
-                            }
-                        }
-                    }
+            # Feature 202 T002: every remaining field comes from the standard turn record - the transcript path
+            # (F-174 iter-10: a clean arg, so a spaced path survives via ProcessStartInfo.ArgumentList), the
+            # prompt text and its origin (FR-006), and the ask_user tool detail - never from re-parsing the payload.
+            if (-not [string]::IsNullOrWhiteSpace([string]$turnRecord.transcript_path)) { $commandArgs += @('--transcript-path', [string]$turnRecord.transcript_path) }
+            if ($Event -in @('UserPromptSubmit', 'PreInvocation')) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$turnRecord.typed_text)) { $commandArgs += @('--last-user-message', [string]$turnRecord.typed_text) }
+                $commandArgs += @('--turn-origin', [string]$turnRecord.origin)
+            }
+            if ($providerId -notin @('handover', 'conformance', 'co-review-navigator')) {
+                $commandArgs += @('--turn-record', (ConvertTo-DispatcherTurnRecordArgument -TurnRecord $turnRecord))
+            }
+            if ($providerId -eq 'conformance' -and $Event -eq 'PostToolUse' -and $null -ne $turnRecord.tool -and [string]$turnRecord.tool.name -ieq 'ask_user') {
+                $commandArgs += @('--structured-question-tool', 'ask_user', '--structured-question-outcome', [string]$turnRecord.tool.outcome)
+                $question = [string]$turnRecord.tool.question
+                if (-not [string]::IsNullOrWhiteSpace($question)) {
+                    $boundedQuestion = if ($question.Length -gt 1000) { $question.Substring(0, 1000) } else { $question }
+                    $commandArgs += @('--structured-question-text', $boundedQuestion)
                 }
-                catch { $null = $_ }
             }
         }
         if ($null -eq $commandArgs) { continue }
@@ -1291,7 +1429,7 @@ try {
         else {
             ($stopBlockReasons -join "`n`n----- AND ALSO -----`n`n")
         }
-        $alreadyContinuing = [bool](Get-DispatcherMapValue -Map $hostEvent -Key 'stop_hook_active' -Default $false)
+        $alreadyContinuing = [bool]$turnRecord.stop_hook_active
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
             Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot -EventName $Event

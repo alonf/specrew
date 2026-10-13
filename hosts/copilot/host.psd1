@@ -56,6 +56,31 @@
             # own consecutive-block cap is the loop guard here.
             StopBlockShape          = 'decision-block'
             BootstrapDeliveryMode   = 'inline'
+            # Feature 202 T002 (DA-1, option B): this host's INPUT contract is data. The dispatcher's single
+            # normalizer (ConvertTo-SpecrewTurnRecord) reads it; shared code names no host. Field paths may be
+            # dotted (a.b.c). Measured payloads: tests/fixtures/hook-payloads/<host>/ (202 research.md, T001).
+            InputFieldMap           = @{
+                SessionId      = @('sessionId')
+                Prompt         = @('prompt')
+                TranscriptPath = @('transcriptPath')
+                Source         = @('source')
+                ToolName       = @('toolName')
+                ToolOutcome    = @('toolResult.toolTelemetry.properties.outcome')
+                ToolQuestion   = @('toolResult.toolTelemetry.restrictedProperties.question')
+            }
+            # Evaluated in order; the first matching rule decides. A prompt that matches no host-injected rule
+            # is typed-user, and only typed-user can produce a receipt (FR-006). hook-output-journal: the prompt
+            # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
+            # replayed Specrew directive.
+            OriginRules             = @(
+                @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
+                @{ Origin = 'typed-user'; Rule = 'prompt-present' }
+            )
+            # Named transform from the dispatcher's shared registry: a dismissed ask_user form is an absence,
+            # never an answer (B4F-113; 1.0.96 emits no hook event for it, the legacy string is kept under test).
+            InputTransform          = 'ask-user-dismissal-text'
         }
         Registrations  = @(
             @{ Event = 'sessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'dual-shell-entry'; TimeoutSec = 30 },

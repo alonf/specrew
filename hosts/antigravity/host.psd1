@@ -54,6 +54,26 @@
             # consecutive-block cap is the loop guard here.
             StopBlockShape          = 'decision-continue'
             BootstrapDeliveryMode   = 'pointer'
+            # Feature 202 T002 (DA-1, option B): this host's INPUT contract is data. The dispatcher's single
+            # normalizer (ConvertTo-SpecrewTurnRecord) reads it; shared code names no host. Field paths may be
+            # dotted (a.b.c). Measured payloads: tests/fixtures/hook-payloads/<host>/ (202 research.md, T001).
+            InputFieldMap           = @{
+                SessionId      = @('conversationId')
+                Prompt         = @('prompt', 'userPrompt', 'user_prompt', 'message', 'text', 'content')
+                TranscriptPath = @('transcriptPath')
+                Source         = @('source', 'trigger')
+                ToolName       = @('toolName', 'tool_name')
+            }
+            # Evaluated in order; the first matching rule decides. A prompt that matches no host-injected rule
+            # is typed-user, and only typed-user can produce a receipt (FR-006). hook-output-journal: the prompt
+            # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
+            # replayed Specrew directive.
+            OriginRules             = @(
+                @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
+                @{ Origin = 'typed-user'; Rule = 'prompt-present' }
+            )
         }
         Registrations  = @(
             @{ Event = 'PreInvocation'; DispatcherEvent = 'PreInvocation'; HandlerShape = 'direct-command'; Timeout = 30 },

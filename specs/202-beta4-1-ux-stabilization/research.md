@@ -80,7 +80,7 @@ Same scratch-only rule, in a new scratch folder outside any repository. Each cap
 - **Origin is in the content, not in the keys.** On every host, a host-injected prompt payload has exactly the same keys as a typed one. Origin rules must be content-and-sequence data:
   - **Claude:** a `<task-notification>` prefix means host-injected.
   - **Copilot:** a prompt equal to the reason of the immediately preceding Specrew Stop block means host-injected. The journal match is the defense.
-  - **Codex:** no injected prompt class was observed. Anything unmatched is `unknown`, never `typed-user` by default.
+  - **Codex:** no injected prompt class was observed. As on every host, a prompt that matches no host-injected rule is `typed-user`, and the journal match still applies to it (FR-005, FR-006). *Corrected at T002 (DRIFT-010): an earlier draft of this line said "unmatched is `unknown`". That would have refused every typed Codex reply as authority, which is the B4F-108 failure itself.*
 
 **Synthetic fixtures (never presented as recorded).** Each has `synthetic` in its file name and `origin: synthetic` in its provenance, with the reason and the recorded payload its shape was copied from:
 

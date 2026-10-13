@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 
 $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 . "$base/HostEventAdapter.ps1"
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 . "$base/SessionStateAccessor.ps1"
 . "$base/ProjectMetadataAccessor.ps1"
 . "$base/HandoverStore.ps1"
@@ -70,8 +71,8 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat') -Force | Out-Null
     Write-SpecrewHandoverContext -HandoverDir (Join-Path $root '.specrew/handover') -FromHost claude -RecordedAt '2026-06-09T11:00:00Z' `
         -ActiveFeature feat -ActiveBoundary plan -Sections @{ $k5 = 'Resume at plan.' } | Out-Null
-    $evt = '{"session_id":"s","source":"startup","hook_event_name":"SessionStart"}'
-    $r = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc '2026-06-09T11:05:00Z' -BaseBranch main
+    $evt = New-SpecrewTestTurnRecord -SessionId 's'
+    $r = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc '2026-06-09T11:05:00Z' -BaseBranch main
     Assert-Equal $r.mode 'welcome-back' 'A5: a valid authored handover resolves welcome-back'
     Assert-True ($null -ne $r.directive.handover -and $r.directive.handover.present) 'A5: the directive carries the handover'
     Assert-True (-not $r.directive.handover.placeholder) 'A5: the directive handover is not placeholder (authored)'
@@ -81,7 +82,7 @@ try {
     $root2 = Join-Path $tmp 'proj2'
     New-Item -ItemType Directory -Path (Join-Path $root2 'specs/feat') -Force | Out-Null
     Write-SpecrewRollingHandover -HandoverDir (Join-Path $root2 '.specrew/handover') -Source Stop -FromHost claude -RecordedAt '2026-06-09T11:00:00Z' -ActiveFeature feat -ActiveBoundary plan | Out-Null
-    $r2 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root2 -StatePath (Join-Path $root2 'absent.json') -NowUtc '2026-06-09T11:05:00Z' -BaseBranch main
+    $r2 = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root2 -StatePath (Join-Path $root2 'absent.json') -NowUtc '2026-06-09T11:05:00Z' -BaseBranch main
     Assert-True ($null -ne $r2.directive.handover -and $r2.directive.handover.placeholder) 'A6: a placeholder handover is flagged placeholder in the directive'
 
     # A7/A8: the bootstrap PROVIDER actually RENDERS the surfacing (the user-facing prose). The real

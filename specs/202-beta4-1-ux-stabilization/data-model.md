@@ -6,22 +6,31 @@ All records are JSON or JSONL under `.specrew/`. Integrity stores hold hashes, e
 
 | Field | Type | Rule |
 | --- | --- | --- |
+| `schema` | string | `specrew-turn-record/v1` (added at T002) |
 | `event` | string | Dispatcher event name after host registration mapping |
 | `host` | enum | claude, codex, copilot, cursor, antigravity |
 | `session_id` | string or null | From the binding's field map; null when the host supplies none |
+| `safe_session_id` | string | `session_id` made filename-safe, or a per-launch `launch-<guid>` token when there is none (added at T002; the bootstrap re-derives it, never trusts it) |
+| `source` | string or null | SessionStart source (startup, resume, clear, compact), from the field map (added at T002) |
 | `typed_text` | string or null | User prompt text, for prompt events only |
-| `origin` | enum | `typed-user`, `host-injected` or `unknown`, from the binding's origin rules and named transform |
+| `origin` | enum | `typed-user`, `host-injected` or `unknown`, from the binding's origin rules and named transform. Non-prompt events are `unknown`. An unhealthy hook-output journal makes a prompt `unknown` (fail closed). |
 | `transcript_path` | string or null | When the host supplies one |
+| `stop_hook_active` | bool | The host is continuing from a Stop block (added at T002) |
+| `tool` | object or null | `{name, outcome, question}` for a tool event, from the field map (added at T002) |
 
 Only `origin = typed-user` may produce a receipt (FR-006). The journal and outage-buffer match still applies to every reply (FR-005).
 
-## Host binding additions (`hosts/<host>/host.psd1`, `RefocusHookBindings`)
+Delivery (T002): providers receive the fields as clean arguments (`--session-id`, `--transcript-path`, `--last-user-message`, `--turn-origin`). Providers outside the clean-argument set also receive `--turn-record`: base64 UTF-8 JSON of the record **without** `typed_text` and `tool`, so it carries no user text. The bootstrap reads only this record.
+
+## Host binding additions (`hosts/<host>/host.psd1`, `RefocusHookBindings.DispatcherRuntime`)
 
 | Key | Type | Purpose |
 | --- | --- | --- |
-| `InputFieldMap` | hashtable | Payload paths for session id, prompt text and transcript path |
-| `OriginRules` | array | Declarative conditions that classify origin |
-| `InputTransform` | string or null | Name of one transform in the shared registry |
+| `InputFieldMap` | hashtable | Payload paths, which may be dotted, for `SessionId`, `Prompt`, `TranscriptPath`, `Source`, `ToolName` and optionally `ToolOutcome`, `ToolQuestion`, `StopHookActive`. A key a binding does not declare falls back to the host-neutral default. |
+| `OriginRules` | array | Ordered `{Origin, Rule, Pattern?}`, where `Rule` is one of `hook-output-journal`, `prompt-pattern` or `prompt-present`. The first match decides; validated hosts end with `prompt-present → typed-user`. |
+| `InputTransform` | string or null | Name of one transform in the dispatcher's shared registry. One exists today: `ask-user-dismissal-text`, used by Copilot. |
+
+The deployer bakes all three into the hook's `-HostBinding`, with keys sorted for byte-idempotent re-deploys. A binding baked before 202 lacks them, and the dispatcher then uses the host-neutral default contract, which is the union it accepted before. A project keeps working until it is redeployed.
 
 ## Hook-output journal line (existing, unchanged shape)
 

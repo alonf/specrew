@@ -38,7 +38,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 2: Foundational (blocks US1 to US6)
 
-- [ ] T002 [owner: Implementer] [sp: 2.5] **Standard turn record and declarative host bindings (DA-1, option B).**
+- [x] T002 [owner: Implementer] [sp: 2.5] **Standard turn record and declarative host bindings (DA-1, option B).** Done 2026-10-13. `turn-record-contract.tests.ps1` runs every case through the deployed hook command and is green; the RED had 31 failures. `twin-copy-parity.tests.ps1` is green. The 55-file hook regression sweep is green. The owned-file extension is DRIFT-010.
   - **Work:**
     - Add `ConvertTo-SpecrewTurnRecord` to the dispatcher, producing {event, host, session_id, typed_text, origin, transcript_path}.
     - Add `InputFieldMap`, `OriginRules` and an optional `InputTransform` to each `hosts/<host>/host.psd1`.

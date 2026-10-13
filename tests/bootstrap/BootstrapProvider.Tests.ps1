@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 
 $provider = (Resolve-Path "$PSScriptRoot/../../scripts/internal/specrew-bootstrap-provider.ps1").Path
 
@@ -12,7 +13,7 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-prov-" + [guid]::Ne
 New-Item -ItemType Directory -Path (Join-Path $tmp '.specrew') -Force | Out-Null
 try {
     # B2 (startup) on a fresh project -> full-bootstrap directive as prose.
-    $out = & pwsh -NoProfile -File $provider --event-json '{"source":"startup","session_id":"s1"}' --project-root $tmp
+    $out = & pwsh -NoProfile -File $provider --turn-record (ConvertTo-SpecrewTestTurnRecordArgument -SessionId 's1' -Source 'startup') --project-root $tmp
     $text = ($out -join "`n")
     Assert-True ($text -match '\[specrew-bootstrap\]') 'B2 emits the bootstrap banner'
     Assert-True ($text -match 'Bootstrap mode: full') 'fresh project resolves full mode'
@@ -24,7 +25,7 @@ try {
     Assert-True ($text -match '(?i)concrete.*request.*no existing feature.*New') 'a concrete fresh-project request deterministically starts New without asking an impossible menu'
 
     # B1 (compact) -> silent so F-171 B1 is unchanged.
-    $out2 = & pwsh -NoProfile -File $provider --event-json '{"source":"compact","session_id":"s1"}' --project-root $tmp
+    $out2 = & pwsh -NoProfile -File $provider --turn-record (ConvertTo-SpecrewTestTurnRecordArgument -SessionId 's1' -Source 'compact') --project-root $tmp
     Assert-True ([string]::IsNullOrWhiteSpace((($out2 -join '')).Trim())) 'compact (B1) produces no bootstrap output'
 }
 finally {

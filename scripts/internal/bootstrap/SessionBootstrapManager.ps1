@@ -18,7 +18,9 @@ function Invoke-SpecrewSessionBootstrap {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory)][AllowEmptyString()][string] $RawEvent,
+        # The standard turn record from the hook dispatcher (Feature 202 T002; ConvertFrom-SpecrewTurnRecordArgument).
+        # $null when none was supplied: the session then gets a per-launch key and the bootstrap degrades to full mode.
+        [Parameter(Mandatory)][AllowNull()] $TurnRecord,
         [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9_.-]+$')][string] $HostName,
         [Parameter(Mandatory)][string] $ProjectRoot,
         # Defaults to the project-local session-state file.
@@ -30,8 +32,9 @@ function Invoke-SpecrewSessionBootstrap {
         [Parameter()][string] $JournalPath
     )
 
-    $normalizedEvent = ConvertFrom-SpecrewHostHookEvent -RawEvent $RawEvent -HostName $HostName -ProjectRoot $ProjectRoot
-    $dedupeKey = if ($normalizedEvent.safe_session_id) { $normalizedEvent.safe_session_id } else { New-SpecrewPerLaunchSessionToken }
+    $turnSafeSessionId = if ($null -ne $TurnRecord -and $TurnRecord.PSObject.Properties['safe_session_id']) { [string]$TurnRecord.safe_session_id } else { '' }
+    $turnSource = if ($null -ne $TurnRecord -and $TurnRecord.PSObject.Properties['source']) { $TurnRecord.source } else { $null }
+    $dedupeKey = if (-not [string]::IsNullOrWhiteSpace($turnSafeSessionId)) { $turnSafeSessionId } else { New-SpecrewPerLaunchSessionToken }
     $resolvedStatePath = if ($StatePath) { $StatePath } else { Join-Path $ProjectRoot '.specrew/start-context.json' }
 
     $validity = Test-SpecrewAnchorValidity -StatePath $resolvedStatePath -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch
@@ -135,7 +138,7 @@ function Invoke-SpecrewSessionBootstrap {
         # double-render dedupe: a host that re-fires SessionStart writes TWO journal rows; if both carry the
         # SAME source, the (dedupe_key, source)-keyed render dedupe is correct to suppress the second. NOT
         # consumed by the dedupe itself (the provider keys off its own parse) - this row is the diagnostic.
-        source             = $normalizedEvent.source
+        source             = $turnSource
         findings           = $allFindings
     }
 

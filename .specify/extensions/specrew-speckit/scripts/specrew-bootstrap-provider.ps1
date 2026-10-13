@@ -379,25 +379,20 @@ function Format-BootstrapDirective {
 }
 
 try {
-    $eventJson = ''
+    $turnRecordArgument = ''
     $rootOverride = $null
     $hostKind = 'claude'
     $hostBinding = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
-        if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
+        # Feature 202 T002: the dispatcher's standard turn record is the only event input; --event-json is
+        # still passed by the dispatcher for other inject providers and is ignored here.
+        if ($args[$i] -eq '--turn-record' -and ($i + 1) -lt $args.Count) { $turnRecordArgument = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKind = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-binding' -and ($i + 1) -lt $args.Count) { $hostBinding = [string]$args[$i + 1] }
     }
     # Hooks pass manifest folder names; malformed input fails safe to the default.
     if ($hostKind -notmatch '^[A-Za-z0-9_.-]+$') { $hostKind = 'claude' }
-
-    # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
-    $source = $null
-    if (-not [string]::IsNullOrWhiteSpace($eventJson)) {
-        try { $source = ($eventJson | ConvertFrom-Json).source } catch { $source = $null }
-    }
-    if ($source -eq 'compact') { exit 0 }
 
     $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-BootstrapProjectRoot }
 
@@ -430,6 +425,12 @@ try {
         . (Join-Path $bdir "$f.ps1")
     }
 
+    # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011). The source comes from the dispatcher's
+    # standard turn record (Feature 202 T002), decoded by the adapter loaded just above.
+    $turnRecord = ConvertFrom-SpecrewTurnRecordArgument -Encoded $turnRecordArgument
+    $source = if ($null -ne $turnRecord -and $turnRecord.PSObject.Properties['source']) { [string]$turnRecord.source } else { $null }
+    if ($source -eq 'compact') { exit 0 }
+
     # FR-023: the hook hands the agent the SAME launch contract `specrew start` does, via the SAME
     # generator (Get-StartPrompt) - no second hand-rolled directive (no drift). Resolve the generator +
     # its transitive deps through the SAME 3-tier chain that found $bdir (co-located | SPECREW_MODULE_PATH |
@@ -457,7 +458,7 @@ try {
     if (Test-SpecrewLauncherBootstrapRecent -ProjectRoot $root -NowUtc $nowUtc) { exit 0 }
 
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
-    $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
+    $result = Invoke-SpecrewSessionBootstrap -TurnRecord $turnRecord -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
 
     # F-174 iter-10 double-render dedupe: capture the manager's canonical key (== safe_session_id, the SAME id
     # the journal records) NOW. The ATOMIC render CLAIM is taken LATER - right before Write-Output (see there) -
