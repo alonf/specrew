@@ -4878,6 +4878,22 @@ any other `ask_user` use on Copilot inherits the risk.
 carries weight. T002 records the current strings in its registry fixture.
 **Disposition:** recorded. Evidence: `tests/fixtures/hook-payloads/copilot/` and 202 research.md T001.
 
+## B4F-114 - THE UNAUTHORIZED-SOURCE CHECK DOES NOT SEE SOURCE WRITTEN BEFORE THE TASKS AUTHORIZATION (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202, before-implement preparation (maintainer review).
+`validate-governance.ps1` `source-without-implement-authorization` flagged seven Codex fixtures committed
+after the tasks authorization (`9973f2c3`). It did not flag 14 Claude and Copilot fixtures and a
+`.gitattributes` change, committed in `78366194` and `9973f2c3` itself. Those fell in the `plan -> tasks`
+window. The check measures change since the tasks authorization, so source written earlier in the
+cycle passes unflagged.
+**Context:** the files were licensed (maintainer-ratified T001 evidence), so nothing unauthorized landed
+here. The gap would be the same for real code, however. It shares an origin with B4F-112: the lost tasks
+instruction is why the authorization landed after the first commit.
+**Beta5 candidate (not 202 scope):** measure from the last implement authorization of the current feature,
+or from the feature's start when there is none, not from the tasks authorization. Decide separately whether
+recorded-evidence fixtures should be classified apart from source.
+**Disposition:** recorded by the maintainer's instruction. Drift: 202 iteration 001 DRIFT-007.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

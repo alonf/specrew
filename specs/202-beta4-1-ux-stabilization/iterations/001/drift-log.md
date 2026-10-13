@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 7
-**Resolution rate**: 71% (5/7 resolved; DRIFT-004 and DRIFT-006 open)
+**Resolution rate**: 86% (6/7 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -49,12 +49,12 @@
 - **Resolution**: human-decision (maintainer, plan verdict 2026-10-13). The workflow change stays. It is kept minimal: only what runs case (e) on the existing OS matrix, with no new jobs, publication or deployment change. T005's acceptance states that the workflow diff is reviewed like code. The skip reason in the confirmed agenda is not rewritten; this entry records the exception.
 - **Class closure**: NONE. This is a scope exception decided by the maintainer, not a defect. T005's acceptance pins the review requirement.
 
-### DRIFT-004 — the tasks verdict was not captured because a context compaction landed between the packet and the reply (open)
+### DRIFT-004 — the tasks verdict was not captured because a context compaction landed between the packet and the reply (resolved)
 
 - **Observed**: 2026-10-13, tasks boundary. The maintainer replied `approved for tasks - Run T001 first...` after Claude Code had compacted the context. `last_authorized_boundary` stayed `plan`. The read-only capture check returned the older `clarify -> plan` pair; the classifier reads the reply as `approve` for `tasks`.
 - **Requirement**: FR-026 neighbourhood (per-feature capture state), and the governing principle "verdicts stay explicit typed replies".
-- **Resolution**: proceeded on the verdict as the pending-verdict artifact directs ("AUTHORITY IN FLIGHT"). No authorization was written by the agent. The Stop backstop is checked at the end of the turn. If the ledger still lacks the tasks verdict, the maintainer is asked once for the recording path. Recorded as B4F-112 (beta5 candidate).
-- **Class closure**: NONE in 202 unless the maintainer pulls B4F-112 into Tier 1. Capture must survive a compaction and say when a verdict-shaped reply was not captured.
+- **Resolution**: resolved by re-presenting the same `plan -> tasks` crossing after the compaction. The Stop hook required a boundary packet with the crossing's marker. The maintainer typed the verdict again after that packet (`approved for tasks - Codex: a...`), and the hook captured it (`verdict_history`, tasks entry, `auth_commit_hash` 9973f2c3, `hook-captured-from-transcript`). The out-of-band writer was not used, and no authorization was written by the agent. The earlier reply's instructions (T001 early, measurement only) have no ledger record of their own; they are ratified in the maintainer's before-implement verdict text (see DRIFT-005). Recorded as B4F-112 (beta5 candidate).
+- **Class closure**: NONE in 202. The capture-pairing fix stays beta5 (B4F-112, maintainer ruling at before-implement). The recovery path that resolved this case, re-presenting a pending crossing whose verdict was not captured, is protected in T006's acceptance (DRIFT-008).
 
 ### DRIFT-005 — T001 ran before the before-implement verdict, and measured new host facts (resolved by human decision)
 
@@ -65,6 +65,8 @@
   - Copilot dismissals produce no hook event and use the strings "User cancelled the request." and "User responded: <default>", not "User skipped question" (T002 registry fixture; B4F-113).
   - Hook stdin arrives as UTF-8 while the hook process's console input encoding is `ibm437` (T002 and T014 decode bytes explicitly).
   - **Codex** needed persisted hook trust. The maintainer chose option a at the tasks verdict. The three trusted hooks were confirmed to be the scratch capture hooks and nothing else. The trust entry was recorded in research.md and then removed, and the scratch folder was deleted. DA-3 and DA-4 hold for Codex too. **No validated host fails DA-3 or DA-4, so the plan is not amended.**
+- **Ratification (maintainer, before-implement verdict text, 2026-10-13)**: the first tasks-stage reply ("Run T001 first, before the before-implement stop; measurement only; scratch directories outside any governed worktree; no product code; nothing in the governed tree beyond committing its findings as evidence") was lost to the compaction (B4F-112). The ledger's tasks entry holds only the later "Codex: a" reply. The maintainer's before-implement verdict is the record that T001 ran early by the maintainer's decision. That verdict licenses every fixture under `tests/fixtures/hook-payloads/`: 24 files, namely Claude 7, Codex 7 and Copilot 10, each count including that host's `provenance.json`. It also licenses the `.gitattributes` rule `tests/fixtures/hook-payloads/** -text`. The verdict text said "21"; the committed count is 24 (`git ls-files`).
+- **Open capture gap**: every fixture is a typed-turn SessionStart, prompt or Stop event. No host-injected or replayed user-turn payload was captured on any host. T002's opening step attempts that capture (maintainer instruction at before-implement), and DRIFT-009 records the outcome.
 - **Class closure**: the T001 fixtures under `tests/fixtures/hook-payloads/` pin these facts for T002's contract test.
 
 ### DRIFT-006 — the readiness verdict reported READY for implementation before any before-implement verdict (open; T011 scope)
@@ -77,9 +79,11 @@
 ### DRIFT-007 — the validator counts the T001 evidence fixtures as unauthorized product source (resolved by human decision)
 
 - **Observed**: 2026-10-13. `validate-governance.ps1` FAIL `source-without-implement-authorization` named the seven Codex fixtures under `tests/fixtures/hook-payloads/codex/`, committed after the tasks authorization was recorded.
-- **Requirement**: the maintainer's tasks verdict authorized committing T001's findings as evidence, with no product code. Fixtures are recorded host payloads, not code.
-- **Resolution**: human-decision (tasks verdict). No revert. The before-implement verdict, when given, covers them under the validator's own rule.
-- **Class closure**: NONE. The validator's source classification treats all of `tests/**` as source; whether recorded-evidence fixtures should be exempt is not 202 scope.
+- **Coverage gap (maintainer review at before-implement)**: the check flagged only those seven files. The 14 Claude and Copilot fixtures and the `.gitattributes` change were committed in `78366194` and `9973f2c3`. The tasks authorization was recorded at `9973f2c3`, so those files fall in the `plan -> tasks` window, which `source-without-implement-authorization` does not examine. Source written before the tasks authorization passes unflagged. This is a validator coverage gap, recorded as B4F-114 (beta5 candidate); it is not 202 scope.
+- **Requirement**: the maintainer's tasks-stage instruction authorized committing T001's findings as evidence, with no product code. Fixtures are recorded host payloads, not code.
+- **Resolution**: human-decision. No revert. The maintainer's before-implement verdict licenses all 24 fixture files and the `.gitattributes` rule (DRIFT-005 ratification).
+- **Class closure**: NONE in 202. Two questions are left to B4F-114: whether the check should cover the whole span since the last implement authorization, and whether recorded-evidence fixtures should be exempt.
+
 <!--
   Every new ### DRIFT-... event includes:
 
