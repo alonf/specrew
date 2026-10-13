@@ -106,6 +106,7 @@ Iteration 001 is Tier 1: B4F-108, 104, 106, 096, 107, 100, 102, 105, 109, 089 an
 
 ## Notes
 
-- **Capacity:** 25.5 planned against 20. The iteration is scope-bounded by the maintainer's Tier 1 ruling, so nothing is deferred without a decision (plan-boundary prompt 1).
+- **Capacity:** 25.5 planned against 20, an overcommit of 5.5 SP, recorded by the maintainer's plan verdict (2026-10-13). All of Tier 1 stays in iteration 001. T012 stays because B4F-089 depends on the pointer work (T010).
+- **Plan verdict rulings (2026-10-13):** the quality-profile override is agreed (concurrency, resiliency and retry required). T013 is widened by DRIFT-002 at 0.5 SP. T005's workflow change is a recorded exception to the devops-operations skip (DRIFT-003): kept minimal, with its workflow diff reviewed like code.
 - **Review:** effort is not priced in SP. Codex reviews within its round allowance.
 - **Design:** see design-analysis.md (Co-Design Record) and the feature plan.md work breakdown W1 to W15, which maps to T001 to T015 one-for-one.

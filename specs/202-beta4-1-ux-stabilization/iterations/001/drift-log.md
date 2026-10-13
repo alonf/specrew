@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -42,6 +42,12 @@
 - **Resolution**: the content was restructured to the format with no change to any agreed decision. T013 (FR-020) is extended in scope to cover this case: the plan-gate refusal names the scaffold step and reports every missing field in one pass.
 - **Class closure**: T013's fixture asserts that a design-analysis missing several layers gets one refusal listing all of them, together with the scaffold step.
 
+### DRIFT-003 — T005's 3-OS workflow change contradicts the workshop's devops-operations skip (resolved by human decision)
+
+- **Observed**: 2026-10-13, at the plan verdict. The confirmed workshop agenda skipped devops-operations with the reason "No pipeline or deployment change in scope". Plan W5/T005 changes `.github/workflows/**` so that fault-injection case (e), two real processes appending at once, runs on Windows, macOS and Linux (FR-025).
+- **Requirement**: FR-025 (case (e) on three operating systems), against the devops-operations skip reason in lens-applicability.json.
+- **Resolution**: human-decision (maintainer, plan verdict 2026-10-13). The workflow change stays. It is kept minimal: only what runs case (e) on the existing OS matrix, with no new jobs, publication or deployment change. T005's acceptance states that the workflow diff is reviewed like code. The skip reason in the confirmed agenda is not rewritten; this entry records the exception.
+- **Class closure**: NONE. This is a scope exception decided by the maintainer, not a defect. T005's acceptance pins the review requirement.
 <!--
   Every new ### DRIFT-... event includes:
 
