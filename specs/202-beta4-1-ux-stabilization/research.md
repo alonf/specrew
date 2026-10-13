@@ -65,6 +65,37 @@ trusted_hash = "sha256:81ead30f42831f3ef2390a9aec3a05fc4a748478d2b304e46587db46c
 - **Deleted:** the scratch folder (127 files).
 - **Kept, owned by the hosts:** Codex and Copilot session records of the scratch runs. `~/.claude.json` also keeps a project entry for the scratch Claude folder, from accepting Claude's trust dialog in the TUI run. Live Claude sessions write that file, so it is reported here, not edited; it names a folder that no longer exists.
 
+### Host-injected capture (T002 opening step, maintainer item 3, 2026-10-13)
+
+Same scratch-only rule, in a new scratch folder outside any repository. Each capture hook blocked the first Stop of a run once, with a reason, to see whether the host replays the reason as a user turn. On Claude, a background-task completion was also provoked.
+
+| Class | Claude 2.1.296 | Copilot 1.0.92 | Codex 0.162.1 |
+| --- | --- | --- | --- |
+| Stop-block reason replayed as a prompt event | **No.** The block continues the same `prompt_id`; no new UserPromptSubmit | **Yes, recorded.** `userPromptSubmitted` with `prompt` = the block reason; same keys as a typed prompt; the next `agentStop` has `stop_hook_active: true` | **No.** The block continues the same `turn_id` with `stop_hook_active: true`; no new UserPromptSubmit |
+| Background-task completion delivered as a user turn | **Yes, recorded.** UserPromptSubmit with a `<task-notification>` prompt and a new `prompt_id`; same keys as a typed prompt | not tried (no equivalent surface) | not tried (no equivalent surface) |
+| Copilot dismissed question ("User skipped question") | — | **Never produced.** No hook event; tool results "User cancelled the request." / "User responded: A" (B4F-113) | — |
+
+**What T002 must take from this.**
+
+- **Origin is in the content, not in the keys.** On every host, a host-injected prompt payload has exactly the same keys as a typed one. Origin rules must be content-and-sequence data:
+  - **Claude:** a `<task-notification>` prefix means host-injected.
+  - **Copilot:** a prompt equal to the reason of the immediately preceding Specrew Stop block means host-injected. The journal match is the defense.
+  - **Codex:** no injected prompt class was observed. Anything unmatched is `unknown`, never `typed-user` by default.
+
+**Synthetic fixtures (never presented as recorded).** Each has `synthetic` in its file name and `origin: synthetic` in its provenance, with the reason and the recorded payload its shape was copied from:
+
+- `codex/synthetic-userpromptsubmit-host-injected.json`, for the Codex host-injected class that no Codex mechanism tried produced.
+- `copilot/synthetic-userpromptsubmitted-skipped-question.json`, for the legacy skipped-question string. It keeps the existing dispatcher transform under test; 1.0.96 does not emit the string.
+
+Both are recorded as DRIFT-009.
+
+**Trust and cleanup.** The Codex protocol was the same as in T001. Before trusting, the review list held exactly three hooks, all from the scratch folder's `.codex/hooks.json`. Two kinds of entries were added to `~/.codex/config.toml`:
+
+- three `[hooks.state.'…\scratchpad\inj\codex\.codex\hooks.json:{session_start|user_prompt_submit|stop}:0:0']` blocks, with trusted hashes `d1be9f3e…`, `e3fbc20c…` and `1d4979f0…`;
+- one `[projects.'…\scratchpad\inj\codex'] trust_level = "trusted"` block. This came from the folder-trust dialog Codex showed first this time: the harness's first Enter answered it.
+
+All four were removed. The file is byte-identical to its pre-run snapshot (SHA-256 equal). The scratch folder (74 files) was deleted, and no Specrew state was ever created in it. `~/.claude.json` keeps two project entries for the scratch Claude folders, `t001` and `inj`, from Claude's trust dialog. They are reported here, not edited.
+
 **Verdict per validated host:**
 
 - **Claude:** DA-3 holds (injection yes, direct display no, so the agent renders the supplied orientation). DA-4 holds (a session id is present; UTF-8 bytes arrive intact, and explicit byte-level decoding is required because the console encoding varies).

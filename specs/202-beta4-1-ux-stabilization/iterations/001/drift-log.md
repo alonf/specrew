@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution rate**: 88% (7/8 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 9
+**Resolution rate**: 89% (8/9 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -90,6 +90,20 @@
 - **Requirement**: FR-011 (presented-crossing memory) against the governing principle that "verdicts stay explicit typed replies".
 - **Resolution**: human-decision. T006's acceptance gains a RED fixture: a crossing that is still pending and whose verdict was not captured, for example after a compaction, can be presented again in the same session. Only a crossing that was presented, is unchanged and had no capture miss is suppressed. The capture-pairing fix stays beta5 (B4F-112), because iteration 001 is already at 25.5 SP. No SP change.
 - **Class closure**: the T006 RED fixture `crossing-presentation` "pending, capture missed, re-presentable" pins the recovery path.
+
+### DRIFT-009 — host-injected capture: two classes have no recorded payload and use synthetic fixtures (resolved by human decision)
+
+- **Observed**: 2026-10-13, T002 opening step (maintainer item 3), run in scratch folders only.
+  - **Recorded:** host-injected prompt payloads on **Claude** (a background-task `<task-notification>` arriving as UserPromptSubmit) and on **Copilot** (a Stop-block reason replayed as `userPromptSubmitted`).
+  - **Codex 0.162.1:** produced none. Its Stop block continues the same `turn_id`.
+  - **Copilot 1.0.96:** never emits the "User skipped question" string to a hook (B4F-113).
+- **Requirement**: FR-006 and B4F-108 (the three-valued origin rule: typed-user, host-injected, unknown); the hardening gate's test-integrity row.
+- **Resolution**: human-decision (maintainer item 3). Two synthetic fixtures, each marked in its file name and its provenance:
+  - **Codex, host-injected prompt:** `codex/synthetic-userpromptsubmit-host-injected.json`.
+  - **Copilot, skipped question:** `copilot/synthetic-userpromptsubmitted-skipped-question.json`.
+
+  research.md and the hardening gate are updated to match.
+- **Class closure**: T002's contract test names synthetic fixtures as synthetic and never counts them as recorded-host evidence. The provenance `origin` field carries this, and the test asserts it.
 <!--
   Every new ### DRIFT-... event includes:
 

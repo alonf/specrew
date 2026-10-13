@@ -13,7 +13,8 @@
       "stdin_bytes": 458,
       "stdin_valid_utf8": true,
       "console_input_encoding": "ibm437",
-      "sha256": "cfa98e24c2f7b7ae3d01be1305a876b909067cef65d0356b057c6d3b064e0595"
+      "sha256": "cfa98e24c2f7b7ae3d01be1305a876b909067cef65d0356b057c6d3b064e0595",
+      "origin": "recorded"
     },
     {
       "fixture": "exec-stop.json",
@@ -25,7 +26,8 @@
       "stdin_bytes": 548,
       "stdin_valid_utf8": true,
       "console_input_encoding": "ibm437",
-      "sha256": "b96e948e288252889e2fbd0255ea934bb03aa6708f3131c1590cf76f31692682"
+      "sha256": "b96e948e288252889e2fbd0255ea934bb03aa6708f3131c1590cf76f31692682",
+      "origin": "recorded"
     },
     {
       "fixture": "exec-userpromptsubmit-typed.json",
@@ -37,7 +39,8 @@
       "stdin_bytes": 711,
       "stdin_valid_utf8": true,
       "console_input_encoding": "ibm437",
-      "sha256": "d3cca871b15c56bff391d3f9ee6dc9ac971abd0f7ecd57657e995626180376e4"
+      "sha256": "d3cca871b15c56bff391d3f9ee6dc9ac971abd0f7ecd57657e995626180376e4",
+      "origin": "recorded"
     },
     {
       "fixture": "tui-sessionstart-startup.json",
@@ -49,7 +52,8 @@
       "stdin_bytes": 448,
       "stdin_valid_utf8": true,
       "console_input_encoding": "ibm437",
-      "sha256": "714575eee51e47374c66ae170b593ae4e5a1a2898a4755cbd3cfb9efb392fafe"
+      "sha256": "714575eee51e47374c66ae170b593ae4e5a1a2898a4755cbd3cfb9efb392fafe",
+      "origin": "recorded"
     },
     {
       "fixture": "tui-stop.json",
@@ -61,7 +65,8 @@
       "stdin_bytes": 525,
       "stdin_valid_utf8": true,
       "console_input_encoding": "ibm437",
-      "sha256": "89b744efc49a94b97b931929b38ca8ff36de14d7736ce1b09d2fe610e926e4d1"
+      "sha256": "89b744efc49a94b97b931929b38ca8ff36de14d7736ce1b09d2fe610e926e4d1",
+      "origin": "recorded"
     },
     {
       "fixture": "tui-userpromptsubmit-typed.json",
@@ -73,7 +78,44 @@
       "stdin_bytes": 522,
       "stdin_valid_utf8": true,
       "console_input_encoding": "ibm437",
-      "sha256": "29971ba08d4f54bae7b59ca571838219ec0273693f96fd9c198c8cf869d6cd5f"
+      "sha256": "29971ba08d4f54bae7b59ca571838219ec0273693f96fd9c198c8cf869d6cd5f",
+      "origin": "recorded"
+    },
+    {
+      "fixture": "tui-stop-after-block-same-turn-id.json",
+      "origin": "recorded",
+      "event": "Stop",
+      "captured_utc": "2026-10-13T19:01:07.2050687Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": null,
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\inj\\codex",
+      "stdin_bytes": 529,
+      "console_input_encoding": "ibm437",
+      "sha256": "1fbf307d96573e41b8a0f9998c2e0c1b5260e7f04bd2719ac73ae08ef19c61ca",
+      "note": "After a Stop decision:block, Codex continues the same turn_id with stop_hook_active true and no new UserPromptSubmit: a Stop-block reason is NOT a prompt event on Codex."
+    },
+    {
+      "fixture": "tui-stop-blocked-first.json",
+      "origin": "recorded",
+      "event": "Stop",
+      "captured_utc": "2026-10-13T19:01:02.8308666Z",
+      "host_version": "codex-cli 0.162.1",
+      "entrypoint": null,
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\C--Dev-specrew-beta3-stabilization\\39558f55-6f4d-436f-a8c3-5369082ea08e\\scratchpad\\inj\\codex",
+      "stdin_bytes": 524,
+      "console_input_encoding": "ibm437",
+      "sha256": "99470efaa5ad4144dd030f5074ea2d11e59d7661afff135877bc14776e09574a",
+      "note": null
+    },
+    {
+      "fixture": "synthetic-userpromptsubmit-host-injected.json",
+      "origin": "synthetic",
+      "event": "UserPromptSubmit",
+      "created_utc": "2026-10-13T19:03:39.1699807Z",
+      "host_version": "codex-cli 0.162.1 (shape only)",
+      "derived_from": "tui-userpromptsubmit-typed.json",
+      "reason": "No host-injected prompt payload was observed on Codex. The class tried, a Stop decision:block, continues the same turn_id with no UserPromptSubmit (tui-stop-after-block-same-turn-id.json). The shape is copied from the recorded typed payload; prompt and turn_id are invented. NOT a recorded payload.",
+      "sha256": "e273b2aa3eb690344fa950a2672b7f3c10ce8972ec518129d9e60de82f5d73a0"
     }
   ]
 }
