@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "specrew_version": "0.40.0",
+  "specrew_version": "0.40.0-beta4",
   "managed_files": [
     {
       "path": "checklists/coordinator-handoff-governance.md",
@@ -268,7 +268,7 @@
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
-      "sha256": "49e68652e8c7db9fc4f65e065441bc8d6ce2093bb29746defb5586c8731e04c9"
+      "sha256": "b369804443939b3047b44a0ddb50fab9105afddfbeadcc07016d6dcda93991ab"
     },
     {
       "path": "scripts/deploy-speckit-extension.ps1",
@@ -412,7 +412,7 @@
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "5a2a53ef7eb74b9698c859acce977096003768afe1e1daa8388d42f950d9866c"
+      "sha256": "09ed8dbfd1bc9cd91e73f232d420bb5ca90556fb4c2a51ecb91d17e73f8680a1"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "35a913af87a48d3eea638d76186ccd407abd57597049a7bfd485ef9c1406357a"
+      "sha256": "b1e835fd52147faf6920d46e28155b13a0a0097f052de512202a81f00ae6fe20"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "68a5866f3a826dd50d0c8609271cf729fa6832df64bfe093a483eab8d597174d"
+      "sha256": "1c398c85f8afe15791f5e8b5f16bf28a7b3769c7028c7ee8605cbe90a02b2d65"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",

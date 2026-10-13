@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "b56b0f25e7263763e74f5dc7c9a0580f31c15ac908ecedd6c35b54ce29273ec5",
+  "specrew_version": "0.40.0-beta4",
+  "runtime_bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -17,7 +17,7 @@
     },
     {
       "path": "co-review-service.ps1",
-      "sha256": "517143a5b5d646abc8d53271213c0765f6783d4d738c5b568d75c7ea07d42a0a"
+      "sha256": "6e30fcac0cac54d7a1030006fa67d54df9458e5624122ad5b1ffa9dcc4a9bee7"
     },
     {
       "path": "co-review-trunk-resolver.ps1",
@@ -25,7 +25,7 @@
     },
     {
       "path": "continuous-co-review-navigator.ps1",
-      "sha256": "eed3d5c189660916b0b17dc50f966be10180247329658165b8d0fa8c511e96e3"
+      "sha256": "8218da7872fdae22a6a2d29301c4acbb38421e17d4ffe943799ad91f092db2fb"
     },
     {
       "path": "escalation-latch.ps1",
@@ -157,7 +157,7 @@
     },
     {
       "path": "review-signoff-evidence-gate.ps1",
-      "sha256": "44850292751ccfb0e9efde4e8978d140255b1112abe428a0aa605df1cc7ac8d0"
+      "sha256": "90e3208f68c55651a2b595e508c1d1d86791a478c3c964e52084c048278f0034"
     },
     {
       "path": "review-target-port.ps1",
@@ -169,7 +169,7 @@
     },
     {
       "path": "reviewed-state-digest.ps1",
-      "sha256": "ab68e6f6e4aac9fe4eaa8cad54b9fc4843a1d7558ccab3f35508c6456c15aa64"
+      "sha256": "86e6c8c1650cf05aa6de938288c2be38d3ba4e298b5b97962948843e6614487c"
     },
     {
       "path": "reviewer-authorization-gate.ps1",
@@ -233,7 +233,7 @@
     },
     {
       "path": "worktree-navigator.ps1",
-      "sha256": "6477d9cc660ab8d04e64c9d7ce5621465735d6985b1cf5aad376ae072ee59e01"
+      "sha256": "6064a6811959d41015dffbb2371f62663f8d54c936d43519c0ff5fbf91847000"
     },
     {
       "path": "worktree-review-detached-entry.ps1",
@@ -245,7 +245,7 @@
     },
     {
       "path": "worktree-reviewer.ps1",
-      "sha256": "066b1ccdd85aca3692c8ba7c28fb1d65a6f20662a4c94879284d8e73132fbd79"
+      "sha256": "b8df351bf819e5494232649dd8ba42c6fa86a2132c491f1cccef3bc17e6ccd08"
     }
   ],
   "source": "specrew-init-or-update"
