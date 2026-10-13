@@ -107,6 +107,13 @@ Three processes each appended 400 JSON lines to one file, with one open, write a
 
 .NET positions an `Append` stream at open time, so two writers that open together write to the same offset: lines are lost or torn. A handle opened with only the `AppendData` right is an OS-level atomic append on Windows. The journal therefore uses it on Windows, still a share mode (FR-001's preferred form) and no lock. On Linux and macOS it uses the regular `Append` stream; case (e) on the 3-OS matrix (T005) decides whether that needs the permitted per-write lock.
 
+**Case (e), Windows (T005, 2026-10-14).** Two `pwsh` processes, released by one barrier, each called the shipped `Write-DispatcherHookOutputAuthorityRecord` 1,000 times. The functions are lifted from the dispatcher by the parser, not copied.
+
+- **Shipped handle:** 2,000 of 2,000 lines, none torn, no buffer, no degraded transition.
+- **Mutant with a plain `Append` stream:** lost 4, then 3 lines in two runs.
+
+Five pairs of real dispatcher processes on Stop all journaled their reasons. The Linux and macOS legs run in `cross-platform-validation.yml`'s existing three-OS job.
+
 **Verdict per validated host:**
 
 - **Claude:** DA-3 holds (injection yes, direct display no, so the agent renders the supplied orientation). DA-4 holds (a session id is present; UTF-8 bytes arrive intact, and explicit byte-level decoding is required because the console encoding varies).

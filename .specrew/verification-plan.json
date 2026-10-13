@@ -46,7 +46,7 @@
       "arguments": [
         "-NoProfile",
         "-Command",
-        "$fail = 0; foreach ($s in @('tests/unit/turn-record-contract.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/hook-output-journal.tests.ps1','tests/unit/receipt-disclosure.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; foreach ($s in @('tests/unit/turn-record-contract.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/hook-output-journal.tests.ps1','tests/unit/receipt-disclosure.tests.ps1','tests/unit/journal-fault-injection.tests.ps1','tests/unit/cross-host-workshop.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 600,
       "env_refs": [
@@ -70,7 +70,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 202 iteration 001 suites: the standard turn record through the deployed hook command (T002), twin-copy parity (T002), the latch-free hook-output journal (T003), disclosed receipt outcomes (T004). Added 2026-10-13 (202 DRIFT-011) so every-suite-is-named-by-a-lane stays green."
+      "label": "Feature 202 iteration 001 suites: the standard turn record through the deployed hook command (T002), twin-copy parity (T002), the latch-free hook-output journal (T003), disclosed receipt outcomes (T004), the concurrent-append case (e) and the cross-host workshop walk (T005). Measured cold before T005: 64.7 s; T005 adds about 35 s. Added 2026-10-13 (202 DRIFT-011) so every-suite-is-named-by-a-lane stays green."
     }
   ]
 }

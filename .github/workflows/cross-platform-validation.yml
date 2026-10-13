@@ -266,6 +266,15 @@ jobs:
           }
           Import-Module Pester -RequiredVersion 5.7.1 -Force
 
+      # Feature 202 T005 case (e): two real pwsh processes append to the hook-output journal at once. The journal
+      # opens an append-only handle on Windows and a plain Append stream elsewhere; this leg decides whether Linux
+      # and macOS need the permitted per-write lock (202 research.md, T003).
+      - name: Hook-output journal concurrent append (case e)
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -NonInteractive -File ./tests/unit/journal-fault-injection.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'journal-concurrent-append-failed' }
+
       - name: Prepare bounded cgroup v2 root for privileged Linux review-process tests
         if: runner.os == 'Linux'
         shell: bash

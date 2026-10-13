@@ -93,6 +93,12 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-024, FR-025; SC-001, SC-002.
   - **Depends:** T002, T003, T004.
   - **Owns:** `tests/unit/cross-host-workshop.tests.ps1`, `tests/unit/journal-fault-injection.tests.ps1`, `.github/workflows/**` (minimal).
+  - **Progress 2026-10-14 (in progress):**
+    - **Windows, green.** Each validated host gives 3 receipts from 3 replies.
+    - **Case (e):** 2,000 of 2,000 lines intact, and 5 concurrent dispatcher pairs all journaled.
+    - **Mutations caught:** a plain `Append` stream on Windows lost 3 to 4 lines per run; console stdin decoding broke Claude's Hebrew reply.
+    - **Workflow:** one step was added to the existing `review-runtime-fault-matrix` job. There are no new jobs.
+    - **Still owed:** the macOS and Linux legs, and codex review of the workflow diff at the next checkpoint.
 
 ## Phase 4: US2, stops only when I have a decision to make (P1)
 
