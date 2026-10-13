@@ -274,7 +274,9 @@ try {
     # through the host's structured picker, so the typed-turn store correctly minted nothing - and then
     # said nothing. Both product records were persisted with zero authority behind them, and the next
     # turn misdiagnosed the silence as broken hook wiring. Picker-only hosts never fire a per-tool-call
-    # event that could catch this earlier, so the Stop lane must name the selection channel itself.
+    # event that could catch this earlier, so the Stop lane must say it. Feature 202 T004 (FR-010): it names what is
+    # actually known - no typed reply recorded behind the records, or the journaled refusal cause - and never asserts a
+    # picker or other channel the human may not have used.
     Remove-Item -LiteralPath (Join-Path $scratch "specs\$shellFeature") -Recurse -Force
     $pickerFeature = '003-picker-walk'
     New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$pickerFeature") -Force | Out-Null
@@ -285,9 +287,9 @@ try {
     Set-Content -LiteralPath (Join-Path $scratch "specs\$pickerFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
     $unreceipted = Invoke-ShippedWorkshopProvider -AssistantText 'Product grounding captured. Preparing the technical agenda next.'
     Assert-True ($unreceipted.ExitCode -eq 0 -and $unreceipted.Output -match 'SPECREW-STOP-BLOCK') 'product records persisted without any typed receipt are refused at the Stop instead of passing as an intermediate workshop turn'
-    Assert-True ($unreceipted.Output -match '(?i)selection channel' -and
+    Assert-True ($unreceipted.Output -match '(?i)no recorded typed reply behind them' -and $unreceipted.Output -notmatch '(?i)selection channel|picker|question UI' -and
         $unreceipted.Output -match '(?i)type their answer' -and
-        $unreceipted.Output -match '(?i)visible prose') 'unreceipted-records refusal names the selection channel and the typed prose re-ask'
+        $unreceipted.Output -match '(?i)visible prose') 'unreceipted-records refusal names what is known (no typed reply recorded), attributes no channel, and asks for the typed prose re-ask'
     Assert-True ($unreceipted.Output -match '(?i)answers are preserved' -and
         $unreceipted.Output -match '(?i)ask approval') 'unreceipted-records refusal keeps the answers safe and routes the record set-aside through human approval'
     Assert-True ($unreceipted.Output -notmatch '(?i)lens-applicability|controller|digest|jsonl|hook') 'unreceipted-records refusal keeps workshop machinery out of the correction'

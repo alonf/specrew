@@ -418,10 +418,15 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
     # read first, before this prompt decision. A legacy `.unhealthy` marker no longer refuses every reply (that was
     # the B4F-108 latch); the dispatcher clears it on its next good append. A store that cannot be READ right now
     # fails closed for this decision only.
+    # T004 (FR-010): which of the three answers this was is kept for the caller, so a refusal can name its
+    # actual cause - 'match' (the text is recorded hook output) or 'unavailable' (a store could not be read).
+    $script:SpecrewWorkshopLastHookOutputCheck = 'none'
     $runtimeDir = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime'
     $path = Join-Path $runtimeDir 'hook-output-authority.jsonl'
     $bufferDir = Join-Path $runtimeDir 'hook-output-buffer'
     $sources = @(if (Test-Path -LiteralPath $bufferDir -PathType Container) { Get-ChildItem -LiteralPath $bufferDir -File -Filter '*.jsonl' | ForEach-Object FullName })
+    # A journal set aside by an approved recovery (T004, FR-009) still counts: its hashes are recorded hook output.
+    $sources += @(Get-ChildItem -LiteralPath $runtimeDir -File -Filter 'hook-output-authority.set-aside-*.jsonl' -ErrorAction SilentlyContinue | ForEach-Object FullName)
     if (Test-Path -LiteralPath $path -PathType Leaf) { $sources += $path }
     if ($sources.Count -eq 0) { return $false }
     $hash = Get-SpecrewWorkshopAuthorityHash -Text $Response.Trim()
@@ -435,7 +440,7 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
             finally { $stream.Dispose() }
         }
         catch [IO.FileNotFoundException], [IO.DirectoryNotFoundException] { continue }  # a buffer file flushed between listing and reading
-        catch { return $true }
+        catch { $script:SpecrewWorkshopLastHookOutputCheck = 'unavailable'; return $true }
         foreach ($line in @($content -split "`r?`n")) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
@@ -443,10 +448,195 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
             if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
                 throw 'workshop-hook-output-authority-record-invalid'
             }
-            if ([string]$record.output_hash -ceq $hash) { return $true }
+            if ([string]$record.output_hash -ceq $hash) { $script:SpecrewWorkshopLastHookOutputCheck = 'match'; return $true }
         }
     }
     return $false
+}
+
+# Feature 202 T004 (FR-007, FR-010): every exit of the receipt writer leaves a typed outcome. Callers keep the
+# receipt-or-$null contract; the outcome says WHY there is no receipt, so the same turn can say so.
+$script:SpecrewWorkshopLastHookOutputCheck = 'none'
+$script:SpecrewWorkshopLastReceiptOutcome = $null
+
+function Set-SpecrewWorkshopReceiptOutcome {
+    # status: recorded | not-applicable | refused | degraded. Only 'recorded' means the reply was used as the
+    # answer (consumed). Every outcome other than not-applicable is journaled - hashes, never the reply text.
+    param(
+        [AllowNull()][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('recorded', 'not-applicable', 'refused', 'degraded')][string]$Status,
+        [Parameter(Mandatory)][string]$Reason,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$Phase,
+        [AllowNull()][string]$Response
+    )
+    $outcome = [pscustomobject]@{
+        status      = $Status
+        reason      = $Reason
+        feature_ref = $FeatureRef
+        phase       = $Phase
+        consumed    = ($Status -eq 'recorded')
+        recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
+    }
+    $script:SpecrewWorkshopLastReceiptOutcome = $outcome
+    if ($Status -ne 'not-applicable' -and -not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        try {
+            $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $journal)) | Out-Null
+            $row = [ordered]@{
+                schema_version = '1.0'; status = $Status; reason = $Reason; feature_ref = $FeatureRef; phase = $Phase
+                consumed = $outcome.consumed; recorded_at = $outcome.recorded_at
+                response_hash = if ([string]::IsNullOrWhiteSpace($Response)) { $null } else { Get-SpecrewWorkshopAuthorityHash -Text $Response }
+            }
+            [IO.File]::AppendAllText($journal, (($row | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        }
+        catch { $null = $_ }  # the outcome journal is evidence; the in-turn disclosure does not depend on it
+    }
+    return $outcome
+}
+
+function Get-SpecrewWorkshopLastReceiptOutcome { return $script:SpecrewWorkshopLastReceiptOutcome }
+
+function Get-SpecrewWorkshopLatestRefusal {
+    # The newest refused/degraded outcome for one feature and phase, from the outcome journal; $null when none.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef, [Parameter(Mandatory)][string]$Phase)
+    $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
+    if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return $null }
+    $latest = $null
+    foreach ($line in [IO.File]::ReadAllLines($journal, [Text.Encoding]::UTF8)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+        if ([string]$row.feature_ref -ceq $FeatureRef -and [string]$row.phase -ceq $Phase -and [string]$row.status -in @('refused', 'degraded')) { $latest = $row }
+    }
+    return $latest
+}
+
+function Get-SpecrewWorkshopRefusalCauseText {
+    # One sentence naming the actual cause, in project terms (FR-010; no internal nouns, never a channel the
+    # human did not use).
+    param([Parameter(Mandatory)][string]$Reason)
+    switch ($Reason) {
+        'matches-hook-output'              { return 'it repeats text Specrew itself showed, not an answer typed by you' }
+        'record-check-unavailable'         { return 'Specrew could not read its own records to check the reply this turn' }
+        'product-answers-already-recorded' { return 'the product-domain answers for this feature are already recorded' }
+        'product-answers-missing'          { return 'the product-domain answers are not recorded yet, so there is no agenda to confirm' }
+        'agenda-not-shown'                 { return 'the agenda it would confirm was not shown in the message before it' }
+        'agenda-changed'                   { return 'the agenda changed after it was shown' }
+        'agenda-already-confirmed'         { return 'the agenda is already confirmed' }
+        'lens-not-on-agenda'               { return 'the question it answers is for a lens that is not on the confirmed agenda' }
+        'lens-already-closed'              { return 'that lens is already closed' }
+        'question-record-invalid'          { return 'the open question is not recorded in a form Specrew can bind an answer to' }
+        'question-record-unreadable'       { return 'the open question could not be read' }
+        'workshop-records-missing'         { return 'the feature''s workshop records are missing' }
+        'workshop-records-incompatible'    { return 'the feature''s workshop records were written by an incompatible version' }
+        'reply-write-failed'               { return 'Specrew could not write the record of the reply' }
+        default                            { return 'Specrew could not match it to the open workshop question' }
+    }
+}
+
+function Get-SpecrewWorkshopReceiptOutcomeDisclosure {
+    # FR-007: a refused or degraded reply is said in the SAME turn, with whether it was used. Recovery wording never
+    # implies loss when nothing is lost (rule feature-202.rule.recovery-wording-no-implied-loss). $null for an
+    # outcome that needs no disclosure (recorded, or not a workshop reply at all).
+    param([AllowNull()]$Outcome)
+    if ($null -eq $Outcome -or [string]$Outcome.status -notin @('refused', 'degraded')) { return $null }
+    $cause = Get-SpecrewWorkshopRefusalCauseText -Reason ([string]$Outcome.reason)
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add(("Specrew: your last reply was not used as your workshop answer, because {0}. The question is still open, and your earlier answers are unchanged." -f $cause)) | Out-Null
+    switch ([string]$Outcome.reason) {
+        'matches-hook-output'      { $lines.Add('Tell the human this in your reply, and ask them to type their answer in their own words if they meant it as one.') | Out-Null }
+        'record-check-unavailable' { $lines.Add('Tell the human this in your reply. Nothing is deleted; they can send the same answer again next turn.') | Out-Null }
+        'reply-write-failed'       { $lines.Add('Tell the human this in your reply. Nothing is deleted; they can send the same answer again next turn.') | Out-Null }
+        default                    { $lines.Add('Tell the human this in your reply, in these words, before anything else.') | Out-Null }
+    }
+    return ($lines -join "`n")
+}
+
+# Feature 202 T004 (FR-009): when self-recovery has not happened - reply recording still degraded this long after it
+# began - ask the human ONE decision, in the reference wording, and act only on their typed yes.
+$script:SpecrewReplyRecordingRecoveryAfterMinutes = 10
+$script:SpecrewReplyRecordingRecoveryQuestion = "Specrew couldn't record your reply safely. May I clear the stuck error so it can record again? Nothing is deleted."
+
+function Get-SpecrewReplyRecordingDegradedSince {
+    # The first-seen time of the open degraded episode (T003 health journal), or $null when not degraded.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $healthPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/hook-output-health.jsonl'
+    if (-not (Test-Path -LiteralPath $healthPath -PathType Leaf)) { return $null }
+    try {
+        $stream = [IO.File]::Open($healthPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        try { $reader = [IO.StreamReader]::new($stream); $lines = @($reader.ReadToEnd() -split "`r?`n" | Where-Object { $_.Trim() }); $reader.Dispose() } finally { $stream.Dispose() }
+        if ($lines.Count -eq 0) { return $null }
+        $last = $lines[$lines.Count - 1] | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$last.state -ne 'degraded') { return $null }
+        return [DateTimeOffset]::Parse([string]$last.first_seen, [Globalization.CultureInfo]::InvariantCulture)
+    }
+    catch { return $null }
+}
+
+function Get-SpecrewReplyRecordingRecoveryAsk {
+    # Returns the in-turn text that asks the recovery question when degraded past the threshold, and records that
+    # the question is open (so the next typed yes is bound to it). $null when no ask is due.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$NowUtc)
+    $since = Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $ProjectRoot
+    if ($null -eq $since) { return $null }
+    $now = [DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)
+    if (($now - $since).TotalMinutes -lt $script:SpecrewReplyRecordingRecoveryAfterMinutes) { return $null }
+    $requestPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/reply-recording-recovery-request.json'
+    if (Test-Path -LiteralPath $requestPath -PathType Leaf) { return $null }  # one decision: asked once, not every turn
+    try {
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $requestPath)) | Out-Null
+        $request = [ordered]@{ schema_version = '1.0'; asked_at = $NowUtc; degraded_since = $since.ToString('o'); question_hash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion }
+        [IO.File]::WriteAllText($requestPath, ($request | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
+    }
+    catch { return $null }
+    return ("Specrew: reply recording has not recovered on its own since {0}. Ask the human exactly this, as its own question, and wait for their typed answer: {1}" -f $since.ToString('o'), $script:SpecrewReplyRecordingRecoveryQuestion)
+}
+
+function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
+    # When the recovery question is open and the human's TYPED reply approves it: set the stuck record aside (moved,
+    # never deleted - its hashes stay readable as recorded hook output), let the next append start a fresh record,
+    # and record the approving reply with the action taken. Returns the in-turn text, or $null when not applicable.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$Response, [Parameter(Mandatory)][string]$NowUtc)
+    $root = [IO.Path]::GetFullPath($ProjectRoot)
+    $runtime = Join-Path $root '.specrew/runtime'
+    $requestPath = Join-Path $runtime 'reply-recording-recovery-request.json'
+    if (-not (Test-Path -LiteralPath $requestPath -PathType Leaf)) { return $null }
+    if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
+    $trimmed = ([string]$Response).Trim()
+    if ($trimmed.Length -gt 200 -or $trimmed.EndsWith('?') -or $trimmed -notmatch '(?i)^(?:yes|y|approved?|ok|okay|go ahead|do it|please do|sure)\b') { return $null }
+    if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
+
+    $stamp = ([DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)).ToString('yyyyMMddTHHmmssZ')
+    $journal = Join-Path $runtime 'hook-output-authority.jsonl'
+    $legacy = $journal + '.unhealthy'
+    $actions = New-Object System.Collections.Generic.List[string]
+    $result = 'recovered'
+    try {
+        if (Test-Path -LiteralPath $journal -PathType Leaf) {
+            $setAside = Join-Path $runtime ('hook-output-authority.set-aside-{0}.jsonl' -f $stamp)
+            Move-Item -LiteralPath $journal -Destination $setAside -ErrorAction Stop
+            $actions.Add(('record set aside as {0}' -f (Split-Path -Leaf $setAside))) | Out-Null
+        }
+        if (Test-Path -LiteralPath $legacy -PathType Leaf) {
+            Move-Item -LiteralPath $legacy -Destination (Join-Path $runtime ('hook-output-authority.unhealthy.set-aside-{0}.txt' -f $stamp)) -ErrorAction Stop
+            $actions.Add('older stuck error set aside') | Out-Null
+        }
+    }
+    catch { $result = 'still-stuck'; $actions.Add(('could not set the record aside: {0}' -f $_.Exception.Message)) | Out-Null }
+    try {
+        $receipt = [ordered]@{
+            schema_version = '1.0'; approved_at = $NowUtc; response_hash = Get-SpecrewWorkshopAuthorityHash -Text $Response
+            question_hash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion
+            action = 'set-aside-stuck-record'; result = $result; details = @($actions)
+        }
+        [IO.File]::AppendAllText((Join-Path $runtime 'reply-recording-recovery.jsonl'), (($receipt | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+    }
+    catch { $null = $_ }
+    if ($result -eq 'recovered') {
+        Remove-Item -LiteralPath $requestPath -Force -ErrorAction SilentlyContinue
+        return 'Specrew: your approval was recorded and the stuck record was set aside, not deleted. Specrew starts a fresh record at its next write, and replies are checked against both. Tell the human it is done.'
+    }
+    return 'Specrew: your approval was recorded, but the stuck record could not be set aside yet because another process still holds it. Nothing is deleted. Tell the human, and that Specrew will try again when they next reply.'
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {
@@ -459,55 +649,72 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         [AllowNull()][string] $SourceEvent
     )
 
+    $script:SpecrewWorkshopLastReceiptOutcome = $null
     $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
-    if ($null -eq $canonicalSourceEvent) { return $null }
+    if ($null -eq $canonicalSourceEvent) { $null = Set-SpecrewWorkshopReceiptOutcome -Status 'not-applicable' -Reason 'not-a-prompt-event'; return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
-    if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
-    if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
+    if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { $null = Set-SpecrewWorkshopReceiptOutcome -Status 'not-applicable' -Reason 'host-or-specrew-text'; return $null }
     $questionPath = Join-Path $root '.specrew/handover/workshop-question.json'
-    if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { return $null }
+    if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { $null = Set-SpecrewWorkshopReceiptOutcome -Status 'not-applicable' -Reason 'no-open-workshop-question'; return $null }
 
+    # The question context is read first, so every refusal below can be journaled against its feature and phase.
+    $featureRef = $null; $phase = $null
     try {
         $questionItem = Get-Item -LiteralPath $questionPath -ErrorAction Stop
-        if ($questionItem.Length -le 0 -or $questionItem.Length -gt 65536) { return $null }
+        if ($questionItem.Length -le 0 -or $questionItem.Length -gt 65536) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-unreadable' -Response $Response; return $null }
         $question = Get-Content -LiteralPath $questionPath -Raw -Encoding UTF8 -ErrorAction Stop |
             ConvertFrom-Json -Depth 10 -ErrorAction Stop
-        if ([string]$question.schema -cne 'v3' -or [string]$question.status -cne 'workshop-active') { return $null }
+        if ([string]$question.status -cne 'workshop-active') { $null = Set-SpecrewWorkshopReceiptOutcome -Status 'not-applicable' -Reason 'workshop-not-active'; return $null }
         $featureRef = [string]$question.feature_ref
         $phase = [string]$question.phase
+        if ([string]$question.schema -cne 'v3') { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-invalid' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
+    }
+    catch { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-unreadable' -Response $Response; return $null }
+
+    # Recorded hook output is never authority (FR-005). A check that could not read its records fails closed for
+    # this turn only, and says so as its own cause rather than as a replay (FR-010).
+    if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) {
+        $hookReason = if ($script:SpecrewWorkshopLastHookOutputCheck -eq 'unavailable') { 'record-check-unavailable' } else { 'matches-hook-output' }
+        $hookStatus = if ($hookReason -eq 'record-check-unavailable') { 'degraded' } else { 'refused' }
+        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status $hookStatus -Reason $hookReason -FeatureRef $featureRef -Phase $phase -Response $Response
+        return $null
+    }
+
+    try {
         $lens = [string]$question.lens
         $questionHash = [string]$question.message_hash
         $agendaDigest = ''
         $agendaBinding = $null
         if ($featureRef -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$' -or
             $phase -cnotin @('product-domain', 'agenda', 'lens') -or
-            [string]::IsNullOrWhiteSpace($questionHash)) { return $null }
-        if ($phase -eq 'lens' -and $lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$') { return $null }
+            [string]::IsNullOrWhiteSpace($questionHash)) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-invalid' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
+        if ($phase -eq 'lens' -and $lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$') { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-invalid' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
         if ($phase -eq 'agenda') {
             $digestProperty = $question.PSObject.Properties['agenda_digest']
             $bindingProperty = $question.PSObject.Properties['agenda_binding']
             if (-not $digestProperty -or [string]$digestProperty.Value -cnotmatch '^[a-f0-9]{64}$' -or
-                -not $bindingProperty -or $null -eq $bindingProperty.Value) { return $null }
+                -not $bindingProperty -or $null -eq $bindingProperty.Value) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'agenda-not-shown' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
             $agendaDigest = [string]$digestProperty.Value
             $agendaBinding = $bindingProperty.Value
-            if ((Get-SpecrewWorkshopAgendaDigest -Binding $agendaBinding) -cne $agendaDigest) { return $null }
+            if ((Get-SpecrewWorkshopAgendaDigest -Binding $agendaBinding) -cne $agendaDigest) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'agenda-changed' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
         }
         $controllerPath = Join-Path (Join-Path (Join-Path $root 'specs') $featureRef) 'lens-applicability.json'
-        if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf)) { return $null }
+        if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf)) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'workshop-records-missing' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
         $controller = Get-Content -LiteralPath $controllerPath -Raw -Encoding UTF8 -ErrorAction Stop |
             ConvertFrom-Json -Depth 20 -ErrorAction Stop
         if ([string]$controller.human_turn_contract -cne 'typed-turns-v1' -or
-            [string]$controller.agenda_contract -cne 'complete-coverage-v1') { return $null }
-        if ($phase -in @('product-domain', 'agenda') -and [string]$controller.agenda_status -cne 'pending-confirmation') { return $null }
+            [string]$controller.agenda_contract -cne 'complete-coverage-v1') { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'workshop-records-incompatible' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
+        if ($phase -in @('product-domain', 'agenda') -and [string]$controller.agenda_status -cne 'pending-confirmation') { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'agenda-already-confirmed' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
         $featureRoot = Join-Path (Join-Path $root 'specs') $featureRef
         $hasProductMarkdown = Test-Path -LiteralPath (Join-Path $featureRoot 'workshop/product-domain.md') -PathType Leaf
         $hasProductStructured = Test-Path -LiteralPath (Join-Path $featureRoot 'workshop/product-domain.yml') -PathType Leaf
-        if ($phase -eq 'product-domain' -and $hasProductMarkdown -and $hasProductStructured) { return $null }
-        if ($phase -eq 'agenda' -and (-not $hasProductMarkdown -or -not $hasProductStructured)) { return $null }
+        # The product-records refusal (T004 acceptance): disclosed with its cause, not silent.
+        if ($phase -eq 'product-domain' -and $hasProductMarkdown -and $hasProductStructured) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'product-answers-already-recorded' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
+        if ($phase -eq 'agenda' -and (-not $hasProductMarkdown -or -not $hasProductStructured)) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'product-answers-missing' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
         if ($phase -eq 'lens') {
-            if ([string]$controller.agenda_status -cne 'confirmed' -or @($controller.selected) -cnotcontains $lens) { return $null }
+            if ([string]$controller.agenda_status -cne 'confirmed' -or @($controller.selected) -cnotcontains $lens) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'lens-not-on-agenda' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
             $recordProperty = if ($controller.PSObject.Properties['workshop']) { $controller.workshop.PSObject.Properties[$lens] } else { $null }
-            if ($recordProperty -and $recordProperty.Value.PSObject.Properties['moved_on'] -and [bool]$recordProperty.Value.moved_on) { return $null }
+            if ($recordProperty -and $recordProperty.Value.PSObject.Properties['moved_on'] -and [bool]$recordProperty.Value.moved_on) { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'lens-already-closed' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
         }
 
         $authority = Get-SpecrewWorkshopResponseAuthority -Phase $phase -Response $Response
@@ -553,9 +760,13 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             if ($null -ne $lockStream) { $lockStream.Dispose() }
             Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
         }
+        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'recorded' -Reason 'recorded' -FeatureRef $featureRef -Phase $phase -Response $Response
         return [pscustomobject]$record
     }
-    catch { return $null }
+    catch {
+        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'degraded' -Reason 'reply-write-failed' -FeatureRef $featureRef -Phase $phase -Response $Response
+        return $null
+    }
 }
 
 function Get-SpecrewWorkshopReceiptDisclosure {

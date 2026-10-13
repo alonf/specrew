@@ -2527,6 +2527,31 @@ function Set-SpecrewStageEvidenceGate {
     catch { return $Result }
 }
 
+function Get-SpecrewReplyRecordingHealthLine {
+    # Feature 202 T004 (FR-007): ONE line, shown only while reply recording is degraded - outage-buffer files
+    # are pending, a legacy unhealthy file from an older version is present, or the hook-output health journal's
+    # latest transition is 'degraded' (T003). $null otherwise, so a healthy project shows nothing. Project terms,
+    # and it never implies loss: the buffered records are kept and replies are still checked against them.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    try {
+        $runtime = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime'
+        $pending = @(Get-ChildItem -LiteralPath (Join-Path $runtime 'hook-output-buffer') -File -Filter '*.jsonl' -ErrorAction SilentlyContinue).Count
+        $legacy = Test-Path -LiteralPath (Join-Path $runtime 'hook-output-authority.jsonl.unhealthy') -PathType Leaf
+        $last = $null
+        $healthPath = Join-Path $runtime 'hook-output-health.jsonl'
+        if (Test-Path -LiteralPath $healthPath -PathType Leaf) {
+            $stream = [IO.File]::Open($healthPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+            try { $reader = [IO.StreamReader]::new($stream); $lines = @($reader.ReadToEnd() -split "`r?`n" | Where-Object { $_.Trim() }); $reader.Dispose() } finally { $stream.Dispose() }
+            if ($lines.Count -gt 0) { $last = $lines[$lines.Count - 1] | ConvertFrom-Json -ErrorAction Stop }
+        }
+        $lastDegraded = ($null -ne $last -and [string]$last.state -eq 'degraded')
+        if (-not ($pending -gt 0 -or $legacy -or $lastDegraded)) { return $null }
+        $since = if ($lastDegraded -and -not [string]::IsNullOrWhiteSpace([string]$last.first_seen)) { [string]$last.first_seen } else { 'an earlier session' }
+        return ('Reply recording: degraded since {0}. Specrew could not write its usual record of its own output, so it is checking your replies against a backup record instead; it returns to normal on its own at the next successful write, and nothing is lost.' -f $since)
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewPendingVerdictState {
     # F-174 iteration 011 (T006, FR-027 / decision f174-i011-verdict-authority-stop-hook): is the session's
     # WORKING boundary ahead of the last HUMAN-AUTHORIZED boundary? A committed / in-progress boundary is NOT an

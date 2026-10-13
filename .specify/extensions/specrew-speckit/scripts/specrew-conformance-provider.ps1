@@ -1158,6 +1158,7 @@ try {
     $workshopProductRecordMissingAgenda = $false
     $workshopAgendaReformatted = $false
     $workshopProductRecordsUnreceipted = $false
+    $workshopProductRecordsUnreceiptedCause = $null
     $workshopRepairReasons = @(
         'workshop-decision-bindings-invalid',
         'workshop-code-implementation-manifest-missing',
@@ -1319,6 +1320,12 @@ try {
             if (Get-Command Get-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) {
                 $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref) -Phase 'product-domain'
                 $workshopProductRecordsUnreceipted = ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid')
+                # Feature 202 T004 (FR-010): the actual cause, from the receipt outcome the prompt-entry writer journaled
+                # when the answer was given - never an inferred channel the human may not have used.
+                if ($workshopProductRecordsUnreceipted -and (Get-Command Get-SpecrewWorkshopLatestRefusal -ErrorAction SilentlyContinue)) {
+                    $latestRefusal = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref) -Phase 'product-domain'
+                    if ($null -ne $latestRefusal) { $workshopProductRecordsUnreceiptedCause = Get-SpecrewWorkshopRefusalCauseText -Reason ([string]$latestRefusal.reason) }
+                }
             }
         }
         catch { $null = $_ }  # a corrupt store already surfaces through its own receipt-invalid repair reasons
@@ -1967,7 +1974,11 @@ try {
                     [void]$sb.AppendLine('The technical topics were shown before the product grounding was recorded. Record the product grounding from its typed answer first, then show the complete technical-topic selection once. Do not ask for another agenda confirmation first; it cannot be retained until that earlier record exists.')
                 }
                 elseif ($workshopProductRecordsUnreceipted) {
-                    [void]$sb.AppendLine('The recorded product answers arrived through a selection channel (a structured picker or a dismissed question UI), so no typed human reply stands behind them and they cannot authorize the workshop. Workshop questions need the human to type their answer so it can be recorded. Tell the human their answers are preserved but must be re-given as typed replies, ask approval to set the unauthorized product records aside, then ask each product question again as visible prose and wait for the typed response before recording it.')
+                    # Feature 202 T004 (FR-010): name the actual cause. The old text asserted a picker or a
+                    # dismissed question UI) for EVERY unreceipted record - including a typed reply that was refused for another
+                    # reason, so it told the human they used a channel they never touched.
+                    $causeSentence = if (-not [string]::IsNullOrWhiteSpace([string]$workshopProductRecordsUnreceiptedCause)) { ('When the product answers were given, Specrew did not record the reply, because {0}.' -f $workshopProductRecordsUnreceiptedCause) } else { 'No typed reply recorded by Specrew stands behind them.' }
+                    [void]$sb.AppendLine(('The product answers on file have no recorded typed reply behind them, so they cannot authorize the workshop. {0} Workshop questions need the human to type their answer so it can be recorded. Tell the human their answers are preserved but must be given again as typed replies, ask approval to set the unrecorded product records aside, then ask each product question again as visible prose and wait for the typed response before recording it.' -f $causeSentence))
                 }
                 elseif ($workshopAgendaReformatted) {
                     [void]$sb.AppendLine('The agenda you showed was reformatted, so the confirmation could not be recorded against it. Send the command''s output exactly as printed, without changing bullets or spacing, then ask again.')

@@ -114,7 +114,7 @@ function Limit-SpecrewInlineBlock {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null, [AllowNull()][string]$ReplyHealthLine = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -122,6 +122,9 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - the orientation below is written to be SHOWN to the human, not merely read by you. Render it as VISIBLE PROSE in your FIRST reply, before any structured picker and before starting work: reading it to orient yourself is not rendering it, and a human who never sees it cannot correct what you believe about them. A concrete request in their first message does not replace it - announce what is starting and render the orientation with it (render-first: questions are shown as prose before any picker, and that rule is enforced mechanically, not by instruction alone).')  # FR-004/FR-020
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    # Feature 202 T004 (FR-007): a degraded reply-recording state is part of the orientation, so the human knows it
+    # before their first answer, not only from a later refusal.
+    if (-not [string]::IsNullOrWhiteSpace($ReplyHealthLine)) { $lines.Add(('Include this line, as written, in the orientation you show: {0}' -f $ReplyHealthLine)) }
     # F-184 iter-002 (T004, FR-013/FR-014/FR-018): FRONT-LOAD the coordinator posture + the exact anti-
     # specify.exe guard from the SINGLE packaged source (the caller resolves it via
     # Get-SpecrewCoordinatorFragment, so the bootstrap guard cannot drift from the instruction-file guard),
@@ -549,7 +552,9 @@ try {
     }
     $coordinatorFragment = $null
     try { $coordinatorFragment = Get-SpecrewCoordinatorFragment } catch { $coordinatorFragment = $null }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment)
+    $replyHealthLine = $null
+    if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $replyHealthLine = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $replyHealthLine = $null } }
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment -ReplyHealthLine $replyHealthLine)
     exit 0
 }
 catch {

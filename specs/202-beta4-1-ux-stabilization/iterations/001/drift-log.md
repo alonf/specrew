@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 11
-**Resolution rate**: 91% (10/11 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 12
+**Resolution rate**: 92% (11/12 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -131,6 +131,16 @@
   - Four of this log's `NONE` class-closure lines lacked the `NONE — <why>` form the validator requires, and are fixed.
   - Iteration 001 validates PASS. No check was removed or loosened.
 - **Class closure**: NONE — the durable fix (a governance command that names the active iteration, not a number) is the open beta4 item the plan's label records; it stays beta5. `every-suite-is-named-by-a-lane` already catches the unregistered-suite half.
+- **Addendum (same night)**:
+  - **A self-inflicted held slot.** One relaunch was stopped by the crew mid-verification to widen the window. Verification alone takes about 520 s locally, against a 900 s default round. That left the approved round's slot reserved with no release, and the next launch refused with `allowance-exhausted`. `specrew review --reconcile-run` released it (`non-invoked-reservation-reconciled`), and the reviewer was never invoked. Rule for the crew: never stop a launched round; pass `--timeout-seconds` up front.
+  - **The frozen copy still fails.** The next launch, with a 2400 s window, failed `f199-class-guards` inside the frozen copy, although the same lane passes in the working tree. The cause is being reproduced in a clean checkout with the plan's restricted environment.
+
+### DRIFT-012 — T004 reached two files outside its owned set for the health line and the orientation (resolved)
+
+- **Observed**: 2026-10-14, T004 implementation. FR-007 puts the degraded state in `specrew status`/`where` and in session-start orientation. The one health check both can load is `shared-governance.ps1`: `where` already loads it, and so does the bootstrap provider. The orientation line is added by the bootstrap provider twins.
+- **Requirement**: FR-007; T004's owned-file list (`where`, `dashboard-renderer`).
+- **Resolution**: `Get-SpecrewReplyRecordingHealthLine` lives in `shared-governance.ps1`. `specrew-where.ps1` shows it first while degraded (`status` is the same command). The bootstrap provider passes it into the orientation directive. `dashboard-renderer.ps1` needed no change.
+- **Class closure**: `receipt-disclosure.tests.ps1` case 7 asserts the line appears only while degraded, carries no internal noun, and is wired into both `where` and the orientation.
 <!--
   Every new ### DRIFT-... event includes:
 

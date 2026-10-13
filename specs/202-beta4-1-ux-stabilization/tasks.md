@@ -70,7 +70,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 3: US1, typed workshop replies count on every host (P1)
 
-- [ ] T004 [owner: Implementer] [sp: 2.0] [US1] **Disclose degraded capture; name the actual cause.**
+- [x] T004 [owner: Implementer] [sp: 2.0] [US1] **Disclose degraded capture; name the actual cause.** Done 2026-10-14. `receipt-disclosure.tests.ps1` is green (61 checks, through the real handover provider). The 146-file regression sweep is green apart from 3 suites that fail identically at the previous commit (feature-017/018 dashboards, the interaction-model README check). The two files outside the owned set are DRIFT-012.
   - **Work:**
     - Every silent `return $null` in `Write-SpecrewWorkshopAuthorityReceipt` becomes a typed outcome.
     - A refused or degraded mint is disclosed in the same turn, stating whether the reply was consumed.
