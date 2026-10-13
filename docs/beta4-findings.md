@@ -4938,6 +4938,23 @@ same checkpoint, with no round run since, still stands.
 **Disposition:** recorded; 202's FR-010 covers the workshop surfaces only, so this stays beta5 unless the
 maintainer extends it.
 
+## B4F-118 - A VERIFICATION TIMEOUT IS REPORTED AS AN OPAQUE SEALED FAILURE (beta5 candidate)
+
+**Observed:** 2026-10-13/14, feature 202 implement, at the first co-review checkpoint. Three launches failed the
+pre-review verification inside the frozen copy on `f199-class-guards` (one also on `f199-slice-suites`), and the
+run reported only the sealed reason `diagnostics-require-command-scoped-disclosure`. The crew reproduced
+pass/fail in four conditions and could not reproduce a failure. The maintainer found the cause by measuring
+duration: the lane exits 0 in 243 s against its own `timeout_seconds` of 120, so the engine kills it.
+**Effect:** the engine already computes a derived diagnosis outside the seal,
+`Get-ContinuousCoReviewVerificationFailureDiagnosis` (command, exit code, duration, `timed_out`), and none of it
+reaches the run's `result.json` or `report.md`. A timeout therefore reads as a sealed test failure, and the one
+fact that names the cause is the one withheld. Feature 199 lost about an hour to it (DRIFT-199-I001-112, very
+likely the same class), and 202 about an hour and a half (DRIFT-011, DRIFT-013).
+**Beta5 candidate:** the run record carries the derived diagnosis for every failed verification command: command
+id, exit code, duration against its timeout, and `timed_out`. The sealed output stays sealed; only the derived
+facts are disclosed.
+**Disposition:** recorded on the maintainer's ruling 2026-10-14; beta5.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

@@ -34,8 +34,19 @@ $planPath = Join-Path $repoRoot '.specrew/verification-plan.json'
 Assert-True (Test-Path -LiteralPath $planPath -PathType Leaf) 'the verification plan exists to be read'
 $plan = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
+# Signoff-cadence lanes (maintainer ruling 2026-10-14, 202 DRIFT-013): mid-iteration checkpoint rounds
+# verify only the active feature's lanes, and the carried-forward lanes are parked here until the
+# signoff round restores them to the plan. A parked lane still runs before signoff, so its suites
+# count as named; a lane in neither file is the state this guard exists to catch.
+$parkedPath = Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json'
+$parkedCommands = @()
+if (Test-Path -LiteralPath $parkedPath -PathType Leaf) {
+    $parkedCommands = @((Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands)
+    Assert-True ($parkedCommands.Count -ge 1) 'the parked signoff lanes file names at least one lane'
+}
+
 $named = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-foreach ($command in @($plan.commands)) {
+foreach ($command in @(@($plan.commands) + $parkedCommands)) {
     foreach ($argument in @($command.arguments)) {
         foreach ($hit in [regex]::Matches([string]$argument, '(?i)tests/[A-Za-z0-9/._-]+?\.tests\.ps1')) {
             [void]$named.Add(($hit.Value -replace '\\', '/'))

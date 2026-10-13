@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 12
-**Resolution rate**: 92% (11/12 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 13
+**Resolution rate**: 92% (12/13 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -141,6 +141,16 @@
 - **Requirement**: FR-007; T004's owned-file list (`where`, `dashboard-renderer`).
 - **Resolution**: `Get-SpecrewReplyRecordingHealthLine` lives in `shared-governance.ps1`. `specrew-where.ps1` shows it first while degraded (`status` is the same command). The bootstrap provider passes it into the orientation directive. `dashboard-renderer.ps1` needed no change.
 - **Class closure**: `receipt-disclosure.tests.ps1` case 7 asserts the line appears only while degraded, carries no internal noun, and is wired into both `where` and the orientation.
+
+### DRIFT-013 — the class-guard lane ran twice its own timeout, so the frozen-copy verification killed a passing lane (resolved by human decision)
+
+- **Observed**: 2026-10-14, at the first co-review checkpoint. Three launches failed the pre-review verification on `f199-class-guards` (one also on `f199-slice-suites`), reported only as the sealed reason `diagnostics-require-command-scoped-disclosure`. The crew checked pass/fail in four conditions and could not reproduce a failure. It never checked duration. The maintainer measured the lane in the working tree, exactly as the plan defines it: **exit 0 in 243 s, against `timeout_seconds` 120**. Its label still said "roughly 20 s combined", but the lane had grown to 31 sequential child `pwsh` processes plus 4 Pester files. The one `f199-slice-suites` failure (480 s bound, 199 s measured under 199) is the same class under load (DRIFT-199-I001-116). DRIFT-199-I001-112 was very likely this too.
+- **Requirement**: the plan's own per-command `timeout_seconds`; the project's 2.4x measured-headroom convention (DRIFT-199-I001-116).
+- **Resolution** (maintainer ruling 2026-10-14):
+  - **The lane is parallelized** the way DRIFT-199-I001-116 did the slice lane: `ForEach-Object -Parallel`, throttle 6, with the result count pinned to 31 so a swallowed suite cannot read as a pass. Measured cold, in a fresh checkout with only the plan's `env_refs`: **exit 0 in 109.4 s**. Its timeout is now 270 s (2.47x), and the stale "20 s" label is corrected.
+  - **Checkpoint rounds run only 202's lanes (option a).** `iteration-001-governance-202` measured 16.9 s against 180 s, and `f202-slice-suites` 64.7 s against 600 s. Both f199 lanes are parked in `.specrew/verification-plan.signoff-lanes.json` and return to the plan for the signoff round (T015 carries the step). `every-suite-is-named-by-a-lane` reads the parked file, so their suites stay named meanwhile and it stays green.
+  - **The reporting gap** is recorded as beta5 finding B4F-118. The engine computes a derived diagnosis outside the seal (command, exit code, duration, `timed_out`), but it never reaches `result.json` or `report.md`.
+- **Class closure**: NONE — the class is "a timeout reported as an opaque sealed failure", and its closure is the engine change B4F-118 records for beta5. This entry fixes the instance and restores headroom; nothing yet re-measures a lane against its timeout as suites are added.
 <!--
   Every new ### DRIFT-... event includes:
 

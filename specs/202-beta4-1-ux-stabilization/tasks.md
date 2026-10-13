@@ -203,6 +203,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
     - A validator run compared against the known baseline (review-evidence, defer-provenance, 198/011 needs-rework).
     - The live-walk script for Claude, Codex (healthy worktree) and Copilot.
     - Host tiers stated as validated or experimental.
+    - Before the signoff round, the two f199 lanes parked in `.specrew/verification-plan.signoff-lanes.json` return to `.specrew/verification-plan.json` (DRIFT-013, maintainer ruling 2026-10-14).
   - **Acceptance:** the evidence files exist and every SC is mapped to its evidence.
   - **Trace:** FR-024; SC-001, SC-003, SC-008.
   - **Depends:** all.
