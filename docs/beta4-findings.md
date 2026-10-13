@@ -4805,6 +4805,27 @@ Stop hook error, with nothing asked of the human (DRIFT-202-INTAKE-012).
 **Disposition:** beta4.1 Tier 1, added by the maintainer on 2026-10-13. No fix implemented.
 Drift: DRIFT-202-INTAKE-010 and 011.
 
+## B4F-110 - HOST SUPPORT TIERS ARE UNDEFINED, SO "SUPPORTED" IS NEVER VALIDATED (beta5 candidate)
+
+**Context (maintainer decision, 2026-10-13):** Specrew lists five agent hosts (Claude, Codex, Copilot,
+Cursor, Antigravity) as supported, but no release validates all of them live, and nothing tells users
+which ones were. B4F-108 shows the cost: Codex was listed as supported while its workshop capture was
+broken for five weeks. For beta4.1, feature 202's spec defines two tiers. **Validated** (Claude, Codex,
+Copilot) carries all cross-host acceptance. **Experimental** (Cursor, Antigravity) works through the
+shared path without a live walk, and is never called supported-and-validated.
+
+**Beta5 candidate (not 202 scope):**
+
+1. Define the support tiers in the user docs and in the installer output.
+2. Separate coding-host validation from reviewer-host validation. Reviewing (run headless, deliver
+   findings) is a much smaller surface, so a host can be validated as a reviewer while experimental as
+   a coding host.
+3. Set the promotion rule: a host moves to Validated when someone owns its live walk and it passes two
+   consecutive releases.
+
+**Evidence:** specs/202-beta4-1-ux-stabilization/spec.md, "Host support tiers".
+**Disposition:** beta5 candidate, recorded by the maintainer's instruction. No 202 work.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

@@ -19,6 +19,20 @@ Quality priority for conflicts, highest first: authority integrity, cross-host p
 - **Tier 2 (iteration 2):** starts only after the maintainer accepts Tier 1 at the iteration-1 closeout. Green tests do not start it. It covers the narrow review-ordering slices of B4F-054/056/058/061, bounded by B4F-074 and B4F-093, and the B4F-103 package-comparison correction (no beta4 republish).
 - **Out of scope (beta5):** both B4F-039 sub-findings; B4F-090; B4F-091 band semantics (B4F-107 changes presentation only); any broader review redesign; any redesign of the hook dispatcher or stores; B5F-004 (Stop reasons outside Tier 1 audited against the substance-only rule); B5F-005 (refusals that name the wrong cause when a path does not resolve); every other beta5 item.
 
+## Host support tiers
+
+**Context.** Specrew supports five agent hosts: Claude, Codex, Copilot, Cursor and Antigravity. Claude, Codex and Copilot cover the large majority of developers. Validating every host live on every release multiplies acceptance cost. A host claimed as supported and never validated is worse than no support, and B4F-108 is exactly that case: Codex was listed as supported, and its workshop capture was broken for five weeks without anyone noticing. Dropping Cursor and Antigravity would also be wrong. Under the architecture-core placement rule, adapters do host mechanics only and all logic runs once in the shared path, so a thin adapter is cheap to keep. More than three hosts also keeps the adapter seam honest, which is the extensibility argument behind Proposal 200, and Antigravity has real investment behind it (feature 184). This decision was agreed with the maintainer outside the workshop and added on 2026-10-13, before the specify verdict.
+
+| Tier | Hosts | What 202 commits to |
+|---|---|---|
+| **Validated** | Claude, Codex, Copilot | All 202 cross-host acceptance applies: the cross-host tests through each host's real adapter with recorded real payloads (FR-024), and the live installed walk at the Tier 1 acceptance (SC-001). |
+| **Experimental** (beta4.1) | Cursor, Antigravity | They keep working through the shared path. They get the adapter-contract test on recorded payloads only if such payloads already exist; otherwise they are listed as **unvalidated**. No live walk and no added scope in 202. |
+
+- **Experimental means experimental.** This spec, and the Tier 1 acceptance evidence presented at the iteration-1 closeout, state Cursor and Antigravity as experimental, never as supported-and-validated.
+- **Recorded payloads today:** no recorded hook-event payloads exist for Cursor or Antigravity. A Cursor *conversation transcript* fixture exists (`tests/bootstrap/fixtures/conversation/cursor.jsonl`), but it is not a hook payload. Both hosts are therefore listed as unvalidated for 202 unless FR-024's capture task records their payloads as a by-product. That capture is not required.
+- **Coding host and reviewer host are separate roles.** Cursor and Antigravity also appear as reviewer hosts. Reviewing is a much smaller surface: run headless and deliver findings. A host can therefore later be validated as a reviewer while it is still experimental as a coding host. This is noted only; there is no 202 work on it.
+- **Beta5 candidate, not 202 scope:** support tiers defined in the user docs and the installer output; coding-host and reviewer-host validation separated; a promotion rule (a host moves to Validated when someone owns its live walk and it passes two consecutive releases). Recorded as B4F-110 in docs/beta4-findings.md.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - My typed workshop replies count on every host (Priority: P1)
