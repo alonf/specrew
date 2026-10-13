@@ -102,8 +102,9 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
     - `$boundaryBlock` (conformance ~1426) is true only when no record exists for (session, crossing id).
     - Context gaps clear the record: a changed crossing id, a change to the reviewed artifacts, SessionStart new/resume/compact, or 8 hours. **HEAD movement alone is not a gap.**
     - Between gaps, a reply may carry at most the one-line mention (decision plus approval phrase; no options, marker or sections), and it never produces a `Stop hook error`.
-  - **RED:** today's three recorded B4F-104 triggers each repaint the packet. This session's DRIFT-014 shape is also reproduced: a bookkeeping commit repaints.
-  - **Acceptance:** 0 repaints and 0 Stop errors for the three triggers and for a bookkeeping commit; exactly one repaint after a compact.
+    - **Recovery path stays open (DRIFT-008, B4F-112).** A crossing that is still pending and had a capture miss can be presented again in the same session, whatever the gap state. A capture miss is a human reply received while the crossing was pending that the capture did not record as a verdict. Only a crossing that was presented, is unchanged and had no capture miss is suppressed. The capture-pairing fix itself stays beta5.
+  - **RED:** today's three recorded B4F-104 triggers each repaint the packet. This session's DRIFT-014 shape is also reproduced: a bookkeeping commit repaints. **Second RED fixture:** after T006's suppression is in place, a pending crossing whose verdict was not captured cannot be presented again in the same session without the new rule. Shapes: 202's tasks boundary (compaction between packet and reply), and a verdict that did not record because a paste block came before the phrase.
+  - **Acceptance:** 0 repaints and 0 Stop errors for the three triggers and for a bookkeeping commit; exactly one repaint after a compact; a pending crossing with a capture miss can be presented again in the same session and its marker captures the next typed verdict; a presented, unchanged crossing with no capture miss is still suppressed.
   - **Trace:** FR-011; SC-004.
   - **Depends:** T002.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `tests/unit/crossing-presentation.tests.ps1`.

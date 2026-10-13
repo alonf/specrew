@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: 86% (6/7 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 8
+**Resolution rate**: 88% (7/8 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -84,6 +84,12 @@
 - **Resolution**: human-decision. No revert. The maintainer's before-implement verdict licenses all 24 fixture files and the `.gitattributes` rule (DRIFT-005 ratification).
 - **Class closure**: NONE in 202. Two questions are left to B4F-114: whether the check should cover the whole span since the last implement authorization, and whether recorded-evidence fixtures should be exempt.
 
+### DRIFT-008 — T006 (presented-crossing memory) must not remove the B4F-112 recovery path (resolved by human decision)
+
+- **Observed**: 2026-10-13, maintainer review at before-implement. DRIFT-004 was resolved by re-presenting the same pending crossing in the same session after a compaction. As planned, T006 suppresses repainting per (session, crossing id). A compaction keeps the session id, so after T006 a verdict lost the same way would leave no packet to answer.
+- **Requirement**: FR-011 (presented-crossing memory) against the governing principle that "verdicts stay explicit typed replies".
+- **Resolution**: human-decision. T006's acceptance gains a RED fixture: a crossing that is still pending and whose verdict was not captured, for example after a compaction, can be presented again in the same session. Only a crossing that was presented, is unchanged and had no capture miss is suppressed. The capture-pairing fix stays beta5 (B4F-112), because iteration 001 is already at 25.5 SP. No SP change.
+- **Class closure**: the T006 RED fixture `crossing-presentation` "pending, capture missed, re-presentable" pins the recovery path.
 <!--
   Every new ### DRIFT-... event includes:
 
