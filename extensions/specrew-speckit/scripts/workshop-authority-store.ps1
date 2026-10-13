@@ -413,18 +413,38 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][string]$Response
     )
-    $path = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/hook-output-authority.jsonl'
-    if (Test-Path -LiteralPath ($path + '.unhealthy') -PathType Leaf) { return $true }
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+    # Feature 202 T003 (FR-003..FR-005): a reply is refused as authority only when it matches recorded hook output -
+    # in the journal or in an outage-buffer file the dispatcher wrote while the journal was unavailable. The buffer is
+    # read first, before this prompt decision. A legacy `.unhealthy` marker no longer refuses every reply (that was
+    # the B4F-108 latch); the dispatcher clears it on its next good append. A store that cannot be READ right now
+    # fails closed for this decision only.
+    $runtimeDir = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime'
+    $path = Join-Path $runtimeDir 'hook-output-authority.jsonl'
+    $bufferDir = Join-Path $runtimeDir 'hook-output-buffer'
+    $sources = @(if (Test-Path -LiteralPath $bufferDir -PathType Container) { Get-ChildItem -LiteralPath $bufferDir -File -Filter '*.jsonl' | ForEach-Object FullName })
+    if (Test-Path -LiteralPath $path -PathType Leaf) { $sources += $path }
+    if ($sources.Count -eq 0) { return $false }
     $hash = Get-SpecrewWorkshopAuthorityHash -Text $Response.Trim()
-    foreach ($line in [IO.File]::ReadLines($path, [Text.Encoding]::UTF8)) {
-        if ([string]::IsNullOrWhiteSpace($line)) { continue }
-        try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
-        catch { throw 'workshop-hook-output-authority-journal-invalid' }
-        if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
-            throw 'workshop-hook-output-authority-record-invalid'
+    foreach ($source in $sources) {
+        try {
+            $stream = [IO.File]::Open($source, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
+            try {
+                $reader = [IO.StreamReader]::new($stream, [Text.UTF8Encoding]::new($false))
+                try { $content = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            }
+            finally { $stream.Dispose() }
         }
-        if ([string]$record.output_hash -ceq $hash) { return $true }
+        catch [IO.FileNotFoundException], [IO.DirectoryNotFoundException] { continue }  # a buffer file flushed between listing and reading
+        catch { return $true }
+        foreach ($line in @($content -split "`r?`n")) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
+            catch { throw 'workshop-hook-output-authority-journal-invalid' }
+            if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
+                throw 'workshop-hook-output-authority-record-invalid'
+            }
+            if ([string]$record.output_hash -ceq $hash) { return $true }
+        }
     }
     return $false
 }

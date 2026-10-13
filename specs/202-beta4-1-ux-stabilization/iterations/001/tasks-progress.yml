@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "202-beta4-1-ux-stabilization"
 iteration: "001"
-updated_at: "2026-10-13T19:36:54.1136186Z"
+updated_at: "2026-10-13T19:49:45.3214499Z"
 tasks:
   T001:
     title: "Capture real hook payloads in scratch dirs; measure session-id presence and direct-display of hook output per host"
@@ -17,9 +17,9 @@ tasks:
     blocked_reason: ""
   T003:
     title: "Journal share mode, bounded retry, outage buffer, health journal, legacy marker migration"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-10-13T19:49:45.3187596Z"
+    completed_at: "2026-10-13T19:49:45.3187596Z"
     blocked_reason: ""
   T004:
     title: "B4F-108 disclosures, status/where health line, recovery question, selection-channel inference removed"

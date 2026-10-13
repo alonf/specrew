@@ -50,7 +50,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-006, FR-024; SC-001 (contract).
   - **Depends:** T001.
   - **Owns:** `hosts/*/host.psd1`, `scripts/internal/specrew-hook-dispatcher.ps1`, `extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`, `scripts/internal/bootstrap/HostEventAdapter.ps1`, `tests/unit/turn-record-contract.tests.ps1`, `tests/unit/twin-copy-parity.tests.ps1`.
-- [ ] T003 [owner: Implementer] [sp: 3.0] **Latch-free hook-output journal.**
+- [x] T003 [owner: Implementer] [sp: 3.0] **Latch-free hook-output journal.** Done 2026-10-13. `hook-output-journal.tests.ps1` is green: cases (a) to (d), the legacy marker, and a failed buffer write, all through the real dispatcher against a separate lock-holding process. The RED had 15 failures, and case (a) latched `.unhealthy`, which is B4F-108 reproduced. The concurrency measurement is in research.md: the Windows journal uses an append-only handle, and Unix waits on T005 case (e).
   - **Work:**
     - `Write-DispatcherHookOutputAuthorityRecord` opens with a share mode that permits concurrent appends and writes each line in one call.
     - A bounded retry (at most 5 attempts within 250 ms) is a backup only.

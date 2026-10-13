@@ -73,6 +73,8 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 
 $script:Banner = '[specrew-refocus]'
 $script:HostHookOutputCapChars = 10000
+# T003: this process's outage-buffer file, created on the first degraded write.
+$script:HookOutputBufferFile = $null
 
 function Write-DispatcherWarn {
     param([string]$Code, [string]$Message)
@@ -85,42 +87,180 @@ function Get-DispatcherHookOutputHash {
     return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
 }
 
+function Get-DispatcherHookOutputPaths {
+    param([string]$ProjectRoot)
+    $runtimeDir = Join-Path $ProjectRoot '.specrew/runtime'
+    $journal = Join-Path $runtimeDir 'hook-output-authority.jsonl'
+    return [pscustomobject]@{
+        RuntimeDir   = $runtimeDir
+        Journal      = $journal
+        BufferDir    = Join-Path $runtimeDir 'hook-output-buffer'
+        Health       = Join-Path $runtimeDir 'hook-output-health.jsonl'
+        LegacyMarker = $journal + '.unhealthy'
+    }
+}
+
+function Open-DispatcherAppendStream {
+    # Feature 202 T003 (FR-001): concurrent appends from separate hook processes. MEASURED (202 research.md, T003):
+    # [IO.File]::Open(Append, ReadWrite) let three concurrent writers lose 58 of 1200 lines and tear 3 - .NET
+    # positions an Append stream at open time, so two writers can land on the same offset. A handle opened with
+    # ONLY the AppendData right is an OS-level atomic append on Windows (1200/1200 intact). Elsewhere the regular
+    # Append stream is used, and case (e) on the 3-OS matrix (T005) decides whether that needs the per-write lock.
+    # FileShare.ReadWrite: never lock out a reader or another writer (the B4F-108 latch was FileShare.Read).
+    param([string]$Path)
+    if ($IsWindows) {
+        return [IO.FileSystemAclExtensions]::Create([IO.FileInfo]::new($Path), [IO.FileMode]::Append, [Security.AccessControl.FileSystemRights]::AppendData, [IO.FileShare]::ReadWrite, 4096, [IO.FileOptions]::None, $null)
+    }
+    return [IO.File]::Open($Path, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+}
+
+function Add-DispatcherJournalText {
+    # One open and one write for the whole text. FR-002: a failed append is retried as a backup only - at most
+    # 5 attempts within 250 ms - before the caller degrades. Returns $null on success, else the last error text.
+    param([string]$Path, [string]$Text)
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes($Text)
+    $window = [Diagnostics.Stopwatch]::StartNew()
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        try {
+            $stream = Open-DispatcherAppendStream -Path $Path
+            try { $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) }
+            finally { $stream.Dispose() }
+            return $null
+        }
+        catch { $lastError = $_.Exception.Message }
+        if ($attempt -lt 5 -and ($window.ElapsedMilliseconds + 50) -le 250) { Start-Sleep -Milliseconds 50 } else { break }
+    }
+    return $lastError
+}
+
+function Read-DispatcherSharedLines {
+    # Read every line without locking writers out (FileShare.ReadWrite on the reader too).
+    param([string]$Path)
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
+    try {
+        $reader = [IO.StreamReader]::new($stream, [Text.UTF8Encoding]::new($false))
+        try { return @($reader.ReadToEnd() -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) }
+        finally { $reader.Dispose() }
+    }
+    finally { $stream.Dispose() }
+}
+
+function Get-DispatcherLastHealthRecord {
+    param([string]$HealthPath)
+    if (-not (Test-Path -LiteralPath $HealthPath -PathType Leaf)) { return $null }
+    try {
+        $lines = @(Read-DispatcherSharedLines -Path $HealthPath)
+        if ($lines.Count -eq 0) { return $null }
+        return ($lines[$lines.Count - 1] | ConvertFrom-Json -ErrorAction Stop)
+    }
+    catch { return $null }
+}
+
+function Write-DispatcherHookOutputHealth {
+    # FR-008: one line per transition - class, error text, first-seen, count, recovered-at. Hashes and machinery
+    # error text only; never a prompt, a reply or hook output text.
+    param([string]$HealthPath, [ValidateSet('degraded', 'recovered')][string]$State, [string]$Class, [AllowNull()][string]$ErrorText, [AllowNull()][string]$FirstSeen, [int]$Count)
+    $now = [DateTimeOffset]::UtcNow.ToString('o')
+    $record = [ordered]@{
+        schema_version = '1.0'
+        state          = $State
+        class          = $Class
+        error          = $ErrorText
+        first_seen     = if ([string]::IsNullOrWhiteSpace($FirstSeen)) { $now } else { $FirstSeen }
+        count          = $Count
+        recovered_at   = if ($State -eq 'recovered') { $now } else { $null }
+        host           = $HostKind
+        observed_at    = $now
+    }
+    $null = Add-DispatcherJournalText -Path $HealthPath -Text (($record | ConvertTo-Json -Compress) + "`n")
+}
+
 function Write-DispatcherHookOutputAuthorityRecord {
     # SPECREW-AUTHORITY-CONTROL: workshop-hook-output-identity
     # The workshop authority reader rejects UserPromptSubmit text whose hash was emitted by this
     # dispatcher. Record both the human-visible payload/reason and the host envelope so replay remains
     # non-authoritative whether a host submits the inner text or its transport representation.
+    #
+    # Feature 202 T003 (FR-001..FR-005, FR-008): no permanent latch. Append with retry; on a persistent failure
+    # record the hash in this process's outage-buffer file and a 'degraded' health transition; the next good
+    # append flushes every buffer file, clears a legacy `.unhealthy` marker and records 'recovered'. Returns
+    # $true when the hash is recorded (journal or buffer) - only then is the output safe to show - and $false when
+    # neither accepted it, in which case the caller withholds that output for this turn (FR-005: only that turn
+    # fails closed).
     param(
         [AllowNull()][string]$ProjectRoot,
         [AllowEmptyString()][string]$Text,
         [string]$EventName,
         [string]$OutputKind
     )
-    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($Text)) { return }
-    $runtimeDir = Join-Path $ProjectRoot '.specrew/runtime'
-    $journalPath = Join-Path $runtimeDir 'hook-output-authority.jsonl'
-    $unhealthyPath = $journalPath + '.unhealthy'
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($Text)) { return $true }
+    $paths = Get-DispatcherHookOutputPaths -ProjectRoot $ProjectRoot
+    $record = [ordered]@{
+        schema_version = '1.0'
+        output_hash = Get-DispatcherHookOutputHash -Text $Text
+        event = $EventName
+        host = $HostKind
+        output_kind = $OutputKind
+        observed_at = [DateTimeOffset]::UtcNow.ToString('o')
+    }
+    $line = ($record | ConvertTo-Json -Depth 4 -Compress) + "`n"
+    try { [IO.Directory]::CreateDirectory($paths.RuntimeDir) | Out-Null } catch { $null = $_ }
+
+    $appendError = Add-DispatcherJournalText -Path $paths.Journal -Text $line
+    if ($null -eq $appendError) {
+        Complete-DispatcherHookOutputRecovery -Paths $paths
+        return $true
+    }
+
+    # Degraded: the hash goes to this process's own buffer file, which the reader checks before the next prompt
+    # decision. One file per process, so buffer writers never contend with each other.
     try {
-        [IO.Directory]::CreateDirectory($runtimeDir) | Out-Null
-        $record = [ordered]@{
-            schema_version = '1.0'
-            output_hash = Get-DispatcherHookOutputHash -Text $Text
-            event = $EventName
-            host = $HostKind
-            output_kind = $OutputKind
-            observed_at = [DateTimeOffset]::UtcNow.ToString('o')
+        if (-not $script:HookOutputBufferFile) {
+            $script:HookOutputBufferFile = Join-Path $paths.BufferDir ('{0}-{1}.jsonl' -f $PID, [guid]::NewGuid().ToString('N'))
         }
-        $line = ($record | ConvertTo-Json -Depth 4 -Compress) + [Environment]::NewLine
-        $bytes = [Text.UTF8Encoding]::new($false).GetBytes($line)
-        $stream = [IO.File]::Open($journalPath, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::Read)
-        try { $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) }
-        finally { $stream.Dispose() }
+        [IO.Directory]::CreateDirectory($paths.BufferDir) | Out-Null
+        [IO.File]::AppendAllText($script:HookOutputBufferFile, $line, [Text.UTF8Encoding]::new($false))
     }
     catch {
-        # The reader treats this marker as fail-closed during an active workshop. A failed journal write
-        # therefore becomes visible and cannot silently turn replayed hook prose into human authority.
-        try { [IO.File]::WriteAllText($unhealthyPath, $_.Exception.Message, [Text.UTF8Encoding]::new($false)) } catch { $null = $_ }
-        Write-DispatcherWarn -Code 'HOOK_OUTPUT_AUTHORITY_JOURNAL_FAILED' -Message $_.Exception.Message
+        Write-DispatcherWarn -Code 'HOOK_OUTPUT_UNRECORDED' -Message ("hook output could not be journaled ({0}) or buffered ({1}); it is withheld this turn" -f $appendError, $_.Exception.Message)
+        return $false
+    }
+    $last = Get-DispatcherLastHealthRecord -HealthPath $paths.Health
+    if ($null -eq $last -or [string]$last.state -ne 'degraded') {
+        Write-DispatcherHookOutputHealth -HealthPath $paths.Health -State 'degraded' -Class 'journal-append-failed' -ErrorText $appendError -Count 1
+    }
+    Write-DispatcherWarn -Code 'HOOK_OUTPUT_JOURNAL_DEGRADED' -Message ("journal append failed after retry ({0}); hash buffered, recovery on the next good append" -f $appendError)
+    return $true
+}
+
+function Complete-DispatcherHookOutputRecovery {
+    # After a good append: flush every outage-buffer file into the journal (one write), remove them, clear a legacy
+    # marker, and close the degraded episode with 'recovered'. Idempotent: a re-flushed hash is a duplicate line
+    # the reader treats exactly like the first.
+    param($Paths)
+    $bufferFiles = @(if (Test-Path -LiteralPath $Paths.BufferDir -PathType Container) { Get-ChildItem -LiteralPath $Paths.BufferDir -File -Filter '*.jsonl' })
+    $flushed = 0
+    if ($bufferFiles.Count -gt 0) {
+        $lines = New-Object System.Collections.Generic.List[string]
+        foreach ($file in $bufferFiles) {
+            try { foreach ($l in @(Read-DispatcherSharedLines -Path $file.FullName)) { $lines.Add($l) } } catch { $null = $_ }
+        }
+        if ($lines.Count -gt 0) {
+            $flushError = Add-DispatcherJournalText -Path $Paths.Journal -Text (($lines -join "`n") + "`n")
+            if ($null -ne $flushError) { return }
+        }
+        foreach ($file in $bufferFiles) { try { Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop } catch { $null = $_ } }
+        if ($script:HookOutputBufferFile -and -not (Test-Path -LiteralPath $script:HookOutputBufferFile)) { $script:HookOutputBufferFile = $null }
+        $flushed = $lines.Count
+    }
+    $hadMarker = Test-Path -LiteralPath $Paths.LegacyMarker -PathType Leaf
+    if ($hadMarker) { try { Remove-Item -LiteralPath $Paths.LegacyMarker -Force -ErrorAction Stop } catch { $hadMarker = $false } }
+    $last = Get-DispatcherLastHealthRecord -HealthPath $Paths.Health
+    if (($null -ne $last -and [string]$last.state -eq 'degraded') -or $hadMarker -or $flushed -gt 0) {
+        $class = if ($hadMarker -and ($null -eq $last -or [string]$last.state -ne 'degraded')) { 'legacy-marker' } elseif ($null -ne $last) { [string]$last.class } else { 'journal-append-failed' }
+        $firstSeen = if ($null -ne $last -and [string]$last.state -eq 'degraded') { [string]$last.first_seen } else { $null }
+        Write-DispatcherHookOutputHealth -HealthPath $Paths.Health -State 'recovered' -Class $class -ErrorText $null -FirstSeen $firstSeen -Count $flushed
     }
 }
 
@@ -465,19 +605,21 @@ function Get-DispatcherTurnFieldPaths {
 }
 
 function Test-DispatcherHookOutputJournalText {
-    # 'match' when the text equals output this dispatcher journaled (a host replaying a Stop reason), 'none' when
-    # it does not, 'unavailable' when the journal cannot vouch either way (marked unhealthy or unreadable).
+    # 'match' when the text equals output this dispatcher recorded - in the journal or in an outage-buffer file
+    # (T003) - i.e. a host replaying a Stop reason; 'none' when it does not; 'unavailable' when a store cannot be
+    # read. A legacy `.unhealthy` marker no longer makes the journal unable to vouch (FR-003): it is degraded only.
     param([AllowNull()][string]$ProjectRoot, [AllowEmptyString()][string]$Text)
     if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return 'none' }
-    $journalPath = Join-Path $ProjectRoot '.specrew/runtime/hook-output-authority.jsonl'
-    if (Test-Path -LiteralPath ($journalPath + '.unhealthy') -PathType Leaf) { return 'unavailable' }
-    if (-not (Test-Path -LiteralPath $journalPath -PathType Leaf)) { return 'none' }
+    $paths = Get-DispatcherHookOutputPaths -ProjectRoot $ProjectRoot
     $hash = Get-DispatcherHookOutputHash -Text $Text
+    $sources = @(if (Test-Path -LiteralPath $paths.BufferDir -PathType Container) { Get-ChildItem -LiteralPath $paths.BufferDir -File -Filter '*.jsonl' | ForEach-Object FullName })
+    if (Test-Path -LiteralPath $paths.Journal -PathType Leaf) { $sources += $paths.Journal }
     try {
-        foreach ($line in [IO.File]::ReadLines($journalPath, [Text.Encoding]::UTF8)) {
-            if ([string]::IsNullOrWhiteSpace($line)) { continue }
-            $record = $line | ConvertFrom-Json -ErrorAction Stop
-            if ([string]$record.output_hash -ceq $hash) { return 'match' }
+        foreach ($source in $sources) {
+            foreach ($line in @(Read-DispatcherSharedLines -Path $source)) {
+                $record = $line | ConvertFrom-Json -ErrorAction Stop
+                if ([string]$record.output_hash -ceq $hash) { return 'match' }
+            }
         }
     }
     catch { return 'unavailable' }
@@ -972,9 +1114,17 @@ function Write-InjectionOutput {
             }
         }
     } }
-    Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
-    if (([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
-        Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
+    $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
+    if ($recorded -and ([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
+        $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
+    }
+    if (-not $recorded) {
+        # FR-005: output whose hash could be neither journaled nor buffered could later be replayed as a "reply"
+        # with nothing to match it against. Withhold it for this turn only; a decision-only host still gets no-op JSON.
+        if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
+            Write-Output (@{} | ConvertTo-Json -Depth 3 -Compress)
+        }
+        return
     }
     Write-Output $renderedOutput
 }
@@ -1010,8 +1160,14 @@ function Write-StopBlockOutput {
         'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress }
     }
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
-        Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
-        Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
+        $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
+        if ($recorded) { $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope' }
+        if (-not $recorded) {
+            # FR-005: an unrecordable reason is withheld this turn (the stop is allowed); valid no-op JSON keeps
+            # every JSON-only Stop host's contract.
+            Write-Output (@{} | ConvertTo-Json -Depth 3 -Compress)
+            return
+        }
     }
     Write-Output $renderedOutput
 }
