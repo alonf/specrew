@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 80% (4/5 resolved; DRIFT-004 open)
+**Total drift events**: 7
+**Resolution rate**: 71% (5/7 resolved; DRIFT-004 and DRIFT-006 open)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -66,6 +66,20 @@
   - Hook stdin arrives as UTF-8 while the hook process's console input encoding is `ibm437` (T002 and T014 decode bytes explicitly).
   - **Codex** needed persisted hook trust. The maintainer chose option a at the tasks verdict. The three trusted hooks were confirmed to be the scratch capture hooks and nothing else. The trust entry was recorded in research.md and then removed, and the scratch folder was deleted. DA-3 and DA-4 hold for Codex too. **No validated host fails DA-3 or DA-4, so the plan is not amended.**
 - **Class closure**: the T001 fixtures under `tests/fixtures/hook-payloads/` pin these facts for T002's contract test.
+
+### DRIFT-006 — the readiness verdict reported READY for implementation before any before-implement verdict (open; T011 scope)
+
+- **Observed**: 2026-10-13, before-implement preparation. `readiness-verdict.ps1` printed "Overall verdict: READY for implementation - 'before-implement' is authorized (this iteration's cycle is authorized through 'feature-closeout')". The ledger's `last_authorized_boundary` is `tasks`, and `verdict_history` holds no `approved for before-implement` for 202. The check reads feature 199's completed cycle as 202's.
+- **Requirement**: FR-026 (all per-feature runtime state keyed to the new feature on a new-feature reset; B4F-109 widened at clarify). A false READY first line is the B4F-071 hazard: a crew can announce implementation on it.
+- **Resolution**: not acted on. Implementation waits for the human verdict regardless. T011's scope already covers it ("all per-feature runtime state keyed to the new feature"). Its acceptance gains one check: the readiness verdict for a new feature never reports a prior feature's cycle as authorization.
+- **Class closure**: T011's `new-feature-reset` test asserts that the readiness verdict for 202, before its before-implement verdict, is not READY.
+
+### DRIFT-007 — the validator counts the T001 evidence fixtures as unauthorized product source (resolved by human decision)
+
+- **Observed**: 2026-10-13. `validate-governance.ps1` FAIL `source-without-implement-authorization` named the seven Codex fixtures under `tests/fixtures/hook-payloads/codex/`, committed after the tasks authorization was recorded.
+- **Requirement**: the maintainer's tasks verdict authorized committing T001's findings as evidence, with no product code. Fixtures are recorded host payloads, not code.
+- **Resolution**: human-decision (tasks verdict). No revert. The before-implement verdict, when given, covers them under the validator's own rule.
+- **Class closure**: NONE. The validator's source classification treats all of `tests/**` as source; whether recorded-evidence fixtures should be exempt is not 202 scope.
 <!--
   Every new ### DRIFT-... event includes:
 
