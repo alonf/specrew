@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 10
-**Resolution rate**: 90% (9/10 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 11
+**Resolution rate**: 91% (10/11 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -33,7 +33,7 @@
 - **Observed**: 2026-10-13, design-analysis co-design (DA-5). As approved at specify, FR-018 said a stale pointer is reconciled "from the branch and the in-flight work". The maintainer corrected this: this worktree ran feature 199 on branch `201-first-run-experience`, so the branch name is evidence of nothing.
 - **Requirement**: FR-018, and US4 scenario 2 (spec.md).
 - **Resolution**: spec-updated, by human decision at design-analysis. The precedence is now (1) the in-flight controller or pending crossing, (2) the pointer if written for the current branch, (3) the branch name as a hint only, always disclosing which source decided. US4 scenario 2 was updated to match. The data-storage lens binding `pointer-branch-guard: stale-on-branch-mismatch-reconcile-disclose` still holds.
-- **Class closure**: NONE. This is a requirement correction, not a code defect; the resolver test for SC-006 pins the precedence order, including the 199-on-201 case.
+- **Class closure**: NONE — This is a requirement correction, not a code defect; the resolver test for SC-006 pins the precedence order, including the 199-on-201 case.
 
 ### DRIFT-002 — the design-analysis gate disclosed its required format one layer per refusal (observation)
 
@@ -47,14 +47,14 @@
 - **Observed**: 2026-10-13, at the plan verdict. The confirmed workshop agenda skipped devops-operations with the reason "No pipeline or deployment change in scope". Plan W5/T005 changes `.github/workflows/**` so that fault-injection case (e), two real processes appending at once, runs on Windows, macOS and Linux (FR-025).
 - **Requirement**: FR-025 (case (e) on three operating systems), against the devops-operations skip reason in lens-applicability.json.
 - **Resolution**: human-decision (maintainer, plan verdict 2026-10-13). The workflow change stays. It is kept minimal: only what runs case (e) on the existing OS matrix, with no new jobs, publication or deployment change. T005's acceptance states that the workflow diff is reviewed like code. The skip reason in the confirmed agenda is not rewritten; this entry records the exception.
-- **Class closure**: NONE. This is a scope exception decided by the maintainer, not a defect. T005's acceptance pins the review requirement.
+- **Class closure**: NONE — This is a scope exception decided by the maintainer, not a defect. T005's acceptance pins the review requirement.
 
 ### DRIFT-004 — the tasks verdict was not captured because a context compaction landed between the packet and the reply (resolved)
 
 - **Observed**: 2026-10-13, tasks boundary. The maintainer replied `approved for tasks - Run T001 first...` after Claude Code had compacted the context. `last_authorized_boundary` stayed `plan`. The read-only capture check returned the older `clarify -> plan` pair; the classifier reads the reply as `approve` for `tasks`.
 - **Requirement**: FR-026 neighbourhood (per-feature capture state), and the governing principle "verdicts stay explicit typed replies".
 - **Resolution**: resolved by re-presenting the same `plan -> tasks` crossing after the compaction. The Stop hook required a boundary packet with the crossing's marker. The maintainer typed the verdict again after that packet (`approved for tasks - Codex: a...`), and the hook captured it (`verdict_history`, tasks entry, `auth_commit_hash` 9973f2c3, `hook-captured-from-transcript`). The out-of-band writer was not used, and no authorization was written by the agent. The earlier reply's instructions (T001 early, measurement only) have no ledger record of their own; they are ratified in the maintainer's before-implement verdict text (see DRIFT-005). Recorded as B4F-112 (beta5 candidate).
-- **Class closure**: NONE in 202. The capture-pairing fix stays beta5 (B4F-112, maintainer ruling at before-implement). The recovery path that resolved this case, re-presenting a pending crossing whose verdict was not captured, is protected in T006's acceptance (DRIFT-008).
+- **Class closure**: NONE — not in 202. The capture-pairing fix stays beta5 (B4F-112, maintainer ruling at before-implement). The recovery path that resolved this case, re-presenting a pending crossing whose verdict was not captured, is protected in T006's acceptance (DRIFT-008).
 
 ### DRIFT-005 — T001 ran before the before-implement verdict, and measured new host facts (resolved by human decision)
 
@@ -82,7 +82,7 @@
 - **Coverage gap (maintainer review at before-implement)**: the check flagged only those seven files. The 14 Claude and Copilot fixtures and the `.gitattributes` change were committed in `78366194` and `9973f2c3`. The tasks authorization was recorded at `9973f2c3`, so those files fall in the `plan -> tasks` window, which `source-without-implement-authorization` does not examine. Source written before the tasks authorization passes unflagged. This is a validator coverage gap, recorded as B4F-114 (beta5 candidate); it is not 202 scope.
 - **Requirement**: the maintainer's tasks-stage instruction authorized committing T001's findings as evidence, with no product code. Fixtures are recorded host payloads, not code.
 - **Resolution**: human-decision. No revert. The maintainer's before-implement verdict licenses all 24 fixture files and the `.gitattributes` rule (DRIFT-005 ratification).
-- **Class closure**: NONE in 202. Two questions are left to B4F-114: whether the check should cover the whole span since the last implement authorization, and whether recorded-evidence fixtures should be exempt.
+- **Class closure**: NONE — not in 202. Two questions are left to B4F-114: whether the check should cover the whole span since the last implement authorization, and whether recorded-evidence fixtures should be exempt.
 
 ### DRIFT-008 — T006 (presented-crossing memory) must not remove the B4F-112 recovery path (resolved by human decision)
 
@@ -115,6 +115,22 @@
   - T002 also owns both `deploy-refocus-hooks.ps1` twins (launcher stdin decode, and binding bake of `InputFieldMap`, `OriginRules`, `InputTransform`) and the bootstrap rewiring files (`SessionBootstrapManager.ps1`, both `specrew-bootstrap-provider.ps1` twins, and the seven bootstrap tests that used the removed normalizer). The rewiring was already in T002's work text; only the owned-file list missed it.
   - research.md is corrected in place, with the correction marked.
 - **Class closure**: `turn-record-contract.tests.ps1` runs every case through the deployed command under a hidden console, the way hosts spawn hooks, so a `[Console]::In` read anywhere on the path turns the Hebrew cases red. `twin-copy-parity.tests.ps1` fails on any twin drift.
+
+### DRIFT-011 — the pre-review verification plan still validated feature 199, and the first 202 round could not start (resolved)
+
+- **Observed**: 2026-10-13, at the T002 and T003 co-review checkpoint (round approved by the maintainer; no round spent). Three refusals came in sequence, none of them from the reviewer:
+  - **Runtime drift**: the self-host `.specify` copies had been refreshed by hand for T002 and T003. The maintainer approved `specrew update --specrew` from the repo; it ran and is committed (`18115d0c`).
+  - **Round approval misread**: the capture read only the latest turn and attributed the phrase to a picker (B4F-117). The maintainer re-sent the phrase.
+  - **The frozen-tree verification failed**, on two counts:
+    - `f199-class-guards`: `every-suite-is-named-by-a-lane` was red, because T002's and T003's three new suites ran in no lane.
+    - `iteration-003-governance`: it validated feature 199's closed stub iteration 003, which fails on records the stub never had. It also failed on a review check that now reads 202's freshly created campaign as the active one, which is B4F-109's per-feature-state class (T011).
+- **Requirement**: the plan's own label for the governance command: "the ACTIVE iteration" (re-pointed twice under 199, DRIFT-199-I003-007).
+- **Resolution**:
+  - The governance command is re-pointed to `specs/202-beta4-1-ux-stabilization/iterations/001`.
+  - A `f202-slice-suites` lane names the three new suites.
+  - Four of this log's `NONE` class-closure lines lacked the `NONE — <why>` form the validator requires, and are fixed.
+  - Iteration 001 validates PASS. No check was removed or loosened.
+- **Class closure**: NONE — the durable fix (a governance command that names the active iteration, not a number) is the open beta4 item the plan's label records; it stays beta5. `every-suite-is-named-by-a-lane` already catches the unregistered-suite half.
 <!--
   Every new ### DRIFT-... event includes:
 
