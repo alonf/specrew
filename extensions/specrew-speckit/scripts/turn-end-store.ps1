@@ -963,14 +963,26 @@ function Write-SpecrewPresentedCrossing {
 }
 
 function Test-SpecrewReplyCarriesApprovalPhrase {
-    # Content, not layout: the phrase anywhere in the typed reply, case- and whitespace-insensitive. A reply
-    # whose phrase sits after a pasted block is exactly the DRIFT-008 shape this has to see.
+    # Was this typed reply an ATTEMPT to approve the presented crossing? Case- and whitespace-insensitive, on any line:
+    # a reply whose phrase sits on its own line after a pasted block is exactly the DRIFT-008 shape this has to see.
+    #
+    # Co-review round 3 (202): an attempt, not a mention. The phrase anywhere in the reply also matched "What does
+    # 'approved for before-implement' mean?" and "I have not approved for before-implement yet", and the crossing,
+    # rightly still pending, was then read as a missed capture: a repaint, and a false "your approval did not
+    # register". So the phrase must LEAD its line (after an optional "yes," / "I"), as the verdict recognizer
+    # anchors it, and the clause it opens must not be a question; instructions after a delimiter are still fine.
     [OutputType([bool])]
     param([AllowNull()][string] $Reply, [AllowNull()][string] $ApprovalPhrase)
     if ([string]::IsNullOrWhiteSpace($Reply) -or [string]::IsNullOrWhiteSpace($ApprovalPhrase)) { return $false }
     $words = @((($ApprovalPhrase -replace '\s+', ' ').Trim()) -split ' ' | ForEach-Object { [regex]::Escape($_) })
-    $pattern = '(?i)(?<![\w-])' + ($words -join '\s+') + '(?![\w-])'
-    return [regex]::IsMatch($Reply, $pattern)
+    $pattern = '(?i)^\s*(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?' + ($words -join '\s+') + '(?![\w-])'
+    foreach ($line in ($Reply -split "`r?`n")) {
+        $match = [regex]::Match($line, $pattern)
+        if (-not $match.Success) { continue }
+        $clause = ([regex]::Split($line.Substring($match.Length), '[,.;:]|\s[-–—]\s', 2))[0]
+        if (-not $clause.Contains('?')) { return $true }
+    }
+    return $false
 }
 
 function Register-SpecrewPresentedCrossingReply {

@@ -255,6 +255,12 @@ try {
     Assert-True (-not $r5b.Blocked) 'the re-presentation ends the turn'
     $r5c = Invoke-SessionTurn -Fixture $f -Session $s -UserText 'One more question first: is the plan committed?' -Kind 'conversational' -Reply "Yes, it is committed.`n`n$mention"
     Assert-True (-not $r5c.Blocked) 'after the re-presentation, a presented and unchanged crossing with no capture miss is suppressed again'
+    # Co-review round 3 (202): a question that MENTIONS the phrase is not an approval attempt, so its pending crossing is
+    # not a capture miss - the question gets its answer without a repaint and without "your approval did not register".
+    $r5q = Invoke-SessionTurn -Fixture $f -Session $s -UserText "What does 'approved for before-implement' mean?" -Kind 'conversational' -Reply "It authorizes implementation.`n`n$mention"
+    Assert-True (-not $r5q.Blocked) 'a question quoting the approval phrase is answered without a repaint'
+    $r5n = Invoke-SessionTurn -Fixture $f -Session $s -UserText 'I have not approved for before-implement yet; I am still reading.' -Kind 'conversational' -Reply "Take your time.`n`n$mention"
+    Assert-True (-not $r5n.Blocked) 'a negated mention is not a capture miss either'
     # The next typed verdict, captured against the re-presented marker by the real prompt-time capture.
     $captureTranscript = Join-Path $f.Root '.specrew/runtime/transcript-capture.jsonl'
     $captureLines = @(
@@ -295,6 +301,12 @@ try {
     Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply 'APPROVED  for before-implement - start with T001' -ApprovalPhrase 'approved for before-implement') 'is case- and spacing-insensitive and allows instructions after the phrase'
     Assert-True (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply 'approved for implement' -ApprovalPhrase 'approved for before-implement')) 'does not read a different boundary as this one'
     Assert-True (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply 'approved for before-implementation' -ApprovalPhrase 'approved for before-implement')) 'does not match inside a longer word'
+    foreach ($mention in "What does 'approved for before-implement' mean?", 'Should I type approved for before-implement now?', 'I have not approved for before-implement yet.', "Don't record approved for before-implement.", 'approved for before-implement?', 'approved for before-implement? I am still deciding.') {
+        Assert-True (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply $mention -ApprovalPhrase 'approved for before-implement')) ("a mention, question or refusal is not an approval attempt: '{0}'" -f $mention)
+    }
+    foreach ($attempt in 'Yes, approved for before-implement', "  approved for before-implement.`nAlso run the lint.", 'approved for before-implement - is the plan committed?') {
+        Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply $attempt -ApprovalPhrase 'approved for before-implement') ("an approval attempt still counts: '{0}'" -f ($attempt -replace "`n", ' / '))
+    }
 }
 finally {
     foreach ($fx in $fixtures) { try { Remove-Item -LiteralPath $fx.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
