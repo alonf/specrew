@@ -4985,6 +4985,26 @@ investigated: outside 202's Tier 1.
 **Beta5 candidate:** fix the fixture or retire the suite, and make an unrun suite visible.
 **Disposition:** recorded under the beta5 rule for anything beyond Tier 1; no repair in 202.
 
+## B4F-120 - A GREENFIELD BOOTSTRAP COMMIT INSIDE ANOTHER REPOSITORY COMMITS THAT REPOSITORY'S WORK (beta5 candidate)
+
+**Observed:** 2026-10-14, feature 202 implement, during a parallel regression sweep of the 202 worktree with T011's
+changes uncommitted. Commit `f46c9fb1`, "chore(specrew): bootstrap scaffold", by "Specrew Bootstrap
+<specrew-bootstrap@example.invalid>", landed on branch `202-beta4-1-ux-stabilization`. It carried exactly the
+worktree's uncommitted T011 changes, eight files and nothing else, and was pushed with the next push before anyone
+noticed. The content is correct; the author and message are not. History was not rewritten.
+**Mechanism (read from the code):** `Invoke-SpecrewBootstrapBaseline`'s greenfield path tests only
+`git -C <project> rev-parse --is-inside-work-tree`, which is also true for a folder nested in ANOTHER repository. It
+then skips `git init`, runs `git add --all` - which stages the whole enclosing work tree - and commits there with
+the fallback identity when none is configured. A real `specrew init` in a nested folder probably classifies it as
+brownfield first (the outer HEAD exists), so the exposure is mainly a direct caller. Many suites build fixtures
+under the repository's own `.scratch/`, so a fixture whose `.git` is missing or not yet created is inside this
+repository. The suite that triggered it was not identified; it ran between 17:31 and 17:34 in a 223-suite sweep.
+**Beta5 candidate:** the greenfield path commits only in a repository whose top level IS the project path
+(`rev-parse --show-toplevel`), and initializes one otherwise. Fixtures leave the repository's tree for the
+system temp folder.
+**Mitigation in 202:** sweeps run only on a fully committed tree (DRIFT-022).
+**Disposition:** recorded under the beta5 rule; no repair in 202.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

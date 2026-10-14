@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 21
-**Resolution rate**: 100% (21/21 resolved)
+**Total drift events**: 22
+**Resolution rate**: 100% (22/22 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -271,6 +271,14 @@
 - **Requirement**: FR-026; T011's owned files (`shared-governance.ps1`, `sync-boundary-state.ps1`, `new-feature-reset.tests.ps1`).
 - **Resolution**: as above. `sync-boundary-state.ps1` needed no change: its mint goes through `New-SpecrewPendingCrossingScope`, which now passes both features to the rule.
 - **Class closure**: `new-feature-reset` runs the real sync and the real capture, checks append-only by byte comparison, and asserts the readiness line.
+
+### DRIFT-022 — a sweep suite committed T011's work under a bootstrap identity, and it was pushed (resolved; history kept)
+
+- **Observed**: 2026-10-14, during the T011 regression sweep, run with T011's changes uncommitted. At 17:33:15, `f46c9fb1` "chore(specrew): bootstrap scaffold" (author "Specrew Bootstrap") committed the eight uncommitted T011 files, and nothing else. The crew's own T011 commit, `e0d8c33e`, then carried only the lane label, and both were pushed together.
+- **Where T011 is**: `f46c9fb1` holds T011's code, test and records; `e0d8c33e`'s message describes them. The content is exactly what the sweep ran against.
+- **Mechanism**: B4F-120. The greenfield bootstrap baseline commits in whatever repository encloses the project path, and a fixture under this repository's `.scratch/` is enclosed by it. The triggering suite was not identified.
+- **Resolution**: history is not rewritten. A force push would rewrite a pushed branch, and the content is right. From now on, the crew runs sweeps only on a fully committed tree, so a stray commit can hold nothing that is not already committed.
+- **Class closure**: NONE in 202, beyond the sweep rule. The product guard and the fixture locations are B4F-120 (beta5).
 <!--
   Every new ### DRIFT-... event includes:
 
