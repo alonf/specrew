@@ -168,6 +168,9 @@ if ($Kind -eq 'boundary') {
         }
     }
 }
+# Feature 202 T007 (FR-015): the meaning lines the reply must carry, declared once in turn-end-store.ps1 and
+# recorded here, so the Stop compares exactly what this declaration said - the lines the script supplied included.
+$meaningSource = if ($machineLines.Count -gt 0) { $message + "`n" + ($machineLines -join "`n") } else { $message }
 $record = [pscustomobject][ordered]@{
     schema_version = '1.0'
     kind = $Kind
@@ -178,6 +181,7 @@ $record = [pscustomobject][ordered]@{
     render_reason = 'agent-authored-message'
     content_hash = Get-SpecrewTurnEndContentHash -Text $message
     message = $message
+    meaning_lines = @(Get-SpecrewTurnMeaningLines -Message $meaningSource)
     packet_valid = [bool]$packetCheck.valid
     packet_missing = @($packetCheck.missing)
     boundary = $declaredBoundary
