@@ -348,7 +348,7 @@
     },
     {
       "path": "scripts/readiness-verdict.ps1",
-      "sha256": "ca6d319b97a6097ca183fd6babf28e6d369e79a593c3d88d0819a187c8a3b4ad"
+      "sha256": "0fdd6ee78493a8aab5ac79c33cd34c136fab045e9ece77c372daf35581fe271f"
     },
     {
       "path": "scripts/record-design-decision.ps1",
@@ -408,7 +408,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "d55455a862fe8c2c63a31fad224ec462df4604fe6e108b20228e627273c6ea93"
+      "sha256": "a7487fcb1aa31bad0ceb38050268864d929a5024f61cd785477d91dcc89da9ea"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
