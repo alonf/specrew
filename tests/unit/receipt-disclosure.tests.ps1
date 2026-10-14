@@ -168,6 +168,22 @@ try {
     $out = Invoke-Provider -Root $r10 -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
     Assert-True ((Get-ReceiptCount $r10) -eq 1) 'case 10: a typed reply is recorded despite the malformed lines (no permanent refusal)'
     Assert-True ($out -notmatch 'PROVIDER_FAILED') 'case 10: the provider does not fail'
+    # Co-review round 3 (202): a line that IS valid JSON but not a record - {} or a record missing output_hash, an
+    # array, a bare value - threw under StrictMode on the missing property, which the parse guard above never saw.
+    $r10b = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r10b)
+    $journal10b = Join-Path $r10b '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal10b, ('{}' + "`n" + '{"schema_version":"1.0"}' + "`n" + '[]' + "`n" + '"text"' + "`n" + '5' + "`n" + 'null' + "`n" + '{"schema_version":"1.0","output_hash":"' + (Get-HashOf 'shown by the hook') + '"}' + "`n"))
+    $threw = $false; $isHook = $false
+    try { $isHook = Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $r10b -Response 'shown by the hook' } catch { $threw = $true }
+    Assert-True (-not $threw -and $isHook) 'case 10b: valid-JSON non-records do not throw, and the readable record after them still matches'
+    Assert-True ($script:SpecrewWorkshopLastHookOutputSkipped -eq 6) ("case 10b: each non-record line is skipped and counted ({0} of 6)" -f $script:SpecrewWorkshopLastHookOutputSkipped)
+    $out = Invoke-Provider -Root $r10b -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
+    Assert-True ((Get-ReceiptCount $r10b) -eq 1) 'case 10b: a typed reply is recorded despite them (no permanent refusal)'
+    Assert-True ($out -notmatch 'PROVIDER_FAILED') 'case 10b: the provider does not fail'
+    [IO.File]::AppendAllText((Join-Path $r10b '.specrew/runtime/workshop-receipt-outcomes.jsonl'), "{}`n[]`n")
+    $threw = $false
+    try { $null = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $r10b -FeatureRef '001-mail-summary' -Phase 'product-domain' } catch { $threw = $true }
+    Assert-True (-not $threw) 'case 10b: the refusal reader skips non-record lines in the outcome journal too'
 
     Write-Host '  --- case 11: a reply that declines is never read as recovery approval ---'
     foreach ($decline in 'okay, do not clear it.', 'yes, but leave the error alone.', "ok don't", 'yes, wait', 'no', 'sure, later', 'yes?') {

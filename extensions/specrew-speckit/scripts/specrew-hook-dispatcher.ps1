@@ -178,7 +178,11 @@ function Get-DispatcherLastHealthRecord {
     try {
         $lines = @(Read-DispatcherSharedLines -Path $HealthPath)
         if ($lines.Count -eq 0) { return $null }
-        return ($lines[$lines.Count - 1] | ConvertFrom-Json -ErrorAction Stop)
+        $last = $lines[$lines.Count - 1] | ConvertFrom-Json -ErrorAction Stop
+        # Co-review round 3: valid JSON is not yet a record. Handing {} back made every caller's `.state` read throw
+        # under StrictMode, on every append after the line - a latch. A last line that is not a record reads as none.
+        if ($last -isnot [pscustomobject] -or -not $last.PSObject.Properties['state']) { return $null }
+        return $last
     }
     catch { return $null }
 }

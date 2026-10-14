@@ -114,7 +114,7 @@ function Get-HealthStates {
     param([string]$Root)
     $path = Get-RuntimePath $Root 'hook-output-health.jsonl'
     if (-not (Test-Path -LiteralPath $path)) { return @() }
-    return @([IO.File]::ReadAllLines($path) | Where-Object { $_.Trim() } | ForEach-Object { ($_ | ConvertFrom-Json).state })
+    return @([IO.File]::ReadAllLines($path) | Where-Object { $_.Trim() } | ForEach-Object { $h = $_ | ConvertFrom-Json; if ($h -is [pscustomobject] -and $h.PSObject.Properties['state']) { $h.state } })
 }
 function Get-AllStoreText {
     param([string]$Root)
@@ -242,9 +242,27 @@ try {
     Assert-True ($r.StdOut -match '"decision"\s*:\s*"block"') 'buffer failure: the next turn delivers normally (only that turn failed closed)'
     Assert-True (-not (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $typedReply)) 'buffer failure: typed replies still count afterwards'
 
+    # Co-review round 3 (202): a health line that is valid JSON but not a record ({}) was handed back as the last
+    # record, and reading its state under StrictMode threw on every append after it - on the good path and the
+    # degraded one. The line stays in the append-only journal, so that was a latch.
+    Write-Host '--- a damaged health line never stops the next append ---'
+    [IO.File]::AppendAllText((Get-RuntimePath $root 'hook-output-health.jsonl'), "{}`n")
+    $reasonH2 = 'RENDER THE PACKET NOW (h2) ' + [guid]::NewGuid().ToString('N')
+    $r = Invoke-StopWithReason -Root $root -Reason $reasonH2
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdOut -match [regex]::Escape($reasonH2)) 'damaged health line: the good-path append delivers the output'
+    Assert-True ((Get-JournalHashes $root) -contains (Get-TextHash $reasonH2)) 'damaged health line: the good-path output is journaled'
+    $reasonH3 = 'RENDER THE PACKET NOW (h3) ' + [guid]::NewGuid().ToString('N')
+    $r = Invoke-StopWithReason -Root $root -Reason $reasonH3 -HoldMs 4000
+    Wait-JournalUnlocked $root
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdOut -match [regex]::Escape($reasonH3)) 'damaged health line: the degraded path buffers and delivers the output'
+    Assert-True ((Get-LastHealthState $root) -eq 'degraded') 'damaged health line: the degraded transition is still recorded'
+    $reasonH4 = 'RENDER THE PACKET NOW (h4) ' + [guid]::NewGuid().ToString('N')
+    $r = Invoke-StopWithReason -Root $root -Reason $reasonH4
+    Assert-True ((Get-LastHealthState $root) -eq 'recovered' -and @(Get-BufferFiles $root).Count -eq 0) 'damaged health line: the next good append flushes and recovers'
+
     Write-Host '--- integrity stores hold hashes only (FR-008) ---'
     $storeText = Get-AllStoreText $root
-    foreach ($reason in $reasonA, $reasonB, $reasonC, $reasonL, $reasonG) {
+    foreach ($reason in $reasonA, $reasonB, $reasonC, $reasonL, $reasonG, $reasonH2, $reasonH3, $reasonH4) {
         Assert-True (-not $storeText.Contains($reason)) ("no reason text is stored: '{0}...'" -f $reason.Substring(0, 26))
     }
 }

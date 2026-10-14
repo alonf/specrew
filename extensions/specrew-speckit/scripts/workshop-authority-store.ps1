@@ -450,7 +450,10 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
             # nothing; it is skipped and counted, and the decision rests on the records that can be read.
             try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
             catch { $script:SpecrewWorkshopLastHookOutputSkipped++; continue }
-            if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
+            # Co-review round 3: valid JSON is not yet a record. {} or an array or a bare value has no fields, and reading
+            # one under StrictMode threw past the guard above - the same permanent refusal. The shape is checked first.
+            if ($record -isnot [pscustomobject] -or -not $record.PSObject.Properties['schema_version'] -or -not $record.PSObject.Properties['output_hash'] -or
+                [string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
                 $script:SpecrewWorkshopLastHookOutputSkipped++; continue
             }
             if ([string]$record.output_hash -ceq $hash) { $script:SpecrewWorkshopLastHookOutputCheck = 'match'; return $true }
@@ -512,6 +515,7 @@ function Get-SpecrewWorkshopLatestRefusal {
     foreach ($line in [IO.File]::ReadAllLines($journal, [Text.Encoding]::UTF8)) {
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+        if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['feature_ref'] -or -not $row.PSObject.Properties['phase'] -or -not $row.PSObject.Properties['status']) { continue }  # co-review round 3: shape first
         if ([string]$row.feature_ref -ceq $FeatureRef -and [string]$row.phase -ceq $Phase -and [string]$row.status -in @('refused', 'degraded')) { $latest = $row }
     }
     return $latest
