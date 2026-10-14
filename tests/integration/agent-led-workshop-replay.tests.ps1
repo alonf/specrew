@@ -20,6 +20,7 @@ $featureDir = Join-Path $root "specs/$feature"
 $transcript = Join-Path $root '.specrew/runtime/replay.jsonl'
 $draft = Join-Path $root '.specrew/runtime/authored-message.md'
 $priorModule = $env:SPECREW_MODULE_PATH
+$priorProfile = $env:SPECREW_USER_PROFILE_PATH
 $env:SPECREW_MODULE_PATH = $ModuleRoot
 $script:token = ''
 function Add-Turn([string]$Role, [string]$Text) {
@@ -33,6 +34,7 @@ function Invoke-Conformance([string]$Event) {
 function Prompt([string]$Text) {
     Add-Turn user $Text
     $start = Invoke-Conformance UserPromptSubmit
+    $script:lastStart = $start
     $match = [regex]::Match($start, '-Token (?<token>[a-f0-9]{32})')
     Check $match.Success 'prompt hands this turn its own token'
     $script:token = $match.Groups['token'].Value
@@ -59,15 +61,12 @@ try {
     }
     Copy-Item -LiteralPath $scripts -Destination (Join-Path $root '.specify/extensions/specrew-speckit/scripts') -Recurse
     Copy-Item -LiteralPath (Join-Path $ModuleRoot 'extensions/specrew-speckit/knowledge') -Destination (Join-Path $root '.specify/extensions/specrew-speckit/knowledge') -Recurse
-    # Give the copied provider a fixture profile without writing to the real user's home.
-    # Only the profile path is substituted; the parser and Stop behavior run unchanged.
+    # Give the provider a fixture profile without writing to the real user's home, through the override the profile
+    # resolver and the dials reader both honour (202 T007). The parser and Stop behavior run unchanged.
     $profile = Join-Path $root '.specrew/profile.yml'
     Set-Content $profile "expertise:`n  software_architecture: 10`n  ui_ux: 10`n  product_management: 7`n  ai_research_project_management: 10"
     $provider = Join-Path $root '.specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'
-    $copiedStore = Join-Path $root '.specify/extensions/specrew-speckit/scripts/turn-end-store.ps1'
-    $storeText = Get-Content $copiedStore -Raw -Encoding UTF8
-    $storeText = $storeText.Replace("(Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew/user-profile.yml')", ("'" + $profile.Replace("'", "''") + "'"))
-    Set-Content $copiedStore $storeText -Encoding UTF8
+    $env:SPECREW_USER_PROFILE_PATH = $profile
     Set-Content (Join-Path $root '.specrew/config.yml') 'version: 1'
     Set-Content (Join-Path $featureDir 'spec.md') "<!-- specrew:spec-not-yet-authored -->`n# Markdown link checker"
     Set-Content (Join-Path $root '.gitignore') ".specrew/`n.specify/"
@@ -77,6 +76,7 @@ try {
     & (Join-Path $scripts 'initialize-workshop-controller-state.ps1') -ProjectRoot $root -FeatureRef $feature | Out-Null
     Set-Content (Join-Path $root '.specrew/runtime/hook-bootstrap-render-replay.json') '{"source":"startup"}'
     $null = Prompt 'Feature 1: Markdown link checker. Apply my pre-answers, light depth, one question per turn.'
+    $script:firstStart = $script:lastStart
     $opening = @'
 Specrew 0.40.0-beta4 is active on Claude. This is new feature intake; artifacts live under specs/001-mdlink-checker.
 What I know about you: expert on architecture and UX; mid-level on product strategy. Each boundary needs your typed verdict.
@@ -88,8 +88,11 @@ This familiar tiny utility needs no deeper discovery. Does this record stand? Ty
     $withoutDials = $opening -replace '(?m)^What I know about you:.*\r?\n', ''
     $declared = Declare $withoutDials
     Check ($declared.text -eq '' -and -not $declared.orientation) 'opening declaration does not repeat orientation or replace the question'
+    # 202 T007 (FR-013, B4F-106): the dials line is filled in by the system - supplied on the first prompt, marked as
+    # system output - and an opening without it costs no Stop cycle.
+    Check ($script:firstStart -match '\[specrew-system\]' -and $script:firstStart -match 'software_architecture=10') 'the first prompt supplies the dials line from the profile, marked as system output'
     $dialsRepair = Stop-With $withoutDials
-    Check ($dialsRepair -match 'add only the missing dials line' -and $dialsRepair -match 'software_architecture=10' -and $dialsRepair -notmatch 'Specrew 0\.40\.0-beta4 is active') 'the orientation gate fills only the missing dials line from the profile'
+    Check ($dialsRepair -notmatch 'SPECREW-STOP-BLOCK') 'an opening without the dials line is not blocked: 0 human-visible cycles'
     # A mutation that wrongly releases Stop consumes the token. Do not fabricate a replacement;
     # keep collecting the independent presentation failures with the real host event sequence.
     if ($dialsRepair -match 'SPECREW-STOP-BLOCK') { $declared = Declare $opening }
@@ -194,6 +197,7 @@ Approve this specify scope or identify a correction to the linked requirements.
 }
 finally {
     $env:SPECREW_MODULE_PATH = $priorModule
+    $env:SPECREW_USER_PROFILE_PATH = $priorProfile
     # Delete only this uniquely allocated fixture beneath the resolved system temporary directory.
     $tempPrefix = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
     if (-not $root.StartsWith($tempPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Fixture cleanup escaped the temporary directory.' }

@@ -38,7 +38,12 @@ $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 # repo root IS the module tree, and conformance-detection.tests.ps1 has always said so - this suite now does too.
 $priorModulePath = $env:SPECREW_MODULE_PATH
 $env:SPECREW_MODULE_PATH = $repoRoot
-$store = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/turn-end-store.ps1'
+# The same class of leak, from the other side: a machine with a user profile gets the once-per-session dials line
+# (202 T007, marked [specrew-system]) on its first prompt, and one without does not. This suite measures the
+# token hand-off, so it pins "no profile" and stays the same on every machine.
+$priorProfilePath = $env:SPECREW_USER_PROFILE_PATH
+$env:SPECREW_USER_PROFILE_PATH = Join-Path ([IO.Path]::GetTempPath()) ('no-profile-' + [guid]::NewGuid().ToString('N') + '.yml')
+$store =Join-Path $repoRoot 'extensions/specrew-speckit/scripts/turn-end-store.ps1'
 $declarer = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/declare-turn-end.ps1'
 $provider = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'
 $dispatcher = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
@@ -286,6 +291,7 @@ try {
 finally {
     foreach ($r in $roots) { if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue } }
     if ($null -eq $priorModulePath) { Remove-Item Env:\SPECREW_MODULE_PATH -ErrorAction SilentlyContinue } else { $env:SPECREW_MODULE_PATH = $priorModulePath }
+    if ($null -eq $priorProfilePath) { Remove-Item Env:\SPECREW_USER_PROFILE_PATH -ErrorAction SilentlyContinue } else { $env:SPECREW_USER_PROFILE_PATH = $priorProfilePath }
 }
 
 if ($script:Failures -gt 0) {

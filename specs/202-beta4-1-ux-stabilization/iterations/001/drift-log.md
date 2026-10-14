@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 15
-**Resolution rate**: 93% (14/15 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 16
+**Resolution rate**: 94% (15/16 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -193,6 +193,16 @@
   5. Origin `unknown` is recorded as `record-check-unavailable` (degraded) with its own cause text.
 - **Tests**: `cross-host-workshop` (a typed reply after a malformed journal line, through the deployed hook on claude and codex), `hook-output-journal` case (b) (one published file per record) and case (i) (the episode stays degraded while a buffer is unreadable), and `receipt-disclosure` cases 15 and 16. All are RED on `39af693f` and green after the fix.
 - **Class closure**: the cases above join `f202-slice-suites`. The dispatcher and the store now apply the same malformed-line policy, and the new cross-host case runs it through the deployed hook.
+
+### DRIFT-016 — T006 and T007: one file outside the owned set, and the channel for the system-filled line (resolved)
+
+- **Observed**: 2026-10-14, T006 and T007 implementation.
+  1. **T006 reached the dispatcher.** The presented record names which SessionStart preceded it, for diagnosis. Only the dispatcher sees the host's SessionStart `source`, so it now passes `--session-start-source` to the conformance provider. That is one argument, in all three dispatcher copies. Every SessionStart clears the memory whatever its kind, so behavior does not depend on the argument.
+  2. **T007's system-filled dials line is supplied at turn start, not at Stop.** FR-013 says the system fills the line in and marks it as system output. T001 measured that no validated host shows hook output to the human directly (DA-3), and Claude does not show Stop-hook output at all. A line filled in at Stop would therefore never be seen. The conformance provider now supplies the finished line once, on the session's first prompt, marked `[specrew-system]`. The dispatcher records it in the hook-output journal, as it does all provider output. The agent includes it as written. Stop never demands it; a reply without it is journaled, not blocked. T008 uses the same channel for the whole orientation.
+  3. **The dials reader honors `SPECREW_USER_PROFILE_PATH`**, the override `user-profile.ps1` already uses. Both now read the same profile, and the test can point at a fixture profile.
+- **Requirement**: FR-011 (T006); FR-013 and DA-3 (T007).
+- **Resolution**: as above. T006's owned files plus the dispatcher argument; T007 within its owned files (`turn-end-store.ps1`, the conformance provider, `declare-turn-end.ps1`).
+- **Class closure**: `crossing-presentation` case 4 asserts the record names the gap it followed (`compact`). `presented-check` case 6 asserts the line is supplied once, marked, and that its absence is not blocked.
 <!--
   Every new ### DRIFT-... event includes:
 

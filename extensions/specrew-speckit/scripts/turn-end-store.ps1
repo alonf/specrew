@@ -585,7 +585,8 @@ function Test-SpecrewAuthoredPacket {
 }
 
 function Get-SpecrewOrientationDialsLine {
-    param([string]$ProfilePath = (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew/user-profile.yml'))
+    # The same override user-profile.ps1's resolver honours, so both read the one profile the human configured.
+    param([string]$ProfilePath = $(if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_USER_PROFILE_PATH)) { $env:SPECREW_USER_PROFILE_PATH } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew/user-profile.yml' }))
     if (-not (Test-Path -LiteralPath $ProfilePath -PathType Leaf)) { return '' }
     $dials = [Collections.Generic.List[string]]::new()
     $inExpertise = $false
@@ -993,4 +994,57 @@ function Get-SpecrewPresentedCrossingDecision {
         }
     }
     return [pscustomobject]@{ suppress = $true; reason = 'presented-unchanged' }
+}
+
+# THE MEANING-LINE SET (Feature 202 T007, FR-012, FR-015, B4F-100). "The draft reached the reply" is checked over the
+# lines that carry meaning, declared once here and used by both declare-turn-end.ps1 and the conformance Stop:
+#   - headings;
+#   - review-target links (each file:/// URL);
+#   - the question line (a line that asks the human something);
+#   - the approval line and the verdict options (the typed responses offered);
+#   - the marker.
+# What stood before required the WHOLE draft, whitespace-normalized, inside the reply. Tightening one sentence after
+# the draft was saved then blocked the Stop and repainted the whole message (B4F-100, twice in 202's own intake).
+# Wording between the meaning lines is the author's to change; the lines themselves are what the human must see.
+function Get-SpecrewTurnMeaningLines {
+    [OutputType([string[]])]
+    param([AllowNull()][string] $Message)
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $add = {
+        param([string]$Text)
+        $normalized = ($Text -replace '\s+', ' ').Trim()
+        if ($normalized.Length -gt 0 -and $seen.Add($normalized)) { $lines.Add($normalized) }
+    }
+    foreach ($raw in ($Message -split "`r?`n")) {
+        $line = $raw.Trim()
+        if ($line.Length -eq 0) { continue }
+        if ($line -match '^#{1,6}\s+\S') { & $add $line; continue }                                             # heading
+        if ($line -match '^<!--\s*SPECREW-VERDICT-BOUNDARY:.*-->$') { & $add $line; continue }                  # marker
+        if ($line -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add $line; continue }  # approval line, verdict options
+        # The question line: any line that asks something - a '?' ending a sentence, even when an instruction follows
+        # it on the same line ("Does this match? Type move on."). A '?' inside a URL query does not count.
+        if ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') { & $add $line }
+        foreach ($match in [regex]::Matches($line, 'file:///[^\s<>"''`\[\](){}|]+')) {                         # review-target links
+            & $add (([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*'))
+        }
+    }
+    return $lines.ToArray()
+}
+
+function Get-SpecrewTurnMeaningLinesMissing {
+    # The declared meaning lines the reply does not carry, in draft order. Empty when every one is present - the
+    # wording around them may differ freely. Whitespace is normalized on both sides, as the host accessors do.
+    [OutputType([string[]])]
+    param([AllowNull()][string] $Reply, [AllowNull()][string[]] $MeaningLines)
+
+    $replyText = ([string]$Reply -replace '\s+', ' ').Trim()
+    $missing = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in @($MeaningLines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if (-not $replyText.Contains($line, [StringComparison]::Ordinal)) { $missing.Add($line) }
+    }
+    return $missing.ToArray()
 }

@@ -120,7 +120,11 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-011; SC-004.
   - **Depends:** T002.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `tests/unit/crossing-presentation.tests.ps1`.
-- [ ] T007 [owner: Implementer] [sp: 2.0] [US2] **Substance-only Stop.**
+- [x] T007 [owner: Implementer] [sp: 2.0] [US2] **Substance-only Stop.** Done 2026-10-14. `presented-check.tests.ps1` runs the real provider and `declare-turn-end.ps1`:
+  - **Green:** a reworded conversational draft and a reworded boundary packet that keep every meaning line give 0 blocks. A dropped verdict option is named in the block. With no crossing pending, a dropped question line is named with no demand for an approval line or marker. The dials line is supplied once on the first prompt, marked as system output, and a reply without it is not blocked.
+  - **RED on `044a9a84`:** both reworded drafts block (B4F-100); the no-crossing stop asks for an approval line and marker (B4F-100 live); the missing dials line costs a cycle (B4F-106).
+  - **Design notes:** `declare-turn-end.ps1` records the meaning lines with the declaration, including any line it supplied. The dials line goes out at turn start because no validated host shows Stop output (DRIFT-016).
+  - **Existing suites moved to the new contract:** `agent-led-workshop-replay` pinned the old Stop-time dials demand, which is B4F-106 itself; it now asserts the first-prompt supply and no Stop block, and points at its fixture profile through `SPECREW_USER_PROFILE_PATH` instead of rewriting the store's text. `turn-end-session-identity` pins "no profile", so its one-line token assertion is the same on every machine. The sweep also caught a gap in the first question-line rule: a `?` followed by an instruction on the same line ("Does this match? Type move on.") is now a question line.
   - **Work:**
     - Replace `Test-SpecrewTurnMessageVisible`'s whole-draft containment with a check over one declared meaning-line set: headings, review-target links, question line, approval line, verdict options and marker. It is declared once in the shared path and used by conformance and `declare-turn-end.ps1`.
     - Deterministic lines the system can supply (the dials line, orientation facts) are filled by the system, marked as system output and journaled, never demanded from the agent.
