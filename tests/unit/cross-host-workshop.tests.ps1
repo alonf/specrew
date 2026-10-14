@@ -219,6 +219,17 @@ try {
                 Assert-Equal $outcomes.Count 0 "[$h] host-injected prompt - not a reply, so nothing is refused or said"
             }
         }
+
+        # FR-003 through the deployed hook (co-review round 2): a malformed line in the hook-output journal is skipped by
+        # the dispatcher's origin check exactly as by the store's reader. Before, the dispatcher read it as an unreadable
+        # store, gave every later typed prompt origin 'unknown', and the receipt writer refused them all.
+        if ($h -in 'claude', 'codex') {
+            $journal = Join-Path $fx.Project '.specrew\runtime\hook-output-authority.jsonl'
+            $valid = [ordered]@{ schema_version = '1.0'; output_hash = ('0' * 64); event = 'Stop'; host = $h; output_kind = 'stop-reason'; observed_at = '2026-10-14T00:00:00Z' }
+            [IO.File]::AppendAllText($journal, (($valid | ConvertTo-Json -Compress) + "`n" + '{"schema_version":"1.0","output_hash":' + "`n"), [Text.UTF8Encoding]::new($false))
+            Set-OpenQuestion -Fixture $fx -Phase 'lens' -Lens 'architecture-core' -AgendaStatus 'confirmed' -QuestionHash 'q-architecture-3'
+            Test-Checkpoint -Fixture $fx -Label 'a typed reply after a malformed journal line' -Reply 'Keep the pipeline; one retry per site.' -Phase 'lens' -Lens 'architecture-core' -Scope 'lens-question'
+        }
     }
     Write-Host 'Experimental hosts not walked (no T001 payloads, unvalidated): cursor, antigravity' -ForegroundColor Yellow
 }

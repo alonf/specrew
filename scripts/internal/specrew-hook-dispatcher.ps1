@@ -73,8 +73,6 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 
 $script:Banner = '[specrew-refocus]'
 $script:HostHookOutputCapChars = 10000
-# T003: this process's outage-buffer file, created on the first degraded write.
-$script:HookOutputBufferFile = $null
 
 function Write-DispatcherWarn {
     param([string]$Code, [string]$Message)
@@ -234,16 +232,24 @@ function Write-DispatcherHookOutputAuthorityRecord {
         return $true
     }
 
-    # Degraded: the hash goes to this process's own buffer file, which the reader checks before the next prompt
-    # decision. One file per process, so buffer writers never contend with each other.
+    # Degraded: the hash goes to the outage buffer, which the reader checks before the next prompt decision.
+    #
+    # Co-review round 2: each buffered record is PUBLISHED AS A CLOSED FILE - written in full under a name the
+    # reader and the flush ignore, then renamed into place. No buffer file is ever written after it becomes
+    # visible, so a flush can never claim and remove a file a writer still holds open. Appending to a per-process
+    # file could not promise that on Linux and macOS, where a rename does not detach a writer that already opened
+    # the file, and a hash written after the flush removed it was lost while the output was still shown.
+    $temp = $null
     try {
-        if (-not $script:HookOutputBufferFile) {
-            $script:HookOutputBufferFile = Join-Path $paths.BufferDir ('{0}-{1}.jsonl' -f $PID, [guid]::NewGuid().ToString('N'))
-        }
         [IO.Directory]::CreateDirectory($paths.BufferDir) | Out-Null
-        [IO.File]::AppendAllText($script:HookOutputBufferFile, $line, [Text.UTF8Encoding]::new($false))
+        $name = '{0}-{1}' -f $PID, [guid]::NewGuid().ToString('N')
+        $temp = Join-Path $paths.BufferDir ($name + '.writing')
+        [IO.File]::WriteAllText($temp, $line, [Text.UTF8Encoding]::new($false))
+        [IO.File]::Move($temp, (Join-Path $paths.BufferDir ($name + '.jsonl')))
+        $temp = $null
     }
     catch {
+        if ($temp) { try { [IO.File]::Delete($temp) } catch { $null = $_ } }
         Write-DispatcherWarn -Code 'HOOK_OUTPUT_UNRECORDED' -Message ("hook output could not be journaled ({0}) or buffered ({1}); it is withheld this turn" -f $appendError, $_.Exception.Message)
         return $false
     }
@@ -260,12 +266,16 @@ function Complete-DispatcherHookOutputRecovery {
     # marker, and close the degraded episode with 'recovered'. Idempotent: a re-flushed hash is a duplicate line
     # the reader treats exactly like the first.
     #
-    # Co-review round 1 (202): only data that was read AND journaled is removed. Each buffer file is first renamed out
-    # of its writer's way (a writer that appends afterwards creates a fresh file at its own path; a file still open
-    # for writing cannot be renamed on Windows and simply waits for the next flush). A file that cannot be read is
-    # kept, and a file that grew while it was being flushed is kept too - its new lines go in on the next flush, and
-    # the lines already journaled come back only as harmless duplicates. The renamed file keeps the .jsonl suffix, so
-    # the reader still counts it as recorded hook output until it is gone.
+    # Co-review round 1 (202): only data that was read AND journaled is removed. Each buffer file is first claimed by
+    # a rename, so two flushes never both remove it. Buffer files are published closed (see the writer), so nothing
+    # writes to a file once it is visible here. A file that cannot be read is kept, and a file whose length changed
+    # while it was flushed is kept too; the lines already journaled come back only as harmless duplicates. The
+    # claimed name keeps the .jsonl suffix, so the reader still counts it as recorded hook output until it is gone.
+    #
+    # Co-review round 2: the episode closes ('recovered') only when no buffer file is left. A file kept because it
+    # could not be read still holds hashes the reader cannot see, so prompts can still meet an unreadable store;
+    # declaring recovery then would hide the degraded disclosure and close the recovery question while replies
+    # were still being refused.
     param($Paths)
     $bufferFiles = @(if (Test-Path -LiteralPath $Paths.BufferDir -PathType Container) { Get-ChildItem -LiteralPath $Paths.BufferDir -File -Filter '*.jsonl' })
     $flushed = 0
@@ -296,9 +306,10 @@ function Complete-DispatcherHookOutputRecovery {
             }
             catch { $null = $_ }
         }
-        if ($script:HookOutputBufferFile -and -not (Test-Path -LiteralPath $script:HookOutputBufferFile)) { $script:HookOutputBufferFile = $null }
         $flushed = $lines.Count
     }
+    $bufferLeft = @(if (Test-Path -LiteralPath $Paths.BufferDir -PathType Container) { Get-ChildItem -LiteralPath $Paths.BufferDir -File -Filter '*.jsonl' }).Count -gt 0
+    if ($bufferLeft) { return }
     $hadMarker = Test-Path -LiteralPath $Paths.LegacyMarker -PathType Leaf
     if ($hadMarker) { try { Remove-Item -LiteralPath $Paths.LegacyMarker -Force -ErrorAction Stop } catch { $hadMarker = $false } }
     $last = Get-DispatcherLastHealthRecord -HealthPath $Paths.Health
@@ -658,16 +669,23 @@ function Test-DispatcherHookOutputJournalText {
     $paths = Get-DispatcherHookOutputPaths -ProjectRoot $ProjectRoot
     $hash = Get-DispatcherHookOutputHash -Text $Text
     $sources = @(if (Test-Path -LiteralPath $paths.BufferDir -PathType Container) { Get-ChildItem -LiteralPath $paths.BufferDir -File -Filter '*.jsonl' | ForEach-Object FullName })
+    # A journal set aside by an approved recovery (T004, FR-009) still counts, as it does for the store's reader.
+    $sources += @(Get-ChildItem -LiteralPath $paths.RuntimeDir -File -Filter 'hook-output-authority.set-aside-*.jsonl' -ErrorAction SilentlyContinue | ForEach-Object FullName)
     if (Test-Path -LiteralPath $paths.Journal -PathType Leaf) { $sources += $paths.Journal }
-    try {
-        foreach ($source in $sources) {
-            foreach ($line in @(Read-DispatcherSharedLines -Path $source)) {
-                $record = $line | ConvertFrom-Json -ErrorAction Stop
-                if ([string]$record.output_hash -ceq $hash) { return 'match' }
-            }
+    foreach ($source in $sources) {
+        # A store that cannot be READ cannot vouch: 'unavailable', for this turn only. A malformed LINE is not that
+        # (co-review round 2): it is skipped, exactly as the store's reader skips it, so one torn or hand-damaged
+        # line no longer turns every later typed reply into origin 'unknown' (FR-003).
+        $lines = $null
+        try { $lines = @(Read-DispatcherSharedLines -Path $source) }
+        catch [IO.FileNotFoundException], [IO.DirectoryNotFoundException] { continue }  # a buffer file flushed between listing and reading
+        catch { return 'unavailable' }
+        foreach ($line in $lines) {
+            $record = $null
+            try { $record = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ($null -ne $record -and $record.PSObject.Properties['output_hash'] -and [string]$record.output_hash -ceq $hash) { return 'match' }
         }
     }
-    catch { return 'unavailable' }
     return 'none'
 }
 
@@ -1532,6 +1550,11 @@ try {
             if ($Event -in @('UserPromptSubmit', 'PreInvocation')) {
                 if (-not [string]::IsNullOrWhiteSpace([string]$turnRecord.typed_text)) { $commandArgs += @('--last-user-message', [string]$turnRecord.typed_text) }
                 $commandArgs += @('--turn-origin', [string]$turnRecord.origin)
+            }
+            # Feature 202 T006: which SessionStart this is (startup, resume, clear, compact). Every one is a context
+            # gap for the presented-crossing memory; the kind is recorded beside it for diagnosis.
+            if ($providerId -eq 'conformance' -and $Event -eq 'SessionStart' -and -not [string]::IsNullOrWhiteSpace([string]$source)) {
+                $commandArgs += @('--session-start-source', [string]$source)
             }
             if ($providerId -notin @('handover', 'conformance', 'co-review-navigator')) {
                 $commandArgs += @('--turn-record', (ConvertTo-DispatcherTurnRecordArgument -TurnRecord $turnRecord))

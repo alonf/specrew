@@ -613,7 +613,11 @@ function Get-SpecrewReplyRecordingRecoveryRequest {
 function Get-SpecrewReplyRecordingRecoveryAsk {
     # Returns the in-turn text that asks the recovery question when degraded past the threshold, and records that
     # the question is open (so the next typed yes is bound to it). $null when no ask is due.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$NowUtc)
+    #
+    # Co-review round 2: the request records the session it was asked in. The question is delivered to that one
+    # session's turn, so only that session's typed yes can answer it - another session working in the same project
+    # never saw it, and its "yes" belongs to whatever IT was asked.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$NowUtc, [AllowNull()][string]$SessionId)
     $since = Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $ProjectRoot
     if ($null -eq $since) { $null = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot; return $null }
     $now = [DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)
@@ -622,7 +626,7 @@ function Get-SpecrewReplyRecordingRecoveryAsk {
     $requestPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/reply-recording-recovery-request.json'
     try {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $requestPath)) | Out-Null
-        $request = [ordered]@{ schema_version = '1.0'; asked_at = $NowUtc; degraded_since = $since.ToString('o'); question_hash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion }
+        $request = [ordered]@{ schema_version = '1.0'; asked_at = $NowUtc; asked_session = [string]$SessionId; degraded_since = $since.ToString('o'); question_hash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion }
         [IO.File]::WriteAllText($requestPath, ($request | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
     }
     catch { return $null }
@@ -646,12 +650,16 @@ function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
     # (FR-009 - no action without its receipt), then set the stuck record aside (moved, never deleted - its hashes
     # stay readable as recorded hook output), and record what happened. Returns the in-turn text, or $null when not
     # applicable.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$Response, [Parameter(Mandatory)][string]$NowUtc, [AllowNull()][string]$TurnOrigin)
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$Response, [Parameter(Mandatory)][string]$NowUtc, [AllowNull()][string]$TurnOrigin, [AllowNull()][string]$SessionId)
     $root = [IO.Path]::GetFullPath($ProjectRoot)
     $runtime = Join-Path $root '.specrew/runtime'
     $open = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $root
     if ($null -eq $open) { return $null }
     if (-not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user') { return $null }  # FR-006
+    # Co-review round 2: only the session that was asked can answer. A request from a caller with no session id
+    # (a direct call) binds nothing and keeps the text checks alone.
+    $askedSession = if ($open.Request.PSObject.Properties['asked_session']) { [string]$open.Request.asked_session } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace($askedSession) -and [string]$SessionId -cne $askedSession) { return $null }
     if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
     if (-not (Test-SpecrewReplyRecordingRecoveryApproval -Response $Response)) { return $null }
     if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
@@ -751,8 +759,17 @@ function Write-SpecrewWorkshopAuthorityReceipt {
     # FR-006 (co-review round 1): the origin the host's declared rules gave this prompt is enforced here, not only
     # passed along. A host-injected prompt (a task notification, a replayed stop reason, a dismissed question) or
     # one of unknown origin is never the human's answer, whatever its text looks like.
+    #
+    # Co-review round 2 (FR-010): 'unknown' is not proof the host added the reply. The dispatcher gives a typed prompt
+    # that origin when its record check could not read the hook-output records, so the actual cause is that check -
+    # degraded for this turn, said as such - and the human is not told their typed reply came from the host.
     if (-not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user') {
-        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'not-typed-by-human' -FeatureRef $featureRef -Phase $phase -Response $Response
+        if ($TurnOrigin -ceq 'unknown') {
+            $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'degraded' -Reason 'record-check-unavailable' -FeatureRef $featureRef -Phase $phase -Response $Response
+        }
+        else {
+            $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'not-typed-by-human' -FeatureRef $featureRef -Phase $phase -Response $Response
+        }
         return $null
     }
 

@@ -125,7 +125,13 @@ try {
     Assert-True ($r.ExitCode -eq 0) '(b) the dispatcher exits 0'
     Assert-True ($r.StdOut -match '"decision"\s*:\s*"block"') '(b) the stop block is still delivered (its hash is buffered, so it is safe to show)'
     $bufferText = (@(Get-BufferFiles $root) | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join "`n"
-    Assert-True ($bufferText -match (Get-TextHash $reasonB)) '(b) the reason hash is in a per-process outage-buffer file'
+    Assert-True ($bufferText -match (Get-TextHash $reasonB)) '(b) the reason hash is in an outage-buffer file'
+    # Co-review round 2: every buffered record is published as its own closed file, never appended to a visible one -
+    # on Linux and macOS a flush could otherwise remove a file a writer still held open, losing what it wrote next.
+    $bufferFilesB = @(Get-BufferFiles $root)
+    $lineCounts = @($bufferFilesB | ForEach-Object { @([IO.File]::ReadAllLines($_.FullName) | Where-Object { $_.Trim() }).Count })
+    Assert-True ($bufferFilesB.Count -ge 2 -and @($lineCounts | Where-Object { $_ -ne 1 }).Count -eq 0) ("(b) each buffered record is its own published file ({0} files, lines per file: {1})" -f $bufferFilesB.Count, ($lineCounts -join ','))
+    Assert-True (@($bufferFilesB | Where-Object { $_.Extension -ne '.jsonl' }).Count -eq 0) '(b) no half-written buffer file is left visible'
     Assert-True (@(Get-HealthStates $root) -contains 'degraded') '(b) a degraded transition is recorded in the health journal'
     Assert-True (-not (Test-Path -LiteralPath ((Get-RuntimePath $root 'hook-output-authority.jsonl') + '.unhealthy'))) '(b) still no .unhealthy marker'
     # The next prompt decision: the lock has gone, the buffer still holds the hash (nothing has flushed it yet).
@@ -168,6 +174,30 @@ try {
     $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (h2) ' + [guid]::NewGuid().ToString('N'))
     Assert-True ((Get-JournalHashes $root) -contains (Get-TextHash $reasonH)) '(h) once readable, the next good append flushes it into the journal'
     Assert-True (@(Get-BufferFiles $root).Count -eq 0) '(h) and only then is the buffer file removed'
+
+    Write-Host '--- (i) the episode stays degraded while a kept buffer file is unreadable (co-review round 2) ---'
+    # A degraded episode, then its buffered record held unreadable through the next good append. The old flush kept
+    # the file but still recorded 'recovered', which hid the degraded disclosure and closed the recovery question
+    # while the unreadable buffer kept prompts from being vouched for.
+    $reasonI = 'RENDER THE PACKET NOW (i) ' + [guid]::NewGuid().ToString('N')
+    $r = Invoke-StopWithReason -Root $root -Reason $reasonI -HoldMs 4000
+    Wait-JournalUnlocked $root
+    Assert-True ((Get-LastHealthState $root) -eq 'degraded') '(i) the held journal opened a degraded episode'
+    $heldI = @(Get-BufferFiles $root | Where-Object { [IO.File]::ReadAllText($_.FullName) -match (Get-TextHash $reasonI) }) | Select-Object -First 1
+    $readyI = Join-Path $root ('held-ready-' + [guid]::NewGuid().ToString('N'))
+    $holderI = '$f = [IO.File]::Open(''{0}'', ''Open'', ''ReadWrite'', ''Delete''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds 6000; $f.Dispose()' -f $heldI.FullName, $readyI
+    $holderProcI = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holderI) -WindowStyle Hidden -PassThru
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while (-not (Test-Path -LiteralPath $readyI) -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 20 }
+    $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (i1) ' + [guid]::NewGuid().ToString('N'))
+    Assert-True ($r.ExitCode -eq 0) '(i) the dispatcher exits 0'
+    Assert-True (@(Get-BufferFiles $root).Count -ge 1) '(i) the unreadable buffer file is kept'
+    Assert-True ((Get-LastHealthState $root) -eq 'degraded') '(i) the episode is NOT closed while that buffer is unreadable'
+    Assert-True ($null -ne (Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $root)) '(i) so the degraded disclosure and the recovery question still apply'
+    $holderProcI.WaitForExit(20000) | Out-Null
+    $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (i2) ' + [guid]::NewGuid().ToString('N'))
+    Assert-True ((Get-JournalHashes $root) -contains (Get-TextHash $reasonI)) '(i) once readable, the next good append flushes it'
+    Assert-True (@(Get-BufferFiles $root).Count -eq 0 -and (Get-LastHealthState $root) -eq 'recovered') '(i) and only then is the episode recorded as recovered'
 
     Write-Host '--- legacy marker: an .unhealthy file from an older version is degraded, not a permanent refusal ---'
     $marker = (Get-RuntimePath $root 'hook-output-authority.jsonl') + '.unhealthy'

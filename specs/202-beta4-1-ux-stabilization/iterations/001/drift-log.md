@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 14
-**Resolution rate**: 93% (13/14 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 15
+**Resolution rate**: 93% (14/15 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -175,6 +175,24 @@
   8. Linux and macOS take the per-write lock T003 planned for this case: a sidecar lock held for one write. Windows is unchanged.
 - **Tests**: `receipt-disclosure` cases 9 to 14, `hook-output-journal` case (h), and `cross-host-workshop` host-injected prompts through the deployed hook. Case (h) and the case 9 premise were confirmed RED on the previous code.
 - **Class closure**: the cases above are permanent members of `f202-slice-suites`. The 3-OS step makes case (e) a standing check on every run of the matrix job.
+
+### DRIFT-015 — co-review round 2 found five more defects in the round-1 fixes; all are fixed (resolved)
+
+- **Observed**: 2026-10-14, co-review round 2 (`run-20261014-102731596-597f9ec9`, codex, 43 paths examined, the T005 workflow diff among them). The round returned 5 findings and the engine demoted all 5 to minor. It ran while T006 was being written, so it reports the snapshot as moved; the findings concern the round-1 code, which had not changed. The crew checked each one against the code, and every one is a real defect:
+  1. **The dispatcher still latched on a malformed line.** Round 1 made the store's reader skip one, but the dispatcher's origin check read the same journal and returned "unavailable" on it. Every later typed prompt then got origin `unknown`, and the receipt writer refused it. `receipt-disclosure` case 10 passed only because it supplied the origin itself.
+  2. **A flush could remove a buffer a Unix writer still held open.** A rename does not detach a handle opened before it, so a hash written after the flush removed the file was lost while the output was still shown.
+  3. **Recovery was recorded while a kept buffer stayed unreadable.** That closed the degraded episode, hid the degraded disclosure and closed the recovery question, while prompts were still being refused.
+  4. **Another session's "yes" could approve the recovery.** The request was project-wide, so a session that was never asked could have its answer consumed as the approval.
+  5. **An unreadable record check was disclosed as a host-added reply.** The dispatcher gives that case origin `unknown`, and the store told the human their typed reply "was added by the assistant's host".
+- **Requirement**: FR-003 (no permanent latch); FR-004 and FR-005 (retained output identity); FR-007 and FR-009 (disclosure and the recovery decision stay true to the episode); FR-010 (the actual cause).
+- **Resolution**:
+  1. The dispatcher skips a malformed line, as the store does. Only a store that cannot be read is "unavailable". The dispatcher also reads a set-aside journal now, as the store already did.
+  2. Each buffered record is published as its own closed file: written in full under a hidden name, then renamed into place. No visible buffer file is ever written again.
+  3. The episode closes only when no buffer file is left.
+  4. The recovery request records the session it was asked in, and only that session's typed yes approves it. The handover provider now passes the session id.
+  5. Origin `unknown` is recorded as `record-check-unavailable` (degraded) with its own cause text.
+- **Tests**: `cross-host-workshop` (a typed reply after a malformed journal line, through the deployed hook on claude and codex), `hook-output-journal` case (b) (one published file per record) and case (i) (the episode stays degraded while a buffer is unreadable), and `receipt-disclosure` cases 15 and 16. All are RED on `39af693f` and green after the fix.
+- **Class closure**: the cases above join `f202-slice-suites`. The dispatcher and the store now apply the same malformed-line policy, and the new cross-host case runs it through the deployed hook.
 <!--
   Every new ### DRIFT-... event includes:
 

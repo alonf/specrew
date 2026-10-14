@@ -83,7 +83,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-007, FR-009, FR-010.
   - **Depends:** T003.
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `extensions/specrew-speckit/scripts/workshop-authority-store.ps1`, `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1`, `tests/unit/receipt-disclosure.tests.ps1`.
-- [ ] T005 [owner: Implementer] [sp: 2.5] [US1] **Cross-host workshop acceptance and fault-injection suite.**
+- [x] T005 [owner: Implementer] [sp: 2.5] [US1] **Cross-host workshop acceptance and fault-injection suite.** Done 2026-10-14.
   - **Work:**
     - **Cross-host acceptance:** product-domain, then agenda, then one lens, through the real launcher and dispatcher with each validated host's deployed binding and the T001 fixtures. Each host yields 3 receipts and needs exactly 1 reply per checkpoint.
     - **Fault cases (a) to (e):** (e) is two real `pwsh` processes appending at once; both succeed with intact lines and no degradation.
@@ -93,18 +93,22 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-024, FR-025; SC-001, SC-002.
   - **Depends:** T002, T003, T004.
   - **Owns:** `tests/unit/cross-host-workshop.tests.ps1`, `tests/unit/journal-fault-injection.tests.ps1`, `.github/workflows/**` (minimal).
-  - **Progress 2026-10-14 (in progress):**
+  - **Progress 2026-10-14 (done):**
     - **Windows, green.** Each validated host gives 3 receipts from 3 replies.
     - **Case (e):** 2,000 of 2,000 lines intact, and 5 concurrent dispatcher pairs all journaled.
     - **Mutations caught:** a plain `Append` stream on Windows lost 3 to 4 lines per run; console stdin decoding broke Claude's Hebrew reply.
     - **Workflow:** one step was added to the existing `review-runtime-fault-matrix` job. There are no new jobs.
     - **First 3-OS run (38487295823):** Windows green. Linux lost 58 of 2,000 lines and tore 1; macOS lost 32. Linux and macOS now take the permitted per-write lock on this journal (DRIFT-014).
     - **3-OS rerun with the lock (38490308475, on `34af7076`):** green on Windows, Linux and macOS, with 2,000 of 2,000 lines, none torn. The whole workflow passed.
-    - **Still owed:** codex review of the workflow diff, the one remaining acceptance item. A round over this tree covers it.
+    - **Codex review of the workflow diff:** co-review round 2 (`run-20261014-102731596-597f9ec9`) examined `.github/workflows/cross-platform-validation.yml` and raised no finding on it. Its five findings concern T003 and T004 code and are fixed (DRIFT-015).
 
 ## Phase 4: US2, stops only when I have a decision to make (P1)
 
-- [ ] T006 [owner: Implementer] [sp: 2.0] [US2] **Presented-crossing memory (DA-2).**
+- [x] T006 [owner: Implementer] [sp: 2.0] [US2] **Presented-crossing memory (DA-2).** Done 2026-10-14. `crossing-presentation.tests.ps1` drives the real conformance provider and `declare-turn-end.ps1` over a real scoped pending crossing:
+  - **Green:** the three B4F-104 triggers and a bookkeeping commit each give 0 blocks; a compaction gives exactly one; a changed review target, the 8-hour gap, another session and an unanchored session each owe the packet.
+  - **Recovery path (DRIFT-008):** a reply carrying the approval phrase after a pasted block, with the crossing still pending, reopens the packet with the cause. The re-presented marker then captures the next typed verdict through the real prompt-time capture.
+  - **RED on `39af693f`:** all four triggers block. **Mutation:** with the capture-miss rule removed, the recovery case fails, which is the second RED fixture.
+  - **Design notes:** the artifacts under review are the files the packet links, content-hashed; a linked folder is recorded, not hashed, so a drift entry inside it is not a gap. A suppressed stop is journaled with its reason. Material work during a suppressed turn still owes its turn-end declaration, not a packet. The dispatcher passes the SessionStart kind to the provider (diagnosis only; every SessionStart is a gap).
   - **Work:**
     - Record `presented-crossings.json` in `turn-end/<ownerHash>/` when a boundary declaration passes.
     - `$boundaryBlock` (conformance ~1426) is true only when no record exists for (session, crossing id).

@@ -1143,7 +1143,8 @@ function Update-SpecrewRollingHandover {
         [Parameter()][AllowNull()][string] $TranscriptPath = $null,   # F-174 iter-10 (T002): host transcript_path for conversation capture
         [Parameter()][AllowNull()][string] $LastAssistantMessage = $null,
         [Parameter()][AllowNull()][string] $LastUserMessage = $null,
-        [Parameter()][AllowNull()][string] $TurnOrigin = $null        # Feature 202 (FR-006): typed-user | host-injected | unknown, from the dispatcher
+        [Parameter()][AllowNull()][string] $TurnOrigin = $null,       # Feature 202 (FR-006): typed-user | host-injected | unknown, from the dispatcher
+        [Parameter()][AllowNull()][string] $SessionId = $null         # Feature 202 (co-review round 2): binds the recovery question to the session asked
     )
 
     $getProp = {
@@ -1237,11 +1238,11 @@ function Update-SpecrewRollingHandover {
         $recoveryDisclosure = $null
         $recoveryAnswered = $false
         if (Get-Command Invoke-SpecrewReplyRecordingRecoveryIfApproved -ErrorAction SilentlyContinue) {
-            try { $recoveryDisclosure = Invoke-SpecrewReplyRecordingRecoveryIfApproved -ProjectRoot $ProjectRoot -Response $LastUserMessage -NowUtc $NowUtc -TurnOrigin $TurnOrigin } catch { $recoveryDisclosure = $null }
+            try { $recoveryDisclosure = Invoke-SpecrewReplyRecordingRecoveryIfApproved -ProjectRoot $ProjectRoot -Response $LastUserMessage -NowUtc $NowUtc -TurnOrigin $TurnOrigin -SessionId $SessionId } catch { $recoveryDisclosure = $null }
             $recoveryAnswered = -not [string]::IsNullOrWhiteSpace([string]$recoveryDisclosure)
         }
         if (-not $recoveryAnswered -and (Get-Command Get-SpecrewReplyRecordingRecoveryAsk -ErrorAction SilentlyContinue)) {
-            try { $recoveryDisclosure = Get-SpecrewReplyRecordingRecoveryAsk -ProjectRoot $ProjectRoot -NowUtc $NowUtc } catch { $recoveryDisclosure = $null }
+            try { $recoveryDisclosure = Get-SpecrewReplyRecordingRecoveryAsk -ProjectRoot $ProjectRoot -NowUtc $NowUtc -SessionId $SessionId } catch { $recoveryDisclosure = $null }
         }
         if (-not $recoveryAnswered -and (Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {

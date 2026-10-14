@@ -45,7 +45,7 @@ function New-WorkshopFixture {
     [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
     return $root
 }
-function Invoke-Provider { param([string]$Root, [string]$Reply, [string]$Origin) $extra = @(if ($Origin) { "--turn-origin", $Origin }); return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Reply @extra 2>&1 | ForEach-Object { [string]$_ }) -join "`n") }
+function Invoke-Provider { param([string]$Root, [string]$Reply, [string]$Origin, [string]$Session) $extra = @(if ($Origin) { "--turn-origin", $Origin }) + @(if ($Session) { "--session-id", $Session }); return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Reply @extra 2>&1 | ForEach-Object { [string]$_ }) -join "`n") }
 function Read-Outcomes { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-receipt-outcomes.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return @() }; return @(Get-Content -LiteralPath $p -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json }) }
 function Test-Receipt { param([string]$Root) return (Test-Path -LiteralPath (Join-Path $Root '.specrew/runtime/workshop-authority.jsonl')) }
 function Get-ReceiptCount { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return 0 }; return @(Get-Content -LiteralPath $p | Where-Object { $_.Trim() }).Count }
@@ -226,6 +226,31 @@ try {
     $out14c = Invoke-Provider -Root $r14c -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
     Assert-True ($out14c -notmatch 'fallback record') 'case 14: healthy recording says nothing'
     Test-NoBannedNoun -Text ($out14 + "`n" + $out14b) -Label 'case 14'
+
+    # --- Co-review round 2 (202) findings ---
+    Write-Host '  --- case 15: an unknown origin is an unreadable record check, not a host-added reply (FR-010) ---'
+    # The dispatcher gives a typed prompt origin 'unknown' when it cannot read the hook-output records. The old guard
+    # told the human their typed reply "was added by the assistant's host".
+    $r15 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r15)
+    $out15 = Invoke-Provider -Root $r15 -Reply 'It is for support staff who read the shared inbox.' -Origin 'unknown'
+    $rows15 = @(Read-Outcomes $r15)
+    Assert-True (-not (Test-Receipt $r15)) 'case 15: still no receipt this turn'
+    Assert-True ($rows15.Count -eq 1 -and $rows15[0].reason -eq 'record-check-unavailable' -and $rows15[0].status -eq 'degraded') 'case 15: recorded as the record check being unavailable (degraded), not as host-added'
+    Assert-True ($out15 -match 'could not read its own records' -and $out15 -notmatch 'added by the assistant''s host') 'case 15: the turn names the actual cause'
+    Test-NoBannedNoun -Text $out15 -Label 'case 15'
+
+    Write-Host '  --- case 16: only the session that was asked can approve the recovery ---'
+    $r16 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r16)
+    $journal16 = Join-Path $r16 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal16, (([ordered]@{ schema_version = '1.0'; output_hash = (Get-HashOf 'an old hook output'); event = 'Stop'; host = 'claude'; output_kind = 'payload'; observed_at = '2026-10-13T00:00:00Z' } | ConvertTo-Json -Compress) + "`n"))
+    [IO.File]::WriteAllText((Join-Path $r16 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; error = 'in use'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-20).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $asked16 = Invoke-Provider -Root $r16 -Reply 'What is the status?' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ($asked16.Contains($question)) 'case 16: session A is asked the recovery question'
+    $other16 = Invoke-Provider -Root $r16 -Reply 'yes' -Origin 'typed-user' -Session 'session-b'
+    Assert-True ((Test-Path -LiteralPath $journal16) -and $other16 -notmatch 'set aside') 'case 16: a yes typed in session B, which was never asked, changes nothing'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $r16 '.specrew/runtime/reply-recording-recovery.jsonl'))) 'case 16: and is not recorded as an approval'
+    $own16 = Invoke-Provider -Root $r16 -Reply 'yes' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ($own16 -match 'set aside, not deleted' -and -not (Test-Path -LiteralPath $journal16)) 'case 16: the yes typed in session A, which was asked, is acted on'
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }
