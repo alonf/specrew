@@ -117,15 +117,22 @@ function Enter-DispatcherAppendLock {
     # research.md, CI run 38487295823: Linux lost 58 of 2000 and tore 1, macOS lost 32; Windows lost none). A sidecar
     # `<journal>.lock` is opened exclusively for ONE write: .NET maps FileShare.None to an advisory flock that every
     # Specrew writer honours. Readers never take it, so no read waits on a writer or is refused because of one. A
-    # lock not acquired within 200 ms throws, and the caller's retry window and buffer apply as for any failed append.
+    # lock not acquired within the wait throws, and the caller's retry window and buffer apply as for any failed append.
+    #
+    # THE WAIT IS FOR A TURN, NOT A RETRY (202 DRIFT-023). It was 200 ms, inside FR-002's 250 ms retry window, and
+    # FR-001 failed: case (e) degraded once on Linux CI (38573833479) and once on macOS CI (38583777333), each a writer
+    # that never got the lock - the flock is unfair, and a waiter polling every 2 ms loses the short gaps between
+    # another writer's back-to-back appends. Reproduced in WSL Ubuntu with four writers (2 of 3 runs). Waiting for a
+    # turn is not an append failing, so it gets its own bound, 1000 ms, polled every millisecond. The retry window
+    # still governs appends that actually fail.
     param([string]$Path)
     $lockPath = $Path + '.lock'
     $wait = [Diagnostics.Stopwatch]::StartNew()
     while ($true) {
         try { return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
         catch [IO.IOException] {
-            if ($wait.ElapsedMilliseconds -ge 200) { throw }
-            Start-Sleep -Milliseconds 2
+            if ($wait.ElapsedMilliseconds -ge 1000) { throw }
+            [Threading.Thread]::Sleep(1)
         }
     }
 }
