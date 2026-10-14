@@ -85,7 +85,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-007, FR-009, FR-010.
   - **Depends:** T003.
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `extensions/specrew-speckit/scripts/workshop-authority-store.ps1`, `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1`, `tests/unit/receipt-disclosure.tests.ps1`.
-- [ ] T005 [owner: Implementer] [sp: 2.5] [US1] **Cross-host workshop acceptance and fault-injection suite.** Reopened 2026-10-14 by the maintainer (DRIFT-018).
+- [x] T005 [owner: Implementer] [sp: 2.5] [US1] **Cross-host workshop acceptance and fault-injection suite.** Reopened 2026-10-14 by the maintainer (DRIFT-018); closed 2026-10-14 on run 38587028733 at `bd3de8e2`.
   - **Work:**
     - **Cross-host acceptance:** product-domain, then agenda, then one lens, through the real launcher and dispatcher with each validated host's deployed binding and the T001 fixtures. Each host yields 3 receipts and needs exactly 1 reply per checkpoint.
     - **Fault cases (a) to (e):** (e) is two real `pwsh` processes appending at once; both succeed with intact lines and no degradation.
@@ -106,6 +106,10 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
     - **Why it is open again (maintainer, 2026-10-14):** the only 3-OS run was at `34af7076`. `0b62bf9b` later changed the Linux and macOS outage-buffer behavior (one closed file per record), and that has never run on Linux or macOS. The workflow also never ran on push for this branch, because its push filter stopped at `1*-*`; `2*-*` is now added (DRIFT-018).
     - **Closes when:** cross-platform validation is green on all three OSes at the current HEAD, with the case (e) step present in each leg's log.
     - **First push run (38563251438, on `d3c010a4`):** green; the case (e) step passed on Windows, Ubuntu and macOS. Case (e) never degrades, though, so the closed-file buffer still had not run on Linux or macOS. The same step now also runs `hook-output-journal.tests.ps1`, whose cases (b), (c), (h) and (i) go through the buffer (DRIFT-018).
+    - **What the 3-OS step found next:**
+      - The buffer suite's first Unix run failed on three Windows-only test-harness assumptions. These were reproduced in WSL Ubuntu and fixed (`f3f68c75`).
+      - Case (e) degraded once on Linux and once on macOS: an unfair Unix lock starved a writer, an FR-001 failure. It was fixed with a 1000 ms wait for a turn, and case (e) now runs four writers (DRIFT-023).
+    - **Closed (run 38587028733, on `bd3de8e2`, the HEAD at the time):** green on Windows, Ubuntu and macOS. Each leg's log shows the case (e) step passing: four writers, 4,000 of 4,000 lines, plus the outage-buffer suite.
 
 ## Phase 4: US2, stops only when I have a decision to make (P1)
 
