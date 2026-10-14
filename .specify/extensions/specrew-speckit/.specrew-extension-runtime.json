@@ -260,7 +260,7 @@
     },
     {
       "path": "scripts/create-governed-feature.ps1",
-      "sha256": "b82c235a4737daf81ed299bf64ee6c314632f4e1a661a9ba9d8d1ac463a3734e"
+      "sha256": "794234464b7268782d4687823eaf047986838eba183f8fff88ba8eb2f490f653"
     },
     {
       "path": "scripts/declare-turn-end.ps1",
@@ -408,11 +408,11 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "c697b07cdf124628cd33707e085920e353e3fbdc6e2ac2dcb7ffde587c7b36ae"
+      "sha256": "d55455a862fe8c2c63a31fad224ec462df4604fe6e108b20228e627273c6ea93"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "016f391e73482da0da23834ee6936e1335eafc8d62a3b078169735fa64131363"
+      "sha256": "256f3489f40779898cb5fa5359b9cd32b56a657d4d95b4127dd1b7956ef731b0"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",

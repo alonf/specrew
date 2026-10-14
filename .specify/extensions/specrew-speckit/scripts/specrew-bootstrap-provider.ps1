@@ -124,6 +124,7 @@ function Format-SpecrewFinishedOrientation {
         [AllowNull()][string]$ProjectName,
         [AllowNull()][string]$Branch,
         [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$FeatureSource,
         [AllowNull()][string]$LastAuthorized,
         [AllowNull()][string]$PendingTo,
         [AllowNull()][string]$ArtifactsUrl,
@@ -145,6 +146,8 @@ function Format-SpecrewFinishedOrientation {
         $lines.Add(("- Where things stand: feature {0}{1}." -f $FeatureRef, $lastText))
     }
     else { $lines.Add('- Where things stand: no feature is in progress yet.') }
+    # 202 T010 (FR-018): the same "Chosen" line status shows, naming what decided the feature.
+    if (-not [string]::IsNullOrWhiteSpace($FeatureSource)) { $lines.Add(("- Chosen: {0}" -f $FeatureSource.Trim())) }
     if (-not [string]::IsNullOrWhiteSpace($ArtifactsUrl)) { $lines.Add(("- Your artifacts: {0}" -f $ArtifactsUrl)) }
     else { $lines.Add('- Your artifacts: once a feature starts, under specs/<feature>/ in this project.') }
     $lines.Add('- What I will ask of you: at each step that needs your decision, I stop and wait for your typed reply.')
@@ -525,10 +528,16 @@ try {
         catch { $hostDisplayP = $hostKind }
         $branchP = $null
         try { $branchP = ([string](& git -C $root rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $branchP = $null }
-        $featureP = $null; $lastAuthP = $null; $pendingToP = $null
+        $featureP = $null; $featureSourceP = $null; $lastAuthP = $null; $pendingToP = $null
+        # Feature 202 T010 (FR-017): the one resolver chooses the feature, as status does, and its source is named.
+        try {
+            $resolutionP = Resolve-SpecrewActiveFeature -ProjectRoot $root
+            $featureP = [string]$resolutionP.feature_ref
+            $featureSourceP = Get-SpecrewActiveFeatureDisclosure -Resolution $resolutionP
+        }
+        catch { $featureP = $null; $featureSourceP = $null }
         try {
             $ctxP = Get-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-            if ($ctxP.PSObject.Properties['session_state'] -and $null -ne $ctxP.session_state -and $ctxP.session_state.PSObject.Properties['feature_ref']) { $featureP = [string]$ctxP.session_state.feature_ref }
             if ($ctxP.PSObject.Properties['boundary_enforcement'] -and $null -ne $ctxP.boundary_enforcement -and $ctxP.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) { $lastAuthP = [string]$ctxP.boundary_enforcement.last_authorized_boundary }
         }
         catch { $null = $_ }
@@ -545,7 +554,7 @@ try {
         $healthP = $null
         if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $healthP = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $healthP = $null } }
         $orientationP = Format-SpecrewFinishedOrientation -SpecrewVersion $versionP -HostDisplay $hostDisplayP -ProjectName (Split-Path -Leaf $root) -Branch $branchP `
-            -FeatureRef $featureP -LastAuthorized $lastAuthP -PendingTo $pendingToP -ArtifactsUrl $artifactsP -DialsLine (Get-SpecrewOrientationAdaptationLine -HostKind $hostKind -ProjectRoot $root) -HealthLine $healthP
+            -FeatureRef $featureP -FeatureSource $featureSourceP -LastAuthorized $lastAuthP -PendingTo $pendingToP -ArtifactsUrl $artifactsP -DialsLine (Get-SpecrewOrientationAdaptationLine -HostKind $hostKind -ProjectRoot $root) -HealthLine $healthP
         $null = Write-SpecrewTurnEndJsonFile -Path $suppliedP -Value ([pscustomobject][ordered]@{ supplied_at = [DateTimeOffset]::UtcNow.ToString('o'); host = $hostKind })
         if (Get-SpecrewHookOutputDirectDisplay -HostBinding $hostBinding) {
             # This host shows hook output to the human itself: the orientation is already on their screen.
