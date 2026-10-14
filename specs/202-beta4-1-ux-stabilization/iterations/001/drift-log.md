@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 23
-**Resolution rate**: 100% (23/23 resolved)
+**Total drift events**: 24
+**Resolution rate**: 100% (24/24 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -287,6 +287,22 @@
 - **Requirement**: FR-001; FR-002 (the retry window governs appends that fail).
 - **Resolution**: the lock wait has its own bound, 1000 ms, polled every millisecond. The retry window is unchanged. Case (e) now runs four writers, so it reproduces the starvation instead of meeting it now and then. With the fix, four writers passed 6 of 6 in WSL Ubuntu, and the buffer suite passes on Linux and Windows. The 3-OS CI run on the next push is the acceptance.
 - **Class closure**: case (e) with four writers, on Windows, Linux and macOS in every push run, plus the printed degraded record when it degrades.
+
+### DRIFT-024 — co-review round 3 found four more defects; the engine demoted all four, and all four are real (resolved)
+
+- **Observed**: 2026-10-14, co-review round 3 (`run-20261014-173122349-f5d4f978`, codex), covering T006 to T011, round 2's fixes and the CI changes. The round returned 4 findings, each reported major and demoted to minor for lacking the failure-scenario clause. Under the maintainer's interim rule (B4F-055), each was checked against the code before anything else, and each is a real defect:
+  1. **A question quoting the approval phrase read as a missed approval** (`turn-end-store.ps1`, T006). Any typed reply containing the phrase marked the presented crossing as answered. A question ("What does 'approved for before-implement' mean?") or a refusal left the crossing pending, and Stop then repainted the packet and told the agent to say the approval had not registered.
+  2. **Markdown review links passed one check and missed two** (`turn-end-store.ps1`, T006/T007). The packet validator accepted `[spec](C:\...)`, `[spec](/C:/...)` and `[spec](/...)`, but the meaning lines and the reviewed-artifact memory read only `file:///` URLs. Such a link could be dropped from the reply unnoticed, and a change to its file never lifted suppression.
+  3. **A journal line that is valid JSON but not a record threw** (`workshop-authority-store.ps1`, round-1 fix). The parse guard caught bad JSON only; `{}` threw under StrictMode at the field read, the provider failed, and the line stays in the append-only journal, so every later workshop reply failed. The same class was in two siblings: the dispatcher's last-health reader, where a `{}` health line made every later append withhold its output, and the receipt-outcome reader.
+  4. **A degraded episode that began at the dispatcher's final append went undisclosed** (`specrew-hook-dispatcher.ps1`, T003/T004). The providers compose their disclosure before that append, so the payload went out unchanged and only stderr knew. When buffering failed too, the whole payload was withheld and the turn said nothing.
+- **Requirement**: FR-011 (a question is answered, not repainted); FR-015 (review links are substance); FR-003 (no permanent latch); FR-005 and FR-007, SC-002 (disclosure in the affected turn).
+- **Resolution**:
+  1. An approval attempt must lead its line, as the verdict recognizer anchors it, and its clause must not be a question. The DRIFT-008 shape, the phrase on its own line after a pasted block, still counts (`e206d1b7`).
+  2. `Get-SpecrewReviewTargetLinks` is the one reader for all three. The accepted formats are unchanged, so no packet that passed before is refused now (`d0d41902`).
+  3. Each reader checks a record's shape before its fields, and a non-record is skipped and counted (`1dd20060`).
+  4. The dispatcher notes when its own append degraded and adds the store's disclosure, with whether the reply was used (from the receipt outcome journaled during that fire). It then records the output as delivered. A withheld turn shows one `Specrew:` sentence, which is never accepted as a typed reply (`fdf9972f`).
+- **Tests**: `crossing-presentation` cases 5 and 7, `presented-check` case 7, `receipt-disclosure` case 10b, and `hook-output-journal`'s "damaged health line" and "final-append" cases. Each was RED on the code before its fix.
+- **Class closure**: all four suites are in `f202-slice-suites`. One shared link reader replaces the three regexes that drifted apart. The shape-first rule covers every reader of the three latch-free journals: hook-output authority, hook-output health and receipt outcomes. Two readers keep throwing on a non-record by design, because they guard authority stores that fail closed on any damage: the workshop receipt reader, which already wraps the throw in its named "store invalid" refusal, and the repair-authorization reader. Neither is the FR-003 class.
 <!--
   Every new ### DRIFT-... event includes:
 

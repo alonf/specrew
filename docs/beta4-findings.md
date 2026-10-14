@@ -3251,6 +3251,20 @@ session's typed "yes" could approve a reply-recording recovery it was never aske
 summary told the maintainer that nothing needed their attention. The demotion did not filter noise here; it
 filtered all of the signal.
 
+**Round 3, 2026-10-14 (`run-20261014-173122349-f5d4f978`, codex):** 4 findings, all reported major, all
+demoted to minor, all real, so 17 of 17 across three rounds. Each was checked against the code and
+reproduced by a failing test before its fix (202 DRIFT-024):
+
+1. A question that quotes the approval phrase was read as a missed approval: the packet repainted, and the
+   agent was told to say the approval had not registered.
+2. Markdown review links passed the packet check but were invisible to the reply check and to the reviewed-file
+   memory.
+3. One `{}` line in the hook-output journal made every later workshop reply fail. This is the permanent
+   refusal FR-003 removes.
+4. A degraded episode that first began at the dispatcher's final append went out undisclosed.
+
+The round's summary read "Nothing found that needs your attention."
+
 **Interim rule for 202 (maintainer, until this finding is fixed):** in rounds 3 and 4, every demoted finding is
 checked against the code and listed in the round's checkpoint as real or not, with the reason, before any
 sign-off (202 DRIFT-018).
@@ -4932,6 +4946,8 @@ happened and can make the human think the approval failed.
 **Beta5 candidate:** the verdict classifier recognises `approved for review round` as the round-approval phrase
 and leaves it to the round-approval capture. A boundary-verdict disclosure never fires for it.
 **Disposition:** recorded. Observed in the turn transcript.
+**Recurred:** 2026-10-14, the round-3 approval drew the same "reads as a verdict for 'review'" notice. The round
+approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 
@@ -5004,6 +5020,20 @@ repository. The suite that triggered it was not identified; it ran between 17:31
 system temp folder.
 **Mitigation in 202:** sweeps run only on a fully committed tree (DRIFT-022).
 **Disposition:** recorded under the beta5 rule; no repair in 202.
+
+## B4F-121 - THE STOP REVIEW CHECK ASKS FOR A ROUND APPROVAL WHILE THE APPROVED ROUND IS RUNNING (beta5 candidate)
+
+**Observed:** 2026-10-14, feature 202 implement. The maintainer typed `approved for review round`, round 3
+started, and the crew ended its turn while the round ran in the background. The Stop review check then blocked
+the turn: "your last review no longer covers these files ... ask the human to approve a fresh review round". It
+named round 2's run (`run-20261014-102731596-597f9ec9`). Round 3 was approved, recorded and running against
+the current tree, and nothing in the tree had changed since it started.
+**Cause (from its output):** the check compares the tree with the latest COMPLETED round's snapshot and does not
+see a round in flight.
+**Beta5 candidate:** a round that is requested or running for the current tree satisfies the check, which says so
+in one line ("round 3 is reviewing these files now") instead of asking for an approval the human just gave. It
+is the governing principle's case: a stop with no decision for the human to make.
+**Disposition:** recorded. Observed in the turn transcript.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
