@@ -450,7 +450,10 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
             # nothing; it is skipped and counted, and the decision rests on the records that can be read.
             try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
             catch { $script:SpecrewWorkshopLastHookOutputSkipped++; continue }
-            if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
+            # Co-review round 3: valid JSON is not yet a record. {} or an array or a bare value has no fields, and reading
+            # one under StrictMode threw past the guard above - the same permanent refusal. The shape is checked first.
+            if ($record -isnot [pscustomobject] -or -not $record.PSObject.Properties['schema_version'] -or -not $record.PSObject.Properties['output_hash'] -or
+                [string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
                 $script:SpecrewWorkshopLastHookOutputSkipped++; continue
             }
             if ([string]$record.output_hash -ceq $hash) { $script:SpecrewWorkshopLastHookOutputCheck = 'match'; return $true }
@@ -512,6 +515,7 @@ function Get-SpecrewWorkshopLatestRefusal {
     foreach ($line in [IO.File]::ReadAllLines($journal, [Text.Encoding]::UTF8)) {
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+        if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['feature_ref'] -or -not $row.PSObject.Properties['phase'] -or -not $row.PSObject.Properties['status']) { continue }  # co-review round 3: shape first
         if ([string]$row.feature_ref -ceq $FeatureRef -and [string]$row.phase -ceq $Phase -and [string]$row.status -in @('refused', 'degraded')) { $latest = $row }
     }
     return $latest
@@ -710,15 +714,50 @@ function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
     return 'Specrew: your approval was recorded, but the stuck record could not be set aside yet because another process still holds it. Nothing is deleted. Tell the human, and that Specrew will try again when they next reply.'
 }
 
+function Get-SpecrewReplyUsedText {
+    # Whether the human's reply was used, from its receipt outcome - the clause every recording disclosure carries.
+    param([AllowNull()]$Outcome)
+    if ($null -ne $Outcome -and [string]$Outcome.status -eq 'recorded') { return 'your reply was used as your workshop answer' }
+    if ($null -ne $Outcome -and [string]$Outcome.status -in @('refused', 'degraded')) { return 'your reply was not used as your workshop answer' }
+    return 'your reply was handled normally'
+}
+
 function Get-SpecrewReplyRecordingDegradedDisclosure {
     # FR-007 (co-review round 1): while reply recording is degraded, the turn the human typed into says so and
     # whether their reply was used. $null when recording is healthy.
     param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Outcome)
     if ($null -eq (Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $ProjectRoot)) { return $null }
-    $used = if ($null -ne $Outcome -and [string]$Outcome.status -eq 'recorded') { 'your reply was used as your workshop answer' }
-    elseif ($null -ne $Outcome -and [string]$Outcome.status -in @('refused', 'degraded')) { 'your reply was not used as your workshop answer' }
-    else { 'your reply was handled normally' }
-    return ("Specrew: replies are being recorded in a fallback record until the main one is free again; {0}, and nothing is lost. Mention this to the human in one sentence." -f $used)
+    return ("Specrew: replies are being recorded in a fallback record until the main one is free again; {0}, and nothing is lost. Mention this to the human in one sentence." -f (Get-SpecrewReplyUsedText -Outcome $Outcome))
+}
+
+function Get-SpecrewReplyRecordingWithheldDisclosure {
+    # Co-review round 3 (202, FR-005 + FR-007): when this turn's output could be neither journaled nor buffered, FR-005
+    # withholds it - and the turn must still say so. This sentence is the only text then shown. It is unrecorded, so it
+    # starts with 'Specrew:', which Test-SpecrewWorkshopHumanResponseText never accepts as a typed reply.
+    param([AllowNull()]$Outcome)
+    return ("Specrew: this turn's Specrew guidance could not be recorded safely, so it was held back; {0}, and nothing is lost. Mention this to the human in one sentence." -f (Get-SpecrewReplyUsedText -Outcome $Outcome))
+}
+
+function Get-SpecrewWorkshopTurnReceiptOutcome {
+    # Co-review round 3 (202): the receipt outcome journaled at or after -Since (one hook fire), or $null. The dispatcher
+    # composes its disclosure AFTER the provider that used or refused the reply has exited, so it reads the outcome from
+    # the journal that provider wrote, not from memory.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][DateTimeOffset]$Since)
+    $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
+    if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return $null }
+    $latest = $null
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($journal, [Text.Encoding]::UTF8)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['status'] -or -not $row.PSObject.Properties['recorded_at']) { continue }
+            $at = $null
+            try { $at = [DateTimeOffset]$row.recorded_at } catch { $at = $null }
+            if ($null -ne $at -and $at -ge $Since) { $latest = $row }
+        }
+    }
+    catch { return $null }
+    return $latest
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {

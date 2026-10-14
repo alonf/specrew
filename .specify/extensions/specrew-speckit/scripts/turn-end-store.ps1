@@ -561,6 +561,34 @@ function Test-SpecrewTurnMessageVisible {
     return $actualText.Contains($expectedText, [StringComparison]::Ordinal)
 }
 
+function Get-SpecrewReviewTargetLinks {
+    # Every review link a message carries, as written (text) and as a local path (path; $null when it cannot be
+    # resolved). ONE reader for the three places that need it - the packet validator, the meaning lines and the
+    # reviewed-artifact memory (co-review round 3, 202): the validator accepted Markdown links to absolute paths while
+    # the other two read only file:/// URLs, so such a link could be dropped from the reply unnoticed and a change to
+    # its file never lifted suppression. Accepted: a bare file:/// URL (Rule 52's form), and a Markdown link whose
+    # target is an absolute path - `C:\...` or `C:/...`, `/C:/...`, or `/...` - optionally in angle brackets.
+    [OutputType([object[]])]
+    param([AllowNull()][string] $Message)
+
+    $links = [System.Collections.Generic.List[object]]::new()
+    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+    foreach ($match in [regex]::Matches($Message, 'file:///[^\s<>"''`\[\](){}|]+')) {
+        $url = ([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*')
+        $path = $null
+        try { $path = [System.IO.Path]::GetFullPath([System.Uri]::new($url).LocalPath) } catch { $path = $null }
+        $links.Add([pscustomobject]@{ text = $url; path = $path })
+    }
+    foreach ($match in [regex]::Matches($Message, '(?i)\]\(\s*<?(?<t>(?:[A-Z]:[/\\]|/[A-Z]:/|/)[^)<>]*?)>?\s*\)')) {
+        $target = [string]$match.Groups['t'].Value
+        $local = if ($target -match '^/[A-Za-z]:/') { $target.Substring(1) } else { $target }
+        $path = $null
+        try { $path = [System.IO.Path]::GetFullPath([System.Uri]::UnescapeDataString($local)) } catch { $path = $null }
+        $links.Add([pscustomobject]@{ text = $target; path = $path })
+    }
+    return $links.ToArray()
+}
+
 function Test-SpecrewAuthoredPacket {
     param([AllowNull()][string]$Message)
     $missing = [Collections.Generic.List[string]]::new()
@@ -571,7 +599,7 @@ function Test-SpecrewAuthoredPacket {
         $sections[$heading] = $match.Groups['body'].Value.Trim()
         if ([string]::IsNullOrWhiteSpace($sections[$heading])) { $missing.Add($heading) }
     }
-    if ($sections['What Needs Your Review'] -notmatch '(?i)file:///\S+|\]\((?:<?[A-Z]:[/\\]|<?/[A-Z]:/|<?/[^)]+)') {
+    if (@(Get-SpecrewReviewTargetLinks -Message $sections['What Needs Your Review']).Count -eq 0) {
         $missing.Add('specific review targets with file links')
     }
     if ([string]$Message -notmatch '(?i)\brecommend(?:ation|ed)?\b') { $missing.Add('recommendation') }
@@ -899,11 +927,9 @@ function Get-SpecrewReviewedArtifactState {
     $state = [System.Collections.Generic.List[object]]::new()
     if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($match in [regex]::Matches($Message, 'file:///[^\s<>"''`\[\](){}|]+')) {
+    foreach ($link in @(Get-SpecrewReviewTargetLinks -Message $Message)) {
         if ($state.Count -ge $script:SpecrewPresentedArtifactLimit) { break }
-        $url = ([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*')
-        $localPath = $null
-        try { $localPath = [System.IO.Path]::GetFullPath([System.Uri]::new($url).LocalPath) } catch { $localPath = $null }
+        $localPath = [string]$link.path
         if ([string]::IsNullOrWhiteSpace($localPath)) { continue }
         if (-not $seen.Add($localPath)) { continue }
         $state.Add((Get-SpecrewArtifactFingerprint -Path $localPath))
@@ -963,14 +989,26 @@ function Write-SpecrewPresentedCrossing {
 }
 
 function Test-SpecrewReplyCarriesApprovalPhrase {
-    # Content, not layout: the phrase anywhere in the typed reply, case- and whitespace-insensitive. A reply
-    # whose phrase sits after a pasted block is exactly the DRIFT-008 shape this has to see.
+    # Was this typed reply an ATTEMPT to approve the presented crossing? Case- and whitespace-insensitive, on any line:
+    # a reply whose phrase sits on its own line after a pasted block is exactly the DRIFT-008 shape this has to see.
+    #
+    # Co-review round 3 (202): an attempt, not a mention. The phrase anywhere in the reply also matched "What does
+    # 'approved for before-implement' mean?" and "I have not approved for before-implement yet", and the crossing,
+    # rightly still pending, was then read as a missed capture: a repaint, and a false "your approval did not
+    # register". So the phrase must LEAD its line (after an optional "yes," / "I"), as the verdict recognizer
+    # anchors it, and the clause it opens must not be a question; instructions after a delimiter are still fine.
     [OutputType([bool])]
     param([AllowNull()][string] $Reply, [AllowNull()][string] $ApprovalPhrase)
     if ([string]::IsNullOrWhiteSpace($Reply) -or [string]::IsNullOrWhiteSpace($ApprovalPhrase)) { return $false }
     $words = @((($ApprovalPhrase -replace '\s+', ' ').Trim()) -split ' ' | ForEach-Object { [regex]::Escape($_) })
-    $pattern = '(?i)(?<![\w-])' + ($words -join '\s+') + '(?![\w-])'
-    return [regex]::IsMatch($Reply, $pattern)
+    $pattern = '(?i)^\s*(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?' + ($words -join '\s+') + '(?![\w-])'
+    foreach ($line in ($Reply -split "`r?`n")) {
+        $match = [regex]::Match($line, $pattern)
+        if (-not $match.Success) { continue }
+        $clause = ([regex]::Split($line.Substring($match.Length), '[,.;:]|\s[-–—]\s', 2))[0]
+        if (-not $clause.Contains('?')) { return $true }
+    }
+    return $false
 }
 
 function Register-SpecrewPresentedCrossingReply {
@@ -1054,9 +1092,7 @@ function Get-SpecrewTurnMeaningLines {
         # The question line: any line that asks something - a '?' ending a sentence, even when an instruction follows
         # it on the same line ("Does this match? Type move on."). A '?' inside a URL query does not count.
         if ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') { & $add $line }
-        foreach ($match in [regex]::Matches($line, 'file:///[^\s<>"''`\[\](){}|]+')) {                         # review-target links
-            & $add (([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*'))
-        }
+        foreach ($link in @(Get-SpecrewReviewTargetLinks -Message $line)) { & $add ([string]$link.text) }      # review-target links
     }
     return $lines.ToArray()
 }

@@ -412,7 +412,7 @@
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "256f3489f40779898cb5fa5359b9cd32b56a657d4d95b4127dd1b7956ef731b0"
+      "sha256": "7b748664be9769509b663125c406d211428f52aa4b981ae6eb1a872ceb67fa8c"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "bfcb5f9897de74f5df5fcbe8bf2b2b7f957426ab448bef8fe81c8d3152c6de2f"
+      "sha256": "9358b90f111fac8a53f700d8047401fe192f441c0a6f2d197705cf403e9a8ba4"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "5beec3822f4ee1f363f2dae792ead85fc67a18d167d17c80ab10095f07639d80"
+      "sha256": "894ef38f60c05423ae327d7a5a011c54c55f12cb77c8510a3b6d2250b2a68742"
     },
     {
       "path": "scripts/validate-governance.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "1ddb2fa88ff6c59792f228bf74e7f76a0337b17a740e0c0559bc7ba55513d412"
+      "sha256": "d77581c6e5ce3ff5b45af1d4221437380fcc0e15612ba86aeedd62033de351d9"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
