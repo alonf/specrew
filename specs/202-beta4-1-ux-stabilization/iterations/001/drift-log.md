@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 24
-**Resolution rate**: 100% (24/24 resolved)
+**Total drift events**: 25
+**Resolution rate**: 100% (25/25 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -303,6 +303,15 @@
   4. The dispatcher notes when its own append degraded and adds the store's disclosure, with whether the reply was used (from the receipt outcome journaled during that fire). It then records the output as delivered. A withheld turn shows one `Specrew:` sentence, which is never accepted as a typed reply (`fdf9972f`).
 - **Tests**: `crossing-presentation` cases 5 and 7, `presented-check` case 7, `receipt-disclosure` case 10b, and `hook-output-journal`'s "damaged health line" and "final-append" cases. Each was RED on the code before its fix.
 - **Class closure**: all four suites are in `f202-slice-suites`. One shared link reader replaces the three regexes that drifted apart. The shape-first rule covers every reader of the three latch-free journals: hook-output authority, hook-output health and receipt outcomes. Two readers keep throwing on a non-record by design, because they guard authority stores that fail closed on any damage: the workshop receipt reader, which already wraps the throw in its named "store invalid" refusal, and the repair-authorization reader. Neither is the FR-003 class.
+
+### DRIFT-025 — T012 reached one suite outside its owned set, and the SessionStart headroom narrowed (resolved)
+
+- **Observed**: 2026-10-14, T012. Two things outside T012's owned files:
+  1. **`DirectiveDeliveryCap`** pinned the old handover header ("Validated handover captured"), which T012 replaces on purpose with "Context from the previous session, recorded N ago". Its pending-decision worst case also had to carry the new WHERE WE ARE lines to stay an honest worst case.
+  2. **`contract-parity-side-by-side`** caught a real inconsistency in T012's first version. A launch writes its contract a moment before it records the ledger, so the hook's copy said "no step is approved yet" while `specrew start`'s said "the last step approved is 'plan'". With nothing pending, the resume now states the boundary the session is at, and the caller passes in its own session boundary, so both generations agree byte for byte.
+- **Requirement**: FR-019; FR-002 and FR-004 of feature 174 (the SessionStart payload fits the 10,000-char host cap).
+- **Resolution**: the cap suite's assertion names the new header, and its worst case carries realistic full-length resume lines. The worst case now measures 9,750 of 10,000 chars, against 9,288 after T008: 248 chars of headroom are left. The two new header lines were shortened to get there.
+- **Class closure**: `DirectiveDeliveryCap` 3b now includes the resume lines, so any later growth there shows up against the cap. The lasting reduction is Proposal 191 (precompute the in-flight digest to a file and point at it), which is outside 202. `resume-from-disk` joins `f202-slice-suites`.
 <!--
   Every new ### DRIFT-... event includes:
 

@@ -210,7 +210,9 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-026; SC-006, SC-009.
   - **Depends:** T010.
   - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`, `scripts/internal/sync-boundary-state.ps1`, `tests/unit/new-feature-reset.tests.ps1`.
-- [ ] T012 [owner: Implementer] [sp: 1.0] [US4] **Resume from disk (B4F-089).**
+- [x] T012 [owner: Implementer] [sp: 1.0] [US4] **Resume from disk (B4F-089).** Done 2026-10-14 (`488468fe`). `resume-from-disk.tests.ps1` drives the real bootstrap provider and the real `specrew start` resume block:
+  - **Green:** both open with WHERE WE ARE, read from disk: the pending decision, the commits since the notes (newest first) and task progress. The starting point comes from the pending decision, else the next open task. Notes matching the disk are shown as context with their age. Notes written at another boundary, before the ledger's latest decision, or about another feature are flagged with the reason and not repeated.
+  - **RED on `c21d19b4`:** B4F-089's shape repeated the stale notes, and nothing was read from disk (15 of 19 checks failed).
   - **Work:** the "where we are / starting now" lines come from the pending crossing, `from_commit..HEAD` and progress only. The handover narrative is shown as context with its age, and flagged when older than the ledger or naming another feature.
   - **RED:** the 4a22ba8f shape: a narrative at iteration-closeout while disk holds the plan crossing.
   - **Acceptance:** the resume lines match disk; a stale or other-feature narrative is flagged and not repeated.
