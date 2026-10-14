@@ -188,7 +188,7 @@
     },
     {
       "path": "refocus-scopes.json",
-      "sha256": "880afde1344fd265fe5c2d291f2ee5a2ba096b95561a88a8d523ec57f1a91171"
+      "sha256": "1f2482329a6b783cb90ffb8442d350a23bd00afdda49f81d21ac3044f18d7348"
     },
     {
       "path": "refocus/before-implement.md",
@@ -412,7 +412,7 @@
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "e3d23e2218ad8db0cc4ef8ed13abc3b16068be28f5f050f3ec46b624c418858b"
+      "sha256": "c7918da1d755423fe5be21fffd41bca3418e063842506fad5ed161b08fda0d14"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",
@@ -420,7 +420,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "9f39e5679b9d5b26046d7b239a30dc9f73add30b1a74e4158f154bc1c901cf36"
+      "sha256": "710ae5ab4d964da4a0e98a621d0c7474553af8d94ed2623d8cda5c66648fe66e"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "908fb815c12024a49293b98f44e11c85748b519188d98e022097cfac06de1fb8"
+      "sha256": "08e36ddf17757a8ffe909172e8fef6d0bfe8be9bb7edc875b0e7fa1858182501"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",

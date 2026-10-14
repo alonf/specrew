@@ -113,6 +113,60 @@ function Limit-SpecrewInlineBlock {
     return ($cut.TrimEnd() + "`n" + $note)
 }
 
+function Format-SpecrewFinishedOrientation {
+    # Feature 202 T008 (FR-014, DA-3): the orientation, FINISHED - every value resolved here, nothing left for the agent
+    # to fill in or to compose. It is supplied with the session's first prompt, so it reaches the human before the
+    # first question instead of being demanded at Stop after one (B4F-096). Plain words first: the opening sentence is
+    # for someone meeting Specrew, so it carries no lifecycle vocabulary.
+    param(
+        [AllowNull()][string]$SpecrewVersion,
+        [AllowNull()][string]$HostDisplay,
+        [AllowNull()][string]$ProjectName,
+        [AllowNull()][string]$Branch,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$LastAuthorized,
+        [AllowNull()][string]$PendingTo,
+        [AllowNull()][string]$ArtifactsUrl,
+        [AllowNull()][string]$DialsLine,
+        [AllowNull()][string]$HealthLine
+    )
+    $versionText = if ([string]::IsNullOrWhiteSpace($SpecrewVersion)) { 'Specrew' } else { "Specrew $SpecrewVersion" }
+    $hostText = if ([string]::IsNullOrWhiteSpace($HostDisplay)) { '' } else { ", running on $HostDisplay" }
+    $projectText = if ([string]::IsNullOrWhiteSpace($ProjectName)) { '' } else { " Project $ProjectName" + $(if ([string]::IsNullOrWhiteSpace($Branch)) { '.' } else { ", branch $Branch." }) }
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('Specrew is active here. It writes down what you want before anything is built, checks with you before each big step, and nothing moves past one of those checks until you say so.')
+    $lines.Add('')
+    $lines.Add(("- Version and host: {0}{1}.{2}" -f $versionText, $hostText, $projectText))
+    if (-not [string]::IsNullOrWhiteSpace($PendingTo) -and -not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $lines.Add(("- Where things stand: feature {0} is waiting for your decision on '{1}'. When you are ready, type: approved for {1}" -f $FeatureRef, $PendingTo))
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $lastText = if ([string]::IsNullOrWhiteSpace($LastAuthorized)) { '' } else { ("; the last step you approved is '{0}'" -f $LastAuthorized) }
+        $lines.Add(("- Where things stand: feature {0}{1}." -f $FeatureRef, $lastText))
+    }
+    else { $lines.Add('- Where things stand: no feature is in progress yet.') }
+    if (-not [string]::IsNullOrWhiteSpace($ArtifactsUrl)) { $lines.Add(("- Your artifacts: {0}" -f $ArtifactsUrl)) }
+    else { $lines.Add('- Your artifacts: once a feature starts, under specs/<feature>/ in this project.') }
+    $lines.Add('- What I will ask of you: at each step that needs your decision, I stop and wait for your typed reply.')
+    if (-not [string]::IsNullOrWhiteSpace($DialsLine)) { $lines.Add(("- {0}" -f $DialsLine.Trim())) }
+    else { $lines.Add('- How I adapt to you is not set yet; you can set it with /specrew-user-profile.') }
+    if (-not [string]::IsNullOrWhiteSpace($HealthLine)) { $lines.Add(("- {0}" -f $HealthLine.Trim())) }
+    return ($lines -join "`n")
+}
+
+function Get-SpecrewHookOutputDirectDisplay {
+    # Whether this host shows hook output to the human itself (the host binding's HookOutputDirectDisplay). T001
+    # measured no validated host that does (DA-3), so the default is $false: the agent shows the orientation, and a
+    # host that is ever flagged gets no second copy from the agent.
+    param([AllowNull()][string]$HostBinding)
+    if ([string]::IsNullOrWhiteSpace($HostBinding)) { return $false }
+    try {
+        $runtime = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($HostBinding)) | ConvertFrom-Json -ErrorAction Stop
+        return ($null -ne $runtime -and $runtime.PSObject.Properties['HookOutputDirectDisplay'] -and [bool]$runtime.HookOutputDirectDisplay)
+    }
+    catch { return $false }
+}
+
 function Format-BootstrapDirective {
     param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null, [AllowNull()][string]$ReplyHealthLine = $null)
     $d = $Result.directive
@@ -120,6 +174,9 @@ function Format-BootstrapDirective {
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
     $stateRead = if ($reads.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$reads[1])) { [string]$reads[1] } else { '.specrew/start-context.json' }
     $lines = New-Object System.Collections.Generic.List[string]
+    # Feature 202 T008 (FR-014): the finished orientation (items 1 to 3 below) arrives with the human's first message,
+    # marked [specrew-system]. The agent shows that text as written and adds only what applies from items 4 to 7.
+    $lines.Add('[specrew-bootstrap] The finished orientation for this session (items 1 to 3 below) is supplied with the human''s first message, marked [specrew-system]. Show that text as written at the start of your first reply, and do not compose another; add items 4 to 7 after it only where they apply.')
     $lines.Add('[specrew-bootstrap] SessionStart B2 - the orientation below is written to be SHOWN to the human, not merely read by you. Render it as VISIBLE PROSE in your FIRST reply, before any structured picker and before starting work: reading it to orient yourself is not rendering it, and a human who never sees it cannot correct what you believe about them. A concrete request in their first message does not replace it - announce what is starting and render the orientation with it (render-first: questions are shown as prose before any picker, and that rule is enforced mechanically, not by instruction alone).')  # FR-004/FR-020
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
     # Feature 202 T004 (FR-007): a degraded reply-recording state is part of the orientation, so the human knows it
@@ -424,6 +481,78 @@ try {
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
+    # FEATURE 202 T008 (FR-014, DA-3): THE FIRST-PROMPT LANE. The finished orientation is supplied with the session's
+    # first prompt, so it reaches the human before the first question - never demanded at Stop after one (B4F-096).
+    # Keyed on the prompt event, because Copilot fires its first prompt before SessionStart (T001). Once per session:
+    # every later prompt costs one Test-Path and exits, before any heavier component loads.
+    . (Join-Path $bdir 'HostEventAdapter.ps1')
+    $earlyRecord = ConvertFrom-SpecrewTurnRecordArgument -Encoded $turnRecordArgument
+    if ($null -ne $earlyRecord -and [string]$earlyRecord.event -eq 'UserPromptSubmit') {
+        $sessionP = if ($earlyRecord.PSObject.Properties['safe_session_id']) { [string]$earlyRecord.safe_session_id } else { '' }
+        if ([string]::IsNullOrWhiteSpace($sessionP)) { exit 0 }  # no host session: once-per-session cannot be kept
+        # The stamp is named by session, as the render claims are, so the dispatcher can skip launching this
+        # provider on every later prompt with one Test-Path (measured: the early exit alone cost ~0.3 s a prompt).
+        $suppliedP = Join-Path $root ('.specrew/runtime/hook-bootstrap-orientation-{0}.json' -f ($sessionP -replace '[^a-zA-Z0-9-]', '-'))
+        if (Test-Path -LiteralPath $suppliedP -PathType Leaf) { exit 0 }
+        $internalDirP = Split-Path $bdir -Parent
+        $moduleRootP = Split-Path (Split-Path $internalDirP)
+        $scriptsDirP = Join-Path $moduleRootP 'extensions/specrew-speckit/scripts'
+        . (Join-Path $scriptsDirP 'turn-end-store.ps1')
+        # A session that already showed an orientation (its receipt exists) is not handed a second one.
+        $ownerP = Get-SpecrewTurnEndOwnerHash -HostKind $hostKind -SessionId $sessionP
+        if (-not [string]::IsNullOrWhiteSpace($ownerP) -and (Test-Path -LiteralPath (Join-Path $root (Join-Path (Join-Path '.specrew/runtime/conformance-sessions' $ownerP) 'orientation-rendered.json')) -PathType Leaf)) { exit 0 }
+
+        . (Join-Path $scriptsDirP 'shared-governance.ps1')
+        $versionP = $null
+        try {
+            . (Join-Path $scriptsDirP 'version-label.ps1')
+            $infoP = Get-SpecrewModuleVersionInfo -ModuleRoot $moduleRootP
+            if (-not [string]::IsNullOrWhiteSpace([string]$infoP.Label)) { $versionP = [string]$infoP.Label }
+        }
+        catch { $versionP = $null }
+        $hostDisplayP = $hostKind
+        try {
+            $manifestP = Join-Path $moduleRootP ("hosts/{0}/host.psd1" -f $hostKind)
+            if (Test-Path -LiteralPath $manifestP -PathType Leaf) {
+                $m = Import-PowerShellDataFile -LiteralPath $manifestP
+                if ($m.ContainsKey('DisplayName') -and -not [string]::IsNullOrWhiteSpace([string]$m.DisplayName)) { $hostDisplayP = [string]$m.DisplayName }
+            }
+        }
+        catch { $hostDisplayP = $hostKind }
+        $branchP = $null
+        try { $branchP = ([string](& git -C $root rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $branchP = $null }
+        $featureP = $null; $lastAuthP = $null; $pendingToP = $null
+        try {
+            $ctxP = Get-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            if ($ctxP.PSObject.Properties['session_state'] -and $null -ne $ctxP.session_state -and $ctxP.session_state.PSObject.Properties['feature_ref']) { $featureP = [string]$ctxP.session_state.feature_ref }
+            if ($ctxP.PSObject.Properties['boundary_enforcement'] -and $null -ne $ctxP.boundary_enforcement -and $ctxP.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) { $lastAuthP = [string]$ctxP.boundary_enforcement.last_authorized_boundary }
+        }
+        catch { $null = $_ }
+        try {
+            $pvP = Get-SpecrewPendingVerdictState -ProjectRoot $root
+            if ($null -ne $pvP -and [bool]$pvP.HasPendingVerdict) { $pendingToP = [string]$pvP.PendingToMarkerBoundary }
+        }
+        catch { $pendingToP = $null }
+        $artifactsP = $null
+        if (-not [string]::IsNullOrWhiteSpace($featureP)) {
+            $featureDirP = Join-Path $root (Join-Path 'specs' $featureP)
+            if (Test-Path -LiteralPath $featureDirP -PathType Container) { $artifactsP = ([System.Uri]::new($featureDirP.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar)).AbsoluteUri }
+        }
+        $healthP = $null
+        if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $healthP = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $healthP = $null } }
+        $orientationP = Format-SpecrewFinishedOrientation -SpecrewVersion $versionP -HostDisplay $hostDisplayP -ProjectName (Split-Path -Leaf $root) -Branch $branchP `
+            -FeatureRef $featureP -LastAuthorized $lastAuthP -PendingTo $pendingToP -ArtifactsUrl $artifactsP -DialsLine (Get-SpecrewOrientationDialsLine) -HealthLine $healthP
+        $null = Write-SpecrewTurnEndJsonFile -Path $suppliedP -Value ([pscustomobject][ordered]@{ supplied_at = [DateTimeOffset]::UtcNow.ToString('o'); host = $hostKind })
+        if (Get-SpecrewHookOutputDirectDisplay -HostBinding $hostBinding) {
+            # This host shows hook output to the human itself: the orientation is already on their screen.
+            Write-Output ("[specrew-system] This session's orientation, filled in by Specrew. It is shown to the human directly, so the assistant does not repeat it.`n`n{0}" -f $orientationP)
+        }
+        else {
+            Write-Output ("[specrew-system] This session's orientation, filled in by Specrew. Show it to the human as written, at the start of this reply and before any question, then continue with their request. Do not compose another one.`n`n{0}" -f $orientationP)
+        }
+        exit 0
+    }
+
     foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'HandoverStore', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'HookJournalAccessor', 'SessionBootstrapManager', 'LauncherIntegration') {
         . (Join-Path $bdir "$f.ps1")
     }
