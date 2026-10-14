@@ -4,3 +4,7 @@ node_modules/
 # Closed (sealed) iteration records are preserved history: the trust-hardening validator refuses any edit after
 # the closeout seal, so they cannot be reformatted to satisfy the lint (B4F-079). Excluded rather than edited.
 specs/199-beta3-stabilization/iterations/003/
+
+# Preserved answer records are byte-identical evidence: their SHA-256 is recorded in 202's intake drift log
+# (DRIFT-202-INTAKE-004), so they are excluded rather than reformatted (202 DRIFT-018).
+specs/*/workshop/preserved-product-answers/

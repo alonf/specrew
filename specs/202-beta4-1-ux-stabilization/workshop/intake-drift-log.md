@@ -23,7 +23,6 @@ The subsequent Stop prompt asserts that the recorded product answers arrived thr
 
 The Stop requires approval to set the canonical product records aside before asking again. Invoking the governed pre-agenda recovery proposal surface with -Request returns workshop-repair-not-required; the controller is already strict pre-agenda and carries no completed lens. No repair proposal was minted, applied or bypassed. Prepared a bounded archival proposal for the non-authority product-domain.md/.yml records, preserving their bytes and actual typed provenance, to be executed only on explicit human approval. No archive move, controller edit, receipt write or host launch has occurred. This is another corrective Stop cycle and belongs in the friction record; it does not add a new implementation item to the agreed scope.
 
-
 ## DRIFT-202-INTAKE-004 — product records set aside; resumed on Claude
 
 **2026-10-13, Claude session.** On the maintainer's explicit approval, the two product-domain records were moved (not deleted) to workshop/preserved-product-answers/. SHA-256 verified identical before and after (md C60FC1BB...09AF, yml 14CE92F7...5F62); no destination existed beforehand. The controller and the authority store were not touched. The maintainer recorded the Codex receipt gap, the records-before-receipt deadlock and the selection-channel misdiagnosis as B4F-108 (Tier 1) in docs/beta4-findings.md. The first-reply miss's root cause stays open inside B4F-108. Next: re-present the saved scope once as prose on Claude, check workshop-authority.jsonl for a feature-202 receipt after the typed reply, and report the result before writing any product record.
@@ -32,6 +31,7 @@ The Stop requires approval to set the canonical product records aside before ask
 
 **2026-10-13, Claude session.** The saved scope was presented once as prose (Light depth). The maintainer typed `move on`. workshop-authority.jsonl still has 20 lines, all feature 201 / September; no feature-202 receipt. No product record was written.
 **Runtime facts (read from runtime files, not hook source):**
+
 - The Stop at 08:35:31Z wrote .specrew/handover/workshop-question.json for 202/product-domain, `agenda_status: pending-confirmation`, a `message_hash` — and an **empty `question` field**.
 - The conformance journal classified that Stop as `workshop-intermediate` / `durable-workshop-active` for 202/product-domain (host claude).
 - On the reply, UserPromptSubmit at 08:40:10Z appended `typed-turn-exhausted` to .specrew/authority/exhausted-turns.jsonl with `host_kind: claude` and **`minted: ""`**: the typed turn was consumed and nothing was minted.

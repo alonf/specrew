@@ -24,4 +24,3 @@ B4F-039(2) counts stale session directories as live and loses reliable crossing 
 B4F-090 renders a first-run blurb despite a project already past specify. B4F-089 reads an old narrative while the pending crossing and later commits already show newer work. A fresh/current handover can still be paired with a wrongly selected first-run blurb; a stale handover can still carry correct resume prose. The triggers are logically separable and the records do not establish a shared cause. Keep B4F-090 explicitly beta5; do not expand B4F-089 into a separate first-run-blurb redesign on the strength of similar wording.
 
 B4F-089 must still produce an accurate resume description from current evidence. If its implementation later proves the same producer fixes B4F-090 without adding scope, record that proof and fold the duplicate then; no equivalence is asserted ahead of it.
-

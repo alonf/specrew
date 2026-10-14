@@ -25,6 +25,8 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 - The conformance-provider tasks (T004, T006, T007, T008) run serially, because they share one file.
 - T005 runs once every surface it exercises exists.
 - T015 assembles the closeout evidence.
+- **Review cadence (maintainer ruling, 2026-10-14, DRIFT-018):** co-review round 3 runs once T011 is committed and covers T006 to T011. T010 and T011 touch authority state, and rounds 1 and 2 found 13 real defects, so their fixes need a round before sign-off. Round 4, at sign-off, covers T012 to T014 and the round-3 fixes.
+- **Demoted findings are checked, every one (maintainer rule for 202, until B4F-055 is fixed):** in rounds 3 and 4, every finding the engine demotes is checked against the code and listed in that round's checkpoint as real or not, with the reason, before any sign-off. Rounds 1 and 2 demoted all 13 of their findings, and all 13 were real.
 
 ## Phase 1: Setup (measurement)
 
@@ -83,7 +85,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-007, FR-009, FR-010.
   - **Depends:** T003.
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `extensions/specrew-speckit/scripts/workshop-authority-store.ps1`, `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1`, `tests/unit/receipt-disclosure.tests.ps1`.
-- [x] T005 [owner: Implementer] [sp: 2.5] [US1] **Cross-host workshop acceptance and fault-injection suite.** Done 2026-10-14.
+- [ ] T005 [owner: Implementer] [sp: 2.5] [US1] **Cross-host workshop acceptance and fault-injection suite.** Reopened 2026-10-14 by the maintainer (DRIFT-018).
   - **Work:**
     - **Cross-host acceptance:** product-domain, then agenda, then one lens, through the real launcher and dispatcher with each validated host's deployed binding and the T001 fixtures. Each host yields 3 receipts and needs exactly 1 reply per checkpoint.
     - **Fault cases (a) to (e):** (e) is two real `pwsh` processes appending at once; both succeed with intact lines and no degradation.
@@ -93,7 +95,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-024, FR-025; SC-001, SC-002.
   - **Depends:** T002, T003, T004.
   - **Owns:** `tests/unit/cross-host-workshop.tests.ps1`, `tests/unit/journal-fault-injection.tests.ps1`, `.github/workflows/**` (minimal).
-  - **Progress 2026-10-14 (done):**
+  - **Progress 2026-10-14 (reopened):**
     - **Windows, green.** Each validated host gives 3 receipts from 3 replies.
     - **Case (e):** 2,000 of 2,000 lines intact, and 5 concurrent dispatcher pairs all journaled.
     - **Mutations caught:** a plain `Append` stream on Windows lost 3 to 4 lines per run; console stdin decoding broke Claude's Hebrew reply.
@@ -101,6 +103,8 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
     - **First 3-OS run (38487295823):** Windows green. Linux lost 58 of 2,000 lines and tore 1; macOS lost 32. Linux and macOS now take the permitted per-write lock on this journal (DRIFT-014).
     - **3-OS rerun with the lock (38490308475, on `34af7076`):** green on Windows, Linux and macOS, with 2,000 of 2,000 lines, none torn. The whole workflow passed.
     - **Codex review of the workflow diff:** co-review round 2 (`run-20261014-102731596-597f9ec9`) examined `.github/workflows/cross-platform-validation.yml` and raised no finding on it. Its five findings concern T003 and T004 code and are fixed (DRIFT-015).
+    - **Why it is open again (maintainer, 2026-10-14):** the only 3-OS run was at `34af7076`. `0b62bf9b` later changed the Linux and macOS outage-buffer behavior (one closed file per record), and that has never run on Linux or macOS. The workflow also never ran on push for this branch, because its push filter stopped at `1*-*`; `2*-*` is now added (DRIFT-018).
+    - **Closes when:** cross-platform validation is green on all three OSes at the current HEAD, with the case (e) step present in each leg's log.
 
 ## Phase 4: US2, stops only when I have a decision to make (P1)
 

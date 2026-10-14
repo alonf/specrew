@@ -7,6 +7,7 @@ on:
       - 'feature/**'
       - '0*-*'  # Feature branches like 019-specrew-distribution-module
       - '1*-*'  # Feature branches like 140-unix-native-install
+      - '2*-*'  # Feature branches like 202-beta4-1-ux-stabilization (202 DRIFT-018: 200+ never ran on push)
   pull_request:
     branches:
       - main

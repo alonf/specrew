@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 17
-**Resolution rate**: 94% (16/17 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 18
+**Resolution rate**: 94% (17/18 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -214,6 +214,21 @@
 - **Requirement**: FR-014; DA-3; T008's owned files (the bootstrap provider copies, the conformance provider, `orientation-order.tests.ps1`).
 - **Resolution**: as above.
 - **Class closure**: `orientation-order` case 1 asserts the catalog binding in both copies. Case 3 asserts the per-session stamp and the dispatcher's skip on it. The moved `session-orientation-rendered` asserts no Stop-time orientation demand in any shape.
+
+### DRIFT-018 — two CI jobs and the 3-OS workflow never ran on 202; T005 reopened; review cadence set (resolved by human decision)
+
+- **Observed**: 2026-10-14, maintainer review of the US2 checkpoint.
+  1. **Lint hid two jobs.** The Specrew CI `Lint` job failed on every push to this branch, on extra blank lines in 202's intake documents. `Deterministic gate` and the `Contract` lane wait on `Lint`, so neither has run on any 202 code. The markdown step fails first, so the job's own PSScriptAnalyzer and governance steps never ran either.
+  2. **The 3-OS workflow never ran on push.** `cross-platform-validation.yml` matched only `0*-*` and `1*-*` feature branches, so 202, and every feature numbered 200 or higher, never ran it on push. Its only 3-OS run here was dispatched by hand, at `34af7076`.
+  3. **T005 was closed too early.** `0b62bf9b` changed the Linux and macOS outage-buffer behavior (one closed file per record) after that run, and the change has never run on Linux or macOS.
+- **Requirement**: T005's acceptance (the 3-OS run); DRIFT-003's minimal workflow rule; the review budget.
+- **Resolution** (maintainer decisions):
+  1. The blank lines are removed from the four intake documents that carried them (five errors). `.markdownlintignore` excludes `specs/*/workshop/preserved-product-answers/`, whose record's SHA-256 is pinned in DRIFT-202-INTAKE-004, so that file stays byte-identical. After the fix, `Deterministic gate` and `Contract` must be seen to run and pass on the branch; any failure they surface is work in this iteration.
+  2. `2*-*` is added to the workflow's push branches. This is within T005's workflow ownership and DRIFT-003's rule: no new job, no publication or deployment change.
+  3. T005 is reopened. It closes when cross-platform validation is green on all three OSes at the current HEAD, with the case (e) step present in each leg's log.
+  4. Co-review round 3 is held until T011 is committed and covers T006 to T011. Round 4, at sign-off, covers T012 to T014 and the round-3 fixes.
+  5. Until B4F-055 is fixed, every finding the engine demotes in rounds 3 and 4 is checked against the code and listed in that round's checkpoint, real or not, before any sign-off. The evidence is added to B4F-055.
+- **Class closure**: the `2*-*` filter makes every 200-series feature run the 3-OS workflow on push. The lint exclusion names the preserved-answers folder by pattern, so it applies to any feature's preserved answers. The demoted-finding rule is written into tasks.md's execution notes. NONE for the engine's demotion itself: beta5, B4F-055.
 <!--
   Every new ### DRIFT-... event includes:
 

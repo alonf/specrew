@@ -103,4 +103,3 @@ These references remain outside this intake. Some findings have shipped partial 
 ## Recommended scope discussion
 
 Lead with B4F-104, B4F-106, B4F-100, B4F-102, B4F-105 and B4F-089: repeated irrelevant stops, disproportionate correction cost, and context/recovery diagnosability. B4F-101 supports predictable recovery. Keep the review-ordering slice and B4F-093 bounded. B4F-096 needs record reconciliation; B4F-107 is a presentation candidate without changing beta5 band semantics. B4F-103 is a lower-priority comparison correction, never a beta4 republish. The human will decide inclusion/exclusion in the product-domain workshop.
-

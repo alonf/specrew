@@ -3243,6 +3243,18 @@ minors in the follow-up list.
 The crew's reading: (1) keeps every property the rule was written for and fixes the one it lacks; (2) is
 the floor if (1) is too costly; (3) is not taken. **Beta5, review-machinery family, with B4F-054.**
 
+**Evidence, feature 202, 2026-10-14 (maintainer):** across co-review rounds 1 and 2 of 202's iteration 001
+(`run-20261013-234651770-ac649a7e`, `run-20261014-102731596-597f9ec9`, codex), the engine demoted all 13
+findings to minor for lacking the failure-scenario clause. The crew checked every one against the code, and
+all 13 were real defects (202 DRIFT-014 and DRIFT-015). They include a cross-session authority defect: another
+session's typed "yes" could approve a reply-recording recovery it was never asked about. Each round's
+summary told the maintainer that nothing needed their attention. The demotion did not filter noise here; it
+filtered all of the signal.
+
+**Interim rule for 202 (maintainer, until this finding is fixed):** in rounds 3 and 4, every demoted finding is
+checked against the code and listed in the round's checkpoint as real or not, with the reason, before any
+sign-off (202 DRIFT-018).
+
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
 **Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must

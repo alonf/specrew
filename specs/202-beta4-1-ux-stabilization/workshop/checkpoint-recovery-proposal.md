@@ -40,4 +40,3 @@ On explicit approval, preserve the two non-authority answer records by moving th
 The archive is preserved conversation evidence, not a workshop confirmation receipt. Update human-facing references and the handover to point at the preserved answers, then run the prepared governed Claude recovery launch. Its first product question should present these answers accurately for a real host-captured typed confirmation; do not ask the human to rediscover settled scope. Collect one scoped answer at a time, complete the governed checkpoint only on an actual matching receipt, then proceed to the lens agenda. If the reader still refuses, stop rather than invent authority or repeat the same recovery.
 
 Neither archival nor launch has been authorized or performed. The requested approval covers these two named recovery actions only, not a lifecycle boundary or implementation.
-
