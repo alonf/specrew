@@ -412,7 +412,7 @@
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
-      "sha256": "c7918da1d755423fe5be21fffd41bca3418e063842506fad5ed161b08fda0d14"
+      "sha256": "016f391e73482da0da23834ee6936e1335eafc8d62a3b078169735fa64131363"
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",
@@ -420,7 +420,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "710ae5ab4d964da4a0e98a621d0c7474553af8d94ed2623d8cda5c66648fe66e"
+      "sha256": "ad6c78390eef2b0a07be5509c6f5986fb361221e539ff528064534248638ea07"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "b113e040f50b46a4630ce564b5c600a0d3bc5b49b7beef730d4ca3c23ab30980"
+      "sha256": "5beec3822f4ee1f363f2dae792ead85fc67a18d167d17c80ab10095f07639d80"
     },
     {
       "path": "scripts/validate-governance.ps1",

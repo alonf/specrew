@@ -897,8 +897,8 @@ try {
                 # same prompt), the dials line is in it; a second copy would be a duplicate.
                 $orientationSupplied = (-not [string]::IsNullOrWhiteSpace($sessionIdArg)) -and
                     (Test-Path -LiteralPath (Join-Path $projectRoot ('.specrew/runtime/hook-bootstrap-orientation-{0}.json' -f ($sessionIdArg -replace '[^a-zA-Z0-9-]', '-'))) -PathType Leaf)
-                if (-not $orientationSupplied -and -not (Test-Path -LiteralPath $dialsStamp -PathType Leaf) -and (Get-Command Get-SpecrewOrientationDialsLine -ErrorAction SilentlyContinue)) {
-                    $dialsLine = Get-SpecrewOrientationDialsLine
+                if (-not $orientationSupplied -and -not (Test-Path -LiteralPath $dialsStamp -PathType Leaf) -and (Get-Command Get-SpecrewOrientationAdaptationLine -ErrorAction SilentlyContinue)) {
+                    $dialsLine = Get-SpecrewOrientationAdaptationLine -HostKind $hostKindArg -ProjectRoot $projectRoot
                     if (-not [string]::IsNullOrWhiteSpace($dialsLine)) {
                         Write-Output ('[specrew-system] Filled in by Specrew for this session''s orientation; include this line as written, once: {0}' -f $dialsLine)
                         $null = Write-SpecrewTurnEndJsonFile -Path $dialsStamp -Value ([pscustomobject][ordered]@{ supplied_at = [DateTimeOffset]::UtcNow.ToString('o'); line = $dialsLine })
@@ -1616,7 +1616,7 @@ try {
                         # (turn start, below the token line) and never demands it here. A reply that still lacks it is
                         # journaled, not blocked: blocking cost the human a whole reply cycle over one line the agent
                         # could not have known better than the profile does.
-                        $orientationDialsMissing = Get-SpecrewOrientationDialsLine
+                        $orientationDialsMissing = Get-SpecrewOrientationAdaptationLine -HostKind $hostKindArg -ProjectRoot $projectRoot
                     }
                 }
             }
