@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 25
-**Resolution rate**: 100% (25/25 resolved)
+**Total drift events**: 26
+**Resolution rate**: 100% (26/26 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -330,6 +330,13 @@
 - **Requirement**: FR-019; FR-002 and FR-004 of feature 174 (the SessionStart payload fits the 10,000-char host cap).
 - **Resolution**: the cap suite's assertion names the new header, and its worst case carries realistic full-length resume lines. The worst case now measures 9,750 of 10,000 chars, against 9,288 after T008: 248 chars of headroom are left. The two new header lines were shortened to get there.
 - **Class closure**: `DirectiveDeliveryCap` 3b now includes the resume lines, so any later growth there shows up against the cap. The lasting reduction is Proposal 191 (precompute the in-flight digest to a file and point at it), which is outside 202. `resume-from-disk` joins `f202-slice-suites`.
+
+### DRIFT-026 — the f202 lane outgrew its headroom and is split in two (resolved)
+
+- **Observed**: 2026-10-14, after T012, T013 and the round-3 cases. `f202-slice-suites` passed in 309.7 s against its 600 s timeout: 1.94x, under the 2.4x floor the lane was measured against (242.7 s after T011, recorded in its label as needing a raise or a split at the next suite).
+- **Requirement**: the verification plan's timeouts carry real headroom, so a slower runner does not kill a passing lane (DRIFT-013's lesson).
+- **Resolution**: split, not raised. A longer timeout would hide growth; two lanes keep each one well inside the same 600 s. `f202-slice-suites-a` holds the reply-path suites (crossing presentation, turn record, cross-host workshop, twin-copy parity, dials parity, the design-analysis refusal). It passed in 124.8 s (4.8x). `f202-slice-suites-b` holds the journal and resume suites (hook-output journal, case (e), receipt disclosure, presented check, orientation order, feature resolver, new-feature reset, resume from disk). It passed in 183.9 s (3.3x). Every suite of the old lane is in exactly one of the two.
+- **Class closure**: each lane's label records its measured time, so the next addition is measured against its own lane. T014's suite goes into lane a.
 <!--
   Every new ### DRIFT-... event includes:
 
