@@ -74,7 +74,7 @@ try {
     & git -C $root -c user.name=Test -c user.email=t@example.invalid add -A
     & git -C $root -c user.name=Test -c user.email=t@example.invalid commit -qm baseline
     & (Join-Path $scripts 'initialize-workshop-controller-state.ps1') -ProjectRoot $root -FeatureRef $feature | Out-Null
-    Set-Content (Join-Path $root '.specrew/runtime/hook-bootstrap-render-replay.json') '{"source":"startup"}'
+    Set-Content (Join-Path $root '.specrew/runtime/hook-bootstrap-render-replay-startup.json') '{"source":"startup"}'
     $null = Prompt 'Feature 1: Markdown link checker. Apply my pre-answers, light depth, one question per turn.'
     $script:firstStart = $script:lastStart
     $opening = @'

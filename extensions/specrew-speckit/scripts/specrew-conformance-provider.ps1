@@ -893,7 +893,11 @@ try {
             if ($eventLower -in @('userpromptsubmit', 'preinvocation') -and $null -ne $turnEndPaths -and [bool]$turnEndPaths.Anchored -and
                 -not (Test-Path -LiteralPath ([string]$materialRuntime.OrientationPath) -PathType Leaf)) {
                 $dialsStamp = Join-Path ([string]$turnEndPaths.StateRoot) 'dials-line-supplied.json'
-                if (-not (Test-Path -LiteralPath $dialsStamp -PathType Leaf) -and (Get-Command Get-SpecrewOrientationDialsLine -ErrorAction SilentlyContinue)) {
+                # T008: when the bootstrap already supplied this session's finished orientation (it runs earlier on the
+                # same prompt), the dials line is in it; a second copy would be a duplicate.
+                $orientationSupplied = (-not [string]::IsNullOrWhiteSpace($sessionIdArg)) -and
+                    (Test-Path -LiteralPath (Join-Path $projectRoot ('.specrew/runtime/hook-bootstrap-orientation-{0}.json' -f ($sessionIdArg -replace '[^a-zA-Z0-9-]', '-'))) -PathType Leaf)
+                if (-not $orientationSupplied -and -not (Test-Path -LiteralPath $dialsStamp -PathType Leaf) -and (Get-Command Get-SpecrewOrientationDialsLine -ErrorAction SilentlyContinue)) {
                     $dialsLine = Get-SpecrewOrientationDialsLine
                     if (-not [string]::IsNullOrWhiteSpace($dialsLine)) {
                         Write-Output ('[specrew-system] Filled in by Specrew for this session''s orientation; include this line as written, once: {0}' -f $dialsLine)
@@ -1541,6 +1545,7 @@ try {
     $orientationOwed = $false
     $orientationSatisfiedNow = $false
     $orientationDialsMissing = ''
+    $orientationNotShown = $false
     if ($canAssess -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.OrientationPath)) {
         try {
             if (-not (Test-Path -LiteralPath ([string]$materialRuntime.OrientationPath) -PathType Leaf)) {
@@ -1550,7 +1555,10 @@ try {
                 try {
                     $runtimeDir = Join-Path $projectRoot '.specrew/runtime'
                     if (Test-Path -LiteralPath $runtimeDir -PathType Container) {
-                        $claimDelivered = @(Get-ChildItem -LiteralPath $runtimeDir -Filter 'hook-bootstrap-render-*.json' -File -ErrorAction SilentlyContinue).Count -gt 0
+                        # Feature 202 T008: THIS session's render claim, not any session's. Another session's
+                        # bootstrap says nothing about what this one was handed.
+                        $claimDelivered = (-not [string]::IsNullOrWhiteSpace($sessionIdArg)) -and
+                            @(Get-ChildItem -LiteralPath $runtimeDir -Filter ('hook-bootstrap-render-{0}-*.json' -f $sessionIdArg) -File -ErrorAction SilentlyContinue).Count -gt 0
                     }
                 }
                 catch { $claimDelivered = $false }
@@ -1599,7 +1607,10 @@ try {
                             ($candidateText -match '(?i)\bspecrew\b[^\n]{0,40}\b\d+\.\d+\.\d+')
                         if ($namesProduct -and $namesOrientationFact) { $orientationSatisfiedNow = $true; break }
                     }
-                    if (-not $orientationSatisfiedNow) { $orientationOwed = $true }
+                    # Feature 202 T008 (FR-014, B4F-096): no Stop-time demand. The finished orientation is supplied
+                    # with the first prompt, before the first question; a Stop that asks for it afterwards costs the
+                    # human a corrective cycle and still cannot put it first. A reply without it is journaled only.
+                    if (-not $orientationSatisfiedNow) { $orientationNotShown = $true }
                     elseif (($orientationCandidates -join ' ') -notmatch '(?i)what I know about you|how I am adapting|software_architecture\s*=|expert on|mid-level on|senior on') {
                         # Feature 202 T007 (FR-013, B4F-106): the dials line is deterministic, so the system supplies it
                         # (turn start, below the token line) and never demands it here. A reply that still lacks it is
@@ -2314,7 +2325,7 @@ try {
     # Also record EVERY material stop (not only blocks) so a spurious material block is diagnosable against the
     # passing case (D-197-I009 conformance false-negative: a valid packet on disk still evaluated packetPresent=false).
     # A pending crossing that was NOT re-demanded (T006) is journaled too: "why did it not repaint" must be answerable.
-    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop -or $assessmentUnavailable -or $presentedSuppressed -or (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing))) {
+    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop -or $assessmentUnavailable -or $presentedSuppressed -or (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)) -or $orientationNotShown) {
         try {
             $jdir = Split-Path -Parent $journalPath
             if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
@@ -2330,7 +2341,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; presented_crossing = $presentedReason; presented_suppressed = $presentedSuppressed; dials_missing_not_blocked = (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)); working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_token_held = (-not [string]::IsNullOrWhiteSpace($turnEndOwnToken)); dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; presented_crossing = $presentedReason; presented_suppressed = $presentedSuppressed; dials_missing_not_blocked = (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)); orientation_not_shown_not_blocked = $orientationNotShown; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_token_held = (-not [string]::IsNullOrWhiteSpace($turnEndOwnToken)); dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

@@ -13,6 +13,14 @@ function Assert-True { param([bool]$Condition,[string]$Message) if (-not $Condit
 # The check is scoped so it is not a per-stop cost: it evaluates only while the session has no
 # orientation receipt, only when a bootstrap was actually delivered, never displaces a higher-priority
 # block, and fails open.
+#
+# FEATURE 202 T008 (FR-014, DA-3, B4F-096) RETIRED THE STOP-TIME DEMAND this suite was built for. A Stop that
+# asks for the orientation after the first question has already been asked cannot put it first, and it cost
+# the human a corrective cycle (B4F-096, reproduced on installed beta4). The finished orientation is now
+# supplied with the session's first prompt (tests/unit/orientation-order.tests.ps1). What this suite still
+# pins: the check reads the OPENING message (W35), it is per session - keyed on THIS session's render claim -
+# and a shown orientation earns a receipt. What it now pins the other way: no Stop demands the orientation,
+# alone or riding along on another block.
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
@@ -23,6 +31,13 @@ if (Test-Path -LiteralPath $mirror -PathType Leaf) {
 else {
     # W52 aftermath: the deployed .specify mirror is machinery the review digest strips, so it is absent by design in a frozen review tree; its integrity there is the W43 marker check's jurisdiction, not this suite's.
     Write-Host 'SKIP: deployed mirror absent (frozen review tree); mirror integrity is the W43 marker check' -ForegroundColor Yellow
+}
+
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\turn-end-store.ps1')
+function Get-SpecrewTurnEndPathsForTest {
+    # This session's orientation receipt, through the one resolver both the hook and the declarer use.
+    param([Parameter(Mandatory)][string]$SessionId)
+    return [string](Get-SpecrewTurnEndPaths -ProjectRoot $scratch -HostKind 'claude' -SessionId $SessionId).OrientationPath
 }
 
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('specrew-w25-' + [guid]::NewGuid().ToString('N'))
@@ -69,15 +84,16 @@ try {
     $noClaim = Invoke-Stop -AssistantText $workFirst -SessionId 'w25-noclaim-session'
     Assert-True ($noClaim -notmatch 'orientation was handed to you') 'with no delivered bootstrap, no orientation is demanded'
 
-    # A delivered bootstrap (the render claim the hook writes) puts the obligation in force.
-    Set-Content -LiteralPath (Join-Path $scratch '.specrew\runtime\hook-bootstrap-render-w25-startup.json') -Value '{"dedupe_key":"w25","source":"startup"}' -Encoding UTF8
+    # A delivered bootstrap: THIS session's render claim, named as the hook names it (<session>-<source>).
+    foreach ($claimSession in 'w25-session', 'w25-other-session', 'w25-material-session', 'w35-oriented-then-worked', 'w35-never-oriented') {
+        Set-Content -LiteralPath (Join-Path $scratch ('.specrew\runtime\hook-bootstrap-render-{0}-startup.json' -f $claimSession)) -Value ('{{"dedupe_key":"{0}","source":"startup"}}' -f $claimSession) -Encoding UTF8
+    }
 
-    $blocked = Invoke-Stop -AssistantText $workFirst
-    Assert-True ($blocked -match 'SPECREW-STOP-BLOCK') 'a first reply that goes straight to work is stopped'
-    Assert-True ($blocked -match '(?i)orientation was handed to you and the human never saw it') 'the correction says the orientation was delivered and not shown'
-    Assert-True ($blocked -match '(?i)what you believe about them so they can correct it') 'the correction requires what the crew believes about the human'
-    Assert-True ($blocked -match '(?i)Reading it to orient yourself is not rendering it') 'the correction names the exact failure two walks produced'
-    Assert-True ($blocked -notmatch 'SPECREW-VERDICT-BOUNDARY: ') 'the orientation stop emits no boundary verdict marker'
+    # 202 T008: the orientation is supplied with the first prompt, so a first reply that goes straight to work
+    # is not stopped for it (B4F-096: the demand came after the question and cost a corrective cycle).
+    $workFirstStop = Invoke-Stop -AssistantText $workFirst
+    Assert-True ($workFirstStop -notmatch 'SPECREW-STOP-BLOCK') 'a first reply that goes straight to work is not stopped for the orientation'
+    Assert-True ($workFirstStop -notmatch '(?i)orientation') 'and no orientation demand is composed'
 
     # A genuine banner clears it. Deliberately paraphrased: the check must not demand set wording.
     $banner = @'
@@ -98,12 +114,15 @@ Now starting the design workshop.
     $after = Invoke-Stop -AssistantText $workFirst
     Assert-True ($after -notmatch 'orientation was handed to you') 'once the human has seen it, no later stop demands it again'
 
-    # A DIFFERENT session owes its own orientation - the receipt is per session, not per project.
+    # The receipt is per session, not per project: a different session's work-first stop earns none from the
+    # first session's banner, and is not stopped either.
     $otherSession = Invoke-Stop -AssistantText $workFirst -SessionId 'w25-other-session'
-    Assert-True ($otherSession -match '(?i)orientation was handed to you') 'a different session owes its own orientation'
+    Assert-True ($otherSession -notmatch '(?i)orientation was handed to you') 'a different session is not stopped for the orientation'
+    $otherReceipt = (Get-SpecrewTurnEndPathsForTest -SessionId 'w25-other-session')
+    Assert-True (-not (Test-Path -LiteralPath $otherReceipt -PathType Leaf)) 'and the first session''s receipt is not credited to it'
 
-    # RIDE-ALONG: when a higher-priority demand already blocks, the orientation must not be dropped -
-    # it is added to that same message rather than displacing it or waiting for a quieter turn.
+    # NO RIDE-ALONG (202 T008): a higher-priority demand still fires, and the orientation does not ride along on
+    # it - the orientation was supplied with the first prompt, and asking for it here is the same late demand.
     New-Item -ItemType Directory -Path (Join-Path $scratch 'src') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'src\thing.txt') -Value 'material work this turn' -Encoding UTF8
     $material = Invoke-Stop -AssistantText 'I refactored the module and tidied the helpers.' -SessionId 'w25-material-session'
@@ -111,7 +130,7 @@ Now starting the design workshop.
     # observed and no declaration was recorded - and names the script, rather than "this Stop followed
     # material work" (attribution the hook no longer claims). The subject here is unchanged: it FIRES.
     Assert-True ($material -match '(?i)changes were observed in the worktree since this turn began and no turn-end declaration was recorded') 'the material demand still fires and is not displaced'
-    Assert-True ($material -match "(?i)Also: this session's orientation was never shown") 'the orientation rides along on a higher-priority block instead of being lost'
+    Assert-True ($material -notmatch "(?i)Also: this session's orientation was never shown") 'the orientation does not ride along on a higher-priority block'
     Remove-Item -LiteralPath (Join-Path $scratch 'src') -Recurse -Force
 
 # W35: THE ORIENTATION IS IN THE OPENING MESSAGE, AND THE CHECK READ THE LAST ONE.
@@ -127,14 +146,15 @@ $orientedThenWorked = Invoke-StopWithTranscript -AssistantTexts @(
     'Running the workshop lenses.',
     $workFirst) -SessionId 'w35-oriented-then-worked'
 Assert-True ($orientedThenWorked -notmatch '(?i)orientation was handed to you and the human never saw it') 'an orientation rendered in the OPENING message is not demanded again after later work'
+Assert-True (Test-Path -LiteralPath (Get-SpecrewTurnEndPathsForTest -SessionId 'w35-oriented-then-worked') -PathType Leaf) 'and the OPENING message earns that session its receipt (W35)'
 
-# The bar must stay low but real: a session that never oriented is still caught, however many messages
-# it has produced.
+# 202 T008: a session that never showed it is journaled, not stopped - however many messages it has produced.
 $neverOriented = Invoke-StopWithTranscript -AssistantTexts @(
     'Creating the governed feature now.',
     'Running the workshop lenses.',
     $workFirst) -SessionId 'w35-never-oriented'
-Assert-True ($neverOriented -match '(?i)orientation was handed to you and the human never saw it') 'a session that never oriented is still caught across multiple messages'
+Assert-True ($neverOriented -notmatch 'SPECREW-STOP-BLOCK') 'a session that never oriented is not stopped for it'
+Assert-True (-not (Test-Path -LiteralPath (Get-SpecrewTurnEndPathsForTest -SessionId 'w35-never-oriented') -PathType Leaf)) 'and earns no receipt'
 
 }
 finally { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }

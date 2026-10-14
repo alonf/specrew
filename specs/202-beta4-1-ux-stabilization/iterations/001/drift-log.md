@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 16
-**Resolution rate**: 94% (15/16 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 17
+**Resolution rate**: 94% (16/17 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -203,6 +203,17 @@
 - **Requirement**: FR-011 (T006); FR-013 and DA-3 (T007).
 - **Resolution**: as above. T006's owned files plus the dispatcher argument; T007 within its owned files (`turn-end-store.ps1`, the conformance provider, `declare-turn-end.ps1`).
 - **Class closure**: `crossing-presentation` case 4 asserts the record names the gap it followed (`compact`). `presented-check` case 6 asserts the line is supplied once, marked, and that its absence is not blocked.
+
+### DRIFT-017 — T008 reached the catalog and the dispatcher, and retired one suite's contract (resolved)
+
+- **Observed**: 2026-10-14, T008 implementation.
+  1. **The catalog.** The bootstrap provider ran only on SessionStart, and Copilot fires its first prompt before SessionStart (T001). Supplying the orientation on the first prompt needs the provider bound to `UserPromptSubmit` in `refocus-scopes.json`, in both copies.
+  2. **The dispatcher, for cost.** Bound to every prompt, the provider's early exit measured about 0.5 s a prompt, against about 0.2 s for a bare `pwsh` start. The once-per-session stamp is therefore named by session id, as the render claims already are: `.specrew/runtime/hook-bootstrap-orientation-<session>.json`. The dispatcher skips launching the bootstrap on a prompt once that stamp exists. The first prompt pays about 0.86 s once per session; later prompts pay nothing. This is one guarded `continue`, in all three dispatcher copies.
+  3. **A retired contract.** `session-orientation-rendered` pinned the Stop-time orientation demand, the shape research.md records as the failure DA-3 replaces and B4F-096 reproduced. Its assertions now pin the new contract: no Stop demands the orientation, alone or riding along on another block; the receipt still comes from the opening message; and it is per session, keyed on that session's own render claim. Its fixture claims now use the real `<session>-<source>` name, and so does the `agent-led-workshop-replay` fixture.
+  4. **The finished text.** The existing host orientation block leaves placeholders for the agent (`<project-root-url>`, `<one specific action>`), so a new renderer builds the finished orientation from resolved values in the bootstrap provider.
+- **Requirement**: FR-014; DA-3; T008's owned files (the bootstrap provider copies, the conformance provider, `orientation-order.tests.ps1`).
+- **Resolution**: as above.
+- **Class closure**: `orientation-order` case 1 asserts the catalog binding in both copies. Case 3 asserts the per-session stamp and the dispatcher's skip on it. The moved `session-orientation-rendered` asserts no Stop-time orientation demand in any shape.
 <!--
   Every new ### DRIFT-... event includes:
 

@@ -133,7 +133,10 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-012, FR-013, FR-015; SC-003.
   - **Depends:** T006.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `extensions/specrew-speckit/scripts/declare-turn-end.ps1`, `tests/unit/presented-check.tests.ps1`.
-- [ ] T008 [owner: Implementer] [sp: 1.5] [US2] **Orientation before the first question (DA-3).**
+- [x] T008 [owner: Implementer] [sp: 1.5] [US2] **Orientation before the first question (DA-3).** Done 2026-10-14. `orientation-order.tests.ps1` drives the real bootstrap and conformance providers with the dispatcher's turn record:
+  - **Green:** the first prompt carries the finished orientation, marked `[specrew-system]`, with the real version and host, the pending decision and its approval phrase, the artifacts link and the dials line, and nothing left to fill in. The second prompt carries nothing, and the conformance lane adds no second dials line. A host flagged for direct display gets no instruction to repeat it. The B4F-096 replay (a first question with no orientation, nothing pending) gives 0 Stop blocks. Another session's bootstrap does not earn this session an orientation receipt.
+  - **RED on `0e5035d2`:** the catalog does not bind the bootstrap to the prompt; no finished orientation; the B4F-096 Stop demand; any session's render claim counted.
+  - **Design notes:** the finished orientation is rendered from resolved values by a new function in the bootstrap provider; the existing host orientation block leaves placeholders for the agent and was not reused. The SessionStart directive now tells the agent to show the supplied text instead of composing one. No validated host is flagged for direct display (T001), so the flag defaults off. The catalog binds the bootstrap to the prompt, and the dispatcher skips it once the per-session stamp exists (DRIFT-017). `session-orientation-rendered` moved to the new contract.
   - **Work:**
     - On the session's first prompt, the bootstrap provider supplies the finished orientation as system output, marked and journaled.
     - On hosts that T001 found show hook output directly, the agent is told not to render it, so no duplicate appears.

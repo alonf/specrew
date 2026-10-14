@@ -1465,6 +1465,14 @@ try {
             continue
         }
 
+        # Feature 202 T008: the bootstrap provider runs on a prompt only to supply the session's finished orientation,
+        # once. After that its stamp (named by session, like the render claims) exists, and launching it again would
+        # cost every later prompt a process start to learn that (measured ~0.5 s against a ~0.2 s bare pwsh start).
+        if ($providerId -eq 'bootstrap' -and $Event -eq 'UserPromptSubmit' -and -not [string]::IsNullOrWhiteSpace($sessionId) -and
+            (Test-Path -LiteralPath (Join-Path $projectRoot ('.specrew/runtime/hook-bootstrap-orientation-{0}.json' -f ($sessionId -replace '[^a-zA-Z0-9-]', '-'))) -PathType Leaf)) {
+            continue
+        }
+
         # inject providers (refocus is registry row #1; future rows — e.g. 130-P4
         # handover — ride the same path with event JSON on their own contract).
         $commandArgs = $null
