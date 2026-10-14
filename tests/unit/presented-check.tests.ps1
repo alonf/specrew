@@ -209,6 +209,28 @@ try {
     Assert-True (-not $r6.Blocked) 'an orientation reply without the dials line is not blocked: 0 human-visible cycles'
     $t6b = Start-Turn -Project $p6 -Session 'sess-6' -UserText 'Thanks.'
     Assert-True (-not $t6b.Output.Contains($dials)) 'the line is supplied once per session, not every turn'
+
+    # -----------------------------------------------------------------------------------------------
+    # Co-review round 3 (202): the packet validator accepts a Markdown review link to an absolute path, so every reader
+    # of review links must accept it too. The meaning lines and the reviewed-artifact memory read only file:/// URLs:
+    # such a link could be dropped from the reply unnoticed, and a change to its file never lifted suppression.
+    Write-Host 'Case 7: a Markdown review link is a review link everywhere the validator accepts it'
+    $p7 = New-Project -PendingCrossing; $projects.Add($p7)
+    $specUrl7 = ([System.Uri]::new($p7.Spec)).AbsoluteUri
+    $forms = @(('[the spec]({0})' -f $p7.Spec)) + @(if ($IsWindows) { '[the spec](/{0})' -f ($p7.Spec -replace '\\', '/') })
+    foreach ($form in $forms) {
+        $draft7 = (Get-Packet -Project $p7 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.').Replace("The specification: $specUrl7", "The specification: $form")
+        Assert-True (@(Test-SpecrewAuthoredPacket -Message $draft7).Count -eq 0 -or -not (@(Test-SpecrewAuthoredPacket -Message $draft7) -contains 'specific review targets with file links')) ("the validator accepts the link: {0}" -f $form)
+        $target = ([regex]::Match($form, '\]\((?<t>[^)]+)\)')).Groups['t'].Value
+        Assert-True (@(Get-SpecrewTurnMeaningLines -Message $draft7) -contains $target) ("the link is a meaning line: {0}" -f $form)
+        $state7 = @(Get-SpecrewReviewedArtifactState -Message $draft7)
+        Assert-True (@($state7 | Where-Object { [IO.Path]::GetFullPath([string]$_.path) -eq [IO.Path]::GetFullPath($p7.Spec) -and $_.kind -eq 'file' }).Count -eq 1) ("the linked file is fingerprinted: {0}" -f $form)
+    }
+    $t7 = Start-Turn -Project $p7 -Session 'sess-7' -UserText 'Continue.'
+    $draft7 = (Get-Packet -Project $p7 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.').Replace("The specification: $specUrl7", ('The specification: [the spec]({0})' -f $p7.Spec))
+    $reply7 = $draft7.Replace(('The specification: [the spec]({0})' -f $p7.Spec), 'The specification is in the feature folder.')
+    $r7 = Complete-Turn -Project $p7 -Session 'sess-7' -Token $t7.Token -Kind 'boundary' -Draft $draft7 -Reply $reply7
+    Assert-True ($r7.Blocked -and $r7.Output.Contains($p7.Spec)) 'a reply that drops the Markdown review link is blocked, naming it'
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
