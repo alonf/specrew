@@ -270,11 +270,15 @@ jobs:
       # Feature 202 T005 case (e): two real pwsh processes append to the hook-output journal at once. The journal
       # opens an append-only handle on Windows and a plain Append stream elsewhere; this leg decides whether Linux
       # and macOS need the permitted per-write lock (202 research.md, T003).
-      - name: Hook-output journal concurrent append (case e)
+      - name: Hook-output journal concurrent append (case e) and outage buffer
         shell: pwsh
         run: |
           & pwsh -NoProfile -NonInteractive -File ./tests/unit/journal-fault-injection.tests.ps1
           if ($LASTEXITCODE -ne 0) { throw 'journal-concurrent-append-failed' }
+          # 202 DRIFT-018: the outage buffer (one closed file per record, 0b62bf9b) behaves differently on Linux and
+          # macOS, where a rename does not detach an open writer; case (e) never degrades, so this exercises it.
+          & pwsh -NoProfile -NonInteractive -File ./tests/unit/hook-output-journal.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'hook-output-buffer-failed' }
 
       - name: Prepare bounded cgroup v2 root for privileged Linux review-process tests
         if: runner.os == 'Linux'

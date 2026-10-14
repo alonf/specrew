@@ -105,6 +105,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
     - **Codex review of the workflow diff:** co-review round 2 (`run-20261014-102731596-597f9ec9`) examined `.github/workflows/cross-platform-validation.yml` and raised no finding on it. Its five findings concern T003 and T004 code and are fixed (DRIFT-015).
     - **Why it is open again (maintainer, 2026-10-14):** the only 3-OS run was at `34af7076`. `0b62bf9b` later changed the Linux and macOS outage-buffer behavior (one closed file per record), and that has never run on Linux or macOS. The workflow also never ran on push for this branch, because its push filter stopped at `1*-*`; `2*-*` is now added (DRIFT-018).
     - **Closes when:** cross-platform validation is green on all three OSes at the current HEAD, with the case (e) step present in each leg's log.
+    - **First push run (38563251438, on `d3c010a4`):** green; the case (e) step passed on Windows, Ubuntu and macOS. Case (e) never degrades, though, so the closed-file buffer still had not run on Linux or macOS. The same step now also runs `hook-output-journal.tests.ps1`, whose cases (b), (c), (h) and (i) go through the buffer (DRIFT-018).
 
 ## Phase 4: US2, stops only when I have a decision to make (P1)
 
@@ -154,7 +155,10 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 5: US3, the same adaptation text on every host (P2)
 
-- [ ] T009 [owner: Implementer] [sp: 1.0] [US3] **One shared dials sentence.**
+- [x] T009 [owner: Implementer] [sp: 1.0] [US3] **One shared dials sentence.** Done 2026-10-14. `dials-parity.tests.ps1`:
+  - **Green:** for claude, codex and copilot the sentence is byte-identical apart from the correction reference, with no `key=number` text. The conformance turn-start supply and the first-prompt orientation carry it on each host. The numeric renderer is gone.
+  - **RED on `d3c010a4`:** the numeric line reached all three hosts through both surfaces.
+  - **Design notes:** the reference comes from the host manifest's existing `HasUserSlashCommandSurface`: `/specrew-user-profile edit` where the host has slash commands, "ask me to update your profile" where it does not (Codex). It lives beside the prose renderer in `user-profile.ps1`. The two launch-contract paths (`specrew-start.ps1`, `SessionBootstrapManager.ps1`) pass it too (DRIFT-019).
   - **Work:** use `Get-SpecrewProfileOrientationLine`'s prose sentence everywhere; remove `Get-SpecrewOrientationDialsLine` (the numeric renderer); the host binding supplies only the correction-command reference.
   - **RED:** the numeric line `software_architecture=10, ...` reaches the agent through the Stop repair.
   - **Acceptance:** byte-identical across the three validated bindings apart from the command reference; no `key=number` text on any host.

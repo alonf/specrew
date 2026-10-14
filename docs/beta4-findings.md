@@ -4967,6 +4967,18 @@ id, exit code, duration against its timeout, and `timed_out`. The sealed output 
 facts are disclosed.
 **Disposition:** recorded on the maintainer's ruling 2026-10-14; beta5.
 
+## B4F-119 - A FEATURE-013 VALIDATOR SUITE FAILS AT FIXTURE STAGING, AND NO CI JOB OR LANE RUNS IT (beta5 candidate)
+
+**Observed:** 2026-10-14, feature 202 implement, in a regression sweep widened to every suite that mentions a
+changed surface. `tests/integration/validator-hardening-iteration2.ps1` (feature 013) throws "Failed to stage
+workspace changes at" (an empty path) in its `Commit-Workspace` helper. It fails identically at `d3c010a4`,
+before any T009 change, so 202 did not cause it. No workflow and no verification-plan lane names it, which is
+why the failure was invisible.
+**Effect:** a validator-hardening suite whose coverage nobody runs reads as coverage that exists. Root cause not
+investigated: outside 202's Tier 1.
+**Beta5 candidate:** fix the fixture or retire the suite, and make an unrun suite visible.
+**Disposition:** recorded under the beta5 rule for anything beyond Tier 1; no repair in 202.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

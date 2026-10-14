@@ -197,12 +197,12 @@ try {
     Write-Host 'Case 6: the dials line is filled in by the system, and its absence costs no cycle (B4F-106)'
     $p6 = New-Project; $projects.Add($p6)
     $profile6 = Join-Path $p6.Root 'user-profile.yml'
-    [System.IO.File]::WriteAllText($profile6, "expertise:`n  product_strategy: 3`n  software_architecture: 5`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($profile6, "expertise:`n  product_management: 3`n  software_architecture: 9`n", [System.Text.UTF8Encoding]::new($false))
     $env:SPECREW_USER_PROFILE_PATH = $profile6
     # A bootstrap was delivered to this session, so the orientation lane is live.
     [System.IO.File]::WriteAllText((Join-Path $p6.Root '.specrew/runtime/hook-bootstrap-render-sess-6-startup.json'), '{"rendered":true}', [System.Text.UTF8Encoding]::new($false))
     $t6 = Start-Turn -Project $p6 -Session 'sess-6' -UserText 'Hi, what is going on here?'
-    $dials = 'How I am adapting to you: product_strategy=3, software_architecture=5; correct me if that is wrong.'
+    $dials = "What I know about you: I'll treat you as learning on Product Strategy, auto on UX/UI Design, expert on Software Architecture, auto on AI Delivery Planning — correct me if that's off (``/specrew-user-profile edit``), and I'll match how much I ask and explain to it."
     Assert-True ($t6.Output -match '\[specrew-system\]' -and $t6.Output.Contains($dials)) 'the first prompt supplies the finished dials line, marked as system output'
     $orientation = "Specrew 0.40.0-beta4 is active here, on Claude Code. Feature 001 is at the tasks stage; your artifacts are under specs/001-feat."
     $r6 = Complete-Turn -Project $p6 -Session 'sess-6' -Token $t6.Token -Kind 'conversational' -Draft $orientation -Reply $orientation

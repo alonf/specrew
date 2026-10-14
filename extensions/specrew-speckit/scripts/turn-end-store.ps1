@@ -584,20 +584,47 @@ function Test-SpecrewAuthoredPacket {
     return [pscustomobject]@{ valid = ($missing.Count -eq 0); missing = @($missing) }
 }
 
-function Get-SpecrewOrientationDialsLine {
-    # The same override user-profile.ps1's resolver honours, so both read the one profile the human configured.
-    param([string]$ProfilePath = $(if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_USER_PROFILE_PATH)) { $env:SPECREW_USER_PROFILE_PATH } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew/user-profile.yml' }))
-    if (-not (Test-Path -LiteralPath $ProfilePath -PathType Leaf)) { return '' }
-    $dials = [Collections.Generic.List[string]]::new()
-    $inExpertise = $false
-    foreach ($line in Get-Content -LiteralPath $ProfilePath -Encoding UTF8) {
-        if ($line -cmatch '^expertise:\s*$') { $inExpertise = $true; continue }
-        if (-not $inExpertise) { continue }
-        if ($line -cmatch '^\s{2,}([a-z_]+):\s*(\S+)\s*$') { $dials.Add(('{0}={1}' -f $Matches[1], $Matches[2])) }
-        elseif ($line -cmatch '^\S') { break }
+# FEATURE 202 T009 (FR-016, SC-005, B4F-107): ONE ADAPTATION SENTENCE ON EVERY HOST. What stood here rendered the
+# profile's raw keys and numbers ("software_architecture=10, ...") and reached Codex that way, while Claude read
+# the prose sentence the session orientation uses. The prose renderer in user-profile.ps1 is now the only one;
+# the host adapter contributes only the correction reference (Get-SpecrewProfileCorrectionReference, beside it).
+function Resolve-SpecrewModuleFile {
+    # A file of the Specrew module tree, from wherever this script runs: the source tree or an installed module
+    # (three levels above extensions/specrew-speckit/scripts), SPECREW_MODULE_PATH, a self-hosting project root,
+    # or the newest installed module. $null when none has it.
+    param([Parameter(Mandatory)][string] $RelativePath, [AllowNull()][string] $ProjectRoot)
+    $roots = [System.Collections.Generic.List[string]]::new()
+    try { $roots.Add([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))) } catch { $null = $_ }
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $roots.Add($env:SPECREW_MODULE_PATH) }
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) { $roots.Add($ProjectRoot) }
+    foreach ($candidateRoot in $roots) {
+        $candidate = Join-Path $candidateRoot $RelativePath
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     }
-    if ($dials.Count -eq 0) { return '' }
-    return ('How I am adapting to you: {0}; correct me if that is wrong.' -f ($dials -join ', '))
+    try {
+        $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase $RelativePath) -PathType Leaf } | Select-Object -First 1
+        if ($module) { return (Join-Path $module.ModuleBase $RelativePath) }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Get-SpecrewOrientationAdaptationLine {
+    # The shared sentence, or '' when no profile is set. Read through user-profile.ps1's own reader, which honours
+    # SPECREW_USER_PROFILE_PATH, so every surface reads the one profile the human configured.
+    param([AllowNull()][string] $HostKind, [AllowNull()][string] $ProjectRoot)
+    try {
+        if (-not (Get-Command Get-SpecrewProfileCorrectionReference -ErrorAction SilentlyContinue)) {
+            $profileScript = Resolve-SpecrewModuleFile -RelativePath 'scripts/internal/user-profile.ps1' -ProjectRoot $ProjectRoot
+            if (-not $profileScript) { return '' }
+            . $profileScript
+        }
+        $line = Get-SpecrewProfileOrientationLine -CorrectionReference (Get-SpecrewProfileCorrectionReference -HostKind $HostKind)
+        if ([string]::IsNullOrWhiteSpace([string]$line)) { return '' }
+        return [string]$line
+    }
+    catch { return '' }
 }
 
 function Get-SpecrewTurnEndRenderDecision {

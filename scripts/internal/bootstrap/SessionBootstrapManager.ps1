@@ -239,7 +239,7 @@ function Write-SpecrewLaunchContractArtifact {
     # scan); SpecrewVersion is threaded from the provider (resolved from the module manifest) so the mandatory
     # orientation banner renders the REAL version instead of "Specrew: unknown" (the banner-fix follow-on).
     $expertiseLine = $null
-    try { $expertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile) } catch { $expertiseLine = $null }
+    try { $expertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile) -CorrectionReference (Get-SpecrewProfileCorrectionReference -HostKind $HostKind) } catch { $expertiseLine = $null }  # 202 T009: one sentence, host-specific correction reference only
     $featureRefValue = [string](Get-SpecrewProp $generatorSessionState 'feature_ref')
     if ([string]::IsNullOrWhiteSpace($featureRefValue) -and $featurePath) { $featureRefValue = Split-Path -Leaf $featurePath }
     $contract = Invoke-SpecrewCoordinatorPromptSurgery `

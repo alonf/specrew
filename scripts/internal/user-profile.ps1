@@ -600,7 +600,12 @@ function Get-SpecrewProfileOrientationLine {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [hashtable]$profileData
+        [hashtable]$profileData,
+
+        # Feature 202 T009 (FR-016): the ONE sentence is the same on every host; only how the human corrects it
+        # differs, and that reference is the host adapter's to supply (Get-SpecrewProfileCorrectionReference).
+        [Parameter(Mandatory = $false)]
+        [string]$CorrectionReference = '`/specrew-user-profile edit`'
     )
 
     if (-not $profileData) {
@@ -644,7 +649,48 @@ function Get-SpecrewProfileOrientationLine {
         return $null
     }
 
-    return "What I know about you: I'll treat you as " + ($parts -join ', ') + " — correct me if that's off (``/specrew-user-profile edit``), and I'll match how much I ask and explain to it."
+    return "What I know about you: I'll treat you as " + ($parts -join ', ') + " — correct me if that's off ($CorrectionReference), and I'll match how much I ask and explain to it."
+}
+
+function Get-SpecrewProfileCorrectionReference {
+    <#
+    .SYNOPSIS
+    Feature 202 T009 (FR-016): the only host-specific part of the adaptation sentence - how the human corrects it.
+
+    .DESCRIPTION
+    A host whose manifest declares a user slash-command surface (HasUserSlashCommandSurface) names the command;
+    one without names the plain request, so no host is told to type a command it does not have. The manifest is
+    looked up beside this script's module tree, then SPECREW_MODULE_PATH, then the newest installed module.
+    #>
+    param([AllowNull()][string]$HostKind)
+
+    $hasSlash = $true
+    if (-not [string]::IsNullOrWhiteSpace($HostKind) -and $HostKind -match '^[A-Za-z0-9_.-]+$') {
+        $relative = "hosts/$HostKind/host.psd1"
+        $manifestPath = $null
+        foreach ($root in @((Join-Path $PSScriptRoot '../..'), $env:SPECREW_MODULE_PATH)) {
+            if ([string]::IsNullOrWhiteSpace($root)) { continue }
+            $candidate = Join-Path $root $relative
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) { $manifestPath = $candidate; break }
+        }
+        if (-not $manifestPath) {
+            try {
+                $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                    Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase $relative) -PathType Leaf } | Select-Object -First 1
+                if ($module) { $manifestPath = Join-Path $module.ModuleBase $relative }
+            }
+            catch { $manifestPath = $null }
+        }
+        if ($manifestPath) {
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                if ($manifest.ContainsKey('HasUserSlashCommandSurface')) { $hasSlash = [bool]$manifest.HasUserSlashCommandSurface }
+            }
+            catch { $hasSlash = $true }
+        }
+    }
+    if ($hasSlash) { return '`/specrew-user-profile edit`' }
+    return 'ask me to update your profile'
 }
 
 function Invoke-FirstRunExpertisePrompt {
@@ -896,6 +942,7 @@ if ($null -ne $ExecutionContext.SessionState.Module) {
         'Save-UserProfile',
         'Show-UserProfileSummary',
         'Get-SpecrewProfileOrientationLine',
+        'Get-SpecrewProfileCorrectionReference',
         'Invoke-FirstRunExpertisePrompt',
         'Invoke-SpecrewInitProfileCapture',
         'Reset-UserProfile',

@@ -77,7 +77,7 @@ function New-PendingProject {
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $root -BoundaryEnforcement $upd -Context $st.Context | Out-Null
     [System.IO.File]::WriteAllText((Join-Path $root '.specrew/runtime/pending-verdict-stop.md'), (@('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: tasks -> before-implement', 'Human approval phrase: approved for before-implement', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') -join "`n"), [System.Text.UTF8Encoding]::new($false))
     $profilePath = Join-Path $root 'user-profile.yml'
-    [System.IO.File]::WriteAllText($profilePath, "expertise:`n  product_strategy: 3`n  software_architecture: 5`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($profilePath, "expertise:`n  product_management: 3`n  software_architecture: 9`n", [System.Text.UTF8Encoding]::new($false))
     return [pscustomobject]@{ Root = $root; Feature = $feature; Profile = $profilePath }
 }
 
@@ -138,7 +138,7 @@ try {
     Assert-True ($first -match '- Version and host: Specrew \d+\.\d+\.\d+' -and $first -match 'running on Claude Code') 'it names the real version and host'
     Assert-True ($first -match "feature 001-feat is waiting for your decision on 'before-implement'\. When you are ready, type: approved for before-implement") 'it states the pending decision and its approval phrase'
     Assert-True ($first.Contains($featureUrl)) 'it links the feature''s artifacts'
-    Assert-True ($first.Contains('How I am adapting to you: product_strategy=3, software_architecture=5; correct me if that is wrong.')) 'it carries the dials line'
+    Assert-True ($first.Contains("What I know about you: I'll treat you as learning on Product Strategy, auto on UX/UI Design, expert on Software Architecture, auto on AI Delivery Planning — correct me if that's off (``/specrew-user-profile edit``), and I'll match how much I ask and explain to it.")) 'it carries the shared adaptation sentence (T009)'
     Assert-True ($first -notmatch '<one specific action|<project-root-url>|<feature-id>') 'nothing is left for the agent to fill in'
     foreach ($noun in 'crossing', 'marker', 'verdict capture', 'controller') { Assert-True ($first -notmatch ('(?i)\b' + [regex]::Escape($noun) + '\b')) ("no internal noun '{0}' reaches the human" -f $noun) }
 
@@ -151,7 +151,7 @@ try {
     $second = Invoke-BootstrapPrompt -Project $p -Session 'sess-o'
     Assert-True ([string]::IsNullOrWhiteSpace($second)) 'the second prompt carries nothing'
     $conformanceStart = Invoke-Pwsh -Root $p.Root -Script $provider -Arguments @('--host-kind', 'claude', '--source-event', 'UserPromptSubmit', '--session-id', 'sess-o', '--last-user-message', 'Hi.', '--turn-origin', 'typed-user')
-    Assert-True ($conformanceStart -notmatch 'How I am adapting to you') 'the conformance lane does not add the dials line again'
+    Assert-True ($conformanceStart -notmatch 'What I know about you') 'the conformance lane does not add the dials line again'
 
     # -----------------------------------------------------------------------------------------------
     Write-Host 'Case 4: a host that shows hook output directly gets no instruction to repeat it'

@@ -90,7 +90,7 @@ This familiar tiny utility needs no deeper discovery. Does this record stand? Ty
     Check ($declared.text -eq '' -and -not $declared.orientation) 'opening declaration does not repeat orientation or replace the question'
     # 202 T007 (FR-013, B4F-106): the dials line is filled in by the system - supplied on the first prompt, marked as
     # system output - and an opening without it costs no Stop cycle.
-    Check ($script:firstStart -match '\[specrew-system\]' -and $script:firstStart -match 'software_architecture=10') 'the first prompt supplies the dials line from the profile, marked as system output'
+    Check ($script:firstStart -match '\[specrew-system\]' -and $script:firstStart -match 'expert on Software Architecture' -and $script:firstStart -notmatch '\b[a-z_]+=\d') 'the first prompt supplies the shared adaptation sentence from the profile, marked as system output (no key=number text, T009)'
     $dialsRepair = Stop-With $withoutDials
     Check ($dialsRepair -notmatch 'SPECREW-STOP-BLOCK') 'an opening without the dials line is not blocked: 0 human-visible cycles'
     # A mutation that wrongly releases Stop consumes the token. Do not fabricate a replacement;

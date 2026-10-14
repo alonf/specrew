@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 18
-**Resolution rate**: 94% (17/18 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 19
+**Resolution rate**: 95% (18/19 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -228,7 +228,20 @@
   3. T005 is reopened. It closes when cross-platform validation is green on all three OSes at the current HEAD, with the case (e) step present in each leg's log.
   4. Co-review round 3 is held until T011 is committed and covers T006 to T011. Round 4, at sign-off, covers T012 to T014 and the round-3 fixes.
   5. Until B4F-055 is fixed, every finding the engine demotes in rounds 3 and 4 is checked against the code and listed in that round's checkpoint, real or not, before any sign-off. The evidence is added to B4F-055.
+
+- **Addendum (same day)**: the first push run (38563251438, on `d3c010a4`) was green, with the case (e) step passing on all three OSes. Case (e) never degrades, so the closed-file buffer path still had not run on Linux or macOS. The same step now also runs `hook-output-journal.tests.ps1`, whose cases go through the buffer. That is one more script in an existing step, within DRIFT-003's rule.
+- **What the unblocked jobs found (run 38563251443, on `d3c010a4`)**: `Lint` passed. `Deterministic gate` ran and failed on two `tests/bootstrap` suites, both T008 regressions. The crew's sweeps globbed only `tests/unit` and `tests/integration`, so they never reached that folder. `Contract` was skipped behind it.
+  1. `Regression.Tests` pinned the bootstrap provider at exactly two events; T008 binds a third (`UserPromptSubmit`). It now pins three, with the reason.
+  2. `DirectiveDeliveryCap` 3b found the pending-verdict SessionStart directive at 10,045 characters, over the 10,000 host cap, after T008 added its line. Item 1's long composing guidance, for text that now arrives finished, left the directive; the worst case is 9,288.
+  The sweep now also covers `tests/bootstrap` and `tests/continuous-co-review`. The rerun of both jobs is reported at the checkpoint.
 - **Class closure**: the `2*-*` filter makes every 200-series feature run the 3-OS workflow on push. The lint exclusion names the preserved-answers folder by pattern, so it applies to any feature's preserved answers. The demoted-finding rule is written into tasks.md's execution notes. NONE for the engine's demotion itself: beta5, B4F-055.
+
+### DRIFT-019 — T009 passed the correction reference through four callers outside its owned files (resolved)
+
+- **Observed**: 2026-10-14, T009 implementation. FR-016 asks for one sentence on every host, with only the correction reference from the adapter. The sentence reaches the human through four surfaces. Two were 202's own (the conformance turn-start supply and the bootstrap's first-prompt orientation). Two were launch-contract paths that already used the prose sentence with a hardcoded slash command (`specrew-start.ps1`, `SessionBootstrapManager.ps1`) and the bootstrap's SessionStart directive. Leaving those with the hardcoded command would tell a Codex user to type a command Codex does not have.
+- **Requirement**: FR-016, SC-005; T009's owned files (`user-profile.ps1`, `turn-end-store.ps1`, `dials-parity.tests.ps1`).
+- **Resolution**: `Get-SpecrewProfileCorrectionReference` lives beside the prose renderer in `user-profile.ps1` and reads the host manifest's existing `HasUserSlashCommandSurface`. No manifest gains a key. Each caller passes its host. The bootstrap and conformance providers were already in 202's set; `specrew-start.ps1` and `SessionBootstrapManager.ps1` each gain one argument.
+- **Class closure**: `dials-parity` asserts byte-identical text apart from the reference across the three validated hosts, through both delivery surfaces, and that the numeric renderer is gone.
 <!--
   Every new ### DRIFT-... event includes:
 

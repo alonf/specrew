@@ -196,7 +196,10 @@ function Format-BootstrapDirective {
     # before the contract - and name the "how we work" + user-profile/expertise content the human expects.
     $lines.Add('=== SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH ===')
     $lines.Add('Sessions in this project open with an orientation banner, before the first request is acted on, so the person can see where the work stands. It is rendered once, as the opening of the session''s first response - re-reading this state later in the same session does not call for another one. It contains, in order:')
-    $lines.Add('  (1) What Specrew does for THIS person, in PLAIN WORDS - no lifecycle vocabulary in the first sentence a consumer ever reads. Say, in your own phrasing: you write down what they want before building it, you check with them before each big step instead of running ahead, and nothing moves past one of those checks until they say so. Do NOT open with words like lifecycle, spec-driven, boundaries, gates, verdict, or SDLC: they are precise for someone who already knows the method and meaningless to someone meeting it. (Measured 2026-08-12: the previous opening carried six such terms in its first sentence, and the consumer-language pass rated it clean because those words are deliberately NOT on the banned-noun list - that list governs approval instructions, where the reader has already been introduced. An introduction has a different audience, and the same word can be right in one and wrong in the other.)')
+    # Feature 202 T008: items 1 to 3 now arrive finished with the first prompt, so the long composing guidance for item 1
+    # (and its 2026-08-12 measurement note) left this directive; it also had to, to keep the pending-verdict payload
+    # under the 10K host cap (DirectiveDeliveryCap 3b). The plain-words rule now lives in Format-SpecrewFinishedOrientation.
+    $lines.Add('  (1) What Specrew does for THIS person, in plain words: no lifecycle vocabulary in the first sentence they read. The supplied orientation already says it.')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
     # ================= AGENT-BINDING CLAUSE - NOT PART OF THE RENDERED BANNER =================
     # RESTORED 2026-08-12 after a measured regression that is mine. The consumer-facing rewrite of item
@@ -248,7 +251,8 @@ function Format-BootstrapDirective {
     $bannerItem3 = $null
     try {
         if (Get-Command -Name 'Get-SpecrewProfileOrientationLine' -ErrorAction SilentlyContinue) {
-            $resolvedExpertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile)
+            # Feature 202 T009 (FR-016): the one shared sentence; the host supplies only how to correct it.
+            $resolvedExpertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile) -CorrectionReference (Get-SpecrewProfileCorrectionReference -HostKind $hostKind)
             if (-not [string]::IsNullOrWhiteSpace($resolvedExpertiseLine)) {
                 $bannerItem3 = '  (3) How you will adapt to the HUMAN - render banner item 3 with THIS resolved adaptation, read from the user''s ~/.specrew/user-profile.yml (do NOT substitute the example, and do NOT render the no-profile fallback): ' + ([string]$resolvedExpertiseLine).Trim() + '.'  # FR-025
             }
@@ -541,7 +545,7 @@ try {
         $healthP = $null
         if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $healthP = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $healthP = $null } }
         $orientationP = Format-SpecrewFinishedOrientation -SpecrewVersion $versionP -HostDisplay $hostDisplayP -ProjectName (Split-Path -Leaf $root) -Branch $branchP `
-            -FeatureRef $featureP -LastAuthorized $lastAuthP -PendingTo $pendingToP -ArtifactsUrl $artifactsP -DialsLine (Get-SpecrewOrientationDialsLine) -HealthLine $healthP
+            -FeatureRef $featureP -LastAuthorized $lastAuthP -PendingTo $pendingToP -ArtifactsUrl $artifactsP -DialsLine (Get-SpecrewOrientationAdaptationLine -HostKind $hostKind -ProjectRoot $root) -HealthLine $healthP
         $null = Write-SpecrewTurnEndJsonFile -Path $suppliedP -Value ([pscustomobject][ordered]@{ supplied_at = [DateTimeOffset]::UtcNow.ToString('o'); host = $hostKind })
         if (Get-SpecrewHookOutputDirectDisplay -HostBinding $hostBinding) {
             # This host shows hook output to the human itself: the orientation is already on their screen.
