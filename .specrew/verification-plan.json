@@ -70,7 +70,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 202 iteration 001 suites: the standard turn record through the deployed hook command (T002), twin-copy parity (T002), the latch-free hook-output journal (T003), disclosed receipt outcomes (T004), the concurrent-append case (e) and the cross-host workshop walk (T005), presented-crossing memory (T006), the substance-only Stop (T007), orientation order (T008), dials parity (T009), the feature resolver (T010) and the new-feature reset (T011). Measured cold 2026-10-14 after T011: 240.0 s against 600 s (2.5x headroom, at the 2.4x floor: the next suite needs a timeout raise or a split; 231.9 s after T010, 64.7 s before T005). Added 2026-10-13 (202 DRIFT-011) so every-suite-is-named-by-a-lane stays green."
+      "label": "Feature 202 iteration 001 suites: the standard turn record through the deployed hook command (T002), twin-copy parity (T002), the latch-free hook-output journal (T003), disclosed receipt outcomes (T004), the concurrent-append case (e) and the cross-host workshop walk (T005), presented-crossing memory (T006), the substance-only Stop (T007), orientation order (T008), dials parity (T009), the feature resolver (T010) and the new-feature reset (T011). Measured cold 2026-10-14 after T011 and the four-writer case (e): 242.7 s against 600 s (2.47x headroom, at the 2.4x floor: the next suite needs a timeout raise or a split; 231.9 s after T010, 64.7 s before T005). Added 2026-10-13 (202 DRIFT-011) so every-suite-is-named-by-a-lane stays green."
     }
   ]
 }

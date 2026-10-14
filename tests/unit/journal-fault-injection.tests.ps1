@@ -25,7 +25,9 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 function Get-TextHash { param([string]$Text) return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text.Trim())))).ToLowerInvariant() }
 
-$writerCount = 2
+# Four writers, not two (202 DRIFT-023): with two, the unfair Unix lock starved a writer only now and then on CI
+# (Linux once, macOS once); four reproduced it in 2 of 3 local Linux runs, so the case now catches what it guards.
+$writerCount = 4
 $appendsPerWriter = 1000
 $platform = if ($IsWindows) { 'windows' } elseif ($IsMacOS) { 'macos' } else { 'linux' }
 

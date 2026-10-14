@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 22
-**Resolution rate**: 100% (22/22 resolved)
+**Total drift events**: 23
+**Resolution rate**: 100% (23/23 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -278,7 +278,15 @@
 - **Where T011 is**: `f46c9fb1` holds T011's code, test and records; `e0d8c33e`'s message describes them. The content is exactly what the sweep ran against.
 - **Mechanism**: B4F-120. The greenfield bootstrap baseline commits in whatever repository encloses the project path, and a fixture under this repository's `.scratch/` is enclosed by it. The triggering suite was not identified.
 - **Resolution**: history is not rewritten. A force push would rewrite a pushed branch, and the content is right. From now on, the crew runs sweeps only on a fully committed tree, so a stray commit can hold nothing that is not already committed.
-- **Class closure**: NONE in 202, beyond the sweep rule. The product guard and the fixture locations are B4F-120 (beta5).
+- **Class closure**: NONE — the product guard and the fixture locations are beta5 (B4F-120); in 202 the only mitigation is the sweep rule above.
+
+### DRIFT-023 — the Unix journal lock starved a writer under contention, an FR-001 failure (resolved)
+
+- **Observed**: 2026-10-14. Case (e) degraded once on the Linux CI leg (38573833479) and once on the macOS CI leg (38583777333). The printed record shows each time a writer that waited out the sidecar `<journal>.lock`. Nothing was lost: the flush re-journaled the buffered hashes as one or three duplicate lines. But FR-001 says concurrent appends succeed, and a degraded episode is a failure. Five 2-writer runs in WSL Ubuntu could not reproduce it; four writers reproduced it in 2 of 3 runs.
+- **Cause**: the per-write lock is an advisory flock, and it is unfair. Its wait was 200 ms, inside FR-002's 250 ms retry window, polled every 2 ms. A waiter loses the short gaps between another writer's back-to-back appends. A wait for a turn is not a failed append, but it was budgeted as one.
+- **Requirement**: FR-001; FR-002 (the retry window governs appends that fail).
+- **Resolution**: the lock wait has its own bound, 1000 ms, polled every millisecond. The retry window is unchanged. Case (e) now runs four writers, so it reproduces the starvation instead of meeting it now and then. With the fix, four writers passed 6 of 6 in WSL Ubuntu, and the buffer suite passes on Linux and Windows. The 3-OS CI run on the next push is the acceptance.
+- **Class closure**: case (e) with four writers, on Windows, Linux and macOS in every push run, plus the printed degraded record when it degrades.
 <!--
   Every new ### DRIFT-... event includes:
 
