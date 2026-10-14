@@ -622,6 +622,20 @@ function Test-SpecrewDesignCoDesignRecord {
     return $errors.ToArray()
 }
 
+# Feature 202 T013 (FR-020; DRIFT-002): what produces the artifact, and what each section must hold - so ONE refusal
+# carries the whole format. Before, the format came out one layer per refusal: the sections, then each option's fields
+# once an Alternatives section existed, then the decision's labels once a Human Decision section existed (three
+# refusals on 202's own intake), and a missing file was named without the step that makes it.
+$script:SpecrewDesignAnalysisProducerText = "It is produced by the design workshop's design-analysis step: New-SpecrewDesignAnalysisArtifact scaffolds it from the template, and the crew fills in the options with the human and records their decision."
+$script:SpecrewDesignAnalysisOptionFields = @('Approach', 'Architectural pattern', 'Quality features considered', 'Effort estimate', 'Reversibility cost', 'Trade-offs')
+$script:SpecrewDesignAnalysisSectionRequirements = [ordered]@{
+    'Problem Framing'            = 'the problem this iteration solves'
+    'Key Design Decision Points' = 'the decisions the design must settle'
+    'Alternatives'               = ("a Simplest and a Reasonable option, plus By-the-book or a line saying why By-the-book is not meaningfully distinct; each option with {0}, and a Mermaid diagram or diagram link" -f ($script:SpecrewDesignAnalysisOptionFields -join ', '))
+    'Crew Recommendation'        = 'exactly one recommended option (for example "Recommended: Option B")'
+    'Human Decision'             = 'the verdict ("approved for plan with Option <X>" or a Chosen Option field), the human''s reason, modifications or instructions, and the commit hash the decision was recorded in (not the draft commit)'
+}
+
 function Test-SpecrewDesignAnalysisArtifact {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -634,8 +648,15 @@ function Test-SpecrewDesignAnalysisArtifact {
     $artifactPath = Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $iteration
     $errors = New-Object System.Collections.Generic.List[string]
 
-    if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
-        $errors.Add("Missing design-analysis artifact: $artifactPath") | Out-Null
+    $content = if (Test-Path -LiteralPath $artifactPath -PathType Leaf) { [string](Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8) } else { $null }
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        # T013: a missing or empty artifact (an empty one threw a parameter-binding error here) gets the producer and the
+        # whole format in this one refusal.
+        $state = if ($null -eq $content) { 'Missing design-analysis artifact' } else { 'Empty design-analysis artifact' }
+        $errors.Add(("{0}: {1}. {2}" -f $state, $artifactPath, $script:SpecrewDesignAnalysisProducerText)) | Out-Null
+        foreach ($name in $script:SpecrewDesignAnalysisSectionRequirements.Keys) {
+            $errors.Add(("design-analysis.md needs a populated {0} section: {1}." -f $name, $script:SpecrewDesignAnalysisSectionRequirements[$name])) | Out-Null
+        }
         return [pscustomobject]@{
             Valid          = $false
             ArtifactPath   = $artifactPath
@@ -644,7 +665,6 @@ function Test-SpecrewDesignAnalysisArtifact {
         }
     }
 
-    $content = Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8
     $problem = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Problem\s+Framing', 'Problem')
     $decisionPoints = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Key\s+Design\s+Decision\s+Points', 'Decision\s+Points')
     $alternatives = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Alternatives', 'Design\s+Alternatives')
@@ -659,7 +679,8 @@ function Test-SpecrewDesignAnalysisArtifact {
             @{ Name = 'Human Decision'; Value = $humanDecision }
         )) {
         if (-not $section.Value.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Value.Body)) {
-            $errors.Add("design-analysis.md is missing a populated $($section.Name) section.") | Out-Null
+            # T013: the section's whole requirement, so its inner checks never surface one refusal later.
+            $errors.Add(("design-analysis.md is missing a populated {0} section: {1}." -f $section.Name, $script:SpecrewDesignAnalysisSectionRequirements[$section.Name])) | Out-Null
         }
     }
 
@@ -668,11 +689,12 @@ function Test-SpecrewDesignAnalysisArtifact {
         $reasonable = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'Reasonable'
         $byTheBook = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'By-the-book'
 
+        $optionNeeds = ("with {0}, and a Mermaid diagram or diagram link" -f ($script:SpecrewDesignAnalysisOptionFields -join ', '))
         if ([string]::IsNullOrWhiteSpace($simplest)) {
-            $errors.Add('Alternatives must include a populated Simplest option.') | Out-Null
+            $errors.Add(("Alternatives must include a populated Simplest option, {0}." -f $optionNeeds)) | Out-Null
         }
         if ([string]::IsNullOrWhiteSpace($reasonable)) {
-            $errors.Add('Alternatives must include a populated Reasonable option.') | Out-Null
+            $errors.Add(("Alternatives must include a populated Reasonable option, {0}." -f $optionNeeds)) | Out-Null
         }
 
         foreach ($option in @(
@@ -682,7 +704,7 @@ function Test-SpecrewDesignAnalysisArtifact {
             )) {
             if ([string]::IsNullOrWhiteSpace($option.Block)) { continue }
 
-            foreach ($field in @('Approach', 'Architectural pattern', 'Quality features considered', 'Effort estimate', 'Reversibility cost', 'Trade-offs')) {
+            foreach ($field in $script:SpecrewDesignAnalysisOptionFields) {
                 if (-not (Test-SpecrewDesignAnalysisOptionField -Block $option.Block -FieldName $field)) {
                     $errors.Add("$($option.Name) option is missing required field: $field.") | Out-Null
                 }
@@ -782,6 +804,8 @@ function Invoke-SpecrewDesignAnalysisPlanBoundaryGate {
         $messageLines = New-Object System.Collections.Generic.List[string]
         $messageLines.Add(("[design-analysis-gate] Plan boundary cannot advance for active substantive feature '{0}'." -f $feature)) | Out-Null
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        $messageLines.Add($script:SpecrewDesignAnalysisProducerText) | Out-Null   # T013: the step that fixes it
+        $messageLines.Add('Every gap is listed below, in one pass:') | Out-Null
         foreach ($err in $result.Errors) {
             $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
@@ -1003,6 +1027,8 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         $messageLines = New-Object System.Collections.Generic.List[string]
         $messageLines.Add(("[design-analysis-pre-plan-gate] Do not author plan.md for active substantive feature '{0}' until design analysis is valid." -f $feature)) | Out-Null
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        $messageLines.Add($script:SpecrewDesignAnalysisProducerText) | Out-Null   # T013: the step that fixes it
+        $messageLines.Add('Every gap is listed below, in one pass:') | Out-Null
         foreach ($err in $result.Errors) {
             $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
