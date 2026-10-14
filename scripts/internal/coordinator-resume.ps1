@@ -187,6 +187,17 @@ function Get-CoordinatorResumeSnapshot {
     }
     catch { $resumeHandover = $null; $resumeReconciliation = $null }
 
+    # Feature 202 T012 (FR-019): the same from-disk position and notes standing the SessionStart hook shows, so a
+    # `specrew start` resume (the only path on a host without hooks) never takes its position from the notes.
+    $diskResume = $null
+    try {
+        if (Get-Command Get-SpecrewResumeFromDisk -ErrorAction SilentlyContinue) {
+            $workingBoundary = if ($null -ne $SessionState) { [string]$SessionState.boundary_type } else { $null }
+            $diskResume = Get-SpecrewResumeFromDisk -ProjectRoot $resolvedProjectRoot -FeatureRef $featureRef -Handover $resumeHandover -NowUtc ((Get-Date).ToUniversalTime().ToString('o')) -WorkingBoundary $workingBoundary
+        }
+    }
+    catch { $diskResume = $null }
+
     $suggestedActions = New-Object System.Collections.Generic.List[string]
 
     if ($null -ne $taskSummary -and $taskSummary.InProgress.Count -gt 0) {
@@ -225,6 +236,7 @@ function Get-CoordinatorResumeSnapshot {
         validator_summary   = $validatorSummary
         handover            = $resumeHandover
         reconciliation      = $resumeReconciliation
+        disk_resume         = $diskResume
         suggested_actions   = $suggestedActions.ToArray()
     }
 }
@@ -298,9 +310,19 @@ function Get-CoordinatorResumePromptBlock {
     }
     else { '' }
 
+    # T012 (FR-019): where we are and where to start, from disk; the previous session's notes flagged when older than it.
+    $diskBlock = ''
+    if ($null -ne $snapshot.disk_resume) {
+        $dr = $snapshot.disk_resume
+        $diskLines = @($dr.where_line, $dr.commits_line, $dr.progress_line, $dr.starting_line) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { '- ' + [string]$_ }
+        if ([bool]$dr.notes_stale) { $diskLines += ('- ' + (Format-SpecrewResumeNotesFlag -Resume $dr)) }
+        $diskBlock = '### Where We Are (read from disk)' + [Environment]::NewLine + [Environment]::NewLine + ($diskLines -join [Environment]::NewLine) + [Environment]::NewLine + [Environment]::NewLine
+    }
+
     return @"
 ## Welcome Back Snapshot
 
+$diskBlock
 - Active feature: $($snapshot.feature_ref)
 - Feature path: $(if ($snapshot.feature_path) { $snapshot.feature_path } else { '(none)' })
 - Worktree: $($snapshot.worktree_path)

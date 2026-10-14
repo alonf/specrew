@@ -472,6 +472,158 @@ function Get-SpecrewRollingHandover {
     return $parsed
 }
 
+function Get-SpecrewHandoverAgeText {
+    # "12 min", "3 h", "2 days" - how long ago the previous session's notes were written. $null when unknown.
+    param([AllowNull()][string]$RecordedAt, [Parameter(Mandatory)][string]$NowUtc)
+    try {
+        $minutes = ([DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture) - [DateTimeOffset]::Parse($RecordedAt, [Globalization.CultureInfo]::InvariantCulture)).TotalMinutes
+    }
+    catch { return $null }
+    if ($minutes -lt 0) { return $null }
+    if ($minutes -lt 60) { return ('{0} min' -f [int][Math]::Floor($minutes)) }
+    if ($minutes -lt 48 * 60) { return ('{0} h' -f [int][Math]::Round($minutes / 60)) }
+    return ('{0} days' -f [int][Math]::Round($minutes / 1440))
+}
+
+function Get-SpecrewTaskListProgress {
+    # Task progress from the feature's task list (specs/<feature>/tasks.md) - read only, no tracking file written.
+    # $null when there is no task list.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$FeatureRef)
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $null }
+    $path = Join-Path $ProjectRoot (Join-Path 'specs' (Join-Path $FeatureRef 'tasks.md'))
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $done = 0; $total = 0; $next = $null
+    foreach ($line in [IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8)) {
+        $m = [regex]::Match($line, '^\s*-\s+\[(?<mark>[ xX])\]\s+(?<id>T\d{3,})\b(?<rest>.*)$')
+        if (-not $m.Success) { continue }
+        $total++
+        if ($m.Groups['mark'].Value -ne ' ') { $done++; continue }
+        if ($null -eq $next) {
+            $rest = $m.Groups['rest'].Value
+            $bold = [regex]::Match($rest, '\*\*(?<t>[^*]+)\*\*')
+            $title = if ($bold.Success) { $bold.Groups['t'].Value } else { ($rest -replace '\[[^\]]*\]', '') }
+            $title = $title.Trim().TrimEnd('.')
+            if ($title.Length -gt 70) { $title = $title.Substring(0, 70).TrimEnd() + '...' }
+            $next = [pscustomobject]@{ id = $m.Groups['id'].Value; title = $title }
+        }
+    }
+    if ($total -eq 0) { return $null }
+    return [pscustomobject]@{ done = $done; total = $total; next = $next }
+}
+
+function Get-SpecrewResumeFromDisk {
+    # Feature 202 T012 (FR-019; B4F-089): where a resumed session stands, read from DISK ONLY - the pending decision
+    # (the ledger), the commits since the previous session's notes (from_commit..HEAD), and task progress - and the
+    # standing of those notes. The notes are context, never the position: B4F-089's two resumes repeated a narrative
+    # ("at iteration-closeout ... starting now: validating and committing") while the disk held the closeout commit,
+    # the next iteration's plan and the plan decision pending.
+    #
+    # The notes are STALE - flagged, and not repeated - when they were written at another boundary than the disk's
+    # (a sync moves the session's boundary to its target, so current notes carry the disk's boundary), when the ledger
+    # recorded a decision after them, or when they name another feature. Fail-soft: any part that cannot be read is
+    # left out, never guessed.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()]$Handover,
+        [Parameter(Mandatory)][string]$NowUtc,
+        # The caller's session boundary, when it holds one (a launch writes its contract before start-context.json does).
+        [AllowNull()][string]$WorkingBoundary
+    )
+    $ctx = $null
+    try { $ctx = Get-Content -LiteralPath (Join-Path $ProjectRoot '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop } catch { $ctx = $null }
+    $prop = { param($o, [string]$n) if ($null -ne $o -and $o -is [pscustomobject] -and $o.PSObject.Properties[$n]) { $o.$n } else { $null } }
+    $enforcement = & $prop $ctx 'boundary_enforcement'
+    $session = & $prop $ctx 'session_state'
+    $lastAuthorized = [string](& $prop $enforcement 'last_authorized_boundary')
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) { $FeatureRef = [string](& $prop $session 'feature_ref') }
+
+    $pending = $null
+    if (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue) {
+        try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
+    }
+    $hasPending = ($null -ne $pending -and [bool]$pending.HasPendingVerdict -and -not [string]::IsNullOrWhiteSpace([string]$pending.PendingToMarkerBoundary))
+    $featureText = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { 'the current feature' } else { "feature $FeatureRef" }
+    $diskBoundary = $null
+    if ($hasPending) {
+        $from = [string]$pending.PendingFromMarkerBoundary; $to = [string]$pending.PendingToMarkerBoundary
+        $diskBoundary = $to
+        $where = ("Where we are, read from disk: {0} is waiting for the human's decision on '{1}' (from '{2}')." -f $featureText, $to, $from)
+        $starting = ("Starting now: show the human the '{0} -> {1}' decision again and wait for their typed reply." -f $from, $to)
+    }
+    else {
+        $diskBoundary = $WorkingBoundary
+        if ([string]::IsNullOrWhiteSpace($diskBoundary)) { $diskBoundary = [string](& $prop $session 'boundary_type') }
+        if ([string]::IsNullOrWhiteSpace($diskBoundary)) { $diskBoundary = $lastAuthorized }
+        # Nothing pending: the boundary the disk is at (the session's, which the ledger's last approval equals once one
+        # is recorded). Not "no step approved yet" - a launch writes its contract a moment before it records the ledger.
+        $where = if ([string]::IsNullOrWhiteSpace($diskBoundary)) { ("Where we are, read from disk: {0}; no decision is waiting." -f $featureText) }
+                 else { ("Where we are, read from disk: {0} is at '{1}'; no decision is waiting." -f $featureText, $diskBoundary) }
+        $starting = $null
+    }
+
+    $progress = $null
+    try { $progress = Get-SpecrewTaskListProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef } catch { $progress = $null }
+    $progressLine = if ($null -ne $progress) { ("Tasks: {0} of {1} done{2}." -f $progress.done, $progress.total, $(if ($null -ne $progress.next) { ("; next {0} {1}" -f $progress.next.id, $progress.next.title) } else { '' })) } else { $null }
+    if ($null -eq $starting) {
+        $starting = if ($null -ne $progress -and $null -ne $progress.next) { ("Starting now: {0} {1}, the next open task." -f $progress.next.id, $progress.next.title) }
+                    else { 'Starting now: the next lifecycle step from the position above.' }
+    }
+
+    $commitsLine = $null; $age = $null; $reasons = New-Object System.Collections.Generic.List[string]
+    if ($null -ne $Handover) {
+        $age = Get-SpecrewHandoverAgeText -RecordedAt ([string]$Handover.recorded_at) -NowUtc $NowUtc
+        $fromCommit = [string](& $prop $Handover 'from_commit')
+        if (-not [string]::IsNullOrWhiteSpace($fromCommit)) {
+            try {
+                $log = @(& git -C $ProjectRoot log --format=%s ("{0}..HEAD" -f $fromCommit) 2>$null | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                if ($LASTEXITCODE -eq 0 -and $log.Count -gt 0) {
+                    $commitsLine = ("{0} commit{1} since the previous session's notes (newest: {2})." -f $log.Count, $(if ($log.Count -eq 1) { '' } else { 's' }), $log[0])
+                }
+            }
+            catch { $commitsLine = $null }
+        }
+        $notesFeature = [string](& $prop $Handover 'active_feature')
+        if (-not [string]::IsNullOrWhiteSpace($notesFeature) -and -not [string]::IsNullOrWhiteSpace($FeatureRef) -and $notesFeature -ne $FeatureRef) {
+            $reasons.Add(("they are about feature {0}, not {1}" -f $notesFeature, $FeatureRef)) | Out-Null
+        }
+        $notesBoundary = [string](& $prop $Handover 'active_boundary')
+        $canon = { param($b) if ([string]::IsNullOrWhiteSpace([string]$b)) { '' } elseif (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue) { [string](Normalize-SpecrewCanonicalBoundaryType -Boundary $b) } else { ([string]$b).ToLowerInvariant() } }
+        if (-not [string]::IsNullOrWhiteSpace($notesBoundary) -and -not [string]::IsNullOrWhiteSpace($diskBoundary) -and (& $canon $notesBoundary) -ne (& $canon $diskBoundary)) {
+            $reasons.Add(("they were written at '{0}', and the disk is at '{1}'" -f $notesBoundary, $diskBoundary)) | Out-Null
+        }
+        try {
+            $notesAt = [DateTimeOffset]::Parse([string]$Handover.recorded_at, [Globalization.CultureInfo]::InvariantCulture)
+            $latestDecision = $null
+            foreach ($entry in @(& $prop $enforcement 'verdict_history')) {
+                $at = & $prop $entry 'recorded_at'
+                if ($null -eq $at) { continue }
+                try { $t = [DateTimeOffset]$at } catch { continue }
+                if ($null -eq $latestDecision -or $t -gt $latestDecision) { $latestDecision = $t }
+            }
+            if ($null -ne $latestDecision -and $latestDecision -gt $notesAt) { $reasons.Add('a decision was recorded after them') | Out-Null }
+        }
+        catch { $null = $_ }
+    }
+    return [pscustomobject]@{
+        where_line     = $where
+        commits_line   = $commitsLine
+        progress_line  = $progressLine
+        starting_line  = $starting
+        notes_age      = $age
+        notes_stale    = ($reasons.Count -gt 0)
+        notes_reasons  = $reasons.ToArray()
+    }
+}
+
+function Format-SpecrewResumeNotesFlag {
+    # The one line a stale set of notes gets instead of being repeated (FR-019).
+    param([Parameter(Mandatory)]$Resume, [string]$Pointer = 'file:///.specrew/handover/session-handover.md')
+    $ageText = if ([string]::IsNullOrWhiteSpace([string]$Resume.notes_age)) { '' } else { (", recorded {0} ago," -f $Resume.notes_age) }
+    return ("[!] The previous session's notes{0} are older than the disk: {1}. They are not repeated here; the where-we-are lines are the position. The notes stay at {2}." -f $ageText, (@($Resume.notes_reasons) -join '; '), $Pointer)
+}
+
 function Get-SpecrewRuntimeHostFromEnv {
     # F-174 iter-10 (T004): best-effort detection of which AI host is running THIS process, from its env
     # signals. The design-workshop refresh runs the handover provider WITHOUT --host-kind (it is invoked by

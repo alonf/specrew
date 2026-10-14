@@ -171,7 +171,7 @@ function Get-SpecrewHookOutputDirectDisplay {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null, [AllowNull()][string]$ReplyHealthLine = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null, [AllowNull()][string]$ReplyHealthLine = $null, [AllowNull()]$DiskResume = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -301,12 +301,28 @@ function Format-BootstrapDirective {
         # empty item 3. Governance itself is script-enforced, so skimming the contract does NOT bypass any gate.
         $lines.Add(("DRIVE this session from the governed contract - a hook-started session gets the identical launch contract and session state: READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, policy classes, the user-profile/expertise adaptation that feeds banner item 3, and the coordinator framing) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts. (Banner item 3 lives ONLY in that contract here - read it; if it carries no adaptation or you cannot read it, use the /specrew-user-profile fallback named at the top - do NOT invent one.)" -f $contractRead, $stateRead))
     }
-    if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
+    # Feature 202 T012 (FR-019; B4F-089): where things stand comes from DISK - the pending decision, the commits since
+    # the previous session's notes, task progress - and so does the starting point (item 6). The notes below are
+    # context only; when they are older than the disk they are flagged and not repeated.
+    $notesStale = $false
+    if ($null -ne $DiskResume) {
+        $lines.Add('')
+        $lines.Add('=== WHERE WE ARE (read from disk: item 2''s position and item 6''s next step) ===')
+        $lines.Add((@($DiskResume.where_line, $DiskResume.commits_line, $DiskResume.progress_line) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) -join ' ')
+        $lines.Add([string]$DiskResume.starting_line)
+        $notesStale = [bool]$DiskResume.notes_stale
+    }
+    if ($notesStale -and $d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
+        $lines.Add((Format-SpecrewResumeNotesFlag -Resume $DiskResume))
+    }
+    elseif ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
             $lines.Add('[!] HOLLOW HANDOVER (rare) - the previous session''s Stop hook captured NO session delta (git unavailable?), so resume context is reduced to the lifecycle artifacts + git state. Re-derive the situation from the artifacts and surface this gap to the human - you are the backstop.')
         }
         else {
-            $lines.Add(("Validated handover captured by the previous session (as of {0}; boundary: {1}). This is your resume context - surface it (render item 2), do not merely cite that it exists. The mechanical sections are hook-captured git/session state; any interpretive sections are agent-authored:" -f $d.handover.recorded_at, $d.handover.active_boundary))
+            # T012: context with its age, not the position (the WHERE WE ARE lines above are the position).
+            $notesAge = if ($null -ne $DiskResume -and -not [string]::IsNullOrWhiteSpace([string]$DiskResume.notes_age)) { ("recorded {0} ago" -f $DiskResume.notes_age) } else { ("as of {0}" -f $d.handover.recorded_at) }
+            $lines.Add(("Context from the previous session, {0} (boundary: {1}), for item 4 - not the position. Mechanical sections are hook-captured git/session state; interpretive ones are agent-authored:" -f $notesAge, $d.handover.active_boundary))
             # F-174 iter-11 (P2): the inlined handover is the dominant SessionStart-payload bloat - the "What I
             # just did" mechanical log repeats the full uncommitted-file list per entry (~6KB in the iter-11
             # worst case), and inlining every section verbatim alone exceeded the host's 10K hook-output cap (the
@@ -674,6 +690,19 @@ try {
     $pendingVerdict = $null
     try { $pendingVerdict = Get-SpecrewPendingVerdictState -ProjectRoot $root } catch { $pendingVerdict = $null }
 
+    # Feature 202 T012 (FR-019): where things stand, read from disk, and the standing of the previous session's notes.
+    # Only once a feature is in progress; fail-open - no section rather than a guess.
+    $diskResume = $null
+    try {
+        $resumeFeature = $null
+        try { $resumeFeature = [string](Resolve-SpecrewActiveFeature -ProjectRoot $root).feature_ref } catch { $resumeFeature = $null }
+        if (-not [string]::IsNullOrWhiteSpace($resumeFeature)) {
+            $resumeNotes = Get-SpecrewRollingHandover -HandoverDir (Join-Path $root '.specrew/handover') -NowUtc $nowUtc
+            $diskResume = Get-SpecrewResumeFromDisk -ProjectRoot $root -FeatureRef $resumeFeature -Handover $resumeNotes -NowUtc $nowUtc
+        }
+    }
+    catch { $diskResume = $null }
+
     # F-174 iter-10 ATOMIC double-render dedupe (the CLAIM). codex fires SessionStart twice per launch
     # near-SIMULTANEOUSLY (worktree dogfood 2026-06-13: two fires ~microseconds apart, same session id +
     # source), so a recency/record-after-render scheme cannot dedupe them - both check before either records
@@ -696,7 +725,7 @@ try {
     try { $coordinatorFragment = Get-SpecrewCoordinatorFragment } catch { $coordinatorFragment = $null }
     $replyHealthLine = $null
     if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $replyHealthLine = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $replyHealthLine = $null } }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment -ReplyHealthLine $replyHealthLine)
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment -ReplyHealthLine $replyHealthLine -DiskResume $diskResume)
     exit 0
 }
 catch {
