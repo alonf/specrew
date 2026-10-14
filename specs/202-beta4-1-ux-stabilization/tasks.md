@@ -222,7 +222,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 7: US5, a refusal names the step that fixes it (P2)
 
-- [ ] T013 [owner: Implementer] [sp: 0.5] [US5] **Design-analysis gate names its producer and lists every gap in one pass.**
+- [x] T013 [owner: Implementer] [sp: 0.5] [US5] **Design-analysis gate names its producer and lists every gap in one pass.** Done 2026-10-14 (`018c4d13`). `design-analysis-gate-refusal.tests.ps1`: a missing or empty artifact is refused with its producer and the whole format; a missing section carries everything it must hold; a crew that fixes exactly what one refusal lists passes. RED on `83f2afea`: 35 of 41 checks failed, and an empty `design-analysis.md` threw a parameter-binding error instead of refusing.
   - **Work:** `Invoke-SpecrewDesignAnalysisPlanBoundaryGate` and `Test-SpecrewDesignAnalysisArtifact` name the producing step (`New-SpecrewDesignAnalysisArtifact` / the design workshop) and report all missing sections, labels and per-option fields in one refusal (widened by DRIFT-002).
   - **RED:** today, the missing file is named without its producer, and the format is disclosed one layer per refusal (three refusals on 202).
   - **Acceptance:** one refusal lists every gap plus the producer.
