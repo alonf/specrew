@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 20
-**Resolution rate**: 95% (19/20 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 21
+**Resolution rate**: 100% (21/21 resolved)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -69,12 +69,13 @@
 - **Open capture gap**: every fixture is a typed-turn SessionStart, prompt or Stop event. No host-injected or replayed user-turn payload was captured on any host. T002's opening step attempts that capture (maintainer instruction at before-implement), and DRIFT-009 records the outcome.
 - **Class closure**: the T001 fixtures under `tests/fixtures/hook-payloads/` pin these facts for T002's contract test.
 
-### DRIFT-006 — the readiness verdict reported READY for implementation before any before-implement verdict (open; T011 scope)
+### DRIFT-006 — the readiness verdict reported READY for implementation before any before-implement verdict (resolved in T011)
 
 - **Observed**: 2026-10-13, before-implement preparation. `readiness-verdict.ps1` printed "Overall verdict: READY for implementation - 'before-implement' is authorized (this iteration's cycle is authorized through 'feature-closeout')". The ledger's `last_authorized_boundary` is `tasks`, and `verdict_history` holds no `approved for before-implement` for 202. The check reads feature 199's completed cycle as 202's.
 - **Requirement**: FR-026 (all per-feature runtime state keyed to the new feature on a new-feature reset; B4F-109 widened at clarify). A false READY first line is the B4F-071 hazard: a crew can announce implementation on it.
 - **Resolution**: not acted on. Implementation waits for the human verdict regardless. T011's scope already covers it ("all per-feature runtime state keyed to the new feature"). Its acceptance gains one check: the readiness verdict for a new feature never reports a prior feature's cycle as authorization.
 - **Class closure**: T011's `new-feature-reset` test asserts that the readiness verdict for 202, before its before-implement verdict, is not READY.
+- **Resolved 2026-10-14 (T011)**: the cause was that only an iteration-closeout ended a readiness cycle. A feature-closeout entry stayed in the next feature's cycle and, sorting after every boundary, read as authorization through feature-closeout. A feature-closeout now ends a cycle too. Case 6 of `new-feature-reset` reproduces the original line on the pre-T011 tree ("READY … authorized through 'feature-closeout'") and gets BLOCKED now. The fix is in `readiness-verdict.ps1`, outside T011's listed files (DRIFT-021).
 
 ### DRIFT-007 — the validator counts the T001 evidence fixtures as unauthorized product source (resolved by human decision)
 
@@ -259,6 +260,17 @@
 - **Requirement**: FR-017, FR-018, DA-5; T010's owned files.
 - **Resolution**: as above.
 - **Class closure**: `feature-resolver` asserts the three surfaces agree in each constructed state and pins both writers to the one pointer writer.
+
+### DRIFT-021 — T011's reset reached the readiness verdict, and the coverage line now asks the resolver (resolved)
+
+- **Observed**: 2026-10-14, T011 implementation.
+  1. **DRIFT-006 lived in `readiness-verdict.ps1`**, outside T011's listed files. T011's acceptance names it, through DRIFT-006, so the one-line fix (a feature-closeout ends a readiness cycle) landed with T011.
+  2. **The coverage line's feature is the resolver's** (T010). Campaigns are named `cmp-<feature>-iNNN`, and only the resolved feature's are read. When no feature resolves, every campaign is read, as before.
+  3. **A legacy closeout entry does not name its feature**, and none is inferred from other state. The rule counts an unnamed closed feature as different. A closed feature does not specify again, and a re-sync of a feature the ledger does name stays a non-reset.
+  4. **The authorization writer reads the pending crossing's feature** (else the active session's) before its order check, so the feature recorded on the entry and the feature the rule compared are the same value.
+- **Requirement**: FR-026; T011's owned files (`shared-governance.ps1`, `sync-boundary-state.ps1`, `new-feature-reset.tests.ps1`).
+- **Resolution**: as above. `sync-boundary-state.ps1` needed no change: its mint goes through `New-SpecrewPendingCrossingScope`, which now passes both features to the rule.
+- **Class closure**: `new-feature-reset` runs the real sync and the real capture, checks append-only by byte comparison, and asserts the readiness line.
 <!--
   Every new ### DRIFT-... event includes:
 

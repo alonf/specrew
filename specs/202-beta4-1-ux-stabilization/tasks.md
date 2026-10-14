@@ -191,7 +191,11 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
   - **Trace:** FR-017, FR-018; SC-006.
   - **Depends:** T002.
   - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`, `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/create-governed-feature.ps1`, `scripts/internal/dashboard-renderer.ps1`, `scripts/specrew-where.ps1`, `tests/unit/feature-resolver.tests.ps1`.
-- [ ] T011 [owner: Implementer] [sp: 2.0] [US4] **New-feature cycle reset and per-feature runtime state (B4F-109).**
+- [x] T011 [owner: Implementer] [sp: 2.0] [US4] **New-feature cycle reset and per-feature runtime state (B4F-109).** Done 2026-10-14. `new-feature-reset.tests.ps1` drives the real boundary sync and the real prompt-time capture:
+  - **Green:** after the first feature's closeout, a second feature's specify sync opens `feature-closeout -> specify`, and the crossing names the new feature. The typed verdict is captured with 0 out-of-band entries, and the new entry names its feature. Every legacy entry is byte-identical afterwards.
+  - **The rule:** a re-sync of the same feature is not a reset; the iteration loop still is; a plain backward move is still refused. The coverage line names 0 campaigns of the closed feature (SC-009). The readiness verdict says BLOCKED, not READY, for a new feature before its before-implement verdict (DRIFT-006).
+  - **RED on `5b978958`:** no crossing, the verdict not captured, the coverage state naming the closed feature's campaign, and READY "authorized through 'feature-closeout'", which is DRIFT-006's exact line.
+  - **Design notes:** one rule, `Get-SpecrewBoundaryCycleReset`, serves both former copies. A closed feature the ledger does not name (a legacy entry) counts as different, since a closed feature does not specify again. `feature_ref` is added after the entry id, which hashes a fixed field list, so no id changes (DRIFT-021).
   - **Work:**
     - One shared cycle-reset function treats `feature-closeout -> specify` for a different feature as a reset. It is called by `Get-SpecrewPendingBoundaryCrossing` and `Add-SpecrewBoundaryAuthorization`, replacing the duplicated rule.
     - New ledger entries and crossings carry `feature_ref`.

@@ -62,12 +62,15 @@ try {
             if ($null -eq $map) { continue }
             $to = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$map['to_boundary'])
             if ([string]::IsNullOrWhiteSpace($to)) { continue }
-            if ($to -eq 'iteration-closeout') { $cycle.Clear(); $previousCycleClosed = $true; continue }
+            # 202 T011 (DRIFT-006, FR-026): a feature-closeout ends a cycle too. Kept in the next feature's cycle, it
+            # sorts after every boundary and read as that feature's authorization through feature-closeout - so 202's
+            # readiness said READY before 202 had any before-implement verdict, on 199's completed cycle.
+            if ($to -in @('iteration-closeout', 'feature-closeout')) { $cycle.Clear(); $previousCycleClosed = $true; continue }
             $cycle.Add($to) | Out-Null
         }
         $cycleIdx = -1
         foreach ($to in $cycle) { $i = [Array]::IndexOf($order, $to); if ($i -gt $cycleIdx) { $cycleIdx = $i; $cycleLast = $to } }
-        if ($cycle.Count -eq 0 -and -not $previousCycleClosed -and -not [string]::IsNullOrWhiteSpace($lastAuthorized) -and $lastAuthorized -ne 'iteration-closeout') {
+        if ($cycle.Count -eq 0 -and -not $previousCycleClosed -and -not [string]::IsNullOrWhiteSpace($lastAuthorized) -and $lastAuthorized -notin @('iteration-closeout', 'feature-closeout')) {
             # A ledger with a cursor and no verdict rows (legacy shape): the cursor is the only evidence there is.
             $cycleLast = Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthorized
         }
@@ -79,6 +82,7 @@ $cycleIdx = if ([string]::IsNullOrWhiteSpace($cycleLast)) { -1 } else { [Array]:
 $authorized = ($ledgerReadable -and $targetIdx -ge 0 -and $cycleIdx -ge $targetIdx)
 $lastText = if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { 'no boundary is authorized yet' }
 elseif ($lastAuthorized -eq 'iteration-closeout' -and [string]::IsNullOrWhiteSpace($cycleLast)) { "the last authorization is the previous iteration's closeout ('iteration-closeout'); this iteration has no authorization yet" }
+elseif ($lastAuthorized -eq 'feature-closeout' -and [string]::IsNullOrWhiteSpace($cycleLast)) { "the last authorization is the previous feature's closeout ('feature-closeout'); this feature has no authorization yet" }
 elseif ([string]::IsNullOrWhiteSpace($cycleLast)) { ("the ledger's last authorized boundary is '{0}' and this iteration's cycle has no authorization yet" -f $lastAuthorized) }
 else { ("this iteration's cycle is authorized through '{0}'" -f $cycleLast) }
 $line = if (-not $ledgerReadable) {

@@ -1114,6 +1114,66 @@ function Get-SpecrewBoundaryOrder {
     return @(Get-SpecrewCanonicalBoundaryTypes)
 }
 
+function Get-SpecrewBoundaryCycleReset {
+    # FEATURE 202 T011 (FR-026, B4F-109): THE ONE CYCLE-RESET RULE. The canonical order is linear, but the lifecycle
+    # loops twice: iterations loop inside a feature, and features follow one another in a project. Read as a plain
+    # order, both look like a move backward. The rule lived in two copies (the pending-crossing deriver and the
+    # authorization writer), and both knew only the iteration loop - so 202's specify, after 199's authorized
+    # feature-closeout, opened no crossing and the writer refused it as backward. 202 had to be recorded out of band.
+    #   - iteration: the last authorized boundary is iteration-closeout and the working boundary is plan or later,
+    #     up to it. The new cycle's first ask is iteration-closeout -> plan.
+    #   - feature: the last authorized boundary is feature-closeout and the working boundary is specify or later,
+    #     for a different feature. The new cycle's first ask is feature-closeout -> specify. A re-sync of the SAME
+    #     feature is never a reset; a closed feature the ledger did not name (a legacy entry) cannot be shown to be
+    #     the same feature, and a closed feature does not specify again, so it counts as different.
+    [OutputType([pscustomobject])]
+    param(
+        [AllowNull()][string]$LastAuthorizedBoundary,
+        [AllowNull()][string]$WorkingBoundary,
+        [AllowNull()][string]$ClosedFeatureRef,
+        [AllowNull()][string]$WorkingFeatureRef
+    )
+    $none = [pscustomobject]@{ IsReset = $false; Kind = ''; FromBoundary = $null; ToBoundary = $null; IsMultiBoundaryGap = $false }
+    if ([string]::IsNullOrWhiteSpace($LastAuthorizedBoundary) -or [string]::IsNullOrWhiteSpace($WorkingBoundary)) { return $none }
+    $order = @(Get-SpecrewBoundaryOrder)
+    $last = Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary
+    $working = Normalize-SpecrewCanonicalBoundaryType -Boundary $WorkingBoundary
+    $lastIdx = [Array]::IndexOf($order, $last)
+    $workingIdx = [Array]::IndexOf($order, $working)
+    if ($lastIdx -lt 0 -or $workingIdx -lt 0) { return $none }
+    if ($last -eq 'iteration-closeout') {
+        $planIdx = [Array]::IndexOf($order, 'plan')
+        if ($workingIdx -ge $planIdx -and $workingIdx -le $lastIdx) {
+            return [pscustomobject]@{ IsReset = $true; Kind = 'iteration'; FromBoundary = 'iteration-closeout'; ToBoundary = 'plan'; IsMultiBoundaryGap = ($workingIdx -gt $planIdx) }
+        }
+    }
+    if ($last -eq 'feature-closeout') {
+        $specifyIdx = [Array]::IndexOf($order, 'specify')
+        $sameFeature = -not [string]::IsNullOrWhiteSpace($ClosedFeatureRef) -and -not [string]::IsNullOrWhiteSpace($WorkingFeatureRef) -and
+            ((Split-Path -Leaf $ClosedFeatureRef) -ceq (Split-Path -Leaf $WorkingFeatureRef))
+        if (-not $sameFeature -and $workingIdx -ge $specifyIdx -and $workingIdx -lt $lastIdx) {
+            return [pscustomobject]@{ IsReset = $true; Kind = 'feature'; FromBoundary = 'feature-closeout'; ToBoundary = 'specify'; IsMultiBoundaryGap = ($workingIdx -gt $specifyIdx) }
+        }
+    }
+    return $none
+}
+
+function Get-SpecrewClosedFeatureRef {
+    # The feature whose feature-closeout was authorized most recently, from the ledger's own entry (new entries carry
+    # feature_ref, 202 T011). $null for a legacy entry that does not name it - never inferred from other state.
+    [OutputType([string])]
+    param([AllowNull()]$VerdictHistory)
+    $entries = @($VerdictHistory)
+    for ($i = $entries.Count - 1; $i -ge 0; $i--) {
+        $entry = ConvertTo-SpecrewBoundaryMap -Value $entries[$i]
+        if ($null -eq $entry) { continue }
+        if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entry['to_boundary'])) -ne 'feature-closeout') { continue }
+        if ($entry.Contains('feature_ref') -and -not [string]::IsNullOrWhiteSpace([string]$entry['feature_ref'])) { return [string]$entry['feature_ref'] }
+        return $null
+    }
+    return $null
+}
+
 function Get-SpecrewPendingBoundaryCrossing {
     # Derive the ONE boundary crossing the human can authorize next from the authoritative cursor state.
     # `intake` is marker-only: it names the pre-specify side of the first rendered verdict marker, but it is not
@@ -1124,7 +1184,12 @@ function Get-SpecrewPendingBoundaryCrossing {
         [string]$LastAuthorizedBoundary,
 
         [AllowNull()]
-        [string]$WorkingBoundary
+        [string]$WorkingBoundary,
+
+        # 202 T011: the features either side of a feature-closeout, for the one cycle-reset rule. Callers that do not
+        # know them pass nothing, and an unnamed closed feature counts as a different one (see the rule).
+        [AllowNull()][string]$ClosedFeatureRef,
+        [AllowNull()][string]$WorkingFeatureRef
     )
 
     $result = [pscustomobject]@{
@@ -1162,18 +1227,18 @@ function Get-SpecrewPendingBoundaryCrossing {
         # before-implement). When the cursor sits at iteration-closeout and the working
         # boundary is an earlier-phase crossing, the pending ask is the new cycle's earliest
         # un-authorized boundary, from-side iteration-closeout.
-        $planIdx = [Array]::IndexOf($order, 'plan')
-        $isCycleReset = ($lastAuthCanonical -eq 'iteration-closeout' -and $workingIdx -le $authIdx -and $workingIdx -ge $planIdx)
-        if ($workingIdx -le $authIdx -and -not $isCycleReset) { return $result }
+        # 202 T011: the iteration loop and the feature loop, from the one rule (Get-SpecrewBoundaryCycleReset).
+        $cycleReset = Get-SpecrewBoundaryCycleReset -LastAuthorizedBoundary $lastAuthCanonical -WorkingBoundary $workingCanonical -ClosedFeatureRef $ClosedFeatureRef -WorkingFeatureRef $WorkingFeatureRef
+        if ($workingIdx -le $authIdx -and -not [bool]$cycleReset.IsReset) { return $result }
 
-        if ($isCycleReset) {
+        if ([bool]$cycleReset.IsReset) {
             $result.HasPendingVerdict = $true
-            $result.PendingFromBoundary = 'iteration-closeout'
-            $result.PendingToBoundary = $order[$planIdx]
-            $result.PendingFromMarkerBoundary = 'iteration-closeout'
-            $result.PendingToMarkerBoundary = $order[$planIdx]
+            $result.PendingFromBoundary = [string]$cycleReset.FromBoundary
+            $result.PendingToBoundary = [string]$cycleReset.ToBoundary
+            $result.PendingFromMarkerBoundary = [string]$cycleReset.FromBoundary
+            $result.PendingToMarkerBoundary = [string]$cycleReset.ToBoundary
             $result.IsFirstBoundary = $false
-            $result.IsMultiBoundaryGap = ($workingIdx -gt $planIdx)
+            $result.IsMultiBoundaryGap = [bool]$cycleReset.IsMultiBoundaryGap
             return $result
         }
 
@@ -2666,7 +2731,10 @@ function Get-SpecrewPendingVerdictState {
                 return $result
             }
 
-            $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $lastAuth -WorkingBoundary ([string]$scope['working_boundary'])
+            # 202 T011: verified with the same inputs the mint used - the closed feature from the ledger, the crossing's own feature.
+            $scopeFeature = if ($scope.Contains('feature_ref')) { [string]$scope['feature_ref'] } else { $null }
+            $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $lastAuth -WorkingBoundary ([string]$scope['working_boundary']) `
+                -ClosedFeatureRef (Get-SpecrewClosedFeatureRef -VerdictHistory @($effective['verdict_history'])) -WorkingFeatureRef $scopeFeature
             if (-not [bool]$crossing.HasPendingVerdict -or
                 [string]$crossing.PendingFromMarkerBoundary -ne [string]$scope['from_boundary'] -or
                 [string]$crossing.PendingToMarkerBoundary -ne [string]$scope['to_boundary']) {
@@ -2954,7 +3022,13 @@ function New-SpecrewPendingCrossingScope {
             }
         }
     }
-    $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $effectiveWorkingBoundary
+    # 202 T011: the one cycle-reset rule needs the feature the last feature-closeout closed (from the ledger's own
+    # entry) and the feature being synced.
+    $closedFeatureRef = $null
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        try { $closedFeatureRef = Get-SpecrewClosedFeatureRef -VerdictHistory @((Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot).EffectiveState['verdict_history']) } catch { $closedFeatureRef = $null }
+    }
+    $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $effectiveWorkingBoundary -ClosedFeatureRef $closedFeatureRef -WorkingFeatureRef $FeatureRef
     if (-not [bool]$crossing.HasPendingVerdict) { return $null }
     # FR-024 (T014): a crossing is not minted until the stage it enters has its owed artifacts ON DISK.
     # This is the ONE constructor every minting mechanism goes through - the sync's successor auto-open
@@ -3004,6 +3078,9 @@ function New-SpecrewPendingCrossingScope {
         # The same crossing re-synced keeps its ORIGINAL owner: the arrival was recorded once, by one session.
         if ($existing.Contains('owner') -and -not [string]::IsNullOrWhiteSpace([string]$existing['owner'])) { $scope['owner'] = [string]$existing['owner'] }
     }
+    # 202 T011 (FR-026): a new crossing names its feature. It is not part of the crossing identity, so an existing
+    # crossing still verifies; it is what keys per-feature state (the resolver, the coverage line) to the new feature.
+    if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) { $scope['feature_ref'] = (Split-Path -Leaf $FeatureRef) }
     return $scope
 }
 
@@ -4072,10 +4149,25 @@ function Add-SpecrewBoundaryAuthorization {
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $currentIndex = if ([string]::IsNullOrWhiteSpace($currentCanonical)) { -1 } else { [Array]::IndexOf($boundaryOrder, $currentCanonical) }
     $authorizedIndex = [Array]::IndexOf($boundaryOrder, $authorizedCanonical)
-    # Iteration cycle reset (FR-004): authorizing an earlier-phase boundary FROM
-    # iteration-closeout is the next iteration beginning, not a backward move.
-    $isCycleReset = ($currentCanonical -eq 'iteration-closeout' -and $authorizedIndex -ge [Array]::IndexOf($boundaryOrder, 'plan') -and $authorizedIndex -lt $currentIndex)
-    if ($authorizedIndex -lt $currentIndex -and -not $isCycleReset) {
+    # Cycle resets (FR-004 iterations; 202 T011 / FR-026 features): authorizing an earlier-phase boundary FROM a
+    # closeout is the next cycle beginning, not a backward move. ONE rule, shared with the crossing deriver
+    # (Get-SpecrewBoundaryCycleReset). The feature this authorization belongs to - the pending crossing's own, else
+    # the active session's - is recorded on the entry too, so the next feature's reset can name what was closed.
+    $authorizationFeatureRef = $null
+    $closedFeatureRefForReset = $null
+    try {
+        $preState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+        $preScope = if ($null -ne $preState.EffectiveState -and $preState.EffectiveState.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $preState.EffectiveState['pending_crossing'] } else { $null }
+        if ($null -ne $preScope -and $preScope.Contains('feature_ref') -and -not [string]::IsNullOrWhiteSpace([string]$preScope['feature_ref'])) { $authorizationFeatureRef = [string]$preScope['feature_ref'] }
+        elseif ($null -ne $preState.Context -and $preState.Context.Contains('session_state') -and $null -ne $preState.Context['session_state']) {
+            $preSession = ConvertTo-SpecrewBoundaryMap -Value $preState.Context['session_state']
+            if ($null -ne $preSession -and $preSession.Contains('feature_ref') -and -not [string]::IsNullOrWhiteSpace([string]$preSession['feature_ref'])) { $authorizationFeatureRef = Split-Path -Leaf ([string]$preSession['feature_ref']) }
+        }
+        if ($null -ne $preState.EffectiveState) { $closedFeatureRefForReset = Get-SpecrewClosedFeatureRef -VerdictHistory @($preState.EffectiveState['verdict_history']) }
+    }
+    catch { $authorizationFeatureRef = $null; $closedFeatureRefForReset = $null }
+    $cycleReset = Get-SpecrewBoundaryCycleReset -LastAuthorizedBoundary $currentCanonical -WorkingBoundary $authorizedCanonical -ClosedFeatureRef $closedFeatureRefForReset -WorkingFeatureRef $authorizationFeatureRef
+    if ($authorizedIndex -lt $currentIndex -and -not [bool]$cycleReset.IsReset) {
         throw "Cannot authorize '$authorizedCanonical' from '$currentCanonical' because it moves backward in the canonical order."
     }
 
@@ -4183,6 +4275,9 @@ function Add-SpecrewBoundaryAuthorization {
         out_of_band       = [bool]$isOutOfBand
     }
     $newAuthorization['authorization_id'] = Get-SpecrewBoundaryAuthorizationEntryId -Entry $newAuthorization
+    # 202 T011 (FR-026): new entries name their feature. Added after the id, which hashes a fixed field list, so the
+    # id derivation is unchanged; legacy entries are never rewritten.
+    if (-not [string]::IsNullOrWhiteSpace($authorizationFeatureRef)) { $newAuthorization['feature_ref'] = $authorizationFeatureRef }
     $verdictHistory.Add($newAuthorization) | Out-Null
 
     # THE BYPASS RECORD IS THE POINT. Without this, a declared out-of-band authorization would still
@@ -7589,7 +7684,13 @@ function Get-SpecrewReviewCoverageState {
     # tie-breaker.
     $delivered = $null
     $deliveredEnded = [System.DateTimeOffset]::MinValue
+    # 202 T011 (FR-026, SC-009; B4F-109): only the RESOLVED feature's campaigns (cmp-<feature>-iNNN). The all-campaign
+    # walk showed 199's campaign on 202's clarify stop: a closed feature's review answered the new feature's coverage
+    # question. With no feature resolved, every campaign is read, as before.
+    $coverageFeature = ''
+    try { $coverageFeature = Resolve-SpecrewActiveFeatureRef -ProjectRoot $ProjectRoot } catch { $coverageFeature = '' }
     foreach ($campaign in @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue)) {
+        if (-not [string]::IsNullOrWhiteSpace($coverageFeature) -and -not $campaign.Name.StartsWith(('cmp-{0}-i' -f $coverageFeature), [StringComparison]::Ordinal)) { continue }
         $runsRoot = Join-Path $campaign.FullName 'runs'
         if (-not (Test-Path -LiteralPath $runsRoot -PathType Container)) { continue }
         foreach ($run in @(Get-ChildItem -LiteralPath $runsRoot -Directory -ErrorAction SilentlyContinue)) {

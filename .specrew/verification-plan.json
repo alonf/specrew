@@ -46,7 +46,7 @@
       "arguments": [
         "-NoProfile",
         "-Command",
-        "$fail = 0; foreach ($s in @('tests/unit/turn-record-contract.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/hook-output-journal.tests.ps1','tests/unit/receipt-disclosure.tests.ps1','tests/unit/journal-fault-injection.tests.ps1','tests/unit/cross-host-workshop.tests.ps1','tests/unit/crossing-presentation.tests.ps1','tests/unit/presented-check.tests.ps1','tests/unit/orientation-order.tests.ps1','tests/unit/dials-parity.tests.ps1','tests/unit/feature-resolver.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; foreach ($s in @('tests/unit/turn-record-contract.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/hook-output-journal.tests.ps1','tests/unit/receipt-disclosure.tests.ps1','tests/unit/journal-fault-injection.tests.ps1','tests/unit/cross-host-workshop.tests.ps1','tests/unit/crossing-presentation.tests.ps1','tests/unit/presented-check.tests.ps1','tests/unit/orientation-order.tests.ps1','tests/unit/dials-parity.tests.ps1','tests/unit/feature-resolver.tests.ps1','tests/unit/new-feature-reset.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 600,
       "env_refs": [
