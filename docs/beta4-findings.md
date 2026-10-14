@@ -5021,6 +5021,26 @@ system temp folder.
 **Mitigation in 202:** sweeps run only on a fully committed tree (DRIFT-022).
 **Disposition:** recorded under the beta5 rule; no repair in 202.
 
+**Reproduced, 2026-10-14 (maintainer-directed, scratch directories outside any repository):**
+
+- **The product defect.** The enclosing repository had no commits yet, an unrelated untracked file, and an unrelated edit. `specrew init <new-folder>` then took the greenfield path: the HEAD test fails on an unborn HEAD, and the work-tree test finds the enclosing repository, so `git init` is skipped. It ran `add --all` and committed in the ENCLOSING repository: `chore(specrew): bootstrap scaffold`, author "Specrew Bootstrap", 762 files, including the owner's untracked file and their `app.txt`.
+- **A correction to the mechanism above.** When the enclosing repository HAS commits, the same command is brownfield: init creates the folder first (`specrew-init.ps1:397`), so the HEAD test at 417-426 runs inside the enclosing repository and succeeds. No commit is made, with or without an identity. The exposure is an enclosing repository with no commits yet, a direct caller of `Invoke-SpecrewBootstrapBaseline`, or a project whose own `.git` disappears between the HEAD test and the commit.
+- **The probable trigger of `f46c9fb1`.** "Specrew Bootstrap" is the fallback for a process with no git identity, and only one suite removes it: `start-command-non-interactive-first-run`, which runs `start-command.ps1` with a temporary HOME. Both suites build their projects in the same `.scratch/start-command` folder inside this repository, and each deletes it first. Run together in a throwaway clone, `start-command` failed 2 of 2 times ("Bootstrap failed"); alone it passed. That collision is the cause of its sweep-only failure. The collision did not reproduce the stray commit, because its timing window (the project's `.git` deleted between the HEAD test and the commit) is narrow. The commit's identity and content both point to it.
+- **Proposed fix (minimum, per the maintainer):**
+  1. A project folder inside another repository's work tree, meaning `rev-parse --show-toplevel` is not the project folder, is never greenfield-committed. The check runs immediately before staging, so a `.git` that vanished mid-init is caught too. Init classifies the project the same way, not by HEAD presence.
+  2. Staging and the commit are limited to the project folder (`add --all -- .` and `commit -- .`). Paths the owner already staged elsewhere can never ride along.
+  3. The two suites stop sharing a folder, and fixtures move to the system temp folder.
+
+## B4F-122 - INIT WRITES `.github/agents/squad.agent.md` AT THE ENCLOSING REPOSITORY'S ROOT (beta5 candidate)
+
+**Observed:** 2026-10-14, during B4F-120's reproduction. `specrew init <outer>/newproj` wrote
+`.github/agents/squad.agent.md` at `<outer>/` as well as inside `newproj/`, whether or not the enclosing
+repository had commits. Init writes outside the folder it was asked to set up. The writing step was not
+identified; Squad's own init, resolving the git top level, is the likely one.
+**Beta5 candidate:** init writes only under the project folder; a test runs init in a subfolder of another
+repository and asserts that nothing outside the project folder changed.
+**Disposition:** recorded. Observed in a scratch reproduction.
+
 ## B4F-121 - THE STOP REVIEW CHECK ASKS FOR A ROUND APPROVAL WHILE THE APPROVED ROUND IS RUNNING (beta5 candidate)
 
 **Observed:** 2026-10-14, feature 202 implement. The maintainer typed `approved for review round`, round 3

@@ -279,6 +279,7 @@
 - **Mechanism**: B4F-120. The greenfield bootstrap baseline commits in whatever repository encloses the project path, and a fixture under this repository's `.scratch/` is enclosed by it. The triggering suite was not identified.
 - **Resolution**: history is not rewritten. A force push would rewrite a pushed branch, and the content is right. From now on, the crew runs sweeps only on a fully committed tree, so a stray commit can hold nothing that is not already committed.
 - **Class closure**: NONE — the product guard and the fixture locations are beta5 (B4F-120); in 202 the only mitigation is the sweep rule above.
+- **Update, 2026-10-14 (after co-review round 3, on the maintainer's instruction)**: the product defect is reproduced in a scratch directory: an enclosing repository with no commits is committed in full, unrelated work included (B4F-120). The probable trigger is the two `start-command` suites sharing `.scratch/start-command`. That collision also explains `start-command` failing only inside the sweep: in a throwaway clone it failed 2 of 2 when run together with the first-run suite and passed alone. Whether the fix moves into 202 is the maintainer's decision, pending.
 
 ### DRIFT-023 — the Unix journal lock starved a writer under contention, an FR-001 failure (resolved)
 
@@ -287,6 +288,23 @@
 - **Requirement**: FR-001; FR-002 (the retry window governs appends that fail).
 - **Resolution**: the lock wait has its own bound, 1000 ms, polled every millisecond. The retry window is unchanged. Case (e) now runs four writers, so it reproduces the starvation instead of meeting it now and then. With the fix, four writers passed 6 of 6 in WSL Ubuntu, and the buffer suite passes on Linux and Windows. The 3-OS CI run on the next push is the acceptance.
 - **Class closure**: case (e) with four writers, on Windows, Linux and macOS in every push run, plus the printed degraded record when it degrades.
+- **Deviation, awaiting the maintainer's decision (recorded 2026-10-14 on the maintainer's instruction)**: the design-analysis tuning the maintainer agreed is at most 5 retry attempts within 250 ms (research.md; plan.md, Performance Goals). The retry window is unchanged, but one attempt's wait for the Unix lock can now run to 1000 ms, polled every 1 ms, which is outside it.
+  - **Sample**: 50 four-writer runs per variant in WSL Ubuntu, 4,000 appends a run, through the shipped writer with only the lock function instrumented:
+
+    | Variant | Degraded runs | Lock timeouts | Longest wait |
+    | --- | --- | --- | --- |
+    | 1000 ms, 1 ms poll (today) | 0 of 50 | 0 | 299.6 ms |
+    | 200 ms, 1 ms poll (inside the agreed window) | 10 of 50 | 18 | budget reached |
+    | 200 ms, `Start-Sleep` 2 ms (the original) | 27 of 50 | 59 | budget reached |
+
+    The unfairness is real: the agreed budget with the fast poll still degrades one run in five. A cold `Start-Sleep` (706 to 847 ms on its first call in a fresh pwsh) makes it worse, but it is not the whole cause. Across 200,000 contended acquisitions the longest wait was 299.6 ms, and 10 waits exceeded 200 ms.
+  - **Worst-case added hook latency**: one hook fire records two outputs (payload and envelope). On the worst path, every lock wait runs to its full bound: the payload's append, its degraded health record, the envelope's append, and, since round 3's finding 4, the disclosed payload and envelope. That is 5 waits, up to about 5 s at 1000 ms against about 1 s at 200 ms. Without contention a wait costs nothing, and none of the 200,000 measured waits came near the bound.
+  - **CPU of the 1 ms poll**: a waiter that polls a held lock for the full bound uses 228 ms of CPU over 1000 ms, about 23% of one core, across about 800 failed opens. Under the four-writer stress, CPU per run was the same for all three variants (about 19.5 s, mostly pwsh itself), even though the original variant polls half as often.
+  - **Fairer mechanisms**: not considered when the change was made; weighed now.
+    1. **A blocking flock**, queued in the kernel through P/Invoke: no polling. But the call has no timeout, so it needs a watchdog thread and a per-OS libc binding, and an abandoned call can still take the lock after its caller gave up.
+    2. **A ticket file**: first come, first served. But a killed hook leaves its ticket and stalls every later writer until a stale-ticket timeout, which is a new latch in the path FR-003 just made latch-free.
+    3. **A queue through the outage buffer**: a writer that cannot get the lock within a short wait publishes its record as a closed buffer file (the round-2 path), and the next writer that gets the lock flushes it. No writer waits for a turn, latency stays inside the agreed window, and nothing is lost. Today, though, a buffered record opens a degraded episode with a human-facing disclosure. Contention is not degradation, so this needs a separate "contended" outcome that opens no episode, and the flush runs often instead of rarely. Estimated at 0.5 to 1 SP plus a 3-OS run.
+  - **Why the longer wait was taken**: it was the smallest change that made FR-001 hold, it measures 0 of 50 against 10 of 50 at the agreed bound, and it is 3-OS green. The buffer queue is the better design: it keeps the agreed window, and nothing waits for a turn.
 
 ### DRIFT-024 — co-review round 3 found four more defects; the engine demoted all four, and all four are real (resolved)
 
