@@ -124,6 +124,8 @@ Five pairs of real dispatcher processes on Stop all journaled their reasons. The
 
 Neither writer degraded: every lost line was reported as written. That is why the condition T003 planned for applies. Linux and macOS now take the permitted per-write lock on this journal only: a sidecar `<journal>.lock` opened exclusively for the duration of one write. .NET maps that to an advisory `flock` honoured by every Specrew writer. Readers never take it, so a read never waits on or refuses because of a writer. Windows keeps the lock-free AppendData handle.
 
+**Rerun with the lock (CI run 38490308475, `34af7076`):** Windows, Linux and macOS each 2000/2000 lines, 0 missing, 0 torn, no degradation.
+
 **Verdict per validated host:**
 
 - **Claude:** DA-3 holds (injection yes, direct display no, so the agent renders the supplied orientation). DA-4 holds (a session id is present; UTF-8 bytes arrive intact, and explicit byte-level decoding is required because the console encoding varies).
