@@ -71,6 +71,10 @@ $ErrorActionPreference = 'Stop'
 # switch so the switch always wins first.
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort: a host that rejects UTF-8 console encoding must still run (fail-open)
 
+# Co-review round 3 (202): when this fire began - the receipt outcome a provider journaled during it is read by time -
+# and whether this fire's own append degraded, so the output it delivers can say so (FR-007).
+$script:DispatcherStartedUtc = [DateTimeOffset]::UtcNow
+$script:DispatcherRecordingDegradedThisFire = $false
 $script:Banner = '[specrew-refocus]'
 $script:HostHookOutputCapChars = 10000
 
@@ -264,6 +268,7 @@ function Write-DispatcherHookOutputAuthorityRecord {
         Write-DispatcherWarn -Code 'HOOK_OUTPUT_UNRECORDED' -Message ("hook output could not be journaled ({0}) or buffered ({1}); it is withheld this turn" -f $appendError, $_.Exception.Message)
         return $false
     }
+    $script:DispatcherRecordingDegradedThisFire = $true
     $last = Get-DispatcherLastHealthRecord -HealthPath $paths.Health
     if ($null -eq $last -or [string]$last.state -ne 'degraded') {
         Write-DispatcherHookOutputHealth -HealthPath $paths.Health -State 'degraded' -Class 'journal-append-failed' -ErrorText $appendError -Count 1
@@ -1139,23 +1144,12 @@ function Get-RefocusProviderArgs {
     return $null
 }
 
-function Write-InjectionOutput {
-    param([string]$EventName, [string]$Payload, $Binding, [AllowNull()][string]$ProjectRoot)
-    # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
-    # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
-    # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
-    # directive + the variable refocus fragment) exceeds the cap, the host SILENTLY drops it to a file + a ~2KB
-    # preview and the directive never reaches the model (the exact iter-11 break). The providers bound their own
-    # inlined content, but this is the ONE place that sees the joined total, so it is the right place to make an
-    # overflow VISIBLE. This is observability only (the advisor's "defensible cap-role"): WARN, never truncate -
-    # a blind truncate here would drop the integrity-critical mid-payload sections (e.g. AWAITING YOUR VERDICT).
-    if (-not [string]::IsNullOrEmpty($Payload) -and $Payload.Length -gt 10000) {
-        Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("assembled {0} payload is {1} chars (> the 10000 host hook-output cap); the host will drop it to a file + preview and the directive may not reach the model - a provider's inlined content needs tightening (F-174 P2)" -f $EventName, $Payload.Length)
-    }
+function ConvertTo-DispatcherInjectionOutput {
     # Per-host event output shaping (C2) is manifest data
     # (RefocusHookBindings.DispatcherRuntime.OutputShape). The dispatcher only
     # knows generic envelope strategies; adding or changing a host updates the
     # manifest, not this core switch.
+    param([string]$EventName, [AllowEmptyString()][string]$Payload, $Binding)
     $renderedOutput = $null
     if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
         $renderedOutput = @{} | ConvertTo-Json -Depth 3 -Compress
@@ -1188,16 +1182,76 @@ function Write-InjectionOutput {
             }
         }
     } }
+    return $renderedOutput
+}
+
+function Get-DispatcherRecordingDisclosure {
+    # Co-review round 3 (202, FR-007): the reply-recording disclosure for an episode this fire found at its own append,
+    # with whether the human's reply was used - read from the receipt outcome the provider journaled during this fire.
+    # The wording is the store's, so every surface says the same sentence; the store is loaded only on this rare path.
+    param([AllowNull()][string]$ProjectRoot, [switch]$Withheld)
+    $fallback = if ($Withheld) { "Specrew: this turn's Specrew guidance could not be recorded safely, so it was held back, and nothing is lost. Mention this to the human in one sentence." } else { 'Specrew: replies are being recorded in a fallback record until the main one is free again, and nothing is lost. Mention this to the human in one sentence.' }
+    try {
+        if (-not (Get-Command Get-SpecrewReplyRecordingWithheldDisclosure -ErrorAction SilentlyContinue)) {
+            foreach ($candidate in @((Join-Path $PSScriptRoot 'workshop-authority-store.ps1'), (Join-Path ([string]$env:SPECREW_MODULE_PATH) 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1'), (Join-Path $PSScriptRoot '../../extensions/specrew-speckit/scripts/workshop-authority-store.ps1'))) {
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) { . $candidate; break }
+            }
+        }
+        if (-not (Get-Command Get-SpecrewReplyRecordingWithheldDisclosure -ErrorAction SilentlyContinue)) { return $fallback }
+        $outcome = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { $null } else { Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $ProjectRoot -Since $script:DispatcherStartedUtc }
+        if ($Withheld) { return (Get-SpecrewReplyRecordingWithheldDisclosure -Outcome $outcome) }
+        $text = Get-SpecrewReplyRecordingDegradedDisclosure -ProjectRoot $ProjectRoot -Outcome $outcome
+        if ([string]::IsNullOrWhiteSpace($text)) { return $fallback }
+        return $text
+    }
+    catch { return $fallback }
+}
+
+function Write-InjectionOutput {
+    param([string]$EventName, [string]$Payload, $Binding, [AllowNull()][string]$ProjectRoot)
+    # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
+    # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
+    # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
+    # directive + the variable refocus fragment) exceeds the cap, the host SILENTLY drops it to a file + a ~2KB
+    # preview and the directive never reaches the model (the exact iter-11 break). The providers bound their own
+    # inlined content, but this is the ONE place that sees the joined total, so it is the right place to make an
+    # overflow VISIBLE. This is observability only (the advisor's "defensible cap-role"): WARN, never truncate -
+    # a blind truncate here would drop the integrity-critical mid-payload sections (e.g. AWAITING YOUR VERDICT).
+    if (-not [string]::IsNullOrEmpty($Payload) -and $Payload.Length -gt 10000) {
+        Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("assembled {0} payload is {1} chars (> the 10000 host hook-output cap); the host will drop it to a file + preview and the directive may not reach the model - a provider's inlined content needs tightening (F-174 P2)" -f $EventName, $Payload.Length)
+    }
+    $renderedOutput = ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding
+    $decisionOnly = Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())
+    $script:DispatcherRecordingDegradedThisFire = $false
     $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
     if ($recorded -and ([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
         $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
     }
+    # Co-review round 3 (202, FR-007 / SC-002): the providers composed this payload BEFORE this append, so a degraded
+    # episode that starts HERE is in no provider's disclosure. Say it in this same turn, with whether the reply was used,
+    # and record the output as it is actually delivered. A payload that already carries the disclosure gets no copy.
+    if ($recorded -and $script:DispatcherRecordingDegradedThisFire -and -not $decisionOnly -and -not ([string]$Payload).Contains('recorded in a fallback record')) {
+        $disclosure = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot
+        if (-not [string]::IsNullOrWhiteSpace($disclosure)) {
+            $Payload = ([string]$Payload).TrimEnd() + "`n`n" + $disclosure
+            $renderedOutput = ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding
+            $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
+            if ($recorded -and ([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
+                $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
+            }
+        }
+    }
     if (-not $recorded) {
         # FR-005: output whose hash could be neither journaled nor buffered could later be replayed as a "reply"
         # with nothing to match it against. Withhold it for this turn only; a decision-only host still gets no-op JSON.
-        if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
+        if ($decisionOnly) {
             Write-Output (@{} | ConvertTo-Json -Depth 3 -Compress)
+            return
         }
+        # Co-review round 3: withheld is still said (FR-007). The one sentence shown instead starts with 'Specrew:', which is
+        # never accepted as a typed reply, so it is safe to show unrecorded.
+        $withheld = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot -Withheld
+        if (-not [string]::IsNullOrWhiteSpace($withheld)) { Write-Output (ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $withheld -Binding $Binding) }
         return
     }
     Write-Output $renderedOutput

@@ -63,7 +63,19 @@ Write-Output ("<<<SPECREW-STOP-BLOCK>>>`n" + $env:HOJ_REASON)
 exit 0
 '@
     [IO.File]::WriteAllText((Join-Path $scripts 'stub-block.ps1'), $stub, [Text.UTF8Encoding]::new($false))
-    $catalog = [ordered]@{ schema_version = '1'; providers = @([ordered]@{ id = 'stub-block'; kind = 'inject'; events = @('Stop'); order = 40; budget_share = 1.0; command = 'stub-block.ps1' }) }
+    # Co-review round 3: a prompt-time provider that has just used (or refused) the human's reply. It journals that
+    # receipt outcome the way the store does, then starts the same lock holder, so the dispatcher's FINAL append is the
+    # first one to fail - after the provider composed its payload while recording was still healthy.
+    $injectStub = @'
+if ($env:HOJ_OUTCOME) {
+    $row = [ordered]@{ schema_version = '1.0'; status = $env:HOJ_OUTCOME; reason = 'stub'; feature_ref = '001-x'; phase = 'product-domain'; consumed = ($env:HOJ_OUTCOME -eq 'recorded'); recorded_at = [DateTimeOffset]::UtcNow.ToString('o'); response_hash = $null }
+    [IO.File]::AppendAllText((Join-Path (Get-Location).Path '.specrew/runtime/workshop-receipt-outcomes.jsonl'), (($row | ConvertTo-Json -Compress) + "`n"))
+}
+'@ + "`n" + ($stub -replace '(?s)Write-Output \("<<<SPECREW-STOP-BLOCK>>>`n" \+ \$env:HOJ_REASON\)', 'Write-Output $env:HOJ_REASON')
+    [IO.File]::WriteAllText((Join-Path $scripts 'stub-inject.ps1'), $injectStub, [Text.UTF8Encoding]::new($false))
+    $catalog = [ordered]@{ schema_version = '1'; providers = @(
+            [ordered]@{ id = 'stub-block'; kind = 'inject'; events = @('Stop'); order = 40; budget_share = 1.0; command = 'stub-block.ps1' },
+            [ordered]@{ id = 'stub-inject'; kind = 'inject'; events = @('UserPromptSubmit'); order = 40; budget_share = 1.0; command = 'stub-inject.ps1' }) }
     [IO.File]::WriteAllText((Join-Path $root '.specify\extensions\specrew-speckit\refocus-scopes.json'), ($catalog | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
     return $root
 }
@@ -87,6 +99,27 @@ function Invoke-StopWithReason {
     $p.StandardInput.Write('{"session_id":"hoj-session","stop_hook_active":false,"hook_event_name":"Stop"}'); $p.StandardInput.Close()
     if (-not $p.WaitForExit(60000)) { $p.Kill($true); throw 'dispatcher timed out' }
     return [pscustomobject]@{ ExitCode = $p.ExitCode; StdOut = $o.Result; StdErr = $e.Result }
+}
+
+function Invoke-PromptWithPayload {
+    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '')
+    $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
+    foreach ($a in '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root '.specify\extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'), '-Event', 'UserPromptSubmit', '-HostKind', 'claude') { $psi.ArgumentList.Add($a) }
+    $psi.WorkingDirectory = $Root
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
+    $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $psi.Environment['SPECREW_MODULE_PATH'] = $repoRoot
+    $psi.Environment['HOJ_REASON'] = $Payload
+    if ($HoldMs -gt 0) { $psi.Environment['HOJ_HOLD_MS'] = [string]$HoldMs } else { $psi.Environment.Remove('HOJ_HOLD_MS') | Out-Null }
+    if ($Outcome) { $psi.Environment['HOJ_OUTCOME'] = $Outcome } else { $psi.Environment.Remove('HOJ_OUTCOME') | Out-Null }
+    foreach ($var in 'CLAUDE_PROJECT_DIR', 'COPILOT_PROJECT_DIR', 'CURSOR_PROJECT_DIR') { $psi.Environment[$var] = $Root }
+    $p = [Diagnostics.Process]::Start($psi)
+    $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
+    $p.StandardInput.Write('{"session_id":"hoj-session","prompt":"It is for support staff.","hook_event_name":"UserPromptSubmit"}'); $p.StandardInput.Close()
+    if (-not $p.WaitForExit(60000)) { $p.Kill($true); throw 'dispatcher timed out' }
+    $context = $null
+    try { $context = [string](($o.Result | ConvertFrom-Json).hookSpecificOutput.additionalContext) } catch { $context = $null }
+    return [pscustomobject]@{ ExitCode = $p.ExitCode; StdOut = $o.Result; StdErr = $e.Result; Context = $context }
 }
 
 function Wait-JournalUnlocked {
@@ -259,6 +292,37 @@ try {
     $reasonH4 = 'RENDER THE PACKET NOW (h4) ' + [guid]::NewGuid().ToString('N')
     $r = Invoke-StopWithReason -Root $root -Reason $reasonH4
     Assert-True ((Get-LastHealthState $root) -eq 'recovered' -and @(Get-BufferFiles $root).Count -eq 0) 'damaged health line: the next good append flushes and recovers'
+
+    # Co-review round 3 (202, FR-007 / SC-002): a degraded episode that STARTS at the dispatcher's final append - after
+    # the provider composed its payload while recording was healthy - is said in that same turn, with whether the reply
+    # was used. Before the fix the payload went out unchanged and only stderr knew.
+    Write-Host '--- recording that first fails at the final append is disclosed in the same turn ---'
+    $p4 = New-JournalProject
+    try {
+        $payloadA = 'Thanks - recorded your product answer. Next question: what is the main pain? ' + [guid]::NewGuid().ToString('N')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload $payloadA -HoldMs 4000 -Outcome 'recorded'
+        Wait-JournalUnlocked $p4
+        Assert-True ($r.ExitCode -eq 0 -and $null -ne $r.Context -and $r.Context.Contains($payloadA)) 'final-append degrade: the payload is still delivered'
+        Assert-True ($null -ne $r.Context -and $r.Context -match 'recorded in a fallback record' -and $r.Context -match 'your reply was used as your workshop answer') 'final-append degrade: the same turn says recording is degraded, and that the reply was used'
+        Assert-True ($null -ne $r.Context -and (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $p4 -Response $r.Context)) 'final-append degrade: the output as delivered, disclosure included, is recorded as hook output'
+
+        $payloadB = 'Already degraded: the provider said so itself. Specrew: replies are being recorded in a fallback record until the main one is free again; your reply was used as your workshop answer, and nothing is lost. ' + [guid]::NewGuid().ToString('N')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload $payloadB -HoldMs 4000 -Outcome 'recorded'
+        Wait-JournalUnlocked $p4
+        Assert-True ($null -ne $r.Context -and ([regex]::Matches($r.Context, 'recorded in a fallback record')).Count -eq 1) 'a payload that already discloses it is not given a second copy'
+
+        $bufferDir4 = Get-RuntimePath $p4 'hook-output-buffer'
+        if (Test-Path -LiteralPath $bufferDir4) { Remove-Item -LiteralPath $bufferDir4 -Recurse -Force }
+        [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
+        $payloadC = 'Guidance that cannot be recorded this turn ' + [guid]::NewGuid().ToString('N')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload $payloadC -HoldMs 4000 -Outcome 'refused'
+        Wait-JournalUnlocked $p4
+        Assert-True (-not $r.StdOut.Contains($payloadC)) 'withheld: the unrecordable payload is still withheld (FR-005)'
+        Assert-True ($null -ne $r.Context -and $r.Context -match '^Specrew:' -and $r.Context -match 'held back' -and $r.Context -match 'your reply was not used as your workshop answer') 'withheld: the turn still says so, and whether the reply was used'
+        Assert-True ($null -ne $r.Context -and -not (Test-SpecrewWorkshopHumanResponseText -Text $r.Context)) 'withheld: that unrecorded disclosure can never count as a typed reply'
+        Remove-Item -LiteralPath $bufferDir4 -Force
+    }
+    finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }
 
     Write-Host '--- integrity stores hold hashes only (FR-008) ---'
     $storeText = Get-AllStoreText $root
