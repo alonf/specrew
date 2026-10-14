@@ -759,3 +759,238 @@ function Get-SpecrewTurnEndPreviousRecord {
     }
     catch { return $null }
 }
+
+# PRESENTED-CROSSING MEMORY (Feature 202 T006, FR-011, DA-2). An unchanged pending crossing is owed in full
+# ONCE per session, and again only after a context gap. What stood before keyed the obligation on the turn:
+# every non-verdict turn of a session with a pending crossing re-armed the packet and ended in a Stop block -
+# a side question, a wrong verdict and an orientation request each repainted it (B4F-104).
+#
+# THE RECORD IS PER SESSION AND PER CROSSING. It lives in the session's own turn-end directory, so another
+# session never inherits it - a new session owes its own presentation. It names the crossing it was written
+# for, so a different crossing finds nothing to suppress against.
+#
+# THE CONTEXT GAPS are exactly the agreed four, and HEAD movement is deliberately not one of them: the
+# agent's own bookkeeping commits (drift entries, findings) are what repainted the packet in 202's own
+# sessions. A gap is:
+#   - a changed crossing id (the record names another crossing);
+#   - a change to the artifacts under review (the files the presented packet linked);
+#   - SessionStart new/resume/compact (the session-start lane clears the record);
+#   - the long gap ($script:SpecrewPresentedCrossingLongGapHours).
+#
+# THE RECOVERY PATH STAYS OPEN (DRIFT-008, B4F-112). A typed reply that carried this crossing's approval
+# phrase while it was pending, and after which the crossing is STILL pending, is a capture miss: the human
+# answered and the answer did not record. Suppression would leave that human with no packet to answer, so a
+# capture miss lifts it whatever the gap state.
+$script:SpecrewPresentedCrossingLongGapHours = 8
+$script:SpecrewPresentedCrossingFileName = 'presented-crossings.json'
+$script:SpecrewSessionStartFileName = 'session-start.json'
+$script:SpecrewPresentedArtifactLimit = 32
+$script:SpecrewPresentedArtifactMaxBytes = 8MB
+
+function Get-SpecrewPresentedCrossingPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot)
+    return (Join-Path $TurnEndRoot $script:SpecrewPresentedCrossingFileName)
+}
+
+function Write-SpecrewTurnEndJsonFile {
+    # The same atomic temp-and-move the turn records use, for the two small session records that are not
+    # turn records (Read-SpecrewTurnEndRecord rightly refuses them: they carry no turn kind).
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Path, [Parameter(Mandatory)]$Value)
+
+    $temp = $null
+    try {
+        $directory = Split-Path -Parent $Path
+        if ($directory -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+            New-Item -ItemType Directory -Path $directory -Force | Out-Null
+        }
+        $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        [System.IO.File]::WriteAllText($temp, ($Value | ConvertTo-Json -Depth 8 -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $Path, $true)
+        return $true
+    }
+    catch { return $false }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Read-SpecrewTurnEndJsonFile {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Path)
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($item.Length -le 0 -or $item.Length -gt 262144) { return $null }
+        $value = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $value -or $value -is [System.Array]) { return $null }
+        return $value
+    }
+    catch { return $null }
+}
+
+function Clear-SpecrewPresentedCrossing {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot)
+    $path = Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot
+    try {
+        if (Test-Path -LiteralPath $path -PathType Leaf) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
+        return $true
+    }
+    catch { return $false }
+}
+
+function Write-SpecrewSessionStart {
+    # Called on every SessionStart this session receives. EVERY SessionStart is a context gap, so the
+    # presented record is cleared whatever its kind; the kind (startup, resume, clear, compact) is kept only
+    # so the next presented record can say which gap it followed.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot, [AllowNull()][string] $Source)
+
+    $kind = if ([string]::IsNullOrWhiteSpace($Source)) { 'unknown' } else { $Source.Trim().ToLowerInvariant() }
+    $null = Clear-SpecrewPresentedCrossing -TurnEndRoot $TurnEndRoot
+    return (Write-SpecrewTurnEndJsonFile -Path (Join-Path $TurnEndRoot $script:SpecrewSessionStartFileName) -Value ([pscustomobject][ordered]@{
+                kind  = $kind
+                at    = [DateTimeOffset]::UtcNow.ToString('o')
+                at_ms = Get-SpecrewUtcNowMilliseconds
+            }))
+}
+
+function Get-SpecrewReviewedArtifactState {
+    # The artifacts under review are the files the presented packet LINKED (Rule 52's bare file:/// URLs):
+    # the packet is where the human was told what to review. Each linked file is content-hashed. A linked
+    # directory is a pointer to browse, not an artifact, so it is recorded but not hashed - hashing it would
+    # turn every drift entry written inside an iteration folder into a "changed review target", which is the
+    # bookkeeping-commit repaint by another route.
+    [OutputType([object[]])]
+    param([AllowNull()][string] $Message)
+
+    $state = [System.Collections.Generic.List[object]]::new()
+    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($match in [regex]::Matches($Message, 'file:///[^\s<>"''`\[\](){}|]+')) {
+        if ($state.Count -ge $script:SpecrewPresentedArtifactLimit) { break }
+        $url = ([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*')
+        $localPath = $null
+        try { $localPath = [System.IO.Path]::GetFullPath([System.Uri]::new($url).LocalPath) } catch { $localPath = $null }
+        if ([string]::IsNullOrWhiteSpace($localPath)) { continue }
+        if (-not $seen.Add($localPath)) { continue }
+        $state.Add((Get-SpecrewArtifactFingerprint -Path $localPath))
+    }
+    return $state.ToArray()
+}
+
+function Get-SpecrewArtifactFingerprint {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Path)
+
+    $entry = [ordered]@{ path = $Path; kind = 'missing'; sha256 = '' }
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Container) { $entry.kind = 'directory' }
+        elseif (Test-Path -LiteralPath $Path -PathType Leaf) {
+            $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+            if ($item.Length -gt $script:SpecrewPresentedArtifactMaxBytes) {
+                $entry.kind = 'file-large'
+                $entry.sha256 = ('{0}:{1}' -f $item.Length, $item.LastWriteTimeUtc.Ticks)
+            }
+            else {
+                $entry.kind = 'file'
+                $entry.sha256 = (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            }
+        }
+    }
+    catch { $entry.kind = 'unreadable' }
+    return [pscustomobject]$entry
+}
+
+function Write-SpecrewPresentedCrossing {
+    # Written only by the Stop that VERIFIED the presentation: a boundary declaration for this crossing whose
+    # packet, approval line and marker all reached the visible reply. A declaration alone is not a
+    # presentation, so nothing upstream of that check writes here.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string] $TurnEndRoot,
+        [Parameter(Mandatory)][string] $CrossingId,
+        [AllowNull()][string] $ApprovalPhrase,
+        [AllowNull()][string] $Marker,
+        [AllowNull()][string] $Message
+    )
+
+    $sessionStart = Read-SpecrewTurnEndJsonFile -Path (Join-Path $TurnEndRoot $script:SpecrewSessionStartFileName)
+    $sessionStartKind = if ($null -ne $sessionStart -and $sessionStart.PSObject.Properties['kind']) { [string]$sessionStart.kind } else { 'none-observed' }
+    return (Write-SpecrewTurnEndJsonFile -Path (Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot) -Value ([pscustomobject][ordered]@{
+                schema_version          = '1.0'
+                crossing_id             = $CrossingId
+                approval_phrase         = [string]$ApprovalPhrase
+                marker                  = [string]$Marker
+                reviewed_artifact_state = @(Get-SpecrewReviewedArtifactState -Message $Message)
+                presented_at            = [DateTimeOffset]::UtcNow.ToString('o')
+                presented_ms            = Get-SpecrewUtcNowMilliseconds
+                session_start_kind      = $sessionStartKind
+                verdict_reply_at        = $null
+            }))
+}
+
+function Test-SpecrewReplyCarriesApprovalPhrase {
+    # Content, not layout: the phrase anywhere in the typed reply, case- and whitespace-insensitive. A reply
+    # whose phrase sits after a pasted block is exactly the DRIFT-008 shape this has to see.
+    [OutputType([bool])]
+    param([AllowNull()][string] $Reply, [AllowNull()][string] $ApprovalPhrase)
+    if ([string]::IsNullOrWhiteSpace($Reply) -or [string]::IsNullOrWhiteSpace($ApprovalPhrase)) { return $false }
+    $words = @((($ApprovalPhrase -replace '\s+', ' ').Trim()) -split ' ' | ForEach-Object { [regex]::Escape($_) })
+    $pattern = '(?i)(?<![\w-])' + ($words -join '\s+') + '(?![\w-])'
+    return [regex]::IsMatch($Reply, $pattern)
+}
+
+function Register-SpecrewPresentedCrossingReply {
+    # Prompt time, typed replies only. Records THAT a reply carried the presented crossing's approval phrase.
+    # Whether it was a miss is decided at Stop, where the crossing is either still pending (the capture did
+    # not record it) or gone (it did).
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot, [AllowNull()][string] $Reply)
+
+    $path = Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot
+    $record = Read-SpecrewTurnEndJsonFile -Path $path
+    if ($null -eq $record -or -not $record.PSObject.Properties['approval_phrase']) { return $false }
+    if (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply $Reply -ApprovalPhrase ([string]$record.approval_phrase))) { return $false }
+    $record.verdict_reply_at = [DateTimeOffset]::UtcNow.ToString('o')
+    return (Write-SpecrewTurnEndJsonFile -Path $path -Value $record)
+}
+
+function Get-SpecrewPresentedCrossingDecision {
+    # Does this session's earlier presentation still cover the pending crossing? suppress is $true only for a
+    # crossing that was presented, is unchanged and had no capture miss. Otherwise the reason names the gap,
+    # so the journal says WHY the packet was owed again.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $TurnEndRoot,
+        [Parameter(Mandatory)][string] $CrossingId,
+        [Nullable[DateTimeOffset]] $Now
+    )
+
+    $nowValue = if ($null -ne $Now) { [DateTimeOffset]$Now } else { [DateTimeOffset]::UtcNow }
+    $record = Read-SpecrewTurnEndJsonFile -Path (Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot)
+    if ($null -eq $record -or -not $record.PSObject.Properties['crossing_id']) { return [pscustomobject]@{ suppress = $false; reason = 'not-presented' } }
+    if ([string]$record.crossing_id -cne $CrossingId) { return [pscustomobject]@{ suppress = $false; reason = 'crossing-changed' } }
+    if ($record.PSObject.Properties['verdict_reply_at'] -and -not [string]::IsNullOrWhiteSpace([string]$record.verdict_reply_at)) {
+        return [pscustomobject]@{ suppress = $false; reason = 'capture-miss' }
+    }
+    $presentedAt = if ($record.PSObject.Properties['presented_ms']) { ConvertTo-SpecrewUtcTimestamp -Value $record.presented_ms } else { $null }
+    if ($null -eq $presentedAt -and $record.PSObject.Properties['presented_at']) { $presentedAt = ConvertTo-SpecrewUtcTimestamp -Value $record.presented_at }
+    if ($null -eq $presentedAt) { return [pscustomobject]@{ suppress = $false; reason = 'record-unreadable' } }
+    if (($nowValue - [DateTimeOffset]$presentedAt).TotalHours -ge $script:SpecrewPresentedCrossingLongGapHours) {
+        return [pscustomobject]@{ suppress = $false; reason = 'long-gap' }
+    }
+    foreach ($entry in @($record.reviewed_artifact_state)) {
+        if ($null -eq $entry -or -not $entry.PSObject.Properties['path']) { continue }
+        if ([string]$entry.kind -eq 'directory') { continue }
+        $current = Get-SpecrewArtifactFingerprint -Path ([string]$entry.path)
+        if ([string]$current.kind -cne [string]$entry.kind -or [string]$current.sha256 -cne [string]$entry.sha256) {
+            return [pscustomobject]@{ suppress = $false; reason = 'reviewed-artifacts-changed' }
+        }
+    }
+    return [pscustomobject]@{ suppress = $true; reason = 'presented-unchanged' }
+}
