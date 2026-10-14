@@ -98,7 +98,8 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
     - **Case (e):** 2,000 of 2,000 lines intact, and 5 concurrent dispatcher pairs all journaled.
     - **Mutations caught:** a plain `Append` stream on Windows lost 3 to 4 lines per run; console stdin decoding broke Claude's Hebrew reply.
     - **Workflow:** one step was added to the existing `review-runtime-fault-matrix` job. There are no new jobs.
-    - **Still owed:** the macOS and Linux legs, and codex review of the workflow diff at the next checkpoint.
+    - **First 3-OS run (38487295823):** Windows green. Linux lost 58 of 2,000 lines and tore 1; macOS lost 32. Linux and macOS now take the permitted per-write lock on this journal (DRIFT-014).
+    - **Still owed:** a green 3-OS rerun with the lock, and codex review of the workflow diff at the next checkpoint.
 
 ## Phase 4: US2, stops only when I have a decision to make (P1)
 

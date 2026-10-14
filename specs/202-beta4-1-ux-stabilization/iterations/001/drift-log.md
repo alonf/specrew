@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 13
-**Resolution rate**: 92% (12/13 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 14
+**Resolution rate**: 93% (13/14 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -151,6 +151,30 @@
   - **Checkpoint rounds run only 202's lanes (option a).** `iteration-001-governance-202` measured 16.9 s against 180 s, and `f202-slice-suites` 64.7 s against 600 s. Both f199 lanes are parked in `.specrew/verification-plan.signoff-lanes.json` and return to the plan for the signoff round (T015 carries the step). `every-suite-is-named-by-a-lane` reads the parked file, so their suites stay named meanwhile and it stays green.
   - **The reporting gap** is recorded as beta5 finding B4F-118. The engine computes a derived diagnosis outside the seal (command, exit code, duration, `timed_out`), but it never reaches `result.json` or `report.md`.
 - **Class closure**: NONE — the class is "a timeout reported as an opaque sealed failure", and its closure is the engine change B4F-118 records for beta5. This entry fixes the instance and restores headroom; nothing yet re-measures a lane against its timeout as suites are added.
+
+### DRIFT-014 — co-review round 1 found eight defects in T002 to T004; all are fixed, one by the planned Unix lock (resolved)
+
+- **Observed**: 2026-10-14, co-review round 1 (`run-20261013-234651770-ac649a7e`, codex, on `c26b1d42`). The round returned 8 findings. The engine demoted all 8 to minor for stating no concrete failure scenario. The crew checked each one against the code and the spec, and every one is a real defect:
+  1. **Origin passed but not enforced.** `--turn-origin` reached the handover provider and stopped there. A Copilot dismissed-question prompt classified host-injected still produced a receipt. The old store's text check accepts "User skipped question" (verified).
+  2. **Buffer flush could delete unread data.** The flush swallowed buffer read errors and then deleted every listed file. RED: a buffer held unreadable but deletable lost its hash.
+  3. **A malformed journal line threw.** The exception escaped the receipt writer's outcome handling, so the turn went silent. Because the line never goes away, it also refused every later reply.
+  4. **Recovery approval read a decline as approval**, for example "okay, do not clear it".
+  5. **A recovery question outlived its episode.** It survived automatic recovery, so a later unrelated "yes" could move the record.
+  6. **Recovery acted before recording the approval**, and still said "your approval was recorded" when that write failed.
+  7. **No disclosure in the affected turn.** A degraded state was not said in the turn the human typed into, stating whether the reply was used.
+  8. **The non-Windows journal append was not atomic.** T005 case (e) on the 3-OS CI run (38487295823) measured it: Linux lost 58 of 2,000 lines and tore 1; macOS lost 32.
+- **Requirement**: FR-006 ("only typed-user can produce a receipt"); FR-002 and FR-003 (no permanent latch); FR-007 (disclosed in the affected turn, stating whether the reply was consumed); FR-009 (the recovery action records the approving reply's receipt); FR-001 with T003's conditional per-write lock.
+- **Resolution**:
+  1. The handover provider reads `--turn-origin`. `Write-SpecrewWorkshopAuthorityReceipt` refuses any origin other than typed-user, with the new cause `not-typed-by-human`, disclosed in the turn. A direct caller with no turn record keeps the text checks.
+  2. The flush renames each buffer file out of its writer's way, reads it, and journals it. It removes the file only if the file was read and has not grown since.
+  3. A malformed line is skipped and counted; it can authenticate nothing, and the decision rests on the readable records.
+  4. Recovery approval rejects any reply that also declines or holds off.
+  5. A stale question, from a recovered or earlier episode, is closed instead of being answered.
+  6. The approval is recorded first. If it cannot be, nothing changes and the turn says so.
+  7. While degraded, the prompt turn says whether the reply was used.
+  8. Linux and macOS take the per-write lock T003 planned for this case: a sidecar lock held for one write. Windows is unchanged.
+- **Tests**: `receipt-disclosure` cases 9 to 14, `hook-output-journal` case (h), and `cross-host-workshop` host-injected prompts through the deployed hook. Case (h) and the case 9 premise were confirmed RED on the previous code.
+- **Class closure**: the cases above are permanent members of `f202-slice-suites`. The 3-OS step makes case (e) a standing check on every run of the matrix job.
 <!--
   Every new ### DRIFT-... event includes:
 

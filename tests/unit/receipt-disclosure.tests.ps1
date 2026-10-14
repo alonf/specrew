@@ -45,7 +45,7 @@ function New-WorkshopFixture {
     [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
     return $root
 }
-function Invoke-Provider { param([string]$Root, [string]$Reply) return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Reply 2>&1 | ForEach-Object { [string]$_ }) -join "`n") }
+function Invoke-Provider { param([string]$Root, [string]$Reply, [string]$Origin) $extra = @(if ($Origin) { "--turn-origin", $Origin }); return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Reply @extra 2>&1 | ForEach-Object { [string]$_ }) -join "`n") }
 function Read-Outcomes { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-receipt-outcomes.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return @() }; return @(Get-Content -LiteralPath $p -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json }) }
 function Test-Receipt { param([string]$Root) return (Test-Path -LiteralPath (Join-Path $Root '.specrew/runtime/workshop-authority.jsonl')) }
 function Get-ReceiptCount { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return 0 }; return @(Get-Content -LiteralPath $p | Where-Object { $_.Trim() }).Count }
@@ -102,7 +102,7 @@ try {
     Assert-True ($null -ne $latest -and (Get-SpecrewWorkshopRefusalCauseText -Reason $latest.reason) -eq 'the product-domain answers for this feature are already recorded') 'case 5: the cause the repair message would show is the real one'
 
     Write-Host '  --- case 6: every disclosure sentence passes the banned-noun check ---'
-    foreach ($reason in 'matches-hook-output', 'record-check-unavailable', 'product-answers-already-recorded', 'product-answers-missing', 'agenda-not-shown', 'agenda-changed', 'agenda-already-confirmed', 'lens-not-on-agenda', 'lens-already-closed', 'question-record-invalid', 'question-record-unreadable', 'workshop-records-missing', 'workshop-records-incompatible', 'reply-write-failed', 'unknown-reason') {
+    foreach ($reason in 'matches-hook-output', 'not-typed-by-human', 'record-check-unavailable', 'product-answers-already-recorded', 'product-answers-missing', 'agenda-not-shown', 'agenda-changed', 'agenda-already-confirmed', 'lens-not-on-agenda', 'lens-already-closed', 'question-record-invalid', 'question-record-unreadable', 'workshop-records-missing', 'workshop-records-incompatible', 'reply-write-failed', 'unknown-reason') {
         $text = Get-SpecrewWorkshopReceiptOutcomeDisclosure -Outcome ([pscustomobject]@{ status = 'refused'; reason = $reason })
         Assert-True ($text -match 'was not used as your workshop answer' -and $text -notmatch '(?i)lost|selection channel') ("case 6 [{0}]: says not used, implies no loss" -f $reason)
         Test-NoBannedNoun -Text $text -Label ("case 6 [{0}]" -f $reason)
@@ -138,10 +138,94 @@ try {
     Assert-True ($yes -match 'set aside, not deleted') 'case 8: the typed yes is acted on and said'
     Assert-True (-not (Test-Path -LiteralPath $journal8) -and @(Get-ChildItem (Join-Path $r8 '.specrew/runtime') -Filter 'hook-output-authority.set-aside-*.jsonl').Count -eq 1) 'case 8: the stuck record was moved aside, not deleted'
     $recovery = @(Get-Content (Join-Path $r8 '.specrew/runtime/reply-recording-recovery.jsonl') | ForEach-Object { $_ | ConvertFrom-Json })
-    Assert-True ($recovery.Count -eq 1 -and $recovery[0].response_hash -eq (Get-HashOf 'yes') -and $recovery[0].action -eq 'set-aside-stuck-record' -and $recovery[0].result -eq 'recovered') 'case 8: the approving reply is recorded with the action taken'
+    Assert-True ($recovery.Count -eq 2 -and $recovery[0].response_hash -eq (Get-HashOf 'yes') -and $recovery[0].result -eq 'approved' -and $recovery[1].action -eq 'set-aside-stuck-record' -and $recovery[1].result -eq 'recovered') 'case 8: the approving reply is recorded first, then the action taken'
     Assert-True ((Get-ReceiptCount $r8) -eq $receiptsBefore) 'case 8: the recovery yes was not also taken as a workshop answer (no receipt added)'
     Assert-True (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $r8 -Response 'an old hook output') 'case 8: output recorded in the set-aside file is still refused as a reply'
     Test-NoBannedNoun -Text ($out + "`n" + $yes) -Label 'case 8'
+
+    # --- Co-review round 1 (202) findings, each pinned through the real provider where it has a turn ---
+    Write-Host '  --- case 9: only a typed-user prompt produces a receipt (FR-006, enforced, not only passed along) ---'
+    $r9 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r9)
+    $out = Invoke-Provider -Root $r9 -Reply 'User skipped question' -Origin 'host-injected'
+    Assert-True (-not (Test-Receipt $r9)) 'case 9: a host-injected prompt produces no receipt, whatever its text'
+    $rows = @(Read-Outcomes $r9)
+    Assert-True ($rows.Count -eq 1 -and $rows[0].reason -eq 'not-typed-by-human' -and -not [bool]$rows[0].consumed) 'case 9: refused as not typed by the human, not consumed'
+    Assert-True ($out -match 'because it was added by the assistant''s host, not typed by you') 'case 9: the turn says so, with that cause'
+    Assert-True ($out -notmatch '(?i)picker|selection channel|question UI') 'case 9: no channel is attributed'
+    $null = Invoke-Provider -Root $r9 -Reply 'It is for support staff who read the shared inbox.' -Origin 'unknown'
+    Assert-True (-not (Test-Receipt $r9)) 'case 9: an unknown-origin prompt produces no receipt either'
+    $null = Invoke-Provider -Root $r9 -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
+    Assert-True ((Get-ReceiptCount $r9) -eq 1) 'case 9: the same text typed by the human is recorded'
+    Test-NoBannedNoun -Text $out -Label 'case 9'
+
+    Write-Host '  --- case 10: a malformed record line never silences the turn or refuses every later reply ---'
+    $r10 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r10)
+    $journal10 = Join-Path $r10 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal10, ('{"schema_version":"1.0","output_hash":"' + (Get-HashOf 'shown by the hook') + '"}' + "`n" + '{"schema_versi' + "`n" + '{"schema_version":"9"}' + "`n"))
+    $threw = $false
+    try { $isHook = Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $r10 -Response 'shown by the hook' } catch { $threw = $true }
+    Assert-True (-not $threw -and $isHook) 'case 10: the check does not throw, and a readable record still matches'
+    $out = Invoke-Provider -Root $r10 -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
+    Assert-True ((Get-ReceiptCount $r10) -eq 1) 'case 10: a typed reply is recorded despite the malformed lines (no permanent refusal)'
+    Assert-True ($out -notmatch 'PROVIDER_FAILED') 'case 10: the provider does not fail'
+
+    Write-Host '  --- case 11: a reply that declines is never read as recovery approval ---'
+    foreach ($decline in 'okay, do not clear it.', 'yes, but leave the error alone.', "ok don't", 'yes, wait', 'no', 'sure, later', 'yes?') {
+        Assert-True (-not (Test-SpecrewReplyRecordingRecoveryApproval -Response $decline)) ("case 11: '{0}' is not approval" -f $decline)
+    }
+    foreach ($approve in 'yes', 'Yes, go ahead.', 'ok', 'approved', 'please do') {
+        Assert-True (Test-SpecrewReplyRecordingRecoveryApproval -Response $approve) ("case 11: '{0}' approves" -f $approve)
+    }
+    $r11 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r11)
+    $journal11 = Join-Path $r11 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal11, '{"schema_version":"1.0","output_hash":"00"}' + "`n")
+    [IO.File]::WriteAllText((Join-Path $r11 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-20).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $null = Invoke-Provider -Root $r11 -Reply 'What is the status?'
+    $no = Invoke-Provider -Root $r11 -Reply 'okay, do not clear it.'
+    Assert-True ((Test-Path -LiteralPath $journal11) -and $no -notmatch 'set aside') 'case 11: through the provider, a declining reply moves nothing'
+
+    Write-Host '  --- case 12: after automatic recovery, a later "yes" is not taken as recovery approval ---'
+    $r12 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r12)
+    $journal12 = Join-Path $r12 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal12, '{"schema_version":"1.0","output_hash":"00"}' + "`n")
+    $health12 = Join-Path $r12 '.specrew/runtime/hook-output-health.jsonl'
+    $first12 = [DateTimeOffset]::UtcNow.AddMinutes(-20).ToString('o')
+    [IO.File]::WriteAllText($health12, (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = $first12; count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $null = Invoke-Provider -Root $r12 -Reply 'What is the status?'
+    Assert-True (Test-Path -LiteralPath (Join-Path $r12 '.specrew/runtime/reply-recording-recovery-request.json')) 'case 12: the question was asked'
+    [IO.File]::AppendAllText($health12, (([ordered]@{ schema_version = '1.0'; state = 'recovered'; class = 'journal-append-failed'; first_seen = $first12; recovered_at = [DateTimeOffset]::UtcNow.ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $receipts12 = Get-ReceiptCount $r12
+    $yes12 = Invoke-Provider -Root $r12 -Reply 'yes' -Origin 'typed-user'
+    Assert-True ((Test-Path -LiteralPath $journal12) -and $yes12 -notmatch 'set aside') 'case 12: nothing is moved once recording recovered on its own'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $r12 '.specrew/runtime/reply-recording-recovery-request.json'))) 'case 12: the stale question is closed'
+    Assert-True ((Get-ReceiptCount $r12) -eq ($receipts12 + 1)) 'case 12: the "yes" went to the open workshop question instead'
+
+    Write-Host '  --- case 13: no action without the approval''s receipt (FR-009) ---'
+    $r13 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r13)
+    $journal13 = Join-Path $r13 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal13, '{"schema_version":"1.0","output_hash":"00"}' + "`n")
+    [IO.File]::WriteAllText((Join-Path $r13 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-20).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $null = Invoke-Provider -Root $r13 -Reply 'What is the status?'
+    New-Item -ItemType Directory -Force -Path (Join-Path $r13 '.specrew/runtime/reply-recording-recovery.jsonl') | Out-Null  # the receipt cannot be written
+    $yes13 = Invoke-Provider -Root $r13 -Reply 'yes'
+    Assert-True (Test-Path -LiteralPath $journal13 -PathType Leaf) 'case 13: the record was not moved'
+    Assert-True ($yes13 -match 'could not be recorded this turn, so nothing was changed' -and $yes13 -notmatch 'your approval was recorded') 'case 13: the turn says the approval was not recorded and nothing changed'
+    Assert-True (Test-Path -LiteralPath (Join-Path $r13 '.specrew/runtime/reply-recording-recovery-request.json')) 'case 13: the question stays open'
+    Test-NoBannedNoun -Text $yes13 -Label 'case 13'
+
+    Write-Host '  --- case 14: while degraded, the affected turn says so and whether the reply was used (FR-007) ---'
+    $r14 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r14)
+    [IO.File]::WriteAllText((Join-Path $r14 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-2).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $out14 = Invoke-Provider -Root $r14 -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
+    Assert-True ((Get-ReceiptCount $r14) -eq 1 -and $out14 -match 'your reply was used as your workshop answer, and nothing is lost') 'case 14: degraded and used: said in the same turn'
+    $r14b = New-WorkshopFixture -Phase 'product-domain' -ProductRecorded; $roots.Add($r14b)
+    [IO.File]::WriteAllText((Join-Path $r14b '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-2).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $out14b = Invoke-Provider -Root $r14b -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
+    Assert-True ($out14b -match 'your reply was not used as your workshop answer, and nothing is lost') 'case 14: degraded and not used: said in the same turn'
+    $r14c = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r14c)
+    $out14c = Invoke-Provider -Root $r14c -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
+    Assert-True ($out14c -notmatch 'fallback record') 'case 14: healthy recording says nothing'
+    Test-NoBannedNoun -Text ($out14 + "`n" + $out14b) -Label 'case 14'
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }

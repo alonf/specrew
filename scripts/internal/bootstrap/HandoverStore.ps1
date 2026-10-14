@@ -1142,7 +1142,8 @@ function Update-SpecrewRollingHandover {
         [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
         [Parameter()][AllowNull()][string] $TranscriptPath = $null,   # F-174 iter-10 (T002): host transcript_path for conversation capture
         [Parameter()][AllowNull()][string] $LastAssistantMessage = $null,
-        [Parameter()][AllowNull()][string] $LastUserMessage = $null
+        [Parameter()][AllowNull()][string] $LastUserMessage = $null,
+        [Parameter()][AllowNull()][string] $TurnOrigin = $null        # Feature 202 (FR-006): typed-user | host-injected | unknown, from the dispatcher
     )
 
     $getProp = {
@@ -1236,7 +1237,7 @@ function Update-SpecrewRollingHandover {
         $recoveryDisclosure = $null
         $recoveryAnswered = $false
         if (Get-Command Invoke-SpecrewReplyRecordingRecoveryIfApproved -ErrorAction SilentlyContinue) {
-            try { $recoveryDisclosure = Invoke-SpecrewReplyRecordingRecoveryIfApproved -ProjectRoot $ProjectRoot -Response $LastUserMessage -NowUtc $NowUtc } catch { $recoveryDisclosure = $null }
+            try { $recoveryDisclosure = Invoke-SpecrewReplyRecordingRecoveryIfApproved -ProjectRoot $ProjectRoot -Response $LastUserMessage -NowUtc $NowUtc -TurnOrigin $TurnOrigin } catch { $recoveryDisclosure = $null }
             $recoveryAnswered = -not [string]::IsNullOrWhiteSpace([string]$recoveryDisclosure)
         }
         if (-not $recoveryAnswered -and (Get-Command Get-SpecrewReplyRecordingRecoveryAsk -ErrorAction SilentlyContinue)) {
@@ -1245,7 +1246,7 @@ function Update-SpecrewRollingHandover {
         if (-not $recoveryAnswered -and (Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
             $receipt = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                -HostKind $fromHost -SourceEvent $Source
+                -HostKind $fromHost -SourceEvent $Source -TurnOrigin $TurnOrigin
             # PRED-BETA4-053: a confirmation the receipt could not bind is said here, in the turn, with the
             # remedy - not discovered later when the persist throws.
             if ($null -eq $receipt -and (Get-Command Get-SpecrewWorkshopReceiptDisclosure -ErrorAction SilentlyContinue)) {
@@ -1257,6 +1258,16 @@ function Update-SpecrewRollingHandover {
             if ($null -eq $receipt -and [string]::IsNullOrWhiteSpace([string]$workshopDisclosure) -and
                 (Get-Command Get-SpecrewWorkshopReceiptOutcomeDisclosure -ErrorAction SilentlyContinue)) {
                 try { $workshopDisclosure = Get-SpecrewWorkshopReceiptOutcomeDisclosure -Outcome (Get-SpecrewWorkshopLastReceiptOutcome) } catch { $workshopDisclosure = $null }
+            }
+            # FR-007: while reply recording is degraded, the affected turn says so and whether the reply was used. The
+            # recovery question, when it is asked this turn, already says it, so the two are never both shown.
+            if ([string]::IsNullOrWhiteSpace([string]$recoveryDisclosure) -and
+                (Get-Command Get-SpecrewReplyRecordingDegradedDisclosure -ErrorAction SilentlyContinue)) {
+                $degradedLine = $null
+                try { $degradedLine = Get-SpecrewReplyRecordingDegradedDisclosure -ProjectRoot $ProjectRoot -Outcome (Get-SpecrewWorkshopLastReceiptOutcome) } catch { $degradedLine = $null }
+                if (-not [string]::IsNullOrWhiteSpace([string]$degradedLine)) {
+                    $workshopDisclosure = @(@([string]$workshopDisclosure, [string]$degradedLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join "`n"
+                }
             }
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `

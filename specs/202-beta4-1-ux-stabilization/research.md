@@ -114,6 +114,16 @@ Three processes each appended 400 JSON lines to one file, with one open, write a
 
 Five pairs of real dispatcher processes on Stop all journaled their reasons. The Linux and macOS legs run in `cross-platform-validation.yml`'s existing three-OS job.
 
+**Case (e), all three OSes (CI run 38487295823, 2026-10-14):**
+
+| OS | Lines | Missing | Torn | Verdict |
+| --- | --- | --- | --- | --- |
+| Windows | 2000/2000 | 0 | 0 | the AppendData handle holds |
+| Linux (ubuntu-latest) | 1943/2000 | 58 | 1 | the plain `Append` stream loses lines |
+| macOS (macos-latest) | 1968/2000 | 32 | 0 | the plain `Append` stream loses lines |
+
+Neither writer degraded: every lost line was reported as written. That is why the condition T003 planned for applies. Linux and macOS now take the permitted per-write lock on this journal only: a sidecar `<journal>.lock` opened exclusively for the duration of one write. .NET maps that to an advisory `flock` honoured by every Specrew writer. Readers never take it, so a read never waits on or refuses because of a writer. Windows keeps the lock-free AppendData handle.
+
 **Verdict per validated host:**
 
 - **Claude:** DA-3 holds (injection yes, direct display no, so the agent renders the supplied orientation). DA-4 holds (a session id is present; UTF-8 bytes arrive intact, and explicit byte-level decoding is required because the console encoding varies).

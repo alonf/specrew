@@ -15,7 +15,7 @@
 #
 # Mutations that turn this file red: drop a host's Prompt field from its InputFieldMap (no reply reaches the
 # store); decode the dispatcher's stdin with [Console]::In again (measured: Claude's Hebrew lens reply is mangled and
-its hash differs; the Codex and Copilot launcher reads the bytes itself, so those two stay green); make the
+# its hash differs; the Codex and Copilot launcher reads the bytes itself, so those two stay green); make the
 # dispatcher's prompt origin anything but typed-user for a typed reply (the receipt is refused); latch the journal
 # again (every later reply is refused).
 Set-StrictMode -Version Latest
@@ -83,10 +83,16 @@ function Split-CommandLine {
 function Send-TypedReply {
     # One keystroke-to-hook delivery: the host's recorded typed-prompt payload with only the prompt replaced, sent as
     # UTF-8 bytes to the deployed command, spawned with a hidden console the way hosts spawn hooks.
-    param($Fixture, [string]$Reply)
-    $payload = [IO.File]::ReadAllText((Join-Path $fixtureRoot ("{0}\{1}.json" -f $Fixture.HostKind, $typedFixture[$Fixture.HostKind])), [Text.Encoding]::UTF8) | ConvertFrom-Json
-    $payload.prompt = $Reply
-    $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($payload | ConvertTo-Json -Compress))
+    # With -RecordedFixture the named fixture's bytes are sent unchanged (a host-injected prompt, as recorded).
+    param($Fixture, [string]$Reply, [string]$RecordedFixture)
+    if ($RecordedFixture) {
+        $bytes = [IO.File]::ReadAllBytes((Join-Path $fixtureRoot ("{0}\{1}.json" -f $Fixture.HostKind, $RecordedFixture)))
+    }
+    else {
+        $payload = [IO.File]::ReadAllText((Join-Path $fixtureRoot ("{0}\{1}.json" -f $Fixture.HostKind, $typedFixture[$Fixture.HostKind])), [Text.Encoding]::UTF8) | ConvertFrom-Json
+        $payload.prompt = $Reply
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($payload | ConvertTo-Json -Compress))
+    }
     $argv = Split-CommandLine -CommandLine (Get-DeployedHookCommand -Fixture $Fixture -NativeEvent $nativePrompt[$Fixture.HostKind])
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $argv[0]
@@ -193,6 +199,26 @@ try {
         Test-Checkpoint -Fixture $fx -Label 'checkpoint 3, one lens (Hebrew reply)' -Reply 'One pipeline with bounded concurrency; בדיקה אחת לכל אתר.' -Phase 'lens' -Lens 'architecture-core' -Scope 'lens-question'
 
         Assert-Equal @(Get-Receipts $fx).Count 3 "[$h] the walk yields 3 receipts from 3 replies"
+
+        # FR-006, enforced end to end (co-review round 1): a host-injected prompt arriving while a question is open is
+        # never the human's answer. Hosts with a rule-classified recorded or synthetic injected prompt are exercised.
+        $injected = @{ claude = 'tui-userpromptsubmit-host-injected-task-notification'; copilot = 'synthetic-userpromptsubmitted-skipped-question' }
+        if ($injected.ContainsKey($h)) {
+            Set-OpenQuestion -Fixture $fx -Phase 'lens' -Lens 'architecture-core' -AgendaStatus 'confirmed' -QuestionHash 'q-architecture-2'
+            $outcomesBefore = @(Get-Outcomes $fx).Count
+            $r = Send-TypedReply -Fixture $fx -RecordedFixture $injected[$h]
+            Assert-True ($r.ExitCode -eq 0) "[$h] host-injected prompt ($($injected[$h])) - the deployed hook exits 0"
+            Assert-Equal @(Get-Receipts $fx).Count 3 "[$h] host-injected prompt ($($injected[$h])) - produces no receipt"
+            $outcomes = @(Get-Outcomes $fx | Select-Object -Skip $outcomesBefore)
+            if ($h -eq 'copilot') {
+                # The human dismissed a question: they did something, so the turn says it was not taken as an answer.
+                Assert-True ($outcomes.Count -eq 1 -and [string]$outcomes[0].reason -eq 'not-typed-by-human') "[$h] host-injected prompt - refused as not typed by the human, and said"
+            }
+            else {
+                # A task notification is not a reply at all: no receipt, and nothing to tell the human.
+                Assert-Equal $outcomes.Count 0 "[$h] host-injected prompt - not a reply, so nothing is refused or said"
+            }
+        }
     }
     Write-Host 'Experimental hosts not walked (no T001 payloads, unvalidated): cursor, antigravity' -ForegroundColor Yellow
 }

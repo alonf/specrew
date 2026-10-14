@@ -105,13 +105,31 @@ function Open-DispatcherAppendStream {
     # [IO.File]::Open(Append, ReadWrite) let three concurrent writers lose 58 of 1200 lines and tear 3 - .NET
     # positions an Append stream at open time, so two writers can land on the same offset. A handle opened with
     # ONLY the AppendData right is an OS-level atomic append on Windows (1200/1200 intact). Elsewhere the regular
-    # Append stream is used, and case (e) on the 3-OS matrix (T005) decides whether that needs the per-write lock.
+    # Append stream is used under the per-write lock (Enter-DispatcherAppendLock), which case (e) showed it needs.
     # FileShare.ReadWrite: never lock out a reader or another writer (the B4F-108 latch was FileShare.Read).
     param([string]$Path)
     if ($IsWindows) {
         return [IO.FileSystemAclExtensions]::Create([IO.FileInfo]::new($Path), [IO.FileMode]::Append, [Security.AccessControl.FileSystemRights]::AppendData, [IO.FileShare]::ReadWrite, 4096, [IO.FileOptions]::None, $null)
     }
     return [IO.File]::Open($Path, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+}
+
+function Enter-DispatcherAppendLock {
+    # Linux and macOS only - the per-write lock T003 permitted if case (e) showed lost lines, which it did (202
+    # research.md, CI run 38487295823: Linux lost 58 of 2000 and tore 1, macOS lost 32; Windows lost none). A sidecar
+    # `<journal>.lock` is opened exclusively for ONE write: .NET maps FileShare.None to an advisory flock that every
+    # Specrew writer honours. Readers never take it, so no read waits on a writer or is refused because of one. A
+    # lock not acquired within 200 ms throws, and the caller's retry window and buffer apply as for any failed append.
+    param([string]$Path)
+    $lockPath = $Path + '.lock'
+    $wait = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        try { return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+        catch [IO.IOException] {
+            if ($wait.ElapsedMilliseconds -ge 200) { throw }
+            Start-Sleep -Milliseconds 2
+        }
+    }
 }
 
 function Add-DispatcherJournalText {
@@ -122,13 +140,16 @@ function Add-DispatcherJournalText {
     $window = [Diagnostics.Stopwatch]::StartNew()
     $lastError = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
+        $lock = $null
         try {
+            if (-not $IsWindows) { $lock = Enter-DispatcherAppendLock -Path $Path }
             $stream = Open-DispatcherAppendStream -Path $Path
             try { $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) }
             finally { $stream.Dispose() }
             return $null
         }
         catch { $lastError = $_.Exception.Message }
+        finally { if ($null -ne $lock) { $lock.Dispose() } }
         if ($attempt -lt 5 -and ($window.ElapsedMilliseconds + 50) -le 250) { Start-Sleep -Milliseconds 50 } else { break }
     }
     return $lastError
@@ -238,19 +259,43 @@ function Complete-DispatcherHookOutputRecovery {
     # After a good append: flush every outage-buffer file into the journal (one write), remove them, clear a legacy
     # marker, and close the degraded episode with 'recovered'. Idempotent: a re-flushed hash is a duplicate line
     # the reader treats exactly like the first.
+    #
+    # Co-review round 1 (202): only data that was read AND journaled is removed. Each buffer file is first renamed out
+    # of its writer's way (a writer that appends afterwards creates a fresh file at its own path; a file still open
+    # for writing cannot be renamed on Windows and simply waits for the next flush). A file that cannot be read is
+    # kept, and a file that grew while it was being flushed is kept too - its new lines go in on the next flush, and
+    # the lines already journaled come back only as harmless duplicates. The renamed file keeps the .jsonl suffix, so
+    # the reader still counts it as recorded hook output until it is gone.
     param($Paths)
     $bufferFiles = @(if (Test-Path -LiteralPath $Paths.BufferDir -PathType Container) { Get-ChildItem -LiteralPath $Paths.BufferDir -File -Filter '*.jsonl' })
     $flushed = 0
     if ($bufferFiles.Count -gt 0) {
         $lines = New-Object System.Collections.Generic.List[string]
+        $readFiles = New-Object System.Collections.Generic.List[object]
         foreach ($file in $bufferFiles) {
-            try { foreach ($l in @(Read-DispatcherSharedLines -Path $file.FullName)) { $lines.Add($l) } } catch { $null = $_ }
+            $claimed = $file.FullName
+            if ($file.Name -notmatch '\.flushing-[0-9a-f]{32}\.jsonl$') {
+                $claimed = Join-Path $Paths.BufferDir ('{0}.flushing-{1}.jsonl' -f $file.BaseName, [guid]::NewGuid().ToString('N'))
+                try { Move-Item -LiteralPath $file.FullName -Destination $claimed -ErrorAction Stop } catch { continue }
+            }
+            try {
+                $length = ([IO.FileInfo]::new($claimed)).Length
+                foreach ($l in @(Read-DispatcherSharedLines -Path $claimed)) { $lines.Add($l) }
+                $readFiles.Add([pscustomobject]@{ Path = $claimed; Length = $length }) | Out-Null
+            }
+            catch { $null = $_ }
         }
         if ($lines.Count -gt 0) {
             $flushError = Add-DispatcherJournalText -Path $Paths.Journal -Text (($lines -join "`n") + "`n")
             if ($null -ne $flushError) { return }
         }
-        foreach ($file in $bufferFiles) { try { Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop } catch { $null = $_ } }
+        foreach ($read in $readFiles) {
+            try {
+                if (([IO.FileInfo]::new($read.Path)).Length -ne $read.Length) { continue }
+                Remove-Item -LiteralPath $read.Path -Force -ErrorAction Stop
+            }
+            catch { $null = $_ }
+        }
         if ($script:HookOutputBufferFile -and -not (Test-Path -LiteralPath $script:HookOutputBufferFile)) { $script:HookOutputBufferFile = $null }
         $flushed = $lines.Count
     }

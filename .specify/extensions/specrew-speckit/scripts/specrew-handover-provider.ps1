@@ -49,6 +49,7 @@ try {
     $transcriptPathArg = $null
     $lastAssistantArg = $null
     $lastUserArg = $null
+    $turnOriginArg = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
@@ -58,6 +59,9 @@ try {
         elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--last-assistant-message' -and ($i + 1) -lt $args.Count) { $lastAssistantArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--last-user-message' -and ($i + 1) -lt $args.Count) { $lastUserArg = [string]$args[$i + 1] }
+        # Feature 202 (FR-006): the dispatcher's origin from the host's declared rules. Only a typed-user prompt can
+        # produce a workshop receipt or approve a recovery; absent (a direct caller), the text checks alone apply.
+        elseif ($args[$i] -eq '--turn-origin' -and ($i + 1) -lt $args.Count) { $turnOriginArg = [string]$args[$i + 1] }
     }
 
     $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-HandoverProjectRoot }
@@ -154,7 +158,7 @@ try {
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
     $handoverResult = Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
-        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser
+        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser -TurnOrigin $turnOriginArg
     # FR-010 (T024): this provider is registered as an INJECT provider, so its stdout reaches the turn.
     # The one thing it has to say is when a verdict-shaped reply was NOT captured - said at prompt entry,
     # in the same turn the human typed it, instead of in a recap after two retries.

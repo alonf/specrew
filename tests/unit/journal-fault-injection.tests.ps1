@@ -62,7 +62,7 @@ function Wait-Processes {
 }
 
 # --- Part 1: the shipped writer, two processes, one barrier ---------------------------------------------------------
-$names = 'Write-DispatcherWarn', 'Get-DispatcherHookOutputHash', 'Get-DispatcherHookOutputPaths', 'Open-DispatcherAppendStream',
+$names = 'Write-DispatcherWarn', 'Get-DispatcherHookOutputHash', 'Get-DispatcherHookOutputPaths', 'Open-DispatcherAppendStream', 'Enter-DispatcherAppendLock',
 'Add-DispatcherJournalText', 'Read-DispatcherSharedLines', 'Get-DispatcherLastHealthRecord', 'Write-DispatcherHookOutputHealth',
 'Write-DispatcherHookOutputAuthorityRecord', 'Complete-DispatcherHookOutputRecovery'
 $ast = [Management.Automation.Language.Parser]::ParseFile($dispatcherSource, [ref]$null, [ref]$null)

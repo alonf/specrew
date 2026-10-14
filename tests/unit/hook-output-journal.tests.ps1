@@ -147,6 +147,28 @@ try {
     Assert-True (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $reasonB) '(c)(d) the flushed output is still refused as a reply'
     Assert-True (-not (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $typedReply)) '(c) a typed reply counts'
 
+    Write-Host '--- unread buffer data is never removed (co-review round 1) ---'
+    # A buffer file another process holds open so it cannot be READ, while still allowing it to be deleted. The old
+    # flush swallowed the read error and then deleted every file it had listed, so this hash was lost.
+    $bufferDirH = Get-RuntimePath $root 'hook-output-buffer'
+    [IO.Directory]::CreateDirectory($bufferDirH) | Out-Null
+    $reasonH = 'RENDER THE PACKET NOW (h) ' + [guid]::NewGuid().ToString('N')
+    $bufferH = Join-Path $bufferDirH '999-held.jsonl'
+    [IO.File]::WriteAllText($bufferH, (([ordered]@{ schema_version = '1.0'; output_hash = (Get-TextHash $reasonH); event = 'Stop' } | ConvertTo-Json -Compress) + "`n"))
+    $readyH = Join-Path $root ('held-ready-' + [guid]::NewGuid().ToString('N'))
+    $holderH = '$f = [IO.File]::Open(''{0}'', ''Open'', ''ReadWrite'', ''Delete''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds 6000; $f.Dispose()' -f $bufferH, $readyH
+    $holderProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holderH) -WindowStyle Hidden -PassThru
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while (-not (Test-Path -LiteralPath $readyH) -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 20 }
+    $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (h1) ' + [guid]::NewGuid().ToString('N'))
+    Assert-True ($r.ExitCode -eq 0) '(h) the dispatcher exits 0'
+    Assert-True (@(Get-BufferFiles $root | Where-Object { $_.Name -like '*.jsonl' }).Count -ge 1) '(h) the buffer file it could not read is kept'
+    $holderProc.WaitForExit(20000) | Out-Null
+    Assert-True (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $reasonH) '(h) its hash is still recognized as hook output'
+    $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (h2) ' + [guid]::NewGuid().ToString('N'))
+    Assert-True ((Get-JournalHashes $root) -contains (Get-TextHash $reasonH)) '(h) once readable, the next good append flushes it into the journal'
+    Assert-True (@(Get-BufferFiles $root).Count -eq 0) '(h) and only then is the buffer file removed'
+
     Write-Host '--- legacy marker: an .unhealthy file from an older version is degraded, not a permanent refusal ---'
     $marker = (Get-RuntimePath $root 'hook-output-authority.jsonl') + '.unhealthy'
     [IO.File]::WriteAllText($marker, 'The process cannot access the file because it is being used by another process.')

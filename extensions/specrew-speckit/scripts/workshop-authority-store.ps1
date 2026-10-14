@@ -421,6 +421,7 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
     # T004 (FR-010): which of the three answers this was is kept for the caller, so a refusal can name its
     # actual cause - 'match' (the text is recorded hook output) or 'unavailable' (a store could not be read).
     $script:SpecrewWorkshopLastHookOutputCheck = 'none'
+    $script:SpecrewWorkshopLastHookOutputSkipped = 0
     $runtimeDir = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime'
     $path = Join-Path $runtimeDir 'hook-output-authority.jsonl'
     $bufferDir = Join-Path $runtimeDir 'hook-output-buffer'
@@ -443,10 +444,14 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
         catch { $script:SpecrewWorkshopLastHookOutputCheck = 'unavailable'; return $true }
         foreach ($line in @($content -split "`r?`n")) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            # Co-review round 1 (202): a malformed line used to THROW here, which escaped the receipt writer's outcome
+            # handling and left the turn silent - and, since the line never goes away, refused every later reply: the
+            # permanent latch FR-003 forbids. A line that cannot be parsed carries no hash, so it can authenticate
+            # nothing; it is skipped and counted, and the decision rests on the records that can be read.
             try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
-            catch { throw 'workshop-hook-output-authority-journal-invalid' }
+            catch { $script:SpecrewWorkshopLastHookOutputSkipped++; continue }
             if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
-                throw 'workshop-hook-output-authority-record-invalid'
+                $script:SpecrewWorkshopLastHookOutputSkipped++; continue
             }
             if ([string]$record.output_hash -ceq $hash) { $script:SpecrewWorkshopLastHookOutputCheck = 'match'; return $true }
         }
@@ -457,6 +462,7 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
 # Feature 202 T004 (FR-007, FR-010): every exit of the receipt writer leaves a typed outcome. Callers keep the
 # receipt-or-$null contract; the outcome says WHY there is no receipt, so the same turn can say so.
 $script:SpecrewWorkshopLastHookOutputCheck = 'none'
+$script:SpecrewWorkshopLastHookOutputSkipped = 0
 $script:SpecrewWorkshopLastReceiptOutcome = $null
 
 function Set-SpecrewWorkshopReceiptOutcome {
@@ -517,6 +523,7 @@ function Get-SpecrewWorkshopRefusalCauseText {
     param([Parameter(Mandatory)][string]$Reason)
     switch ($Reason) {
         'matches-hook-output'              { return 'it repeats text Specrew itself showed, not an answer typed by you' }
+        'not-typed-by-human'               { return 'it was added by the assistant''s host, not typed by you' }
         'record-check-unavailable'         { return 'Specrew could not read its own records to check the reply this turn' }
         'product-answers-already-recorded' { return 'the product-domain answers for this feature are already recorded' }
         'product-answers-missing'          { return 'the product-domain answers are not recorded yet, so there is no agenda to confirm' }
@@ -545,6 +552,7 @@ function Get-SpecrewWorkshopReceiptOutcomeDisclosure {
     $lines.Add(("Specrew: your last reply was not used as your workshop answer, because {0}. The question is still open, and your earlier answers are unchanged." -f $cause)) | Out-Null
     switch ([string]$Outcome.reason) {
         'matches-hook-output'      { $lines.Add('Tell the human this in your reply, and ask them to type their answer in their own words if they meant it as one.') | Out-Null }
+        'not-typed-by-human'       { $lines.Add('Tell the human this in your reply, and wait for their typed answer.') | Out-Null }
         'record-check-unavailable' { $lines.Add('Tell the human this in your reply. Nothing is deleted; they can send the same answer again next turn.') | Out-Null }
         'reply-write-failed'       { $lines.Add('Tell the human this in your reply. Nothing is deleted; they can send the same answer again next turn.') | Out-Null }
         default                    { $lines.Add('Tell the human this in your reply, in these words, before anything else.') | Out-Null }
@@ -573,16 +581,45 @@ function Get-SpecrewReplyRecordingDegradedSince {
     catch { return $null }
 }
 
+function Get-SpecrewReplyRecordingRecoveryRequest {
+    # The open recovery question for the CURRENT degraded episode, or $null. A request left from an episode that has
+    # since recovered on its own - or from an earlier episode - is stale (co-review round 1): it is removed, so a later
+    # unrelated "yes" can never be read as approval of a question that no longer stands.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $requestPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/reply-recording-recovery-request.json'
+    if (-not (Test-Path -LiteralPath $requestPath -PathType Leaf)) { return $null }
+    $since = Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $ProjectRoot
+    $request = $null
+    try { $request = [IO.File]::ReadAllText($requestPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop } catch { $request = $null }
+    # ConvertFrom-Json turns an ISO timestamp into a DateTime, so the episode is compared as an instant, not as text.
+    $requestSince = $null
+    if ($null -ne $request -and $null -ne $request.degraded_since) {
+        try {
+            $requestSince = if ($request.degraded_since -is [datetime]) { [DateTimeOffset]$request.degraded_since }
+            else { [DateTimeOffset]::Parse([string]$request.degraded_since, [Globalization.CultureInfo]::InvariantCulture) }
+        }
+        catch { $requestSince = $null }
+    }
+    $current = $null -ne $since -and $null -ne $requestSince -and
+        $requestSince.UtcTicks -eq $since.UtcTicks -and
+        [string]$request.question_hash -ceq (Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion)
+    if (-not $current) {
+        Remove-Item -LiteralPath $requestPath -Force -ErrorAction SilentlyContinue
+        return $null
+    }
+    return [pscustomobject]@{ Path = $requestPath; Request = $request; DegradedSince = $since }
+}
+
 function Get-SpecrewReplyRecordingRecoveryAsk {
     # Returns the in-turn text that asks the recovery question when degraded past the threshold, and records that
     # the question is open (so the next typed yes is bound to it). $null when no ask is due.
     param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$NowUtc)
     $since = Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $ProjectRoot
-    if ($null -eq $since) { return $null }
+    if ($null -eq $since) { $null = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot; return $null }
     $now = [DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)
     if (($now - $since).TotalMinutes -lt $script:SpecrewReplyRecordingRecoveryAfterMinutes) { return $null }
+    if ($null -ne (Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot)) { return $null }  # one decision per episode
     $requestPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/reply-recording-recovery-request.json'
-    if (Test-Path -LiteralPath $requestPath -PathType Leaf) { return $null }  # one decision: asked once, not every turn
     try {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $requestPath)) | Out-Null
         $request = [ordered]@{ schema_version = '1.0'; asked_at = $NowUtc; degraded_since = $since.ToString('o'); question_hash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion }
@@ -592,19 +629,46 @@ function Get-SpecrewReplyRecordingRecoveryAsk {
     return ("Specrew: reply recording has not recovered on its own since {0}. Ask the human exactly this, as its own question, and wait for their typed answer: {1}" -f $since.ToString('o'), $script:SpecrewReplyRecordingRecoveryQuestion)
 }
 
+function Test-SpecrewReplyRecordingRecoveryApproval {
+    # A short typed reply that approves and does not, anywhere in it, decline or hold off (co-review round 1: "okay,
+    # do not clear it" and "yes, but leave the error alone" used to approve). Anything unclear is not approval; the
+    # question stays open and the human can answer it plainly.
+    param([AllowNull()][string]$Response)
+    $trimmed = ([string]$Response).Trim()
+    if ($trimmed.Length -eq 0 -or $trimmed.Length -gt 200 -or $trimmed.EndsWith('?')) { return $false }
+    if ($trimmed -notmatch '(?i)^(?:yes|y|approved?|ok|okay|go ahead|do it|please do|sure)\b') { return $false }
+    if ($trimmed -match "(?i)\b(?:no|not|never|don'?t|doesn'?t|won'?t|shouldn'?t|leave|keep|stop|wait|hold|cancel|later|but|instead)\b|n't\b") { return $false }
+    return $true
+}
+
 function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
-    # When the recovery question is open and the human's TYPED reply approves it: set the stuck record aside (moved,
-    # never deleted - its hashes stay readable as recorded hook output), let the next append start a fresh record,
-    # and record the approving reply with the action taken. Returns the in-turn text, or $null when not applicable.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$Response, [Parameter(Mandatory)][string]$NowUtc)
+    # When the recovery question is open and the human's TYPED reply approves it: record the approving reply FIRST
+    # (FR-009 - no action without its receipt), then set the stuck record aside (moved, never deleted - its hashes
+    # stay readable as recorded hook output), and record what happened. Returns the in-turn text, or $null when not
+    # applicable.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$Response, [Parameter(Mandatory)][string]$NowUtc, [AllowNull()][string]$TurnOrigin)
     $root = [IO.Path]::GetFullPath($ProjectRoot)
     $runtime = Join-Path $root '.specrew/runtime'
-    $requestPath = Join-Path $runtime 'reply-recording-recovery-request.json'
-    if (-not (Test-Path -LiteralPath $requestPath -PathType Leaf)) { return $null }
+    $open = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $root
+    if ($null -eq $open) { return $null }
+    if (-not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user') { return $null }  # FR-006
     if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
-    $trimmed = ([string]$Response).Trim()
-    if ($trimmed.Length -gt 200 -or $trimmed.EndsWith('?') -or $trimmed -notmatch '(?i)^(?:yes|y|approved?|ok|okay|go ahead|do it|please do|sure)\b') { return $null }
+    if (-not (Test-SpecrewReplyRecordingRecoveryApproval -Response $Response)) { return $null }
     if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
+
+    $receiptPath = Join-Path $runtime 'reply-recording-recovery.jsonl'
+    $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
+    $questionHash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion
+    try {
+        $approval = [ordered]@{
+            schema_version = '1.0'; approved_at = $NowUtc; response_hash = $responseHash; question_hash = $questionHash
+            degraded_since = $open.DegradedSince.ToString('o'); action = 'set-aside-stuck-record'; result = 'approved'
+        }
+        [IO.File]::AppendAllText($receiptPath, (($approval | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        return 'Specrew: your approval could not be recorded this turn, so nothing was changed. Nothing is deleted. Tell the human, and that the same question is still open for their typed answer next turn.'
+    }
 
     $stamp = ([DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)).ToString('yyyyMMddTHHmmssZ')
     $journal = Join-Path $runtime 'hook-output-authority.jsonl'
@@ -624,19 +688,29 @@ function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
     }
     catch { $result = 'still-stuck'; $actions.Add(('could not set the record aside: {0}' -f $_.Exception.Message)) | Out-Null }
     try {
-        $receipt = [ordered]@{
-            schema_version = '1.0'; approved_at = $NowUtc; response_hash = Get-SpecrewWorkshopAuthorityHash -Text $Response
-            question_hash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion
+        $done = [ordered]@{
+            schema_version = '1.0'; recorded_at = $NowUtc; response_hash = $responseHash; question_hash = $questionHash
             action = 'set-aside-stuck-record'; result = $result; details = @($actions)
         }
-        [IO.File]::AppendAllText((Join-Path $runtime 'reply-recording-recovery.jsonl'), (($receipt | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        [IO.File]::AppendAllText($receiptPath, (($done | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
     }
-    catch { $null = $_ }
+    catch { $null = $_ }  # the approval is already recorded; this line only adds what the action did
     if ($result -eq 'recovered') {
-        Remove-Item -LiteralPath $requestPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $open.Path -Force -ErrorAction SilentlyContinue
         return 'Specrew: your approval was recorded and the stuck record was set aside, not deleted. Specrew starts a fresh record at its next write, and replies are checked against both. Tell the human it is done.'
     }
     return 'Specrew: your approval was recorded, but the stuck record could not be set aside yet because another process still holds it. Nothing is deleted. Tell the human, and that Specrew will try again when they next reply.'
+}
+
+function Get-SpecrewReplyRecordingDegradedDisclosure {
+    # FR-007 (co-review round 1): while reply recording is degraded, the turn the human typed into says so and
+    # whether their reply was used. $null when recording is healthy.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Outcome)
+    if ($null -eq (Get-SpecrewReplyRecordingDegradedSince -ProjectRoot $ProjectRoot)) { return $null }
+    $used = if ($null -ne $Outcome -and [string]$Outcome.status -eq 'recorded') { 'your reply was used as your workshop answer' }
+    elseif ($null -ne $Outcome -and [string]$Outcome.status -in @('refused', 'degraded')) { 'your reply was not used as your workshop answer' }
+    else { 'your reply was handled normally' }
+    return ("Specrew: replies are being recorded in a fallback record until the main one is free again; {0}, and nothing is lost. Mention this to the human in one sentence." -f $used)
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {
@@ -646,7 +720,10 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $Response,
         [AllowNull()][string] $HostKind,
-        [AllowNull()][string] $SourceEvent
+        [AllowNull()][string] $SourceEvent,
+        # Feature 202 (FR-006): the dispatcher's origin for this prompt. Only typed-user can produce a receipt; empty
+        # means a direct caller with no turn record, where the text checks below are the whole decision.
+        [AllowNull()][string] $TurnOrigin
     )
 
     $script:SpecrewWorkshopLastReceiptOutcome = $null
@@ -670,6 +747,14 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         if ([string]$question.schema -cne 'v3') { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-invalid' -FeatureRef $featureRef -Phase $phase -Response $Response; return $null }
     }
     catch { $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'question-record-unreadable' -Response $Response; return $null }
+
+    # FR-006 (co-review round 1): the origin the host's declared rules gave this prompt is enforced here, not only
+    # passed along. A host-injected prompt (a task notification, a replayed stop reason, a dismissed question) or
+    # one of unknown origin is never the human's answer, whatever its text looks like.
+    if (-not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user') {
+        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'refused' -Reason 'not-typed-by-human' -FeatureRef $featureRef -Phase $phase -Response $Response
+        return $null
+    }
 
     # Recorded hook output is never authority (FR-005). A check that could not read its records fails closed for
     # this turn only, and says so as its own cause rather than as a replay (FR-010).
