@@ -20,6 +20,11 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $dispatcherSource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\workshop-authority-store.ps1')
 $script:failCount = 0
+# The helper processes' platform shape (202 DRIFT-018). Hidden windows exist only on Windows. To make a buffer file
+# unreadable to another reader, Windows needs only a Delete-only share (which still lets the round-1 flush delete
+# it - that was the RED); on Linux and macOS only an exclusive hold blocks a reader (.NET's flock mapping).
+$HiddenWindow = if ($IsWindows) { @{ WindowStyle = 'Hidden' } } else { @{} }
+$script:UnreadableShare = if ($IsWindows) { 'Delete' } else { 'None' }
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
@@ -32,14 +37,25 @@ function New-JournalProject {
     New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew\runtime'), $scripts | Out-Null
     Copy-Item -LiteralPath $dispatcherSource -Destination (Join-Path $scripts 'specrew-hook-dispatcher.ps1')
     # The stub requests a stop block. With HOJ_HOLD_MS set it first starts a separate process that takes the
-    # journal with FileShare.None and holds it that long, and returns only once the lock is held - so the
+    # journal's write lock exclusively and holds it that long, and returns only once the lock is held - so the
     # dispatcher's journal write, a few milliseconds after this provider exits, is guaranteed to meet it.
+    #
+    # WHERE THAT LOCK LIVES DIFFERS BY OS (202 DRIFT-018, first 3-OS run of this suite). On Windows it is the journal
+    # itself: a FileShare.None handle refuses the dispatcher's open. On Linux and macOS, .NET takes an advisory flock
+    # only for FileShare.None or for read-only access, so a writer opening the journal with ReadWrite sharing is never
+    # blocked by a holder of the journal; contention between Specrew writers lives on the sidecar `<journal>.lock`
+    # the per-write lock takes. The holder therefore takes that sidecar off Windows - the real Unix contention point.
     $stub = @'
 if ($env:HOJ_HOLD_MS) {
     $journal = Join-Path (Get-Location).Path '.specrew/runtime/hook-output-authority.jsonl'
+    if (-not $IsWindows) { $journal = $journal + '.lock' }
     $ready = Join-Path (Get-Location).Path ('lock-ready-' + [guid]::NewGuid().ToString('N'))
-    $holder = '$f = [IO.File]::Open(''{0}'', ''OpenOrCreate'', ''ReadWrite'', ''None''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds {2}; $f.Dispose()' -f $journal, $ready, $env:HOJ_HOLD_MS
-    Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holder) -WindowStyle Hidden | Out-Null
+    $holder = '$f = [IO.File]::Open(''{0}'', ''OpenOrCreate'', ''ReadWrite'', ''None''); [IO.File]::WriteAllText(''{1}'', ''1''); [Threading.Thread]::Sleep({2}); $f.Dispose()' -f $journal, $ready, $env:HOJ_HOLD_MS
+    # Off Windows the holder's output goes to files: Start-Process there lets the child inherit this stub's stdout,
+    # which is the dispatcher's pipe, so the dispatcher's read of this provider's output would wait for the holder to
+    # exit - and the lock would be gone before the append it is meant to meet.
+    $hidden = if ($IsWindows) { @{ WindowStyle = 'Hidden' } } else { @{ RedirectStandardOutput = ($ready + '.out'); RedirectStandardError = ($ready + '.err') } }
+    Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holder) @hidden | Out-Null
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while (-not (Test-Path -LiteralPath $ready) -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 5 }
 }
@@ -77,6 +93,7 @@ function Wait-JournalUnlocked {
     # The holder the stub started may outlive the dispatcher; wait until the journal opens exclusively again.
     param([string]$Root)
     $journal = Get-RuntimePath $Root 'hook-output-authority.jsonl'
+    if (-not $IsWindows) { $journal = $journal + '.lock' }  # the lock the stub's holder takes off Windows
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while ($sw.ElapsedMilliseconds -lt 20000) {
         try { $f = [IO.File]::Open($journal, 'OpenOrCreate', 'ReadWrite', 'None'); $f.Dispose(); return }
@@ -162,8 +179,8 @@ try {
     $bufferH = Join-Path $bufferDirH '999-held.jsonl'
     [IO.File]::WriteAllText($bufferH, (([ordered]@{ schema_version = '1.0'; output_hash = (Get-TextHash $reasonH); event = 'Stop' } | ConvertTo-Json -Compress) + "`n"))
     $readyH = Join-Path $root ('held-ready-' + [guid]::NewGuid().ToString('N'))
-    $holderH = '$f = [IO.File]::Open(''{0}'', ''Open'', ''ReadWrite'', ''Delete''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds 6000; $f.Dispose()' -f $bufferH, $readyH
-    $holderProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holderH) -WindowStyle Hidden -PassThru
+    $holderH = '$f = [IO.File]::Open(''{0}'', ''Open'', ''ReadWrite'', ''{2}''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds 6000; $f.Dispose()' -f $bufferH, $readyH, $script:UnreadableShare
+    $holderProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holderH) @HiddenWindow -PassThru
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while (-not (Test-Path -LiteralPath $readyH) -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 20 }
     $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (h1) ' + [guid]::NewGuid().ToString('N'))
@@ -185,8 +202,8 @@ try {
     Assert-True ((Get-LastHealthState $root) -eq 'degraded') '(i) the held journal opened a degraded episode'
     $heldI = @(Get-BufferFiles $root | Where-Object { [IO.File]::ReadAllText($_.FullName) -match (Get-TextHash $reasonI) }) | Select-Object -First 1
     $readyI = Join-Path $root ('held-ready-' + [guid]::NewGuid().ToString('N'))
-    $holderI = '$f = [IO.File]::Open(''{0}'', ''Open'', ''ReadWrite'', ''Delete''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds 6000; $f.Dispose()' -f $heldI.FullName, $readyI
-    $holderProcI = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holderI) -WindowStyle Hidden -PassThru
+    $holderI = '$f = [IO.File]::Open(''{0}'', ''Open'', ''ReadWrite'', ''{2}''); [IO.File]::WriteAllText(''{1}'', ''1''); Start-Sleep -Milliseconds 6000; $f.Dispose()' -f $heldI.FullName, $readyI, $script:UnreadableShare
+    $holderProcI = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-Command', $holderI) @HiddenWindow -PassThru
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while (-not (Test-Path -LiteralPath $readyI) -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 20 }
     $r = Invoke-StopWithReason -Root $root -Reason ('RENDER THE PACKET NOW (i1) ' + [guid]::NewGuid().ToString('N'))
