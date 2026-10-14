@@ -4967,7 +4967,13 @@ id, exit code, duration against its timeout, and `timed_out`. The sealed output 
 facts are disclosed.
 **Disposition:** recorded on the maintainer's ruling 2026-10-14; beta5.
 
-## B4F-119 - A FEATURE-013 VALIDATOR SUITE FAILS AT FIXTURE STAGING, AND NO CI JOB OR LANE RUNS IT (beta5 candidate)
+## B4F-119 - FOUR OLDER SUITES FAIL, AND NO CI JOB OR LANE RUNS THEM (beta5 candidate)
+
+**Widened 2026-10-14 (T010 sweep, 222 suites):** three more suites fail identically at `f3f68c75`, before T010, and
+none is named by any workflow or lane: `feature-017-dashboard-core` ("Healthy fixture: specrew where should
+succeed"), `feature-018-rich-dashboard` ("Rich-capable replay should match the expected rich dashboard contract")
+and `substantive-interaction-model-iteration2` (it expects "Feature 016 Interaction Model" in README.md). The
+first report follows.
 
 **Observed:** 2026-10-14, feature 202 implement, in a regression sweep widened to every suite that mentions a
 changed surface. `tests/integration/validator-hardening-iteration2.ps1` (feature 013) throws "Failed to stage

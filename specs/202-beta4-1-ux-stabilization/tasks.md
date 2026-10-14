@@ -168,7 +168,17 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 6: US4, one answer to "what are we working on" (P2)
 
-- [ ] T010 [owner: Implementer] [sp: 2.0] [US4] **One feature resolver (DA-5).**
+- [x] T010 [owner: Implementer] [sp: 2.0] [US4] **One feature resolver (DA-5).** Done 2026-10-14. `feature-resolver.tests.ps1` builds each project state and asks the resolver, the real `where` dashboard and the first-prompt orientation:
+  - **Green:** all three name the same feature and the same source in every state:
+    - B4F-105 (199 closed, empty pointer, branch 201) gives 201 from the branch;
+    - 199 on branch 201 gives 199 from the work in flight;
+    - a pointer written for this branch decides; one written on another branch does not;
+    - an open workshop is in flight, and a shipped feature's stale controller is not;
+    - two features in flight choose nothing and ask;
+    - a pending decision wins.
+    Both governed writers stamp the pointer with its branch through one writer, and `session_state` records its branch.
+  - **RED on `f3f68c75`:** status showed 001 for B4F-105 and followed the stale pointer to 201 for 199-on-201. Status and orientation disagreed in five of the six states.
+  - **Design notes:** a workshop is in flight only while the spec is still the unauthored stub. The dashboard no longer falls back to the lowest-numbered feature. `Resolve-SpecrewActiveFeatureRef` is now the resolver's answer, so every existing caller agrees with status (DRIFT-020).
   - **Work:**
     - `Resolve-SpecrewActiveFeatureRef` decides in this order and returns `resolved_by`: (1) the in-flight controller or pending crossing; (2) the pointer, if written for the current branch; (3) the branch as a hint only.
     - `session_state` records `branch`.

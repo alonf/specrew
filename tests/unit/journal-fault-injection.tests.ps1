@@ -116,6 +116,13 @@ for ($i = 0; $i -lt $count; $i++) {
     Assert-True ($report.BufferFiles -eq 0) "[$platform] (e) nothing degraded to the outage buffer"
     Assert-True (-not $report.Degraded) "[$platform] (e) no degraded health transition"
     Assert-True (-not $report.Marker) "[$platform] (e) no .unhealthy marker"
+    # 202 DRIFT-018: case (e) degraded once on a Linux CI runner (38573833479: 2003/2000 lines, one degraded episode,
+    # 0 missing) and passed on every other run. Pass/fail alone cannot say why a writer waited out the lock, so a
+    # degraded run prints the recorded episode - its error text and timing - into the log.
+    if ($report.Degraded) {
+        $healthPath = Get-RuntimeFile $root 'hook-output-health.jsonl'
+        if (Test-Path -LiteralPath $healthPath) { Get-Content -LiteralPath $healthPath | ForEach-Object { Write-Host ("[$platform] (e) health record: {0}" -f $_) } }
+    }
 }
 finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 

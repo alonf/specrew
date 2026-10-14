@@ -8017,26 +8017,191 @@ function Test-SpecrewIterationSealIntegrity {
     return [pscustomobject]@{ checked = $true; drifted = @($drifted); missing = @($missing); added = @($added); seal = $sealPath }
 }
 
+function Get-SpecrewCurrentBranch {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    try {
+        $branch = ([string](& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim()
+        if ($LASTEXITCODE -ne 0 -or $branch -eq 'HEAD') { return '' }
+        return $branch
+    }
+    catch { return '' }
+}
+
+function Test-SpecrewWorkshopControllerInFlight {
+    # A feature's design workshop is in flight while its controller's agenda awaits confirmation, or is confirmed
+    # with selected lenses not yet moved on - the same reading the conformance provider applies.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ControllerPath)
+    try {
+        $controller = Get-Content -LiteralPath $ControllerPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 10 -ErrorAction Stop
+        $status = [string]$controller.agenda_status
+        if ($status -eq 'pending-confirmation') { return $true }
+        if ($status -ne 'confirmed') { return $false }
+        $selected = @($controller.selected).Count
+        $done = 0
+        if ($controller.PSObject.Properties['workshop'] -and $null -ne $controller.workshop) {
+            $done = @($controller.workshop.PSObject.Properties | Where-Object { $_.Value.PSObject.Properties['moved_on'] -and [bool]$_.Value.moved_on }).Count
+        }
+        return ($done -lt $selected)
+    }
+    catch { return $false }
+}
+
+function Resolve-SpecrewActiveFeature {
+    # FEATURE 202 T010 (FR-017, FR-018, DA-5; B4F-105): ONE ANSWER TO "WHAT ARE WE WORKING ON". Status, orientation and
+    # resume each picked the feature their own way - the dashboard fell back to the lowest-numbered feature when the
+    # pointer was empty, so a project in the middle of feature 201 showed 001 (Shipped) as active. Every reader now
+    # asks this one resolver, which decides in the agreed order and says which source decided:
+    #   1. the work in flight: a pending decision, the active lifecycle session (unless that feature is closed), or a
+    #      design workshop still open. Two different features in flight is the one case that ASKS (resolved_by
+    #      'ambiguous'); a pending decision outranks the rest, because it is authority state.
+    #   2. the feature pointer (.specify/feature.json), only when it was written for the current branch;
+    #   3. the branch name, as a hint only, when specs/<branch>/ exists;
+    #   4. a pointer from before pointers recorded their branch, labelled as such.
+    # "The branch is not the feature" (the DA-5 correction): 199 ran on branch 201-first-run-experience, so the branch
+    # is never ahead of in-flight work or a matching pointer.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+
+    $result = [pscustomobject]@{ feature_ref = ''; resolved_by = 'none'; candidates = @(); branch = '' }
+    $root = [IO.Path]::GetFullPath($ProjectRoot)
+    $branch = Get-SpecrewCurrentBranch -ProjectRoot $root
+    $result.branch = $branch
+    $specsRoot = Join-Path $root 'specs'
+
+    # 1. In flight.
+    $context = $null
+    try { $context = Get-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -ErrorAction Stop } catch { $context = $null }
+    $session = if ($null -ne $context -and $context.PSObject.Properties['session_state']) { $context.session_state } else { $null }
+    $enforcement = if ($null -ne $context -and $context.PSObject.Properties['boundary_enforcement']) { $context.boundary_enforcement } else { $null }
+    $sessionFeature = if ($null -ne $session -and $session.PSObject.Properties['feature_ref']) { ([string]$session.feature_ref).Trim() } else { '' }
+    $pendingFeature = ''
+    if ($null -ne $enforcement -and $enforcement.PSObject.Properties['pending_crossing'] -and $null -ne $enforcement.pending_crossing) {
+        $crossing = $enforcement.pending_crossing
+        $pendingFeature = if ($crossing.PSObject.Properties['feature_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$crossing.feature_ref)) { [string]$crossing.feature_ref } else { $sessionFeature }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($pendingFeature)) {
+        $result.feature_ref = $pendingFeature; $result.resolved_by = 'pending-decision'; $result.candidates = @($pendingFeature)
+        return $result
+    }
+    $inFlight = [System.Collections.Generic.List[pscustomobject]]::new()
+    $lastAuthorized = if ($null -ne $enforcement -and $enforcement.PSObject.Properties['last_authorized_boundary']) { [string]$enforcement.last_authorized_boundary } else { '' }
+    $sessionActive = $null -ne $session -and $session.PSObject.Properties['active'] -and [bool]$session.active
+    if ($sessionActive -and -not [string]::IsNullOrWhiteSpace($sessionFeature) -and $lastAuthorized -ne 'feature-closeout') {
+        $inFlight.Add([pscustomobject]@{ feature = $sessionFeature; source = 'active-session' })
+    }
+    if (Test-Path -LiteralPath $specsRoot -PathType Container) {
+        foreach ($featureDir in @(Get-ChildItem -LiteralPath $specsRoot -Directory -ErrorAction SilentlyContinue)) {
+            # A workshop is the step BEFORE the spec, so it is in flight only while the spec is still the scaffold's
+            # unauthored stub. A shipped feature whose controller never marked a lens moved on is not in flight.
+            $controllerPath = Join-Path $featureDir.FullName 'lens-applicability.json'
+            $specPath = Join-Path $featureDir.FullName 'spec.md'
+            $specUnauthored = -not (Test-Path -LiteralPath $specPath -PathType Leaf)
+            if (-not $specUnauthored) {
+                try { $specUnauthored = (Get-Content -LiteralPath $specPath -Raw -Encoding UTF8) -match '<!--\s*specrew:spec-not-yet-authored\s*-->' } catch { $specUnauthored = $false }
+            }
+            if ($specUnauthored -and (Test-Path -LiteralPath $controllerPath -PathType Leaf) -and (Test-SpecrewWorkshopControllerInFlight -ControllerPath $controllerPath)) {
+                $inFlight.Add([pscustomobject]@{ feature = $featureDir.Name; source = 'open-workshop' })
+            }
+        }
+    }
+    $distinct = @($inFlight | ForEach-Object { $_.feature } | Select-Object -Unique)
+    if ($distinct.Count -eq 1) {
+        $result.feature_ref = [string]$distinct[0]
+        $result.resolved_by = [string](@($inFlight | Where-Object { $_.feature -eq $distinct[0] })[0].source)
+        $result.candidates = @($distinct)
+        return $result
+    }
+    if ($distinct.Count -gt 1) {
+        $result.resolved_by = 'ambiguous'; $result.candidates = @($distinct)
+        return $result
+    }
+
+    # 2 and 4. The pointer: trusted only when written for this branch; a pre-branch pointer comes last.
+    $pointerFeature = ''; $pointerBranch = $null
+    try {
+        $pointer = Get-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($pointer.PSObject.Properties['feature_directory'] -and -not [string]::IsNullOrWhiteSpace([string]$pointer.feature_directory)) { $pointerFeature = Split-Path -Leaf ([string]$pointer.feature_directory) }
+        if ($pointer.PSObject.Properties['branch']) { $pointerBranch = [string]$pointer.branch }
+    }
+    catch { $pointerFeature = '' }
+    if (-not [string]::IsNullOrWhiteSpace($pointerFeature) -and $null -ne $pointerBranch -and -not [string]::IsNullOrWhiteSpace($branch) -and $pointerBranch -ceq $branch) {
+        $result.feature_ref = $pointerFeature; $result.resolved_by = 'pointer'; $result.candidates = @($pointerFeature)
+        return $result
+    }
+
+    # 3. The branch, as a hint.
+    if (-not [string]::IsNullOrWhiteSpace($branch) -and $branch -notmatch '[\\/]' -and (Test-Path -LiteralPath (Join-Path $specsRoot $branch) -PathType Container)) {
+        $result.feature_ref = $branch; $result.resolved_by = 'branch-hint'; $result.candidates = @($branch)
+        return $result
+    }
+    if (-not [string]::IsNullOrWhiteSpace($pointerFeature) -and $null -eq $pointerBranch) {
+        $result.feature_ref = $pointerFeature; $result.resolved_by = 'pointer-without-branch'; $result.candidates = @($pointerFeature)
+        return $result
+    }
+    return $result
+}
+
+function Set-SpecrewActiveFeaturePointer {
+    # Feature 202 T010 (FR-017): the ONE pointer writer. Every Specrew writer of the active feature - the governed
+    # feature scaffold and the boundary sync - records which branch it wrote the pointer on, so the resolver can
+    # tell a pointer written for this branch from one carried over from another (199's pointer on branch 201).
+    # Keys other writers own (Spec Kit's /speckit.specify writes this file too) are preserved.
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef)
+
+    $path = Join-Path $ProjectRoot '.specify/feature.json'
+    $pointer = [ordered]@{}
+    try {
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            foreach ($key in $existing.Keys) { $pointer[$key] = $existing[$key] }
+        }
+    }
+    catch { $pointer = [ordered]@{} }
+    $pointer['feature_directory'] = ('specs/{0}' -f (Split-Path -Leaf $FeatureRef))
+    $pointer['branch'] = Get-SpecrewCurrentBranch -ProjectRoot $ProjectRoot
+    if (-not $pointer.Contains('schema')) { $pointer['schema'] = 'v1' }
+    $temp = $null
+    try {
+        $directory = Split-Path -Parent $path
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+        $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        [IO.File]::WriteAllText($temp, ((([pscustomobject]$pointer) | ConvertTo-Json -Depth 5) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+        [IO.File]::Move($temp, $path, $true)
+        return $true
+    }
+    catch { return $false }
+    finally { if ($temp -and (Test-Path -LiteralPath $temp -PathType Leaf)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }
+}
+
+function Get-SpecrewActiveFeatureDisclosure {
+    # The one line every reader shows beside the feature, naming the source that decided (FR-018).
+    [OutputType([string])]
+    param([Parameter(Mandatory)]$Resolution)
+    switch ([string]$Resolution.resolved_by) {
+        'pending-decision' { return ('Feature {0}, from the decision waiting for your verdict.' -f $Resolution.feature_ref) }
+        'active-session' { return ('Feature {0}, from the work in flight.' -f $Resolution.feature_ref) }
+        'open-workshop' { return ('Feature {0}, from its design workshop, which is still open.' -f $Resolution.feature_ref) }
+        'pointer' { return ('Feature {0}, from the feature pointer written on branch {1}.' -f $Resolution.feature_ref, $Resolution.branch) }
+        'branch-hint' { return ('Feature {0}, from the branch name only; nothing in flight names a feature.' -f $Resolution.feature_ref) }
+        'pointer-without-branch' { return ('Feature {0}, from an older feature pointer that does not record its branch.' -f $Resolution.feature_ref) }
+        'ambiguous' { return ('Two features are in flight ({0}); which one are we working on?' -f (@($Resolution.candidates) -join ', ')) }
+        default { return 'No feature is in progress.' }
+    }
+}
+
 function Resolve-SpecrewActiveFeatureRef {
-    # The active feature, resolved from lifecycle state rather than required from the caller - the
-    # same resolve-don't-require rule the campaign identity resolver already follows. Empty when the
-    # project genuinely has no active feature.
+    # The active feature ref alone, for callers that need only the name. It is Resolve-SpecrewActiveFeature's answer,
+    # so no caller decides differently from status, orientation or resume (202 T010). Empty when nothing resolves,
+    # including when two features compete.
     [CmdletBinding()]
     [OutputType([string])]
     param([Parameter(Mandatory)][string]$ProjectRoot)
-    foreach ($probe in @(
-            @{ Path = '.specrew/start-context.json'; Read = { param($t) [string](($t | ConvertFrom-Json).session_state.feature_ref) } },
-            @{ Path = '.specify/feature.json'; Read = { param($t) [string](($t | ConvertFrom-Json).feature) } }
-        )) {
-        $probePath = Join-Path $ProjectRoot $probe.Path
-        if (-not (Test-Path -LiteralPath $probePath -PathType Leaf)) { continue }
-        try {
-            $candidate = ([string](& $probe.Read (Get-Content -LiteralPath $probePath -Raw -Encoding UTF8))).Trim()
-            if (-not [string]::IsNullOrWhiteSpace($candidate)) { return (Split-Path -Leaf $candidate) }
-        }
-        catch { $null = $_ }
-    }
-    return ''
+    try { return [string](Resolve-SpecrewActiveFeature -ProjectRoot $ProjectRoot).feature_ref } catch { return '' }
 }
 
 function Test-SpecrewLifecycleExecutionRecordPath {

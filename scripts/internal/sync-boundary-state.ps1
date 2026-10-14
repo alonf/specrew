@@ -1082,6 +1082,9 @@ function Update-SpecrewStartContext {
         task_id          = $SessionState.task_id
         auth_commit_hash = $SessionState.auth_commit_hash
         recorded_at      = $SessionState.recorded_at
+        # Feature 202 T010 (DA-5): the branch this session state was written on. "The branch is not the feature" -
+        # 199 ran on branch 201 - so it is recorded beside the feature, never used in place of it.
+        branch           = $(try { Get-SpecrewCurrentBranch -ProjectRoot (Split-Path -Parent (Split-Path -Parent $Path)) } catch { '' })
     }
 
     Write-FileAtomically -Path $Path -Content (([pscustomobject]$context | ConvertTo-Json -Depth 12) + [Environment]::NewLine)
@@ -1981,6 +1984,11 @@ function Invoke-SpecrewBoundaryStateSync {
     # (the human re-confirms once) over inventing, inferring, or carrying forward an unproven one.
 
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
+    # Feature 202 T010 (FR-017): a sync is a feature writer, so it stamps the pointer with this feature and branch.
+    # feature-closeout clears it further down, so a closed feature never stays the pointer's answer.
+    if ($BoundaryType -ne 'feature-closeout' -and -not [string]::IsNullOrWhiteSpace([string]$sessionState.feature_ref) -and [string]$sessionState.feature_ref -ne '(none)') {
+        $null = Set-SpecrewActiveFeaturePointer -ProjectRoot $paths.ProjectRoot -FeatureRef ([string]$sessionState.feature_ref)
+    }
     $pendingVerdictStop = $null
     try {
         Set-SpecrewPendingBoundaryCrossingScope `

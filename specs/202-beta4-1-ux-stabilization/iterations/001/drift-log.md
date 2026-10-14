@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 19
-**Resolution rate**: 95% (18/19 resolved; DRIFT-006 open, T011 scope)
+**Total drift events**: 20
+**Resolution rate**: 95% (19/20 resolved; DRIFT-006 open, T011 scope)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
@@ -247,6 +247,18 @@
 - **Requirement**: FR-016, SC-005; T009's owned files (`user-profile.ps1`, `turn-end-store.ps1`, `dials-parity.tests.ps1`).
 - **Resolution**: `Get-SpecrewProfileCorrectionReference` lives beside the prose renderer in `user-profile.ps1` and reads the host manifest's existing `HasUserSlashCommandSurface`. No manifest gains a key. Each caller passes its host. The bootstrap and conformance providers were already in 202's set; `specrew-start.ps1` and `SessionBootstrapManager.ps1` each gain one argument.
 - **Class closure**: `dials-parity` asserts byte-identical text apart from the reference across the three validated hosts, through both delivery surfaces, and that the numeric renderer is gone.
+
+### DRIFT-020 — T010 changed what every existing feature reader answers, and reached the orientation (resolved)
+
+- **Observed**: 2026-10-14, T010 implementation.
+  1. **One answer, so existing callers change.** `Resolve-SpecrewActiveFeatureRef` read `session_state.feature_ref` first, even for an inactive or closed session. Its pointer fallback read a `.feature` key that no writer ever writes. It now returns `Resolve-SpecrewActiveFeature`'s answer, so the review-signoff evidence gate and the other callers choose what status and orientation choose. With two features in flight it returns empty, rather than guessing.
+  2. **"In flight" needed one more condition.** On this repository, 201's controller still reads as an open workshop, because a lens was never marked moved on, although 201 shipped. A workshop is the step before the spec, so it counts as in flight only while the spec is still the scaffold's unauthored stub. Without that condition this repository resolved as two features in flight.
+  3. **The dashboard's lowest-numbered fallback is gone.** When nothing resolves, nothing is shown as active, and the "Chosen" line says why. That fallback is how B4F-105 showed 001 (Shipped).
+  4. **The orientation asks the resolver too**, a change in the bootstrap provider (T008's file and T012's). The acceptance requires status and orientation to agree, and they now share the "Chosen" line.
+  5. **The pointer is Spec Kit's file too.** `/speckit.specify` writes it with no branch. The one writer (`Set-SpecrewActiveFeaturePointer`) keeps keys it does not own, and the resolver ranks a pointer with no branch below the branch hint.
+- **Requirement**: FR-017, FR-018, DA-5; T010's owned files.
+- **Resolution**: as above.
+- **Class closure**: `feature-resolver` asserts the three surfaces agree in each constructed state and pins both writers to the one pointer writer.
 <!--
   Every new ### DRIFT-... event includes:
 

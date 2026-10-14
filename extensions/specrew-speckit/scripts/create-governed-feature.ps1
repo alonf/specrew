@@ -205,6 +205,17 @@ else {
     [System.IO.File]::WriteAllText($specFile, ($specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
 }
 
+# Feature 202 T010 (FR-017): the governed scaffold writes the active-feature pointer, with the branch it was written
+# on, through the one writer the boundary sync also uses - so a new feature is the pointer's answer from its first
+# moment, not only once Spec Kit's specify step runs (which writes no branch).
+$sharedGovernance = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (Test-Path -LiteralPath $sharedGovernance -PathType Leaf) {
+    . $sharedGovernance
+    if (-not (Set-SpecrewActiveFeaturePointer -ProjectRoot $projectRoot -FeatureRef $featureRef)) {
+        Write-Warning ("The active-feature pointer could not be written for '{0}'; status falls back to the branch name until the next boundary sync writes it." -f $featureRef)
+    }
+}
+
 if ($Json) {
     [pscustomobject]@{
         BRANCH_NAME = $featureRef
