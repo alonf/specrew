@@ -611,6 +611,23 @@ function Test-BootstrapSurface {
     return Test-Path -LiteralPath (Join-Path $Root $RelativePath)
 }
 
+function Resolve-SpecrewStartAutoFeaturePath {
+    # Co-review round 4 (202, FR-018 / SC-006): a plain `specrew start` (no feature named) resumes the feature the shared
+    # resolver names - the one status and the first-prompt orientation name. It used to read .specify/feature.json
+    # directly, without the pointer's branch, so after a branch switch the resume could describe the old feature while
+    # status and orientation named the new one. No feature, or two competing ones, resolves to none here.
+    param([Parameter(Mandatory)][string]$Root)
+    try {
+        $active = Resolve-SpecrewActiveFeature -ProjectRoot $Root
+        $ref = [string]$active.feature_ref
+        if ([string]::IsNullOrWhiteSpace($ref) -or [string]$active.resolved_by -in @('none', 'ambiguous')) { return $null }
+        $path = Join-Path $Root (Join-Path 'specs' $ref)
+        if (Test-Path -LiteralPath $path -PathType Container) { return $path }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
 function Resolve-FeatureDirectory {
     param(
         [string]$Root,
@@ -3258,12 +3275,8 @@ elseif ($skipAutoResumeResolution) {
     $resolvedFeaturePath = $null
 }
 elseif (-not $FeatureRequest -and -not $ResumeFeature) {
-    try {
-        $resolvedFeaturePath = Resolve-FeatureDirectory -Root $resolvedProjectPath -ResumeFeature 'auto'
-    }
-    catch {
-        $resolvedFeaturePath = $null
-    }
+    # Co-review round 4 (202, FR-018): the shared resolver, as status and orientation use it.
+    $resolvedFeaturePath = Resolve-SpecrewStartAutoFeaturePath -Root $resolvedProjectPath
 }
 else {
     try {

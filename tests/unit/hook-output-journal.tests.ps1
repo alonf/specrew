@@ -71,6 +71,10 @@ if ($env:HOJ_OUTCOME) {
     $row = [ordered]@{ schema_version = '1.0'; status = $env:HOJ_OUTCOME; reason = 'stub'; feature_ref = '001-x'; phase = 'product-domain'; consumed = ($env:HOJ_OUTCOME -eq 'recorded'); recorded_at = [DateTimeOffset]::UtcNow.ToString('o'); response_hash = $null }
     [IO.File]::AppendAllText((Join-Path (Get-Location).Path '.specrew/runtime/workshop-receipt-outcomes.jsonl'), (($row | ConvertTo-Json -Compress) + "`n"))
 }
+if ($env:HOJ_STAMP) {
+    # Like the bootstrap provider: the session's orientation stamp is written before the payload is returned.
+    [IO.File]::WriteAllText((Join-Path (Get-Location).Path '.specrew/runtime/hook-bootstrap-orientation-hoj-session.json'), '{"supplied_at":"stub"}')
+}
 '@ + "`n" + ($stub -replace '(?s)Write-Output \("<<<SPECREW-STOP-BLOCK>>>`n" \+ \$env:HOJ_REASON\)', 'Write-Output $env:HOJ_REASON')
     [IO.File]::WriteAllText((Join-Path $scripts 'stub-inject.ps1'), $injectStub, [Text.UTF8Encoding]::new($false))
     $catalog = [ordered]@{ schema_version = '1'; providers = @(
@@ -102,7 +106,7 @@ function Invoke-StopWithReason {
 }
 
 function Invoke-PromptWithPayload {
-    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '')
+    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp)
     $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
     foreach ($a in '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root '.specify\extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'), '-Event', 'UserPromptSubmit', '-HostKind', 'claude') { $psi.ArgumentList.Add($a) }
     $psi.WorkingDirectory = $Root
@@ -112,6 +116,7 @@ function Invoke-PromptWithPayload {
     $psi.Environment['HOJ_REASON'] = $Payload
     if ($HoldMs -gt 0) { $psi.Environment['HOJ_HOLD_MS'] = [string]$HoldMs } else { $psi.Environment.Remove('HOJ_HOLD_MS') | Out-Null }
     if ($Outcome) { $psi.Environment['HOJ_OUTCOME'] = $Outcome } else { $psi.Environment.Remove('HOJ_OUTCOME') | Out-Null }
+    if ($Stamp) { $psi.Environment['HOJ_STAMP'] = '1' } else { $psi.Environment.Remove('HOJ_STAMP') | Out-Null }
     foreach ($var in 'CLAUDE_PROJECT_DIR', 'COPILOT_PROJECT_DIR', 'CURSOR_PROJECT_DIR') { $psi.Environment[$var] = $Root }
     $p = [Diagnostics.Process]::Start($psi)
     $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
@@ -174,6 +179,10 @@ try {
     $r = Invoke-StopWithReason -Root $root -Reason $reasonB -HoldMs 4000
     Assert-True ($r.ExitCode -eq 0) '(b) the dispatcher exits 0'
     Assert-True ($r.StdOut -match '"decision"\s*:\s*"block"') '(b) the stop block is still delivered (its hash is buffered, so it is safe to show)'
+    # Co-review round 4 (202, FR-007): the stop block's own append is where this episode began, so the block says so in
+    # the same turn - before, only the injection path disclosed it and a stop block went out unchanged.
+    $blockB = try { ($r.StdOut | ConvertFrom-Json).reason } catch { '' }
+    Assert-True ([string]$blockB -match [regex]::Escape($reasonB) -and [string]$blockB -match 'recorded in a fallback record') '(b) the stop block carries the same-turn disclosure that recording is degraded'
     $bufferText = (@(Get-BufferFiles $root) | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join "`n"
     Assert-True ($bufferText -match (Get-TextHash $reasonB)) '(b) the reason hash is in an outage-buffer file'
     # Co-review round 2: every buffered record is published as its own closed file, never appended to a visible one -
@@ -268,6 +277,11 @@ try {
     Assert-True ($r.ExitCode -eq 0) 'buffer failure: the dispatcher exits 0'
     Assert-True (-not ($r.StdOut -match [regex]::Escape($reasonF))) 'buffer failure: output that could not be recorded is withheld this turn, so it cannot be replayed as a reply'
     Assert-True ($r.StdErr -match 'HOOK_OUTPUT') 'buffer failure: the withheld output is reported on stderr'
+    # Co-review round 4 (202, FR-007): withheld is still said. The stop block carries the one 'Specrew:' sentence instead
+    # of {} - before, the stop was allowed with no word that guidance was held back.
+    $blockF = try { ($r.StdOut | ConvertFrom-Json).reason } catch { '' }
+    Assert-True ([string]$blockF -match '^Specrew:' -and [string]$blockF -match 'held back') 'buffer failure: the stop block says the guidance was held back'
+    Assert-True (-not (Test-SpecrewWorkshopHumanResponseText -Text ([string]$blockF))) 'buffer failure: that unrecorded sentence can never count as a typed reply'
     Wait-JournalUnlocked $root
     Remove-Item -LiteralPath $bufferDir -Force
     $reasonG = 'RENDER THE PACKET NOW (g) ' + [guid]::NewGuid().ToString('N')
@@ -320,6 +334,24 @@ try {
         Assert-True (-not $r.StdOut.Contains($payloadC)) 'withheld: the unrecordable payload is still withheld (FR-005)'
         Assert-True ($null -ne $r.Context -and $r.Context -match '^Specrew:' -and $r.Context -match 'held back' -and $r.Context -match 'your reply was not used as your workshop answer') 'withheld: the turn still says so, and whether the reply was used'
         Assert-True ($null -ne $r.Context -and -not (Test-SpecrewWorkshopHumanResponseText -Text $r.Context)) 'withheld: that unrecorded disclosure can never count as a typed reply'
+        Remove-Item -LiteralPath $bufferDir4 -Force
+
+        # Co-review round 4 (202, FR-005 / FR-014): an orientation stamped as supplied during a fire whose output was
+        # withheld was never delivered. The stamp must not survive, or every later prompt skips the orientation.
+        $stampPath = Get-RuntimePath $p4 'hook-bootstrap-orientation-hoj-session.json'
+        if (Test-Path -LiteralPath $stampPath) { Remove-Item -LiteralPath $stampPath -Force }
+        [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Orientation that cannot be recorded ' + [guid]::NewGuid().ToString('N')) -HoldMs 4000 -Stamp
+        Wait-JournalUnlocked $p4
+        Assert-True ($null -ne $r.Context -and $r.Context -match 'held back') 'withheld orientation: the turn says its guidance was held back'
+        Assert-True (-not (Test-Path -LiteralPath $stampPath)) 'withheld orientation: the stamp written during that fire is removed, so the next prompt supplies it again'
+        Remove-Item -LiteralPath $bufferDir4 -Force
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Orientation delivered ' + [guid]::NewGuid().ToString('N')) -Stamp
+        Assert-True ((Test-Path -LiteralPath $stampPath) -and $null -ne $r.Context -and $r.Context -match 'Orientation delivered') 'delivered orientation: its stamp stays'
+        [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Later guidance that cannot be recorded ' + [guid]::NewGuid().ToString('N')) -HoldMs 4000
+        Wait-JournalUnlocked $p4
+        Assert-True (Test-Path -LiteralPath $stampPath) 'a later withheld turn leaves an earlier, delivered orientation stamp alone'
         Remove-Item -LiteralPath $bufferDir4 -Force
     }
     finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }

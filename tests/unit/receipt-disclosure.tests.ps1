@@ -267,6 +267,31 @@ try {
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $r16 '.specrew/runtime/reply-recording-recovery.jsonl'))) 'case 16: and is not recorded as an approval'
     $own16 = Invoke-Provider -Root $r16 -Reply 'yes' -Origin 'typed-user' -Session 'session-a'
     Assert-True ($own16 -match 'set aside, not deleted' -and -not (Test-Path -LiteralPath $journal16)) 'case 16: the yes typed in session A, which was asked, is acted on'
+
+    # Co-review round 4 (202, FR-009): a question asked in a session that then ended was unreachable - only that session
+    # could answer it, and its open request kept every other session from being asked. Once it has stood unanswered for
+    # the recovery threshold, the next session is asked it again, and the question then belongs to that session.
+    Write-Host '  --- case 17: a question left open by an ended session is asked again in the next session ---'
+    $r17 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r17)
+    $journal17 = Join-Path $r17 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal17, (([ordered]@{ schema_version = '1.0'; output_hash = (Get-HashOf 'an old hook output'); event = 'Stop'; host = 'claude'; output_kind = 'payload'; observed_at = '2026-10-13T00:00:00Z' } | ConvertTo-Json -Compress) + "`n"))
+    [IO.File]::WriteAllText((Join-Path $r17 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; error = 'in use'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-40).ToString('o'); count = 3; recovered_at = $null; host = 'claude'; observed_at = [DateTimeOffset]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n"))
+    $askedA17 = Invoke-Provider -Root $r17 -Reply 'What is the status?' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ($askedA17.Contains($question)) 'case 17: session A is asked the recovery question'
+    $request17 = Join-Path $r17 '.specrew/runtime/reply-recording-recovery-request.json'
+    $notYet17 = Invoke-Provider -Root $r17 -Reply 'Where are we?' -Origin 'typed-user' -Session 'session-b'
+    Assert-True (-not $notYet17.Contains($question)) 'case 17: while A''s question is fresh, session B is not asked too (no back and forth)'
+    # Session A ends without answering, and the question stands unanswered past the threshold.
+    $req17 = Get-Content -LiteralPath $request17 -Raw | ConvertFrom-Json
+    $req17.asked_at = [DateTimeOffset]::UtcNow.AddMinutes(-15).ToString('o')
+    [IO.File]::WriteAllText($request17, ($req17 | ConvertTo-Json -Compress))
+    $askedB17 = Invoke-Provider -Root $r17 -Reply 'Where are we now?' -Origin 'typed-user' -Session 'session-b'
+    Assert-True ($askedB17.Contains($question)) 'case 17: the next session, B, is asked the question again'
+    Assert-True ([string]((Get-Content -LiteralPath $request17 -Raw | ConvertFrom-Json).asked_session) -eq 'session-b') 'case 17: the open question now belongs to session B'
+    $lateA17 = Invoke-Provider -Root $r17 -Reply 'yes' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ((Test-Path -LiteralPath $journal17) -and $lateA17 -notmatch 'set aside') 'case 17: a late yes from session A no longer answers it'
+    $yesB17 = Invoke-Provider -Root $r17 -Reply 'yes' -Origin 'typed-user' -Session 'session-b'
+    Assert-True ($yesB17 -match 'set aside, not deleted' -and -not (Test-Path -LiteralPath $journal17)) 'case 17: session B''s yes is acted on'
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }

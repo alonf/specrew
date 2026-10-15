@@ -26,7 +26,7 @@ $staleNarrative = 'At iteration-closeout; the session stopped before that eviden
 
 function New-ResumeProject {
     # main holds only a README, so the feature branch is not merged (the notes stay valid by the freshness rules).
-    param([string]$HandoverBoundary, [string]$HandoverFeature = '001-feat', [int]$NotesAgeMinutes = 60, [switch]$CommitsAfterNotes, [switch]$NoPending)
+    param([string]$HandoverBoundary, [string]$HandoverFeature = '001-feat', [int]$NotesAgeMinutes = 60, [switch]$CommitsAfterNotes, [switch]$NoPending, [switch]$Ledger)
     $root = [IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ('rfd-' + [guid]::NewGuid().ToString('N').Substring(0, 10))))
     New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew/runtime'), (Join-Path $root '.specrew/handover') | Out-Null
     Set-Content -LiteralPath (Join-Path $root 'README.md') -Value '# project' -Encoding UTF8
@@ -39,12 +39,29 @@ function New-ResumeProject {
     Set-Content -LiteralPath (Join-Path $feature 'spec.md') -Value "# Feature Specification: Feat`n`nBody." -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $feature 'tasks.md') -Value (@('# Tasks', '', '- [x] T001 [owner: Implementer] **Parse the input.**', '- [x] T002 [owner: Implementer] **Write the report.**', '- [ ] T003 [owner: Implementer] **Route by skill.**', '- [ ] T004 [owner: Implementer] **Close out.**') -join "`n") -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $feature 'iterations/002/plan.md') -Value '# Iteration Plan: 002' -Encoding UTF8
+    $plan003 = if ($Ledger) {
+        (@('# Iteration Plan: 003', '', '## Tasks', '', '| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |',
+            '| T020 | Plan the routing iteration | FR-001 | Routing | 0.5 | Planner | `specs/**` | done |',
+            '| T021 | Wire the skill router | FR-001 | Routing | 1.0 | Implementer | `src/**` | in-progress |',
+            '| T022 | Write the routing docs | FR-002 | Routing | 0.5 | Implementer | `docs/**` | pending |') -join "`n")
+    }
+    else { '# Iteration Plan: 003' }
+    if ($Ledger) {
+        # With -CommitsAfterNotes the plan arrives in its own later commit ('plan iteration 003').
+        if (-not $CommitsAfterNotes) { Set-Content -LiteralPath (Join-Path $feature 'iterations/003/plan.md') -Value $plan003 -Encoding UTF8 }
+        # Iteration 003's own ledger (task-progress.ps1: later iterations track their work here, not in the root list).
+        Set-Content -LiteralPath (Join-Path $feature 'iterations/003/tasks-progress.yml') -Encoding UTF8 -Value (@(
+            'schema: "v1"', 'feature: "001-feat"', 'iteration: "003"', 'updated_at: "2026-10-15T00:00:00Z"', 'tasks:',
+            '  T020:', '    title: "Plan the routing iteration"', '    status: "done"', '    started_at: ""', '    completed_at: ""', '    blocked_reason: ""',
+            '  T021:', '    title: "Wire the skill router"', '    status: "in-progress"', '    started_at: ""', '    completed_at: ""', '    blocked_reason: ""',
+            '  T022:', '    title: "Write the routing docs"', '    status: "pending"', '    started_at: ""', '    completed_at: ""', '    blocked_reason: ""') -join "`n")
+    }
     & git -C $root add -A; & git -C $root commit -q -m 'iteration 002 work'
     $notesCommit = ([string](& git -C $root rev-parse --short HEAD)).Trim()
     if ($CommitsAfterNotes) {
         Set-Content -LiteralPath (Join-Path $feature 'iterations/002/closeout.md') -Value '# Closeout' -Encoding UTF8
         & git -C $root add -A; & git -C $root commit -q -m 'closeout evidence for iteration 002'
-        Set-Content -LiteralPath (Join-Path $feature 'iterations/003/plan.md') -Value '# Iteration Plan: 003' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $feature 'iterations/003/plan.md') -Value $plan003 -Encoding UTF8
         & git -C $root add -A; & git -C $root commit -q -m 'plan iteration 003'
     }
     $head = ([string](& git -C $root rev-parse HEAD)).Trim()
@@ -79,12 +96,12 @@ function Invoke-SessionStart {
 $roots = [Collections.Generic.List[string]]::new()
 try {
     Write-Host 'Case 1: B4F-089 - notes at iteration-closeout, the disk at the pending plan decision with two commits since'
-    $r1 = New-ResumeProject -HandoverBoundary 'iteration-closeout' -CommitsAfterNotes; $roots.Add($r1)
+    $r1 = New-ResumeProject -HandoverBoundary 'iteration-closeout' -CommitsAfterNotes -Ledger; $roots.Add($r1)
     $o1 = Invoke-SessionStart $r1
     Assert-True ($o1 -match "(?i)where we are.*from disk") 'the resume carries a where-we-are section read from disk'
     Assert-True ($o1 -match "(?i)waiting for the human's decision on 'plan'") "it names the pending decision ('plan')"
     Assert-True ($o1 -match '2 commits since the previous session''s notes' -and $o1 -match 'plan iteration 003') 'it names the commits since the notes, newest first'
-    Assert-True ($o1 -match 'Tasks: 2 of 4 done') 'it reports task progress from the task list'
+    Assert-True ($o1 -match 'Tasks: 1 of 3 done') 'it reports task progress from the current iteration''s ledger (round 4)'
     Assert-True ($o1 -match "(?i)Starting now: show the human the 'iteration-closeout -> plan' decision again") 'the starting-now line comes from the pending decision'
     Assert-True (-not $o1.Contains('starting now: validating and committing')) 'the stale notes are not repeated'
     Assert-True ($o1 -match "(?i)previous session's notes.*recorded 1 h ago.* older than the disk" -and $o1 -match "written at 'iteration-closeout'") 'the stale notes are flagged, with their age and why'
@@ -113,9 +130,18 @@ try {
     Assert-True (-not $o4.Contains('starting now: validating and committing')) 'its notes are not repeated'
 
     Write-Host 'Case 5: no pending decision - starting now is the next open task'
-    $r5 = New-ResumeProject -HandoverBoundary 'plan' -NoPending -NotesAgeMinutes 5; $roots.Add($r5)
+    # Co-review round 4 (202, FR-019): the session is in iteration 003, so its next task comes from iteration 003's own
+    # ledger. Before, this case expected T003 from the root list, which is iteration 001's.
+    $r5 = New-ResumeProject -HandoverBoundary 'plan' -NoPending -NotesAgeMinutes 5 -Ledger; $roots.Add($r5)
     $o5 = Invoke-SessionStart $r5
-    Assert-True ($o5 -match "(?i)Starting now: T003 Route by skill") 'with nothing pending, the next open task is the starting point'
+    Assert-True ($o5 -match "(?i)Starting now: T021 Wire the skill router") 'with nothing pending, the next open task of the current iteration is the starting point'
+    Assert-True ($o5 -match "(?i)Tasks: 1 of 3 done") 'the progress line counts the current iteration''s ledger'
+
+    Write-Host 'Case 7: a later iteration never takes its progress from the root task list (iteration 001''s)'
+    $r7 = New-ResumeProject -HandoverBoundary 'plan' -NoPending -NotesAgeMinutes 5; $roots.Add($r7)
+    $o7 = Invoke-SessionStart $r7
+    Assert-True (-not ($o7 -match 'T003')) 'the stale unchecked T003 in the root list is not named for iteration 003'
+    Assert-True (-not ($o7 -match '(?i)Tasks: 2 of 3 done')) 'the root list''s counts are not reported for iteration 003'
 
     Write-Host 'Case 6: the specrew start resume block says the same, from disk'
     . (Join-Path $repoRoot 'scripts\internal\coordinator-resume.ps1')

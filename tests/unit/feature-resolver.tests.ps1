@@ -106,6 +106,28 @@ function Test-State {
     Assert-True ($status.FeatureNumber -ceq $expectNumber) ("{0}: status shows feature '{1}' (got '{2}')" -f $Label, $expectNumber, $status.FeatureNumber)
     Assert-True ($orientation.Feature -ceq $ExpectFeature) ("{0}: the orientation names '{1}' (got '{2}')" -f $Label, $ExpectFeature, $orientation.Feature)
     Assert-True ($status.Chosen -ceq $disclosure -and $orientation.Chosen -ceq $disclosure) ("{0}: both name the source: '{1}'" -f $Label, $disclosure)
+    # Co-review round 4 (202, FR-018 / SC-006): `specrew start` with no feature named resumes the same feature, and the
+    # resume block it feeds describes it - not a feature the pointer named on another branch.
+    $startPath = Get-StartAutoChoice -Root $Root
+    $startRef = if ([string]::IsNullOrWhiteSpace([string]$startPath)) { '' } else { Split-Path -Leaf $startPath }
+    Assert-True ($startRef -ceq $ExpectFeature) ("{0}: specrew start resumes '{1}' (got '{2}')" -f $Label, $ExpectFeature, $startRef)
+    if (-not [string]::IsNullOrWhiteSpace($ExpectFeature) -and -not [string]::IsNullOrWhiteSpace([string]$startPath)) {
+        $block = [string](Get-CoordinatorResumePromptBlock -ProjectRoot $Root -ResolvedFeaturePath $startPath -SessionState $null)
+        Assert-True ($block -match [regex]::Escape("feature $ExpectFeature")) ("{0}: the specrew start resume block describes '{1}'" -f $Label, $ExpectFeature)
+    }
+}
+
+# `specrew start`'s automatic feature choice, lifted from the script itself. Code from before co-review round 4 has no
+# Resolve-SpecrewStartAutoFeaturePath and read the pointer with Resolve-FeatureDirectory 'auto'; that is the RED.
+$startAst = [Management.Automation.Language.Parser]::ParseFile((Join-Path $moduleRoot 'scripts\specrew-start.ps1'), [ref]$null, [ref]$null)
+foreach ($fn in @($startAst.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in @('Resolve-SpecrewStartAutoFeaturePath', 'Resolve-FeatureDirectory') }, $false))) {
+    . ([scriptblock]::Create($fn.Extent.Text))
+}
+. (Join-Path $moduleRoot 'scripts\internal\coordinator-resume.ps1')
+function Get-StartAutoChoice {
+    param([string]$Root)
+    if (Get-Command Resolve-SpecrewStartAutoFeaturePath -ErrorAction SilentlyContinue) { return (Resolve-SpecrewStartAutoFeaturePath -Root $Root) }
+    try { return (Resolve-FeatureDirectory -Root $Root -ResumeFeature 'auto') } catch { return $null }
 }
 
 $roots = [System.Collections.Generic.List[string]]::new()

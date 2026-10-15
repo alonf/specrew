@@ -485,11 +485,52 @@ function Get-SpecrewHandoverAgeText {
     return ('{0} days' -f [int][Math]::Round($minutes / 1440))
 }
 
+function Get-SpecrewIterationLedgerProgress {
+    # Co-review round 4 (202, FR-019): progress of a later iteration, from its own ledger
+    # (specs/<feature>/iterations/<NNN>/tasks-progress.yml), in ledger order. The first task that is not done - in
+    # progress, blocked or pending - is the next one. $null when the ledger is absent or unreadable; never guessed.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef, [Parameter(Mandatory)][int]$Iteration)
+    $iterationsDir = Join-Path $ProjectRoot (Join-Path 'specs' (Join-Path $FeatureRef 'iterations'))
+    $ledger = $null
+    foreach ($name in @(('{0:000}' -f $Iteration), [string]$Iteration)) {
+        $candidate = Join-Path (Join-Path $iterationsDir $name) 'tasks-progress.yml'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $ledger = $candidate; break }
+    }
+    if ($null -eq $ledger) { return $null }
+    $tasks = New-Object System.Collections.Generic.List[object]
+    $current = $null
+    foreach ($line in [IO.File]::ReadAllLines($ledger, [Text.Encoding]::UTF8)) {
+        $id = [regex]::Match($line, '^\s{2}(?<id>T\d{3,}):\s*$')
+        if ($id.Success) { $current = [pscustomobject]@{ id = $id.Groups['id'].Value; title = ''; status = '' }; $tasks.Add($current) | Out-Null; continue }
+        if ($null -eq $current) { continue }
+        $field = [regex]::Match($line, '^\s{4}(?<k>title|status):\s*"?(?<v>.*?)"?\s*$')
+        if ($field.Success) { $current.($field.Groups['k'].Value) = $field.Groups['v'].Value }
+    }
+    if ($tasks.Count -eq 0) { return $null }
+    $done = @($tasks | Where-Object { $_.status -eq 'done' }).Count
+    $open = @($tasks | Where-Object { $_.status -ne 'done' } | Select-Object -First 1)
+    $next = $null
+    if ($open.Count -gt 0) {
+        $title = ([string]$open[0].title).Trim().TrimEnd('.')
+        if ($title.Length -gt 70) { $title = $title.Substring(0, 70).TrimEnd() + '...' }
+        $next = [pscustomobject]@{ id = [string]$open[0].id; title = $title }
+    }
+    return [pscustomobject]@{ done = $done; total = $tasks.Count; next = $next }
+}
+
 function Get-SpecrewTaskListProgress {
     # Task progress from the feature's task list (specs/<feature>/tasks.md) - read only, no tracking file written.
     # $null when there is no task list.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$FeatureRef)
+    #
+    # Co-review round 4 (202, FR-019): the root task list is ITERATION 1's (task-progress.ps1 says the same, and that
+    # later iterations must not derive status from it - it is often left unchecked). For iteration 2 or later the
+    # progress comes from that iteration's own ledger, or is left out.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$FeatureRef, [AllowNull()][string]$IterationNumber)
     if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $null }
+    $iteration = 0
+    if (-not [string]::IsNullOrWhiteSpace($IterationNumber) -and [int]::TryParse($IterationNumber.Trim(), [ref]$iteration) -and $iteration -ge 2) {
+        return (Get-SpecrewIterationLedgerProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Iteration $iteration)
+    }
     $path = Join-Path $ProjectRoot (Join-Path 'specs' (Join-Path $FeatureRef 'tasks.md'))
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
     $done = 0; $total = 0; $next = $null
@@ -564,7 +605,8 @@ function Get-SpecrewResumeFromDisk {
     }
 
     $progress = $null
-    try { $progress = Get-SpecrewTaskListProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef } catch { $progress = $null }
+    $iterationNumber = [string](& $prop $session 'iteration_number')
+    try { $progress = Get-SpecrewTaskListProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $iterationNumber } catch { $progress = $null }
     $progressLine = if ($null -ne $progress) { ("Tasks: {0} of {1} done{2}." -f $progress.done, $progress.total, $(if ($null -ne $progress.next) { ("; next {0} {1}" -f $progress.next.id, $progress.next.title) } else { '' })) } else { $null }
     if ($null -eq $starting) {
         $starting = if ($null -ne $progress -and $null -ne $progress.next) { ("Starting now: {0} {1}, the next open task." -f $progress.next.id, $progress.next.title) }

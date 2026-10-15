@@ -626,7 +626,23 @@ function Get-SpecrewReplyRecordingRecoveryAsk {
     if ($null -eq $since) { $null = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot; return $null }
     $now = [DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)
     if (($now - $since).TotalMinutes -lt $script:SpecrewReplyRecordingRecoveryAfterMinutes) { return $null }
-    if ($null -ne (Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot)) { return $null }  # one decision per episode
+    $openRequest = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot
+    if ($null -ne $openRequest) {
+        # One decision per episode - in the session that holds it. Co-review round 4 (202, FR-009): a question asked in
+        # a session that then ended could be answered by no one (only the asked session's yes counts), and it kept every
+        # other session from being asked. Once it has stood unanswered for the recovery threshold, the next session is
+        # asked again and the question becomes that session's, so a late yes from the old one no longer answers it. Two
+        # live sessions therefore take it over at most once per threshold, never back and forth on every prompt.
+        $askedSession = if ($openRequest.Request.PSObject.Properties['asked_session']) { [string]$openRequest.Request.asked_session } else { '' }
+        if ([string]::IsNullOrWhiteSpace($SessionId) -or [string]::IsNullOrWhiteSpace($askedSession) -or $askedSession -ceq [string]$SessionId) { return $null }
+        $askedAt = $null
+        try {
+            $rawAsked = $openRequest.Request.asked_at
+            $askedAt = if ($rawAsked -is [datetime]) { [DateTimeOffset]$rawAsked } else { [DateTimeOffset]::Parse([string]$rawAsked, [Globalization.CultureInfo]::InvariantCulture) }
+        }
+        catch { $askedAt = $null }
+        if ($null -ne $askedAt -and ($now - $askedAt).TotalMinutes -lt $script:SpecrewReplyRecordingRecoveryAfterMinutes) { return $null }
+    }
     $requestPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/reply-recording-recovery-request.json'
     try {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $requestPath)) | Out-Null
