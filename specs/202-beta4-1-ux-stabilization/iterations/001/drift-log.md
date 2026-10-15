@@ -411,6 +411,25 @@
   Each reply heading answers for one declared heading only. Links, the question line, the approval line, the options and the marker stay exact, because they are what the human acts on.
 - **Tests**: `presented-check` case 8 carries the live turn's exact lines. It was RED before the fix: the Stop blocked them. Now they pass at the function level and through the real Stop. The cases that must still block do block: a changed number, a changed id, an added negation, a different subject, a dropped heading, and one reply heading claimed for two declared headings. One more finding along the way: the suite decoded its child processes' output with the caller's console encoding, so case 6's em dash failed whenever a Git Bash caller ran it (it passed from PowerShell and in CI). It now decodes as UTF-8.
 - **Class closure**: the meaning comparison lives in the one store function both the declaration and the Stop use, and case 8 pins the live failure. A future rewording of a heading that keeps its numbers, identifiers and negations no longer costs a repaint.
+
+### DRIFT-031 — co-review round 4 found five more defects; none was demoted, and all five are real (resolved; the fixes are unreviewed)
+
+- **Observed**: 2026-10-15, co-review round 4 (`run-20261015-110313119-da115ef4`, codex). It covered T012 to T014, the round-3 fixes, B4F-120/122, the lock budget, DRIFT-030 and the B4F-116 test. It returned 5 findings, each reported major, and none was demoted this time. Each was checked against the code (with one read-only verification per finding), and each is real:
+  1. **`specrew start` resumed a different feature than status and orientation.** A plain start read `.specify/feature.json` directly, without the pointer's branch, so after a branch switch, or with a session in flight on another feature, the resume block described the pointer's feature (`scripts/specrew-start.ps1`, T010's gap). `feature-resolver`'s states checked only status and orientation.
+  2. **Resume progress always read the root `tasks.md`, which is iteration 1's list** (`HandoverStore.ps1`, T012). For a later iteration it named a stale task as "starting now". `task-progress.ps1` documents that later iterations use their own ledger. Feature 197 in this repository shows it: 56 stale boxes, and T091 would have been named.
+  3. **The Stop-block path did not get round 3's disclosure** (`specrew-hook-dispatcher.ps1`). A degraded state that began at its own append went out undisclosed, and a stop block that could not be recorded emitted `{}`, allowing the stop with no word.
+  4. **An orientation was stamped as supplied before delivery** (`specrew-bootstrap-provider.ps1`, T008). When that fire's output was withheld, the stamp survived, and every later prompt skipped the orientation and its dials fallback.
+  5. **A recovery question asked in a session that ended could be answered by no one** (`workshop-authority-store.ps1`, T003/T004). Only the asked session's yes counts, and the open question kept every other session from being asked.
+- **Requirement**: FR-018 and SC-006 (1); FR-019 (2); FR-007 (3); FR-005 and FR-014 (4); FR-009 (5).
+- **Resolution** (`61714dbd`), each behind a failing test:
+  1. The automatic start choice asks the shared resolver (`Resolve-SpecrewStartAutoFeaturePath`).
+  2. Iteration 2 and later read `iterations/<N>/tasks-progress.yml`, and progress is left out when there is none.
+  3. The stop block adds the same-turn disclosure, and shows the `Specrew:` withheld sentence instead of `{}`. That is a block like any other, bounded by the host's `stop_hook_active` or the provider's cap.
+  4. The dispatcher takes back an orientation stamp written during a fire whose output it withheld, and an earlier, delivered stamp stays.
+  5. A question that has stood unanswered for the recovery threshold is asked again in the next session, and then belongs to that session. Two live sessions take it over at most once per threshold.
+- **Tests**: `feature-resolver` checks the start choice and its resume block in all eight states (RED: four states disagreed on the old code). `resume-from-disk` cases 1, 5 and 7: their fixtures had assumed the root list for iteration 003, which is the defect itself, and now carry that iteration's ledger and plan table. `hook-output-journal` covers the Stop disclosure, the withheld stop and the orientation stamp. `receipt-disclosure` case 17 covers the re-asked recovery question. Each new check was RED first.
+- **Outside the owned files**: `scripts/specrew-start.ps1` (finding 1), plus the suites above.
+- **Class closure**: findings 3 and 4 are the same class as round 3's finding 4, output decisions made before the dispatcher's final append. Both output paths, injection and stop block, now share the same disclosure, and the one stamp written ahead of delivery is taken back when delivery fails. **These fixes have had no review round**: round 4 was the last of the review's four.
 <!--
   Every new ### DRIFT-... event includes:
 

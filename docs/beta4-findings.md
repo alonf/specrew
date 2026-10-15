@@ -3269,6 +3269,8 @@ The round's summary read "Nothing found that needs your attention."
 checked against the code and listed in the round's checkpoint as real or not, with the reason, before any
 sign-off (202 DRIFT-018).
 
+**Round 4 (2026-10-15, `run-20261015-110313119-da115ef4`, codex):** 5 findings, all reported major and, for the first time in 202, none demoted. Each was checked against the code and all 5 are real (22 of 22 across the four rounds): `specrew start` resumed a different feature than status and orientation after a branch switch; resume progress read iteration 1's root task list for every iteration; the Stop-block path did not disclose a degraded or withheld turn; an orientation stamped during a withheld fire suppressed the orientation for the rest of the session; a recovery question left open by an ended session could never be answered. All five are fixed behind failing tests (202 DRIFT-031). The round spent the review's last round (4 of 4).
+
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
 **Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
