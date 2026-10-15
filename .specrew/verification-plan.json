@@ -46,7 +46,7 @@
       "arguments": [
         "-NoProfile",
         "-Command",
-        "$fail = 0; foreach ($s in @('tests/unit/crossing-presentation.tests.ps1','tests/unit/turn-record-contract.tests.ps1','tests/unit/cross-host-workshop.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/dials-parity.tests.ps1','tests/unit/design-analysis-gate-refusal.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; foreach ($s in @('tests/unit/crossing-presentation.tests.ps1','tests/unit/turn-record-contract.tests.ps1','tests/unit/cross-host-workshop.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/dials-parity.tests.ps1','tests/unit/design-analysis-gate-refusal.tests.ps1','tests/unit/init-stays-in-project.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 600,
       "env_refs": [
@@ -70,7 +70,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 202 iteration 001 suites, split in two on 2026-10-14 (202 DRIFT-026): the single lane measured 309.7 s against its 600 s timeout after T012, T013 and the round-3 cases (1.94x, under the 2.4x floor), so it became two lanes rather than one longer timeout. Lane a: presented-crossing memory and the reply matcher (T006, round 3), the standard turn record (T002), the cross-host workshop walk (T005), twin-copy parity (T002), dials parity (T009), the one-pass design-analysis refusal (T013). Measured 2026-10-14: 124.8 s against 600 s (4.8x)."
+      "label": "Feature 202 iteration 001 suites, split in two on 2026-10-14 (202 DRIFT-026): the single lane measured 309.7 s against its 600 s timeout after T012, T013 and the round-3 cases (1.94x, under the 2.4x floor), so it became two lanes rather than one longer timeout. Lane a: presented-crossing memory and the reply matcher (T006, round 3), the standard turn record (T002), the cross-host workshop walk (T005), twin-copy parity (T002), dials parity (T009), the one-pass design-analysis refusal (T013), init stays in its project folder (B4F-120, B4F-122). Measured 2026-10-14: 124.8 s against 600 s (4.8x)."
     },
     {
       "command_id": "f202-slice-suites-b",

@@ -138,7 +138,11 @@ function Invoke-NativeCommandWithClosedInput {
 
         [Parameter(Mandatory = $true)]
         [ValidateRange(1, 7200)]
-        [int]$TimeoutSeconds
+        [int]$TimeoutSeconds,
+
+        # B4F-122: when set, the child's Git discovery stops below this folder (GIT_CEILING_DIRECTORIES), so a CLI that
+        # writes at the Git top-level it discovers cannot reach an enclosing repository.
+        [string]$GitCeilingDirectory
     )
 
     $resolvedCommand = @(Get-Command -Name $FilePath -CommandType Application, ExternalScript -ErrorAction Stop)[0]
@@ -148,6 +152,9 @@ function Invoke-NativeCommandWithClosedInput {
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
     $startInfo.WorkingDirectory = $WorkingDirectory
+    if (-not [string]::IsNullOrWhiteSpace($GitCeilingDirectory)) {
+        $startInfo.Environment['GIT_CEILING_DIRECTORIES'] = $GitCeilingDirectory
+    }
 
     if ($resolvedCommand.CommandType -eq [System.Management.Automation.CommandTypes]::ExternalScript) {
         $startInfo.FileName = [Environment]::ProcessPath

@@ -41,7 +41,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'scripts\init\_utilities.ps1')
 . (Join-Path $repoRoot 'scripts\init\post-bootstrap-output.ps1')
 
-$scratch = Join-Path $repoRoot '.scratch\bootstrap-commit-tests'
+# B4F-120: fixtures live under the system temp folder, never inside this repository.
+$scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-bootstrap-commit-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
 if (Test-Path -LiteralPath $scratch) {
     Remove-Item -LiteralPath $scratch -Recurse -Force
 }
@@ -128,7 +129,8 @@ try {
 
     $initContent = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\specrew-init.ps1') -Raw -Encoding UTF8
     $usageContent = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\init\preflight.ps1') -Raw -Encoding UTF8
-    Assert-True ($initContent -match '\$bootstrapMode\s*=\s*if \(\$blockingEntries\.Count -gt 0 -or \$initialGitHasHead\)') 'Production init classifies existing content or history as brownfield before mutation'
+    # B4F-120: the classification moved into Resolve-SpecrewBootstrapMode (behaviour pinned in init-stays-in-project).
+    Assert-True ($initContent -match '\$bootstrapMode\s*=\s*Resolve-SpecrewBootstrapMode\s+-ProjectPath\s+\$resolvedProjectPath\s+-HasBlockingEntries\s+\(\$blockingEntries\.Count -gt 0\)') 'Production init classifies existing content or history as brownfield before mutation'
     Assert-True (([regex]::Matches($initContent, 'Invoke-SpecrewBootstrapBaseline')).Count -eq 2) 'Production init wires baseline finalization through normal and already-bootstrapped tails'
     Assert-True ($initContent.IndexOf('Invoke-SpecrewBootstrapBaseline', $initContent.LastIndexOf('Validating bootstrapped project state')) -lt $initContent.LastIndexOf('Write-BootstrapSummary')) 'Production init finalizes the baseline before rendering its summary'
     Assert-True ($usageContent -match 'brownfield-bootstrap-commit <offer\|decline>') 'Init help exposes the recordable brownfield decline surface'

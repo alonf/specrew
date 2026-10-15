@@ -414,16 +414,12 @@ $hadGitHubContent = $hadGitHub -and ((@(
             Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.github') -Force -ErrorAction SilentlyContinue
         ).Count) -gt 0)
 $hasSpecrewConfig = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew\config.yml')
-$initialGitHasHead = $false
-if (Test-Path -LiteralPath $resolvedProjectPath -PathType Container) {
-    $null = & git -C $resolvedProjectPath rev-parse --verify HEAD 2>$null
-    $initialGitHasHead = ($LASTEXITCODE -eq 0)
-}
 $alreadyBootstrapped = $hadSpecify -and $hasSpecrewConfig
 if (-not $SpecKitExtensionOnly) {
     $alreadyBootstrapped = $alreadyBootstrapped -and $hadSquad -and $hadGitHub
 }
-$bootstrapMode = if ($blockingEntries.Count -gt 0 -or $initialGitHasHead) { 'brownfield' } else { 'greenfield' }
+# B4F-120: a folder inside another repository's work tree is brownfield even when that repository has no commits yet.
+$bootstrapMode = Resolve-SpecrewBootstrapMode -ProjectPath $resolvedProjectPath -HasBlockingEntries ($blockingEntries.Count -gt 0)
 $shouldInitializeSpecify = -not $hadSpecify
 $shouldInitializeSquad = -not $hadSquad
 $shouldForceSpecifyInit = $Force -or ($blockingEntries.Count -eq 0)
@@ -763,7 +759,7 @@ if (-not $SpecKitExtensionOnly -and $shouldInitializeSquad) {
             Add-Action -Actions $actions -Step 'squad-init' -Outcome 'would initialize .squad via squad init --non-interactive'
         }
         else {
-            $squadInitResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $squadInitPlan.ArgumentList -WorkingDirectory $resolvedProjectPath -TimeoutSeconds 120
+            $squadInitResult = Invoke-SquadInitInProject -ProjectPath $resolvedProjectPath -ArgumentList $squadInitPlan.ArgumentList -TimeoutSeconds 120
             foreach ($line in $squadInitResult.Output) {
                 Write-Host $line
             }

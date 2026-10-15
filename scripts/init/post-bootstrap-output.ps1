@@ -16,6 +16,70 @@
 
 Set-StrictMode -Version Latest
 
+function Get-SpecrewProjectGitScope {
+    # B4F-120: where the project folder sits in Git. 'own' = it is the top-level of its own repository (or a worktree
+    # root); 'enclosed' = it is inside another repository's work tree; 'none' = it is in no work tree at all.
+    # `--show-prefix` rather than `--show-toplevel` + a path compare: the top-level comes back in Git's casing and
+    # slash form, which never string-equals an 8.3-short temp path (see Test-SpecrewIsGitRepoRoot).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ProjectPath -PathType Container)) {
+        return 'none'
+    }
+    $inside = (@(& git -C $ProjectPath rev-parse --is-inside-work-tree 2>$null) -join '').Trim()
+    if ($LASTEXITCODE -ne 0 -or $inside -ne 'true') {
+        return 'none'
+    }
+    $prefix = (@(& git -C $ProjectPath rev-parse --show-prefix 2>$null) -join '').Trim()
+    if ($LASTEXITCODE -ne 0) {
+        return 'none'
+    }
+    if ([string]::IsNullOrEmpty($prefix)) {
+        return 'own'
+    }
+    return 'enclosed'
+}
+
+function Resolve-SpecrewBootstrapMode {
+    # B4F-120: greenfield only for a folder that is empty, has no history of its own, and is not inside another
+    # repository's work tree. A greenfield bootstrap ends in a commit; a folder inside an enclosing repository must never
+    # get one, because that commit would be the enclosing repository's.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HasBlockingEntries
+    )
+
+    if ($HasBlockingEntries) {
+        return 'brownfield'
+    }
+    $scope = Get-SpecrewProjectGitScope -ProjectPath $ProjectPath
+    if ($scope -eq 'enclosed') {
+        return 'brownfield'
+    }
+    if ($scope -eq 'own') {
+        $null = & git -C $ProjectPath rev-parse --verify -q HEAD 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            return 'brownfield'
+        }
+    }
+    return 'greenfield'
+}
+
+function Get-SpecrewEnclosingTopLevel {
+    param([string]$ProjectPath)
+    $top = (@(& git -C $ProjectPath rev-parse --show-toplevel 2>$null) -join '').Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($top)) {
+        return '(unknown)'
+    }
+    return $top
+}
+
 function Write-SpecrewBootstrapBaselineRecord {
     param(
         [Parameter(Mandatory = $true)]
@@ -109,8 +173,7 @@ function Invoke-SpecrewBootstrapBaseline {
         return [pscustomobject]@{ Mode = 'greenfield'; Decision = 'automatic'; Commit = $null; RecordPath = $recordPath }
     }
 
-    $insideWorkTree = @(& git -C $ProjectPath rev-parse --is-inside-work-tree 2>$null)
-    if ($LASTEXITCODE -ne 0 -or ($insideWorkTree -join '').Trim() -ne 'true') {
+    if ((Get-SpecrewProjectGitScope -ProjectPath $ProjectPath) -eq 'none') {
         $null = & git -C $ProjectPath init --quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
             throw "Greenfield bootstrap completed, but Git repository initialization failed for '$ProjectPath'."
@@ -121,7 +184,19 @@ function Invoke-SpecrewBootstrapBaseline {
     try {
         $recordPath = Write-SpecrewBootstrapBaselineRecord -ProjectPath $ProjectPath -Decision 'automatic'
         $createdRecord = $true
-        $addOutput = @(& git -C $ProjectPath add --all 2>&1)
+        # B4F-120: checked right before staging, so a folder inside another repository's work tree - including one whose
+        # own .git vanished since init classified it - is never committed: that commit would be the enclosing repository's.
+        if ((Get-SpecrewProjectGitScope -ProjectPath $ProjectPath) -ne 'own') {
+            $enclosingTop = Get-SpecrewEnclosingTopLevel -ProjectPath $ProjectPath
+            $recordPath = Write-SpecrewBootstrapBaselineRecord -ProjectPath $ProjectPath -Decision 'offered'
+            $createdRecord = $false
+            Write-Host ("This folder is inside the Git repository at {0}; Specrew did not create a commit there." -f $enclosingTop) -ForegroundColor Yellow
+            Write-Host ("Bootstrap commit offer recorded at {0}. Review 'git status', stage the scaffold you accept, then commit it as '{1}'." -f $recordPath, $commitMessage) -ForegroundColor Yellow
+            Add-Action -Actions $Actions -Step 'bootstrap-commit' -Outcome ("no commit created: the folder is inside the Git repository at {0}; offer recorded at {1}" -f $enclosingTop, $recordPath)
+            return [pscustomobject]@{ Mode = 'brownfield'; Decision = 'offered'; Commit = $null; RecordPath = $recordPath }
+        }
+        # Staging and the commit are limited to the project folder (git -C runs in it, so '.' is the project).
+        $addOutput = @(& git -C $ProjectPath add --all -- . 2>&1)
         if ($LASTEXITCODE -ne 0) {
             throw ("Greenfield bootstrap staging failed: {0}" -f ($addOutput -join [Environment]::NewLine))
         }
@@ -134,7 +209,7 @@ function Invoke-SpecrewBootstrapBaseline {
             # A configured user identity always wins; this command-scoped identity is only the no-config fallback.
             $identityArguments = @('-c', 'user.name=Specrew Bootstrap', '-c', 'user.email=specrew-bootstrap@example.invalid')
         }
-        $commitOutput = @(& git -C $ProjectPath @identityArguments commit --quiet -m $commitMessage 2>&1)
+        $commitOutput = @(& git -C $ProjectPath @identityArguments commit --quiet -m $commitMessage -- . 2>&1)
         if ($LASTEXITCODE -ne 0) {
             throw ("Greenfield bootstrap commit failed: {0}" -f ($commitOutput -join [Environment]::NewLine))
         }

@@ -117,7 +117,10 @@ if ($missingTools.Count -gt 0) {
     exit 0
 }
 
-$scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\start-command'
+# B4F-120: a per-run folder under the system temp folder, never inside this repository. Two suites run this script
+# (it and start-command-non-interactive-first-run); sharing one folder let one delete the other's .git mid-init, and the
+# greenfield bootstrap then committed the enclosing repository.
+$scratchRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ('specrew-start-command-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
 $projectRoot = Join-Path -Path $scratchRoot -ChildPath 'project'
 
 if (Test-Path -Path $scratchRoot) {

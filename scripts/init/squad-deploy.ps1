@@ -6,6 +6,7 @@
 # Functions:
 #   - Test-SquadInitSupportsNonInteractive  probe "squad init --non-interactive"
 #   - Get-SquadInitPlan                     pick "squad init" arg list per CLI capability
+#   - Invoke-SquadInitInProject             run "squad init" confined to the project folder (B4F-122)
 #   - Initialize-SquadFallbackScaffold      write the .squad/ 5-agent skeleton when Squad CLI is missing
 #
 # POST-SLICE-9 SCOPE NOTE:
@@ -25,7 +26,9 @@ function Test-SquadInitSupportsNonInteractive {
         [string]$ProbeRoot,
 
         [ValidateRange(1, 7200)]
-        [int]$TimeoutSeconds = 30
+        [int]$TimeoutSeconds = 30,
+
+        [string]$SquadCommand = 'squad'
     )
 
     $probeDirectory = Join-Path $ProbeRoot ('.specrew-squad-probe-{0}' -f [guid]::NewGuid().ToString('N'))
@@ -33,7 +36,9 @@ function Test-SquadInitSupportsNonInteractive {
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
     try {
         try {
-            $probeResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory -TimeoutSeconds $TimeoutSeconds
+            # B4F-122: the probe folder sits inside the install root, which may itself be inside a repository; fence Git
+            # discovery at the install root so the probe's squad.agent.md lands in the probe folder and is removed with it.
+            $probeResult = Invoke-NativeCommandWithClosedInput -FilePath $SquadCommand -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory -TimeoutSeconds $TimeoutSeconds -GitCeilingDirectory $ProbeRoot
         }
         catch [System.TimeoutException] {
             # A timed-out capability probe is an operational failure, not evidence that the option is unsupported.
@@ -74,6 +79,28 @@ function Get-SquadInitPlan {
         SupportsNonInteractive = $supportsNonInteractive
         ArgumentList           = $arguments
     }
+}
+
+function Invoke-SquadInitInProject {
+    # B4F-122: `squad init` writes .github/agents/squad.agent.md at the Git top-level it discovers, which for a folder
+    # inside another repository's work tree is that repository's root. Fencing Git discovery at the project's parent keeps
+    # every write inside the project folder; a project that is its own repository still finds its own .git.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$ArgumentList,
+
+        [ValidateRange(1, 7200)]
+        [int]$TimeoutSeconds = 120,
+
+        [string]$SquadCommand = 'squad'
+    )
+
+    $resolvedProject = [System.IO.Path]::GetFullPath($ProjectPath)
+    $ceiling = Split-Path -Parent $resolvedProject.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    return Invoke-NativeCommandWithClosedInput -FilePath $SquadCommand -ArgumentList $ArgumentList -WorkingDirectory $resolvedProject -TimeoutSeconds $TimeoutSeconds -GitCeilingDirectory $ceiling
 }
 
 function Initialize-SquadFallbackScaffold {
