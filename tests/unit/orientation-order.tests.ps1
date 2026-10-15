@@ -84,8 +84,14 @@ function New-PendingProject {
 function Invoke-Pwsh {
     param([string]$Root, [string]$Script, [string[]]$Arguments)
     Push-Location -LiteralPath $Root
-    try { return (@(& pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @Arguments 2>&1) -join "`n") }
-    finally { Pop-Location }
+    # The providers write UTF-8; decode their output as UTF-8 whatever the caller's console is (a Git Bash caller's is
+    # not, and the shared sentence's em dash then never matched - 202 DRIFT-030).
+    $savedEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+        return (@(& pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @Arguments 2>&1) -join "`n")
+    }
+    finally { [Console]::OutputEncoding = $savedEncoding; Pop-Location }
 }
 
 function Invoke-BootstrapPrompt {
