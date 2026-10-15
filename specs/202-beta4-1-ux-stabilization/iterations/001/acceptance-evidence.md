@@ -73,7 +73,7 @@ All seven lanes passed.
 
 - `cb0f98b2` (lane split): Specrew CI 38622434097, Test 38622434219 and Cross-Platform Validation 38622434114 all succeeded.
 - `e81f0dde` (round-3 fixes, T012, T013): Specrew CI 38618352768, Test 38618352825 and Cross-Platform Validation 38618352828 all succeeded. Case (e) logged 4,000 of 4,000 lines on Windows, Ubuntu and macOS.
-- CI-LATEST
+- `6a52497c` (B4F-120/122, the lock budget, T014, T015): Specrew CI 38715877994 (Lint, Deterministic gate, Contract lane), Test 38715878050 and Cross-Platform Validation 38715878027 all succeeded. On Windows, Ubuntu and macOS, `turn-draft-intake` passed, three waits on a held lock took 1,024 to 1,047 ms, and case (e) logged 4,000 of 4,000 lines (the 3-OS checks are from 38714994966 at `62b95304`; the next commit changed one Markdown line). The run at `62b95304` failed only Lint (MD032 in the findings file), which `6a52497c` fixed.
 
 ## Records
 
