@@ -44,9 +44,11 @@ shown. The failure mode this exists to stop is **menu-before-render**: render + 
 — explain the agenda / diagram / map / options fully in prose first, and make the question and choices
 self-explanatory (not a terse "does this work? — 8 lenses").
 
-**The human-facing reply is yours.** Save the complete question or agenda as a UTF-8 draft before calling
-`declare-turn-end.ps1 -Kind conversational -MessagePath <draft-file> -Token <this-turn-token>` as the last
-tool call. Its return is for you, never the reply. Send the draft in your own assistant message and wait
+**The human-facing reply is yours.** Pipe the complete question or agenda into the turn-end script on
+**stdin** as the last tool call; it saves the draft in this session's own ignored folder, so you choose no
+file. In PowerShell 7 the question goes in a `@'` ... `'@` here-string piped on, as in
+`'@ | pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind conversational -Token <this-turn-token>`;
+from a POSIX shell, use a heredoc with a quoted delimiter. Its return is for you, never the reply. Send the draft in your own assistant message and wait
 for the human. Do not classify a human-answer wait as background work or replace the question with status.
 Stop blocks prepared content that did not reach the assistant message.
 

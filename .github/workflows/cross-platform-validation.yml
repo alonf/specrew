@@ -280,6 +280,14 @@ jobs:
           & pwsh -NoProfile -NonInteractive -File ./tests/unit/hook-output-journal.tests.ps1
           if ($LASTEXITCODE -ne 0) { throw 'hook-output-buffer-failed' }
 
+      # Feature 202 T014 (FR-021): turn drafts arrive on stdin as raw bytes and round-trip byte-exact (Hebrew, emoji,
+      # CRLF) into the session's own folder; the acceptance names Windows, macOS and Linux.
+      - name: Turn-draft intake over stdin (T014)
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -NonInteractive -File ./tests/unit/turn-draft-intake.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'turn-draft-intake-failed' }
+
       - name: Prepare bounded cgroup v2 root for privileged Linux review-process tests
         if: runner.os == 'Linux'
         shell: bash
