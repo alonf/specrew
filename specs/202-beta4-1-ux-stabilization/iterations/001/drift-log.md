@@ -278,7 +278,7 @@
 - **Where T011 is**: `f46c9fb1` holds T011's code, test and records; `e0d8c33e`'s message describes them. The content is exactly what the sweep ran against.
 - **Mechanism**: B4F-120. The greenfield bootstrap baseline commits in whatever repository encloses the project path, and a fixture under this repository's `.scratch/` is enclosed by it. The triggering suite was not identified.
 - **Resolution**: history is not rewritten. A force push would rewrite a pushed branch, and the content is right. From now on, the crew runs sweeps only on a fully committed tree, so a stray commit can hold nothing that is not already committed.
-- **Class closure**: NONE — the product guard and the fixture locations are beta5 (B4F-120); in 202 the only mitigation is the sweep rule above.
+- **Class closure**: NONE — the product guard and the fixture locations are beta5 (B4F-120); in 202 the only mitigation is the sweep rule above. *Superseded 2026-10-15: the maintainer pulled B4F-120 into 202, and DRIFT-027 closes the class.*
 - **Update, 2026-10-14 (after co-review round 3, on the maintainer's instruction)**: the product defect is reproduced in a scratch directory: an enclosing repository with no commits is committed in full, unrelated work included (B4F-120). The probable trigger is the two `start-command` suites sharing `.scratch/start-command`. That collision also explains `start-command` failing only inside the sweep: in a throwaway clone it failed 2 of 2 when run together with the first-run suite and passed alone. Whether the fix moves into 202 is the maintainer's decision, pending.
 
 ### DRIFT-023 — the Unix journal lock starved a writer under contention, an FR-001 failure (resolved)
@@ -305,6 +305,16 @@
     2. **A ticket file**: first come, first served. But a killed hook leaves its ticket and stalls every later writer until a stale-ticket timeout, which is a new latch in the path FR-003 just made latch-free.
     3. **A queue through the outage buffer**: a writer that cannot get the lock within a short wait publishes its record as a closed buffer file (the round-2 path), and the next writer that gets the lock flushes it. No writer waits for a turn, latency stays inside the agreed window, and nothing is lost. Today, though, a buffered record opens a degraded episode with a human-facing disclosure. Contention is not degradation, so this needs a separate "contended" outcome that opens no episode, and the flush runs often instead of rarely. Estimated at 0.5 to 1 SP plus a 3-OS run.
   - **Why the longer wait was taken**: it was the smallest change that made FR-001 hold, it measures 0 of 50 against 10 of 50 at the agreed bound, and it is 3-OS green. The buffer queue is the better design: it keeps the agreed window, and nothing waits for a turn.
+- **Ruling, 2026-10-15 — accepted deviation from the agreed 250 ms tuning (maintainer: "Lock a, amended")**: keep 1000 ms, but as one deadline across all attempts, not 1000 ms per wait. When it passes, the record goes to the outage buffer as before. The buffer queue (option b) is the maintainer's preferred design, but "not as a new store state built before the last review round". It is recorded for beta5 as B4F-123.
+  - **As built** (`46d18d82`): one hook fire makes up to five appends, so a deadline per append would still allow about 5 s. To deliver the ruling's bound, the budget is **one 1000 ms per hook fire**, shared by every attempt of every append. That also holds per append. Once the budget is spent, the lock is tried once without waiting, and a held lock goes straight to the buffer with no retry. The worst-case added hook latency is about 1 s, and the busy poll runs 1 s per fire at most.
+  - **Test**: `journal-fault-injection` Part 0 checks the budget on every OS. Three waits on a held lock take 1,021 ms in total (Linux) and 1,029 ms (Windows); later waits in the same fire take 1 ms; and a free lock is still taken after the budget is spent. On the old code, the three waits took 3,035 ms. Case (e)'s writers now model fires: a payload and an envelope share one budget, 500 fires per writer, still 4,000 appends a run.
+  - **Re-measured: 50 four-writer runs in WSL Ubuntu**, through the shipped lock with only a timing wrapper (`lockbench-fire.ps1`), 100,000 fires in all:
+
+    | Variant | Degraded runs | Lines | Lock timeouts | Longest single wait | Longest fire total | Fires over 250 ms | Fires over 500 ms |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | 1000 ms budget per fire (as built) | **0 of 50** | 4,000 of 4,000 in all 50 | 0 | 770.2 ms | 774.6 ms | 24 | 6 |
+
+    All six fires over 500 ms are in one run (run 22), which overlapped with Windows-side test runs on the same machine. Without that run, the longest fire total was 344.9 ms. No fire came near the budget, and none degraded. CPU per run averaged 19.5 s across the four writers, the same as all three earlier variants, so the shared budget did not change the poll's cost under contention.
 
 ### DRIFT-024 — co-review round 3 found four more defects; the engine demoted all four, and all four are real (resolved)
 
@@ -337,6 +347,33 @@
 - **Requirement**: the verification plan's timeouts carry real headroom, so a slower runner does not kill a passing lane (DRIFT-013's lesson).
 - **Resolution**: split, not raised. A longer timeout would hide growth; two lanes keep each one well inside the same 600 s. `f202-slice-suites-a` holds the reply-path suites (crossing presentation, turn record, cross-host workshop, twin-copy parity, dials parity, the design-analysis refusal). It passed in 124.8 s (4.8x). `f202-slice-suites-b` holds the journal and resume suites (hook-output journal, case (e), receipt disclosure, presented check, orientation order, feature resolver, new-feature reset, resume from disk). It passed in 183.9 s (3.3x). Every suite of the old lane is in exactly one of the two.
 - **Class closure**: each lane's label records its measured time, so the next addition is measured against its own lane. T014's suite goes into lane a.
+
+### DRIFT-027 — B4F-120 and B4F-122 pulled into 202: init never writes outside its project folder (resolved by human decision)
+
+- **Observed**: 2026-10-14 to 10-15. B4F-120 (DRIFT-022's stray commit) was reproduced in scratch: inside an enclosing repository with no commits, `specrew init <new-folder>` committed that repository in full. B4F-122 was found during the reproduction: Squad's own `squad init` wrote `.github/agents/squad.agent.md` at the enclosing repository's root. Both are outside Tier 1. The maintainer decided on 2026-10-15: "B4F-120 into 202", with B4F-122 folded in if the same top-level check closes it.
+- **Requirement**: none of 202's FRs. This is a data-integrity defect in the first-run path, pulled in by human decision.
+- **Resolution** (`8266e01c`):
+  1. **No commit of an enclosing repository.** The greenfield path checks `Get-SpecrewProjectGitScope` right before staging. A folder that is not its own repository's top level gets no commit, records an offered bootstrap commit, and names the enclosing repository.
+  2. **Init classifies the same way.** `Resolve-SpecrewBootstrapMode` makes an empty folder inside another repository brownfield.
+  3. **Staging is project-only:** `add --all -- .` and `commit -- .`.
+  4. **Squad's Git discovery is fenced** at the project's parent for the init call, and at the install root for the capability probe.
+  5. **Fixtures moved:** `start-command.ps1` and `bootstrap-commit` build in per-run folders under the system temp folder.
+- **Outside the owned files**: these are product init scripts, not T001 to T015 files. Two source-shape pins followed the new call shape: `bootstrap-commit`'s classification assertion and `squad-init-closed-stdin`'s Squad call-site assertions. Each still pins the same guarantee.
+- **Tests**: `tests/unit/init-stays-in-project.tests.ps1` has 23 assertions: an unborn enclosing repository, an enclosing repository with commits, the project's own repository, the classification, and Squad confined for the init call and the probe. It was RED on the unborn case, and the unfenced Squad call wrote at the enclosing root. It passes on Windows and Linux, and `bootstrap-commit`, `post-bootstrap-output` and `squad-init-closed-stdin` pass. Run side by side, `start-command` and the first-run suite pass with HEAD unchanged (they failed 2 of 2 together before).
+- **Class closure**: the suite joins `f202-slice-suites-a`. The closure is the before-staging scope check: whatever leaves the folder enclosed, whether a classification miss, a vanished `.git` or a direct caller, the commit is refused there. Squad's writes are confined at their only two call sites.
+
+### DRIFT-028 — T014 reached the launch contract, the Stop instructions and the 3-OS workflow (resolved)
+
+- **Observed**: 2026-10-15, T014. The three skills were not the only places that told an agent to write a draft file. Rule 46A of the launch contract said to "save that draft to a UTF-8 file and pass `-MessagePath`". Four Stop and conformance instructions in `specrew-conformance-provider.ps1` named `-MessagePath` too. With only the skills changed, an agent following the contract or a Stop instruction would still have chosen a draft path of its own, which is B4F-101's leak path.
+- **Requirement**: FR-021 (drafts are saved where the saving script resolves; the three skills name it). The acceptance names Windows, macOS and Linux.
+- **Resolution** (`b9cf8b71` and the next commit):
+  1. **The draft arrives on stdin.** `declare-turn-end.ps1` reads raw bytes, decodes them as strict UTF-8, and saves them byte-exact in the session's own ignored folder.
+  2. **Every instruction names stdin.** Rule 46A and the four provider lines now say the same as the three skills.
+  3. **`-MessagePath` stays accepted.** A caller that has not moved over still works, and its draft is kept in the session folder too. One behavior change: a file that is not valid UTF-8 is now refused with a plain reason. Before, it was read lossily, and the human's text was silently replaced.
+  4. **The suite runs on three OSes.** `turn-draft-intake` joins `f202-slice-suites-a` and the 3-OS workflow, which runs it on Windows, macOS and Linux.
+- **Outside the owned files**: `scripts/internal/launch-contract.ps1`, `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `.github/workflows/cross-platform-validation.yml` and `.specrew/verification-plan.json`. All four are text or wiring changes, and no logic outside the owned files changed.
+- **Tests**: `turn-draft-intake` has 26 checks, and it was RED on the old code (stdin ignored, no draft, empty message). The suites that read the contract and the provider text pass.
+- **Class closure**: every place that tells an agent how to hand over its draft names stdin, and the saving script decides the path on both routes.
 <!--
   Every new ### DRIFT-... event includes:
 

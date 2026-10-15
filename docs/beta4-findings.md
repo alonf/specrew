@@ -5001,7 +5001,7 @@ investigated: outside 202's Tier 1.
 **Beta5 candidate:** fix the fixture or retire the suite, and make an unrun suite visible.
 **Disposition:** recorded under the beta5 rule for anything beyond Tier 1; no repair in 202.
 
-## B4F-120 - A GREENFIELD BOOTSTRAP COMMIT INSIDE ANOTHER REPOSITORY COMMITS THAT REPOSITORY'S WORK (beta5 candidate)
+## B4F-120 - A GREENFIELD BOOTSTRAP COMMIT INSIDE ANOTHER REPOSITORY COMMITS THAT REPOSITORY'S WORK (fixed in 202 by maintainer decision)
 
 **Observed:** 2026-10-14, feature 202 implement, during a parallel regression sweep of the 202 worktree with T011's
 changes uncommitted. Commit `f46c9fb1`, "chore(specrew): bootstrap scaffold", by "Specrew Bootstrap
@@ -5031,7 +5031,15 @@ system temp folder.
   2. Staging and the commit are limited to the project folder (`add --all -- .` and `commit -- .`). Paths the owner already staged elsewhere can never ride along.
   3. The two suites stop sharing a folder, and fixtures move to the system temp folder.
 
-## B4F-122 - INIT WRITES `.github/agents/squad.agent.md` AT THE ENCLOSING REPOSITORY'S ROOT (beta5 candidate)
+**Pulled into 202, 2026-10-15 (maintainer: "B4F-120 into 202").** Fixed as proposed, RED first (`8266e01c`, 202 DRIFT-027):
+
+- `Get-SpecrewProjectGitScope` tells `own` (the folder is its repository's top level), `enclosed` (inside another work tree) and `none`. It uses `--show-prefix`, not a path compare, so 8.3 temp paths and Git's slash form cannot confuse it. The greenfield path re-checks it right before staging: anything but `own` creates no commit, records an offered bootstrap commit instead, and names the enclosing repository.
+- `Resolve-SpecrewBootstrapMode` makes init classify the same way: an empty folder inside another repository is brownfield even when that repository has no commits.
+- Staging and the commit are `add --all -- .` and `commit -- .`, run in the project folder.
+- `start-command.ps1` (shared with the first-run suite) and `bootstrap-commit` build under the system temp folder, in a per-run folder.
+- **Evidence:** `tests/unit/init-stays-in-project.tests.ps1` (f202 lane a) was RED on the unborn enclosing repository, which was committed in full. It now passes on Windows and Linux. The scratch reproduction now leaves the enclosing repository uncommitted, with or without its own commits. Run side by side, `start-command` and the first-run suite both pass (135 s and 139 s), and HEAD is unchanged. Before the fix, `start-command` failed 2 of 2 this way.
+
+## B4F-122 - INIT WRITES `.github/agents/squad.agent.md` AT THE ENCLOSING REPOSITORY'S ROOT (fixed in 202 with B4F-120)
 
 **Observed:** 2026-10-14, during B4F-120's reproduction. `specrew init <outer>/newproj` wrote
 `.github/agents/squad.agent.md` at `<outer>/` as well as inside `newproj/`, whether or not the enclosing
@@ -5040,6 +5048,11 @@ identified; Squad's own init, resolving the git top level, is the likely one.
 **Beta5 candidate:** init writes only under the project folder; a test runs init in a subfolder of another
 repository and asserts that nothing outside the project folder changed.
 **Disposition:** recorded. Observed in a scratch reproduction.
+
+**Folded into 202 with B4F-120, 2026-10-15 (the maintainer: fold it in if the same top-level check closes it).**
+- **The writer is Squad's own `squad init`.** It writes `.github/agents/squad.agent.md` at the Git top level it discovers. Run directly in a subfolder of a scratch repository, it wrote the file at the enclosing root. With `GIT_CEILING_DIRECTORIES` set to the subfolder's parent, it wrote the file inside the subfolder.
+- **The same check closes it, plus one line on each Squad call.** The question is again whether the project folder is its own top level. Init cannot change Squad, so it fences Squad's Git discovery at the project's parent. Both call sites are fenced: the init call through `Invoke-SquadInitInProject`, and the capability probe, which runs in a throwaway folder under the install root. A project that is its own repository still finds its own `.git`.
+- **Evidence:** `init-stays-in-project` case 5 uses a stand-in `squad` that writes where the real one does. The unfenced call shape wrote at the enclosing root, and the fenced one writes inside the project. The scratch reproduction with the real `squad` no longer creates `.github` at the enclosing root.
 
 ## B4F-121 - THE STOP REVIEW CHECK ASKS FOR A ROUND APPROVAL WHILE THE APPROVED ROUND IS RUNNING (beta5 candidate)
 
@@ -5054,6 +5067,20 @@ see a round in flight.
 in one line ("round 3 is reviewing these files now") instead of asking for an approval the human just gave. It
 is the governing principle's case: a stop with no decision for the human to make.
 **Disposition:** recorded. Observed in the turn transcript.
+
+## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
+
+**Observed:** 2026-10-14, feature 202 (DRIFT-023). On Linux and macOS, the hook-output journal's per-write lock is an
+unfair advisory flock, and a writer under four-way contention can lose the gaps between another writer's appends.
+202 bounds the wait at one 1000 ms budget per hook fire. That is outside the agreed tuning (at most 5 attempts within
+250 ms), and it is accepted as a deviation by maintainer ruling on 2026-10-15.
+**Beta5 candidate:** a writer that cannot take the lock within a short wait publishes its record as a closed buffer
+file (the round-2 path), and the next writer that holds the lock flushes it. Nobody waits for a turn, every append
+stays inside the agreed 250 ms window, and nothing is lost. It needs a "contended" outcome that opens no degraded
+episode and shows no disclosure, because contention is not degradation, and a flush that runs often rather than
+rarely. Estimated at 0.5 to 1 SP plus a 3-OS run.
+**Disposition:** the maintainer prefers this design, but "not as a new store state built before the last review round"
+(ruling 2026-10-15). Beta5.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
