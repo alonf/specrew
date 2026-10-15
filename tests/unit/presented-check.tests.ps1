@@ -115,8 +115,14 @@ $script:Turn = 0
 function Invoke-Pwsh {
     param([string]$Root, [string]$Script, [string[]]$Arguments)
     Push-Location -LiteralPath $Root
-    try { return (@(& pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @Arguments 2>&1) -join "`n") }
-    finally { Pop-Location }
+    # The providers write UTF-8; decode their output as UTF-8 whatever the caller's console is (a Git Bash caller's is
+    # not, and case 6's em dash then never matched - 202 DRIFT-030).
+    $savedEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+        return (@(& pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @Arguments 2>&1) -join "`n")
+    }
+    finally { [Console]::OutputEncoding = $savedEncoding; Pop-Location }
 }
 
 function Start-Turn {
@@ -231,6 +237,39 @@ try {
     $reply7 = $draft7.Replace(('The specification: [the spec]({0})' -f $p7.Spec), 'The specification is in the feature folder.')
     $r7 = Complete-Turn -Project $p7 -Session 'sess-7' -Token $t7.Token -Kind 'boundary' -Draft $draft7 -Reply $reply7
     Assert-True ($r7.Blocked -and $r7.Output.Contains($p7.Spec)) 'a reply that drops the Markdown review link is blocked, naming it'
+
+    # -----------------------------------------------------------------------------------------------
+    # 202 DRIFT-030: the first live run of T007 with T014 blocked a reply whose two headings differed from the stdin
+    # draft by a function word, and the whole message was rendered again - the B4F-104 repaint class. A heading is
+    # present when its meaning matches: the same numbers and identifiers, the same negations, and the same content words
+    # up to small wording. The exact lines from that turn come first.
+    Write-Host 'Case 8: a reworded heading with the same meaning is present; a changed number, negation or subject is not'
+    $p8 = New-Project; $projects.Add($p8)
+    $declared8 = @('## The lock: kept at 1000 ms, now as one budget per hook fire', '## T014: turn drafts come in over stdin, stored per session (done)')
+    $replied8 = @('## The lock: kept at 1000 ms, now one budget per hook fire', '## T014: turn drafts come in over stdin and are stored per session (done)')
+    $body8 = "Body text that the author may reword.`n`nShall I start round 4?"
+    $draft8 = ($declared8 -join "`n`nSome prose.`n`n") + "`n`n" + $body8
+    $reply8 = ($replied8 -join "`n`nOther prose.`n`n") + "`n`n" + $body8
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $reply8 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $draft8)).Count -eq 0) 'the two headings from the live turn count as present'
+    $t8 = Start-Turn -Project $p8 -Session 'sess-8' -UserText 'Continue.'
+    $r8 = Complete-Turn -Project $p8 -Session 'sess-8' -Token $t8.Token -Kind 'conversational' -Draft $draft8 -Reply $reply8
+    Assert-True (-not $r8.Blocked) 'the live turn''s reply is not blocked by the Stop (0 repaints)'
+    $mustBlock = [ordered]@{
+        'a changed number'   = @('## Round 4 starts now', '## Round 3 starts now')
+        'a changed id'       = @('## T014 is done', '## T013 is done')
+        'an added negation'  = @('## The lock budget holds per hook fire', '## The lock budget does not hold per hook fire')
+        'a different subject' = @('## The lock: kept at 1000 ms', '## The validator: kept at 17 failures')
+        'a dropped heading'  = @('## What Happens Next', '')
+    }
+    foreach ($case in $mustBlock.GetEnumerator()) {
+        $d = $case.Value[0] + "`n`n" + $body8
+        $r = $case.Value[1] + "`n`n" + $body8
+        $missing = @(Get-SpecrewTurnMeaningLinesMissing -Reply $r -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d))
+        Assert-True ($missing -contains $case.Value[0]) ("{0} is still missing: '{1}'" -f $case.Key, $case.Value[0])
+    }
+    $twoDeclared = "## The lock: kept at 1000 ms, now as one budget per hook fire`n`n## The lock: kept at 1000 ms, as one budget per fire`n`n" + $body8
+    $oneReplied = "## The lock: kept at 1000 ms, now one budget per hook fire`n`n" + $body8
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $oneReplied -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $twoDeclared)).Count -eq 1) 'one reply heading answers for one declared heading, not two'
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }

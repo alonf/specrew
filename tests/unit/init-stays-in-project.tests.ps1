@@ -148,8 +148,12 @@ exit 0
     New-OuterRepository -Path $squadOuter -WithCommit
     $squadProject = Join-Path $squadOuter 'newproj'
     $null = New-Item -ItemType Directory -Path $squadProject -Force
+    $ceilingBefore = $env:GIT_CEILING_DIRECTORIES
     $squadResult = Invoke-SquadInitInProject -ProjectPath $squadProject -ArgumentList @('init', '--non-interactive') -TimeoutSeconds 60 -SquadCommand $fakeSquad
     Assert-True ($squadResult.ExitCode -eq 0) 'the confined squad init call completes'
+    # The fence is set on the Squad child process only (ProcessStartInfo.Environment), never on this session.
+    Assert-True ($env:GIT_CEILING_DIRECTORIES -ceq $ceilingBefore) "the caller's GIT_CEILING_DIRECTORIES is unchanged after the call ('$env:GIT_CEILING_DIRECTORIES')"
+    Assert-True ([Environment]::GetEnvironmentVariable('GIT_CEILING_DIRECTORIES', 'Process') -ceq $ceilingBefore) 'the process environment holds no fence left by the call'
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $squadOuter '.github'))) 'squad init writes nothing at the enclosing repository root'
     Assert-True (Test-Path -LiteralPath (Join-Path $squadProject '.github\agents\squad.agent.md')) "squad init's agent file lands inside the project folder"
 
@@ -159,6 +163,7 @@ exit 0
     $null = New-Item -ItemType Directory -Path $probeRoot -Force
     $supports = Test-SquadInitSupportsNonInteractive -ProbeRoot $probeRoot -TimeoutSeconds 60 -SquadCommand $fakeSquad
     Assert-True $supports 'the capability probe still detects --non-interactive support'
+    Assert-True ($env:GIT_CEILING_DIRECTORIES -ceq $ceilingBefore) "the probe leaves the caller's GIT_CEILING_DIRECTORIES unchanged"
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $probeOuter '.github'))) 'the capability probe writes nothing at the enclosing repository root'
 
     Write-Host "`nAll init-stays-in-project tests passed." -ForegroundColor Green
