@@ -31,7 +31,9 @@ param(
 
     [AllowNull()][string] $ProjectRoot,
 
-    # Draft of the human-facing reply; the script verifies it but never renders it.
+    # The draft of the human-facing reply normally arrives on STDIN (feature 202 T014, FR-021): pipe it in, and the
+    # script saves it in the session's own ignored folder. This file path is still accepted for a caller that has not
+    # moved to stdin. Either way the script verifies the draft but never renders it.
     [AllowNull()][string] $MessagePath,
 
     # Emit the verification and any missing machine lines as JSON for tests and tooling.
@@ -127,10 +129,35 @@ function Read-SpecrewPendingVerdictStop {
 }
 
 # The agent authors the reply. This declaration verifies the draft and records facts for Stop.
+#
+# Feature 202 T014 (FR-021): the draft arrives on stdin, as raw bytes decoded as strict UTF-8, and is saved where the
+# store decides - the session's own ignored folder - never where the agent chose. -MessagePath still works for a
+# caller that has not moved to stdin; its draft is kept in the same per-session place.
 $message = ''
+$draftBytes = $null
+$draftSource = 'none'
 if (-not [string]::IsNullOrWhiteSpace($MessagePath)) {
-    $message = Get-Content -LiteralPath $MessagePath -Raw -Encoding UTF8 -ErrorAction Stop
-    if ([Text.Encoding]::UTF8.GetByteCount($message) -gt 131072) { throw 'The authored message exceeds 128 KiB.' }
+    $draftBytes = [IO.File]::ReadAllBytes($MessagePath)
+    $draftSource = 'file'
+}
+else {
+    try { $draftBytes = Read-SpecrewTurnDraftFromStdin }
+    catch {
+        [Console]::Error.WriteLine(('Turn-end declaration refused: {0}' -f $_.Exception.Message))
+        exit 2
+    }
+    if ($null -ne $draftBytes) { $draftSource = 'stdin' }
+}
+$draft = Get-SpecrewTurnDraftLocation -ProjectRoot $root -Paths $paths -Token ([string]$holder.token)
+$draftSaved = $false
+if ($null -ne $draftBytes) {
+    if ($draftBytes.Length -gt 131072) { throw 'The authored message exceeds 128 KiB.' }
+    try { $message = ConvertFrom-SpecrewTurnDraftBytes -Bytes $draftBytes }
+    catch {
+        [Console]::Error.WriteLine(('Turn-end declaration refused: {0}' -f $_.Exception.Message))
+        exit 2
+    }
+    $draftSaved = Save-SpecrewTurnDraft -Path $draft.Path -Bytes $draftBytes
 }
 $owedItems = @(@($Owed) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 $declaredBoundary = ''
@@ -192,6 +219,9 @@ $record = [pscustomobject][ordered]@{
     owed = @($owedItems)
     pending = $(if ([string]::IsNullOrWhiteSpace($Pending)) { '' } else { $Pending.Trim() })
     summary = [string]$Summary
+    draft_source = $draftSource
+    draft_path = $(if ($draftSaved) { [string]$draft.Path } else { '' })
+    draft_scope = [string]$draft.Scope
     orientation = $false
     rendered_at = [DateTimeOffset]::UtcNow.ToString('o')
     rendered_ms = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
@@ -211,11 +241,19 @@ if ($AsJson) {
         packet_valid = [bool]$packetCheck.valid
         packet_missing = @($packetCheck.missing)
         owed = @($owedItems)
+        draft_source = $draftSource
+        draft_path = $(if ($draftSaved) { [string]$draft.Path } else { '' })
+        draft_scope = [string]$draft.Scope
+        draft_disclosure = $(if ($draftSaved) { [string]$draft.Disclosure } else { '' })
         text = $machineText
     } | ConvertTo-Json -Depth 6
     return
 }
+if ($draftSaved -and -not [string]::IsNullOrWhiteSpace([string]$draft.Disclosure)) { [Console]::Error.WriteLine([string]$draft.Disclosure) }
+if ($null -ne $draftBytes -and -not $draftSaved) {
+    [Console]::Error.WriteLine(('The draft was verified but could not be saved at {0}; the declaration is recorded.' -f [string]$draft.Path))
+}
 if ($Kind -eq 'boundary' -and -not $packetCheck.valid) {
-    [Console]::Error.WriteLine(('Packet not verified: {0}; pass the agent-authored packet with -MessagePath, then include it in your reply.' -f ($packetCheck.missing -join ', ')))
+    [Console]::Error.WriteLine(('Packet not verified: {0}; pipe the agent-authored packet into this script on stdin, then include it in your reply.' -f ($packetCheck.missing -join ', ')))
 }
 if (-not [string]::IsNullOrWhiteSpace($machineText)) { Write-Output $machineText }

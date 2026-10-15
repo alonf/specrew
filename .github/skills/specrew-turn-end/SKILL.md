@@ -11,15 +11,31 @@ source: "Specrew turn declaration and agent-authored presentation contract."
 **Namespace**: `/specrew`
 
 The script is the **last tool call**, and its return is **for you, never your reply**. You author the
-human-facing question, complete agenda, answer or boundary packet. Save the draft before the last call:
+human-facing question, complete agenda, answer or boundary packet, and pipe that draft into the script on
+**stdin**. You do not choose a file for it: the script saves it in this session's own ignored folder
+(`.specrew/runtime/turn-end/<session>/turn-message.md`), so a draft never lands in the repository and two
+sessions never share one. From PowerShell 7:
 
 ```powershell
-pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
+@'
+<the complete reply you will send>
+'@ | pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
     -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' `
-    -MessagePath <utf8-draft-file> -Token <the token from the latest [specrew-turn] line>
+    -Token <the token from the latest [specrew-turn] line>
 ```
 
-Then send the authored content in your own message. Ordinary declarations emit no human-facing text.
+From a POSIX shell, a heredoc with a quoted delimiter, so nothing in the draft is expanded:
+
+```bash
+pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind conversational \
+    -Token <the token from the latest [specrew-turn] line> <<'DRAFT'
+<the complete reply you will send>
+DRAFT
+```
+
+The script reads the bytes as UTF-8, so Hebrew and other non-ASCII text arrive intact. (Windows PowerShell
+5.1 does not pipe UTF-8; use `pwsh`.) Then send the authored content in your own message. Ordinary
+declarations emit no human-facing text.
 At a boundary the script verifies the draft and supplies only a missing machine-derived approval line
 and/or marker. Incorporate those into your packet, with the marker last. Stop checks that the prepared
 content actually reached your reply; a tool result alone is not presentation.
@@ -42,7 +58,7 @@ issue time; if you know that session is gone, its token file can be removed.
 | --- | --- | --- |
 | `boundary` | a lifecycle stage is ready for the human's verdict | `-Owed '<artifact>'` when the stage owes something it has not produced |
 | `in-flight` | background work is still running | `-Pending '<the work>'` — **required** |
-| `conversational` | an answer or a workshop question awaits the human | `-MessagePath` carries the authored reply |
+| `conversational` | an answer or a workshop question awaits the human | the authored reply on stdin |
 
 **`-Owed` matters.** When a stage owes artifacts it has not produced there is nothing to approve, so the
 packet renders with no options and no verdict marker and names what is owed instead. Offering an approval

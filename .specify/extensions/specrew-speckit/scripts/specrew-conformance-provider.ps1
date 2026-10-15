@@ -1940,7 +1940,7 @@ try {
                     foreach ($missingLine in @($declaredLinesMissing | Select-Object -First 12)) { [void]$sb.AppendLine(('  {0}' -f $missingLine)) }
                 }
                 elseif ($presentationMissing -eq 'boundary packet') {
-                    [void]$sb.AppendLine('Specrew: include the boundary packet you declared in your reply, with the pending approval line and marker; for a new packet, run declare-turn-end.ps1 -Kind boundary -MessagePath <draft>.')
+                    [void]$sb.AppendLine('Specrew: include the boundary packet you declared in your reply, with the pending approval line and marker; for a new packet, pipe it on stdin into declare-turn-end.ps1 -Kind boundary.')
                     foreach ($missingLine in @($declaredLinesMissing | Select-Object -First 12)) { [void]$sb.AppendLine(('  missing: {0}' -f $missingLine)) }
                 }
                 else {
@@ -1981,7 +1981,7 @@ try {
                     # next typed reply has a marker to bind to.
                     [void]$sb.AppendLine('Specrew: the human''s reply carried this decision''s approval phrase, but the decision is still pending: that reply was not recorded. Tell the human in one sentence that their approval did not register and nothing advanced, then present the packet again so they can answer it.')
                 }
-                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last tool call with -MessagePath <your authored packet file>; include that packet in your reply and add only the missing approval line and marker it supplies:')
+                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last tool call with your authored packet piped in on stdin; include that packet in your reply and add only the missing approval line and marker it supplies:')
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine('Author the packet with specific review targets, a recommendation and the next step; take the approval line and marker only from the pending crossing.')
                 $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
@@ -2213,7 +2213,7 @@ try {
                 }
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
-                [void]$sb.AppendLine('The return is for you, never your reply. Author the human-facing answer, agenda, question or packet; pass its draft with -MessagePath.')
+                [void]$sb.AppendLine('The return is for you, never your reply. Author the human-facing answer, agenda, question or packet; pipe its draft in on stdin.')
                 $w52MaterialLine = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { try { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } catch { '' } } else { '' }
                 if (-not [string]::IsNullOrWhiteSpace($w52MaterialLine)) { [void]$sb.AppendLine(('Pass this line through in -Summary: {0}' -f $w52MaterialLine)) }
             }
@@ -2314,7 +2314,7 @@ try {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
             }
             else {
-                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> with -MessagePath <your authored packet file>; include the packet and supplied pending-crossing approval line and SPECREW-VERDICT-BOUNDARY marker in your reply.") | Out-Null
+                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> with your authored packet piped in on stdin; include the packet and supplied pending-crossing approval line and SPECREW-VERDICT-BOUNDARY marker in your reply.") | Out-Null
             }
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }

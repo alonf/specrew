@@ -264,7 +264,7 @@
     },
     {
       "path": "scripts/declare-turn-end.ps1",
-      "sha256": "230d8414946c15fd0647f1d56f92e380f6c1164b6ed30cb8d32b132cc57b819a"
+      "sha256": "df20ff60b1d457a529a161091a9e619a929335d6836925f0853f2fd2cb6961ff"
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
@@ -420,7 +420,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "ad6c78390eef2b0a07be5509c6f5986fb361221e539ff528064534248638ea07"
+      "sha256": "59e1002f3acbebaab0eb63ba4ca73b97fdb5cc61748b566f6c4aa4d5af85f61c"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "9358b90f111fac8a53f700d8047401fe192f441c0a6f2d197705cf403e9a8ba4"
+      "sha256": "fc9a923285f2ca716a79f3d37b524db81e133a2a8d4b6f6b233f9a82737cffd8"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "894ef38f60c05423ae327d7a5a011c54c55f12cb77c8510a3b6d2250b2a68742"
+      "sha256": "4297913b845bd460b46e104d94e5cd2ec0a5a3020259ac2e5fe160e3553fdb87"
     },
     {
       "path": "scripts/validate-governance.ps1",
@@ -552,7 +552,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "4cebb6d0750f0622873f57fe7bc642ae7019963857998757fe939c067dbbdd64"
+      "sha256": "6b6ee325521676ac4af3b208ad7de94d91197c4553f49ae125a21caabb11ecbe"
     },
     {
       "path": "squad-templates/skills/drift-check.md",
@@ -560,7 +560,7 @@
     },
     {
       "path": "squad-templates/skills/gate-stop.md",
-      "sha256": "defc9bb93d84b8eb85287f306e3f7fa30d54f694f3ef0dca5c5d549bfc28bfb0"
+      "sha256": "ae4110d85c40d8760b2165722555db716c3d7920f9cebf16e7ca2a7e7d629e5c"
     },
     {
       "path": "squad-templates/skills/iteration-resume.md",
@@ -608,7 +608,7 @@
     },
     {
       "path": "squad-templates/skills/turn-end.md",
-      "sha256": "832f52e70cab2952c2a1bd7ff735670a81c8886910e6cebca7ff6f3e050ff596"
+      "sha256": "25bf819797df43c90ea556a60a7bb36b56bbf919c5d78978f25f03bd025d3662"
     },
     {
       "path": "squad-templates/skills/user-profile.md",

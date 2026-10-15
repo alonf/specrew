@@ -75,6 +75,9 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 # and whether this fire's own append degraded, so the output it delivers can say so (FR-007).
 $script:DispatcherStartedUtc = [DateTimeOffset]::UtcNow
 $script:DispatcherRecordingDegradedThisFire = $false
+# 202 DRIFT-023 (maintainer ruling, 2026-10-15): every wait for the Unix journal lock in this fire draws on one 1000 ms
+# budget, so the lock can add about 1 s to a hook fire at most, not 1 s per append.
+$script:DispatcherLockWaitSpentMs = 0.0
 $script:Banner = '[specrew-refocus]'
 $script:HostHookOutputCapChars = 10000
 
@@ -127,18 +130,32 @@ function Enter-DispatcherAppendLock {
     # FR-001 failed: case (e) degraded once on Linux CI (38573833479) and once on macOS CI (38583777333), each a writer
     # that never got the lock - the flock is unfair, and a waiter polling every 2 ms loses the short gaps between
     # another writer's back-to-back appends. Reproduced in WSL Ubuntu with four writers (2 of 3 runs). Waiting for a
-    # turn is not an append failing, so it gets its own bound, 1000 ms, polled every millisecond. The retry window
-    # still governs appends that actually fail.
+    # turn is not an append failing, so it gets its own bound, polled every millisecond. The retry window still
+    # governs appends that actually fail.
+    #
+    # THE BOUND IS ONE BUDGET PER HOOK FIRE (maintainer ruling 2026-10-15, an accepted deviation from the agreed 250 ms
+    # tuning): every wait in this fire - every attempt of every append - draws on the same 1000 ms. One fire makes up
+    # to five appends, so a per-wait bound let the lock add about 5 s; this one adds about 1 s at most, and the busy
+    # poll runs for 1 s at most. Once the budget is spent, the lock is tried once without waiting, and a held lock
+    # throws [TimeoutException], which the caller takes straight to the outage buffer instead of retrying.
     param([string]$Path)
     $lockPath = $Path + '.lock'
+    $spent = Get-Variable -Name DispatcherLockWaitSpentMs -Scope Script -ValueOnly -ErrorAction Ignore
+    if ($null -eq $spent) { $spent = 0.0 }
+    $remaining = 1000.0 - [double]$spent
     $wait = [Diagnostics.Stopwatch]::StartNew()
-    while ($true) {
-        try { return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
-        catch [IO.IOException] {
-            if ($wait.ElapsedMilliseconds -ge 1000) { throw }
-            [Threading.Thread]::Sleep(1)
+    try {
+        while ($true) {
+            try { return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+            catch [IO.IOException] {
+                if ($wait.Elapsed.TotalMilliseconds -ge $remaining) {
+                    throw [TimeoutException]::new(("the journal lock stayed held past this hook fire's 1000 ms wait budget ({0})" -f $_.Exception.Message))
+                }
+                [Threading.Thread]::Sleep(1)
+            }
         }
     }
+    finally { $script:DispatcherLockWaitSpentMs = [double]$spent + $wait.Elapsed.TotalMilliseconds }
 }
 
 function Add-DispatcherJournalText {
@@ -156,6 +173,12 @@ function Add-DispatcherJournalText {
             try { $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) }
             finally { $stream.Dispose() }
             return $null
+        }
+        catch [TimeoutException] {
+            # This fire's lock-wait budget is spent (DRIFT-023): no retry, the caller buffers the record.
+            $lastError = $_.Exception.Message
+            if ($null -ne $lock) { $lock.Dispose(); $lock = $null }
+            break
         }
         catch { $lastError = $_.Exception.Message }
         finally { if ($null -ne $lock) { $lock.Dispose() } }

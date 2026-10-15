@@ -27,13 +27,18 @@ boundary stops and keep the picker. Only boundary **verdict** stops route throug
 ## Author the packet, verify it, then send it
 
 Author the full Rule 46 six-section packet with specific review targets, a recommendation, discussion
-points and the next agent-owned step. Save the UTF-8 draft, then make this the turn's **last tool call**:
+points and the next agent-owned step. Pipe the packet into the script on **stdin** as the turn's **last tool
+call**. The script saves it in this session's own ignored folder, so you choose no file:
 
 ```powershell
-pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
-    -Kind boundary -Summary '<what this turn did>' -MessagePath <draft-file> `
+@'
+<the complete packet you will send>
+'@ | pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
+    -Kind boundary -Summary '<what this turn did>' `
     -Token <the token from the latest [specrew-turn] line>
 ```
+
+From a POSIX shell, use a heredoc with a quoted delimiter (`<<'DRAFT'`) instead of the pipe.
 
 The return is for you, never your reply. The script verifies the packet and supplies only a missing
 approval line and/or marker from the pending crossing. Send your authored packet with those lines added,
