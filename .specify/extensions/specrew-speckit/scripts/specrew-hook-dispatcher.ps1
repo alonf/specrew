@@ -75,6 +75,9 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 # and whether this fire's own append degraded, so the output it delivers can say so (FR-007).
 $script:DispatcherStartedUtc = [DateTimeOffset]::UtcNow
 $script:DispatcherRecordingDegradedThisFire = $false
+# Co-review round 4 (202): whether this fire withheld its output because it could not be recorded (FR-005), so a stamp
+# that says something was supplied during this fire can be taken back (Clear-DispatcherUndeliveredOrientationStamp).
+$script:DispatcherOutputWithheldThisFire = $false
 # 202 DRIFT-023 (maintainer ruling, 2026-10-15): every wait for the Unix journal lock in this fire draws on one 1000 ms
 # budget, so the lock can add about 1 s to a hook fire at most, not 1 s per append.
 $script:DispatcherLockWaitSpentMs = 0.0
@@ -1267,6 +1270,7 @@ function Write-InjectionOutput {
     if (-not $recorded) {
         # FR-005: output whose hash could be neither journaled nor buffered could later be replayed as a "reply"
         # with nothing to match it against. Withhold it for this turn only; a decision-only host still gets no-op JSON.
+        $script:DispatcherOutputWithheldThisFire = $true
         if ($decisionOnly) {
             Write-Output (@{} | ConvertTo-Json -Depth 3 -Compress)
             return
@@ -1302,25 +1306,66 @@ function Write-StopBlockOutput {
         [AllowNull()][string]$ProjectRoot,
         [string]$EventName = 'Stop'
     )
-    $renderedOutput = switch ($Shape) {
-        # claude / codex / copilot: a hard deny that prevents turn-end and force-continues using reason.
-        'decision-block' { @{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress }
-        # antigravity: decision=continue re-enters the loop; any other value allows the stop (soft block).
-        'decision-continue' { @{ decision = 'continue'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress }
-        # cursor: no same-turn hard block; followup_message auto-submits a NEW user turn (best-effort degrade).
-        'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress }
-    }
+    $renderedOutput = ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $script:DispatcherRecordingDegradedThisFire = $false
         $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
         if ($recorded) { $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope' }
+        # Co-review round 4 (202, FR-007): the stop block gets the same same-turn disclosure as injected output. The
+        # providers composed this reason BEFORE this append, so an episode that begins here is in no provider's text.
+        if ($recorded -and $script:DispatcherRecordingDegradedThisFire -and -not ([string]$Reason).Contains('recorded in a fallback record')) {
+            $disclosure = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot
+            if (-not [string]::IsNullOrWhiteSpace($disclosure)) {
+                $Reason = ([string]$Reason).TrimEnd() + "`n`n" + $disclosure
+                $renderedOutput = ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason
+                $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
+                if ($recorded) { $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope' }
+            }
+        }
         if (-not $recorded) {
-            # FR-005: an unrecordable reason is withheld this turn (the stop is allowed); valid no-op JSON keeps
-            # every JSON-only Stop host's contract.
-            Write-Output (@{} | ConvertTo-Json -Depth 3 -Compress)
+            # FR-005: an unrecordable reason is withheld this turn. Co-review round 4 (FR-007): withheld is still said -
+            # the block carries the one 'Specrew:' sentence instead, which is never accepted as a typed reply, so it is
+            # safe to show unrecorded. It is a block like any other, so the host's stop_hook_active (or the provider's
+            # own cap) bounds it. Valid no-op JSON remains the fallback when no sentence can be composed.
+            $script:DispatcherOutputWithheldThisFire = $true
+            $withheld = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot -Withheld
+            if (-not [string]::IsNullOrWhiteSpace($withheld)) { Write-Output (ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $withheld) }
+            else { Write-Output (@{} | ConvertTo-Json -Depth 3 -Compress) }
             return
         }
     }
     Write-Output $renderedOutput
+}
+
+function Clear-DispatcherUndeliveredOrientationStamp {
+    # Co-review round 4 (202, FR-005 / FR-014): the bootstrap provider stamps the session's orientation as supplied
+    # BEFORE it returns it. When this fire then withheld its output, that orientation never reached the human - and
+    # the stamp would make every later prompt skip it (the dispatcher skips the provider, and conformance drops its
+    # dials fallback). Only a stamp written DURING this fire is taken back; an earlier, delivered one stays.
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$SessionId)
+    if (-not $script:DispatcherOutputWithheldThisFire) { return }
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($SessionId)) { return }
+    try {
+        $stamp = Join-Path $ProjectRoot ('.specrew/runtime/hook-bootstrap-orientation-{0}.json' -f ($SessionId -replace '[^a-zA-Z0-9-]', '-'))
+        if (-not (Test-Path -LiteralPath $stamp -PathType Leaf)) { return }
+        if ((Get-Item -LiteralPath $stamp).LastWriteTimeUtc -ge $script:DispatcherStartedUtc.UtcDateTime) {
+            Remove-Item -LiteralPath $stamp -Force
+            Write-DispatcherWarn -Code 'ORIENTATION_UNDELIVERED' -Message 'this prompt''s output was withheld, so the orientation stamped during it is cleared and the next prompt supplies it again'
+        }
+    }
+    catch { Write-DispatcherWarn -Code 'ORIENTATION_UNDELIVERED' -Message ("could not clear the undelivered orientation stamp: {0}" -f $_.Exception.Message) }
+}
+
+function ConvertTo-DispatcherStopBlockOutput {
+    param([string]$Shape, [string]$Reason)
+    switch ($Shape) {
+        # claude / codex / copilot: a hard deny that prevents turn-end and force-continues using reason.
+        'decision-block' { return (@{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress) }
+        # antigravity: decision=continue re-enters the loop; any other value allows the stop (soft block).
+        'decision-continue' { return (@{ decision = 'continue'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress) }
+        # cursor: no same-turn hard block; followup_message auto-submits a NEW user turn (best-effort degrade).
+        'followup-message' { return (@{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress) }
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -1760,6 +1805,7 @@ try {
 
     if ($fragments.Count -gt 0) {
         Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
+        if ($Event -eq 'UserPromptSubmit') { Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId }
     }
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
         Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding -ProjectRoot $projectRoot

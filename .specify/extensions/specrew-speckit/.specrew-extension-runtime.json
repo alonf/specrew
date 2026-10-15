@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "fc9a923285f2ca716a79f3d37b524db81e133a2a8d4b6f6b233f9a82737cffd8"
+      "sha256": "6b8cedc447bf6baa6762b4aa4aaa1e34a7087a79b13d6c2560354606f32422cd"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "d77581c6e5ce3ff5b45af1d4221437380fcc0e15612ba86aeedd62033de351d9"
+      "sha256": "0027574a8ec78b1d923fa42be067a26d8cbb17666331b1132b009981ab4fd62e"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
