@@ -4948,6 +4948,8 @@ and leaves it to the round-approval capture. A boundary-verdict disclosure never
 **Disposition:** recorded. Observed in the turn transcript.
 **Recurred:** 2026-10-14, the round-3 approval drew the same "reads as a verdict for 'review'" notice. The round
 approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
+**Recurred again:** 2026-10-15, the round-4 approval drew the same notice; the round approval was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-4`).
+**The dangerous direction, settled in 202 (maintainer instruction, 2026-10-15):** with no decision pending, the misreading is harmless. At sign-off the review decision IS pending, and a capture there would be an authorization the human never gave. `tests/unit/round-phrase-never-boundary-verdict.tests.ps1` (f199-class-guards-b) drives the real prompt-time capture with `before-implement -> review-signoff` pending. In ledger terms the stop's phrase is `approved for review-signoff`. "approved for review round" in six shapes (bare, capitalized with a period, with instructions after a dash or a comma, after a pasted quote, followed by more text) is never captured: the classifier reads it as naming 'review', a different boundary, so it never reaches the evidence check, and the ledger and the pending decision are unchanged. A control shows the real phrase IS captured in the same setup. It passed on its first run: no fabricated authorization. The misleading notice itself remains the beta5 candidate above.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 
@@ -5068,6 +5070,7 @@ see a round in flight.
 in one line ("round 3 is reviewing these files now") instead of asking for an approval the human just gave. It
 is the governing principle's case: a stop with no decision for the human to make.
 **Disposition:** recorded. Observed in the turn transcript.
+**Recurred:** 2026-10-15, as round 4 started on the maintainer's typed approval: the Stop review check again asked the crew to request a fresh round approval, naming round 3's run.
 
 ## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
 

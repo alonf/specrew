@@ -362,6 +362,7 @@
 - **Outside the owned files**: these are product init scripts, not T001 to T015 files. Two source-shape pins followed the new call shape: `bootstrap-commit`'s classification assertion and `squad-init-closed-stdin`'s Squad call-site assertions. Each still pins the same guarantee.
 - **Tests**: `tests/unit/init-stays-in-project.tests.ps1` has 23 assertions: an unborn enclosing repository, an enclosing repository with commits, the project's own repository, the classification, and Squad confined for the init call and the probe. It was RED on the unborn case, and the unfenced Squad call wrote at the enclosing root. It passes on Windows and Linux, and `bootstrap-commit`, `post-bootstrap-output` and `squad-init-closed-stdin` pass. Run side by side, `start-command` and the first-run suite pass with HEAD unchanged (they failed 2 of 2 together before).
 - **Class closure**: the suite joins `f202-slice-suites-a`. The closure is the before-staging scope check: whatever leaves the folder enclosed, whether a classification miss, a vanished `.git` or a direct caller, the commit is refused there. Squad's writes are confined at their only two call sites.
+- **Update, 2026-10-15 (the maintainer's check)**: `GIT_CEILING_DIRECTORIES` is set only on the Squad child processes, through `ProcessStartInfo.Environment` in `Invoke-NativeCommandWithClosedInput`, and never in the session's own environment. `init-stays-in-project` now asserts that the caller's value, and the process environment, are unchanged after both the init call and the capability probe.
 
 ### DRIFT-028 — T014 reached the launch contract, the Stop instructions and the 3-OS workflow (resolved)
 
@@ -389,6 +390,27 @@
   - **The f202 lanes, re-timed after today's suites.** Lane a ran 193.9 s (3.09x). Lane b ran 240.9 s (2.49x), just above the floor, so its label says the next suite added there splits it. The governance lane ran 22.3 s against 180 s (8.07x).
 - **The parked file stays.** It keeps its lanes and gains a "restored" note. The lane guard refuses an empty parked file, and moving the file needs the maintainer's approval.
 - **Class closure**: every lane's label records its cold measurement against its own timeout, so a lane that falls under the floor is visible at its next re-timing.
+- **Update, 2026-10-15 (round-4 launch)**: the install copied the parked lanes without their `provenance` object, which the plan schema requires. The round-4 launch refused the plan before starting ("command at index 3 is invalid: provenance is required"), and it used no round: the approval stayed available. Each split lane now carries its parked lane's provenance (`af68bad4`). Re-timed cold after the DRIFT-030 changes: `f202-slice-suites-b` ran 180.9 s (3.32x), and `f199-class-guards-b`, with the B4F-116 suite added, ran 71.3 s (3.79x). Lane b's two cold runs differ by 60 s on this machine, so its label keeps the slower figure (2.49x).
+
+### DRIFT-030 — T007's first live run with T014 repainted a whole reply over two reworded headings (resolved)
+
+- **Observed**: 2026-10-15, the first live turn declared through T014's stdin route. The Stop blocked the reply:
+
+  > Specrew: your reply is missing these lines from the message you declared. Add them as written; the wording around them is yours:
+  > `## The lock: kept at 1000 ms, now as one budget per hook fire`
+  > `## T014: turn drafts come in over stdin, stored per session (done)`
+
+  The reply had carried `## The lock: kept at 1000 ms, now one budget per hook fire` and `## T014: turn drafts come in over stdin and are stored per session (done)`. Each heading differed from the draft by function words only, and the crew rendered the whole message again. The maintainer recorded this as the B4F-104 repaint class on the fix's first live run: T007's promise is that the Stop checks meaning, not wording.
+- **Cause**: T007 made the Stop compare only meaning lines, but each one by exact substring. A heading reworded by one word read as absent. There is a second detail: the host accessors hand the Stop the reply flattened to single spaces, so a reply heading cannot be found by line.
+- **Requirement**: FR-012 (the Stop checks substance, never formatting); FR-015; SC-003 (0 extra stops).
+- **Resolution** (`dc5a4fb8`): a declared heading counts as present when a reply heading carries its meaning. The match finds reply headings by their `#` markers, and needs three things:
+  1. the same numbers and identifiers (so "Round 3" never answers for "Round 4", nor `T013` for `T014`);
+  2. the same negations (so "does not hold" never answers for "holds");
+  3. content words with a Jaccard similarity of 0.75 or more, after function words are dropped.
+
+  Each reply heading answers for one declared heading only. Links, the question line, the approval line, the options and the marker stay exact, because they are what the human acts on.
+- **Tests**: `presented-check` case 8 carries the live turn's exact lines. It was RED before the fix: the Stop blocked them. Now they pass at the function level and through the real Stop. The cases that must still block do block: a changed number, a changed id, an added negation, a different subject, a dropped heading, and one reply heading claimed for two declared headings. One more finding along the way: the suite decoded its child processes' output with the caller's console encoding, so case 6's em dash failed whenever a Git Bash caller ran it (it passed from PowerShell and in CI). It now decodes as UTF-8.
+- **Class closure**: the meaning comparison lives in the one store function both the declaration and the Stop use, and case 8 pins the live failure. A future rewording of a heading that keeps its numbers, identifiers and negations no longer costs a repaint.
 <!--
   Every new ### DRIFT-... event includes:
 

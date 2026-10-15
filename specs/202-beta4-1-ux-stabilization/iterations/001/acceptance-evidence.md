@@ -37,6 +37,18 @@ live walk (`live-walk.md`), and until then they are `null`, never `0`.
 
 "null" means not captured. After-values are filled from the live walk only.
 
+### Friction observed during 202's own run
+
+| Date | Event | Real decisions | Corrective exchanges | Extra stops | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| 2026-10-15 | The first live turn through T014's stdin route was blocked by the Stop: two headings differed from the draft by function words ("now as one budget" / "now one budget"; "stdin, stored" / "stdin and are stored"), and the whole reply was rendered again. The B4F-104 repaint class (FR-012). | 0 | 0 | 1 | Fixed in 202 (DRIFT-030, `dc5a4fb8`): a heading counts as present when its meaning matches. `presented-check` case 8 holds the exact lines. |
+| 2026-10-15 | The prompt hook answered the typed round approval with "reads as a verdict for 'review' ... nothing was recorded" (B4F-116, third time); the round approval itself was captured. | 0 | 0 | 0 | Beta5 (B4F-116). The dangerous direction is settled: see below. |
+| 2026-10-15 | The Stop review check asked for a fresh round approval while the approved round 4 was starting (B4F-121, second time). | 0 | 0 | 1 | Beta5 (B4F-121). |
+
+## A round approval is never a boundary verdict (B4F-116)
+
+With the review decision pending (`before-implement -> review-signoff`, the decision at sign-off), the typed round approval `approved for review round` is never captured as a boundary verdict, in six shapes, through the real prompt-time capture. The ledger and the pending decision are unchanged, and a control shows the real phrase is captured in the same setup. Test: `tests/unit/round-phrase-never-boundary-verdict.tests.ps1`, in `f199-class-guards-b`.
+
 ## Validator against the known baseline (SC-008)
 
 `validate-governance.ps1 -ProjectPath .` (full repository, unscoped), on 2026-10-15 at `f91fc20d`:
@@ -61,9 +73,9 @@ Re-timed cold on 2026-10-15, each lane run exactly as the plan states it, with o
 | --- | --- | --- | --- |
 | `iteration-001-governance-202` | 22.3 s | 180 s | 8.07x |
 | `f202-slice-suites-a` | 193.9 s | 600 s | 3.09x |
-| `f202-slice-suites-b` | 240.9 s | 600 s | 2.49x |
+| `f202-slice-suites-b` | 240.9 s; 180.9 s after case 8 | 600 s | 2.49x on the slower run |
 | `f199-class-guards-a` (was 164.6 s, 1.64x, as one lane) | 78.6 s | 270 s | 3.44x |
-| `f199-class-guards-b` | 62.1 s | 270 s | 4.35x |
+| `f199-class-guards-b` | 62.1 s; 71.3 s with the B4F-116 suite | 270 s | 3.79x |
 | `f199-slice-suites-a` (was 298.8 s, 1.61x, as one lane) | 181.1 s | 480 s | 2.65x |
 | `f199-slice-suites-b` | 112.9 s | 480 s | 4.25x |
 
@@ -77,6 +89,6 @@ All seven lanes passed.
 
 ## Records
 
-- Drift: `drift-log.md`, DRIFT-001 to DRIFT-029.
+- Drift: `drift-log.md`, DRIFT-001 to DRIFT-030.
 - Findings raised during 202: `docs/beta4-findings.md`, B4F-109 and B4F-111 to B4F-124 (B4F-110 records the host-tier decision).
 - Co-review: rounds 1 to 3 found 17 defects. The engine demoted all 17, and all 17 were real (B4F-055). Round 4 at sign-off covers T012 to T014, the round-3 fixes, B4F-120/122 and the lock-wait budget.
