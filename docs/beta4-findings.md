@@ -5050,6 +5050,7 @@ repository and asserts that nothing outside the project folder changed.
 **Disposition:** recorded. Observed in a scratch reproduction.
 
 **Folded into 202 with B4F-120, 2026-10-15 (the maintainer: fold it in if the same top-level check closes it).**
+
 - **The writer is Squad's own `squad init`.** It writes `.github/agents/squad.agent.md` at the Git top level it discovers. Run directly in a subfolder of a scratch repository, it wrote the file at the enclosing root. With `GIT_CEILING_DIRECTORIES` set to the subfolder's parent, it wrote the file inside the subfolder.
 - **The same check closes it, plus one line on each Squad call.** The question is again whether the project folder is its own top level. Init cannot change Squad, so it fences Squad's Git discovery at the project's parent. Both call sites are fenced: the init call through `Invoke-SquadInitInProject`, and the capability probe, which runs in a throwaway folder under the install root. A project that is its own repository still finds its own `.git`.
 - **Evidence:** `init-stays-in-project` case 5 uses a stand-in `squad` that writes where the real one does. The unfenced call shape wrote at the enclosing root, and the fenced one writes inside the project. The scratch reproduction with the real `squad` no longer creates `.github` at the enclosing root.
