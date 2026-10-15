@@ -340,6 +340,7 @@
 - **Requirement**: FR-019; FR-002 and FR-004 of feature 174 (the SessionStart payload fits the 10,000-char host cap).
 - **Resolution**: the cap suite's assertion names the new header, and its worst case carries realistic full-length resume lines. The worst case now measures 9,750 of 10,000 chars, against 9,288 after T008: 248 chars of headroom are left. The two new header lines were shortened to get there.
 - **Class closure**: `DirectiveDeliveryCap` 3b now includes the resume lines, so any later growth there shows up against the cap. The lasting reduction is Proposal 191 (precompute the in-flight digest to a file and point at it), which is outside 202. `resume-from-disk` joins `f202-slice-suites`.
+- **Update, 2026-10-15 (found by the T014 follow-up run)**: a third pin of the old header was missed: `deployed-bootstrap-floor` Part 3 still matched "Validated handover captured by the previous session", and it was red from T012 on. It is in no lane, so only a full sweep runs it, and T012's sweep did not. It now matches the new header and passes (`dede9b3d`). No test pins the old header any more.
 
 ### DRIFT-026 — the f202 lane outgrew its headroom and is split in two (resolved)
 
@@ -366,7 +367,7 @@
 
 - **Observed**: 2026-10-15, T014. The three skills were not the only places that told an agent to write a draft file. Rule 46A of the launch contract said to "save that draft to a UTF-8 file and pass `-MessagePath`". Four Stop and conformance instructions in `specrew-conformance-provider.ps1` named `-MessagePath` too. With only the skills changed, an agent following the contract or a Stop instruction would still have chosen a draft path of its own, which is B4F-101's leak path.
 - **Requirement**: FR-021 (drafts are saved where the saving script resolves; the three skills name it). The acceptance names Windows, macOS and Linux.
-- **Resolution** (`b9cf8b71` and the next commit):
+- **Resolution** (`b9cf8b71`, `a1096ef3`):
   1. **The draft arrives on stdin.** `declare-turn-end.ps1` reads raw bytes, decodes them as strict UTF-8, and saves them byte-exact in the session's own ignored folder.
   2. **Every instruction names stdin.** Rule 46A and the four provider lines now say the same as the three skills.
   3. **`-MessagePath` stays accepted.** A caller that has not moved over still works, and its draft is kept in the session folder too. One behavior change: a file that is not valid UTF-8 is now refused with a plain reason. Before, it was read lossily, and the human's text was silently replaced.
@@ -374,6 +375,20 @@
 - **Outside the owned files**: `scripts/internal/launch-contract.ps1`, `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `.github/workflows/cross-platform-validation.yml` and `.specrew/verification-plan.json`. All four are text or wiring changes, and no logic outside the owned files changed.
 - **Tests**: `turn-draft-intake` has 26 checks, and it was RED on the old code (stdin ignored, no draft, empty message). The suites that read the contract and the provider text pass.
 - **Class closure**: every place that tells an agent how to hand over its draft names stdin, and the saving script decides the path on both routes.
+
+### DRIFT-029 — the restored f199 lanes were under the headroom floor, and are split (resolved)
+
+- **Observed**: 2026-10-15, T015. The maintainer's instruction was to re-time the two parked f199 lanes cold, with only the plan's `env_refs`, before the signoff round, keeping the 2.4x headroom. They were last measured on 10-14, and T006 to T014 have added suites since. Both passed, and both were under the floor:
+  - `f199-class-guards`: 164.6 s against 270 s (1.64x).
+  - `f199-slice-suites`: 298.8 s against 480 s (1.61x).
+- **Requirement**: the plan's timeouts carry real headroom (DRIFT-013, DRIFT-026), so the sign-off round cannot fail on a timeout.
+- **Resolution**: split, not raised, as for f202 (`f91fc20d`). Each part was re-timed cold the same way:
+  - **Class guards.** The parallel set alone took 132.3 s (2.04x), so the set itself is split. `-a` runs verdict capture first, as the lane's label requires, then 15 suites and `crew-charter-ownership` (75.4 s alone, the heaviest): 78.6 s (3.44x). `-b` runs the other 14 suites and the Pester block: 62.1 s (4.35x).
+  - **Slice suites.** `-a` is the 25 parallel script suites, 181.1 s (2.65x). `-b` is the Pester block, 112.9 s (4.25x).
+  - **Same suites.** All 77 suites of the two old lanes are in exactly one new lane, checked by set comparison. The lane guard passes.
+  - **The f202 lanes, re-timed after today's suites.** Lane a ran 193.9 s (3.09x). Lane b ran 240.9 s (2.49x), just above the floor, so its label says the next suite added there splits it. The governance lane ran 22.3 s against 180 s (8.07x).
+- **The parked file stays.** It keeps its lanes and gains a "restored" note. The lane guard refuses an empty parked file, and moving the file needs the maintainer's approval.
+- **Class closure**: every lane's label records its cold measurement against its own timeout, so a lane that falls under the floor is visible at its next re-timing.
 <!--
   Every new ### DRIFT-... event includes:
 

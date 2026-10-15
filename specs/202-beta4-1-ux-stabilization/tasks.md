@@ -231,7 +231,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 8: US6, turn drafts never leak into commits (P3)
 
-- [ ] T014 [owner: Implementer] [sp: 1.0] [US6] **Per-session draft intake over stdin (DA-4).**
+- [x] T014 [owner: Implementer] [sp: 1.0] [US6] **Per-session draft intake over stdin (DA-4).** Done 2026-10-15 (`b9cf8b71`, `a1096ef3`). `turn-draft-intake.tests.ps1` (26 checks), on Windows and Linux locally and in the 3-OS workflow: Hebrew, emoji and CRLF round-trip byte-exact; two concurrent sessions keep separate drafts; a host with no session id gets a disclosed per-token folder; `-MessagePath` still works; an open, silent stdin does not hang; non-UTF-8 is refused; drafts are git-ignored; the three skills name the stdin form. RED on the old code: stdin ignored, no draft, empty message. Rule 46A and four Stop instructions also name stdin (DRIFT-028).
   - **Work:**
     - `declare-turn-end.ps1` reads the draft from stdin with explicit UTF-8 on every OS and stores it at `.specrew/runtime/turn-end/<ownerHash>/turn-message.md`; the agent passes only `-Token` and `-Kind`.
     - A host without a session id (per T001) uses a per-token path, which is disclosed.
@@ -244,7 +244,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 
 ## Phase 9: Acceptance evidence
 
-- [ ] T015 [owner: Implementer] [sp: 1.0] **Tier 1 acceptance evidence for the iteration-001 closeout.**
+- [x] T015 [owner: Implementer] [sp: 1.0] **Tier 1 acceptance evidence for the iteration-001 closeout.** Done 2026-10-15. `iterations/001/acceptance-evidence.md` maps every SC to its evidence, states host tiers (Claude, Codex and Copilot validated; Cursor and Antigravity experimental, unvalidated), and holds the friction table: the spec's before-values, with after-values null until the live walk. `iterations/001/live-walk.md` is the maintainer's walk script for the closeout. The validator against the baseline: SC-008 holds (B4F-124 records why the review-evidence count moves with campaign state). The two f199 lanes are back in the plan, re-timed cold and split to keep 2.4x (DRIFT-029).
   - **Work:**
     - The before/after friction table per scenario (real decisions, corrective exchanges, extra stops), with null where not captured, never zero.
     - A validator run compared against the known baseline (review-evidence, defer-provenance, 198/011 needs-rework).

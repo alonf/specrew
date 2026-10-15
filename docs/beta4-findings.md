@@ -5082,6 +5082,21 @@ rarely. Estimated at 0.5 to 1 SP plus a 3-OS run.
 **Disposition:** the maintainer prefers this design, but "not as a new store state built before the last review round"
 (ruling 2026-10-15). Beta5.
 
+## B4F-124 - THE VALIDATOR JUDGES EVERY HISTORICAL REVIEW RECORD AGAINST WHICHEVER REVIEW CAMPAIGN IS ACTIVE (beta5 candidate)
+
+**Observed:** 2026-10-15, feature 202 T015 (SC-008). The full validator in the 202 worktree failed 15 historical
+iterations, among them 001/002 to 001/012, 005/001-002, 007/002, 048/001 and 197/001 and 006. Each failed with "review.md
+says the review was accepted, but the active review campaign has no completed, valid campaign result". The same code in
+a clean worktree of the same commit, with no review-campaign state (it is git-ignored), fails only the two other
+baseline entries (001/011 defer-provenance, 198/011 needs-rework). So does 202's baseline ref.
+**Cause (from the outputs):** the check reads the ACTIVE campaign, which is now 202's, open and paused after round 3,
+and applies it to every iteration's review record, including features closed long before that campaign existed. The
+count of this baseline category therefore depends on whether some feature has an open campaign, not on the records.
+It is the B4F-109 class (one feature's review state leaking into another's), in the validator.
+**Beta5 candidate:** each iteration's review record is judged against its own feature's campaign, or the historical
+iterations are exempt, as closed ones are, and the baseline category stops moving with unrelated state.
+**Disposition:** recorded under the beta5 rule. In 202 it is within the known baseline category (SC-008 holds).
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
