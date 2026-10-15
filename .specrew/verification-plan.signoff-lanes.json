@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "note": "Signoff-cadence lanes, parked on the maintainer ruling 2026-10-14 (202 DRIFT-013). Mid-iteration co-review checkpoint rounds verify only the active feature's own lanes; these carried-forward lanes return to .specrew/verification-plan.json for the signoff round, and the lane-membership guard reads this file so their suites stay named meanwhile. The engine does not read this file.",
+  "note": "Signoff-cadence lanes, parked on the maintainer ruling 2026-10-14 (202 DRIFT-013). Mid-iteration co-review checkpoint rounds verify only the active feature's own lanes; these carried-forward lanes return to .specrew/verification-plan.json for the signoff round, and the lane-membership guard reads this file so their suites stay named meanwhile. The engine does not read this file. RESTORED 2026-10-15 (202 T015, DRIFT-029): both lanes are back in .specrew/verification-plan.json for the signoff round, re-timed cold and split as f199-class-guards-a/-b and f199-slice-suites-a/-b. This copy is kept as the record until the maintainer approves moving it.",
   "commands": [
     {
       "command_id": "f199-class-guards",
