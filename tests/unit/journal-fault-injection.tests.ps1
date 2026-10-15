@@ -63,6 +63,49 @@ function Wait-Processes {
     foreach ($p in $Processes) { if (-not $p.WaitForExit($TimeoutMs)) { $p.Kill($true); throw 'a writer process timed out' } }
 }
 
+# --- Part 0: the lock-wait budget is one 1000 ms per hook fire (DRIFT-023 ruling, 2026-10-15) -----------------------
+# The shipped lock function, in this process, against a lock this process holds. Every wait of one fire draws on one
+# budget: the first wait runs it out, later waits in the same fire try once and stop, and a lock freed after the budget
+# is spent is still taken. On every OS: an exclusive hold refuses a second open in the same process on Windows (sharing
+# mode) and on Linux and macOS (.NET's flock is per open file).
+$lockNames = 'Enter-DispatcherAppendLock', 'Open-DispatcherAppendStream', 'Add-DispatcherJournalText'
+$lockAst = [Management.Automation.Language.Parser]::ParseFile($dispatcherSource, [ref]$null, [ref]$null)
+$lockFunctions = @($lockAst.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $lockNames -contains $n.Name }, $false))
+Assert-True ($lockFunctions.Count -eq $lockNames.Count) ("the shipped lock functions are lifted from the dispatcher ({0} of {1})" -f $lockFunctions.Count, $lockNames.Count)
+. ([scriptblock]::Create((@($lockFunctions | ForEach-Object { $_.Extent.Text }) -join "`n`n")))
+$budgetRoot = [IO.Path]::GetFullPath([IO.Path]::Combine([IO.Path]::GetTempPath(), 'jfi-b-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
+[IO.Directory]::CreateDirectory($budgetRoot) | Out-Null
+$budgetJournal = Join-Path $budgetRoot 'hook-output-authority.jsonl'
+$held = [IO.File]::Open($budgetJournal + '.lock', [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+try {
+    $script:DispatcherLockWaitSpentMs = 0.0
+    $waits = foreach ($n in 1..3) {
+        $sw = [Diagnostics.Stopwatch]::StartNew(); $kind = 'acquired'
+        try { (Enter-DispatcherAppendLock -Path $budgetJournal).Dispose() } catch [TimeoutException] { $kind = 'timeout' } catch { $kind = 'other: ' + $_.Exception.GetType().Name }
+        [pscustomobject]@{ Ms = $sw.Elapsed.TotalMilliseconds; Kind = $kind }
+    }
+    $total = ($waits | Measure-Object Ms -Sum).Sum
+    Assert-True (@($waits | Where-Object Kind -ne 'timeout').Count -eq 0) ("[$platform] a held lock ends every wait of the fire in a timeout ({0})" -f (($waits | ForEach-Object Kind) -join ', '))
+    Assert-True ($waits[0].Ms -ge 950 -and $waits[0].Ms -lt 1500) ("[$platform] the fire's first wait runs out the 1000 ms budget ({0:N0} ms)" -f $waits[0].Ms)
+    Assert-True ($waits[1].Ms -lt 100 -and $waits[2].Ms -lt 100) ("[$platform] later waits in the same fire do not wait again ({0:N0} ms, {1:N0} ms)" -f $waits[1].Ms, $waits[2].Ms)
+    Assert-True ($total -lt 1600) ("[$platform] three waits on a held lock add {0:N0} ms to the fire, not 3 s" -f $total)
+    if (-not $IsWindows) {
+        # Off Windows the append takes the lock; with the budget spent it fails at once with no retry, so the caller
+        # buffers the record.
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $appendError = Add-DispatcherJournalText -Path $budgetJournal -Text "x`n"
+        Assert-True ($null -ne $appendError -and $sw.Elapsed.TotalMilliseconds -lt 100) ("[$platform] an append after the budget is spent fails at once, with no retry ({0:N0} ms)" -f $sw.Elapsed.TotalMilliseconds)
+    }
+}
+finally { $held.Dispose() }
+try {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    (Enter-DispatcherAppendLock -Path $budgetJournal).Dispose()
+    Assert-True ($sw.Elapsed.TotalMilliseconds -lt 100) "[$platform] a free lock is still taken after the fire's budget is spent"
+}
+catch { Write-Fail ("[$platform] a free lock is still taken after the fire's budget is spent ({0})" -f $_.Exception.Message) }
+finally { Remove-Item -LiteralPath $budgetRoot -Recurse -Force -ErrorAction SilentlyContinue }
+
 # --- Part 1: the shipped writer, two processes, one barrier ---------------------------------------------------------
 $names = 'Write-DispatcherWarn', 'Get-DispatcherHookOutputHash', 'Get-DispatcherHookOutputPaths', 'Open-DispatcherAppendStream', 'Enter-DispatcherAppendLock',
 'Add-DispatcherJournalText', 'Read-DispatcherSharedLines', 'Get-DispatcherLastHealthRecord', 'Write-DispatcherHookOutputHealth',
@@ -83,8 +126,12 @@ $HostKind = 'fault-injection-e'
 $writer = $args[0]; $count = [int]$args[1]; $projectRoot = $args[2]; $go = $args[3]; $resultPath = $args[4]
 while (-not (Test-Path -LiteralPath $go)) { Start-Sleep -Milliseconds 1 }
 $ok = 0
-for ($i = 0; $i -lt $count; $i++) {
-    if (Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $projectRoot -Text ("case-e {0} {1}" -f $writer, $i) -EventName 'Stop' -OutputKind 'stop-block-reason') { $ok++ }
+# One iteration is one hook fire: the dispatcher records the payload and its envelope, and both draw on the fire's one
+# lock-wait budget (DRIFT-023), which a fresh dispatcher process starts at zero.
+for ($i = 0; $i -lt ($count / 2); $i++) {
+    $script:DispatcherLockWaitSpentMs = 0.0
+    if (Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $projectRoot -Text ("case-e {0} {1} payload" -f $writer, $i) -EventName 'Stop' -OutputKind 'payload') { $ok++ }
+    if (Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $projectRoot -Text ("case-e {0} {1} envelope" -f $writer, $i) -EventName 'Stop' -OutputKind 'envelope') { $ok++ }
 }
 [IO.File]::WriteAllText($resultPath, [string]$ok)
 '@
@@ -106,7 +153,7 @@ for ($i = 0; $i -lt $count; $i++) {
     $expected = $writerCount * $appendsPerWriter
     $report = Get-JournalReport $root
     $missing = 0
-    foreach ($w in 1..$writerCount) { foreach ($i in 0..($appendsPerWriter - 1)) { if (-not $report.Hashes.Contains((Get-TextHash ("case-e w{0} {1}" -f $w, $i)))) { $missing++ } } }
+    foreach ($w in 1..$writerCount) { foreach ($i in 0..($appendsPerWriter / 2 - 1)) { foreach ($kind in 'payload', 'envelope') { if (-not $report.Hashes.Contains((Get-TextHash ("case-e w{0} {1} {2}" -f $w, $i, $kind)))) { $missing++ } } } }
     foreach ($w in 1..$writerCount) {
         $result = Join-Path $root "result-w$w"
         $ok = if (Test-Path -LiteralPath $result) { [int][IO.File]::ReadAllText($result) } else { -1 }
