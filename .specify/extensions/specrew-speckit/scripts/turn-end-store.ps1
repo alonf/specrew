@@ -1183,17 +1183,107 @@ function Get-SpecrewTurnMeaningLines {
     return $lines.ToArray()
 }
 
+# A HEADING IS PRESENT WHEN ITS MEANING IS (202 DRIFT-030). The first live run of this check with stdin drafts blocked a
+# reply whose two headings differed from the draft by a function word ("now as one budget" / "now one budget"), and the
+# whole message was rendered again - the B4F-104 repaint class, which FR-012 removed. A heading's meaning is its numbers
+# and identifiers, its negations, and its content words: all three must hold, so "Round 3" never answers for "Round 4",
+# and "does not hold" never answers for "holds". Content words may differ by small wording (Jaccard 0.75 or more).
+# Links, questions, options and the marker stay exact: they are what the human acts on.
+$script:SpecrewHeadingFunctionWords = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'a', 'an', 'the', 'and', 'or', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'now', 'of', 'to', 'in',
+        'on', 'at', 'for', 'by', 'with', 'from', 'into', 'it', 'its', 'this', 'that', 'these', 'those', 'so', 'then',
+        'than', 'also', 'just', 'both', 'all', 'here', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
+$script:SpecrewHeadingNegations = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'not', 'no', 'never', 'without', 'nothing', 'none', 'cannot', 'neither', 'nor', 'unless', 'dont', 'doesnt', 'isnt',
+        'arent', 'wont', 'cant', 'didnt', 'wasnt', 'werent', 'hasnt', 'havent'), [System.StringComparer]::OrdinalIgnoreCase)
+
+function Get-SpecrewHeadingMeaning {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Heading)
+    $text = ($Heading -replace '^\s*#{1,6}\s+', '').ToLowerInvariant() -replace "['’]", ''
+    $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
+        $token = $m.Value
+        if ($token -match '\d') { [void]$anchors.Add($token) }
+        elseif ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token) }
+        elseif (-not $script:SpecrewHeadingFunctionWords.Contains($token)) { [void]$words.Add($token) }
+    }
+    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words }
+}
+
+function Test-SpecrewHeadingMeaningMatch {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Declared, [Parameter(Mandatory)][string] $Replied)
+    $d = Get-SpecrewHeadingMeaning -Heading $Declared
+    $r = Get-SpecrewHeadingMeaning -Heading $Replied
+    if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
+    if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
+    if ($d.Words.Count -eq 0 -and $r.Words.Count -eq 0) { return $true }
+    $union = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $union.UnionWith($r.Words)
+    $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $common.IntersectWith($r.Words)
+    return (($common.Count / [double]$union.Count) -ge 0.75)
+}
+
 function Get-SpecrewTurnMeaningLinesMissing {
     # The declared meaning lines the reply does not carry, in draft order. Empty when every one is present - the
-    # wording around them may differ freely. Whitespace is normalized on both sides, as the host accessors do.
+    # wording around them may differ freely. Whitespace is normalized on both sides, as the host accessors do. A heading
+    # absent verbatim is still present when a reply heading carries its meaning (above); each reply heading answers for
+    # one declared heading at most.
     [OutputType([string[]])]
     param([AllowNull()][string] $Reply, [AllowNull()][string[]] $MeaningLines)
 
     $replyText = ([string]$Reply -replace '\s+', ' ').Trim()
+    # The host accessors hand the Stop a FLATTENED reply (whitespace normalized to single spaces), so reply headings
+    # are found by their '#' markers, not by line: each marker starts a slot holding the words up to the next marker.
+    $slots = [System.Collections.Generic.List[object]]::new()
+    $markers = @([regex]::Matches($replyText, '(?:^|(?<=\s))(#{1,6})\s+(?=\S)'))
+    for ($i = 0; $i -lt $markers.Count; $i++) {
+        $start = $markers[$i].Index + $markers[$i].Length
+        $end = if ($i + 1 -lt $markers.Count) { $markers[$i + 1].Index } else { $replyText.Length }
+        $slots.Add([pscustomobject]@{ Hashes = $markers[$i].Groups[1].Value; Words = @($replyText.Substring($start, $end - $start).Trim() -split ' ' | Where-Object { $_ }) ; Used = $false })
+    }
     $missing = [System.Collections.Generic.List[string]]::new()
+    $pendingHeadings = [System.Collections.Generic.List[string]]::new()
     foreach ($line in @($MeaningLines)) {
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($line -match '^#{1,6}\s+\S') {
+            if ($replyText.Contains($line, [StringComparison]::Ordinal)) {
+                # Claim the slot this heading occupies verbatim, so no reworded match can take it.
+                $words = @(($line -replace '^#{1,6}\s+', '') -split ' ')
+                foreach ($slot in $slots) {
+                    if (-not $slot.Used -and $slot.Words.Count -ge $words.Count -and (($slot.Words[0..($words.Count - 1)]) -join ' ') -ceq ($words -join ' ')) { $slot.Used = $true; break }
+                }
+                continue
+            }
+            $pendingHeadings.Add($line)
+            continue
+        }
         if (-not $replyText.Contains($line, [StringComparison]::Ordinal)) { $missing.Add($line) }
     }
-    return $missing.ToArray()
+    # A reworded heading matches a slot when the slot's first k words carry its meaning, for k within a few words of the
+    # declared heading's length (the slot also holds the prose that follows the heading).
+    $reworded = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($line in $pendingHeadings) {
+        $n = @(($line -replace '^#{1,6}\s+', '') -split ' ' | Where-Object { $_ }).Count
+        $hit = $null
+        foreach ($slot in $slots) {
+            if ($slot.Used) { continue }
+            for ($k = [Math]::Max(1, $n - 3); $k -le [Math]::Min($slot.Words.Count, $n + 3); $k++) {
+                if (Test-SpecrewHeadingMeaningMatch -Declared $line -Replied (($slot.Words[0..($k - 1)]) -join ' ')) { $hit = $slot; break }
+            }
+            if ($null -ne $hit) { break }
+        }
+        if ($null -ne $hit) { $hit.Used = $true } else { [void]$reworded.Add($line) }
+    }
+    # Draft order: rebuild the list with the unmatched headings in their places.
+    $ordered = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in @($MeaningLines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($reworded.Contains($line) -or $missing.Contains($line)) { $ordered.Add($line) }
+    }
+    return $ordered.ToArray()
 }

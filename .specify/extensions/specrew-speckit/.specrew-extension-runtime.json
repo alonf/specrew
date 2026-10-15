@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "4297913b845bd460b46e104d94e5cd2ec0a5a3020259ac2e5fe160e3553fdb87"
+      "sha256": "9552319e982303081cd760ce3e300c8b168a38c4719d3a63f61b5b294fa165df"
     },
     {
       "path": "scripts/validate-governance.ps1",
