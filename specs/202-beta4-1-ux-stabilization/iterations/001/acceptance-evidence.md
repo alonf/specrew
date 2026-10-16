@@ -93,4 +93,4 @@ All seven lanes passed.
 
 - Drift: `drift-log.md`, DRIFT-001 to DRIFT-030.
 - Findings raised during 202: `docs/beta4-findings.md`, B4F-109 and B4F-111 to B4F-124 (B4F-110 records the host-tier decision).
-- Co-review: four rounds found 22 defects, and all 22 were real (B4F-055). In rounds 1 to 3 the engine demoted all 17; round 4 (`run-20261015-110313119-da115ef4`) reported 5 as major and demoted none. All 22 are fixed behind failing tests. Round 4's five fixes (DRIFT-031) have had no review round, because round 4 was the review's last of four.
+- Co-review: five rounds found 28 defects (8, 5, 4, 5 and 6), and all 28 were real (B4F-055). In rounds 1 to 3 the engine demoted all 17; round 4 (`run-20261015-110313119-da115ef4`) reported 5 as major and demoted none; round 5 (`run-20261016-002823641-f5fc77f3`, after the maintainer's allowance reset) demoted 4 of 6. All 28 are fixed behind failing tests. Round 5 reviewed round 4's fixes. **Round 5's six fixes (DRIFT-032) go to sign-off without a further review round, by the maintainer's rule set before the round and accepted by them in advance.**
