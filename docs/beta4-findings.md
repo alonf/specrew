@@ -5103,6 +5103,23 @@ It is the B4F-109 class (one feature's review state leaking into another's), in 
 iterations are exempt, as closed ones are, and the baseline category stops moving with unrelated state.
 **Disposition:** recorded under the beta5 rule. In 202 it is within the known baseline category (SC-008 holds).
 
+## B4F-125 - A TYPED APPROVAL BELOW A PASTED BLOCK IS NOT RECORDED, AND THE REFUSAL DOES NOT SAY WHY (beta5 candidate)
+
+**Observed:** 2026-10-16, feature 202, before co-review round 5. The maintainer sent one message: a pasted block of
+round-5 ground rules, then, on its own line at the end, the typed reply `approved for allowance reset`.
+`specrew review --remediate allowance-reset` then refused with "no approval from them has been captured" and asked
+for the very phrase the maintainer had typed. Checked read-only, `Test-SpecrewHumanVerdictToken` classifies that
+message as `Action = none`, `IsApproval = False`: the message opens with the pasted block, and only a leading phrase
+counts (the B4F-065 rule, which exists so that a pasted transcript can never authorize anything).
+**Cost:** one extra round trip: the maintainer must send the phrase again as its own message.
+**Cause:** the rule is right, and the refusal is the problem. It repeats the instruction to type the phrase, without
+saying that a message was received, that it carried the phrase below other content, and that this is why it did not
+count. That is the W54 class: an unrecorded approval-shaped reply must be named, not silently treated as absent.
+**Beta5 candidate:** when the latest human message contains a recognized approval phrase that did not count, the
+refusal says so in one sentence ("your last message has the phrase below a pasted block; send it on its own") instead
+of the generic ask. The B4F-065 rule itself stays.
+**Disposition:** recorded under the beta5 rule; not a 202 defect (the B4F-065 behaviour is correct and intended).
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
