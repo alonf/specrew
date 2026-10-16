@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-09-08T21:08:54Z",
+  "recorded_at": "2026-10-16T16:33:34Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-e8778be5352564d97e2f53b9",
-      "target_tree_id": "2dcef9c5841878edb8d9d7d2d8ad44e3fcbc4f64",
-      "campaign_id": "cmp-199-beta3-stabilization-i003",
-      "run_id": "",
+      "request_id": "override-ece5b1e99d4e9d59bf9ea104",
+      "target_tree_id": "5404acf05b51e7b3c2222a0cd4412364f3b02709",
+      "campaign_id": "cmp-202-beta4-1-ux-stabilization-i001",
+      "run_id": "run-20261016-031317319-8c4537dd",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - no reviewer ran because this was a reactive stabilisation with no task table to review against, and the release itself was verified independently by a CI-green census and a governed walk that crossed a boundary",
-      "rationale": "no reviewer ran because this was a reactive stabilisation with no task table to review against, and the release itself was verified independently by a CI-green census and a governed walk that crossed a boundary",
-      "response_hash": "0c285f7d4b4b248bcd0082ea4551d3cb627a47dc768f42be928eac753a071b11",
+      "verdict_text": "approved for partial review signoff - round 6's four fixes each have a failing-first test, CI is green at bf94e30a, I accepted them unreviewed in advance, and every commit since is records only",
+      "rationale": "round 6's four fixes each have a failing-first test, CI is green at bf94e30a, I accepted them unreviewed in advance, and every commit since is records only",
+      "response_hash": "fd165acd7cddcc6650425c070c41360a109bba6ff00fea3dc5d8b61c101772c2",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-09-08T21:08:29.2264689Z"
+      "observed_at": "2026-10-16T16:33:18.7439121Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
