@@ -315,6 +315,27 @@ try {
     Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply "Here is the log you asked for:`n$fence`n2026-10-14 12:00 run ok`n$fence`n`napproved for before-implement" -ApprovalPhrase 'approved for before-implement') 'and after a pasted log in a real fence'
     Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply "Explain this example:`n$fence`nunclosed`n`napproved for before-implement" -ApprovalPhrase 'approved for before-implement') 'an unclosed fence hides nothing: the line still counts (no example can be told from a typed line there)'
 
+    # Co-review round 6 (202, FR-011): a review link whose path has parentheses was cut at the first ')' - "app (draft"
+    # was fingerprinted as missing, which never changes, so an edit to the real file never lifted suppression. And two
+    # links differing only by case were merged into one, hiding the second file on a case-sensitive filesystem.
+    $parenDir = Join-Path ([IO.Path]::GetTempPath()) ('cp-paren-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    $parenSpecDir = Join-Path $parenDir 'app (draft)'
+    New-Item -ItemType Directory -Path $parenSpecDir -Force | Out-Null
+    $parenSpec = Join-Path $parenSpecDir 'spec.md'
+    [IO.File]::WriteAllText($parenSpec, 'v1')
+    $fwd = $parenSpec -replace '\\', '/'
+    $uri = ([Uri]::new($parenSpec)).AbsoluteUri
+    foreach ($form in @("[spec](<$fwd>)", "[spec]($fwd)", $uri, "See the spec ($uri).", "(see [spec](<$fwd>))")) {
+        $paths = @(Get-SpecrewReviewTargetLinks -Message $form | ForEach-Object { [string]$_.path })
+        Assert-True ($paths.Count -eq 1 -and $paths[0] -eq [IO.Path]::GetFullPath($parenSpec)) ("a review link with parentheses in its path keeps the whole path: '{0}' -> '{1}'" -f $form, ($paths -join ' | '))
+    }
+    $before = @(Get-SpecrewReviewedArtifactState -Message "[spec](<$fwd>)")
+    [IO.File]::WriteAllText($parenSpec, 'v2')
+    $after = @(Get-SpecrewReviewedArtifactState -Message "[spec](<$fwd>)")
+    Assert-True ($before.Count -eq 1 -and $before[0].kind -eq 'file' -and $before[0].sha256 -ne $after[0].sha256) 'an edit to a linked file under a parenthesized folder changes its fingerprint'
+    $caseState = @(Get-SpecrewReviewedArtifactState -Message "file:///C:/work/Foo.cs file:///C:/work/foo.cs")
+    Assert-True ($caseState.Count -eq 2) ("two links differing only by case are both kept ({0})" -f (($caseState | ForEach-Object { $_.path }) -join ' | '))
+    Remove-Item -LiteralPath $parenDir -Recurse -Force -ErrorAction SilentlyContinue
     foreach ($attempt in 'Yes, approved for before-implement', "  approved for before-implement.`nAlso run the lint.", 'approved for before-implement - is the plan committed?') {
         Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply $attempt -ApprovalPhrase 'approved for before-implement') ("an approval attempt still counts: '{0}'" -f ($attempt -replace "`n", ' / '))
     }

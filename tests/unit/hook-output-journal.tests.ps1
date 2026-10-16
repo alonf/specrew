@@ -317,6 +317,16 @@ try {
     $r = Invoke-StopWithReason -Root $root -Reason $reasonH4
     Assert-True ((Get-LastHealthState $root) -eq 'recovered' -and @(Get-BufferFiles $root).Count -eq 0) 'damaged health line: the next good append flushes and recovers'
 
+    # Co-review round 6 (202, FR-003): a last health line with a state but no class or first_seen passed round 3's guard,
+    # and the recovery reader then threw on the missing fields under StrictMode, after every good append - a new latch.
+    Write-Host '--- a partial degraded health line never stops the next append, and recovery still closes it ---'
+    [IO.File]::AppendAllText((Get-RuntimePath $root 'hook-output-health.jsonl'), '{"state":"degraded"}' + "`n")
+    $reasonH5 = 'RENDER THE PACKET NOW (h5) ' + [guid]::NewGuid().ToString('N')
+    $r = Invoke-StopWithReason -Root $root -Reason $reasonH5
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdOut -match [regex]::Escape($reasonH5)) 'partial health line: the good-path append delivers the output'
+    Assert-True ((Get-LastHealthState $root) -eq 'recovered') 'partial health line: the episode is closed with a recovered line'
+    Assert-True ($r.StdErr -notmatch 'PROVIDER_FAILED') 'partial health line: the dispatcher does not fail open'
+
     # Co-review round 3 (202, FR-007 / SC-002): a degraded episode that STARTS at the dispatcher's final append - after
     # the provider composed its payload while recording was healthy - is said in that same turn, with whether the reply
     # was used. Before the fix the payload went out unchanged and only stderr knew.

@@ -659,13 +659,18 @@ function Get-SpecrewReviewTargetLinks {
 
     $links = [System.Collections.Generic.List[object]]::new()
     if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
-    foreach ($match in [regex]::Matches($Message, 'file:///[^\s<>"''`\[\](){}|]+')) {
+    # Co-review round 6 (202, FR-011): a path with parentheses ("app (draft)") was cut at the first ')', so the link
+    # named a folder that does not exist, whose "missing" fingerprint never changes - an edit to the real file never
+    # lifted suppression. Balanced parentheses belong to the path; an unbalanced ')' still ends it (a sentence's or a
+    # Markdown link's closing parenthesis).
+    foreach ($match in [regex]::Matches($Message, 'file:///(?:[^\s<>"''`\[\](){}|]|\([^\s<>"''`\[\](){}|]*\))+')) {
         $url = ([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*')
         $path = $null
         try { $path = [System.IO.Path]::GetFullPath([System.Uri]::new($url).LocalPath) } catch { $path = $null }
         $links.Add([pscustomobject]@{ text = $url; path = $path })
     }
-    foreach ($match in [regex]::Matches($Message, '(?i)\]\(\s*<?(?<t>(?:[A-Z]:[/\\]|/[A-Z]:/|/)[^)<>]*?)>?\s*\)')) {
+    # An angle-wrapped destination runs to its '>' whatever it holds; a bare one keeps balanced parentheses.
+    foreach ($match in [regex]::Matches($Message, '(?i)\]\(\s*(?:<(?<t>(?:[A-Z]:[/\\]|/[A-Z]:/|/)[^<>\r\n]*)>|(?<t>(?:[A-Z]:[/\\]|/[A-Z]:/|/)(?:[^()<>\r\n]|\([^()<>\r\n]*\))*?))\s*\)')) {
         $target = [string]$match.Groups['t'].Value
         $local = if ($target -match '^/[A-Za-z]:/') { $target.Substring(1) } else { $target }
         $path = $null
@@ -1012,7 +1017,9 @@ function Get-SpecrewReviewedArtifactState {
 
     $state = [System.Collections.Generic.List[object]]::new()
     if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
-    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    # Co-review round 6 (202): exact paths. Merging by case hid the second of two files differing only by case on a
+    # case-sensitive filesystem; where case does not matter, both entries fingerprint the same file and change together.
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($link in @(Get-SpecrewReviewTargetLinks -Message $Message)) {
         if ($state.Count -ge $script:SpecrewPresentedArtifactLimit) { break }
         $localPath = [string]$link.path
@@ -1200,7 +1207,13 @@ function Get-SpecrewTurnMeaningLines {
         if ($line.Length -eq 0) { continue }
         if ($line -match '^#{1,6}\s+\S') { & $add $line; continue }                                             # heading
         if ($line -match '^<!--\s*SPECREW-VERDICT-BOUNDARY:.*-->$') { & $add $line; continue }                  # marker
-        if ($line -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add $line; continue }  # approval line, verdict options
+        # Approval line and verdict options. Co-review round 6 (202, FR-015): an option written as a bullet, a quote, a
+        # numbered item, inline code or a bold label was not a meaning line, so a reply could drop it. The wrapper is
+        # formatting: the option inside it is the meaning line, which a reply that keeps the option carries either way.
+        $core = $line
+        do { $before = $core; $core = $core -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)', '' } while ($core -ne $before)
+        $core = $core -replace '^(?:`+|\*\*|__|\*|_)', ''
+        if ($core -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add ($core -replace '(?:`+|\*\*|__)\s*$', ''); continue }
         # The question line: any line that asks something - a '?' ending a sentence, even when an instruction follows
         # it on the same line ("Does this match? Type move on."). A '?' inside a URL query does not count.
         if ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') { & $add $line }

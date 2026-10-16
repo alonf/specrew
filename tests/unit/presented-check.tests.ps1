@@ -190,6 +190,22 @@ try {
     Assert-True ($r4.Blocked) 'the reply without one offered response is blocked'
     Assert-True ($r4.Output -match 'missing: discuss prompt 1') 'the block names the dropped option'
 
+    # Co-review round 6 (202, FR-015): options written as bullets or inline code were not meaning lines at all, so a reply
+    # that dropped them passed. The option inside its Markdown wrapper is the meaning line; the wrapper is formatting.
+    Write-Host 'Case 4b: verdict options written as bullets or inline code are still meaning lines'
+    $bulleted = ((Get-Packet -Project $p4 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.') -replace "`r`n", "`n") -replace '(?m)^  changes needed: <what to change>$', '- changes needed: <what to change>' -replace '(?m)^  discuss prompt 1$', '- `discuss prompt 1`'
+    Assert-True ($bulleted.Contains('- `discuss prompt 1`') -and $bulleted.Contains('- changes needed:')) 'the fixture really carries the bulleted options'
+    $meaning4b = @(Get-SpecrewTurnMeaningLines -Message $bulleted)
+    Assert-True ($meaning4b -contains 'changes needed: <what to change>' -and $meaning4b -contains 'discuss prompt 1') ("bulleted and inline-code options are meaning lines ({0})" -f (($meaning4b | Where-Object { $_ -match 'changes|discuss' }) -join ' | '))
+    $starred = "## Q`n`nWhat would you like to do?`n`n* approved for before-implement`n> discuss prompt 2`n1. discuss prompt 3`n**changes needed:** say what"
+    $meaningStar = @(Get-SpecrewTurnMeaningLines -Message $starred)
+    Assert-True (@($meaningStar | Where-Object { $_ -match '^(?:approved for|discuss prompt|changes needed)' }).Count -eq 4) ("star bullets, quotes, numbered items and bold labels are recognized too ({0})" -f ($meaningStar -join ' | '))
+    $droppedBullets = $bulleted -replace '(?m)^- changes needed: <what to change>\r?\n', '' -replace '(?m)^- `discuss prompt 1`\r?\n', ''
+    $missing4b = @(Get-SpecrewTurnMeaningLinesMissing -MeaningLines $meaning4b -Reply $droppedBullets)
+    Assert-True ($missing4b -contains 'discuss prompt 1' -and $missing4b -contains 'changes needed: <what to change>') ("a reply that drops the bulleted options is missing them ({0})" -f ($missing4b -join ' | '))
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -MeaningLines $meaning4b -Reply $bulleted).Count -eq 0) 'the same bulleted reply, unchanged, misses nothing'
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -MeaningLines $meaning4b -Reply ($bulleted -replace '(?m)^- `discuss prompt 1`$', '  discuss prompt 1')).Count -eq 0) 'changing only the wrapper is not a missing option (FR-012)'
+
     # -----------------------------------------------------------------------------------------------
     Write-Host 'Case 5: with no crossing pending, a dropped question line is named without asking for an approval line or marker'
     $t5 = Start-Turn -Project $p1 -Session 'sess-5' -UserText 'Where are we?'

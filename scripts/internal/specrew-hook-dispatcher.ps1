@@ -360,8 +360,13 @@ function Complete-DispatcherHookOutputRecovery {
     if ($hadMarker) { try { Remove-Item -LiteralPath $Paths.LegacyMarker -Force -ErrorAction Stop } catch { $hadMarker = $false } }
     $last = Get-DispatcherLastHealthRecord -HealthPath $Paths.Health
     if (($null -ne $last -and [string]$last.state -eq 'degraded') -or $hadMarker -or $flushed -gt 0) {
-        $class = if ($hadMarker -and ($null -eq $last -or [string]$last.state -ne 'degraded')) { 'legacy-marker' } elseif ($null -ne $last) { [string]$last.class } else { 'journal-append-failed' }
-        $firstSeen = if ($null -ne $last -and [string]$last.state -eq 'degraded') { [string]$last.first_seen } else { $null }
+        # Co-review round 6 (202, FR-003): a last line with a state but no class or first_seen passed the reader's guard,
+        # and these reads threw under StrictMode after every good append - a latch. Missing fields take safe defaults,
+        # so the recovered line still closes the episode.
+        $lastClass = if ($null -ne $last -and $null -ne $last.PSObject.Properties['class'] -and -not [string]::IsNullOrWhiteSpace([string]$last.class)) { [string]$last.class } else { 'journal-append-failed' }
+        $lastFirstSeen = if ($null -ne $last -and $null -ne $last.PSObject.Properties['first_seen'] -and -not [string]::IsNullOrWhiteSpace([string]$last.first_seen)) { [string]$last.first_seen } else { $null }
+        $class = if ($hadMarker -and ($null -eq $last -or [string]$last.state -ne 'degraded')) { 'legacy-marker' } else { $lastClass }
+        $firstSeen = if ($null -ne $last -and [string]$last.state -eq 'degraded') { $lastFirstSeen } else { $null }
         Write-DispatcherHookOutputHealth -HealthPath $Paths.Health -State 'recovered' -Class $class -ErrorText $null -FirstSeen $firstSeen -Count $flushed
     }
 }
