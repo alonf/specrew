@@ -431,6 +431,11 @@
 - **Outside the owned files**: `scripts/specrew-start.ps1` (finding 1), plus the suites above.
 - **Class closure**: findings 3 and 4 are the same class as round 3's finding 4, output decisions made before the dispatcher's final append. Both output paths, injection and stop block, now share the same disclosure, and the one stamp written ahead of delivery is taken back when delivery fails. **These fixes have had no review round**: round 4 was the last of the review's four.
 - **Caught by CI after the fixes**: CI's deterministic gate (38737954286) failed 4 of 14 in `codex-stop-gate-fail-open`. That suite lifts `Write-StopBlockOutput` alone by AST, and fix 3 moved the per-shape envelope into `ConvertTo-DispatcherStopBlockOutput`. The suite now lifts both and passes 14 of 14 (`64c1fcab`). It is in no local lane, only in CI's gate. Separately, two suites decoded their child output with the caller's console encoding and failed only from a Git Bash caller: `presented-check` (case 6) and `orientation-order`. Both now decode as UTF-8.
+- **Maintainer ruling, 2026-10-16 (allowance reset for round 5)**: the maintainer approved one allowance reset, with these rules fixed before the round:
+  1. **Scope**: only the diff since round 4's target tree: the five round-4 fixes (this entry), the heading meaning-match (DRIFT-030), the B4F-116 guard test and the CI fixes that followed.
+  2. **There is no round 6.** Every round-5 finding is checked against the code and listed as real or not, as before. Real findings are fixed behind a test that fails first, and those fixes go to sign-off without a further review round, accepted by the maintainer in advance. The sign-off packet says so.
+  3. A blocking finding that cannot be fixed safely within 202 goes to the maintainer as a decision, never as another reset.
+  4. **For the retro**: rounds 1 to 4 found 8, 5, 4 and 5 real findings, 22 of 22 real, with no decay. The retro must say, with evidence, whether the iteration was too large for a four-round allowance (25.5 SP against the 20 SP convention) or the fix-then-review loop keeps introducing defects.
 <!--
   Every new ### DRIFT-... event includes:
 
