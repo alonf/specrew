@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "a2917871e9c949ce5473a79ba1f7b2e5cc47c286bd01496ec18e9b4bf7d9bfbe"
+      "sha256": "cb850b5ea07a05bf840c8d71c0bfe790596be7c56a772a5ee7903d92a3dda807"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "42a6194d0623cbe4b46ef076638c53d51dd765d395e69c1514e23a91d6b4b02c"
+      "sha256": "45f4eed859b24007c926f8bbc802d3336269b1438f1c66ae3f32a1ceab621168"
     },
     {
       "path": "scripts/validate-governance.ps1",
