@@ -1088,7 +1088,33 @@ function Test-SpecrewReplyCarriesApprovalPhrase {
     if ([string]::IsNullOrWhiteSpace($Reply) -or [string]::IsNullOrWhiteSpace($ApprovalPhrase)) { return $false }
     $words = @((($ApprovalPhrase -replace '\s+', ' ').Trim()) -split ' ' | ForEach-Object { [regex]::Escape($_) })
     $pattern = '(?i)^\s*(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?' + ($words -join '\s+') + '(?![\w-])'
-    foreach ($line in ($Reply -split "`r?`n")) {
+    # Co-review round 5 (202, FR-011): a quoted example is a mention too. A side question with the phrase inside a fenced
+    # code block ("Explain this example:" then the block) or an indented one was read as an attempt, and the next Stop
+    # said the approval did not register and repainted. Lines inside a CLOSED fence, and lines of an indented code block
+    # (4+ spaces or a tab, after a blank line), are skipped. An unclosed fence hides nothing, and a line typed after a
+    # closed block still counts - the DRIFT-008 / B4F-125 shape.
+    $lines = @($Reply -split "`r?`n")
+    $quoted = New-Object bool[] $lines.Count
+    $open = -1; $marker = ''
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $fence = [regex]::Match($lines[$i], '^\s{0,3}(```+|~~~+)')
+        if (-not $fence.Success) { continue }
+        if ($open -lt 0) { $open = $i; $marker = $fence.Groups[1].Value.Substring(0, 3) }
+        elseif ($fence.Groups[1].Value.StartsWith($marker) -and $lines[$i].Trim() -match '^(```+|~~~+)$') {
+            for ($j = $open; $j -le $i; $j++) { $quoted[$j] = $true }
+            $open = -1; $marker = ''
+        }
+    }
+    $inIndented = $false
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ([string]::IsNullOrWhiteSpace($lines[$i])) { $inIndented = $false; continue }
+        $indented = $lines[$i] -match '^(?: {4}|\t)'
+        $afterBlank = $i -eq 0 -or [string]::IsNullOrWhiteSpace($lines[$i - 1])
+        if ($indented -and ($afterBlank -or $inIndented)) { $inIndented = $true; $quoted[$i] = $true } else { $inIndented = $false }
+    }
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($quoted[$i]) { continue }
+        $line = $lines[$i]
         $match = [regex]::Match($line, $pattern)
         if (-not $match.Success) { continue }
         $clause = ([regex]::Split($line.Substring($match.Length), '[,.;:]|\s[-–—]\s', 2))[0]

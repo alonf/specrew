@@ -78,6 +78,10 @@ $script:DispatcherRecordingDegradedThisFire = $false
 # Co-review round 4 (202): whether this fire withheld its output because it could not be recorded (FR-005), so a stamp
 # that says something was supplied during this fire can be taken back (Clear-DispatcherUndeliveredOrientationStamp).
 $script:DispatcherOutputWithheldThisFire = $false
+# Co-review round 5 (202, FR-007): this fire's session and typed reply, so the recording disclosure reads THIS reply's
+# outcome from the shared outcome journal, never another session's (Get-DispatcherRecordingDisclosure).
+$script:DispatcherTurnSessionId = ''
+$script:DispatcherTurnTypedText = ''
 # 202 DRIFT-023 (maintainer ruling, 2026-10-15): every wait for the Unix journal lock in this fire draws on one 1000 ms
 # budget, so the lock can add about 1 s to a hook fire at most, not 1 s per append.
 $script:DispatcherLockWaitSpentMs = 0.0
@@ -1224,7 +1228,7 @@ function Get-DispatcherRecordingDisclosure {
             }
         }
         if (-not (Get-Command Get-SpecrewReplyRecordingWithheldDisclosure -ErrorAction SilentlyContinue)) { return $fallback }
-        $outcome = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { $null } else { Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $ProjectRoot -Since $script:DispatcherStartedUtc }
+        $outcome = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { $null } else { Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $ProjectRoot -Since $script:DispatcherStartedUtc -Response $script:DispatcherTurnTypedText -SessionId $script:DispatcherTurnSessionId }
         if ($Withheld) { return (Get-SpecrewReplyRecordingWithheldDisclosure -Outcome $outcome) }
         $text = Get-SpecrewReplyRecordingDegradedDisclosure -ProjectRoot $ProjectRoot -Outcome $outcome
         if ([string]::IsNullOrWhiteSpace($text)) { return $fallback }
@@ -1354,6 +1358,27 @@ function Clear-DispatcherUndeliveredOrientationStamp {
         }
     }
     catch { Write-DispatcherWarn -Code 'ORIENTATION_UNDELIVERED' -Message ("could not clear the undelivered orientation stamp: {0}" -f $_.Exception.Message) }
+}
+
+function Clear-DispatcherUndeliveredRecoveryRequest {
+    # Co-review round 5 (202, FR-009): the store records the reply-recording recovery question as open for this session
+    # BEFORE the payload that asks it. When this fire withheld its output, the human never saw the question, and a later
+    # "yes" from them must not answer it. Only a question recorded DURING this fire, for this session and not yet
+    # answered, is taken back; the next prompt asks it again. An earlier, delivered question stays open.
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$SessionId)
+    if (-not $script:DispatcherOutputWithheldThisFire) { return }
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($SessionId)) { return }
+    try {
+        $request = Join-Path $ProjectRoot '.specrew/runtime/reply-recording-recovery-request.json'
+        if (-not (Test-Path -LiteralPath $request -PathType Leaf)) { return }
+        if ((Get-Item -LiteralPath $request).LastWriteTimeUtc -lt $script:DispatcherStartedUtc.UtcDateTime) { return }
+        $open = [IO.File]::ReadAllText($request, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$open.asked_session -cne $SessionId) { return }
+        if ($null -ne $open.PSObject.Properties['declined_at']) { return }  # the human's answer this turn stands
+        Remove-Item -LiteralPath $request -Force
+        Write-DispatcherWarn -Code 'RECOVERY_QUESTION_UNDELIVERED' -Message 'this prompt''s output was withheld, so the recovery question recorded during it is withdrawn and the next prompt asks it again'
+    }
+    catch { Write-DispatcherWarn -Code 'RECOVERY_QUESTION_UNDELIVERED' -Message ("could not withdraw the undelivered recovery question: {0}" -f $_.Exception.Message) }
 }
 
 function ConvertTo-DispatcherStopBlockOutput {
@@ -1497,6 +1522,8 @@ try {
     $rawSessionId = $turnRecord.session_id
     $sessionId = $turnRecord.safe_session_id
     $source = $turnRecord.source
+    $script:DispatcherTurnSessionId = [string]$sessionId
+    $script:DispatcherTurnTypedText = [string]$turnRecord.typed_text
 
     # FR-053 (co-review finding 2): record the sanitized lifecycle receipt as durable proof-of-fire ONLY
     # AFTER the host envelope validated as a GENUINE, well-formed lifecycle fire - a non-null host-shaped JSON
@@ -1805,7 +1832,10 @@ try {
 
     if ($fragments.Count -gt 0) {
         Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
-        if ($Event -eq 'UserPromptSubmit') { Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId }
+        if ($Event -eq 'UserPromptSubmit') {
+            Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId
+            Clear-DispatcherUndeliveredRecoveryRequest -ProjectRoot $projectRoot -SessionId $sessionId
+        }
     }
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
         Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding -ProjectRoot $projectRoot

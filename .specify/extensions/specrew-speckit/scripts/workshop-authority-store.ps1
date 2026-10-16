@@ -496,6 +496,8 @@ function Set-SpecrewWorkshopReceiptOutcome {
                 schema_version = '1.0'; status = $Status; reason = $Reason; feature_ref = $FeatureRef; phase = $Phase
                 consumed = $outcome.consumed; recorded_at = $outcome.recorded_at
                 response_hash = if ([string]::IsNullOrWhiteSpace($Response)) { $null } else { Get-SpecrewWorkshopAuthorityHash -Text $Response }
+                # Co-review round 5 (202): the session the reply was typed in, so a reader correlates the row to its own turn.
+                session_id = if ([string]::IsNullOrWhiteSpace([string]$script:SpecrewWorkshopReceiptSessionId)) { $null } else { [string]$script:SpecrewWorkshopReceiptSessionId }
             }
             [IO.File]::AppendAllText($journal, (($row | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
         }
@@ -567,6 +569,7 @@ function Get-SpecrewWorkshopReceiptOutcomeDisclosure {
 # Feature 202 T004 (FR-009): when self-recovery has not happened - reply recording still degraded this long after it
 # began - ask the human ONE decision, in the reference wording, and act only on their typed yes.
 $script:SpecrewReplyRecordingRecoveryAfterMinutes = 10
+$script:SpecrewWorkshopReceiptSessionId = $null
 $script:SpecrewReplyRecordingRecoveryQuestion = "Specrew couldn't record your reply safely. May I clear the stuck error so it can record again? Nothing is deleted."
 
 function Get-SpecrewReplyRecordingDegradedSince {
@@ -627,6 +630,8 @@ function Get-SpecrewReplyRecordingRecoveryAsk {
     $now = [DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture)
     if (($now - $since).TotalMinutes -lt $script:SpecrewReplyRecordingRecoveryAfterMinutes) { return $null }
     $openRequest = Get-SpecrewReplyRecordingRecoveryRequest -ProjectRoot $ProjectRoot
+    # Co-review round 5 (202): the human already said no in this episode; no session asks it again until it ends.
+    if ($null -ne $openRequest -and (Test-SpecrewReplyRecordingRecoveryDeclined -Request $openRequest.Request)) { return $null }
     if ($null -ne $openRequest) {
         # One decision per episode - in the session that holds it. Co-review round 4 (202, FR-009): a question asked in
         # a session that then ended could be answered by no one (only the asked session's yes counts), and it kept every
@@ -662,7 +667,29 @@ function Test-SpecrewReplyRecordingRecoveryApproval {
     if ($trimmed.Length -eq 0 -or $trimmed.Length -gt 200 -or $trimmed.EndsWith('?')) { return $false }
     if ($trimmed -notmatch '(?i)^(?:yes|y|approved?|ok|okay|go ahead|do it|please do|sure)\b') { return $false }
     if ($trimmed -match "(?i)\b(?:no|not|never|don'?t|doesn'?t|won'?t|shouldn'?t|leave|keep|stop|wait|hold|cancel|later|but|instead)\b|n't\b") { return $false }
+    # Co-review round 5 (202): a yes with a condition ("yes, after I finish the other session", "yes, if the next append
+    # fails") is not yet a yes - the record was set aside before the condition held. The words are the shared hedge set
+    # (Get-SpecrewConditionalConjunctionPattern, which this store does not load), plus the times people defer to.
+    $conditional = if (Get-Command Get-SpecrewConditionalConjunctionPattern -ErrorAction SilentlyContinue) { Get-SpecrewConditionalConjunctionPattern }
+    else { '(?:later|after|once|when|unless|if|provided|providing|assuming|contingent|subject\s+to|as\s+long\s+as|so\s+long\s+as|pending)' }
+    if ($trimmed -match ('(?i)\b' + $conditional + '\b') -or $trimmed -match '(?i)\b(?:until|whenever|tomorrow|tonight)\b') { return $false }
     return $true
+}
+
+function Test-SpecrewReplyRecordingRecoveryDecline {
+    # Co-review round 5 (202): a typed reply that plainly declines the recovery question. Only a LEADING refusal counts,
+    # so a reply about something else is never taken as this decision; anything unclear leaves the question open.
+    param([AllowNull()][string]$Response)
+    $trimmed = ([string]$Response).Trim()
+    if ($trimmed.Length -eq 0 -or $trimmed.Length -gt 200 -or $trimmed.EndsWith('?')) { return $false }
+    return [bool]($trimmed -match "(?i)^(?:no|n|nope|don'?t|do not|leave it|not now|keep it)\b")
+}
+
+function Test-SpecrewReplyRecordingRecoveryDeclined {
+    # Whether the open request already carries the human's decline: one decision per episode, so it approves nothing
+    # and is not asked again until the episode ends.
+    param([AllowNull()]$Request)
+    return ($null -ne $Request -and $null -ne $Request.PSObject.Properties['declined_at'] -and -not [string]::IsNullOrWhiteSpace([string]$Request.declined_at))
 }
 
 function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
@@ -680,13 +707,35 @@ function Invoke-SpecrewReplyRecordingRecoveryIfApproved {
     # (a direct call) binds nothing and keeps the text checks alone.
     $askedSession = if ($open.Request.PSObject.Properties['asked_session']) { [string]$open.Request.asked_session } else { '' }
     if (-not [string]::IsNullOrWhiteSpace($askedSession) -and [string]$SessionId -cne $askedSession) { return $null }
+    if (Test-SpecrewReplyRecordingRecoveryDeclined -Request $open.Request) { return $null }
     if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
-    if (-not (Test-SpecrewReplyRecordingRecoveryApproval -Response $Response)) { return $null }
     if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
 
     $receiptPath = Join-Path $runtime 'reply-recording-recovery.jsonl'
     $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
     $questionHash = Get-SpecrewWorkshopAuthorityHash -Text $script:SpecrewReplyRecordingRecoveryQuestion
+    # Co-review round 5 (202): a plain "no" is the human's decision on this question, not silence. It is recorded, the
+    # request is closed for the episode (so a later, unrelated "yes" cannot approve it), and the turn says so - which
+    # also keeps the "no" from being taken as a workshop answer.
+    if (Test-SpecrewReplyRecordingRecoveryDecline -Response $Response) {
+        try {
+            $decline = [ordered]@{
+                schema_version = '1.0'; recorded_at = $NowUtc; response_hash = $responseHash; question_hash = $questionHash
+                degraded_since = $open.DegradedSince.ToString('o'); action = 'set-aside-stuck-record'; result = 'declined'
+            }
+            [IO.File]::AppendAllText($receiptPath, (($decline | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+            # The field is added to the request's own text, so its episode stamp stays byte-for-byte what was asked.
+            $raw = [IO.File]::ReadAllText($open.Path, [Text.Encoding]::UTF8).TrimEnd()
+            if (-not $raw.EndsWith('}')) { throw 'the open request is not a JSON object' }
+            $closed = $raw.Substring(0, $raw.Length - 1) + ',"declined_at":' + ($NowUtc | ConvertTo-Json) + '}'
+            [IO.File]::WriteAllText($open.Path, $closed, [Text.UTF8Encoding]::new($false))
+        }
+        catch {
+            return 'Specrew: your answer could not be recorded this turn, so nothing was changed. Nothing is deleted. Tell the human, and that the same question is still open for their typed answer next turn.'
+        }
+        return 'Specrew: your answer was recorded: the stuck record is left as it is, and nothing was changed. You will not be asked again while this lasts. Tell the human in one sentence.'
+    }
+    if (-not (Test-SpecrewReplyRecordingRecoveryApproval -Response $Response)) { return $null }
     try {
         $approval = [ordered]@{
             schema_version = '1.0'; approved_at = $NowUtc; response_hash = $responseHash; question_hash = $questionHash
@@ -758,7 +807,13 @@ function Get-SpecrewWorkshopTurnReceiptOutcome {
     # Co-review round 3 (202): the receipt outcome journaled at or after -Since (one hook fire), or $null. The dispatcher
     # composes its disclosure AFTER the provider that used or refused the reply has exited, so it reads the outcome from
     # the journal that provider wrote, not from memory.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][DateTimeOffset]$Since)
+    #
+    # Co-review round 5 (202, FR-007): the journal is shared by every session in the project, so a time bound alone picked
+    # up another session's outcome and told this human their reply was used. A row counts only when it answers THIS
+    # reply (its hash) and, when both sides know it, was typed in THIS session. No reply, no outcome.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][DateTimeOffset]$Since, [AllowNull()][string]$Response, [AllowNull()][string]$SessionId)
+    if ([string]::IsNullOrWhiteSpace($Response)) { return $null }
+    $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
     $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
     if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return $null }
     $latest = $null
@@ -769,7 +824,11 @@ function Get-SpecrewWorkshopTurnReceiptOutcome {
             if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['status'] -or -not $row.PSObject.Properties['recorded_at']) { continue }
             $at = $null
             try { $at = [DateTimeOffset]$row.recorded_at } catch { $at = $null }
-            if ($null -ne $at -and $at -ge $Since) { $latest = $row }
+            if ($null -eq $at -or $at -lt $Since) { continue }
+            if (-not $row.PSObject.Properties['response_hash'] -or [string]$row.response_hash -cne $responseHash) { continue }
+            $rowSession = if ($row.PSObject.Properties['session_id']) { [string]$row.session_id } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($SessionId) -and $rowSession -cne [string]$SessionId) { continue }
+            $latest = $row
         }
     }
     catch { return $null }
@@ -786,10 +845,13 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         [AllowNull()][string] $SourceEvent,
         # Feature 202 (FR-006): the dispatcher's origin for this prompt. Only typed-user can produce a receipt; empty
         # means a direct caller with no turn record, where the text checks below are the whole decision.
-        [AllowNull()][string] $TurnOrigin
+        [AllowNull()][string] $TurnOrigin,
+        # Co-review round 5 (202): the session the reply was typed in, journaled with its outcome.
+        [AllowNull()][string] $SessionId
     )
 
     $script:SpecrewWorkshopLastReceiptOutcome = $null
+    $script:SpecrewWorkshopReceiptSessionId = $SessionId
     $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
     if ($null -eq $canonicalSourceEvent) { $null = Set-SpecrewWorkshopReceiptOutcome -Status 'not-applicable' -Reason 'not-a-prompt-event'; return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
