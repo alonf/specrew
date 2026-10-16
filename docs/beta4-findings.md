@@ -5126,12 +5126,14 @@ a pasted transcript (speaker turns, a packet's marker, assistant text, quote-bar
 A phrase that leads its own line in the human's own message, with no pasted-transcript structure, is an approval. When a
 recognized phrase still does not count, the refusal says so and says why, in one sentence, instead of the generic ask
 (the W54 class).
+
 - **Failing test:** `reset-below-own-paste` from the fixture classifies as an approval for `allowance reset`, and a
   pasted transcript carrying the same phrase still does not (the B4F-065 control stays).
 
 **(b) The allowance reset and the round are two approvals for one decision.** After the reset was recorded and
 applied, `--pause-choice 1` refused again, asking for `approved for review round`. The reset existed only to run that
 round. A reset requested in order to run a round authorizes that round.
+
 - **Failing test:** with the allowance exhausted and a round paused, `reset-bare` alone leads to the reset and the round
   being authorized, with no second approval asked.
 
@@ -5139,6 +5141,7 @@ round. A reset requested in order to run a round authorizes that round.
 refusals end with "run this command from their own terminal, where their invocation is itself the approval", and the
 crew passed that on: its reply offered a `! pwsh ... --remediate allowance-reset ...` command as step 1 (the fixture's
 `crewOffer`). The typed reply is the only approval path to offer.
+
 - **Failing test:** no refusal text, Stop directive or skill line that asks a human for an approval offers a command for
   them to run as the approval; each names only the typed reply.
 
