@@ -50,3 +50,10 @@ Recorded in `acceptance-evidence.md`, "Friction observed during 202's own run", 
   complete.
 - **The Stop review check asking for rounds while a stop ran** (B4F-121): seven times in one hour.
 - **The double-recorded approval** (B4F-127, DRIFT-034): critical, predates 202, open at its close.
+- **Records voided the partial sign-off** (DRIFT-035): docs committed after the engine's sign-off moved the files, so
+  the maintainer gave the partial sign-off again.
+- **Git Bash briefly absent** (DRIFT-035): a Git for Windows update emptied `C:\Program Files\Git` for about 12 minutes
+  during the sign-off attempt, and the Stop hook failed with ENOENT on `bash.exe`. Hooks that depend on Git Bash have
+  no fallback when it is briefly absent. The partial sign-off reply sent in that window was never recorded.
+- **A reworded discussion question repainted the sign-off packet** (B4F-128): the meaning-match covers headings and
+  options, not question lines. Iteration 002, beside B4F-125.

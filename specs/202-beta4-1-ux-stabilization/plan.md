@@ -128,8 +128,10 @@ Not planned here. It starts only after the maintainer's explicit Tier 1 acceptan
 **Proposed order (maintainer, 2026-10-16; decided at iteration 002's plan stop, not before):**
 
 1. **B4F-127 first (critical):** bind every unbound approval (review round, allowance reset, partial sign-off override, stop-here decision, workshop receipts) to one human message by its transcript identity, not its text, and make the second recording path a no-op for a message already recorded. Failing test: one typed approval, then N turns with no human message, gives exactly one recorded approval.
-2. **B4F-125** (approval intake, above).
+2. **B4F-125** (approval intake, above), with **B4F-128** beside it: a reworded discussion question counts as present when its meaning matches, as headings already do.
 3. **B4F-055:** demotion on form; a summary never says "nothing needs your attention" over real major findings.
 4. **One simplification item** drawn from the runtime-store inventory in the iteration-001 retro.
 
 Size: 15 SP or less. Review rounds are placed after the tasks that touch approval handling.
+
+**Release gate (maintainer ruling at review sign-off, 2026-10-16):** closing iteration 001 is not a release. Beta4.1 does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.

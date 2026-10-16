@@ -4960,6 +4960,8 @@ approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
 **Recurred again:** 2026-10-15, the round-4 approval drew the same notice; the round approval was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-4`).
 **The dangerous direction, settled in 202 (maintainer instruction, 2026-10-15):** with no decision pending, the misreading is harmless. At sign-off the review decision IS pending, and a capture there would be an authorization the human never gave. `tests/unit/round-phrase-never-boundary-verdict.tests.ps1` (f199-class-guards-b) drives the real prompt-time capture with `before-implement -> review-signoff` pending. In ledger terms the stop's phrase is `approved for review-signoff`. "approved for review round" in six shapes (bare, capitalized with a period, with instructions after a dash or a comma, after a pasted quote, followed by more text) is never captured: the classifier reads it as naming 'review', a different boundary, so it never reaches the evidence check, and the ledger and the pending decision are unchanged. A control shows the real phrase IS captured in the same setup. It passed on its first run: no fabricated authorization. The misleading notice itself remains the beta5 candidate above.
 **Recurred a fourth time, on a different phrase:** 2026-10-16, the maintainer's typed `approved for partial review signoff - <reason>` drew the same "reads as a verdict for 'review' ... nothing was recorded" notice. The engine had captured it, and sign-off completed on it. The classifier reads any `approved for review...` prefix as the `review` boundary.
+**Fifth time:** 2026-10-16, the re-typed partial sign-off reply drew the same notice; the engine captured it, and the
+review sign-off stage opened on it.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 
@@ -5211,7 +5213,24 @@ already recorded. Failing test: one typed approval, then N turns with no human m
 approval.
 **Interim crew rule:** before every round launch, pause choice or allowance reset, read the stored approval; never act
 on one whose `evidence_source` is the transcript check unless the human's own typed message produced it for that run.
-**Disposition:** open at 202's close, stated in the review sign-off packet.
+**Disposition:** open at 202's iteration-001 close, stated in the review sign-off packet. (Ruling and release gate
+below.)
+**Maintainer ruling at review sign-off (2026-10-16):** closing iteration 001 with B4F-127 open is consistent with the
+consequence grading, because it predates 202 and 202 does not worsen it. Holding 202 back would leave only the released
+beta4, which has B4F-127 and every defect 202 fixed. **Release gate: closing an iteration is not a release. Beta4.1
+does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.**
+
+## B4F-128 - A REWORDED DISCUSSION QUESTION REPAINTS THE WHOLE PACKET (iteration 002, beside B4F-125)
+
+**Observed:** 2026-10-16, feature 202, the review sign-off packet. The crew's reply rephrased discussion prompt 1
+("Does closing with B4F-127 open fit the consequence grading, ..." became "Is closing with B4F-127 open consistent with
+how you grade defects by consequence, ..."). The Stop counted the declared line as missing and had the whole packet
+rendered again. The maintainer saw it twice.
+**Cause:** DRIFT-030's meaning-match covers headings, and round 6's fix covers option lines, but a discussion question
+must still match word for word. The FR-012 repaint class, on a line kind the earlier fixes did not reach.
+**Fix direction (maintainer ruling, 2026-10-16):** iteration 002, beside B4F-125. A discussion question counts as
+present when its meaning matches, the same as a heading. Failing test from the two exact lines above.
+**Disposition:** recorded; friction event in 202 `acceptance-evidence.md` (1 extra stop).
 
 ## Beta4.1 intake rulings — 2026-10-13
 
