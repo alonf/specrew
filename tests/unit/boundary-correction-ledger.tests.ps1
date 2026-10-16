@@ -175,6 +175,27 @@ try {
     $authorizedGate = Test-SpecrewBoundaryAuthorization -ProjectRoot $scratch -CurrentBoundary 'plan' -RequestedBoundary 'tasks'
     Assert-True ([bool]$authorizedGate.Authorized) 'fresh current-cycle authorization satisfies the live gate after correction'
 
+    # Co-review round 5 (202, FR-026): a new crossing hashes its feature (identity version 2). A correction of such a
+    # crossing must name it the same way, or it would never apply to the crossing it was written for.
+    $v2Scope = New-SpecrewBoundaryCrossingIdentity -FromBoundary 'plan' -ToBoundary 'tasks' -WorkingBoundary 'tasks' -BoundaryCommitHash $boundaryCommit -ArtifactStateId $boundaryTree -RecordedAt '2026-07-04T10:00:00Z' -FeatureRef '198-test' -IdentityVersion '2'
+    Assert-True ([string]$v2Scope['crossing_id'] -ne [string]$scope['crossing_id']) 'a version-2 crossing has its own identity'
+    $context['boundary_enforcement'] = [ordered]@{
+        enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = $null
+        pending_crossing = $v2Scope; policy_classes = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $scratch
+        verdict_history = @($original); correction_history = @(); bypass_history = @()
+    }
+    [System.IO.File]::WriteAllText((Join-Path $scratch '.specrew\start-context.json'), (($context | ConvertTo-Json -Depth 24) + "`n"), [System.Text.UTF8Encoding]::new($false))
+    $v2Args = $correctionArgs.Clone(); $v2Args['RecordedAt'] = '2026-07-04T10:05:00Z'
+    $v2Write = Add-SpecrewBoundaryAuthorizationCorrection @v2Args
+    Assert-True ([bool]$v2Write.Appended) 'a correction of a version-2 crossing appends'
+    $v2After = Get-SpecrewBoundaryEnforcementState -ProjectRoot $scratch
+    Assert-True ($v2After.Issues.Count -eq 0) ("the corrected version-2 state is shape-valid: {0}" -f (@($v2After.Issues) -join '; '))
+    $v2Record = ConvertTo-SpecrewBoundaryMap -Value @($v2After.State['correction_history'])[0]
+    Assert-True ([string]$v2Record['scope_crossing_id'] -eq [string]$v2Scope['crossing_id']) 'the correction names the version-2 crossing it corrects'
+    Assert-True (@($v2After.EffectiveState['verdict_history']).Count -eq 0 -and [string]$v2After.EffectiveState['last_authorized_boundary'] -eq 'plan') 'and applies to it: the corrected authorization is excluded'
+    $v2Pending = Get-SpecrewPendingVerdictState -ProjectRoot $scratch
+    Assert-True ([bool]$v2Pending.HasPendingVerdict -and $v2Pending.IntegrityStatus -eq 'scoped-verified' -and $v2Pending.CrossingId -eq [string]$v2Scope['crossing_id']) ("the version-2 crossing is pending and verifies ({0}, {1})" -f $v2Pending.IntegrityStatus, $v2Pending.CrossingId)
+
     Write-Host ''
     Write-Host 'All boundary correction-ledger tests passed.' -ForegroundColor Green
 }

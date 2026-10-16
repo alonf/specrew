@@ -219,6 +219,34 @@ else {
     Write-Pass 'no successor crossing was minted after the capture (before-implement owes quality/hardening-gate.md - present here, so this branch records the observed shape rather than asserting it)'
 }
 
+# Co-review round 5 (202, FR-026): the crossing identity hashed only (from, to, working, commit, tree). Feature A synced
+# and then feature B synced at the same boundary against the same committed tree got the SAME crossing_id, keeping A's
+# owner and arrival time - so A's presented packet could suppress B's, and a reply to A's marker could be recorded as
+# B's authorization. A new crossing now hashes its feature too (identity_version 2); a legacy crossing still verifies.
+Write-Host 'Case 6: two features at the same boundary and tree get different crossing identities'
+$commit6 = ('a' * 40); $tree6 = ('b' * 40)
+$scopeA6 = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks' -BoundaryCommitHash $commit6 -ArtifactStateId $tree6 -RecordedAt '2026-10-16T01:00:00Z' -Owner 'session-a' -FeatureRef 'specs/201-feature-a'
+$scopeB6 = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks' -BoundaryCommitHash $commit6 -ArtifactStateId $tree6 -RecordedAt '2026-10-16T02:00:00Z' -Owner 'session-b' -FeatureRef 'specs/202-feature-b' -ExistingScope $scopeA6
+Assert-True ([string]$scopeA6['crossing_id'] -ne [string]$scopeB6['crossing_id']) 'feature B''s crossing does not share feature A''s identity'
+Assert-True ([string]$scopeB6['recorded_at'] -eq '2026-10-16T02:00:00Z' -and [string]$scopeB6['owner'] -eq 'session-b') 'feature B''s crossing is its own arrival: its own time and owner, not A''s'
+Assert-True ([string]$scopeB6['feature_ref'] -eq '202-feature-b') 'feature B''s crossing names feature B'
+$againA6 = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks' -BoundaryCommitHash $commit6 -ArtifactStateId $tree6 -RecordedAt '2026-10-16T03:00:00Z' -Owner 'session-c' -FeatureRef 'specs/201-feature-a' -ExistingScope $scopeA6
+Assert-True ([string]$againA6['crossing_id'] -eq [string]$scopeA6['crossing_id'] -and [string]$againA6['recorded_at'] -eq '2026-10-16T01:00:00Z' -and [string]$againA6['owner'] -eq 'session-a') 'the same feature re-synced keeps its identity, arrival time and owner (the re-sync contract)'
+$legacy6 = New-SpecrewBoundaryCrossingIdentity -FromBoundary 'plan' -ToBoundary 'tasks' -WorkingBoundary 'tasks' -BoundaryCommitHash $commit6 -ArtifactStateId $tree6 -RecordedAt '2026-10-16T01:00:00Z' -Owner 'session-a'
+foreach ($pair in @(@('v2 crossing', $scopeB6), @('legacy crossing', $legacy6))) {
+    $state6 = [ordered]@{ enabled = $true; last_authorized_boundary = 'plan'; pending_next_boundary = 'tasks'; pending_crossing = $pair[1]; verdict_history = @(); bypass_history = @() }
+    $issues6 = @(Test-SpecrewBoundaryEnforcementStateShape -BoundaryEnforcement $state6 | Where-Object { [string]$_ -match 'pending_crossing' })
+    Assert-True ($issues6.Count -eq 0) ("a {0} verifies against its own evidence ({1})" -f $pair[0], ($issues6 -join '; '))
+}
+$legacyResync6 = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks' -BoundaryCommitHash $commit6 -ArtifactStateId $tree6 -RecordedAt '2026-10-16T04:00:00Z' -Owner 'session-d' -FeatureRef 'specs/201-feature-a' -ExistingScope $legacy6
+Assert-True ([string]$legacyResync6['crossing_id'] -eq [string]$legacy6['crossing_id'] -and -not $legacyResync6.Contains('identity_version') -and [string]$legacyResync6['recorded_at'] -eq '2026-10-16T01:00:00Z') 'a legacy crossing already pending keeps its identity when re-synced after the upgrade (an in-flight marker still matches)'
+$legacyA6 = [ordered]@{}; foreach ($k in $legacy6.Keys) { $legacyA6[$k] = $legacy6[$k] }; $legacyA6['feature_ref'] = '201-feature-a'
+$legacyToB6 = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks' -BoundaryCommitHash $commit6 -ArtifactStateId $tree6 -RecordedAt '2026-10-16T05:00:00Z' -Owner 'session-b' -FeatureRef 'specs/202-feature-b' -ExistingScope $legacyA6
+Assert-True ([string]$legacyToB6['crossing_id'] -ne [string]$legacy6['crossing_id'] -and [string]$legacyToB6['owner'] -eq 'session-b') 'a legacy crossing named for feature A is not taken over by feature B'
+$forged6 = [ordered]@{}; foreach ($k in $scopeB6.Keys) { $forged6[$k] = $scopeB6[$k] }; $forged6['feature_ref'] = '201-feature-a'
+$stateF6 = [ordered]@{ enabled = $true; last_authorized_boundary = 'plan'; pending_next_boundary = 'tasks'; pending_crossing = $forged6; verdict_history = @(); bypass_history = @() }
+Assert-True (@(Test-SpecrewBoundaryEnforcementStateShape -BoundaryEnforcement $stateF6 | Where-Object { [string]$_ -match 'crossing_id does not match' }).Count -eq 1) 'a v2 crossing whose feature was changed afterwards no longer verifies'
+
 foreach ($f in @($f1, $f2, $f3, $f3b, $f3c, $m4a.Fixture, $m4b.Fixture, $m4c.Fixture)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("crossing-mint-gate: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'crossing-mint-gate: all assertions passed' -ForegroundColor Green

@@ -304,6 +304,17 @@ try {
     foreach ($mention in "What does 'approved for before-implement' mean?", 'Should I type approved for before-implement now?', 'I have not approved for before-implement yet.', "Don't record approved for before-implement.", 'approved for before-implement?', 'approved for before-implement? I am still deciding.') {
         Assert-True (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply $mention -ApprovalPhrase 'approved for before-implement')) ("a mention, question or refusal is not an approval attempt: '{0}'" -f $mention)
     }
+    # Co-review round 5 (202, FR-011): a quoted example is a mention. A side question with the phrase inside a fenced or
+    # indented code block was read as an attempt, so the next Stop said "your approval did not register" and repainted.
+    $fence = '```'
+    foreach ($example in ("Explain this example:`n$fence`napproved for before-implement`n$fence"), ("Explain this example:`n${fence}text`napproved for before-implement`n$fence"), "What happens here?`n~~~`napproved for before-implement`n~~~", "Explain:`n`n    approved for before-implement") {
+        Assert-True (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply $example -ApprovalPhrase 'approved for before-implement')) ("a quoted code example is not an approval attempt: '{0}'" -f ($example -replace "`n", ' / '))
+    }
+    # B4F-125 direction: a line the human typed below their own pasted block still counts once the block has closed.
+    Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply "Rules first:`n$fence`ndo not touch the store`n$fence`n`napproved for before-implement" -ApprovalPhrase 'approved for before-implement') 'a typed approval line after a closed code block still counts'
+    Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply "Here is the log you asked for:`n$fence`n2026-10-14 12:00 run ok`n$fence`n`napproved for before-implement" -ApprovalPhrase 'approved for before-implement') 'and after a pasted log in a real fence'
+    Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply "Explain this example:`n$fence`nunclosed`n`napproved for before-implement" -ApprovalPhrase 'approved for before-implement') 'an unclosed fence hides nothing: the line still counts (no example can be told from a typed line there)'
+
     foreach ($attempt in 'Yes, approved for before-implement', "  approved for before-implement.`nAlso run the lint.", 'approved for before-implement - is the plan committed?') {
         Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply $attempt -ApprovalPhrase 'approved for before-implement') ("an approval attempt still counts: '{0}'" -f ($attempt -replace "`n", ' / '))
     }

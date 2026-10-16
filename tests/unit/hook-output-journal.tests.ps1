@@ -68,12 +68,20 @@ exit 0
     # first one to fail - after the provider composed its payload while recording was still healthy.
     $injectStub = @'
 if ($env:HOJ_OUTCOME) {
-    $row = [ordered]@{ schema_version = '1.0'; status = $env:HOJ_OUTCOME; reason = 'stub'; feature_ref = '001-x'; phase = 'product-domain'; consumed = ($env:HOJ_OUTCOME -eq 'recorded'); recorded_at = [DateTimeOffset]::UtcNow.ToString('o'); response_hash = $null }
+    # Like the store: the row names the reply it answers (its hash) and the session it was typed in. HOJ_OUTCOME_SESSION
+    # writes it as ANOTHER session's outcome, landing inside this fire.
+    $hash = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('It is for support staff.')))).ToLowerInvariant()
+    $session = if ($env:HOJ_OUTCOME_SESSION) { $env:HOJ_OUTCOME_SESSION } else { 'hoj-session' }
+    $row = [ordered]@{ schema_version = '1.0'; status = $env:HOJ_OUTCOME; reason = 'stub'; feature_ref = '001-x'; phase = 'product-domain'; consumed = ($env:HOJ_OUTCOME -eq 'recorded'); recorded_at = [DateTimeOffset]::UtcNow.ToString('o'); response_hash = $hash; session_id = $session }
     [IO.File]::AppendAllText((Join-Path (Get-Location).Path '.specrew/runtime/workshop-receipt-outcomes.jsonl'), (($row | ConvertTo-Json -Compress) + "`n"))
 }
 if ($env:HOJ_STAMP) {
     # Like the bootstrap provider: the session's orientation stamp is written before the payload is returned.
     [IO.File]::WriteAllText((Join-Path (Get-Location).Path '.specrew/runtime/hook-bootstrap-orientation-hoj-session.json'), '{"supplied_at":"stub"}')
+}
+if ($env:HOJ_RECOVERY) {
+    # Like the store's recovery ask: the open question is recorded for this session before the payload that asks it.
+    [IO.File]::WriteAllText((Join-Path (Get-Location).Path '.specrew/runtime/reply-recording-recovery-request.json'), ('{"schema_version":"1.0","asked_at":"' + [DateTimeOffset]::UtcNow.ToString('o') + '","asked_session":"hoj-session","degraded_since":"2026-10-16T00:00:00.0000000+00:00","question_hash":"stub"}'))
 }
 '@ + "`n" + ($stub -replace '(?s)Write-Output \("<<<SPECREW-STOP-BLOCK>>>`n" \+ \$env:HOJ_REASON\)', 'Write-Output $env:HOJ_REASON')
     [IO.File]::WriteAllText((Join-Path $scripts 'stub-inject.ps1'), $injectStub, [Text.UTF8Encoding]::new($false))
@@ -106,7 +114,7 @@ function Invoke-StopWithReason {
 }
 
 function Invoke-PromptWithPayload {
-    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp)
+    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp, [switch]$Recovery, [string]$OutcomeSession = '')
     $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
     foreach ($a in '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root '.specify\extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'), '-Event', 'UserPromptSubmit', '-HostKind', 'claude') { $psi.ArgumentList.Add($a) }
     $psi.WorkingDirectory = $Root
@@ -117,6 +125,8 @@ function Invoke-PromptWithPayload {
     if ($HoldMs -gt 0) { $psi.Environment['HOJ_HOLD_MS'] = [string]$HoldMs } else { $psi.Environment.Remove('HOJ_HOLD_MS') | Out-Null }
     if ($Outcome) { $psi.Environment['HOJ_OUTCOME'] = $Outcome } else { $psi.Environment.Remove('HOJ_OUTCOME') | Out-Null }
     if ($Stamp) { $psi.Environment['HOJ_STAMP'] = '1' } else { $psi.Environment.Remove('HOJ_STAMP') | Out-Null }
+    if ($Recovery) { $psi.Environment['HOJ_RECOVERY'] = '1' } else { $psi.Environment.Remove('HOJ_RECOVERY') | Out-Null }
+    if ($OutcomeSession) { $psi.Environment['HOJ_OUTCOME_SESSION'] = $OutcomeSession } else { $psi.Environment.Remove('HOJ_OUTCOME_SESSION') | Out-Null }
     foreach ($var in 'CLAUDE_PROJECT_DIR', 'COPILOT_PROJECT_DIR', 'CURSOR_PROJECT_DIR') { $psi.Environment[$var] = $Root }
     $p = [Diagnostics.Process]::Start($psi)
     $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
@@ -325,6 +335,14 @@ try {
         Wait-JournalUnlocked $p4
         Assert-True ($null -ne $r.Context -and ([regex]::Matches($r.Context, 'recorded in a fallback record')).Count -eq 1) 'a payload that already discloses it is not given a second copy'
 
+        # Co-review round 5 (202, FR-007): the outcome journal is shared by every session in the project. An outcome
+        # another session recorded during this fire is not this reply's, and the turn must not claim it was used.
+        $payloadD = 'Guidance while another session answers ' + [guid]::NewGuid().ToString('N')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload $payloadD -HoldMs 4000 -Outcome 'recorded' -OutcomeSession 'another-session'
+        Wait-JournalUnlocked $p4
+        Assert-True ($null -ne $r.Context -and $r.Context -match 'recorded in a fallback record') 'another session''s outcome: the degraded turn is still disclosed'
+        Assert-True ($null -ne $r.Context -and $r.Context -notmatch 'your reply was used as your workshop answer') 'another session''s outcome: the turn does not claim this reply was used'
+
         $bufferDir4 = Get-RuntimePath $p4 'hook-output-buffer'
         if (Test-Path -LiteralPath $bufferDir4) { Remove-Item -LiteralPath $bufferDir4 -Recurse -Force }
         [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
@@ -352,6 +370,24 @@ try {
         $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Later guidance that cannot be recorded ' + [guid]::NewGuid().ToString('N')) -HoldMs 4000
         Wait-JournalUnlocked $p4
         Assert-True (Test-Path -LiteralPath $stampPath) 'a later withheld turn leaves an earlier, delivered orientation stamp alone'
+        Remove-Item -LiteralPath $bufferDir4 -Force
+
+        # Co-review round 5 (202, FR-009): the recovery question is recorded as open before the payload that asks it.
+        # When that fire's output was withheld, the human never saw the question, so a later "yes" must not answer it.
+        $requestPath = Get-RuntimePath $p4 'reply-recording-recovery-request.json'
+        if (Test-Path -LiteralPath $requestPath) { Remove-Item -LiteralPath $requestPath -Force }
+        [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Recovery question that cannot be recorded ' + [guid]::NewGuid().ToString('N')) -HoldMs 4000 -Recovery
+        Wait-JournalUnlocked $p4
+        Assert-True ($null -ne $r.Context -and $r.Context -match 'held back') 'withheld recovery question: the turn says its guidance was held back'
+        Assert-True (-not (Test-Path -LiteralPath $requestPath)) 'withheld recovery question: the open question recorded during that fire is removed, so a later yes cannot answer it'
+        Remove-Item -LiteralPath $bufferDir4 -Force
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Recovery question delivered ' + [guid]::NewGuid().ToString('N')) -Recovery
+        Assert-True ((Test-Path -LiteralPath $requestPath) -and $null -ne $r.Context -and $r.Context -match 'Recovery question delivered') 'delivered recovery question: it stays open'
+        [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Later guidance that cannot be recorded ' + [guid]::NewGuid().ToString('N')) -HoldMs 4000
+        Wait-JournalUnlocked $p4
+        Assert-True (Test-Path -LiteralPath $requestPath) 'a later withheld turn leaves an earlier, delivered recovery question open'
         Remove-Item -LiteralPath $bufferDir4 -Force
     }
     finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }

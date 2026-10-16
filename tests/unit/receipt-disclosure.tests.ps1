@@ -292,6 +292,50 @@ try {
     Assert-True ((Test-Path -LiteralPath $journal17) -and $lateA17 -notmatch 'set aside') 'case 17: a late yes from session A no longer answers it'
     $yesB17 = Invoke-Provider -Root $r17 -Reply 'yes' -Origin 'typed-user' -Session 'session-b'
     Assert-True ($yesB17 -match 'set aside, not deleted' -and -not (Test-Path -LiteralPath $journal17)) 'case 17: session B''s yes is acted on'
+
+    # Co-review round 5 (202, FR-009): a yes with a condition is not yet a yes. "after I finish the other session" and
+    # "if the next append fails" approved at once, and the record was set aside before the condition held.
+    Write-Host '  --- case 18: a conditional yes is not recovery approval ---'
+    foreach ($conditional in 'yes, after I finish the other session', 'yes, if the next append fails', 'yes once the other session closes', 'ok, unless it deletes something', 'yes when I say so', 'sure, provided nothing is lost', 'yes, tomorrow') {
+        Assert-True (-not (Test-SpecrewReplyRecordingRecoveryApproval -Response $conditional)) ("case 18: '{0}' is not approval" -f $conditional)
+    }
+    $r18 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r18)
+    $journal18 = Join-Path $r18 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal18, '{"schema_version":"1.0","output_hash":"00"}' + "`n")
+    [IO.File]::WriteAllText((Join-Path $r18 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-20).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $null = Invoke-Provider -Root $r18 -Reply 'What is the status?' -Origin 'typed-user' -Session 'session-a'
+    $cond18 = Invoke-Provider -Root $r18 -Reply 'yes, after I finish the other session' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ((Test-Path -LiteralPath $journal18) -and $cond18 -notmatch 'set aside') 'case 18: through the provider, a conditional yes moves nothing'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $r18 '.specrew/runtime/reply-recording-recovery.jsonl'))) 'case 18: and no approval is recorded'
+    Assert-True (Test-Path -LiteralPath (Join-Path $r18 '.specrew/runtime/reply-recording-recovery-request.json')) 'case 18: the question stays open for a plain answer'
+
+    # Co-review round 5 (202, FR-009): a typed "no" left the question armed, so a later unrelated "yes" in the same
+    # session - to some other question - approved the recovery, and the "no" itself was taken as a workshop answer.
+    Write-Host '  --- case 19: a declined recovery question is closed, and a later yes does not reopen it ---'
+    $r19 = New-WorkshopFixture -Phase 'product-domain'; $roots.Add($r19)
+    $journal19 = Join-Path $r19 '.specrew/runtime/hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journal19, '{"schema_version":"1.0","output_hash":"00"}' + "`n")
+    [IO.File]::WriteAllText((Join-Path $r19 '.specrew/runtime/hook-output-health.jsonl'), (([ordered]@{ schema_version = '1.0'; state = 'degraded'; class = 'journal-append-failed'; first_seen = [DateTimeOffset]::UtcNow.AddMinutes(-20).ToString('o'); count = 1 } | ConvertTo-Json -Compress) + "`n"))
+    $asked19 = Invoke-Provider -Root $r19 -Reply 'What is the status?' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ($asked19.Contains($question)) 'case 19: session A is asked the recovery question'
+    $receipts19 = Get-ReceiptCount $r19
+    $no19 = Invoke-Provider -Root $r19 -Reply 'no, do not clear it' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ($no19 -match 'left as it is' -and (Test-Path -LiteralPath $journal19)) 'case 19: the decline is acknowledged in the turn, and nothing is moved'
+    Assert-True ((Get-ReceiptCount $r19) -eq $receipts19) 'case 19: the decline is not also taken as a workshop answer'
+    $rec19 = @(Get-Content -LiteralPath (Join-Path $r19 '.specrew/runtime/reply-recording-recovery.jsonl') -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    Assert-True ($rec19.Count -eq 1 -and $rec19[0].result -eq 'declined') 'case 19: the decline is recorded as the recovery decision'
+    $again19 = Invoke-Provider -Root $r19 -Reply 'Where are we?' -Origin 'typed-user' -Session 'session-a'
+    Assert-True (-not $again19.Contains($question)) 'case 19: the declined question is not asked again in this episode'
+    $yes19 = Invoke-Provider -Root $r19 -Reply 'yes' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ((Test-Path -LiteralPath $journal19) -and $yes19 -notmatch 'set aside') 'case 19: a later unrelated yes does not approve the declined recovery'
+    $req19 = Join-Path $r19 '.specrew/runtime/reply-recording-recovery-request.json'
+    Assert-True ((Get-Content -LiteralPath $req19 -Raw | ConvertFrom-Json).PSObject.Properties['declined_at'] -ne $null) 'case 19: the request carries the decline'
+    $otherAt = Get-Content -LiteralPath $req19 -Raw | ConvertFrom-Json
+    $otherAt.asked_at = [DateTimeOffset]::UtcNow.AddMinutes(-15).ToString('o')
+    [IO.File]::WriteAllText($req19, ($otherAt | ConvertTo-Json -Compress))
+    $b19 = Invoke-Provider -Root $r19 -Reply 'Where are we now?' -Origin 'typed-user' -Session 'session-b'
+    Assert-True (-not $b19.Contains($question)) 'case 19: another session is not asked a question the human already declined'
+    Test-NoBannedNoun -Text $no19 -Label 'case 19'
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }

@@ -1441,7 +1441,7 @@ function Update-SpecrewRollingHandover {
         if (-not $recoveryAnswered -and (Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
             $receipt = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                -HostKind $fromHost -SourceEvent $Source -TurnOrigin $TurnOrigin
+                -HostKind $fromHost -SourceEvent $Source -TurnOrigin $TurnOrigin -SessionId $SessionId
             # PRED-BETA4-053: a confirmation the receipt could not bind is said here, in the turn, with the
             # remedy - not discovered later when the persist throws.
             if ($null -eq $receipt -and (Get-Command Get-SpecrewWorkshopReceiptDisclosure -ErrorAction SilentlyContinue)) {

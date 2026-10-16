@@ -1655,7 +1655,12 @@ function New-SpecrewBoundaryCrossingIdentity {
         [Parameter(Mandatory = $true)][string]$ArtifactStateId,
         [AllowNull()][string]$WorkingBoundary,
         [AllowNull()][string]$RecordedAt,
-        [AllowNull()][string]$Owner
+        [AllowNull()][string]$Owner,
+        # Co-review round 5 (202, FR-026): identity version 2 hashes the crossing's feature too, so two features at the
+        # same boundary against the same committed tree are two crossings. A crossing without the version is legacy
+        # (the five-field tuple) and still verifies as it was minted.
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IdentityVersion
     )
     $normalizedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary
     $from = if ($normalizedFrom -eq 'intake') { 'intake' } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $FromBoundary -ParameterName 'FromBoundary' }
@@ -1664,8 +1669,16 @@ function New-SpecrewBoundaryCrossingIdentity {
     $commit = $BoundaryCommitHash.Trim().ToLowerInvariant()
     $artifact = $ArtifactStateId.Trim().ToLowerInvariant()
     if ([string]::IsNullOrWhiteSpace($commit) -or [string]::IsNullOrWhiteSpace($artifact)) { throw 'Boundary commit hash and artifact-state ID are required for a scoped crossing.' }
-    $crossingId = 'crossing-{0}' -f (Get-SpecrewBoundarySha256 -Text (@($from, $to, $working, $commit, $artifact) -join "`u{001f}"))
-    return [ordered]@{
+    $tuple = @($from, $to, $working, $commit, $artifact)
+    $feature = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { '' } else { Split-Path -Leaf $FeatureRef.Trim() }
+    $versioned = ([string]$IdentityVersion).Trim() -eq '2'
+    if ($versioned) {
+        if ([string]::IsNullOrWhiteSpace($feature)) { throw 'A version-2 crossing identity names its feature.' }
+        $tuple += ('feature:' + $feature)
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace([string]$IdentityVersion)) { throw "Crossing identity version '$IdentityVersion' is not known." }
+    $crossingId = 'crossing-{0}' -f (Get-SpecrewBoundarySha256 -Text ($tuple -join "`u{001f}"))
+    $identity = [ordered]@{
         crossing_id          = $crossingId
         from_boundary        = $from
         to_boundary          = $to
@@ -1680,6 +1693,16 @@ function New-SpecrewBoundaryCrossingIdentity {
         # the identity rather than inside it.
         owner                = if ([string]::IsNullOrWhiteSpace($Owner)) { 'unknown' } else { $Owner.Trim() }
     }
+    if ($versioned) { $identity['identity_version'] = '2'; $identity['feature_ref'] = $feature }
+    return $identity
+}
+
+function Get-SpecrewCrossingIdentityFeatureArgs {
+    # The feature inputs a stored crossing was minted with, for a verifier re-deriving its ID: version-2 crossings only.
+    # A legacy crossing (no identity_version) re-derives from the five-field tuple, even when it carries a feature_ref.
+    param([AllowNull()]$Map)
+    if ($null -eq $Map -or -not $Map.Contains('identity_version') -or [string]::IsNullOrWhiteSpace([string]$Map['identity_version'])) { return @{} }
+    return @{ IdentityVersion = [string]$Map['identity_version']; FeatureRef = $(if ($Map.Contains('feature_ref')) { [string]$Map['feature_ref'] } else { '' }) }
 }
 
 function Get-SpecrewGitArtifactStateId {
@@ -1905,7 +1928,8 @@ function Test-SpecrewBoundaryEnforcementStateShape {
         }
         else {
             try {
-                $derivedCrossing = New-SpecrewBoundaryCrossingIdentity -FromBoundary ([string]$crossingMap['from_boundary']) -ToBoundary ([string]$crossingMap['to_boundary']) -WorkingBoundary ([string]$crossingMap['working_boundary']) -BoundaryCommitHash ([string]$crossingMap['boundary_commit_hash']) -ArtifactStateId ([string]$crossingMap['artifact_state_id']) -RecordedAt ([string]$crossingMap['recorded_at'])
+                $crossingFeatureArgs = Get-SpecrewCrossingIdentityFeatureArgs -Map $crossingMap
+                $derivedCrossing = New-SpecrewBoundaryCrossingIdentity -FromBoundary ([string]$crossingMap['from_boundary']) -ToBoundary ([string]$crossingMap['to_boundary']) -WorkingBoundary ([string]$crossingMap['working_boundary']) -BoundaryCommitHash ([string]$crossingMap['boundary_commit_hash']) -ArtifactStateId ([string]$crossingMap['artifact_state_id']) -RecordedAt ([string]$crossingMap['recorded_at']) @crossingFeatureArgs
                 if ([string]$derivedCrossing['crossing_id'] -ne [string]$crossingMap['crossing_id']) {
                     $issues.Add('boundary_enforcement.pending_crossing.crossing_id does not match its immutable evidence tuple.') | Out-Null
                 }
@@ -1960,7 +1984,8 @@ function Test-SpecrewBoundaryEnforcementStateShape {
                 }
                 if ($null -ne $scopeMap) {
                     try {
-                        $derivedScope = New-SpecrewBoundaryCrossingIdentity -FromBoundary ([string]$scopeMap['from_boundary']) -ToBoundary ([string]$scopeMap['to_boundary']) -WorkingBoundary ([string]$scopeMap['working_boundary']) -BoundaryCommitHash ([string]$scopeMap['boundary_commit_hash']) -ArtifactStateId ([string]$scopeMap['artifact_state_id']) -RecordedAt ([string]$scopeMap['recorded_at'])
+                        $scopeFeatureArgs = Get-SpecrewCrossingIdentityFeatureArgs -Map $scopeMap
+                        $derivedScope = New-SpecrewBoundaryCrossingIdentity -FromBoundary ([string]$scopeMap['from_boundary']) -ToBoundary ([string]$scopeMap['to_boundary']) -WorkingBoundary ([string]$scopeMap['working_boundary']) -BoundaryCommitHash ([string]$scopeMap['boundary_commit_hash']) -ArtifactStateId ([string]$scopeMap['artifact_state_id']) -RecordedAt ([string]$scopeMap['recorded_at']) @scopeFeatureArgs
                         if ([string]$derivedScope['crossing_id'] -ne [string]$scopeMap['crossing_id']) {
                             $issues.Add('boundary_enforcement.correction_history.scope_identity crossing ID is not derived from its immutable evidence tuple.') | Out-Null
                         }
@@ -2719,13 +2744,14 @@ function Get-SpecrewPendingVerdictState {
                 $result.IntegrityStatus = 'artifact-state-mismatch'
                 return $result
             }
+            $expectedFeatureArgs = Get-SpecrewCrossingIdentityFeatureArgs -Map $scope
             $expectedScope = New-SpecrewBoundaryCrossingIdentity `
                 -FromBoundary ([string]$scope['from_boundary']) `
                 -ToBoundary ([string]$scope['to_boundary']) `
                 -WorkingBoundary ([string]$scope['working_boundary']) `
                 -BoundaryCommitHash $result.BoundaryCommitHash `
                 -ArtifactStateId $resolvedArtifactState `
-                -RecordedAt ([string]$scope['recorded_at'])
+                -RecordedAt ([string]$scope['recorded_at']) @expectedFeatureArgs
             if ([string]$expectedScope['crossing_id'] -ne $result.CrossingId) {
                 $result.IntegrityStatus = 'crossing-id-mismatch'
                 return $result
@@ -3064,22 +3090,37 @@ function New-SpecrewPendingCrossingScope {
     if ([string]::IsNullOrWhiteSpace($effectiveOwner) -and -not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
         $effectiveOwner = Get-SpecrewCrossingOwnerIdentity -ProjectRoot $ProjectRoot
     }
-    $scope = New-SpecrewBoundaryCrossingIdentity `
-        -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
-        -ToBoundary ([string]$crossing.PendingToMarkerBoundary) `
-        -WorkingBoundary ([string]$crossing.WorkingBoundary) `
-        -BoundaryCommitHash $BoundaryCommitHash `
-        -ArtifactStateId $ArtifactStateId `
-        -RecordedAt $RecordedAt `
-        -Owner $effectiveOwner
+    $identityArgs = @{
+        FromBoundary       = [string]$crossing.PendingFromMarkerBoundary
+        ToBoundary         = [string]$crossing.PendingToMarkerBoundary
+        WorkingBoundary    = [string]$crossing.WorkingBoundary
+        BoundaryCommitHash = $BoundaryCommitHash
+        ArtifactStateId    = $ArtifactStateId
+        RecordedAt         = $RecordedAt
+        Owner              = $effectiveOwner
+    }
+    # Co-review round 5 (202, FR-026): a NEW crossing hashes its feature (identity version 2), so feature B synced at the
+    # same boundary and tree as feature A is its own crossing - its own arrival, owner and marker - instead of taking
+    # over A's. A crossing already pending keeps the identity it was minted with: a legacy crossing re-synced for the
+    # same feature (or one minted before crossings named a feature) stays legacy, so an in-flight marker and any
+    # correction scoped to it keep matching across an upgrade.
     $existing = ConvertTo-SpecrewBoundaryMap -Value $ExistingScope
+    $featureLeaf = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { '' } else { Split-Path -Leaf $FeatureRef.Trim() }
+    $scope = New-SpecrewBoundaryCrossingIdentity @identityArgs
+    if (-not [string]::IsNullOrWhiteSpace($featureLeaf)) {
+        $existingFeature = if ($null -ne $existing -and $existing.Contains('feature_ref')) { [string]$existing['feature_ref'] } else { '' }
+        $keepLegacy = $null -ne $existing -and [string]$existing['crossing_id'] -eq [string]$scope['crossing_id'] -and
+            -not ($existing.Contains('identity_version') -and -not [string]::IsNullOrWhiteSpace([string]$existing['identity_version'])) -and
+            ([string]::IsNullOrWhiteSpace($existingFeature) -or $existingFeature -eq $featureLeaf)
+        if (-not $keepLegacy) { $scope = New-SpecrewBoundaryCrossingIdentity @identityArgs -FeatureRef $featureLeaf -IdentityVersion '2' }
+    }
     if ($null -ne $existing -and [string]$existing['crossing_id'] -eq [string]$scope['crossing_id'] -and -not [string]::IsNullOrWhiteSpace([string]$existing['recorded_at'])) {
         $scope['recorded_at'] = [string]$existing['recorded_at']
         # The same crossing re-synced keeps its ORIGINAL owner: the arrival was recorded once, by one session.
         if ($existing.Contains('owner') -and -not [string]::IsNullOrWhiteSpace([string]$existing['owner'])) { $scope['owner'] = [string]$existing['owner'] }
     }
-    # 202 T011 (FR-026): a new crossing names its feature. It is not part of the crossing identity, so an existing
-    # crossing still verifies; it is what keys per-feature state (the resolver, the coverage line) to the new feature.
+    # 202 T011 (FR-026): a new crossing names its feature; it keys per-feature state (the resolver, the coverage line).
+    # Co-review round 5: it is also part of a new crossing's identity (version 2, above); a legacy crossing still verifies.
     if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) { $scope['feature_ref'] = (Split-Path -Leaf $FeatureRef) }
     return $scope
 }
@@ -3180,13 +3221,29 @@ function Add-SpecrewBoundaryAuthorizationCorrection {
     if ($targetFrom -ne $scopeFrom -or $targetTo -ne $scopeTo) {
         throw "Authorization entry '$OriginalEntryId' records '$targetFrom -> $targetTo', not the requested correction crossing '$scopeFrom -> $scopeTo'."
     }
-    $scope = New-SpecrewBoundaryCrossingIdentity `
-        -FromBoundary $scopeFrom `
-        -ToBoundary $scopeTo `
-        -WorkingBoundary $WorkingBoundary `
-        -BoundaryCommitHash $ScopeBoundaryCommitHash `
-        -ArtifactStateId $resolvedArtifactState `
-        -RecordedAt $RecordedAt
+    # Co-review round 5 (202, FR-026): the correction names its crossing the way a sync of the active feature mints it
+    # (identity version 2 when the feature is known), so a later re-sync of that feature at the same tree still matches
+    # the correction's scope and the correction keeps applying.
+    # When the crossing being corrected is the one pending, the correction takes its identity form (legacy or version 2).
+    $correctionSession = if ($state.Context.Contains('session_state') -and $null -ne $state.Context['session_state']) { ConvertTo-SpecrewBoundaryMap -Value $state.Context['session_state'] } else { $null }
+    $correctionFeature = if ($null -ne $correctionSession -and $correctionSession.Contains('feature_ref')) { [string]$correctionSession['feature_ref'] } else { '' }
+    $correctionIdentityArgs = @{
+        FromBoundary = $scopeFrom; ToBoundary = $scopeTo; WorkingBoundary = $WorkingBoundary
+        BoundaryCommitHash = $ScopeBoundaryCommitHash; ArtifactStateId = $resolvedArtifactState; RecordedAt = $RecordedAt
+    }
+    $legacyScope = New-SpecrewBoundaryCrossingIdentity @correctionIdentityArgs
+    $pendingForCorrection = if ($state.State.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $state.State['pending_crossing'] } else { $null }
+    $pendingFeatureArgs = Get-SpecrewCrossingIdentityFeatureArgs -Map $pendingForCorrection
+    $scope = if ($null -ne $pendingForCorrection -and $pendingFeatureArgs.Count -gt 0) {
+        $candidate = New-SpecrewBoundaryCrossingIdentity @correctionIdentityArgs @pendingFeatureArgs
+        if ([string]$candidate['crossing_id'] -eq [string]$pendingForCorrection['crossing_id']) { $candidate } else { $null }
+    }
+    else { $null }
+    if ($null -eq $scope) {
+        $pendingIsLegacyHere = $null -ne $pendingForCorrection -and [string]$pendingForCorrection['crossing_id'] -eq [string]$legacyScope['crossing_id']
+        $scope = if ($pendingIsLegacyHere -or [string]::IsNullOrWhiteSpace($correctionFeature)) { $legacyScope }
+        else { New-SpecrewBoundaryCrossingIdentity @correctionIdentityArgs -FeatureRef $correctionFeature -IdentityVersion '2' }
+    }
     $scopeId = [string]$scope['crossing_id']
     $existingCorrections = if ($state.State.Contains('correction_history')) { @($state.State['correction_history']) } else { @() }
     foreach ($existing in $existingCorrections) {
@@ -3205,7 +3262,8 @@ function Add-SpecrewBoundaryAuthorizationCorrection {
         -BoundaryCommitHash $ScopeBoundaryCommitHash `
         -ArtifactStateId $resolvedArtifactState `
         -RecordedAt $RecordedAt `
-        -ExistingScope $scope
+        -ExistingScope $scope `
+        -FeatureRef $correctionFeature
     $pendingNext = if ($null -eq $nextScope) { $null } else { [string]$nextScope['to_boundary'] }
     $correctionId = 'correction-{0}' -f (Get-SpecrewBoundarySha256 -Text (@($OriginalEntryId, $scopeId, 'invalidation') -join "`u{001f}"))
     $correction = [ordered]@{
