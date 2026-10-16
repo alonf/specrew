@@ -5195,16 +5195,22 @@ same pattern is in the journal from 2026-08-30, so this predates 202.
 hook-captured-from-transcript`, `source_event: Stop`) for about ten and a half hours. A round could have started on it
 with no new message from the maintainer. It was finally used up by the maintainer's partial sign-off reply. One typed
 approval can authorize more than one round: authority the human never gave. **Critical** by the consequence grading.
-**Scope to check:** every approval not tied to one pending stage can be duplicated this way: the review round, the
-allowance reset (`cross-channel-double-mint` rows for it on 10-16 00:19 and 00:20), the partial sign-off override,
-the stop-here decision (rows on 10-16 03:12, 14:26 and 14:27) and workshop receipts. A stage approval is tied to one
-pending stage, so a second copy is harmless once that stage is authorized.
+**Scope, from a scratch reproduction (202 `iterations/001/b4f-127-reproduction.md`):**
+
+- In a conversation longer than 500 lines, every turn end with no human message records the approval again: 6 from
+  one typed message. The turn-end identity uses a sliding window position and an empty arrival time.
+- After a spend, the next turn end writes a fresh unspent approval, and `--approve-round` accepts it.
+- **Affected:** the review round; the allowance reset, where the guard for a reset that already landed misses the
+  copy; the stop-here decision, which re-binds to a newer pause the human never saw, and stopping here can complete
+  sign-off (the highest-consequence case); coverage deferral, from the source only.
+- **Not affected:** the partial sign-off override, workshop receipts and workshop repair, which accept only the
+  message-received path. Stage approvals are tied to one pending stage, so a second copy finds nothing pending.
 **Fix direction (iteration 002, first item, ahead of B4F-125; maintainer ruling 2026-10-16):** bind each approval to
 one human message by its transcript identity, not its text, and make the second recording path a no-op for a message
 already recorded. Failing test: one typed approval, then N turns with no human message, gives exactly one recorded
 approval.
-**Interim crew rule:** before every round launch, read `pending-round-approval.json`; never launch on an approval
-whose `evidence_source` is the transcript check unless the human's own typed message in that turn produced it.
+**Interim crew rule:** before every round launch, pause choice or allowance reset, read the stored approval; never act
+on one whose `evidence_source` is the transcript check unless the human's own typed message produced it for that run.
 **Disposition:** open at 202's close, stated in the review sign-off packet.
 
 ## Beta4.1 intake rulings — 2026-10-13
