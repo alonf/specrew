@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 26
-**Resolution rate**: 100% (26/26 resolved)
+**Total drift events**: 35 (DRIFT-001 to DRIFT-035; corrected at the retro, 2026-10-16, from a stale 26)
+**Resolution rate**: 34 of 35 closed (33 resolved, 1 observation closed through T013); 1 open, DRIFT-034 (B4F-127, iteration 002)
 **Specification drift**: 1 (spec-updated at design-analysis)
 
 ## Events
