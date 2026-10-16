@@ -127,11 +127,28 @@ Not planned here. It starts only after the maintainer's explicit Tier 1 acceptan
 
 **Proposed order (maintainer, 2026-10-16; decided at iteration 002's plan stop, not before):**
 
-1. **B4F-127 first (critical):** bind every unbound approval (review round, allowance reset, partial sign-off override, stop-here decision, workshop receipts) to one human message by its transcript identity, not its text, and make the second recording path a no-op for a message already recorded. Failing test: one typed approval, then N turns with no human message, gives exactly one recorded approval.
+1. **B4F-127 first (critical):** bind every unbound approval to one human message by its transcript identity, not its text, and make the second recording path a no-op for a message already recorded. The reproduction (`iterations/001/b4f-127-reproduction.md`) found the review round, the allowance reset, the stop-here decision and coverage deferral affected; the partial sign-off override and workshop receipts are not. Failing test: one typed approval, then N turns with no human message, gives exactly one recorded approval.
 2. **B4F-125** (approval intake, above), with **B4F-128** beside it: a reworded discussion question counts as present when its meaning matches, as headings already do.
-3. **B4F-055:** demotion on form; a summary never says "nothing needs your attention" over real major findings.
-4. **One simplification item** drawn from the runtime-store inventory in the iteration-001 retro.
+3. **B4F-055:** demotion on form; a summary never says "nothing needs your attention" over real major findings. The retro's consequence grading: the engine demoted all 11 critical findings.
+4. **One simplification item**, chosen at the plan stop between candidate 1 (remove the recovery question; 9 findings; changes FR-009, the maintainer's decision) and candidate 3 (replace the shared receipt-outcomes journal; 7 findings; no requirement change). See the retro's "Rulings Recorded at the Retro Verdict".
+5. **Candidate 7, regardless:** delete the draft copy (`turn-message.md`), which has no reader.
 
 Size: 15 SP or less. Review rounds are placed after the tasks that touch approval handling.
+
+**Proposal: does B4F-121 fit? (maintainer's question at the retro, for the plan stop.)** B4F-121 is the Stop review check asking for a review round while an approved step runs, and again after sign-off. It alone caused 8 of the 15 extra stops at iteration 001's review close. Rough estimates, to be confirmed by capacity planning:
+
+| Item | Estimate (SP) |
+| --- | --- |
+| B4F-127 (four affected approvals, the turn-end path's message identity, small and long transcript tests) | 4.0 |
+| B4F-125 (a, b, c) | 3.0 |
+| B4F-128 | 0.5 |
+| B4F-055 | 2.0 |
+| Simplification: candidate 3 / candidate 1 | 2.0 / 2.5 |
+| Candidate 7 | 0.25 |
+| **Subtotal** | **11.75 / 12.25** |
+| B4F-121: the check reads whether an approved round or stop is running or sign-off is already done, and says so in one line instead of asking; failing tests from iteration 001's eight blocks | 2.0 |
+| **Total with B4F-121** | **13.75 / 14.25** |
+
+It fits within 15 SP, with 0.75 to 1.25 SP of slack, which is thin for a plan where every task touches approval handling. Two cautions for the plan stop. B4F-121 and B4F-055 are review-engine code, which the spec puts out of 202's scope (beta5), so taking either needs a scope ruling. And if B4F-127's estimate grows at capacity planning, B4F-121 is the first item to move back to beta5.
 
 **Release gate (maintainer ruling at review sign-off, 2026-10-16):** closing iteration 001 is not a release. Beta4.1 does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.

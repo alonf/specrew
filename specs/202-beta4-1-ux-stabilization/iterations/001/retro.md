@@ -411,3 +411,66 @@ move what a review is bound to (inventory, item 11).
   from the acceptance-evidence table.
 - The round result files under `.specrew/review/` were not re-read; per-round counts and the demotion correction come
   from `findings-classification.md`, which read them.
+
+## Rulings Recorded at the Retro Verdict
+
+The maintainer approved the retro on 2026-10-16. Their first approval was not recorded because it arrived as pasted
+text, which is B4F-125 again. It came with three additions and one widened rule, recorded here after the approval so
+the approved text did not change under it.
+
+### 1. The 32 findings graded by consequence
+
+Grades: critical means a false authorization, data loss, or a write outside the project; major means recoverable, but it
+blocks or misleads; minor is everything else. Each finding is graded in `retro-inputs/consequence-grading.md`.
+
+| Round | Critical | Major | Minor | Total |
+| --- | --- | --- | --- | --- |
+| 1 | 5 | 3 | 0 | 8 |
+| 2 | 2 | 3 | 0 | 5 |
+| 3 | 0 | 4 | 0 | 4 |
+| 4 | 0 | 5 | 0 | 5 |
+| 5 | 4 | 2 | 0 | 6 |
+| 6 | 0 | 4 | 0 | 4 |
+| **All** | **11** | **21** | **0** | **32** |
+
+- **All six rounds went to defects that mattered**: 32 of 32 are critical or major. Under the strictest reading of
+  three borderline findings (R2-5, R6-2 and R6-4 moved to minor), it is 29 of 32.
+- **The critical findings are 8 false authorizations and 3 losses of journal records.** Seven of the 8 false
+  authorizations are in the recovery-question machinery; the others are R1-1 (a workshop receipt) and R5-1 (the shared
+  stage identity). No finding wrote outside the project.
+- **The engine demoted all 11 critical findings.** 27 of the 32 reached the maintainer labelled minor, and only round
+  4's five carried a label that matched their consequence. Round 5's "Nothing found that needs your attention" covered
+  4 critical findings. This is the strongest evidence yet for B4F-055.
+- Confidence notes: if "data loss" means the human's own work only, the 3 journal-loss findings are major and the
+  count is 8 critical. R1-6 (the action ran before its approval was recorded) could read as critical.
+
+### 2. The simplification item: candidates 1 and 3 side by side
+
+Both go to iteration 002's plan stop, where the maintainer decides; this replaces the retro's single recommendation
+in section (c).
+
+| | Candidate 1: remove the recovery question | Candidate 3: replace the shared receipt-outcomes journal |
+| --- | --- | --- |
+| What changes | The system sets the journal aside itself, says so, and keeps everything; both readers already read set-aside files | The same-turn disclosure reads a value passed within the hook fire or a field on this turn's record |
+| Findings it carried | 9, including 7 of the 8 false authorizations | 7, including R5-5 (another session's outcome) |
+| Requirement change | FR-009 (the human approves recovery); the maintainer decides it at the plan stop | none |
+| Governing principle | fits: a stop with no decision the human needs to make goes away | neutral: removes no stop |
+
+**Candidate 7, deleting the draft copy that has no reader, is done in iteration 002 regardless.** It costs nothing.
+
+### 3. B4F-121 in iteration 002
+
+The review engine caused 10 of the 15 extra stops at the review close, and it is deferred to beta5. B4F-121 alone
+produced 8: the Stop review check asking for a round while an approved step ran, and again after sign-off. The plan
+input in `plan.md` estimates whether it fits within 15 SP. The plan stop decides.
+
+### 4. Lesson 5, widened to a standing rule
+
+**No commit between any human approval and the step that consumes it.** That covers a review round, a stop, a partial
+sign-off, an allowance reset and a stage approval. All three discipline violations in this iteration broke this rule
+in one form or another. It replaces the narrower "no commit while a round runs" and "records before the sign-off step".
+
+### Friction at the retro stop
+
+The pasted approval was not recorded, and the retro packet was then shown again in full because the reply had carried
+the approval phrase: 1 corrective exchange, 1 extra stop (B4F-125).
