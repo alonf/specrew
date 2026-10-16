@@ -5149,6 +5149,21 @@ crew passed that on: its reply offered a `! pwsh ... --remediate allowance-reset
 (a pasted transcript never authorizes anything) is kept.
 **Disposition:** Tier 2, iteration 002, first item, ahead of the review-ordering slice. Not fixed in iteration 001.
 
+## B4F-126 - THE REVIEW OFFERED A STOP IT COULD NOT COMPLETE, AND THE REFUSAL NAMED AN INTERNAL CODE (beta5 candidate)
+
+**Observed:** 2026-10-16, feature 202, after co-review round 5 (`run-20261016-002823641-f5fc77f3`). The round's
+result was `snapshot-moved` (`can_approve_current = false`): the crew committed a docs-only change while the round ran.
+The pause still said "Nothing here blocks sign-off ... Stopping the review here is the ordinary next step". The
+maintainer typed `stop the review here`, the final step ran for over ten minutes, and then refused with "the remaining
+findings could not be recorded as accepted (review-human-disposition-requires-complete-current-valid-result) ... fix
+what the message above names". The message names a code, not a fix, and no listed remediation covers a result
+invalidated mid-run.
+**Cost:** one human decision spent on an option that could not succeed, a ten-minute wait, and another decision.
+**Beta5 candidate:** (1) a round whose snapshot moved says so at the pause and does not offer a stop it cannot
+complete; it names the remedy instead. (2) A commit to the reviewed branch while a round runs is refused or warned
+about at the time, not discovered at sign-off. (3) Every refusal names, in plain words, what to do next.
+**Disposition:** recorded under the beta5 rule. In 202 it is brought to the maintainer as a decision (DRIFT-032).
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
