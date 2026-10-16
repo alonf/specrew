@@ -122,3 +122,5 @@ The required lenses are `security-baseline`, `robustness-baseline` and `test-int
 ## Iteration 002 (Tier 2)
 
 Not planned here. It starts only after the maintainer's explicit Tier 1 acceptance at the iteration-001 closeout. Its design-analysis sets the exact review-ordering slices (FR-022) and the package-comparison scope (FR-023).
+
+**First item (maintainer ruling, 2026-10-16): B4F-125**, approval intake, ahead of the review-ordering slice. (a) A phrase that leads its own line in the human's own message, with no pasted-transcript structure, is an approval; the B4F-065 guard tells a pasted transcript from a typed line instead of rejecting by position, and a refusal says why a recognized phrase did not count. (b) An allowance reset requested in order to run a round authorizes that round. (c) No approval request offers the human a command to run as the approval; the typed reply is the path. Each part gets a failing test built from `iterations/001/b4f-125-live-messages.json`.

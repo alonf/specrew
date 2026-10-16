@@ -5103,29 +5103,55 @@ It is the B4F-109 class (one feature's review state leaking into another's), in 
 iterations are exempt, as closed ones are, and the baseline category stops moving with unrelated state.
 **Disposition:** recorded under the beta5 rule. In 202 it is within the known baseline category (SC-008 holds).
 
-## B4F-125 - A TYPED APPROVAL BELOW A PASTED BLOCK IS NOT RECORDED, AND THE REFUSAL DOES NOT SAY WHY (beta5 candidate)
+## B4F-125 - A TYPED APPROVAL IS REFUSED BY ITS POSITION, ONE DECISION TAKES TWO APPROVALS, AND THE HUMAN IS OFFERED A SCRIPT AS THE WAY TO APPROVE (Tier 2, iteration 002, first item)
 
-**Observed:** 2026-10-16, feature 202, before co-review round 5. The maintainer sent one message: a pasted block of
-round-5 ground rules, then, on its own line at the end, the typed reply `approved for allowance reset`.
-`specrew review --remediate allowance-reset` then refused with "no approval from them has been captured" and asked
-for the very phrase the maintainer had typed. Checked read-only, `Test-SpecrewHumanVerdictToken` classifies that
-message as `Action = none`, `IsApproval = False`: the message opens with the pasted block, and only a leading phrase
-counts (the B4F-065 rule, which exists so that a pasted transcript can never authorize anything).
-**Cost:** one extra round trip: the maintainer must send the phrase again as its own message.
-**Cause:** the rule is right, and the refusal is the problem. It repeats the instruction to type the phrase, without
-saying that a message was received, that it carried the phrase below other content, and that this is why it did not
-count. That is the W54 class: an unrecorded approval-shaped reply must be named, not silently treated as absent.
-**Beta5 candidate:** when the latest human message contains a recognized approval phrase that did not count, the
-refusal says so in one sentence ("your last message has the phrase below a pasted block; send it on its own") instead
-of the generic ask. The B4F-065 rule itself stays.
-**Disposition:** recorded under the beta5 rule; not a 202 defect (the B4F-065 behaviour is correct and intended).
+**Maintainer ruling, 2026-10-16:** this finding goes first in iteration 002 (Tier 2), not beta5. It is the friction 202
+exists to remove, and it happened live at 202's own last review. The earlier B4F-125 (the refusal not saying why) is
+folded in as part (a)'s refusal clause. The retro records it as an observed friction event at the review stage, beside
+the T007 repaint (DRIFT-030).
+
+**Observed:** 2026-10-16, feature 202, before co-review round 5. One decision, to top up the rounds and run round 5,
+cost the maintainer three messages and two extra stops. The exact messages, refusals and crew offer are in
+[`b4f-125-live-messages.json`](../specs/202-beta4-1-ux-stabilization/iterations/001/b4f-125-live-messages.json); each
+part's failing test is built from them.
+
+**(a) A typed approval on its own line is refused because it is not the first characters of the message.** The
+maintainer's message was a pasted block of their own round-5 rules, then `approved for allowance reset` typed on its own
+line. Read-only, `Test-SpecrewHumanVerdictToken` returns `Action = none`, `IsApproval = False`, and
+`--remediate allowance-reset` refused with the generic "no approval from them has been captured", asking for the very
+phrase the maintainer had typed, without saying why. The paste guard (B4F-065) rejects by position. It must instead tell
+a pasted transcript (speaker turns, a packet's marker, assistant text, quote-bar prefixes) from a line the human typed.
+A phrase that leads its own line in the human's own message, with no pasted-transcript structure, is an approval. When a
+recognized phrase still does not count, the refusal says so and says why, in one sentence, instead of the generic ask
+(the W54 class).
+- **Failing test:** `reset-below-own-paste` from the fixture classifies as an approval for `allowance reset`, and a
+  pasted transcript carrying the same phrase still does not (the B4F-065 control stays).
+
+**(b) The allowance reset and the round are two approvals for one decision.** After the reset was recorded and
+applied, `--pause-choice 1` refused again, asking for `approved for review round`. The reset existed only to run that
+round. A reset requested in order to run a round authorizes that round.
+- **Failing test:** with the allowance exhausted and a round paused, `reset-bare` alone leads to the reset and the round
+  being authorized, with no second approval asked.
+
+**(c) Never offer the human a script to run as the way to give an approval; the typed reply is the path.** Both engine
+refusals end with "run this command from their own terminal, where their invocation is itself the approval", and the
+crew passed that on: its reply offered a `! pwsh ... --remediate allowance-reset ...` command as step 1 (the fixture's
+`crewOffer`). The typed reply is the only approval path to offer.
+- **Failing test:** no refusal text, Stop directive or skill line that asks a human for an approval offers a command for
+  them to run as the approval; each names only the typed reply.
+
+**Requirement:** FR-012 / SC-003 (0 corrective exchanges and 0 extra stops for a real decision); the B4F-065 guarantee
+(a pasted transcript never authorizes anything) is kept.
+**Disposition:** Tier 2, iteration 002, first item, ahead of the review-ordering slice. Not fixed in iteration 001.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
 B4F-100, B4F-102, B4F-105, B4F-089, B4F-101 and B4F-107. **Tier 2**, only after Tier 1 is accepted,
 is the narrow B4F-054/056/058/061 review-ordering slice bounded by B4F-074, B4F-093 and B4F-103.
-No beta5 review redesign enters through the ordering slice. **B4F-108** (Codex workshop parity)
+No beta5 review redesign enters through the ordering slice. **B4F-125** (approval intake: position, two
+approvals for one decision, a script offered as the approval) was added FIRST in Tier 2 on 2026-10-16, after it
+happened live before 202's round 5. **B4F-108** (Codex workshop parity)
 was added to Tier 1 later the same day, after the Codex product-domain checkpoint deadlocked.
 **B4F-109** (new-feature cycle reset, `feature-closeout -> specify`) was added to Tier 1 next to B4F-105
 the same day, after 202's specify sync could open no crossing.
