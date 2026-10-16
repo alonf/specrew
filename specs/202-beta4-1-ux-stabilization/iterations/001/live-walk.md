@@ -263,12 +263,45 @@ disagree, write both in Notes.
 
 | Host | Version | Date | Real decisions | Corrective exchanges | Extra stops | Receipts after step 4 | Replies per checkpoint | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Claude | | | null | null | null | null | null | |
+| Claude | 2.1.301 | 2026-10-16 | 7 | 1 | 4 | 3 | 1/1/1 | See "Walk notes: Claude". stop-blocks: 1 |
 | Codex (healthy worktree) | | | null | null | null | null | null | |
 | Copilot | | | null | null | null | null | null | |
 
 Expected per host: 6 real decisions (7 or more only if the crew asked further real questions), 0 corrective
 exchanges, 0 extra stops, 3 receipts after step 4, and 1 reply per checkpoint (write it as `1/1/1`).
+
+### Walk notes: Claude (2026-10-16)
+
+The maintainer's tally, checked against the disk in `C:\scratch\walk-202\claude`. The two agree.
+
+1. M2 carried a stray sentence copied from this guide by mistake. Claude took it as "move on". Not counted.
+2. M4 was replaced, because the first lens was `requirements-nfr`, not `architecture`.
+3. The reviewer choice after M6 is a real decision, because it spends the maintainer's quota, so it counts as
+   decision 7. Open question from the maintainer: could it be asked earlier?
+4. 1 corrective exchange and 1 extra stop: "you decide the remaining lenses" was recorded for one lens only, and
+   `code-implementation` then asked "confirm or you decide this lens". Disk: `architecture-core` is `human-delegated`,
+   then `code-implementation` is `human-confirmed` and then `human-delegated`.
+5. 1 extra stop: permission to create the branch and commit before the spec packet. Feature setup never created branch
+   `001-word-count`, the pre-check refuses to show the packet while work is uncommitted, and Claude Code commits only
+   when asked.
+6. 1 extra stop: M7 was answered, then the full packet was shown again. The crew chose a boundary turn end for an
+   answer to a question.
+7. 1 extra stop: after the restart, the packet was sent back once for a missing recommendation. The maintainer saw
+   one line about it ("The packet was missing a recommendation, so I'm adding one and verifying again.") and one copy
+   of the packet. Disk: 1 `stop-block` row, `block_kind: presentation`.
+8. Step 9 (M10) passed. After the restart Claude went straight back to the clarify approval, said "'Continue' isn't an
+   approval", and did not ask for `approved for specify` again.
+9. Not counted:
+   - M9 was answered with a full packet (status after compaction, which the spec allows).
+   - The approval row has `authorizing_human: unattributed` and an empty `from_boundary`.
+   - The stop journal has no rows for turns 4 and 10.
+   - On restart, the exited session was flagged as "another session may be active".
+   - The NEL sentence came out garbled ("treat  break.").
+   - The orientation says "no feature is in progress" twice.
+
+Disk at the end of the walk: receipts 7, all `recorded` with no refused or degraded outcomes (3 by step 4: product-domain,
+agenda, `requirements-nfr`). `verdict_history` has exactly one row, `to_boundary: specify`,
+`evidence_source: hook-captured-from-transcript`. The last authorized stage is `specify`, and `clarify` is pending.
 
 ## After the walk
 
