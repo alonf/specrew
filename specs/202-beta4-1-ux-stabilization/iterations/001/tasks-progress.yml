@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "202-beta4-1-ux-stabilization"
 iteration: "001"
-updated_at: "2026-10-15T07:14:58.3256849Z"
+updated_at: "2026-10-16T14:24:08.8772108Z"
 tasks:
   T001:
     title: "Capture real hook payloads in scratch dirs; measure session-id presence and direct-display of hook output per host"
@@ -83,13 +83,13 @@ tasks:
     blocked_reason: ""
   T014:
     title: "Draft intake on stdin with explicit UTF-8 (Hebrew test on 3 OS); per-session path; skills name it"
-    status: "pending"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-10-16T14:24:00.8116464Z"
     blocked_reason: ""
   T015:
     title: "Acceptance evidence: friction table, validator vs baseline, live-walk script"
-    status: "pending"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-10-16T14:24:00.8130312Z"
     blocked_reason: ""

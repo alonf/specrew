@@ -26,7 +26,7 @@ T001, T002, T003, T004, T006, T007, T008, T009, T010, T011, T012, T013, T014, T0
 - T005 runs once every surface it exercises exists.
 - T015 assembles the closeout evidence.
 - **Review cadence (maintainer ruling, 2026-10-14, DRIFT-018):** co-review round 3 runs once T011 is committed and covers T006 to T011. T010 and T011 touch authority state, and rounds 1 and 2 found 13 real defects, so their fixes need a round before sign-off. Round 4, at sign-off, covers T012 to T014 and the round-3 fixes.
-- **Demoted findings are checked, every one (maintainer rule for 202, until B4F-055 is fixed):** in rounds 3 and 4, every finding the engine demotes is checked against the code and listed in that round's checkpoint as real or not, with the reason, before any sign-off. Rounds 1 and 2 demoted all 13 of their findings, and all 13 were real.
+- **Demoted findings are checked, every one (maintainer rule for 202, until B4F-055 is fixed):** in rounds 3 and 4, every finding the engine demotes is checked against the code and listed in that round's checkpoint as real or not, with the reason, before any sign-off. Rounds 1 and 2 demoted 12 of their 13 findings (the 13th was reported minor), and all 13 were real (count corrected 2026-10-16, DRIFT-033).
 
 ## Phase 1: Setup (measurement)
 

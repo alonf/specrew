@@ -37,6 +37,21 @@ live walk (`live-walk.md`), and until then they are `null`, never `0`.
 
 "null" means not captured. After-values are filled from the live walk only.
 
+### The measure: stops against the beta4 baseline
+
+Whether 202 worked is decided here, not by the defect count (maintainer ruling, 2026-10-16). The baseline is the
+maintainer's UX ruling of 2026-08-28: in one beta4 session, work stopped 8 times, and none of the stops was about the
+code. The walk columns are filled from `live-walk.md`. The stages differ (the beta4 session was at review; the walk
+runs intake to the specify approval), and the quantity compared is the same: stops that asked for no decision. SC-003
+targets 0 on each host.
+
+| Measure | beta4 baseline (one session, 2026-08) | 202 walk: Claude | 202 walk: Codex | 202 walk: Copilot |
+| --- | --- | --- | --- | --- |
+| Stops that asked for no decision (extra stops) | 8 | null | null | null |
+| Stops about the work (real decisions) | null (not counted) | null | null | null |
+| Corrective exchanges | null (not counted) | null | null | null |
+| Refusals that did not name their cause | null (not counted) | null | null | null |
+
 ### Friction observed during 202's own run
 
 | Date | Event | Real decisions | Corrective exchanges | Extra stops | Disposition |
@@ -45,6 +60,11 @@ live walk (`live-walk.md`), and until then they are `null`, never `0`.
 | 2026-10-15 | The prompt hook answered the typed round approval with "reads as a verdict for 'review' ... nothing was recorded" (B4F-116, third time); the round approval itself was captured. | 0 | 0 | 0 | Beta5 (B4F-116). The dangerous direction is settled: see below. |
 | 2026-10-15 | The Stop review check asked for a fresh round approval while the approved round 4 was starting (B4F-121, second time). | 0 | 0 | 1 | Beta5 (B4F-121). |
 | 2026-10-16 | Review stage, before round 5. The maintainer's `approved for allowance reset`, typed on its own line below their pasted round-5 rules, was refused by position, and the refusal did not say why. After the bare phrase, the reset was applied but the round needed a second approval, `approved for review round`. The crew had also offered a `!` script as the way to approve. One decision, three messages. | 1 | 2 | 2 | Tier 2, iteration 002, first item (B4F-125; maintainer ruling). The exact messages are in `b4f-125-live-messages.json`. |
+| 2026-10-16 | Review stage, after round 5. The crew offered `stop the review here`, and the maintainer typed it; the stop was refused after the final check because a crew commit had moved round 5's snapshot mid-run. Round 6 had to run, against the maintainer's "no round 6" rule. | 1 | 1 | 1 | Beta5 (B4F-126). Crew rule: no commit while a round runs. |
+| 2026-10-16 | Review stage, after round 6. The crew offered `stop the review here` again, and the maintainer typed it; the stop was refused because round 6's fixes postdate the round. Sign-off closed through `approved for partial review signoff - <reason>`. | 1 | 1 | 1 | Beta5 (B4F-126, second instance). DRIFT-033. |
+| 2026-10-16 | While the two stops ran, the Stop review check told the crew seven times to ask the maintainer for a fresh round approval, for files the running stop already covered. | 0 | 0 | 7 | Beta5 (B4F-121, third instance). |
+| 2026-10-16 | The prompt hook answered the typed partial sign-off reply with "reads as a verdict for 'review' ... nothing was recorded"; the engine had captured it. | 0 | 0 | 0 | Beta5 (B4F-116, fourth time). |
+| 2026-10-16 | The maintainer found from the journals that one typed `approved for review round` had been recorded twice, by the prompt hook and again by the turn-end check, leaving an unspent approval for about ten and a half hours that a round could have used. | 0 | 0 | 0 | Critical. Iteration 002, first item (B4F-127, DRIFT-034). Open at 202's close. |
 
 ## A round approval is never a boundary verdict (B4F-116)
 
@@ -93,6 +113,7 @@ All seven lanes passed.
 
 ## Records
 
-- Drift: `drift-log.md`, DRIFT-001 to DRIFT-030.
-- Findings raised during 202: `docs/beta4-findings.md`, B4F-109 and B4F-111 to B4F-124 (B4F-110 records the host-tier decision).
-- Co-review: six rounds found 32 defects (8, 5, 4, 5, 6 and 4), and all 32 were real (B4F-055); the engine demoted 24 of them. Round 5 (`run-20261016-002823641-f5fc77f3`, after the maintainer's allowance reset) reviewed round 4's fixes, but its result moved mid-run because of a crew commit, so it could not carry a sign-off (B4F-126). Round 6 (`run-20261016-031317319-8c4537dd`) reviewed the current tree, including round 5's fixes. All 32 are fixed behind failing tests. **Round 6's four fixes (DRIFT-032) go to sign-off without a further review round, by the maintainer's rule set before round 5 and accepted by them in advance.**
+- Drift: `drift-log.md`, DRIFT-001 to DRIFT-034.
+- Findings raised during 202: `docs/beta4-findings.md`, B4F-109 and B4F-111 to B4F-127 (B4F-110 records the host-tier decision).
+- Co-review: six rounds found 32 defects (8, 5, 4, 5, 6 and 4), and all 32 were real (B4F-055); the engine demoted 23 of them (8, 4, 4, 0, 4 and 3; first recorded as 24, DRIFT-033). Round 5 (`run-20261016-002823641-f5fc77f3`, after the maintainer's allowance reset) reviewed round 4's fixes, but its result moved mid-run because of a crew commit, so it could not carry a sign-off (B4F-126). Round 6 (`run-20261016-031317319-8c4537dd`) reviewed the current tree, including round 5's fixes. All 32 are fixed behind failing tests. **Round 6's four fixes (DRIFT-032) go to sign-off without a further review round, by the maintainer's rule set before round 5 and accepted by them in advance.** The stop after round 6 was refused because those fixes postdate the round, and sign-off closed through the maintainer's typed `approved for partial review signoff - <reason>` (DRIFT-033).
+- Known open defect at sign-off: one typed approval can be recorded twice, once when the message arrives and again by the turn-end check, leaving a spare approval the maintainer never gave (B4F-127, critical, predates 202; iteration 002, first item; DRIFT-034).

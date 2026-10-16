@@ -3244,8 +3244,9 @@ The crew's reading: (1) keeps every property the rule was written for and fixes 
 the floor if (1) is too costly; (3) is not taken. **Beta5, review-machinery family, with B4F-054.**
 
 **Evidence, feature 202, 2026-10-14 (maintainer):** across co-review rounds 1 and 2 of 202's iteration 001
-(`run-20261013-234651770-ac649a7e`, `run-20261014-102731596-597f9ec9`, codex), the engine demoted all 13
-findings to minor for lacking the failure-scenario clause. The crew checked every one against the code, and
+(`run-20261013-234651770-ac649a7e`, `run-20261014-102731596-597f9ec9`, codex), the engine demoted 12 of the 13
+findings to minor for lacking the failure-scenario clause; the 13th was reported minor and never demoted
+(corrected 2026-10-16 from the result files; this paragraph first said "all 13"). The crew checked every one against the code, and
 all 13 were real defects (202 DRIFT-014 and DRIFT-015). They include a cross-session authority defect: another
 session's typed "yes" could approve a reply-recording recovery it was never asked about. Each round's
 summary told the maintainer that nothing needed their attention. The demotion did not filter noise here; it
@@ -3273,7 +3274,9 @@ sign-off (202 DRIFT-018).
 
 **Round 5 (2026-10-16, `run-20261016-002823641-f5fc77f3`, codex, after the maintainer's allowance reset; the last round by their rule):** 6 findings, 4 reported major and demoted to minor for "no concrete failure scenario" even though each names one (a probe reproduced two of them end to end), and 2 reported minor. The summary again read "Nothing found that needs your attention." All 6 are real (28 of 28 across five rounds): two features at the same boundary and tree shared one crossing identity, so a reply to one feature's packet could authorize the other; a conditional yes approved the reply-recording recovery; a declined recovery question stayed armed for a later unrelated yes; a recovery question recorded during a withheld turn survived; the recording disclosure could report another session's outcome; an approval phrase inside a code example read as a missed approval. All six are fixed behind failing tests (202 DRIFT-032). Across rounds 3 to 5, 8 of the 15 findings were demoted, and all 8 were real.
 
-**Round 6 (2026-10-16, `run-20261016-031317319-8c4537dd`, codex; run because round 5's result moved mid-run, B4F-126):** 4 findings, 3 reported major and demoted for "no concrete failure scenario" (a probe reproduced one end to end), 1 reported minor, and the summary again read "Nothing found that needs your attention." All 4 are real (32 of 32 across six rounds): a partial health line latched the hook-output journal; verdict options written as bullets were invisible to the Stop's meaning check; a review link with parentheses in its path was truncated; two links differing only by case were merged. All four are fixed behind failing tests (202 DRIFT-032). Across the six rounds, 24 of 32 findings were demoted, and all 24 were real.
+**Round 6 (2026-10-16, `run-20261016-031317319-8c4537dd`, codex; run because round 5's result moved mid-run, B4F-126):** 4 findings, 3 reported major and demoted for "no concrete failure scenario" (a probe reproduced one end to end), 1 reported minor, and the summary again read "Nothing found that needs your attention." All 4 are real (32 of 32 across six rounds): a partial health line latched the hook-output journal; verdict options written as bullets were invisible to the Stop's meaning check; a review link with parentheses in its path was truncated; two links differing only by case were merged. All four are fixed behind failing tests (202 DRIFT-032). Across the six rounds, 23 of 32 findings were demoted (8, 4, 4, 0, 4 and 3, from the result files; first recorded as 24), and all 23 were real.
+
+**The maintainer's "no round 6" rule was overridden by mechanics, not by decision (2026-10-16, 202 DRIFT-033):** round 5's stop was refused because a crew commit landed while the round ran and moved its snapshot (B4F-126), so a sixth round was the only way to get a result that could carry a sign-off. Round 6's own stop was then refused too: its four fixes were committed after it, and a stop cannot accept that gap. Sign-off closed only through `approved for partial review signoff - <reason>`, the maintainer's advance acceptance in the engine's form. Each of the 6 rounds' summaries said nothing needed the maintainer's attention, over 32 real findings. Crew rule from here: no commit while a round runs.
 
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
@@ -4956,6 +4959,7 @@ and leaves it to the round-approval capture. A boundary-verdict disclosure never
 approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
 **Recurred again:** 2026-10-15, the round-4 approval drew the same notice; the round approval was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-4`).
 **The dangerous direction, settled in 202 (maintainer instruction, 2026-10-15):** with no decision pending, the misreading is harmless. At sign-off the review decision IS pending, and a capture there would be an authorization the human never gave. `tests/unit/round-phrase-never-boundary-verdict.tests.ps1` (f199-class-guards-b) drives the real prompt-time capture with `before-implement -> review-signoff` pending. In ledger terms the stop's phrase is `approved for review-signoff`. "approved for review round" in six shapes (bare, capitalized with a period, with instructions after a dash or a comma, after a pasted quote, followed by more text) is never captured: the classifier reads it as naming 'review', a different boundary, so it never reaches the evidence check, and the ledger and the pending decision are unchanged. A control shows the real phrase IS captured in the same setup. It passed on its first run: no fabricated authorization. The misleading notice itself remains the beta5 candidate above.
+**Recurred a fourth time, on a different phrase:** 2026-10-16, the maintainer's typed `approved for partial review signoff - <reason>` drew the same "reads as a verdict for 'review' ... nothing was recorded" notice. The engine had captured it, and sign-off completed on it. The classifier reads any `approved for review...` prefix as the `review` boundary.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 
@@ -5077,6 +5081,7 @@ in one line ("round 3 is reviewing these files now") instead of asking for an ap
 is the governing principle's case: a stop with no decision for the human to make.
 **Disposition:** recorded. Observed in the turn transcript.
 **Recurred:** 2026-10-15, as round 4 started on the maintainer's typed approval: the Stop review check again asked the crew to request a fresh round approval, naming round 3's run.
+**Recurred, seven times in one hour:** 2026-10-16, while the engine's two review stops ran (the stop after round 6 and its re-run with the partial sign-off reply), the Stop review check blocked seven turn ends, each asking the crew to request `approved for review round` for files the running stop already covered. Round 6's run was named each time. Seven stops with no decision for the human.
 
 ## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
 
@@ -5165,6 +5170,42 @@ invalidated mid-run.
 complete; it names the remedy instead. (2) A commit to the reviewed branch while a round runs is refused or warned
 about at the time, not discovered at sign-off. (3) Every refusal names, in plain words, what to do next.
 **Disposition:** recorded under the beta5 rule. In 202 it is brought to the maintainer as a decision (DRIFT-032).
+**Recurred, 2026-10-16, after round 6 (202 DRIFT-033):** the crew offered `stop the review here` again and the
+maintainer typed it. The final check ran for about twenty minutes, then refused with `latest-result-not-current`:
+round 6's four fixes were committed after the round, so its result no longer covers the files, and a stop has no way
+to accept that gap. The refusal did name a path this time: run the stop once, have the human type
+`approved for partial review signoff - <why>`, and run it again with no writes in between. That path closed the
+review in about fifteen more minutes. Cost: a second human decision and two long waits for an outcome that was known when
+round 6's fixes were committed. **Beta5 candidate, added:** (4) when fixes land after the last round, the pause offers
+the partial sign-off reply directly, as the one decision, instead of a stop that must fail first.
+
+## B4F-127 - ONE TYPED APPROVAL IS RECORDED TWICE, AND THE SPARE COPY CAN BE SPENT (critical; iteration 002, first item)
+
+**Observed:** 2026-10-16, found by the maintainer in `.specrew/authority/exhausted-turns.jsonl`, confirmed against
+the conversation log (202 DRIFT-034). A typed `approved for review round` is recorded when the message arrives (prompt
+hook, `source_event: UserPromptSubmit`). Later, at a turn end where that phrase is still the human's last typed
+message, the turn-end transcript check (`source_event: stop-transcript`) records it again as a new approval:
+10-14 17:30:41 (typed) then 17:33:49 and 17:34:32; 10-15 10:28:30 then 10:29:18; 10-16 03:13:03 then 04:28:27 (UTC).
+Every extra copy came at the end of the same turn, or of a continuation the Stop hook forced, with no new human
+message. Background tasks are not the trigger. When the human sent another message in the same turn (the round-5
+approval, 10-16 00:26), no extra copy was written. A `cross-channel-double-mint` record is written each time, but it
+does not block: it matches identical text across all time, and its `prior_turn_id` points to an August turn. The
+same pattern is in the journal from 2026-08-30, so this predates 202.
+**Consequence:** the 04:28 copy became an unspent `pending-round-approval.json` (`evidence_source:
+hook-captured-from-transcript`, `source_event: Stop`) for about ten and a half hours. A round could have started on it
+with no new message from the maintainer. It was finally used up by the maintainer's partial sign-off reply. One typed
+approval can authorize more than one round: authority the human never gave. **Critical** by the consequence grading.
+**Scope to check:** every approval not tied to one pending stage can be duplicated this way: the review round, the
+allowance reset (`cross-channel-double-mint` rows for it on 10-16 00:19 and 00:20), the partial sign-off override,
+the stop-here decision (rows on 10-16 03:12, 14:26 and 14:27) and workshop receipts. A stage approval is tied to one
+pending stage, so a second copy is harmless once that stage is authorized.
+**Fix direction (iteration 002, first item, ahead of B4F-125; maintainer ruling 2026-10-16):** bind each approval to
+one human message by its transcript identity, not its text, and make the second recording path a no-op for a message
+already recorded. Failing test: one typed approval, then N turns with no human message, gives exactly one recorded
+approval.
+**Interim crew rule:** before every round launch, read `pending-round-approval.json`; never launch on an approval
+whose `evidence_source` is the transcript check unless the human's own typed message in that turn produced it.
+**Disposition:** open at 202's close, stated in the review sign-off packet.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
