@@ -5084,7 +5084,9 @@ is the governing principle's case: a stop with no decision for the human to make
 **Disposition:** recorded. Observed in the turn transcript.
 **Recurred:** 2026-10-15, as round 4 started on the maintainer's typed approval: the Stop review check again asked the crew to request a fresh round approval, naming round 3's run.
 **Recurred, seven times in one hour:** 2026-10-16, while the engine's two review stops ran (the stop after round 6 and its re-run with the partial sign-off reply), the Stop review check blocked seven turn ends, each asking the crew to request `approved for review round` for files the running stop already covered. Round 6's run was named each time. Seven stops with no decision for the human.
-**Recurred, after the review sign-off:** 2026-10-17, while the crew recorded the 202 live walk, the Stop review check asked three times for a fresh round approval, naming round 6's run. The review sign-off had been approved the day before (`e1d3bbcd`), and one of the three turns had no commit in it. Three short replies with no decision for the maintainer.
+**Recurred, after the review sign-off:** 2026-10-17, while the crew recorded the 202 live walk, the Stop review check asked three times for a fresh round approval, naming round 6's run. The review sign-off had been approved the day before (`e1d3bbcd`), and one of the three turns had no commit in it. Three short replies with no decision for the maintainer. A fourth
+followed the iteration closeout packet, while that decision was pending; the check itself said the decision was
+unaffected.
 
 ## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
 
@@ -5222,6 +5224,8 @@ beta4, which has B4F-127 and every defect 202 fixed. **Release gate: closing an 
 does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.**
 **Live walk (2026-10-17):** did not reproduce. On Claude, Codex and Copilot the specify approval was recorded exactly
 once. B4F-129 is a second route to the same result, on Copilot.
+**Release gate widened (maintainer ruling at the 202 iteration 001 closeout, 2026-10-17):** beta4.1 does not ship until
+both B4F-127 and B4F-129 are fixed.
 
 ## B4F-128 - A REWORDED DISCUSSION QUESTION REPAINTS THE WHOLE PACKET (iteration 002, beside B4F-125)
 
@@ -5255,8 +5259,9 @@ walk: the specify approval was recorded once (`hook-captured-user-prompt`).
 **Fix direction (proposal):** a hook acts only for the host whose session it runs in, either by installing only the
 active host's hook settings or by having each hook ignore an event from another host's session; the receipt and
 approval stores refuse an ID that is already present. Failing tests from the walk's doubled rows.
-**Disposition:** recorded. The maintainer's read: iteration 002, alongside B4F-127, and a Copilot release blocker; ruled
-at the 202 iteration 001 closeout.
+**Disposition:** iteration 002, alongside B4F-127. **Release gate (maintainer ruling at the 202 iteration 001
+closeout, 2026-10-17): beta4.1 does not ship (no merge to main, no published module) until B4F-129 is fixed, as with
+B4F-127.**
 
 ## B4F-130 - "YOU DECIDE THE REMAINING LENSES" IS RECORDED FOR ONE LENS ONLY (iteration 002 candidate)
 
