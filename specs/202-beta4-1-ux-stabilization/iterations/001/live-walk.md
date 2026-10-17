@@ -265,7 +265,7 @@ disagree, write both in Notes.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Claude | 2.1.301 | 2026-10-16 | 7 | 1 | 4 | 3 | 1/1/1 | See "Walk notes: Claude". stop-blocks: 1 |
 | Codex (healthy worktree) | 0.163.0 | 2026-10-17 | 7 | 2 | 3 | 3 | 1/2/1 | See "Walk notes: Codex". stop-blocks: 1 |
-| Copilot | | | null | null | null | null | null | |
+| Copilot | 1.0.98 | 2026-10-17 | 6 | 5 | 9 | 3 | 2/1/2 | See "Walk notes: Copilot". 9 extra stops, 10 if the yes/no box counts. Receipts: 6 rows by step 4, every one doubled. stop-blocks: 7, all from the Claude-labelled hook |
 
 Expected per host: 6 real decisions (7 or more only if the crew asked further real questions), 0 corrective
 exchanges, 0 extra stops, 3 receipts after step 4, and 1 reply per checkpoint (write it as `1/1/1`).
@@ -335,6 +335,42 @@ Disk at the end of the walk: receipts 8, all `recorded` with no refused or degra
 product-domain, agenda, `architecture-core`). The maintainer counted 2 replies at the agenda checkpoint; the disk has
 one agenda receipt. `verdict_history` has exactly one row, `to_boundary: specify`, `authorizing_human: unattributed`,
 `evidence_source: hook-captured-from-transcript`. The last authorized stage is `specify`, and `clarify` is pending.
+
+### Walk notes: Copilot (2026-10-17)
+
+The maintainer's tally and findings, checked against the disk in `C:\scratch\walk-202\copilot`. The two agree.
+
+1. **Every Specrew hook ran twice**, once as `copilot` and 2 to 4 seconds later as `claude`. `specrew init` writes
+   Claude's hook settings (`.claude/settings.local.json`) into every project, and Copilot 1.0.98 runs them as well as
+   its own. Every receipt is doubled with the same receipt ID. The Claude-labelled end-of-turn check sees none of the
+   crew's turn-end declarations, so it blocked every workshop turn without showing it, and at every approval stop it
+   blocked in view: the full hook text, then the packet twice. All 7 stop-blocks are from the Claude-labelled hook;
+   Copilot's own hook blocked none. Its turn counter froze at the spec-packet turn and it reached the block cap. The
+   pending approval stop was recorded with no session owner. This accounts for 4 to 5 of the 9 extra stops (B4F-129).
+2. "you decide the remaining lenses" was recorded for one lens only, as on Claude and Codex: 3 extra stops (B4F-130).
+3. Copilot asked lens questions through its question box, and box answers recorded no receipt. M6 and one lens
+   answer typed in the box were asked for again in chat, and Copilot kept opening the box after that (B4F-131).
+4. Feature setup never created the branch, and Copilot committed on `master` without asking (B4F-132).
+5. The pre-spec check refused the spec placeholder; Copilot asked a yes/no box about it. That is the tenth extra
+   stop, if the box counts (B4F-133).
+6. Step 9 (M10) resumed at the clarify approval and did not ask for `approved for specify` again, but the hook block
+   message and the packet appeared twice again: 1 extra stop, included in the 9.
+7. Refusals appeared as raw PowerShell exception banners ("Exception: ... Line | 230 | throw"), and the crew guessed
+   the lens-confirmation parameters twice before reading them (B4F-135).
+8. Not counted: text inside angle brackets was dropped (`specs//` in the orientation, the verdict options collapsed to
+   one line, the hidden last line of the packet truncated); "Starting New:" where the feature name should be; 6 lenses
+   (Claude chose 3, Codex 5); the delegated defaults diverge from Claude's (a CRLF counts as 2 characters here, 1 on
+   Claude).
+
+Disk at the end of the walk: 16 receipts for 8 replies, 8 distinct receipt IDs, each one written once as `copilot` and
+once as `claude`; none refused or degraded. `verdict_history` has exactly one row, `to_boundary: specify`,
+`evidence_source: hook-captured-user-prompt`. The last authorized stage is `specify`, and `clarify` is pending.
+8 stop-block rows, all `host: claude`: 7 blocks and 1 cap notice.
+
+### What held on every host
+
+The specify approval was recorded exactly once, from the typed message. It survived `/compact` and a relaunch.
+"continue" was never taken as an approval. B4F-127 (one approval recorded twice) did not reproduce in the walk.
 
 ## After the walk
 

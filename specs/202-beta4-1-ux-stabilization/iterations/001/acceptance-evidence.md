@@ -8,16 +8,16 @@ live walk (`live-walk.md`), and until then they are `null`, never `0`.
 
 | Tier | Hosts | Evidence |
 | --- | --- | --- |
-| **Validated** | Claude, Codex, Copilot | Real hook payloads recorded in scratch folders (T001) under `tests/fixtures/hook-payloads/{claude,codex,copilot}/`. `cross-host-workshop` and `turn-record-contract` drive each host's real adapter with them. The live walk at closeout is still to run. |
+| **Validated** | Claude, Codex, Copilot | Real hook payloads recorded in scratch folders (T001) under `tests/fixtures/hook-payloads/{claude,codex,copilot}/`. `cross-host-workshop` and `turn-record-contract` drive each host's real adapter with them. Walked live, installed from this branch, on 2026-10-16 and 17 (`live-walk.md`). |
 | **Experimental** | Cursor, Antigravity | No recorded hook payloads, so they are **unvalidated** in 202. They keep working through the shared path, with no live walk and no added scope. |
 
 ## Success criteria
 
 | SC | What it asks | Evidence | Status |
 | --- | --- | --- | --- |
-| SC-001 | Product-domain, agenda, one lens: 3 receipts, 1 typed reply per checkpoint, on all three validated hosts | `cross-host-workshop.tests.ps1` (T005), through each host's real adapter with recorded payloads; `turn-record-contract.tests.ps1` (T002). Live walk: `live-walk.md` | Tests green. Live walk: **null** (not yet run) |
+| SC-001 | Product-domain, agenda, one lens: 3 receipts, 1 typed reply per checkpoint, on all three validated hosts | `cross-host-workshop.tests.ps1` (T005), through each host's real adapter with recorded payloads; `turn-record-contract.tests.ps1` (T002). Live walk: `live-walk.md` | Tests green. Live walk (2026-10-16 and 17): **3 receipts by step 4 on all three hosts** (on Copilot, 6 rows, each written twice, B4F-129). **1 typed reply per checkpoint on Claude only**: Codex 1/2/1, Copilot 2/1/2. Not met on Codex and Copilot |
 | SC-002 | Under every injected journal fault, 0 hook outputs count as a reply, and 0 turns are consumed without disclosure | `hook-output-journal.tests.ps1` cases (a) to (d) and the round-3 cases (T003); `journal-fault-injection.tests.ps1` case (e) and the lock-wait budget (T005, DRIFT-023); `receipt-disclosure.tests.ps1` (T004). Case (e) runs on Windows, Linux and macOS in every push (3-OS workflow) | Green on 3 OS (see CI below) |
-| SC-003 | 0 corrective exchanges and 0 extra stops per Tier 1 scenario, real decisions unchanged | The friction table below. Before-values are the spec's baselines; after-values come only from the live walk | After-values: **null** (not yet run) |
+| SC-003 | 0 corrective exchanges and 0 extra stops per Tier 1 scenario, real decisions unchanged | The friction table below. Before-values are the spec's baselines; after-values come only from the live walk | **Not met.** Per Tier 1 scenario: B4F-106 and B4F-096 show 0 and 0 on all three hosts; B4F-108 meets it on Claude, not on Codex (1/2/1) or Copilot (2/1/2). Across the whole walk, no host reached 0 and 0: extra stops 4, 3 and 9, corrective exchanges 1, 2 and 5, from causes outside the named scenarios (B4F-129 to B4F-134). Real decisions: 7, 7 and 6 against 6 expected; the extra one on Claude and Codex is the reviewer choice |
 | SC-004 | After the first presentation, each of B4F-104's three triggers produces 0 repaints and 0 `Stop hook error` lines | `crossing-presentation.tests.ps1` (T006), including round 3's question and refusal cases | Green |
 | SC-005 | The adaptation text is byte-identical across hosts, apart from the correction command | `dials-parity.tests.ps1` (T009) | Green |
 | SC-006 | Status, orientation and resume name the same feature in every constructed state; a second feature's specify opens a decision captured with 0 out-of-band authorizations | `feature-resolver.tests.ps1` (T010), `new-feature-reset.tests.ps1` (T011), `resume-from-disk.tests.ps1` (T012) | Green |
@@ -29,13 +29,15 @@ live walk (`live-walk.md`), and until then they are `null`, never `0`.
 
 | Scenario | Real decisions | Corrective exchanges (before → after) | Extra stops (before → after) | Source |
 | --- | --- | --- | --- | --- |
-| B4F-106 | unchanged | 1 corrective cycle → null | null → null | spec SC-003 baseline |
-| B4F-096 | unchanged | 1 → null | 1 → null | spec SC-003 baseline |
-| B4F-108, Codex | unchanged | the checkpoint never closed → null | null → null | spec SC-003 baseline |
-| B4F-108, Claude | unchanged | 1 corrective round → null | null → null | spec SC-003 baseline |
+| B4F-106 | unchanged | 1 corrective cycle → Claude 0, Codex 0, Copilot 0 | null → Claude 0, Codex 0, Copilot 0 | live walk, 2026-10-16 and 17 |
+| B4F-096 | unchanged | 1 → Claude 0, Codex 0, Copilot 0 | 1 → Claude 0, Codex 0, Copilot 0 | live walk, 2026-10-16 and 17 |
+| B4F-108, Codex | unchanged | the checkpoint never closed → closed (receipts 3, replies 1/2/1; the second agenda reply has no receipt on disk) | null → 0 | live walk, 2026-10-17 |
+| B4F-108, Claude | unchanged | 1 corrective round → 0 (receipts 3, replies 1/1/1) | null → 0 | live walk, 2026-10-16 |
+| B4F-108, Copilot (new row) | unchanged | null → 2 extra replies (receipts 3 as 6 doubled rows, replies 2/1/2; box answers record no receipt, B4F-131) | null → null (not separated by step in the tally; the hidden blocks were not counted) | live walk, 2026-10-17 |
 | 2026-09-09 to 10-13 outage | null | null → null | null → null | not captured |
 
-"null" means not captured. After-values are filled from the live walk only.
+"null" means not captured. After-values are filled from the live walk only (`live-walk.md`, friction record and walk
+notes per host).
 
 ### The measure: stops against the beta4 baseline
 
@@ -47,10 +49,18 @@ targets 0 on each host.
 
 | Measure | beta4 baseline (one session, 2026-08) | 202 walk: Claude | 202 walk: Codex | 202 walk: Copilot |
 | --- | --- | --- | --- | --- |
-| Stops that asked for no decision (extra stops) | 8 | null | null | null |
-| Stops about the work (real decisions) | null (not counted) | null | null | null |
-| Corrective exchanges | null (not counted) | null | null | null |
-| Refusals that did not name their cause | null (not counted) | null | null | null |
+| Stops that asked for no decision (extra stops) | 8 | 4 | 3 | 9 (10 if the yes/no box counts) |
+| Stops about the work (real decisions) | null (not counted) | 7 | 7 | 6 |
+| Corrective exchanges | null (not counted) | 1 | 2 | 5 |
+| Refusals that did not name their cause | null (not counted) | null (not counted; refusals hidden) | null (not counted; "Failed (exit 1)" shown) | null (not counted; raw exception banners shown, B4F-135) |
+
+**What the measure shows.** Claude (4) and Codex (3) are below the beta4 baseline of 8 and above the target of 0.
+Copilot (9) is above the baseline, and 4 to 5 of its 9 come from one cause: Copilot also runs Claude's hooks
+(B4F-129). Not one extra stop on any host was about the work. The stops that repeat across hosts have three causes:
+the delegation of the remaining lenses that covers one lens only (B4F-130: Claude 1, Codex 2, Copilot 3), the
+packet shown again after a question, a compaction or a relaunch (B4F-134), and the branch feature setup never
+creates (B4F-132). What held on every host: the specify approval was recorded exactly once from the typed message,
+survived `/compact` and a relaunch, and "continue" was never taken as an approval.
 
 ### Friction observed during 202's own run
 
@@ -69,6 +79,7 @@ targets 0 on each host.
 | 2026-10-16 | The review sign-off packet was rendered again in full because the Stop counted a reworded discussion question as missing. DRIFT-030's meaning-match covers headings and round 6's covers options, but not question lines. | 0 | 0 | 1 | Iteration 002, beside B4F-125 (B4F-128; maintainer ruling). |
 | 2026-10-16 | Retro stage. The maintainer's `approved for retro - <three additions>` arrived as pasted text and was not recorded; the reply carried the phrase, so the retro packet was shown again in full, and the maintainer typed `approved for retro` alone. | 0 | 1 | 1 | Iteration 002 (B4F-125). |
 | 2026-10-16 | The maintainer found from the journals that one typed `approved for review round` had been recorded twice, by the prompt hook and again by the turn-end check, leaving an unspent approval for about ten and a half hours that a round could have used. | 0 | 0 | 0 | Critical. Iteration 002, first item (B4F-127, DRIFT-034). Open at 202's close. |
+| 2026-10-17 | While the live walk was recorded, the Stop review check asked the crew three times to request a fresh review round, after the review sign-off was approved; once with no commit in the turn. Each cost the maintainer a short reply with no decision in it. | 0 | 0 | 3 | Beta5 (B4F-121, fourth instance). |
 
 ## A round approval is never a boundary verdict (B4F-116)
 

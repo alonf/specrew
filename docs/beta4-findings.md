@@ -5084,6 +5084,7 @@ is the governing principle's case: a stop with no decision for the human to make
 **Disposition:** recorded. Observed in the turn transcript.
 **Recurred:** 2026-10-15, as round 4 started on the maintainer's typed approval: the Stop review check again asked the crew to request a fresh round approval, naming round 3's run.
 **Recurred, seven times in one hour:** 2026-10-16, while the engine's two review stops ran (the stop after round 6 and its re-run with the partial sign-off reply), the Stop review check blocked seven turn ends, each asking the crew to request `approved for review round` for files the running stop already covered. Round 6's run was named each time. Seven stops with no decision for the human.
+**Recurred, after the review sign-off:** 2026-10-17, while the crew recorded the 202 live walk, the Stop review check asked three times for a fresh round approval, naming round 6's run. The review sign-off had been approved the day before (`e1d3bbcd`), and one of the three turns had no commit in it. Three short replies with no decision for the maintainer.
 
 ## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
 
@@ -5219,6 +5220,8 @@ below.)
 consequence grading, because it predates 202 and 202 does not worsen it. Holding 202 back would leave only the released
 beta4, which has B4F-127 and every defect 202 fixed. **Release gate: closing an iteration is not a release. Beta4.1
 does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.**
+**Live walk (2026-10-17):** did not reproduce. On Claude, Codex and Copilot the specify approval was recorded exactly
+once. B4F-129 is a second route to the same result, on Copilot.
 
 ## B4F-128 - A REWORDED DISCUSSION QUESTION REPAINTS THE WHOLE PACKET (iteration 002, beside B4F-125)
 
@@ -5231,6 +5234,108 @@ must still match word for word. The FR-012 repaint class, on a line kind the ear
 **Fix direction (maintainer ruling, 2026-10-16):** iteration 002, beside B4F-125. A discussion question counts as
 present when its meaning matches, the same as a heading. Failing test from the two exact lines above.
 **Disposition:** recorded; friction event in 202 `acceptance-evidence.md` (1 extra stop).
+
+## B4F-129 - ON COPILOT, EVERY SPECREW HOOK ALSO RUNS AS CLAUDE (critical for Copilot; iteration 002 and release gate proposed, ruled at the 202 closeout)
+
+**Observed:** 2026-10-17, 202 live walk, Copilot CLI 1.0.98, `C:\scratch\walk-202\copilot`, found by the maintainer
+from the journals. Each Specrew hook fires twice in one window: as `copilot`, and 2 to 4 seconds later as `claude`.
+**Evidence on disk:** 16 receipts for 8 replies, 8 distinct receipt IDs, each written once per host label. Two session
+folders and two turn-end folders for one window. Hook health files for both Copilot's `agentStop` and Claude's `Stop`.
+All 8 stop-block rows (7 blocks and 1 cap notice) are `host: claude`; Copilot's own hook blocked none.
+**Cause:** `specrew init` writes Claude's hook settings into every project (`.claude/settings.local.json`: session
+start, prompt submit, tool use, end of turn), and Copilot 1.0.98 runs them in addition to its own. The receipt store
+appends a receipt whose ID is already present.
+**Effect:** the crew declares each turn end in Copilot's session, so the Claude-labelled end-of-turn check sees no
+declaration. It blocks every workshop turn as material, which the human does not see, and every approval stop as not
+presented, which the human does see: the full hook text, then the packet twice. Its turn counter froze at the
+spec-packet turn and it reached the block cap. The pending approval stop was recorded with no session owner. 4 to 5 of
+Copilot's 9 extra stops in the walk come from this.
+**Risk:** B4F-127's result from a second cause, one approval recorded under two host labels. It did not happen in the
+walk: the specify approval was recorded once (`hook-captured-user-prompt`).
+**Fix direction (proposal):** a hook acts only for the host whose session it runs in, either by installing only the
+active host's hook settings or by having each hook ignore an event from another host's session; the receipt and
+approval stores refuse an ID that is already present. Failing tests from the walk's doubled rows.
+**Disposition:** recorded. The maintainer's read: iteration 002, alongside B4F-127, and a Copilot release blocker; ruled
+at the 202 iteration 001 closeout.
+
+## B4F-130 - "YOU DECIDE THE REMAINING LENSES" IS RECORDED FOR ONE LENS ONLY (iteration 002 candidate)
+
+**Observed:** 202 live walk, all three hosts. M6 recorded one delegation receipt, for the lens open at the time, and
+each later lens asked "you decide this lens" again: 1 extra stop on Claude, 2 on Codex, 3 on Copilot, each also a
+corrective exchange. On Claude, the reviewer answer left `code-implementation` with a confirmed receipt and no
+delegation, so its close asked "confirm or you decide this lens".
+**Evidence on disk:** one `human-delegated` receipt per reply on every host (Claude: `architecture-core`, then
+`code-implementation` confirmed and then delegated; Codex: four lenses, four replies; Copilot: five lenses, five replies).
+**Fix direction (proposal):** a delegation that names the remaining lenses is recorded for each remaining agenda lens in
+one step, and those lenses do not ask again.
+**Disposition:** recorded. The maintainer's read: iteration 002.
+
+## B4F-131 - ON COPILOT, LENS QUESTIONS GO THROUGH THE QUESTION BOX, AND A BOX ANSWER RECORDS NO RECEIPT (iteration 002 candidate, with B4F-125)
+
+**Observed:** 202 live walk, Copilot. M6 and one lens answer, typed into Copilot's question box, were not recorded, and
+Copilot asked for them again in chat. It kept opening the box after that. Replies per checkpoint: 2/1/2.
+**Cause (the maintainer's reading):** the rules allow the box for workshop questions, while a receipt is written only
+for a typed chat reply. The two rules conflict.
+**Fix direction (proposal):** one rule. Either Copilot's workshop instructions keep the box out of lens questions, or a
+box answer is recorded with its source. With B4F-125, the form an approval may take.
+**Disposition:** recorded. The maintainer's read: iteration 002.
+
+## B4F-132 - FEATURE SETUP REPORTS A BRANCH IT NEVER CREATES (candidate)
+
+**Observed:** 202 live walk, all three hosts. Feature setup reports `BRANCH_NAME 001-<slug>`, and the checkout stays on
+`master`. The pre-check refuses to show the spec packet while work is uncommitted, so Claude stopped to ask permission
+to create the branch and commit (Claude Code commits only when asked): 1 extra stop. Codex and Copilot committed on
+`master` without asking; both scratch repositories have the specify and clarify commits on `master`.
+**Fix direction (proposal):** feature setup creates and checks out the branch it reports, or stops reporting one; the
+pre-check names a missing branch as the cause.
+**Disposition:** recorded; placement at the iteration 002 plan stop.
+
+## B4F-133 - THE ORDER OF THE PRE-SPEC CHECK CONTRADICTS THE WORKSHOP INSTRUCTIONS (candidate)
+
+**Observed:** 202 live walk, all three hosts. The specify pre-check refused the spec placeholder, while the workshop
+skill says the pre-check runs before the spec is written. Claude and Codex recovered without asking; Copilot asked a
+yes/no box, which would be its tenth extra stop if it counts.
+**Fix direction (proposal):** one order, the same in the workshop skill and the pre-check.
+**Disposition:** recorded; placement at the iteration 002 plan stop.
+
+## B4F-134 - THE PACKET IS SHOWN AGAIN AFTER A QUESTION, A COMPACTION OR A RELAUNCH (candidate; FR-012 class)
+
+**Observed:** 202 live walk. Claude, M7: the question was answered and the full packet shown again; the crew chose a
+boundary turn end, with no hook involved. Codex, M7: clean. Codex, M9 after `/compact`: blocked by the hook and the
+packet shown again, because the record that the packet was already shown went from "presented, unchanged" to "not
+presented" across the compaction. Claude after relaunch: 1 presentation block for a missing recommendation, one copy
+shown.
+**Fix direction (proposal):** the "already shown" record survives compaction; an answer to a question at an approval
+stop ends as a conversational turn.
+**Disposition:** recorded; placement at the iteration 002 plan stop, near B4F-128.
+
+## B4F-135 - REFUSALS REACH THE HUMAN AS THROWN POWERSHELL EXCEPTIONS (candidate; SC-007 class)
+
+**Observed:** 202 live walk. Copilot showed raw banners ("Exception: ... Line | 230 | throw"), Codex showed "Failed
+(exit 1)", and Claude hid them. On Copilot, the crew also guessed the lens-confirmation parameters twice before reading
+them.
+**Fix direction (proposal):** a refusal is one plain line naming the cause and one recovery action, with a non-zero exit
+code, and no stack text.
+**Disposition:** recorded; placement at the iteration 002 plan stop.
+
+## B4F-136 - SMALLER OBSERVATIONS FROM THE 202 LIVE WALK (not counted)
+
+- The reviewer choice after M6 is a real decision, because it spends the maintainer's quota, so it was asked in every
+  feature. The maintainer asked whether it could come earlier. Proposal: ask once per project, at setup or with the
+  adaptation sentence, and remember it.
+- Copilot drops text inside angle brackets: `specs//` in the orientation, the verdict options collapsed to one line, the
+  hidden last line of the packet truncated. Copilot shows "Starting New:" where the feature name should be.
+- The orientation repeats "no feature is in progress" under a "Chosen:" label. On Claude, the NEL sentence came out
+  garbled ("treat  break.").
+- The approval row has `authorizing_human: unattributed` and an empty `from_boundary`, on all three hosts.
+- The Claude stop journal has no rows for turns 4 and 10.
+- After a clean `/exit`, the relaunch flagged "another session may be active" (Claude, Codex).
+- Codex ended every reply by quoting its skill rule. Codex and Copilot pasted the raw reviewer-host list, including a
+  line meant for the agent. On Codex the recording step failed visibly twice before succeeding.
+- Codex's specify and clarify packets were not saved as handoff evidence, which surfaced as two validator warnings in a
+  confusing paragraph; the repair was rejected because of `file:///` links against Codex's native links.
+- The hosts diverge: Claude chose 3 lenses, Codex 5, Copilot 6, and the delegated defaults differ (a CRLF counts as 1
+  character on Claude and 2 on Copilot).
 
 ## Beta4.1 intake rulings — 2026-10-13
 
