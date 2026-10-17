@@ -3,9 +3,9 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T016
-**Tasks Remaining**: T022, T020, T021, T018, T019, T023, T024
-**In Progress**: (none; co-review rounds 1 to 4 returned 16 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a` and `c43b3cec` (DRIFT-003); the allowance is spent and the review is paused; the maintainer decides the next step)
+**Last Completed Task**: T022
+**Tasks Remaining**: T020, T021, T018, T019, T023, T024
+**In Progress**: (none; co-review rounds 1 to 4 returned 16 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a` and `c43b3cec` (DRIFT-003); the allowance was reset on 2026-10-17, and the next round comes after T019)
 **Baseline Ref**: fe509311
 **Updated**: 2026-10-17T05:40:00Z
 
@@ -13,8 +13,8 @@
 
 <!-- specrew:task-progress-summary:begin -->
 - Implementation started 2026-10-17 on the maintainer's before-implement approval (`fe509311`).
-- Task progress: 2 complete, 0 in-progress, 7 pending, 0 blocked.
-- Latest completed task: T016
+- Task progress: 3 complete, 0 in-progress, 6 pending, 0 blocked.
+- Latest completed task: T022
 <!-- specrew:task-progress-summary:end -->
 ## Notes
 

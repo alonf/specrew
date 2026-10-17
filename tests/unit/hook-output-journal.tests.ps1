@@ -72,8 +72,12 @@ if ($env:HOJ_OUTCOME) {
     # writes it as ANOTHER session's outcome, landing inside this fire.
     $hash = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('It is for support staff.')))).ToLowerInvariant()
     $session = if ($env:HOJ_OUTCOME_SESSION) { $env:HOJ_OUTCOME_SESSION } else { 'hoj-session' }
-    $row = [ordered]@{ schema_version = '1.0'; status = $env:HOJ_OUTCOME; reason = 'stub'; feature_ref = '001-x'; phase = 'product-domain'; consumed = ($env:HOJ_OUTCOME -eq 'recorded'); recorded_at = [DateTimeOffset]::UtcNow.ToString('o'); response_hash = $hash; session_id = $session }
-    [IO.File]::AppendAllText((Join-Path (Get-Location).Path '.specrew/runtime/workshop-receipt-outcomes.jsonl'), (($row | ConvertTo-Json -Compress) + "`n"))
+    $row = [ordered]@{ status = $env:HOJ_OUTCOME; reason = 'stub'; feature_ref = '001-x'; phase = 'product-domain'; consumed = ($env:HOJ_OUTCOME -eq 'recorded'); recorded_at = [DateTimeOffset]::UtcNow.ToString('o'); response_hash = $hash; session_id = $session }
+    # T022 (FR-033): in that session's own folder, as the store records it.
+    $owner = -join ([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes('claude|' + $session)) | ForEach-Object { $_.ToString('x2') })
+    $dir = Join-Path (Get-Location).Path ('.specrew/runtime/conformance-sessions/' + $owner)
+    [IO.Directory]::CreateDirectory($dir) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $dir 'workshop-receipt-outcome.json'), ([ordered]@{ schema_version = '1.0'; last = $row; refusals = @{} } | ConvertTo-Json -Depth 6 -Compress))
 }
 if ($env:HOJ_STAMP) {
     # Like the bootstrap provider: the session's orientation stamp is written before the payload is returned.

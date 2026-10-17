@@ -146,10 +146,12 @@ function Get-Receipts {
 }
 
 function Get-Outcomes {
+    # T022 (FR-033): each session's latest reply outcome, from its own folder (the recorded payloads carry their own
+    # session IDs), plus the runtime-root record a session-less call keeps.
     param($Fixture)
-    $path = Join-Path $Fixture.Project '.specrew\runtime\workshop-receipt-outcomes.jsonl'
-    if (-not (Test-Path -LiteralPath $path)) { return @() }
-    return @([IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8) | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    $runtime = Join-Path $Fixture.Project '.specrew\runtime'
+    $paths = @(Join-Path $runtime 'workshop-receipt-outcome.json') + @(Get-ChildItem -LiteralPath (Join-Path $runtime 'conformance-sessions') -Directory -ErrorAction SilentlyContinue | ForEach-Object { Join-Path $_.FullName 'workshop-receipt-outcome.json' })
+    return @($paths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { ([IO.File]::ReadAllText($_, [Text.Encoding]::UTF8) | ConvertFrom-Json).last })
 }
 
 function Test-Checkpoint {
@@ -205,11 +207,11 @@ try {
         $injected = @{ claude = 'tui-userpromptsubmit-host-injected-task-notification'; copilot = 'synthetic-userpromptsubmitted-skipped-question' }
         if ($injected.ContainsKey($h)) {
             Set-OpenQuestion -Fixture $fx -Phase 'lens' -Lens 'architecture-core' -AgendaStatus 'confirmed' -QuestionHash 'q-architecture-2'
-            $outcomesBefore = @(Get-Outcomes $fx).Count
+            $outcomesBefore = @(Get-Outcomes $fx | ForEach-Object { [string]$_.recorded_at })
             $r = Send-TypedReply -Fixture $fx -RecordedFixture $injected[$h]
             Assert-True ($r.ExitCode -eq 0) "[$h] host-injected prompt ($($injected[$h])) - the deployed hook exits 0"
             Assert-Equal @(Get-Receipts $fx).Count 3 "[$h] host-injected prompt ($($injected[$h])) - produces no receipt"
-            $outcomes = @(Get-Outcomes $fx | Select-Object -Skip $outcomesBefore)
+            $outcomes = @(Get-Outcomes $fx | Where-Object { $outcomesBefore -notcontains [string]$_.recorded_at })
             if ($h -eq 'copilot') {
                 # The human dismissed a question: they did something, so the turn says it was not taken as an answer.
                 Assert-True ($outcomes.Count -eq 1 -and [string]$outcomes[0].reason -eq 'not-typed-by-human') "[$h] host-injected prompt - refused as not typed by the human, and said"

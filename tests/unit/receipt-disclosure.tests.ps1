@@ -46,7 +46,9 @@ function New-WorkshopFixture {
     return $root
 }
 function Invoke-Provider { param([string]$Root, [string]$Reply, [string]$Origin, [string]$Session) $extra = @(if ($Origin) { "--turn-origin", $Origin }) + @(if ($Session) { "--session-id", $Session }); return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Reply @extra 2>&1 | ForEach-Object { [string]$_ }) -join "`n") }
-function Read-Outcomes { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-receipt-outcomes.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return @() }; return @(Get-Content -LiteralPath $p -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json }) }
+# T022 (FR-033): the latest outcome, from the session's own record (a session-less call keeps one at the runtime root).
+function Get-OutcomePath { param([string]$Root, [string]$Session) return (Get-SpecrewWorkshopReceiptOutcomePath -ProjectRoot $Root -HostKind 'claude' -SessionId $Session) }
+function Read-Outcomes { param([string]$Root, [string]$Session) $p = Get-OutcomePath $Root $Session; if (-not (Test-Path -LiteralPath $p)) { return @() }; return @((Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json).last) }
 function Test-Receipt { param([string]$Root) return (Test-Path -LiteralPath (Join-Path $Root '.specrew/runtime/workshop-authority.jsonl')) }
 function Get-ReceiptCount { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return 0 }; return @(Get-Content -LiteralPath $p | Where-Object { $_.Trim() }).Count }
 function Get-HashOf { param([string]$Text) return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text.Trim())))).ToLowerInvariant() }
@@ -62,8 +64,8 @@ try {
     Assert-True ($out -match 'your last reply was not used as your workshop answer, because the product-domain answers for this feature are already recorded') 'case 1: the turn says the reply was not used, and why'
     Assert-True ($out -match 'The question is still open, and your earlier answers are unchanged\.') 'case 1: it says the question is still open and nothing earlier changed'
     $rows = @(Read-Outcomes $r1)
-    Assert-True ($rows.Count -eq 1 -and $rows[0].reason -eq 'product-answers-already-recorded' -and -not [bool]$rows[0].consumed) 'case 1: the outcome is journaled: refused, not consumed'
-    Assert-True ($rows.Count -eq 1 -and $rows[0].response_hash -eq (Get-HashOf $reply) -and -not ((Get-Content (Join-Path $r1 '.specrew/runtime/workshop-receipt-outcomes.jsonl') -Raw).Contains('support staff'))) 'case 1: the journal holds the reply hash, never the reply text'
+    Assert-True ($rows.Count -eq 1 -and $rows[0].reason -eq 'product-answers-already-recorded' -and -not [bool]$rows[0].consumed) 'case 1: the outcome is recorded: refused, not consumed'
+    Assert-True ($rows.Count -eq 1 -and $rows[0].response_hash -eq (Get-HashOf $reply) -and -not ((Get-Content (Get-OutcomePath $r1 '') -Raw).Contains('support staff'))) 'case 1: the record holds the reply hash, never the reply text'
     Assert-True (-not (Test-Receipt $r1)) 'case 1: no receipt'
     Test-NoBannedNoun -Text $out -Label 'case 1'
 
@@ -180,10 +182,12 @@ try {
     $out = Invoke-Provider -Root $r10b -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user'
     Assert-True ((Get-ReceiptCount $r10b) -eq 1) 'case 10b: a typed reply is recorded despite them (no permanent refusal)'
     Assert-True ($out -notmatch 'PROVIDER_FAILED') 'case 10b: the provider does not fail'
-    [IO.File]::AppendAllText((Join-Path $r10b '.specrew/runtime/workshop-receipt-outcomes.jsonl'), "{}`n[]`n")
-    $threw = $false
-    try { $null = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $r10b -FeatureRef '001-mail-summary' -Phase 'product-domain' } catch { $threw = $true }
-    Assert-True (-not $threw) 'case 10b: the refusal reader skips non-record lines in the outcome journal too'
+    foreach ($torn in '{}', '[]', '{"schema_version":"1.0","refusals":{"001-mail-summary|product-domain":5}}', '{"schema_versi') {
+        [IO.File]::WriteAllText((Get-OutcomePath $r10b ''), $torn)
+        $threw = $false
+        try { $null = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $r10b -FeatureRef '001-mail-summary' -Phase 'product-domain' } catch { $threw = $true }
+        Assert-True (-not $threw) ("case 10b: the refusal reader skips a record that is not one ({0})" -f $torn)
+    }
 
     Write-Host '  --- case 11: a reply that declines is never read as recovery approval ---'
     foreach ($decline in 'okay, do not clear it.', 'yes, but leave the error alone.', "ok don't", 'yes, wait', 'no', 'sure, later', 'yes?') {
@@ -336,6 +340,23 @@ try {
     $b19 = Invoke-Provider -Root $r19 -Reply 'Where are we now?' -Origin 'typed-user' -Session 'session-b'
     Assert-True (-not $b19.Contains($question)) 'case 19: another session is not asked a question the human already declined'
     Test-NoBannedNoun -Text $no19 -Label 'case 19'
+
+    # Feature 202 T022 (FR-033, DA-5; R5-5): two sessions in one project. A refusal in one used to be read from the shared
+    # journal by the other: its Stop named a cause for a reply that human never sent. Each session now has its own record.
+    Write-Host '  --- case 20: a refusal in one session never shows in another (R5-5) ---'
+    $r20 = New-WorkshopFixture -Phase 'product-domain' -ProductRecorded; $roots.Add($r20)
+    $outA20 = Invoke-Provider -Root $r20 -Reply 'It is for support staff who read the shared inbox.' -Origin 'typed-user' -Session 'session-a'
+    Assert-True ($outA20 -match 'was not used as your workshop answer') 'case 20: session A is told its reply was not used'
+    $refusalA20 = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $r20 -FeatureRef '001-mail-summary' -Phase 'product-domain' -HostKind 'claude' -SessionId 'session-a'
+    Assert-True ($null -ne $refusalA20 -and [string]$refusalA20.reason -eq 'product-answers-already-recorded') 'case 20: session A''s Stop check finds its own refusal'
+    $refusalB20 = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $r20 -FeatureRef '001-mail-summary' -Phase 'product-domain' -HostKind 'claude' -SessionId 'session-b'
+    Assert-True ($null -eq $refusalB20) 'case 20: session B''s Stop check finds nothing - the refusal was not in its session'
+    $sinceB20 = [DateTimeOffset]::UtcNow.AddMinutes(-5)
+    Assert-True ($null -eq (Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $r20 -Since $sinceB20 -Response 'It is for support staff who read the shared inbox.' -SessionId 'session-b' -HostKind 'claude')) 'case 20: session B''s same-turn disclosure finds no outcome for the same text typed in session A'
+    Assert-True ($null -ne (Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $r20 -Since $sinceB20 -Response 'It is for support staff who read the shared inbox.' -SessionId 'session-a' -HostKind 'claude')) 'case 20: session A''s same-turn disclosure finds its own'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $r20 '.specrew/runtime/workshop-receipt-outcomes.jsonl'))) 'case 20: the shared journal is not written'
+    $conformance20 = [IO.File]::ReadAllText((Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'))
+    Assert-True ($conformance20 -match 'Get-SpecrewWorkshopLatestRefusal [^\r\n]*-HostKind \$hostKindArg -SessionId \$sessionIdArg') 'case 20: the Stop check asks for its own session''s refusal'
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }

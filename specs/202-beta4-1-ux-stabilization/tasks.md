@@ -343,7 +343,7 @@ allowance reset, T023, T024.
 
 ### Phase 11: US8, receipts and delegation
 
-- [ ] T022 [owner: Implementer] [sp: 2.25] [US8] **Retire the receipt-outcomes journal (DA-5, retro candidate 3).**
+- [x] T022 [owner: Implementer] [sp: 2.25] [US8] **Retire the receipt-outcomes journal (DA-5, retro candidate 3).** Done 2026-10-18. Each session keeps its reply outcome in its own folder (`conformance-sessions/<session>/workshop-receipt-outcome.json`: the latest outcome, and the latest refusal per feature and phase); the dispatcher's disclosure and the Stop's refusal check read only that, and the journal writer is gone. R5-5 reproduced on the old code (session B's Stop check saw session A's refusal) and fixed: `receipt-disclosure` case 20. `receipt-outcomes-retired.tests.ps1` (lane `f202-slice-suites-a`) runs a real `specrew update` that deletes the journal and says so, and finds no shipped code naming it but that step; RED on the old code. `cross-host-workshop` and `hook-output-journal` read the session record now.
   - **Work:** the receipt outcome becomes a field on the current turn's record in the session's own folder; the
     dispatcher's recording disclosure and the conformance provider's latest-refusal check read it there; the journal
     writer is removed in the same change; `specrew update` deletes `.specrew/runtime/workshop-receipt-outcomes.jsonl`.

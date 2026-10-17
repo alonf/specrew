@@ -1311,7 +1311,7 @@ function Get-DispatcherRecordingDisclosure {
             }
         }
         if (-not (Get-Command Get-SpecrewReplyRecordingWithheldDisclosure -ErrorAction SilentlyContinue)) { return $fallback }
-        $outcome = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { $null } else { Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $ProjectRoot -Since $script:DispatcherStartedUtc -Response $script:DispatcherTurnTypedText -SessionId $script:DispatcherTurnSessionId }
+        $outcome = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { $null } else { Get-SpecrewWorkshopTurnReceiptOutcome -ProjectRoot $ProjectRoot -Since $script:DispatcherStartedUtc -Response $script:DispatcherTurnTypedText -SessionId $script:DispatcherTurnSessionId -HostKind $HostKind }
         if ($Withheld) { return (Get-SpecrewReplyRecordingWithheldDisclosure -Outcome $outcome) }
         $text = Get-SpecrewReplyRecordingDegradedDisclosure -ProjectRoot $ProjectRoot -Outcome $outcome
         if ([string]::IsNullOrWhiteSpace($text)) { return $fallback }
