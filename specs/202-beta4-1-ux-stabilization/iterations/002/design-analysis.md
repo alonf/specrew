@@ -61,12 +61,27 @@ dispatcher (twin copies in `scripts/internal/` and `extensions/specrew-speckit/s
 B4F-128 follows DRIFT-030's rule (a question line counts as present when its meaning matches), and candidate 7 is a
 deletion; neither needs a design decision.
 
+## Finding: Claude Code does not tag every paste (settled for DA-3, 2026-10-17)
+
+The maintainer asked whether every paste arrives tagged. It does not. Across the 123 user messages in this feature's
+Claude transcripts, 26 carry a `<pasted_content id="N">` pair. Every tagged paste is either multi-line (the smallest is
+673 characters over 8 lines) or a single line of at least 1,016 characters. Single-line messages of 439 to 715 characters
+arrive untagged, among them verdicts with instructions (`approved for clarify - ...`, `approved for plan - ...`,
+`approved for review-signoff - ...`), and the maintainer's notes from the retro verdict say pasted verdicts of about 600
+to 800 characters were recorded as typed. So a short paste is indistinguishable from typing in the text the hook receives.
+The retro approval that was refused was a tagged single-line paste of 1,163 characters.
+
+Consequence: the tag rule protects only long pastes. For a short paste, **safeguard 2 is the protection**: a quoted menu
+is never an approval. One residual case stays open and is accepted as such: a short paste of a single approval line, with
+no second verdict option, still counts, exactly as typing it would. The tests carry the size boundary observed here, and
+not a guessed threshold.
+
 ## Co-Design Record
 
 | Point | Decision | Date |
 | --- | --- | --- |
 | DA-1 | **Option A, with the maintainer's change.** Each host binding declares the payload fields only its host sends. A hook stands down (does nothing, exits 0) only when the payload positively matches another known host's fields. A payload that matches no known host is handled as today and logged once, so a host changing its payload shape can never switch governance off without a trace. The receipt store refuses a receipt ID it already holds. Note from the fixtures: Codex also sends `hook_event_name` and snake_case `session_id`, so the declared fields must tell all three apart (Claude `prompt_id`, Codex `turn_id`, Copilot camelCase `sessionId`), per event, proven against every recorded fixture. | 2026-10-17 |
 | DA-2 | **Option A, with the maintainer's two conditions.** One human message has one key, the host's own message ID; the first path to record wins and the second does nothing; a spent approval from the same message is final. (1) On Claude both paths produce the same key: the turn-end path reads the same message-ID field (`prompt_id`) that the message hook receives, from the human-typed transcript entry, never that entry's own `uuid` (in the walk transcript every typed entry carries the field, and its `uuid` is a different value). Injected entries are skipped; the compaction summary reuses the `/compact` entry's ID. (2) On Copilot the message hook is the only recording path, and an approval-shaped typed message that hook did not record is reported in the journal and in one visible line, never dropped without a trace. Proof: a per-host replay test from recorded payloads, where one approval through both paths gives exactly one row. | 2026-10-17 |
-| DA-3 | pending | |
+| DA-3 | **Option A, with the maintainer's two safeguards.** On Claude, nothing inside a paste is an approval, and a phrase leading its own line outside every paste is, whatever surrounds it. Other hosts keep "the phrase alone", with a refusal that names the reason, until a recorded payload shows how they mark a paste. (1) A paste is marked only by an opening and a closing tag carrying the same ID, so a closing tag quoted inside a paste cannot make what follows it count as typed. (2) A message that carries more than one verdict option (for example a quoted packet menu with an approval line and a changes-needed line) is never an approval, and the refusal names it as a quoted menu. | 2026-10-17 |
 | DA-4 | pending | |
 | DA-5 | pending | |
