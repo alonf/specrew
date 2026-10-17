@@ -1276,6 +1276,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         if (-not $reserved) { return }
     }
     $mintedBy = [System.Collections.Generic.List[string]]::new()
+    $writerFailed = $false
     foreach ($writerName in @(
             'Write-SpecrewApprovalWithdrawal'
             'Write-SpecrewReviewRoundApprovalAuthorization'
@@ -1296,6 +1297,21 @@ function Invoke-SpecrewTypedAuthorityCapture {
             # actually minted something and must be marked exhausted.
             $written = & $writer @splat
             if ($null -ne $written) { [void]$mintedBy.Add($writerName) }
+        }
+        catch { $writerFailed = $true }
+    }
+    # Co-review round 2 (iteration 002): RECEIVED IS NOT SAVED. The reservation above proves the hook saw the message, and
+    # the turn end on a single-path host reads it that way. When a writer threw and nothing was stored, the act is reported
+    # here, by the path that knows it failed, and said at the next message - never left as a reservation that reads as
+    # recorded.
+    if ($writerFailed -and $mintedBy.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) -and (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
+        try {
+            $failedShape = Get-SpecrewTypedAuthorityShape -Text $Response
+            if ($null -ne $failedShape) {
+                Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $failedShape -EntryKey $turnId -HostKind $HostKind `
+                    -SessionId $SessionId -Reason 'not-saved' -NowUtc $NowUtc | Out-Null
+            }
         }
         catch { $null = $_ }
     }
@@ -1817,15 +1833,21 @@ function Update-SpecrewRollingHandover {
                                 $ratWhen = if ($roundApprovalTurns[$rat].PSObject.Properties['timestamp']) { [string]$roundApprovalTurns[$rat].timestamp } else { '' }
                                 # Every human message in the window with this text, and the earliest one's arrival: the
                                 # message hook must have seen each of them in this session, not just one like it.
+                                # Co-review round 2: and each is paired with a reservation near its own arrival.
                                 $sameText = 0; $earliest = $ratWhen
-                                foreach ($sameTurn in $roundApprovalTurns) {
+                                $sameTimes = [System.Collections.Generic.List[string]]::new()
+                                for ($st = 0; $st -le $rat; $st++) {
+                                    $sameTurn = $roundApprovalTurns[$st]
                                     if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $sameTurn)) { continue }
                                     if ((Get-SpecrewHumanAuthorityHash -Text ([string]$sameTurn.text).Trim()) -cne $ratHash) { continue }
                                     $sameText++
-                                    if ($sameText -eq 1 -and $sameTurn.PSObject.Properties['timestamp'] -and -not [string]::IsNullOrWhiteSpace([string]$sameTurn.timestamp)) { $earliest = [string]$sameTurn.timestamp }
+                                    $sameWhen = if ($sameTurn.PSObject.Properties['timestamp']) { [string]$sameTurn.timestamp } else { '' }
+                                    if ($sameText -eq 1 -and -not [string]::IsNullOrWhiteSpace($sameWhen)) { $earliest = $sameWhen }
+                                    if (-not [string]::IsNullOrWhiteSpace($sameWhen)) { $sameTimes.Add($sameWhen) | Out-Null }
                                 }
+                                $pairTimes = if ($sameTimes.Count -eq $sameText -and $sameText -gt 0) { [string[]]$sameTimes.ToArray() } else { $null }
                                 if (-not (Test-SpecrewPromptChannelSawContent -ProjectRoot $ProjectRoot -ContentHash $ratHash -HostKind $fromHost `
-                                            -SinceUtc $earliest -SessionId $SessionId -ExpectedCount $sameText)) {
+                                            -SinceUtc $earliest -SessionId $SessionId -ExpectedCount $sameText -MessageTimesUtc $pairTimes)) {
                                     if ([string]$shape.Kind -ceq 'approval-withdrawal') {
                                         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $ratText -HostKind $fromHost `
                                             -SourceEvent 'stop-transcript' -NowUtc $NowUtc -TurnPosition ([string]$rat) -TurnArrival $ratWhen -SessionId $SessionId

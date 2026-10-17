@@ -1460,6 +1460,37 @@ function Clear-DispatcherUndeliveredRecoveryRequest {
     catch { Write-DispatcherWarn -Code 'RECOVERY_QUESTION_UNDELIVERED' -Message ("could not withdraw the undelivered recovery question: {0}" -f $_.Exception.Message) }
 }
 
+function Restore-DispatcherUndeliveredNotRecordedLine {
+    # Co-review round 2 (202 iteration 002, FR-027): the store marks a not-recorded approval line as said when it composes
+    # the payload, BEFORE this dispatcher delivers it. When this fire withheld its output the human never saw the line, so
+    # each line marked said during this fire, for this session, is put back: an `undelivered` row after it makes the store
+    # say it again at the next message. Append-only, like the journal it reads.
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$SessionId)
+    if (-not $script:DispatcherOutputWithheldThisFire) { return }
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+    try {
+        $journal = Join-Path $ProjectRoot '.specrew/runtime/authority-capture-drops.jsonl'
+        if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return }
+        $restored = 0
+        foreach ($line in [IO.File]::ReadAllLines($journal)) {
+            if ($line -notmatch 'authority-phrase-not-recorded-disclosed') { continue }
+            $row = $null
+            try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ([string]$row.event -cne 'authority-phrase-not-recorded-disclosed') { continue }
+            $rowSession = if ($row.PSObject.Properties['session_id']) { [string]$row.session_id } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($rowSession) -and $rowSession -cne [string]$SessionId) { continue }
+            $at = [DateTimeOffset]::MinValue
+            if (-not [DateTimeOffset]::TryParse([string]$row.recorded_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) { continue }
+            if ($at -lt $script:DispatcherStartedUtc) { continue }
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-undelivered'; entry_key = [string]$row.entry_key; host_kind = [string]$row.host_kind; session_id = $rowSession; recorded_at = [DateTimeOffset]::UtcNow.ToString('o') }) | ConvertTo-Json -Compress) |
+                Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
+            $restored++
+        }
+        if ($restored -gt 0) { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message 'this prompt''s output was withheld, so the not-recorded approval line it carried is said again at the next prompt' }
+    }
+    catch { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message ("could not restore the undelivered not-recorded line: {0}" -f $_.Exception.Message) }
+}
+
 function ConvertTo-DispatcherStopBlockOutput {
     param([string]$Shape, [string]$Reason)
     switch ($Shape) {
@@ -1933,6 +1964,7 @@ try {
         if ($Event -eq 'UserPromptSubmit') {
             Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId
             Clear-DispatcherUndeliveredRecoveryRequest -ProjectRoot $projectRoot -SessionId $sessionId
+            Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId
         }
     }
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {

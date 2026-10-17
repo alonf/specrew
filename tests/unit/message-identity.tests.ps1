@@ -44,21 +44,23 @@ BeforeAll {
 
     # One typed human entry, in the host's own transcript shape.
     function script:Add-Human {
-        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId, [switch]$NoMessageId)
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId, [switch]$NoMessageId,
+            [int]$SecondsFromNow = 0)
+        $arrival = [DateTimeOffset]::UtcNow.AddSeconds($SecondsFromNow).ToString('o')
         switch ($HostKind) {
             'claude' {
-                $e = @{ type = 'user'; uuid = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); sessionId = 's1'; message = @{ role = 'user'; content = $Text } }
+                $e = @{ type = 'user'; uuid = ([guid]::NewGuid().ToString()); timestamp = $arrival; sessionId = 's1'; message = @{ role = 'user'; content = $Text } }
                 if (-not $NoMessageId) { $e['promptId'] = $MessageId }
                 Add-Line -P $P -Entry $e
             }
             'codex' {
                 # Every line of a Codex rollout carries a top-level timestamp.
-                $ts = [DateTimeOffset]::UtcNow.ToString('o')
+                $ts = $arrival
                 Add-Line -P $P -Entry @{ timestamp = $ts; type = 'turn_context'; payload = @{ turn_id = $MessageId; cwd = $P.Root } }
                 Add-Line -P $P -Entry @{ timestamp = $ts; type = 'response_item'; payload = @{ type = 'message'; role = 'user'; content = @(@{ type = 'input_text'; text = $Text }) } }
             }
             'copilot' {
-                Add-Line -P $P -Entry @{ type = 'user.message'; id = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = $Text; messageId = ([guid]::NewGuid().ToString()) } }
+                Add-Line -P $P -Entry @{ type = 'user.message'; id = ([guid]::NewGuid().ToString()); timestamp = $arrival; data = @{ content = $Text; messageId = ([guid]::NewGuid().ToString()) } }
             }
         }
     }
@@ -366,5 +368,73 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
         Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
         $f = Join-Path $p.Root '.specrew/authority/exhausted-turns.jsonl'
         (Get-Content -LiteralPath $f -Raw) | Should -Not -Match 'cross-channel-double-mint'
+    }
+}
+
+Describe 'Co-review round 2 (iteration 002): the four findings, each as its own replay' {
+    It 'finding 1: a spent pre-update approval typed with a trailing space is not recorded again after the update' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round ' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round ' -BeforeMessageIds | Out-Null
+        # As the old message hook wrote it: the content hash of the UNTRIMMED text, and no identity field.
+        $ledger = Join-Path $p.Root '.specrew/authority/exhausted-turns.jsonl'
+        $untrimmed = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('approved for review round ')))).ToLowerInvariant()
+        $rows = foreach ($line in [IO.File]::ReadAllLines($ledger)) {
+            $o = $line | ConvertFrom-Json
+            $o.content_hash = $untrimmed
+            $o.PSObject.Properties.Remove('identity'); $o.PSObject.Properties.Remove('session_id')
+            $o | ConvertTo-Json -Compress
+        }
+        [IO.File]::WriteAllLines($ledger, [string[]]$rows)
+        Set-RoundSpent -P $p
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude' }
+        Get-RoundCaptures -P $p | Should -Be 1
+        Test-RoundUnspent -P $p | Should -BeFalse
+    }
+
+    It 'finding 2, <HostKind>: an approval the message hook received but could not save is reported, and said in that same turn' -ForEach @(
+        @{ HostKind = 'copilot' }, @{ HostKind = 'claude' }
+    ) {
+        $p = New-Project
+        $dir = Join-Path $p.Root '.specrew/review/round-approval'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $locked = Join-Path $dir 'pending-round-approval.json'
+        Set-Content -LiteralPath $locked -Value '{}' -Encoding UTF8
+        $id = if ($HostKind -eq 'copilot') { '' } else { 'msg-1' }
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        $hold = [IO.File]::Open($locked, 'Open', 'ReadWrite', 'None')
+        $shown = $null
+        try { $shown = Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId $id }
+        finally { $hold.Dispose() }
+        $shown | Should -Match 'could not be saved'
+        Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind
+        $r = @(Get-NotRecordedReports -P $p)
+        $r.Count | Should -Be 1
+        [string]$r[0].reason | Should -Be 'not-saved'
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'what is next?' -MessageId 'msg-2' | Should -Not -Match 'could not be saved'
+    }
+
+    It 'finding 3, copilot: an identical approval outside the transcript window never vouches for a missed one typed 30 seconds later' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Set-RoundSpent -P $p
+        Add-Filler -P $p
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round' -SecondsFromNow 30
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 1
+    }
+
+    It 'finding 4: a not-recorded line whose output was withheld is said again at the next message' {
+        $p = New-Project
+        $journal = Join-Path $p.Root '.specrew/runtime/authority-capture-drops.jsonl'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $journal) -Force | Out-Null
+        $now = [DateTimeOffset]::UtcNow.ToString('o')
+        [IO.File]::WriteAllLines($journal, [string[]]@(
+                (@{ event = 'authority-phrase-not-recorded'; phrase = 'review-round-approval'; reason = 'message-hook-did-not-record'; retype = 'approved for review round'; choice = ''; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)
+                (@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)
+                (@{ event = 'authority-phrase-not-recorded-undelivered'; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)))
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' | Should -Match 'was not recorded'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'and now?' | Should -Not -Match 'was not recorded'
     }
 }

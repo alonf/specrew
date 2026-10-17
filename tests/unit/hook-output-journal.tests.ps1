@@ -79,6 +79,11 @@ if ($env:HOJ_STAMP) {
     # Like the bootstrap provider: the session's orientation stamp is written before the payload is returned.
     [IO.File]::WriteAllText((Join-Path (Get-Location).Path '.specrew/runtime/hook-bootstrap-orientation-hoj-session.json'), '{"supplied_at":"stub"}')
 }
+if ($env:HOJ_NOTRECORDED) {
+    # Like the store's not-recorded disclosure: the line is marked said for this session before the payload carries it.
+    $drops = Join-Path (Get-Location).Path '.specrew/runtime/authority-capture-drops.jsonl'
+    Add-Content -LiteralPath $drops -Value ('{"event":"authority-phrase-not-recorded-disclosed","entry_key":"' + $env:HOJ_NOTRECORDED + '","host_kind":"claude","session_id":"hoj-session","recorded_at":"' + [DateTimeOffset]::UtcNow.ToString('o') + '"}') -Encoding UTF8
+}
 if ($env:HOJ_RECOVERY) {
     # Like the store's recovery ask: the open question is recorded for this session before the payload that asks it.
     [IO.File]::WriteAllText((Join-Path (Get-Location).Path '.specrew/runtime/reply-recording-recovery-request.json'), ('{"schema_version":"1.0","asked_at":"' + [DateTimeOffset]::UtcNow.ToString('o') + '","asked_session":"hoj-session","degraded_since":"2026-10-16T00:00:00.0000000+00:00","question_hash":"stub"}'))
@@ -114,7 +119,7 @@ function Invoke-StopWithReason {
 }
 
 function Invoke-PromptWithPayload {
-    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp, [switch]$Recovery, [string]$OutcomeSession = '')
+    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp, [switch]$Recovery, [string]$OutcomeSession = '', [string]$NotRecordedKey = '')
     $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
     foreach ($a in '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root '.specify\extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'), '-Event', 'UserPromptSubmit', '-HostKind', 'claude') { $psi.ArgumentList.Add($a) }
     $psi.WorkingDirectory = $Root
@@ -126,6 +131,7 @@ function Invoke-PromptWithPayload {
     if ($Outcome) { $psi.Environment['HOJ_OUTCOME'] = $Outcome } else { $psi.Environment.Remove('HOJ_OUTCOME') | Out-Null }
     if ($Stamp) { $psi.Environment['HOJ_STAMP'] = '1' } else { $psi.Environment.Remove('HOJ_STAMP') | Out-Null }
     if ($Recovery) { $psi.Environment['HOJ_RECOVERY'] = '1' } else { $psi.Environment.Remove('HOJ_RECOVERY') | Out-Null }
+    if ($NotRecordedKey) { $psi.Environment['HOJ_NOTRECORDED'] = $NotRecordedKey } else { $psi.Environment.Remove('HOJ_NOTRECORDED') | Out-Null }
     if ($OutcomeSession) { $psi.Environment['HOJ_OUTCOME_SESSION'] = $OutcomeSession } else { $psi.Environment.Remove('HOJ_OUTCOME_SESSION') | Out-Null }
     foreach ($var in 'CLAUDE_PROJECT_DIR', 'COPILOT_PROJECT_DIR', 'CURSOR_PROJECT_DIR') { $psi.Environment[$var] = $Root }
     $p = [Diagnostics.Process]::Start($psi)
@@ -399,6 +405,19 @@ try {
         Wait-JournalUnlocked $p4
         Assert-True (Test-Path -LiteralPath $requestPath) 'a later withheld turn leaves an earlier, delivered recovery question open'
         Remove-Item -LiteralPath $bufferDir4 -Force
+
+        # Co-review round 2 (202 iteration 002, FR-027): the not-recorded approval line is marked said before the payload
+        # that carries it. When that fire's output was withheld, the line is put back so the next message says it.
+        $drops = Get-RuntimePath $p4 'authority-capture-drops.jsonl'
+        $undelivered = { param($k) @(if (Test-Path -LiteralPath $drops) { [IO.File]::ReadAllLines($drops) | Where-Object { $_ -match 'not-recorded-undelivered' -and $_ -match ('"' + $k + '"') } }).Count }
+        [IO.File]::WriteAllText($bufferDir4, 'a file where the buffer directory should be')
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Not-recorded line that cannot be delivered ' + [guid]::NewGuid().ToString('N')) -HoldMs 4000 -NotRecordedKey 'nr-withheld'
+        Wait-JournalUnlocked $p4
+        Assert-True ($null -ne $r.Context -and $r.Context -match 'held back') 'withheld not-recorded line: the turn says its guidance was held back'
+        Assert-True ((& $undelivered 'nr-withheld') -eq 1) 'withheld not-recorded line: the line marked said during that fire is put back'
+        Remove-Item -LiteralPath $bufferDir4 -Force
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Not-recorded line delivered ' + [guid]::NewGuid().ToString('N')) -NotRecordedKey 'nr-delivered'
+        Assert-True ((& $undelivered 'nr-delivered') -eq 0) 'delivered not-recorded line: it stays said'
     }
     finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }
 

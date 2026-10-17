@@ -998,10 +998,23 @@ function Test-SpecrewPromptChannelSawContent {
         [AllowEmptyString()][AllowNull()][string]$HostKind,
         [AllowEmptyString()][AllowNull()][string]$SinceUtc,
         [AllowEmptyString()][AllowNull()][string]$SessionId,
-        [int]$ExpectedCount = 1
+        [int]$ExpectedCount = 1,
+        # Co-review round 2 (iteration 002): the arrival of every counted message, oldest first; the LAST is the one asked
+        # about. When given, each message must be paired with a reservation of its own, made within 15 seconds of its
+        # arrival (measured: Copilot's hook records 4-6 s before the transcript entry, Claude's about 4 s after). A
+        # reservation from a message outside the transcript window is near THAT message's arrival, not this one's, so
+        # it can no longer stand in for it - which the count from the earliest message allowed.
+        [AllowNull()][string[]]$MessageTimesUtc
     )
     if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $false }
     if ($ExpectedCount -lt 1) { $ExpectedCount = 1 }
+    $parseUtc = {
+        param([string]$Text)
+        $v = [DateTimeOffset]::MinValue
+        if (-not [string]::IsNullOrWhiteSpace($Text) -and [DateTimeOffset]::TryParse($Text, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$v)) { return $v }
+        return $null
+    }
+    $messageTimes = @(@($MessageTimesUtc) | ForEach-Object { & $parseUtc ([string]$_) } | Where-Object { $null -ne $_ })
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
     $since = [DateTimeOffset]::MinValue
@@ -1013,6 +1026,7 @@ function Test-SpecrewPromptChannelSawContent {
     }
     $session = ([string]$SessionId).Trim()
     $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $candidates = [System.Collections.Generic.List[object]]::new()
     try {
         foreach ($line in [IO.File]::ReadAllLines($path)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
@@ -1024,6 +1038,11 @@ function Test-SpecrewPromptChannelSawContent {
             if ((([string]$entry.source_event).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript', 'agentstop')) { continue }
             $entrySession = if ($entry.PSObject.Properties['session_id']) { ([string]$entry.session_id).Trim() } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($session) -and -not [string]::IsNullOrWhiteSpace($entrySession) -and $entrySession -cne $session) { continue }
+            if ($messageTimes.Count -gt 0) {
+                $when = if ($entry.PSObject.Properties['observed_at']) { & $parseUtc ([string]$entry.observed_at) } else { $null }
+                if ($null -ne $when -and $seen.Add([string]$entry.turn_id)) { $candidates.Add([pscustomobject]@{ At = $when; Used = $false }) | Out-Null }
+                continue
+            }
             $at = [DateTimeOffset]::MinValue
             if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) {
                 if ($at -lt $since) { continue }
@@ -1033,7 +1052,20 @@ function Test-SpecrewPromptChannelSawContent {
         }
     }
     catch { return $false }
-    return $false
+    if ($messageTimes.Count -eq 0) { return $false }
+    # Oldest message first, each takes the nearest unused reservation within 15 seconds; the answer is the last one's.
+    $matchedLast = $false
+    for ($m = 0; $m -lt $messageTimes.Count; $m++) {
+        $best = $null; $bestGap = [double]::MaxValue
+        foreach ($c in $candidates) {
+            if ($c.Used) { continue }
+            $gap = [math]::Abs(($c.At - $messageTimes[$m]).TotalSeconds)
+            if ($gap -le 15 -and $gap -lt $bestGap) { $best = $c; $bestGap = $gap }
+        }
+        if ($null -ne $best) { $best.Used = $true }
+        if ($m -eq $messageTimes.Count - 1) { $matchedLast = ($null -ne $best) }
+    }
+    return $matchedLast
 }
 
 function Test-SpecrewLegacyTurnRecorded {
@@ -1068,6 +1100,16 @@ function Test-SpecrewLegacyTurnRecorded {
             if (-not [string]::IsNullOrWhiteSpace($LegacyTurnId) -and [string]$entry.turn_id -ceq [string]$LegacyTurnId) { return $true }
             # The old keys cannot always be recomputed (the message hook's used its own clock), so the same text on
             # the same host, recorded by either path from just before this message arrived on, is this message.
+            # Co-review round 2 (iteration 002): the old message hook hashed the UNTRIMMED text, so a typed approval with a
+            # trailing space has no hash this path can compute. Its record is still the message hook's reservation made
+            # within 15 seconds of this message's arrival (see Test-SpecrewPromptChannelSawContent for the measurement),
+            # so that matches on time alone. Only history is read here, so the cost of a false match is one retype.
+            if ($null -ne $since -and [string]$entry.host_kind -ceq [string]$HostKind -and
+                (([string]$entry.source_event).Trim().ToLowerInvariant()) -notin @('stop', 'stop-transcript', 'agentstop')) {
+                $near = [DateTimeOffset]::MinValue
+                if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$near) -and
+                    [math]::Abs(($near - $since.AddSeconds(60)).TotalSeconds) -le 15) { return $true }
+            }
             # With no arrival to compare, any old record of the same text counts: this check fails closed.
             if ([string]::IsNullOrWhiteSpace($ContentHash)) { continue }
             if (-not $entry.PSObject.Properties['content_hash'] -or [string]$entry.content_hash -cne [string]$ContentHash) { continue }
@@ -1098,6 +1140,9 @@ function Write-SpecrewAuthorityNotRecordedReport {
         [Parameter(Mandatory)][string]$EntryKey,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SessionId,
+        # Co-review round 2 (iteration 002): 'not-saved' when the message hook received the act but its writer could not
+        # store it; the default when the message never reached the hook.
+        [string]$Reason = 'message-hook-did-not-record',
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
@@ -1113,7 +1158,7 @@ function Write-SpecrewAuthorityNotRecordedReport {
         }
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($journal)) | Out-Null
         (([pscustomobject][ordered]@{
-                event = 'authority-phrase-not-recorded'; phrase = [string]$Shape.Kind; reason = 'message-hook-did-not-record'
+                event = 'authority-phrase-not-recorded'; phrase = [string]$Shape.Kind; reason = $Reason
                 retype = [string]$Shape.Retype; choice = $shapeChoice; entry_key = $EntryKey; host_kind = [string]$HostKind
                 session_id = [string]$SessionId; recorded_at = $NowUtc
             }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
@@ -1139,6 +1184,7 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
     if (-not [IO.File]::Exists($journal)) { return $null }
     try {
         $pending = [ordered]@{}
+        $reports = @{}
         foreach ($line in [IO.File]::ReadAllLines($journal)) {
             if ($line -notmatch 'authority-phrase-not-recorded') { continue }
             $row = $null
@@ -1147,15 +1193,23 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
             $rowSession = if ($row.PSObject.Properties['session_id']) { ([string]$row.session_id).Trim() } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($rowSession) -and $rowSession -cne $session) { continue }
             $key = [string]$row.entry_key
-            if ([string]$row.event -ceq 'authority-phrase-not-recorded') { $pending[$key] = $row }
+            if ([string]$row.event -ceq 'authority-phrase-not-recorded') { $pending[$key] = $row; $reports[$key] = $row }
             elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-disclosed') { $pending.Remove($key) }
+            # Co-review round 2 (iteration 002): the dispatcher withheld the output that carried the line, so it was never
+            # shown; it is pending again and the next message says it.
+            elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-undelivered' -and $reports.ContainsKey($key)) { $pending[$key] = $reports[$key] }
         }
         if ($pending.Count -eq 0) { return $null }
         $lines = foreach ($key in @($pending.Keys)) {
             $row = $pending[$key]
             (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = $key; host_kind = [string]$HostKind; session_id = $session; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
                 Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
-            ("Specrew: your earlier '{0}' was not recorded - it reached the conversation, but Specrew did not receive it, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            if ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-saved') {
+                ("Specrew: your earlier '{0}' was received but could not be saved, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
+            else {
+                ("Specrew: your earlier '{0}' was not recorded - it reached the conversation, but Specrew did not receive it, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
         }
         return (@($lines) -join "`n")
     }
