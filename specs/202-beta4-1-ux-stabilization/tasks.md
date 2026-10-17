@@ -291,15 +291,15 @@ parity; SelfLeakLintLane; the consumer-language check.
 
 ### Execution order (iteration 002)
 
-T017, T016, co-review round 1, (round 2 on the round-1 fixes), T022, T020, T021, T018, T019, co-review round 3, T023,
+T017, T016, co-review round 1, (rounds 2 and 3 on the fixes), T022, T020, T021, T018, T019, co-review round 4, T023,
 T024.
 
 - T017 before T016: both change the turn record and the dispatcher twins, and T016's duplicate-receipt refusal builds on
   T017's message identity.
 - T022 before T020 and T021: the receipt area is simplified before the items that change receipts.
 - **Review cadence:** round 1 after T016 (covers T016 and T017, the approval handling and the release gate); round 2
-  on round 1's fixes, by the maintainer's choice (DRIFT-003); round 3 after T019 (covers round 2's fixes, T022, T020, T021,
-  T018, T019). Sign-off covers T023, T024 and the round-3 fixes.
+  and round 3 on the fixes, by the maintainer's choice (DRIFT-003); round 4, the last in the allowance, after T019 (covers
+  round 3's fixes if not yet reviewed, T022, T020, T021, T018, T019). Sign-off covers T023, T024 and the round-4 fixes.
 - **Standing rules for every round:** no commit between an approval and the step that uses it; before a round launch, a
   stop decision or an allowance reset, the stored approval must come from the maintainer's own typed message for that run
   (the B4F-127 interim rule, until T017 is reviewed); every demoted finding is checked against the code and listed as
@@ -423,7 +423,7 @@ T024.
 
 ```text
 T017 -> T016 -> [round 1] -> T022 -> T020, T021
-T017 -> T018 -> T019 -> [round 3] -> T023 -> T024
+T017 -> T018 -> T019 -> [round 4] -> T023 -> T024
 ```
 
 ### Coverage (iteration 002)

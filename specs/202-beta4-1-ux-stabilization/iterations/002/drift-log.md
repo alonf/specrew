@@ -34,7 +34,7 @@
 - **Class closure**: NONE - making the command name the active iteration is beta5 work (the review engine), per the
   iteration-2 scope ruling.
 
-### DRIFT-003 — co-review rounds 1 and 2 found ten defects in T017 and its fixes; nine were demoted, and all ten are real (resolved)
+### DRIFT-003 — co-review rounds 1 to 3 found thirteen defects in T017 and its fixes; twelve were demoted, and all thirteen are real (resolved)
 
 - **Observed**: 2026-10-17, co-review round 1 (`run-20261017-093636207-bf1e4cc7`, codex, 25 minutes), on the
   maintainer's typed `approved for review round`. The message hook recorded it once (09:35:47 UTC), and no turn end
@@ -102,5 +102,34 @@
 - **Class closure (round 2)**: findings 2 and 4 are the same class: a record of success written before the success. The
   reservation now stands only for "the hook saw it", with a failed save reported separately. The not-recorded line joins
   the orientation stamp and the recovery question in the dispatcher's undelivered rollback.
-- **Plan effect**: round 2 is spent on the fixes, so the round planned after T019 becomes round 3 (3 of 4).
+- **Plan effect**: round 2 is spent on the fixes, so the round planned after T019 becomes round 3 (3 of 4). Superseded
+  by round 3 below.
 - **Not new**: the round-2 approval drew B4F-116's notice again (sixth recurrence).
+- **Round 3 (2026-10-17, the maintainer's typed `approved for review round`, recorded once by the message hook)**: run
+  `run-20261017-152855473-5b668458` (codex, 26 minutes) reviewed the round-2 fixes. The crew had again recommended
+  carrying them into the round after T019, and the maintainer again chose to review them now. 3 findings, all reported
+  major and demoted for "no concrete failure scenario" (each states one). Each was checked against the code, and each is
+  real:
+  1. **A recovered withdrawal re-ran as the window slid.** The Copilot turn end keyed it by its index in the 500-line
+     transcript window. Each new index was a new key, so a later turn end ran the withdrawal again, against an approval
+     another session had recorded since (round 1's fix, finding 2).
+  2. **The workshop repair writer hid a failed save.** It caught its own lock and append failures and returned null, so
+     round 2's not-saved report never fired for it.
+  3. **A provider timeout lost the not-recorded line.** Round 2's restore ran only for withheld output, and a provider
+     killed after marking the line said never set that flag.
+- **Resolution (round 3)** (`8222019a`, runtime `db4ed7a1`), each behind a failing test:
+  1. A recovered withdrawal is keyed by its transcript entry (`entry:<id>`), which never moves.
+  2. Once the phrase has matched, the repair writer rethrows a failed save. The withdrawal writer throws when none of its
+     four stores landed. The router reports both as received but not saved. The other five writers already throw on a
+     failed save (checked).
+  3. The dispatcher restores, once per prompt, every line marked said during the fire that the delivered output does not
+     carry: withheld, timed out and failed alike.
+- **Tests (round 3)**: `message-identity` 3 new cases and `hook-output-journal` 1 new check, all RED on `28a499fe`.
+  `message-identity` 37 of 37, `round-approval-typed-authority` 130 of 130 and `lens-acknowledgment` are green. All eight
+  lanes pass, and `f202-i002-suites` takes 224 s alone against 600 s. The repair case needed the project's deployed
+  workshop store, which the message hook loads from `.specify` as in a real project.
+- **Class closure (round 3)**: finding 3 completes round 2's class: whether a line was shown is decided by what was
+  delivered, not by one cause of loss. Finding 2 closes "a writer that swallows its own save failure" across all seven
+  writers. Finding 1 removes the last window-relative key from the T017 code.
+- **Plan effect**: rounds 1 to 3 are spent on T017 and its fixes. The round after T019 is round 4, the last in the
+  allowance; a further round needs the maintainer's allowance reset.
