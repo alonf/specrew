@@ -799,6 +799,11 @@ function ConvertTo-SpecrewTurnRecord {
         }
     }
     $stopHookActive = Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'StopHookActive')
+    # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's own ID for this message, when its binding declares
+    # one (Claude prompt_id, Codex turn_id). A binding with no MessageId field declares 'none': its message hook is
+    # the only recording path for a typed approval.
+    $messageIdPaths = @(Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'MessageId' | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+    $messageId = if ($isPromptEvent -and $messageIdPaths.Count -gt 0) { Get-DispatcherTurnFieldValue -Payload $Payload -Paths $messageIdPaths } else { $null }
     return [ordered]@{
         schema           = 'specrew-turn-record/v1'
         event            = $EventName
@@ -811,6 +816,8 @@ function ConvertTo-SpecrewTurnRecord {
         transcript_path  = $(Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'TranscriptPath'))
         stop_hook_active = ($stopHookActive -eq $true -or [string]$stopHookActive -eq 'True')
         tool             = $tool
+        message_id       = if ([string]::IsNullOrWhiteSpace([string]$messageId)) { $null } else { [string]$messageId }
+        message_identity = if ($messageIdPaths.Count -gt 0) { 'declared' } else { 'none' }
     }
 }
 
@@ -1723,6 +1730,14 @@ try {
             if ($Event -in @('UserPromptSubmit', 'PreInvocation')) {
                 if (-not [string]::IsNullOrWhiteSpace([string]$turnRecord.typed_text)) { $commandArgs += @('--last-user-message', [string]$turnRecord.typed_text) }
                 $commandArgs += @('--turn-origin', [string]$turnRecord.origin)
+            }
+            # Feature 202 iteration 002, T017 (FR-027): the handover provider keys a typed approval by the host's
+            # message ID on the prompt event, and learns on every event whether the binding declares one at all.
+            if ($providerId -eq 'handover') {
+                if ($Event -in @('UserPromptSubmit', 'PreInvocation') -and -not [string]::IsNullOrWhiteSpace([string]$turnRecord.message_id)) {
+                    $commandArgs += @('--message-id', [string]$turnRecord.message_id)
+                }
+                $commandArgs += @('--message-identity', [string]$turnRecord.message_identity)
             }
             # Feature 202 T006: which SessionStart this is (startup, resume, clear, compact). Every one is a context
             # gap for the presented-crossing memory; the kind is recorded beside it for diagnosis.
