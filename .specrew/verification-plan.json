@@ -3,7 +3,7 @@
   "plan_id": "f199.i003.slice.v1",
   "commands": [
     {
-      "command_id": "iteration-001-governance-202",
+      "command_id": "iteration-002-governance-202",
       "executable": "pwsh",
       "arguments": [
         "-NoProfile",
@@ -12,7 +12,7 @@
         "-ProjectPath",
         ".",
         "-IterationPath",
-        "specs/202-beta4-1-ux-stabilization/iterations/001",
+        "specs/202-beta4-1-ux-stabilization/iterations/002",
         "-NoCacheRead",
         "-NoParallel"
       ],
@@ -38,7 +38,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Explicit governance validation of the ACTIVE iteration - feature 202 iteration 001. RE-POINTED 2026-10-13 for the THIRD time (202 DRIFT-011): the plan still named 199's closed stub iteration 003, which fails on records a sealed stub never had (no task rows, no Completed date, no retro sections), and on a review check that now reads 202's campaign as the active one. The recurrence the 199 entries predicted. Making the command name the active iteration rather than a number remains open (beta4 owned it; now beta5)."
+      "label": "Explicit governance validation of the ACTIVE iteration - feature 202 iteration 002 (re-pointed 2026-10-17 at iteration 002's before-implement, iteration 002 DRIFT-002: iteration 001 is sealed). Earlier history: RE-POINTED 2026-10-13 for the THIRD time (202 DRIFT-011): the plan still named 199's closed stub iteration 003, which fails on records a sealed stub never had (no task rows, no Completed date, no retro sections), and on a review check that now reads 202's campaign as the active one. The recurrence the 199 entries predicted. Making the command name the active iteration rather than a number remains open (beta4 owned it; now beta5)."
     },
     {
       "command_id": "f202-slice-suites-a",
