@@ -8,7 +8,7 @@
 
 ## Events
 
-### DRIFT-001 — the iteration-2 scope replaces Tier 2's review-ordering slice; spec amended at the plan (pending the plan stop)
+### DRIFT-001 — the iteration-2 scope replaces Tier 2's review-ordering slice; spec amended at the plan (approved with the plan)
 
 - **Observed**: 2026-10-17, iteration-2 plan. The spec's Tier 2 held US7 (FR-022, the review-ordering slices of
   B4F-054/056/058/061, and FR-023, the B4F-103 package comparison). The maintainer's scope ruling ("scope as
