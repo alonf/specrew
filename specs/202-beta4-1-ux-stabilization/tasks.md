@@ -324,7 +324,7 @@ T017, T016, co-review round 1, T022, T020, T021, T018, T019, co-review round 2, 
     both `specrew-handover-provider.ps1` twins, `extensions/specrew-speckit/scripts/shared-governance.ps1` (coverage deferral
     writer), `tests/unit/message-identity*.tests.ps1`.
 
-- [ ] T016 [owner: Implementer] [sp: 3.0] [US8] **A hook acts only for its own host (DA-1, B4F-129).**
+- [x] T016 [owner: Implementer] [sp: 3.0] [US8] **A hook acts only for its own host (DA-1, B4F-129).** Done 2026-10-17. `host-binding-match.tests.ps1` (255 assertions, 71 s, lane `f202-i002-suites`, now 450 s for 177 s measured) runs every recorded payload through every validated host's deployed hook command. RED on the old code: 79 failures, among them all 12 Copilot payloads running in the Claude hook and a reply offered twice leaving two receipts. Each binding now declares its payload signature and carries the other hosts' (baked by the deployer); a hook stands down, writing nothing, only on a positive foreign match; an unknown shape is handled and its field names logged once; the receipt store refuses a receipt ID it already holds. All eight lanes green on the working tree.
   - **Work:** each host binding declares, per event, the payload fields only its host sends (Claude `prompt_id` or its
     event-specific fields, Codex `turn_id`, Copilot camelCase `sessionId`). The shared path stands a hook down (exit 0,
     nothing written) only when the payload positively matches another known host; a payload matching no known host is

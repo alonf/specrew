@@ -54,6 +54,15 @@
         ProjectDirPlaceholder = '${CLAUDE_PROJECT_DIR}'
         ProjectRootEnvironmentVariables = @('CLAUDE_PROJECT_DIR')
         DispatcherRuntime   = @{
+            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends, per dispatcher event
+            # ('Default' for the rest). A hook stands down only when a payload positively matches ANOTHER host's signature.
+            # Measured on every recorded fixture (tests/fixtures/hook-payloads/claude): prompt and Stop carry prompt_id;
+            # SessionStart carries no permission_mode, which Codex's does.
+            PayloadSignature    = @{
+                SessionStart = @{ AllOf = @('hook_event_name', 'session_id'); NoneOf = @('permission_mode', 'sessionId') }
+                PostToolUse  = @{ AllOf = @('hook_event_name', 'session_id', 'tool_name'); NoneOf = @('turn_id', 'sessionId') }
+                Default      = @{ AllOf = @('hook_event_name', 'session_id', 'prompt_id'); NoneOf = @('turn_id', 'sessionId') }
+            }
             BootstrapDeliveryEvents = @('SessionStart')
             B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
             RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }

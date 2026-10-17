@@ -43,6 +43,13 @@
         CommandMode    = 'launcher-file'
         MigrateLegacyTopLevelEventMap = $true
         DispatcherRuntime = @{
+            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends, per dispatcher event
+            # ('Default' for the rest). Measured on every recorded fixture (tests/fixtures/hook-payloads/codex): prompt
+            # and Stop carry turn_id; SessionStart carries permission_mode and model, and never scratchpad_dir.
+            PayloadSignature = @{
+                SessionStart = @{ AllOf = @('hook_event_name', 'session_id', 'permission_mode', 'model'); NoneOf = @('scratchpad_dir', 'prompt_id', 'sessionId') }
+                Default      = @{ AllOf = @('hook_event_name', 'session_id', 'turn_id'); NoneOf = @('prompt_id', 'sessionId') }
+            }
             BootstrapDeliveryEvents = @('SessionStart')
             B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
             RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }

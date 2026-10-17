@@ -44,6 +44,12 @@
         SettingsVersion = 1
         OwnsSettingsFile = $true
         DispatcherRuntime = @{
+            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends. Measured on every
+            # recorded fixture (tests/fixtures/hook-payloads/copilot): camelCase sessionId, never session_id or
+            # hook_event_name. Copilot runs Claude's hooks too (B4F-129); this is what lets those hooks stand down.
+            PayloadSignature = @{
+                Default = @{ AllOf = @('sessionId'); NoneOf = @('session_id', 'hook_event_name') }
+            }
             BootstrapDeliveryEvents = @('SessionStart')
             B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
             RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
