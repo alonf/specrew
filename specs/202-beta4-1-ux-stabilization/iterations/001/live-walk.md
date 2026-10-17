@@ -264,7 +264,7 @@ disagree, write both in Notes.
 | Host | Version | Date | Real decisions | Corrective exchanges | Extra stops | Receipts after step 4 | Replies per checkpoint | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Claude | 2.1.301 | 2026-10-16 | 7 | 1 | 4 | 3 | 1/1/1 | See "Walk notes: Claude". stop-blocks: 1 |
-| Codex (healthy worktree) | | | null | null | null | null | null | |
+| Codex (healthy worktree) | 0.163.0 | 2026-10-17 | 7 | 2 | 3 | 3 | 1/2/1 | See "Walk notes: Codex". stop-blocks: 1 |
 | Copilot | | | null | null | null | null | null | |
 
 Expected per host: 6 real decisions (7 or more only if the crew asked further real questions), 0 corrective
@@ -301,6 +301,39 @@ The maintainer's tally, checked against the disk in `C:\scratch\walk-202\claude`
 
 Disk at the end of the walk: receipts 7, all `recorded` with no refused or degraded outcomes (3 by step 4: product-domain,
 agenda, `requirements-nfr`). `verdict_history` has exactly one row, `to_boundary: specify`,
+`evidence_source: hook-captured-from-transcript`. The last authorized stage is `specify`, and `clarify` is pending.
+
+### Walk notes: Codex (2026-10-17)
+
+The maintainer's tally, checked against the disk in `C:\scratch\walk-202\codex`. The two agree.
+
+1. M1 was skipped by mistake (M2 was sent first). Codex handled it and asked to confirm the scope and depth. Counted
+   as a real decision.
+2. Codex picked 5 lenses (Claude picked 3).
+3. 2 corrective exchanges and 2 extra stops: "you decide the remaining lenses" was recorded for one lens only, and
+   `requirements-nfr` and `data-storage` each asked "you decide this lens". Lens 5's re-ask was merged with the
+   reviewer question, at no extra cost. Disk: `component-design`, `requirements-nfr`, `data-storage` and
+   `code-implementation` each have their own `human-delegated` receipt, one per reply.
+4. 1 extra stop: M9 after `/compact` was answered, then "Blocked by hook" and the packet was shown again. Compaction
+   wiped the record that the packet had already been shown. Disk: 1 `stop-block` row, `block_kind: boundary`.
+5. No stop asking permission to commit, unlike Claude, which confirms that the Claude stop came from Claude Code's
+   commit default. But Codex committed on `master`, because the feature branch was never created. Disk: the scratch
+   repository is on `master`, with the `boundary(specify)` and `boundary(clarify)` commits there.
+6. M7 passed cleanly, with no packet shown again, unlike Claude.
+7. Step 9 (M10) passed. After the restart Codex resumed at the clarify approval, said "'continue' does not authorize
+   this crossing", and did not ask for `approved for specify` again.
+8. Not counted:
+   - Every reply ended by quoting its skill rule.
+   - The reviewer list showed raw engine output, including a line meant for the agent.
+   - The recording step failed visibly twice before succeeding.
+   - Packet evidence was not saved for specify and clarify: two validator warnings, shown to the maintainer as a
+     confusing paragraph.
+   - On restart, the exited session was flagged as "another session may be active" (also on Claude).
+   - The order of the pre-spec checks contradicts the workshop instructions (seen on both hosts).
+
+Disk at the end of the walk: receipts 8, all `recorded` with no refused or degraded outcomes (3 by step 4:
+product-domain, agenda, `architecture-core`). The maintainer counted 2 replies at the agenda checkpoint; the disk has
+one agenda receipt. `verdict_history` has exactly one row, `to_boundary: specify`, `authorizing_human: unattributed`,
 `evidence_source: hook-captured-from-transcript`. The last authorized stage is `specify`, and `clarify` is pending.
 
 ## After the walk
