@@ -135,7 +135,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 202 iteration 002 suites (T016 to T023), added 2026-10-17 with T017. Its own lane because lanes a and b would drop under the 2.4x headroom floor with it. message-identity (T017, FR-027, SC-010): one typed approval through the message hook and N turn ends records once on Claude, Codex and Copilot, a retype still records, the backup path records once, and a Copilot miss is reported, and co-review rounds 1 and 2 replay their ten findings (about 175 s). host-binding-match (T016, FR-028): every recorded payload against every validated host's deployed hook - another host's payload stands down and writes nothing, an unknown shape is handled and logged once, a duplicate receipt ID is refused (71 s). Measured alone about 248 s against 600 s (2.42x), after round 2's fixes."
+      "label": "Feature 202 iteration 002 suites (T016 to T023), added 2026-10-17 with T017. Its own lane because lanes a and b would drop under the 2.4x headroom floor with it. message-identity (T017, FR-027, SC-010): one typed approval through the message hook and N turn ends records once on Claude, Codex and Copilot, a retype still records, the backup path records once, and a Copilot miss is reported, and co-review rounds 1 to 3 replay their thirteen findings. host-binding-match (T016, FR-028): every recorded payload against every validated host's deployed hook - another host's payload stands down and writes nothing, an unknown shape is handled and logged once, a duplicate receipt ID is refused (71 s). Measured alone 224 to 248 s against 600 s (2.42x at the slowest), after round 3's fixes."
     },
 {
       "command_id": "f199-class-guards-a",

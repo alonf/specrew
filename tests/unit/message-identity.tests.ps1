@@ -438,3 +438,53 @@ Describe 'Co-review round 2 (iteration 002): the four findings, each as its own 
         Invoke-Prompt -P $p -HostKind 'copilot' -Text 'and now?' | Should -Not -Match 'was not recorded'
     }
 }
+
+Describe 'Co-review round 3 (iteration 002): the three findings, each as its own replay' {
+    It 'finding 1, copilot: a recovered withdrawal runs once as the window slides, and never revokes a later approval from another session' {
+        $p = New-Project
+        Add-Filler -P $p
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'withdraw the approval'
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        Test-RoundUnspent -P $p | Should -BeFalse
+        # Another session records a new approval; this session's conversation grows, sliding the window.
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' -Session 's2' | Out-Null
+        Test-RoundUnspent -P $p | Should -BeTrue
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot'; Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot' }
+        Test-RoundUnspent -P $p | Should -BeTrue
+        $w = Join-Path $p.Root '.specrew/authority/withdrawals.jsonl'
+        @(Get-Content -LiteralPath $w | Where-Object { $_.Trim() }).Count | Should -Be 1
+    }
+
+    It 'finding 2, <HostKind>: a workshop repair approval whose save failed is reported, though its writer handles its own errors' -ForEach @(
+        @{ HostKind = 'copilot' }, @{ HostKind = 'claude' }
+    ) {
+        $p = New-Project
+        # The provider loads the workshop store from the project's own deployed copy, as in a real project.
+        $deployed = Join-Path $p.Root '.specify/extensions/specrew-speckit/scripts'
+        New-Item -ItemType Directory -Path $deployed -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1') -Destination $deployed
+        $feature = '001-fixture'
+        $controller = Join-Path $p.Root ('specs/' + $feature + '/lens-applicability.json')
+        New-Item -ItemType Directory -Path (Split-Path -Parent $controller) -Force | Out-Null
+        Set-Content -LiteralPath $controller -Value '{"schema_version":"1"}' -Encoding UTF8 -NoNewline
+        $sha = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($controller)))).ToLowerInvariant()
+        $proposal = Join-Path $p.Root '.specrew/handover/workshop-controller-repair-proposal.json'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $proposal) -Force | Out-Null
+        Set-Content -LiteralPath $proposal -Value (@{ schema_version = '1.0'; feature_ref = $feature; proposal_id = ('a' * 64); controller_sha256 = $sha } | ConvertTo-Json -Compress) -Encoding UTF8
+        $lockPath = Join-Path $p.Root '.specrew/runtime/workshop-controller-repair-authority.jsonl.lock'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $lockPath) -Force | Out-Null
+        $id = if ($HostKind -eq 'copilot') { '' } else { 'msg-1' }
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for workshop repair' -MessageId 'msg-1'
+        $hold = [IO.File]::Open($lockPath, 'OpenOrCreate', 'ReadWrite', 'None')
+        $shown = $null
+        try { $shown = Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for workshop repair' -MessageId $id }
+        finally { $hold.Dispose() }
+        Test-Path -LiteralPath (Join-Path $p.Root '.specrew/runtime/workshop-controller-repair-authority.jsonl') | Should -BeFalse
+        $r = @(Get-NotRecordedReports -P $p)
+        $r.Count | Should -Be 1
+        [string]$r[0].reason | Should -Be 'not-saved'
+        $shown | Should -Match 'could not be saved'
+    }
+}

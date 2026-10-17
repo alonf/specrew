@@ -1937,7 +1937,10 @@ function Write-SpecrewApprovalWithdrawal {
     if ($null -ne $withdrawn -and [string]::IsNullOrWhiteSpace([string]$withdrawn.spent_at)) {
         try { [IO.File]::Delete($path); $revoked = $true } catch { $null = $_ }
     }
-    if (-not $revoked) { return $null }
+    # Co-review round 3 (iteration 002): NOTHING LANDED IS A FAILURE, NOT A NON-MATCH. The phrase matched, so a null here
+    # read to the router as "not a withdrawal" and the human's revocation vanished without the report FR-027 requires.
+    # Throwing lets the router report it as received but not saved.
+    if (-not $revoked) { throw 'approval-withdrawal-not-saved' }
     return $fact
 }
 

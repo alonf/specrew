@@ -82,7 +82,10 @@ if ($env:HOJ_STAMP) {
 if ($env:HOJ_NOTRECORDED) {
     # Like the store's not-recorded disclosure: the line is marked said for this session before the payload carries it.
     $drops = Join-Path (Get-Location).Path '.specrew/runtime/authority-capture-drops.jsonl'
+    Add-Content -LiteralPath $drops -Value ('{"event":"authority-phrase-not-recorded","phrase":"review-round-approval","reason":"message-hook-did-not-record","retype":"approved for review round","entry_key":"' + $env:HOJ_NOTRECORDED + '","host_kind":"claude","session_id":"hoj-session","recorded_at":"' + [DateTimeOffset]::UtcNow.ToString('o') + '"}') -Encoding UTF8
     Add-Content -LiteralPath $drops -Value ('{"event":"authority-phrase-not-recorded-disclosed","entry_key":"' + $env:HOJ_NOTRECORDED + '","host_kind":"claude","session_id":"hoj-session","recorded_at":"' + [DateTimeOffset]::UtcNow.ToString('o') + '"}') -Encoding UTF8
+    # HOJ_NOTRECORDED_LOST: the provider marked the line said and then lost it (a timeout, a failure) - the payload omits it.
+    if (-not $env:HOJ_NOTRECORDED_LOST) { $env:HOJ_REASON = $env:HOJ_REASON + "`nSpecrew: your earlier 'approved for review round' was not recorded." }
 }
 if ($env:HOJ_RECOVERY) {
     # Like the store's recovery ask: the open question is recorded for this session before the payload that asks it.
@@ -119,7 +122,7 @@ function Invoke-StopWithReason {
 }
 
 function Invoke-PromptWithPayload {
-    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp, [switch]$Recovery, [string]$OutcomeSession = '', [string]$NotRecordedKey = '')
+    param([string]$Root, [string]$Payload, [int]$HoldMs = 0, [string]$Outcome = '', [switch]$Stamp, [switch]$Recovery, [string]$OutcomeSession = '', [string]$NotRecordedKey = '', [switch]$NotRecordedLost)
     $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
     foreach ($a in '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root '.specify\extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'), '-Event', 'UserPromptSubmit', '-HostKind', 'claude') { $psi.ArgumentList.Add($a) }
     $psi.WorkingDirectory = $Root
@@ -132,6 +135,7 @@ function Invoke-PromptWithPayload {
     if ($Stamp) { $psi.Environment['HOJ_STAMP'] = '1' } else { $psi.Environment.Remove('HOJ_STAMP') | Out-Null }
     if ($Recovery) { $psi.Environment['HOJ_RECOVERY'] = '1' } else { $psi.Environment.Remove('HOJ_RECOVERY') | Out-Null }
     if ($NotRecordedKey) { $psi.Environment['HOJ_NOTRECORDED'] = $NotRecordedKey } else { $psi.Environment.Remove('HOJ_NOTRECORDED') | Out-Null }
+    if ($NotRecordedLost) { $psi.Environment['HOJ_NOTRECORDED_LOST'] = '1' } else { $psi.Environment.Remove('HOJ_NOTRECORDED_LOST') | Out-Null }
     if ($OutcomeSession) { $psi.Environment['HOJ_OUTCOME_SESSION'] = $OutcomeSession } else { $psi.Environment.Remove('HOJ_OUTCOME_SESSION') | Out-Null }
     foreach ($var in 'CLAUDE_PROJECT_DIR', 'COPILOT_PROJECT_DIR', 'CURSOR_PROJECT_DIR') { $psi.Environment[$var] = $Root }
     $p = [Diagnostics.Process]::Start($psi)
@@ -418,6 +422,11 @@ try {
         Remove-Item -LiteralPath $bufferDir4 -Force
         $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Not-recorded line delivered ' + [guid]::NewGuid().ToString('N')) -NotRecordedKey 'nr-delivered'
         Assert-True ((& $undelivered 'nr-delivered') -eq 0) 'delivered not-recorded line: it stays said'
+        # Co-review round 3: a provider that marked the line said and then lost it (timeout, failure) delivers output
+        # without the line, and nothing was withheld. The line is put back all the same.
+        $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Guidance from a provider that lost the line ' + [guid]::NewGuid().ToString('N')) -NotRecordedKey 'nr-lost' -NotRecordedLost
+        Assert-True ($null -ne $r.Context -and $r.Context -notmatch 'held back') 'lost not-recorded line: the output itself was delivered'
+        Assert-True ((& $undelivered 'nr-lost') -eq 1) 'lost not-recorded line: the line the human did not get is put back'
     }
     finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }
 

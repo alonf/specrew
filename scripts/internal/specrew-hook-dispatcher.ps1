@@ -1462,17 +1462,29 @@ function Clear-DispatcherUndeliveredRecoveryRequest {
 
 function Restore-DispatcherUndeliveredNotRecordedLine {
     # Co-review round 2 (202 iteration 002, FR-027): the store marks a not-recorded approval line as said when it composes
-    # the payload, BEFORE this dispatcher delivers it. When this fire withheld its output the human never saw the line, so
-    # each line marked said during this fire, for this session, is put back: an `undelivered` row after it makes the store
-    # say it again at the next message. Append-only, like the journal it reads.
-    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$SessionId)
-    if (-not $script:DispatcherOutputWithheldThisFire) { return }
+    # the payload, BEFORE this dispatcher delivers it. Each line marked said during this fire, for this session, that the
+    # human did not get is put back: an `undelivered` row after it makes the store say it again at the next message.
+    # Append-only, like the journal it reads.
+    #
+    # Co-review round 3: "did not get" is decided by WHAT WAS DELIVERED, not by one cause of loss. A withheld output, a
+    # provider that timed out or failed after marking the line, and any other path that drops it all look the same here:
+    # the delivered text does not carry the line. Called once per prompt, whatever happened to the providers.
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$SessionId, [AllowNull()][string]$DeliveredPayload)
     if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+    $delivered = if ($script:DispatcherOutputWithheldThisFire) { '' } else { [string]$DeliveredPayload }
     try {
         $journal = Join-Path $ProjectRoot '.specrew/runtime/authority-capture-drops.jsonl'
         if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return }
         $restored = 0
-        foreach ($line in [IO.File]::ReadAllLines($journal)) {
+        $retypes = @{}
+        $lines = [IO.File]::ReadAllLines($journal)
+        foreach ($line in $lines) {
+            if ($line -notmatch '"authority-phrase-not-recorded"') { continue }
+            $report = $null
+            try { $report = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ($report.PSObject.Properties['retype']) { $retypes[[string]$report.entry_key] = [string]$report.retype }
+        }
+        foreach ($line in $lines) {
             if ($line -notmatch 'authority-phrase-not-recorded-disclosed') { continue }
             $row = $null
             try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
@@ -1482,11 +1494,13 @@ function Restore-DispatcherUndeliveredNotRecordedLine {
             $at = [DateTimeOffset]::MinValue
             if (-not [DateTimeOffset]::TryParse([string]$row.recorded_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) { continue }
             if ($at -lt $script:DispatcherStartedUtc) { continue }
+            $retype = if ($retypes.ContainsKey([string]$row.entry_key)) { [string]$retypes[[string]$row.entry_key] } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($retype) -and $delivered.Contains(("your earlier '{0}'" -f $retype))) { continue }
             (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-undelivered'; entry_key = [string]$row.entry_key; host_kind = [string]$row.host_kind; session_id = $rowSession; recorded_at = [DateTimeOffset]::UtcNow.ToString('o') }) | ConvertTo-Json -Compress) |
                 Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
             $restored++
         }
-        if ($restored -gt 0) { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message 'this prompt''s output was withheld, so the not-recorded approval line it carried is said again at the next prompt' }
+        if ($restored -gt 0) { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message 'the not-recorded approval line marked during this prompt did not reach the human, so it is said again at the next prompt' }
     }
     catch { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message ("could not restore the undelivered not-recorded line: {0}" -f $_.Exception.Message) }
 }
@@ -1959,16 +1973,20 @@ try {
         # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).
     }
 
+    $deliveredPayload = ''
     if ($fragments.Count -gt 0) {
-        Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
+        $deliveredPayload = Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event
+        Write-InjectionOutput -EventName $Event -Payload $deliveredPayload -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
         if ($Event -eq 'UserPromptSubmit') {
             Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId
             Clear-DispatcherUndeliveredRecoveryRequest -ProjectRoot $projectRoot -SessionId $sessionId
-            Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId
         }
     }
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
         Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
+    }
+    if ($Event -eq 'UserPromptSubmit') {
+        Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId -DeliveredPayload $deliveredPayload
     }
     exit 0
 }

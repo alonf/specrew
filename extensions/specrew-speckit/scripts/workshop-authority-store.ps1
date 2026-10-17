@@ -214,6 +214,7 @@ function Write-SpecrewWorkshopRepairAuthorization {
     )
 
     if ($Response.Trim() -cne 'approved for workshop repair') { return $null }
+    $saving = $false
     $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
     if ($null -eq $canonicalSourceEvent -or -not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
@@ -244,6 +245,10 @@ function Write-SpecrewWorkshopRepairAuthorization {
             recorded_at      = [DateTimeOffset]::UtcNow.ToString('o')
         }
         $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $root
+        # Co-review round 3 (202 iteration 002, FR-027): from here on the human's approval matched and only the save can
+        # fail. A failed save is rethrown, not returned as null, so the authority router reports it as received but not
+        # saved instead of reading it as an ordinary non-match.
+        $saving = $true
         $dir = Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         $lockPath = $path + '.lock'
@@ -262,7 +267,10 @@ function Write-SpecrewWorkshopRepairAuthorization {
         }
         return [pscustomobject]$record
     }
-    catch { return $null }
+    catch {
+        if ($saving) { throw }
+        return $null
+    }
 }
 
 function Get-SpecrewWorkshopRefusalContractText {

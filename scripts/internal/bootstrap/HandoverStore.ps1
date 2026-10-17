@@ -1848,12 +1848,16 @@ function Update-SpecrewRollingHandover {
                                 $pairTimes = if ($sameTimes.Count -eq $sameText -and $sameText -gt 0) { [string[]]$sameTimes.ToArray() } else { $null }
                                 if (-not (Test-SpecrewPromptChannelSawContent -ProjectRoot $ProjectRoot -ContentHash $ratHash -HostKind $fromHost `
                                             -SinceUtc $earliest -SessionId $SessionId -ExpectedCount $sameText -MessageTimesUtc $pairTimes)) {
+                                    $ratKey = if ($roundApprovalTurns[$rat].PSObject.Properties['entry_id'] -and -not [string]::IsNullOrWhiteSpace([string]$roundApprovalTurns[$rat].entry_id)) { [string]$roundApprovalTurns[$rat].entry_id } else { ($ratHash + '|' + $ratWhen) }
                                     if ([string]$shape.Kind -ceq 'approval-withdrawal') {
+                                        # Co-review round 3 (iteration 002): keyed by the transcript ENTRY, not by its index. The
+                                        # turn end reads a sliding 500-line window, so an index moves as the conversation grows,
+                                        # and each new index was a new key that ran the withdrawal again - against an approval
+                                        # another session had recorded since.
                                         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $ratText -HostKind $fromHost `
-                                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc -TurnPosition ([string]$rat) -TurnArrival $ratWhen -SessionId $SessionId
+                                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc -TurnPosition ('entry:' + $ratKey) -TurnArrival $ratWhen -SessionId $SessionId
                                     }
                                     else {
-                                        $ratKey = if ($roundApprovalTurns[$rat].PSObject.Properties['entry_id'] -and -not [string]::IsNullOrWhiteSpace([string]$roundApprovalTurns[$rat].entry_id)) { [string]$roundApprovalTurns[$rat].entry_id } else { ($ratHash + '|' + $ratWhen) }
                                         Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey $ratKey -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc | Out-Null
                                     }
                                 }
