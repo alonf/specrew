@@ -3278,6 +3278,8 @@ sign-off (202 DRIFT-018).
 
 **The maintainer's "no round 6" rule was overridden by mechanics, not by decision (2026-10-16, 202 DRIFT-033):** round 5's stop was refused because a crew commit landed while the round ran and moved its snapshot (B4F-126), so a sixth round was the only way to get a result that could carry a sign-off. Round 6's own stop was then refused too: its four fixes were committed after it, and a stop cannot accept that gap. Sign-off closed only through `approved for partial review signoff - <reason>`, the maintainer's advance acceptance in the engine's form. Each of the 6 rounds' summaries said nothing needed the maintainer's attention, over 32 real findings. Crew rule from here: no commit while a round runs.
 
+**Iteration 002 round 1 (2026-10-17, `run-20261017-093636207-bf1e4cc7`, codex):** 6 findings, 5 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 1 reported minor, and the summary again read "Nothing found that needs your attention." All 6 are real (38 of 38 across seven rounds of feature 202): among them, an update re-recorded a spent approval (B4F-127 for upgrading projects), and a withdrawal missed on Copilot left a revoked approval spendable (202 iteration 002 DRIFT-003).
+
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
 **Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
@@ -4962,6 +4964,8 @@ approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
 **Recurred a fourth time, on a different phrase:** 2026-10-16, the maintainer's typed `approved for partial review signoff - <reason>` drew the same "reads as a verdict for 'review' ... nothing was recorded" notice. The engine had captured it, and sign-off completed on it. The classifier reads any `approved for review...` prefix as the `review` boundary.
 **Fifth time:** 2026-10-16, the re-typed partial sign-off reply drew the same notice; the engine captured it, and the
 review sign-off stage opened on it.
+
+**Recurred a fifth time:** 2026-10-17, feature 202 iteration 002. The maintainer's typed `approved for review round` drew the same notice ("NO crossing is pending ... send the phrase again: approved for review"). The round approval was recorded once by the message hook and became `cmp-202-beta4-1-ux-stabilization-i002-round-1`. The notice names a different phrase as the one to send.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 

@@ -4,7 +4,7 @@
 
 ## Summary
 
-**Total drift events**: 2 (DRIFT-001 to DRIFT-002)
+**Total drift events**: 3 (DRIFT-001 to DRIFT-003)
 
 ## Events
 
@@ -33,3 +33,42 @@
   Codex observation, seen here on Claude too; non-blocking).
 - **Class closure**: NONE - making the command name the active iteration is beta5 work (the review engine), per the
   iteration-2 scope ruling.
+
+### DRIFT-003 — co-review round 1 found six defects in T017; five were demoted, and all six are real (resolved)
+
+- **Observed**: 2026-10-17, co-review round 1 (`run-20261017-093636207-bf1e4cc7`, codex, 25 minutes), on the
+  maintainer's typed `approved for review round`. The message hook recorded it once (09:35:47 UTC), and no turn end
+  recorded it again: T017 working live. Scope `fe509311..46639843` (T017 and T016). 6 findings, all against T017: 5
+  reported blocking or major and demoted to minor for "no concrete failure scenario" (each states one), 1 reported
+  minor. The summary read "Nothing found that needs your attention." Each was checked against the code, and each is real:
+  1. **An update re-recorded a spent approval.** A message recorded before the message-ID key is in the ledger under the
+     old key. The first turn end after an update computed the new key, found nothing, and recorded the approval again
+     (B4F-127 for every upgrading project).
+  2. **On Copilot, a withdrawal the message hook missed was dropped.** The `none` branch reported only approval shapes,
+     so a revoked approval stayed spendable. Partial sign-off and workshop repair were not shaped either.
+  3. **A recent identical phrase vouched for a missed message.** Any same-text reservation in the last minute counted,
+     including an earlier message's or another session's.
+  4. **A miss was reported in whichever session spoke next,** and marked as said there.
+  5. **A missed abandon was told to retype `stop the review here`,** a different decision.
+  6. **A trailing space read as a miss.** The prompt path hashed untrimmed text; the turn end hashes the transcript's
+     trimmed text.
+- **Requirement citation**: FR-027 and DA-2 (one message, one record; a miss is reported, never silent).
+- **Resolution** (`7a75987b`), each behind a failing test:
+  1. The turn end also checks the old record of the message (`Test-SpecrewLegacyTurnRecorded`: the old position key,
+     or the same text on the same host from just before the message arrived; with no arrival time it fails closed).
+     Reservations under the new key carry `identity = message-id` and are never read as history.
+  2. A missed withdrawal is recorded by the turn end, once, under its position key. The shape table covers every writer.
+  3. The check counts: every same-text human message in the transcript window needs its own reservation in the same
+     session, from the earliest of them on.
+  4. Reports and disclosures carry the session, and a session hears only its own.
+  5. The retype follows the recognized choice.
+  6. Both paths hash the trimmed text.
+  Also: the cross-channel double-mint observation is skipped under a message-ID key, where it misfired on the
+  maintainer's round-1 approval against a phrase typed days earlier.
+- **Tests**: `message-identity` 11 new cases, all RED on `46639843`, and 29 of 29 green. All eight lanes pass;
+  `f202-i002-suites` takes 193 s alone, and its timeout goes from 450 s to 480 s (2.49x).
+- **Class closure**: findings 3 and 4 are the class round 5 of iteration 001 found in the recording disclosure
+  (DRIFT-032 finding 5): state read across sessions by time alone. Every T017 read is now tied to the session and the
+  message. Finding 1 is the upgrade case of a key change: history under the old key is read once more.
+- **Not new**: the prompt hook answered the round approval with "reads as a verdict for 'review' ... nothing was
+  recorded" (B4F-116, fifth recurrence; a beta5 candidate).
