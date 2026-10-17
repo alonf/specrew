@@ -214,7 +214,6 @@ function Write-SpecrewWorkshopRepairAuthorization {
     )
 
     if ($Response.Trim() -cne 'approved for workshop repair') { return $null }
-    $saving = $false
     $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
     if ($null -eq $canonicalSourceEvent -or -not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
@@ -222,55 +221,49 @@ function Write-SpecrewWorkshopRepairAuthorization {
     $proposalPath = Get-SpecrewWorkshopRepairProposalPath -ProjectRoot $root
     if (-not (Test-Path -LiteralPath $proposalPath -PathType Leaf)) { return $null }
 
-    try {
-        $proposal = Get-Content -LiteralPath $proposalPath -Raw -Encoding UTF8 -ErrorAction Stop |
-            ConvertFrom-Json -Depth 8 -ErrorAction Stop
-        if ([string]$proposal.schema_version -cne '1.0' -or [string]$proposal.feature_ref -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$' -or
-            [string]$proposal.proposal_id -cnotmatch '^[a-f0-9]{64}$' -or [string]$proposal.controller_sha256 -cnotmatch '^[a-f0-9]{64}$') { return $null }
-        $controllerPath = Join-Path (Join-Path (Join-Path $root 'specs') ([string]$proposal.feature_ref)) 'lens-applicability.json'
-        if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf) -or
-            (Get-SpecrewWorkshopFileSha256 -Path $controllerPath) -cne [string]$proposal.controller_sha256) { return $null }
-        $existing = Get-SpecrewWorkshopRepairAuthorization -ProjectRoot $root -ProposalId ([string]$proposal.proposal_id)
-        if ($null -ne $existing) { return $existing }
+    # Co-review rounds 3 and 4 (202 iteration 002, FR-027): a non-match is an explicit `return $null` below - a stale or
+    # malformed proposal, a moved controller. Anything that THROWS from here on (an unreadable proposal, an existing
+    # record that cannot be read, a save that fails) is a failure, not a non-match: it propagates, so the authority
+    # router reports the approval as received but not saved instead of dropping it silently.
+    $proposal = Get-Content -LiteralPath $proposalPath -Raw -Encoding UTF8 -ErrorAction Stop |
+        ConvertFrom-Json -Depth 8 -ErrorAction Stop
+    if ([string]$proposal.schema_version -cne '1.0' -or [string]$proposal.feature_ref -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$' -or
+        [string]$proposal.proposal_id -cnotmatch '^[a-f0-9]{64}$' -or [string]$proposal.controller_sha256 -cnotmatch '^[a-f0-9]{64}$') { return $null }
+    $controllerPath = Join-Path (Join-Path (Join-Path $root 'specs') ([string]$proposal.feature_ref)) 'lens-applicability.json'
+    if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf) -or
+        (Get-SpecrewWorkshopFileSha256 -Path $controllerPath) -cne [string]$proposal.controller_sha256) { return $null }
+    $existing = Get-SpecrewWorkshopRepairAuthorization -ProjectRoot $root -ProposalId ([string]$proposal.proposal_id)
+    if ($null -ne $existing) { return $existing }
 
-        $record = [ordered]@{
-            schema_version   = '1'
-            proposal_id      = [string]$proposal.proposal_id
-            feature_ref      = [string]$proposal.feature_ref
-            controller_sha256 = [string]$proposal.controller_sha256
-            authorization    = 'human-approved'
-            response_hash    = Get-SpecrewWorkshopAuthorityHash -Text $Response.Trim()
-            source_event     = $canonicalSourceEvent
-            host_kind        = [string]$HostKind
-            recorded_at      = [DateTimeOffset]::UtcNow.ToString('o')
-        }
-        $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $root
-        # Co-review round 3 (202 iteration 002, FR-027): from here on the human's approval matched and only the save can
-        # fail. A failed save is rethrown, not returned as null, so the authority router reports it as received but not
-        # saved instead of reading it as an ordinary non-match.
-        $saving = $true
-        $dir = Split-Path -Parent $path
-        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        $lockPath = $path + '.lock'
-        $lockStream = $null
-        try {
-            $deadline = [DateTimeOffset]::UtcNow.AddSeconds(2)
-            do {
-                try { $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
-                catch { if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }; Start-Sleep -Milliseconds 25 }
-            } until ($null -ne $lockStream)
-            [IO.File]::AppendAllText($path, (($record | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
-        }
-        finally {
-            if ($null -ne $lockStream) { $lockStream.Dispose() }
-            Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
-        }
-        return [pscustomobject]$record
+    $record = [ordered]@{
+        schema_version   = '1'
+        proposal_id      = [string]$proposal.proposal_id
+        feature_ref      = [string]$proposal.feature_ref
+        controller_sha256 = [string]$proposal.controller_sha256
+        authorization    = 'human-approved'
+        response_hash    = Get-SpecrewWorkshopAuthorityHash -Text $Response.Trim()
+        source_event     = $canonicalSourceEvent
+        host_kind        = [string]$HostKind
+        recorded_at      = [DateTimeOffset]::UtcNow.ToString('o')
     }
-    catch {
-        if ($saving) { throw }
-        return $null
+    $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $root
+    $dir = Split-Path -Parent $path
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $lockPath = $path + '.lock'
+    $lockStream = $null
+    try {
+        $deadline = [DateTimeOffset]::UtcNow.AddSeconds(2)
+        do {
+            try { $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+            catch { if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }; Start-Sleep -Milliseconds 25 }
+        } until ($null -ne $lockStream)
+        [IO.File]::AppendAllText($path, (($record | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
     }
+    finally {
+        if ($null -ne $lockStream) { $lockStream.Dispose() }
+        Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+    }
+    return [pscustomobject]$record
 }
 
 function Get-SpecrewWorkshopRefusalContractText {

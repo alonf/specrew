@@ -78,6 +78,10 @@ $script:DispatcherRecordingDegradedThisFire = $false
 # Co-review round 4 (202): whether this fire withheld its output because it could not be recorded (FR-005), so a stamp
 # that says something was supplied during this fire can be taken back (Clear-DispatcherUndeliveredOrientationStamp).
 $script:DispatcherOutputWithheldThisFire = $false
+# Co-review round 4 (202 iteration 002, FR-027): what this fire actually delivered, and whether the not-recorded line
+# was already reconciled against it, so the fail-open exit can reconcile it too (Restore-DispatcherUndeliveredNotRecordedLine).
+$script:DispatcherDeliveredPayload = ''
+$script:DispatcherNotRecordedReconciled = $false
 # Co-review round 5 (202, FR-007): this fire's session and typed reply, so the recording disclosure reads THIS reply's
 # outcome from the shared outcome journal, never another session's (Get-DispatcherRecordingDisclosure).
 $script:DispatcherTurnSessionId = ''
@@ -1469,7 +1473,12 @@ function Restore-DispatcherUndeliveredNotRecordedLine {
     # Co-review round 3: "did not get" is decided by WHAT WAS DELIVERED, not by one cause of loss. A withheld output, a
     # provider that timed out or failed after marking the line, and any other path that drops it all look the same here:
     # the delivered text does not carry the line. Called once per prompt, whatever happened to the providers.
+    #
+    # Co-review round 4: "whatever happened" includes the dispatcher itself failing after a provider marked the line
+    # (a session state it cannot save, for one). Its fail-open exit calls this too, with what it had delivered by then.
     param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$SessionId, [AllowNull()][string]$DeliveredPayload)
+    if ($script:DispatcherNotRecordedReconciled) { return }
+    $script:DispatcherNotRecordedReconciled = $true
     if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
     $delivered = if ($script:DispatcherOutputWithheldThisFire) { '' } else { [string]$DeliveredPayload }
     try {
@@ -1968,6 +1977,9 @@ try {
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
             Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot -EventName $Event
+            if ($Event -eq 'UserPromptSubmit') {
+                Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId -DeliveredPayload $mergedStopBlockReason
+            }
             exit 0
         }
         # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).
@@ -1977,6 +1989,7 @@ try {
     if ($fragments.Count -gt 0) {
         $deliveredPayload = Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event
         Write-InjectionOutput -EventName $Event -Payload $deliveredPayload -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
+        $script:DispatcherDeliveredPayload = $deliveredPayload
         if ($Event -eq 'UserPromptSubmit') {
             Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId
             Clear-DispatcherUndeliveredRecoveryRequest -ProjectRoot $projectRoot -SessionId $sessionId
@@ -1998,6 +2011,12 @@ catch {
     }
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $catchRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
         Write-InjectionOutput -EventName $Event -Payload '' -Binding $catchRuntimeBinding
+    }
+    if ($Event -eq 'UserPromptSubmit') {
+        # Co-review round 4 (202 iteration 002, FR-027): a provider may have marked the not-recorded line said before
+        # this failure. Reconciled against what was delivered before the failure (usually nothing).
+        Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot ([string](Get-Variable -Name projectRoot -ValueOnly -ErrorAction SilentlyContinue)) `
+            -SessionId ([string](Get-Variable -Name sessionId -ValueOnly -ErrorAction SilentlyContinue)) -DeliveredPayload $script:DispatcherDeliveredPayload
     }
     exit 0
 }

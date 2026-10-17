@@ -1246,8 +1246,26 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             $legacyTurnId = [string](Get-SpecrewTypedTurnIdentity -Response $Response -HostKind $HostKind `
                     -SourceEvent $SourceEvent -TurnPosition $TurnPosition -TurnArrival $TurnArrival)
+            # Co-review round 4: an old record matched on time alone vouches for this message only if it recorded the
+            # same kind of act, so the check is told which writer records this phrase.
+            $expectedWriter = ''
+            if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) {
+                $legacyShape = Get-SpecrewTypedAuthorityShape -Text $Response
+                if ($null -ne $legacyShape) {
+                    $expectedWriter = switch ([string]$legacyShape.Kind) {
+                        'approval-withdrawal' { 'Write-SpecrewApprovalWithdrawal' }
+                        'review-round-approval' { 'Write-SpecrewReviewRoundApprovalAuthorization' }
+                        'pause-decision' { 'Write-SpecrewPauseDecisionAuthorization' }
+                        'allowance-reset' { 'Write-SpecrewAllowanceResetAuthorization' }
+                        'coverage-deferral' { 'Write-SpecrewCoverageDeferralAuthorization' }
+                        'partial-review-signoff' { 'Write-SpecrewReviewSignoffOverrideAuthorization' }
+                        'workshop-repair' { 'Write-SpecrewWorkshopRepairAuthorization' }
+                        default { '' }
+                    }
+                }
+            }
             $legacy = [bool](Test-SpecrewLegacyTurnRecorded -ProjectRoot $ProjectRoot -LegacyTurnId $legacyTurnId `
-                    -ContentHash $contentHash -HostKind $HostKind -SinceUtc $TurnArrival)
+                    -ContentHash $contentHash -HostKind $HostKind -SinceUtc $TurnArrival -ExpectedWriter $expectedWriter)
         }
         catch { $legacy = $true }
         if ($legacy) { return }

@@ -1081,7 +1081,10 @@ function Test-SpecrewLegacyTurnRecorded {
         [AllowEmptyString()][AllowNull()][string]$LegacyTurnId,
         [AllowEmptyString()][AllowNull()][string]$ContentHash,
         [AllowEmptyString()][AllowNull()][string]$HostKind,
-        [AllowEmptyString()][AllowNull()][string]$SinceUtc
+        [AllowEmptyString()][AllowNull()][string]$SinceUtc,
+        # The writer that records this message's phrase (Write-SpecrewReviewRoundApprovalAuthorization, ...). Empty
+        # when the text is no recognized phrase.
+        [AllowEmptyString()][AllowNull()][string]$ExpectedWriter
     )
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
@@ -1091,7 +1094,17 @@ function Test-SpecrewLegacyTurnRecorded {
         if ([DateTimeOffset]::TryParse($SinceUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { $since = $parsed.AddSeconds(-60) }
     }
     try {
-        foreach ($line in [IO.File]::ReadAllLines($path)) {
+        $lines = [IO.File]::ReadAllLines($path)
+        # Co-review round 4 (iteration 002): what each old turn RECORDED, read from its second ledger line.
+        $mintedByTurn = @{}
+        foreach ($line in $lines) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or -not $entry.PSObject.Properties['minted']) { continue }
+            foreach ($w in ([string]$entry.minted -split ',')) { if (-not [string]::IsNullOrWhiteSpace($w)) { $mintedByTurn[([string]$entry.turn_id + '|' + $w.Trim())] = $true } }
+        }
+        foreach ($line in $lines) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
             try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
@@ -1103,8 +1116,13 @@ function Test-SpecrewLegacyTurnRecorded {
             # Co-review round 2 (iteration 002): the old message hook hashed the UNTRIMMED text, so a typed approval with a
             # trailing space has no hash this path can compute. Its record is still the message hook's reservation made
             # within 15 seconds of this message's arrival (see Test-SpecrewPromptChannelSawContent for the measurement),
-            # so that matches on time alone. Only history is read here, so the cost of a false match is one retype.
-            if ($null -ne $since -and [string]$entry.host_kind -ceq [string]$HostKind -and
+            # so that matches on time alone.
+            # Co-review round 4: time alone is not this message. The old message hook reserved EVERY message, so an
+            # ordinary reply, or an approval, typed seconds before a withdrawal the message hook then missed, matched it,
+            # and the withdrawal was never recorded. A record on time alone is this message only when that old turn
+            # recorded the same kind of act this message asks for.
+            if ($null -ne $since -and -not [string]::IsNullOrWhiteSpace($ExpectedWriter) -and
+                $mintedByTurn.ContainsKey([string]$entry.turn_id + '|' + $ExpectedWriter) -and [string]$entry.host_kind -ceq [string]$HostKind -and
                 (([string]$entry.source_event).Trim().ToLowerInvariant()) -notin @('stop', 'stop-transcript', 'agentstop')) {
                 $near = [DateTimeOffset]::MinValue
                 if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$near) -and

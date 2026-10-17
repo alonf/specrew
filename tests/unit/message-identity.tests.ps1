@@ -488,3 +488,49 @@ Describe 'Co-review round 3 (iteration 002): the three findings, each as its own
         $shown | Should -Match 'could not be saved'
     }
 }
+
+Describe 'Co-review round 4 (iteration 002): the three findings, each as its own replay' {
+    It 'finding 1, claude: a withdrawal the message hook missed is recorded, though an older <Prior> was recorded 5 seconds before it' -ForEach @(
+        @{ Prior = 'ok, carry on' }, @{ Prior = 'approved for review round' }
+    ) {
+        $p = New-Project
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-0' | Out-Null
+        Test-RoundUnspent -P $p | Should -BeTrue
+        # The old message hook reserved every message under its own key, with no identity: history, in the time window.
+        Invoke-Prompt -P $p -HostKind 'claude' -Text $Prior -BeforeMessageIds | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'withdraw the approval' -MessageId 'msg-2' -SecondsFromNow 5
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-2'
+        Invoke-TurnEnd -P $p -HostKind 'claude'
+        Test-RoundUnspent -P $p | Should -BeFalse
+        $w = Join-Path $p.Root '.specrew/authority/withdrawals.jsonl'
+        @(Get-Content -LiteralPath $w | Where-Object { $_.Trim() }).Count | Should -Be 1
+    }
+
+    It 'finding 3, <HostKind>: a workshop repair approval whose existing record could not be read is reported, not dropped as a non-match' -ForEach @(
+        @{ HostKind = 'copilot' }, @{ HostKind = 'claude' }
+    ) {
+        $p = New-Project
+        $deployed = Join-Path $p.Root '.specify/extensions/specrew-speckit/scripts'
+        New-Item -ItemType Directory -Path $deployed -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1') -Destination $deployed
+        $feature = '001-fixture'
+        $controller = Join-Path $p.Root ('specs/' + $feature + '/lens-applicability.json')
+        New-Item -ItemType Directory -Path (Split-Path -Parent $controller) -Force | Out-Null
+        Set-Content -LiteralPath $controller -Value '{"schema_version":"1"}' -Encoding UTF8 -NoNewline
+        $sha = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($controller)))).ToLowerInvariant()
+        $proposal = Join-Path $p.Root '.specrew/handover/workshop-controller-repair-proposal.json'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $proposal) -Force | Out-Null
+        Set-Content -LiteralPath $proposal -Value (@{ schema_version = '1.0'; feature_ref = $feature; proposal_id = ('a' * 64); controller_sha256 = $sha } | ConvertTo-Json -Compress) -Encoding UTF8
+        # A torn line in the existing record: the lookup before the save cannot read it.
+        $store = Join-Path $p.Root '.specrew/runtime/workshop-controller-repair-authority.jsonl'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $store) -Force | Out-Null
+        Set-Content -LiteralPath $store -Value '{"schema_version":"1","proposal_id":"aaa' -Encoding UTF8
+        $id = if ($HostKind -eq 'copilot') { '' } else { 'msg-1' }
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for workshop repair' -MessageId 'msg-1'
+        $shown = Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for workshop repair' -MessageId $id
+        $r = @(Get-NotRecordedReports -P $p)
+        $r.Count | Should -Be 1
+        [string]$r[0].reason | Should -Be 'not-saved'
+        $shown | Should -Match 'could not be saved'
+    }
+}

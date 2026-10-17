@@ -430,6 +430,31 @@ try {
     }
     finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }
 
+    # Co-review round 4 (202 iteration 002, FR-027): the dispatcher itself fails after the provider marked the line said
+    # (here: the session's refocus state can be read but not written). Its fail-open exit delivers no line, so the line
+    # is put back there too.
+    $p5 = New-JournalProject
+    try {
+        # The not-recorded provider runs first; the refocus row after it dirties the session state, whose save then fails.
+        [IO.File]::WriteAllText((Join-Path $p5 '.specify\extensions\specrew-speckit\scripts\stub-noop.ps1'), '', [Text.UTF8Encoding]::new($false))
+        $catalog5 = [ordered]@{ schema_version = '1'; providers = @(
+                [ordered]@{ id = 'stub-inject'; kind = 'inject'; events = @('UserPromptSubmit'); order = 40; budget_share = 0.5; command = 'stub-inject.ps1' },
+                [ordered]@{ id = 'refocus'; kind = 'inject'; events = @('UserPromptSubmit'); order = 60; budget_share = 0.5; command = 'stub-noop.ps1' }) }
+        [IO.File]::WriteAllText((Join-Path $p5 '.specify\extensions\specrew-speckit\refocus-scopes.json'), ($catalog5 | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+        $state5 = Get-RuntimePath $p5 'refocus-state-hoj-session.json'
+        [IO.File]::WriteAllText($state5, '{"session_id":"hoj-session","last_seen_boundary":null,"context_mtime":null,"breaker":null,"journal":[]}')
+        if ($IsWindows) { [IO.File]::SetAttributes($state5, [IO.FileAttributes]::ReadOnly) } else { & chmod 444 $state5 }
+        $drops5 = Get-RuntimePath $p5 'authority-capture-drops.jsonl'
+        $r = Invoke-PromptWithPayload -Root $p5 -Payload ('Guidance from a fire that fails after the line was marked ' + [guid]::NewGuid().ToString('N')) -NotRecordedKey 'nr-dispatcher-failed'
+        Assert-True ($r.StdErr -match 'dispatcher fail-open') 'dispatcher failure: the fire took the fail-open exit'
+        $restored5 = @(if (Test-Path -LiteralPath $drops5) { [IO.File]::ReadAllLines($drops5) | Where-Object { $_ -match 'not-recorded-undelivered' -and $_ -match '"nr-dispatcher-failed"' } }).Count
+        Assert-True ($restored5 -eq 1) 'dispatcher failure: the line the human did not get is put back'
+    }
+    finally {
+        if ($IsWindows) { [IO.File]::SetAttributes($state5, [IO.FileAttributes]::Normal) } else { & chmod 644 $state5 }
+        Remove-Item -LiteralPath $p5 -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     Write-Host '--- integrity stores hold hashes only (FR-008) ---'
     $storeText = Get-AllStoreText $root
     foreach ($reason in $reasonA, $reasonB, $reasonC, $reasonL, $reasonG, $reasonH2, $reasonH3, $reasonH4) {
