@@ -3284,6 +3284,8 @@ sign-off (202 DRIFT-018).
 
 **Iteration 002 round 3 (2026-10-17, `run-20261017-152855473-5b668458`, codex):** 3 findings, all reported major and all demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 3 are real (45 of 45 across nine rounds of feature 202): among them, a recovered withdrawal re-ran against another session's later approval (202 iteration 002 DRIFT-003).
 
+**Iteration 002 round 4 (2026-10-17, `run-20261017-181522696-4d1fe121`, codex):** 3 findings, all reported major and all demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 3 are real (48 of 48 across ten rounds of feature 202): among them, an approximate legacy match let an earlier ordinary reply suppress a withdrawal (202 iteration 002 DRIFT-003).
+
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
 **Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
@@ -4974,6 +4976,8 @@ review sign-off stage opened on it.
 **Recurred a sixth time:** 2026-10-17, the round-2 approval drew the same notice; the round approval was recorded once and became `cmp-202-beta4-1-ux-stabilization-i002-round-2`.
 
 **Recurred a seventh time:** 2026-10-17, the round-3 approval drew the same notice; the round approval was recorded once and became `cmp-202-beta4-1-ux-stabilization-i002-round-3`.
+
+**Recurred an eighth time:** 2026-10-17, the round-4 approval drew the same notice; the round approval was recorded once and became round 4 of `cmp-202-beta4-1-ux-stabilization-i002`.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 

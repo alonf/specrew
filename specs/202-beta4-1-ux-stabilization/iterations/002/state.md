@@ -5,7 +5,7 @@
 **Iteration Status**: executing
 **Last Completed Task**: T016
 **Tasks Remaining**: T022, T020, T021, T018, T019, T023, T024
-**In Progress**: (none; co-review rounds 1 to 3 returned 13 real findings, fixed in `7a75987b`, `f98c0a96` and `8222019a` (DRIFT-003); the maintainer decides the next step)
+**In Progress**: (none; co-review rounds 1 to 4 returned 16 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a` and `c43b3cec` (DRIFT-003); the allowance is spent and the review is paused; the maintainer decides the next step)
 **Baseline Ref**: fe509311
 **Updated**: 2026-10-17T05:40:00Z
 

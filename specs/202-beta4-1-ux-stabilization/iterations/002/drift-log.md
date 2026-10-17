@@ -34,7 +34,7 @@
 - **Class closure**: NONE - making the command name the active iteration is beta5 work (the review engine), per the
   iteration-2 scope ruling.
 
-### DRIFT-003 — co-review rounds 1 to 3 found thirteen defects in T017 and its fixes; twelve were demoted, and all thirteen are real (resolved)
+### DRIFT-003 — co-review rounds 1 to 4 found sixteen defects in T017 and its fixes; fifteen were demoted, and all sixteen are real (resolved)
 
 - **Observed**: 2026-10-17, co-review round 1 (`run-20261017-093636207-bf1e4cc7`, codex, 25 minutes), on the
   maintainer's typed `approved for review round`. The message hook recorded it once (09:35:47 UTC), and no turn end
@@ -132,4 +132,31 @@
   delivered, not by one cause of loss. Finding 2 closes "a writer that swallows its own save failure" across all seven
   writers. Finding 1 removes the last window-relative key from the T017 code.
 - **Plan effect**: rounds 1 to 3 are spent on T017 and its fixes. The round after T019 is round 4, the last in the
-  allowance; a further round needs the maintainer's allowance reset.
+  allowance; a further round needs the maintainer's allowance reset. Superseded by round 4 below.
+- **Round 4 (2026-10-17, the maintainer's typed `approved for review round`, recorded once by the message hook)**: run
+  `run-20261017-181522696-4d1fe121` (codex, 23 minutes) reviewed the round-3 fixes. The crew had recommended carrying
+  them into the round after T019; the maintainer chose to review them now. 3 findings, all reported major and demoted
+  for "no concrete failure scenario" (each states one). Each was checked against the code, and each is real:
+  1. **A time-only legacy match suppressed a different act.** Round 2's trailing-space fix matched an old message hook
+     record on time alone. The old hook reserved every message, so an ordinary reply, or an approval, typed within 15
+     seconds before a withdrawal the message hook then missed, matched it, and the withdrawal was never recorded.
+  2. **A dispatcher failure lost the not-recorded line.** Round 3's restore ran at the dispatcher's normal end only. A
+     failure after a provider marked the line said (a session state it can read but not save) took the fail-open exit
+     without putting it back.
+  3. **The repair writer still dropped a failure before the save.** Round 3 rethrew failures from the save onward, but an
+     existing repair record it could not read (torn line, lock) failed earlier and was read as a non-match.
+- **Resolution (round 4)** (`c43b3cec`, runtime `3f8e94fb`), each behind a failing test:
+  1. An old record matched on time alone vouches for this message only when that old turn recorded the same kind of act
+     (its minted writer, read from the ledger's second line for that turn).
+  2. The fail-open exit reconciles the line against what was delivered before the failure, as the normal end does, and
+     so does the stop-block exit. Reconciliation runs once per fire.
+  3. In the repair writer, a non-match is an explicit `return $null`; anything that throws after the phrase matched (an
+     unreadable proposal, an unreadable existing record, a failed save) propagates and is reported as not saved.
+- **Tests (round 4)**: `message-identity` 4 new cases and `hook-output-journal` 1 new check, all RED on `0221f4a8`.
+  `message-identity` 41 of 41 and all eight lanes pass; `f202-i002-suites` takes 236 s alone against 600 s.
+- **Class closure (round 4)**: finding 1 removes the last approximate match that ignored what the old turn did. Finding 2
+  completes the delivered-text rule for every exit of the dispatcher. Finding 3 states the writer contract as code: only
+  an explicit non-match returns nothing.
+- **Plan effect**: the allowance is spent (4 of 4), and the round-4 fixes are unreviewed. T022, T020, T021, T018 and T019
+  reach review only through the maintainer's allowance reset; the review is left paused, not stopped, because stopping
+  would sign off an iteration with seven tasks still open.
