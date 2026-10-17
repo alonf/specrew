@@ -70,6 +70,9 @@
             InputFieldMap           = @{
                 SessionId      = @('session_id')
                 Prompt         = @('prompt')
+                # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's own ID for a typed message, the same on the
+                # prompt event and on that message's transcript entry, so both recording paths key it the same way.
+                MessageId      = @('prompt_id')
                 TranscriptPath = @('transcript_path')
                 Source         = @('source')
                 ToolName       = @('tool_name')

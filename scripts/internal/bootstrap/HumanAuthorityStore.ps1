@@ -721,15 +721,26 @@ function Get-SpecrewTypedTurnIdentity {
     # come from the turn as the host delivered it; a genuine retype lands at a different position with
     # a different arrival and is therefore a different act, which is the property that keeps the rule
     # from wedging anyone.
+    #
+    # Feature 202 iteration 002, T017 (FR-027, DA-2; B4F-127): ONE MESSAGE, ONE KEY. When the host gives the
+    # message its own ID - Claude's `prompt_id`, which its transcript entry carries as `promptId`, and Codex's
+    # `turn_id` - that ID IS the identity, and the path that saw the message is not part of it. W71 accepted "at
+    # most two mints per utterance" because the hosts shared no per-turn id; Claude and Codex do, so the message
+    # hook and every later turn end now compute the same key, and the exhausted-turn check below admits only the
+    # first. Position and arrival stay as the identity for a host that sends no message ID.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$Response,
         [AllowEmptyString()][AllowNull()][string]$HostKind,
         [AllowEmptyString()][AllowNull()][string]$SourceEvent,
         [AllowEmptyString()][AllowNull()][string]$TurnPosition,
-        [AllowEmptyString()][AllowNull()][string]$TurnArrival
+        [AllowEmptyString()][AllowNull()][string]$TurnArrival,
+        [AllowEmptyString()][AllowNull()][string]$MessageId
     )
     if ([string]::IsNullOrWhiteSpace($Response)) { return '' }
+    if (-not [string]::IsNullOrWhiteSpace($MessageId)) {
+        return (Get-SpecrewHumanAuthorityHash -Text (@('message-id', [string]$HostKind, ([string]$MessageId).Trim()) -join '|'))
+    }
     $parts = @(
         [string]$HostKind
         [string]$SourceEvent
@@ -921,6 +932,141 @@ function Write-SpecrewAuthorityLedgerDamageObservation {
         return $true
     }
     catch { return $false }
+}
+
+function Get-SpecrewTypedAuthorityShape {
+    # Feature 202 iteration 002, T017 (FR-027): which typed authority, if any, this text IS - the minting
+    # recognizers, matched as their writers would match them. Used only to REPORT a message a host's single
+    # recording path did not record; it never mints.
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $table = @(
+        @{ Kind = 'review-round-approval'; Fn = 'Test-SpecrewReviewRoundApprovalPhrase'; Retype = 'approved for review round' }
+        @{ Kind = 'pause-decision'; Fn = 'Test-SpecrewPauseDecisionPhrase'; Retype = 'stop the review here' }
+        @{ Kind = 'allowance-reset'; Fn = 'Test-SpecrewAllowanceResetPhrase'; Retype = 'approved for allowance reset' }
+        @{ Kind = 'coverage-deferral'; Fn = 'Test-SpecrewCoverageDeferralPhrase'; Retype = 'continue without coverage until the review phase' }
+    )
+    foreach ($row in $table) {
+        if (-not (Get-Command ([string]$row.Fn) -ErrorAction SilentlyContinue)) { continue }
+        $r = $null
+        try { $r = & ([string]$row.Fn) -Text $Text } catch { $r = $null }
+        if ($null -ne $r -and [bool]$r.Matched) { return [pscustomobject]@{ Kind = [string]$row.Kind; Retype = [string]$row.Retype } }
+    }
+    return $null
+}
+
+function Test-SpecrewPromptChannelSawContent {
+    # Did the message hook (any channel that is not the turn end) reserve this content on this host at or after
+    # the given instant? The reservation is written before any writer runs, so it is proof the hook saw the
+    # message, whether or not anything minted.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SinceUtc
+    )
+    if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    $since = [DateTimeOffset]::MinValue
+    if (-not [string]::IsNullOrWhiteSpace($SinceUtc)) {
+        $parsed = [DateTimeOffset]::MinValue
+        if ([DateTimeOffset]::TryParse($SinceUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) {
+            $since = $parsed.AddSeconds(-60)
+        }
+    }
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['content_hash']) { continue }
+            if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if ([string]$entry.host_kind -cne [string]$HostKind) { continue }
+            if ((([string]$entry.source_event).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript', 'agentstop')) { continue }
+            $at = [DateTimeOffset]::MinValue
+            if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) {
+                if ($at -lt $since) { continue }
+            }
+            return $true
+        }
+    }
+    catch { return $false }
+    return $false
+}
+
+function Get-SpecrewAuthorityNotRecordedJournalPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return (Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/authority-capture-drops.jsonl')
+}
+
+function Write-SpecrewAuthorityNotRecordedReport {
+    # Feature 202 iteration 002, T017 (FR-027, DA-2 condition 2): on a host whose message hook is the only
+    # recording path, a typed approval that hook did not record is REPORTED, never dropped without a trace. One
+    # row per message (keyed by the transcript entry), in the journal the one-line refusals already use, plus a
+    # stderr line; the human reads it at the next message (Get-SpecrewAuthorityNotRecordedDisclosure).
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][pscustomobject]$Shape,
+        [Parameter(Mandatory)][string]$EntryKey,
+        [AllowNull()][string]$HostKind,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
+    try {
+        if ([IO.File]::Exists($journal)) {
+            foreach ($line in [IO.File]::ReadAllLines($journal)) {
+                if ($line -notmatch 'authority-phrase-not-recorded') { continue }
+                $row = $null
+                try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+                if ([string]$row.event -ceq 'authority-phrase-not-recorded' -and [string]$row.entry_key -ceq $EntryKey) { return $false }
+            }
+        }
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($journal)) | Out-Null
+        (([pscustomobject][ordered]@{
+                event = 'authority-phrase-not-recorded'; phrase = [string]$Shape.Kind; reason = 'message-hook-did-not-record'
+                retype = [string]$Shape.Retype; entry_key = $EntryKey; host_kind = [string]$HostKind; recorded_at = $NowUtc
+            }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
+        [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED: the message reached the conversation but not Specrew. Type it again, alone: '{1}'." -f ([string]$Shape.Kind).ToUpperInvariant().Replace('-', ' '), [string]$Shape.Retype))
+        return $true
+    }
+    catch { return $false }
+}
+
+function Get-SpecrewAuthorityNotRecordedDisclosure {
+    # The one visible line for a not-recorded approval, said once, at the human's next message on that host.
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$HostKind,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($journal)) { return $null }
+    try {
+        $pending = [ordered]@{}
+        foreach ($line in [IO.File]::ReadAllLines($journal)) {
+            if ($line -notmatch 'authority-phrase-not-recorded') { continue }
+            $row = $null
+            try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ([string]$row.host_kind -cne [string]$HostKind) { continue }
+            $key = [string]$row.entry_key
+            if ([string]$row.event -ceq 'authority-phrase-not-recorded') { $pending[$key] = $row }
+            elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-disclosed') { $pending.Remove($key) }
+        }
+        if ($pending.Count -eq 0) { return $null }
+        $lines = foreach ($key in @($pending.Keys)) {
+            $row = $pending[$key]
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = $key; host_kind = [string]$HostKind; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
+                Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
+            ("Specrew: your earlier '{0}' was not recorded - it reached the conversation, but Specrew did not receive it, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+        }
+        return (@($lines) -join "`n")
+    }
+    catch { return $null }
 }
 
 function Register-SpecrewExhaustedTurn {

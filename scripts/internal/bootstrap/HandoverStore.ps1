@@ -1195,7 +1195,10 @@ function Invoke-SpecrewTypedAuthorityCapture {
         [AllowEmptyString()][AllowNull()][string]$SourceEvent,
         [AllowEmptyString()][AllowNull()][string]$NowUtc,
         [AllowEmptyString()][AllowNull()][string]$TurnPosition,
-        [AllowEmptyString()][AllowNull()][string]$TurnArrival
+        [AllowEmptyString()][AllowNull()][string]$TurnArrival,
+        # Feature 202 iteration 002, T017 (FR-027): the host's own ID for this message, when it gives one. Both
+        # paths pass the same value for the same message, so the identity below is one key, not one per path.
+        [AllowEmptyString()][AllowNull()][string]$MessageId
     )
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
     # W69 (maintainer ruling, 2026-08-26): A TURN MINTS AT MOST ONCE, EVER.
@@ -1212,7 +1215,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
     if (Get-Command Get-SpecrewTypedTurnIdentity -ErrorAction SilentlyContinue) {
         try {
             $turnId = [string](Get-SpecrewTypedTurnIdentity -Response $Response -HostKind $HostKind `
-                    -SourceEvent $SourceEvent -TurnPosition $TurnPosition -TurnArrival $TurnArrival)
+                    -SourceEvent $SourceEvent -TurnPosition $TurnPosition -TurnArrival $TurnArrival -MessageId $MessageId)
         }
         catch { $turnId = '' }
     }
@@ -1338,7 +1341,11 @@ function Update-SpecrewRollingHandover {
         [Parameter()][AllowNull()][string] $LastAssistantMessage = $null,
         [Parameter()][AllowNull()][string] $LastUserMessage = $null,
         [Parameter()][AllowNull()][string] $TurnOrigin = $null,       # Feature 202 (FR-006): typed-user | host-injected | unknown, from the dispatcher
-        [Parameter()][AllowNull()][string] $SessionId = $null         # Feature 202 (co-review round 2): binds the recovery question to the session asked
+        [Parameter()][AllowNull()][string] $SessionId = $null,        # Feature 202 (co-review round 2): binds the recovery question to the session asked
+        # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's ID for the prompt's message (prompt events only),
+        # and whether the host binding declares one at all: 'declared', 'none', or empty from a caller that predates it.
+        [Parameter()][AllowNull()][string] $MessageId = $null,
+        [Parameter()][AllowNull()][string] $MessageIdentity = $null
     )
 
     $getProp = {
@@ -1423,7 +1430,13 @@ function Update-SpecrewRollingHandover {
         # which is a second act - correctly.
         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
             -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc `
-            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc
+            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId
+        # T017 (DA-2 condition 2): an approval an earlier turn end found not recorded on this host is said here,
+        # once, in the turn the human reads.
+        $notRecordedDisclosure = $null
+        if (Get-Command Get-SpecrewAuthorityNotRecordedDisclosure -ErrorAction SilentlyContinue) {
+            try { $notRecordedDisclosure = Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $ProjectRoot -HostKind $fromHost -NowUtc $NowUtc } catch { $notRecordedDisclosure = $null }
+        }
         # The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
         # evidence rather than authority, and it belongs only to the branch the human types into.
         $workshopDisclosure = $null
@@ -1509,6 +1522,9 @@ function Update-SpecrewRollingHandover {
         }
         if (-not [string]::IsNullOrWhiteSpace([string]$recoveryDisclosure)) {
             $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $recoveryDisclosure } else { ([string]$disclosure + "`n" + $recoveryDisclosure) }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$notRecordedDisclosure)) {
+            $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $notRecordedDisclosure } else { ([string]$disclosure + "`n" + $notRecordedDisclosure) }
         }
         return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure }
     }
@@ -1748,6 +1764,35 @@ function Update-SpecrewRollingHandover {
                 }
                 for ($rat = $roundApprovalTurns.Count - 1; $rat -ge 0; $rat--) {
                     if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $roundApprovalTurns[$rat])) { continue }
+                    # Feature 202 iteration 002, T017 (FR-027, DA-2). The host binding decides what this path may do:
+                    #   declared - the host gives each message its own ID (Claude promptId, Codex turn_id). The turn
+                    #              end records under THAT key, the same key the message hook used, so the first path
+                    #              to see the message wins and every later turn end is a no-op. A typed entry with no
+                    #              ID is not recorded here: a second, different key is exactly the B4F-127 shape.
+                    #   none     - the host gives the prompt no ID (Copilot), so the message hook is the only path.
+                    #              The turn end records nothing; an approval-shaped message the hook did not see is
+                    #              reported, once, and said at the next message.
+                    #   empty    - a caller from before T017: the position-based identity, as before.
+                    $ratMessageId = ''
+                    if ($roundApprovalTurns[$rat].PSObject.Properties['message_id']) { $ratMessageId = [string]$roundApprovalTurns[$rat].message_id }
+                    $identityMode = ([string]$MessageIdentity).Trim().ToLowerInvariant()
+                    if ($identityMode -eq 'none') {
+                        try {
+                            $ratText = [string]$roundApprovalTurns[$rat].text
+                            $shape = if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { Get-SpecrewTypedAuthorityShape -Text $ratText } else { $null }
+                            if ($null -ne $shape -and (Get-Command Test-SpecrewPromptChannelSawContent -ErrorAction SilentlyContinue)) {
+                                $ratHash = Get-SpecrewHumanAuthorityHash -Text $ratText
+                                $ratWhen = if ($roundApprovalTurns[$rat].PSObject.Properties['timestamp']) { [string]$roundApprovalTurns[$rat].timestamp } else { '' }
+                                if (-not (Test-SpecrewPromptChannelSawContent -ProjectRoot $ProjectRoot -ContentHash $ratHash -HostKind $fromHost -SinceUtc $ratWhen)) {
+                                    $ratKey = if ($roundApprovalTurns[$rat].PSObject.Properties['entry_id'] -and -not [string]::IsNullOrWhiteSpace([string]$roundApprovalTurns[$rat].entry_id)) { [string]$roundApprovalTurns[$rat].entry_id } else { ($ratHash + '|' + $ratWhen) }
+                                    Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey $ratKey -HostKind $fromHost -NowUtc $NowUtc | Out-Null
+                                }
+                            }
+                        }
+                        catch { $null = $_ }
+                        break
+                    }
+                    if ($identityMode -eq 'declared' -and [string]::IsNullOrWhiteSpace($ratMessageId)) { break }
                     # THE SAME TABLE the prompt-entry branch calls. It used to be a copy of it, three
                     # writers short - see Invoke-SpecrewTypedAuthorityCapture for what that cost.
                     # POSITION AND ARRIVAL COME FROM THE TURN, NOT FROM THIS PASS. $NowUtc is the clock
@@ -1760,7 +1805,7 @@ function Update-SpecrewRollingHandover {
                     Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
                         -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
                         -SourceEvent 'stop-transcript' -NowUtc $NowUtc `
-                        -TurnPosition ([string]$rat) -TurnArrival $ratArrival
+                        -TurnPosition ([string]$rat) -TurnArrival $ratArrival -MessageId $ratMessageId
                     break
                 }
             }

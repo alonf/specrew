@@ -96,7 +96,11 @@ function Test-SpecrewConversationMetaFlag {
     [OutputType([bool])]
     param([Parameter()][AllowNull()]$Object)
     if ($null -eq $Object) { return $false }
-    foreach ($name in @('isMeta', 'is_meta')) {
+    # Feature 202 iteration 002, T017 (DA-2): a compaction summary is written as type=user with no isMeta, under the
+    # /compact entry's promptId. It is the host's text, never the human's, and it routinely quotes approval lines.
+    # Today the one-line rule keeps it from minting; T018 lets a phrase on its own line count, so this flag is what
+    # keeps a summary out of authority from here on.
+    foreach ($name in @('isMeta', 'is_meta', 'isCompactSummary', 'is_compact_summary')) {
         $value = Get-SpecrewConversationProp $Object $name
         if ($value -is [bool] -and [bool]$value) { return $true }
         if ([string]$value -match '(?i)^\s*(?:true|1)\s*$') { return $true }
@@ -949,7 +953,16 @@ function Format-SpecrewConversationTurnText {
     $text = if ($Raw) { $text.Trim() } else { ($text -replace '\s+', ' ').Trim() }
     if ($role -eq 'user' -and $text -match '^\s*<hook_prompt\b[\s\S]*</hook_prompt>\s*$') { return $null }
     if ([string]::IsNullOrWhiteSpace($text)) { return $null }
-    return [pscustomobject]@{ role = $role; text = $text; verdict_evidence = $verdictEvidence }
+    # Feature 202 iteration 002, T017 (FR-027): the message's identity travels with its text, so the turn-end
+    # path keys an approval exactly as the message hook did.
+    return [pscustomobject]@{
+        role             = $role
+        text             = $text
+        verdict_evidence = $verdictEvidence
+        message_id       = [string](Get-SpecrewConversationProp $Turn 'message_id')
+        entry_id         = [string](Get-SpecrewConversationProp $Turn 'entry_id')
+        timestamp        = [string](Get-SpecrewConversationProp $Turn 'timestamp')
+    }
 }
 
 function Get-SpecrewTranscriptParsedTurns {
@@ -983,14 +996,40 @@ function Get-SpecrewTranscriptParsedTurns {
     # Cache MISS - the one true parse for this key.
     $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines)
     $turns = New-Object System.Collections.Generic.List[object]
+    # Feature 202 iteration 002, T017 (FR-027, DA-2): each turn carries the host's own message identity, read from
+    # the transcript entry itself. Claude: the entry's `promptId` - the same value the message hook receives as
+    # `prompt_id` - and never the entry's own `uuid`, which is a different value. Codex: the `turn_id` of the
+    # `turn_context` line that opens the turn. Copilot's entry ID is kept only as a de-duplication key for a
+    # report; it is not a message identity, because Copilot's message hook never receives it.
+    $codexTurnId = ''
     foreach ($l in $lines) {
         if ([string]::IsNullOrWhiteSpace($l)) { continue }
         $o = $null
         try { $o = $l | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { $o = $null }
         $script:SpecrewTranscriptParseCount = [int]$script:SpecrewTranscriptParseCount + 1   # parse-once witness (one count per ConvertFrom-Json)
         if ($null -eq $o) { continue }
+        if ([string](Get-SpecrewConversationProp $o 'type') -eq 'turn_context') {
+            $tcPayload = Get-SpecrewConversationProp $o 'payload'
+            $codexTurnId = if ($null -ne $tcPayload) { [string](Get-SpecrewConversationProp $tcPayload 'turn_id') } else { '' }
+            continue
+        }
         $rp = Get-SpecrewConversationTurnRolePartsFromObject -Object $o
-        if ($null -ne $rp) { $turns.Add($rp) | Out-Null }
+        if ($null -ne $rp) {
+            $messageId = [string](Get-SpecrewConversationProp $o 'promptId')
+            if ([string]::IsNullOrWhiteSpace($messageId) -and [string](Get-SpecrewConversationProp $o 'type') -eq 'response_item') { $messageId = $codexTurnId }
+            $entryId = ''
+            $copilotData = Get-SpecrewConversationProp $o 'data'
+            if ($null -ne $copilotData) { $entryId = [string](Get-SpecrewConversationProp $copilotData 'messageId') }
+            if ([string]::IsNullOrWhiteSpace($entryId)) { $entryId = [string](Get-SpecrewConversationProp $o 'uuid') }
+            if ([string]::IsNullOrWhiteSpace($entryId)) { $entryId = [string](Get-SpecrewConversationProp $o 'id') }
+            $rp | Add-Member -NotePropertyName message_id -NotePropertyValue $messageId -Force
+            $rp | Add-Member -NotePropertyName entry_id -NotePropertyValue $entryId -Force
+            # ConvertFrom-Json turns an ISO timestamp into a local DateTime; keep it as UTC ISO text.
+            $entryTime = Get-SpecrewConversationProp $o 'timestamp'
+            $entryTimeText = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } else { [string]$entryTime }
+            $rp | Add-Member -NotePropertyName timestamp -NotePropertyValue $entryTimeText -Force
+            $turns.Add($rp) | Out-Null
+        }
     }
     $arr = @($turns.ToArray())
     $script:SpecrewTranscriptParseMemo = [pscustomobject]@{ Key = $key; Turns = $arr }

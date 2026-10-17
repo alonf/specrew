@@ -196,6 +196,11 @@ try {
                 Assert-Equal (Get-ArgValue $hand '--turn-origin') $expectedOrigin "$prefix - origin"
                 $sid = if ($payload.PSObject.Properties['session_id']) { $payload.session_id } else { $payload.sessionId }
                 Assert-Equal (Get-ArgValue $hand '--session-id') (Get-SafeSessionId $sid) "$prefix - the session id comes from the declared field map"
+                # Feature 202 iteration 002, T017 (FR-027): the host's own message ID reaches the provider, from the
+                # declared field map: Claude prompt_id, Codex turn_id; Copilot declares none and sends none.
+                $expectedMessageId = if ($payload.PSObject.Properties['prompt_id']) { [string]$payload.prompt_id } elseif ($payload.PSObject.Properties['turn_id']) { [string]$payload.turn_id } else { $null }
+                Assert-Equal (Get-ArgValue $hand '--message-id') $expectedMessageId "$prefix - the message id comes from the declared field map"
+                Assert-Equal (Get-ArgValue $hand '--message-identity') $(if ($h -eq 'copilot') { 'none' } else { 'declared' }) "$prefix - the binding's message-identity declaration"
             }
             'start' {
                 $r = Invoke-DeployedHook -Fixture $fx -NativeEvent $nativeStart[$h] -StdinBytes $bytes
@@ -227,6 +232,9 @@ try {
                 $tp = if ($payload.PSObject.Properties['transcript_path']) { $payload.transcript_path } else { $payload.transcriptPath }
                 Assert-Equal (Get-ArgValue $hand '--transcript-path') $tp "$prefix - the transcript path comes from the declared field map"
                 Assert-True ($null -eq (Get-ArgValue $hand '--turn-origin')) "$prefix - a Stop event carries no prompt origin"
+                # T017: the turn end keys a message by its transcript entry, never by the Stop payload's id.
+                Assert-True ($null -eq (Get-ArgValue $hand '--message-id')) "$prefix - a Stop event forwards no message id"
+                Assert-Equal (Get-ArgValue $hand '--message-identity') $(if ($h -eq 'copilot') { 'none' } else { 'declared' }) "$prefix - the binding's message-identity declaration"
             }
         }
     }

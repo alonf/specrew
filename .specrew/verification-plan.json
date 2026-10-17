@@ -104,6 +104,39 @@
       },
       "label": "Feature 202 iteration 001 suites, split in two on 2026-10-14 (202 DRIFT-026): the single lane measured 309.7 s against its 600 s timeout after T012, T013 and the round-3 cases (1.94x, under the 2.4x floor), so it became two lanes rather than one longer timeout. Lane b: the latch-free hook-output journal (T003, round 3), case (e) (T005), disclosed receipt outcomes (T004, round 3), the substance-only Stop (T007, round 3), orientation order (T008), the feature resolver (T010), the new-feature reset (T011), resume from disk (T012). Measured 2026-10-14: 183.9 s against 600 s (3.3x). Re-timed cold 2026-10-15 (T015) with the lock-budget cases: 240.9 s (2.49x), just above the floor. Re-timed cold again after presented-check case 8 (DRIFT-030): 180.9 s (3.32x). The two cold runs differ by 60 s on this machine, so the lane is judged on the slower one: 2.49x. Re-timed cold after the round-4 fixes (DRIFT-031): 198.8 s (3.02x)."
     },
+    {
+      "command_id": "f202-i002-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$r = Invoke-Pester -Path tests/unit/message-identity.tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0 -or $r.PassedCount -lt 1) { Write-Host \"f202 i002 suite FAILED: $($r.FailedCount) failed, $($r.PassedCount) passed\"; exit 1 }; exit 0"
+      ],
+      "timeout_seconds": 300,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 002 suites (T016 to T023), added 2026-10-17 with T017. Its own lane because lanes a and b would drop under the 2.4x headroom floor with it. message-identity (T017, FR-027, SC-010): one typed approval through the message hook and N turn ends records once on Claude, Codex and Copilot, a retype still records, the backup path records once, and a Copilot miss is reported. Measured about 105 s against 300 s (2.86x)."
+    },
 {
       "command_id": "f199-class-guards-a",
       "executable": "pwsh",

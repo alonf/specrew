@@ -1,0 +1,252 @@
+#requires -Version 7.0
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# Feature 202 iteration 002, T017 (FR-027, SC-010, DA-2; B4F-127).
+#
+# ONE HUMAN MESSAGE, ONE KEY. A typed approval is seen twice: by the message hook when it arrives, and by the
+# turn-end path, which re-reads the newest human turn from the transcript at every turn end. Before this change
+# each path hashed the message together with its own name, so the two could never match: one typed approval was
+# recorded twice, and past the 500-line transcript window the turn-end copy was recorded again at every turn end.
+#
+# The key is the host's own message ID: Claude's `prompt_id` (the transcript entry's `promptId`, never its `uuid`),
+# Codex's `turn_id` (the transcript's `turn_context`). Copilot sends no message ID with the prompt, so the message
+# hook is its only recording path, and a typed approval that hook missed is reported instead of recorded.
+#
+# Every case drives the shipped handover provider as its own process, the way the dispatcher launches it.
+
+BeforeAll {
+    $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    $script:Provider = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-handover-provider.ps1'
+
+    function script:New-Project {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('f202-msgid-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "specrew_version: `"0.40.0`"`nbootstrap_mode: `"fixture`"" -Encoding UTF8
+        & git init -q -b 001-fixture $root 2>&1 | Out-Null
+        $tp = Join-Path $root 'transcript.jsonl'
+        Set-Content -LiteralPath $tp -Value $null -NoNewline -Encoding UTF8
+        return [pscustomobject]@{ Root = $root; Transcript = $tp }
+    }
+
+    function script:Add-Line {
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][hashtable]$Entry)
+        Add-Content -LiteralPath $P.Transcript -Value ($Entry | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
+    }
+
+    function script:Add-Filler {
+        param([Parameter(Mandatory)]$P, [int]$Count = 620)
+        $lines = for ($i = 0; $i -lt $Count; $i++) {
+            (@{ type = 'assistant'; uuid = ('f' + $i); message = @{ role = 'assistant'; content = @(@{ type = 'text'; text = ('filler ' + $i) }) } } | ConvertTo-Json -Depth 6 -Compress)
+        }
+        Add-Content -LiteralPath $P.Transcript -Value $lines -Encoding UTF8
+    }
+
+    # One typed human entry, in the host's own transcript shape.
+    function script:Add-Human {
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId, [switch]$NoMessageId)
+        switch ($HostKind) {
+            'claude' {
+                $e = @{ type = 'user'; uuid = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); sessionId = 's1'; message = @{ role = 'user'; content = $Text } }
+                if (-not $NoMessageId) { $e['promptId'] = $MessageId }
+                Add-Line -P $P -Entry $e
+            }
+            'codex' {
+                Add-Line -P $P -Entry @{ type = 'turn_context'; payload = @{ turn_id = $MessageId; cwd = $P.Root } }
+                Add-Line -P $P -Entry @{ type = 'response_item'; payload = @{ type = 'message'; role = 'user'; content = @(@{ type = 'input_text'; text = $Text }) } }
+            }
+            'copilot' {
+                Add-Line -P $P -Entry @{ type = 'user.message'; id = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = $Text; messageId = ([guid]::NewGuid().ToString()) } }
+            }
+        }
+    }
+
+    function script:Add-AssistantTurn {
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [string]$MessageId)
+        switch ($HostKind) {
+            'claude' {
+                # The Stop-hook feedback entry Claude writes is isMeta and carries the SAME promptId as the human turn.
+                Add-Line -P $P -Entry @{ type = 'user'; isMeta = $true; promptId = $MessageId; uuid = ([guid]::NewGuid().ToString()); message = @{ role = 'user'; content = 'Stop hook feedback: Specrew review - these files have not been reviewed yet.' } }
+                Add-Line -P $P -Entry @{ type = 'assistant'; uuid = ([guid]::NewGuid().ToString()); message = @{ role = 'assistant'; content = @(@{ type = 'text'; text = 'Working on it.' }) } }
+            }
+            'codex' { Add-Line -P $P -Entry @{ type = 'response_item'; payload = @{ type = 'message'; role = 'assistant'; content = @(@{ type = 'output_text'; text = 'Working on it.' }) } } }
+            'copilot' { Add-Line -P $P -Entry @{ type = 'assistant.message'; id = ([guid]::NewGuid().ToString()); data = @{ content = 'Working on it.' } } }
+        }
+    }
+
+    # The message-identity declaration the dispatcher forwards from the host binding: Claude and Codex declare a
+    # message ID field, Copilot declares none.
+    function script:Get-Declaration { param([string]$HostKind) if ($HostKind -eq 'copilot') { 'none' } else { 'declared' } }
+
+    function script:Invoke-Prompt {
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId)
+        $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
+            '--source-event', 'UserPromptSubmit', '--last-user-message', $Text, '--turn-origin', 'typed-user', '--session-id', 's1',
+            '--message-identity', (Get-Declaration $HostKind))
+        if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $a += @('--message-id', $MessageId) }
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        $out = & pwsh @a 2>$null
+        return (@($out) -join "`n")
+    }
+
+    function script:Invoke-TurnEnd {
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind)
+        $event = if ($HostKind -eq 'copilot') { 'agentStop' } else { 'Stop' }
+        $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
+            '--source-event', $event, '--transcript-path', $P.Transcript, '--session-id', 's1', '--message-identity', (Get-Declaration $HostKind))
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        & pwsh @a *> $null
+    }
+
+    function script:Get-RoundCaptures {
+        param([Parameter(Mandatory)]$P)
+        $f = Join-Path $P.Root '.specrew/review/round-approval/captures.jsonl'
+        if (-not (Test-Path -LiteralPath $f)) { return 0 }
+        return @(Get-Content -LiteralPath $f | Where-Object { $_.Trim() }).Count
+    }
+
+    # Writer-agnostic: how many distinct turns the authority ledger reserved. One message must reserve one.
+    function script:Get-ReservedTurns {
+        param([Parameter(Mandatory)]$P)
+        $f = Join-Path $P.Root '.specrew/authority/exhausted-turns.jsonl'
+        if (-not (Test-Path -LiteralPath $f)) { return 0 }
+        return @(Get-Content -LiteralPath $f | Where-Object { $_.Trim() } | ForEach-Object { ($_ | ConvertFrom-Json).turn_id } | Sort-Object -Unique).Count
+    }
+
+    function script:Set-RoundSpent {
+        param([Parameter(Mandatory)]$P)
+        $f = Join-Path $P.Root '.specrew/review/round-approval/pending-round-approval.json'
+        $o = Get-Content -LiteralPath $f -Raw | ConvertFrom-Json
+        $o.spent_at = '2026-10-17T05:01:00Z'
+        $o.authorization_ref = 'run-test'
+        Set-Content -LiteralPath $f -Value ($o | ConvertTo-Json -Depth 8) -Encoding UTF8
+    }
+
+    function script:Test-RoundUnspent {
+        param([Parameter(Mandatory)]$P)
+        $f = Join-Path $P.Root '.specrew/review/round-approval/pending-round-approval.json'
+        if (-not (Test-Path -LiteralPath $f)) { return $false }
+        $o = Get-Content -LiteralPath $f -Raw | ConvertFrom-Json
+        return [string]::IsNullOrWhiteSpace([string]$o.spent_at)
+    }
+
+    function script:Get-NotRecordedReports {
+        param([Parameter(Mandatory)]$P)
+        $f = Join-Path $P.Root '.specrew/runtime/authority-capture-drops.jsonl'
+        if (-not (Test-Path -LiteralPath $f)) { return @() }
+        return @(Get-Content -LiteralPath $f | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } |
+                Where-Object { [string]$_.event -eq 'authority-phrase-not-recorded' })
+    }
+}
+
+AfterAll { Remove-Item env:SPECREW_MODULE_PATH -ErrorAction SilentlyContinue }
+
+Describe 'One typed approval, both recording paths, N turn ends: exactly one recorded approval (SC-010)' {
+    It '<HostKind>, <Size> transcript: the message hook and 4 turn ends record the round approval once' -ForEach @(
+        @{ HostKind = 'claude'; Size = 'small' }, @{ HostKind = 'claude'; Size = 'large' },
+        @{ HostKind = 'codex'; Size = 'small' }, @{ HostKind = 'codex'; Size = 'large' },
+        @{ HostKind = 'copilot'; Size = 'small' }
+    ) {
+        $p = New-Project
+        if ($Size -eq 'large') { Add-Filler -P $p }
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        $id = if ($HostKind -eq 'copilot') { '' } else { 'msg-1' }
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId $id | Out-Null
+        for ($i = 0; $i -lt 4; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
+        Get-RoundCaptures -P $p | Should -Be 1
+        Get-ReservedTurns -P $p | Should -Be 1
+    }
+
+    It '<HostKind>: spent before the first turn end, nothing is spendable after 3 more turn ends in a long transcript' -ForEach @(
+        @{ HostKind = 'claude' }, @{ HostKind = 'codex' }
+    ) {
+        $p = New-Project
+        Add-Filler -P $p
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1' | Out-Null
+        Set-RoundSpent -P $p
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
+        Get-RoundCaptures -P $p | Should -Be 1
+        Test-RoundUnspent -P $p | Should -BeFalse
+    }
+
+    It '<Phrase>: one message reserves one turn across the message hook and 3 turn ends (claude, long transcript)' -ForEach @(
+        @{ Phrase = 'approved for allowance reset' }, @{ Phrase = 'stop the review here' },
+        @{ Phrase = 'continue without coverage until the review phase' }
+    ) {
+        $p = New-Project
+        Add-Filler -P $p
+        Add-Human -P $p -HostKind 'claude' -Text $Phrase -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text $Phrase -MessageId 'msg-1' | Out-Null
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude' }
+        Get-ReservedTurns -P $p | Should -Be 1
+    }
+}
+
+Describe 'The key never wedges and the backup path still works' {
+    It 'a genuine retype (a new message ID) after the first is spent records a second approval' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude'
+        Set-RoundSpent -P $p
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-2'; Invoke-TurnEnd -P $p -HostKind 'claude'
+        Get-RoundCaptures -P $p | Should -Be 2
+        Test-RoundUnspent -P $p | Should -BeTrue
+    }
+
+    It '<HostKind>: when the message hook never ran, the turn end records the approval once, and later turn ends nothing' -ForEach @(
+        @{ HostKind = 'claude' }, @{ HostKind = 'codex' }
+    ) {
+        $p = New-Project
+        Add-Filler -P $p
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
+        Get-RoundCaptures -P $p | Should -Be 1
+    }
+
+    It 'claude: a typed transcript entry with no promptId is not recorded by the turn end (no second key)' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -NoMessageId
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1' | Out-Null
+        for ($i = 0; $i -lt 2; $i++) { Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude' }
+        Get-RoundCaptures -P $p | Should -Be 1
+        Get-ReservedTurns -P $p | Should -Be 1
+    }
+}
+
+Describe 'Entries that are not a human message never record (claude)' {
+    # A guard more than a RED: the one-line rule already refuses this summary. T018 lets a phrase on its own line
+    # count, and this case is what keeps a summary out of authority then.
+    It 'a compaction summary that quotes an approval line, under the /compact entry promptId, records nothing at the turn end' {
+        $p = New-Project
+        Add-Line -P $p -Entry @{ type = 'user'; isCompactSummary = $true; isVisibleInTranscriptOnly = $true; promptId = 'msg-compact'; uuid = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); message = @{ role = 'user'; content = "This session is being continued from a previous conversation.`napproved for review round`nThe maintainer approved the round earlier." } }
+        for ($i = 0; $i -lt 2; $i++) { Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-compact'; Invoke-TurnEnd -P $p -HostKind 'claude' }
+        Get-RoundCaptures -P $p | Should -Be 0
+    }
+}
+
+Describe 'Copilot: the message hook is the only recording path, and a miss is reported, never dropped (DA-2)' {
+    It 'an approval the message hook recorded is not reported' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 0
+    }
+
+    It 'an approval the message hook missed is not recorded by the turn end, is reported once, and the next message shows one line' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot' }
+        Get-RoundCaptures -P $p | Should -Be 0
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 1
+        $shown = Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?'
+        $shown | Should -Match 'was not recorded'
+        $shown | Should -Match 'approved for review round'
+        $again = Invoke-Prompt -P $p -HostKind 'copilot' -Text 'and now?'
+        $again | Should -Not -Match 'was not recorded'
+    }
+}

@@ -305,7 +305,7 @@ T017, T016, co-review round 1, T022, T020, T021, T018, T019, co-review round 2, 
 
 ### Phase 10: US8, release gate
 
-- [ ] T017 [owner: Implementer] [sp: 4.5] [US8] **One message, one key (DA-2, B4F-127).**
+- [x] T017 [owner: Implementer] [sp: 4.5] [US8] **One message, one key (DA-2, B4F-127).** Done 2026-10-17. `message-identity.tests.ps1` (17 cases, its own lane `f202-i002-suites`, 106 s against 300 s) drives the shipped handover provider as a process: RED on the old code, 12 of 16 failing with B4F-127's numbers (2 approvals per message, 5 in a long transcript); green after. `turn-record-contract.tests.ps1` asserts the dispatcher forwards `--message-id` from the declared field map and `--message-identity` on every event (RED, then green). Found on the way: a Claude compaction summary was read as a human turn; it is now machinery, guarded by a case that T018 must keep green. All seven earlier lanes green on the working tree.
   - **Work:** add `PromptId` (`prompt_id`) to Claude's input field map and `turn_id` to Codex's; carry the message ID on
     the turn record (dispatcher twins) and through the provider args to both recording paths. Drop the source event from
     `Get-SpecrewTypedTurnIdentity`; key on host, session and message ID. The turn-end transcript path reads `prompt_id` from

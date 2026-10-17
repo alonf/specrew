@@ -51,6 +51,8 @@ try {
     $lastUserArg = $null
     $turnOriginArg = $null
     $sessionIdArg = $null
+    $messageIdArg = $null
+    $messageIdentityArg = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
@@ -66,6 +68,10 @@ try {
         # Co-review round 2: the host session, so the reply-recording recovery question is answered only by the
         # session it was asked in.
         elseif ($args[$i] -eq '--session-id' -and ($i + 1) -lt $args.Count) { $sessionIdArg = [string]$args[$i + 1] }
+        # Feature 202 iteration 002, T017 (FR-027): the host's ID for the prompt's message, and whether the host
+        # binding declares one ('declared' or 'none'), so both recording paths key one message the same way.
+        elseif ($args[$i] -eq '--message-id' -and ($i + 1) -lt $args.Count) { $messageIdArg = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--message-identity' -and ($i + 1) -lt $args.Count) { $messageIdentityArg = [string]$args[$i + 1] }
     }
 
     $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-HandoverProjectRoot }
@@ -162,7 +168,8 @@ try {
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
     $handoverResult = Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
-        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser -TurnOrigin $turnOriginArg -SessionId $sessionIdArg
+        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser -TurnOrigin $turnOriginArg -SessionId $sessionIdArg `
+        -MessageId $messageIdArg -MessageIdentity $messageIdentityArg
     # FR-010 (T024): this provider is registered as an INJECT provider, so its stdout reaches the turn.
     # The one thing it has to say is when a verdict-shaped reply was NOT captured - said at prompt entry,
     # in the same turn the human typed it, instead of in a recap after two retries.
