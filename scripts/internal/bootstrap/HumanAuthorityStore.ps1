@@ -938,12 +938,22 @@ function Get-SpecrewTypedAuthorityShape {
     # Feature 202 iteration 002, T017 (FR-027): which typed authority, if any, this text IS - the minting
     # recognizers, matched as their writers would match them. Used only to REPORT a message a host's single
     # recording path did not record; it never mints.
+    #
+    # Co-review round 1 (iteration 002): EVERY act the router's writers mint is shaped here, and the retype is the act
+    # the human typed - a missed `abandon this review campaign` is never answered with `stop the review here`, whose
+    # consequence is different. A withdrawal is shaped too, because it is the one act whose loss fails OPEN.
     [OutputType([pscustomobject])]
     param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $trimmed = $Text.Trim()
+    if (Get-Command Test-SpecrewApprovalWithdrawalPhrase -ErrorAction SilentlyContinue) {
+        $w = $null
+        try { $w = Test-SpecrewApprovalWithdrawalPhrase -Text $Text } catch { $w = $null }
+        if ($null -ne $w -and [bool]$w.Matched) { return [pscustomobject]@{ Kind = 'approval-withdrawal'; Retype = 'withdraw the approval'; Choice = '' } }
+    }
     $table = @(
         @{ Kind = 'review-round-approval'; Fn = 'Test-SpecrewReviewRoundApprovalPhrase'; Retype = 'approved for review round' }
-        @{ Kind = 'pause-decision'; Fn = 'Test-SpecrewPauseDecisionPhrase'; Retype = 'stop the review here' }
+        @{ Kind = 'pause-decision'; Fn = 'Test-SpecrewPauseDecisionPhrase'; Retype = '' }
         @{ Kind = 'allowance-reset'; Fn = 'Test-SpecrewAllowanceResetPhrase'; Retype = 'approved for allowance reset' }
         @{ Kind = 'coverage-deferral'; Fn = 'Test-SpecrewCoverageDeferralPhrase'; Retype = 'continue without coverage until the review phase' }
     )
@@ -951,23 +961,47 @@ function Get-SpecrewTypedAuthorityShape {
         if (-not (Get-Command ([string]$row.Fn) -ErrorAction SilentlyContinue)) { continue }
         $r = $null
         try { $r = & ([string]$row.Fn) -Text $Text } catch { $r = $null }
-        if ($null -ne $r -and [bool]$r.Matched) { return [pscustomobject]@{ Kind = [string]$row.Kind; Retype = [string]$row.Retype } }
+        if ($null -eq $r -or -not [bool]$r.Matched) { continue }
+        $choice = if ($r.PSObject.Properties['Choice']) { [string]$r.Choice } else { '' }
+        $retype = [string]$row.Retype
+        if ([string]$row.Kind -ceq 'pause-decision') {
+            $retype = if ($choice -ceq 'abandon') { 'abandon this review campaign' } else { 'stop the review here' }
+        }
+        return [pscustomobject]@{ Kind = [string]$row.Kind; Retype = $retype; Choice = $choice }
+    }
+    # The two writers with no separate recognizer, matched as their writers match them.
+    if ($trimmed -match '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*\S') {
+        return [pscustomobject]@{ Kind = 'partial-review-signoff'; Retype = 'approved for partial review signoff - <your reason>'; Choice = '' }
+    }
+    if ($trimmed -ceq 'approved for workshop repair') {
+        return [pscustomobject]@{ Kind = 'workshop-repair'; Retype = 'approved for workshop repair'; Choice = '' }
     }
     return $null
 }
 
 function Test-SpecrewPromptChannelSawContent {
-    # Did the message hook (any channel that is not the turn end) reserve this content on this host at or after
-    # the given instant? The reservation is written before any writer runs, so it is proof the hook saw the
-    # message, whether or not anything minted.
+    # Did the message hook (any channel that is not the turn end) see EVERY message in this session with this
+    # content? The reservation is written before any writer runs, for every message the hook receives, so it is
+    # proof the hook saw a message whether or not anything minted.
+    #
+    # Co-review round 1 (iteration 002): one same-text reservation is NOT proof for THIS message. Approval A
+    # recorded and spent, the same phrase typed again as B 30 seconds later, B missed - a "recent identical text"
+    # test let A vouch for B and B vanished without a trace. So the answer is a COUNT within the session: the
+    # transcript holds ExpectedCount human messages with this text, and the hook must have reserved at least that
+    # many distinct turns in the same session, from the earliest of those messages on (SinceUtc - the transcript
+    # is read as a window, so a message older than the window is neither counted nor allowed to vouch). A
+    # reservation from another session never counts.
     [OutputType([bool])]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
         [AllowEmptyString()][AllowNull()][string]$HostKind,
-        [AllowEmptyString()][AllowNull()][string]$SinceUtc
+        [AllowEmptyString()][AllowNull()][string]$SinceUtc,
+        [AllowEmptyString()][AllowNull()][string]$SessionId,
+        [int]$ExpectedCount = 1
     )
     if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $false }
+    if ($ExpectedCount -lt 1) { $ExpectedCount = 1 }
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
     $since = [DateTimeOffset]::MinValue
@@ -977,6 +1011,8 @@ function Test-SpecrewPromptChannelSawContent {
             $since = $parsed.AddSeconds(-60)
         }
     }
+    $session = ([string]$SessionId).Trim()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     try {
         foreach ($line in [IO.File]::ReadAllLines($path)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
@@ -986,14 +1022,62 @@ function Test-SpecrewPromptChannelSawContent {
             if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
             if ([string]$entry.host_kind -cne [string]$HostKind) { continue }
             if ((([string]$entry.source_event).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript', 'agentstop')) { continue }
+            $entrySession = if ($entry.PSObject.Properties['session_id']) { ([string]$entry.session_id).Trim() } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($session) -and -not [string]::IsNullOrWhiteSpace($entrySession) -and $entrySession -cne $session) { continue }
             $at = [DateTimeOffset]::MinValue
             if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) {
                 if ($at -lt $since) { continue }
             }
-            return $true
+            [void]$seen.Add([string]$entry.turn_id)
+            if ($seen.Count -ge $ExpectedCount) { return $true }
         }
     }
     catch { return $false }
+    return $false
+}
+
+function Test-SpecrewLegacyTurnRecorded {
+    # Co-review round 1 (iteration 002): THE KEY CHANGED, THE HISTORY DID NOT. A message recorded before the
+    # message-ID key existed is in the ledger under the old key - the turn end's position key, or the message
+    # hook's arrival key. After an update, the next turn end computes the NEW key for that same message, finds
+    # nothing, and would record a spent approval again: B4F-127, one last time, on every upgraded project. So the
+    # turn end also asks whether the OLD record of this message exists. Entries written under the new key carry
+    # `identity`, and are never read here; this answers only for history.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyString()][AllowNull()][string]$LegacyTurnId,
+        [AllowEmptyString()][AllowNull()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SinceUtc
+    )
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    $since = $null
+    if (-not [string]::IsNullOrWhiteSpace($SinceUtc)) {
+        $parsed = [DateTimeOffset]::MinValue
+        if ([DateTimeOffset]::TryParse($SinceUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { $since = $parsed.AddSeconds(-60) }
+    }
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { continue }
+            if ($entry.PSObject.Properties['identity'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.identity)) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($LegacyTurnId) -and [string]$entry.turn_id -ceq [string]$LegacyTurnId) { return $true }
+            # The old keys cannot always be recomputed (the message hook's used its own clock), so the same text on
+            # the same host, recorded by either path from just before this message arrived on, is this message.
+            # With no arrival to compare, any old record of the same text counts: this check fails closed.
+            if ([string]::IsNullOrWhiteSpace($ContentHash)) { continue }
+            if (-not $entry.PSObject.Properties['content_hash'] -or [string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if ([string]$entry.host_kind -cne [string]$HostKind) { continue }
+            $at = [DateTimeOffset]::MinValue
+            if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at) -and ($null -eq $since -or $at -ge $since)) { return $true }
+            if ($null -eq $since) { return $true }
+        }
+    }
+    catch { return $true }
     return $false
 }
 
@@ -1013,9 +1097,11 @@ function Write-SpecrewAuthorityNotRecordedReport {
         [Parameter(Mandatory)][pscustomobject]$Shape,
         [Parameter(Mandatory)][string]$EntryKey,
         [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
+    $shapeChoice = if ($Shape.PSObject.Properties['Choice']) { [string]$Shape.Choice } else { '' }
     try {
         if ([IO.File]::Exists($journal)) {
             foreach ($line in [IO.File]::ReadAllLines($journal)) {
@@ -1028,7 +1114,8 @@ function Write-SpecrewAuthorityNotRecordedReport {
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($journal)) | Out-Null
         (([pscustomobject][ordered]@{
                 event = 'authority-phrase-not-recorded'; phrase = [string]$Shape.Kind; reason = 'message-hook-did-not-record'
-                retype = [string]$Shape.Retype; entry_key = $EntryKey; host_kind = [string]$HostKind; recorded_at = $NowUtc
+                retype = [string]$Shape.Retype; choice = $shapeChoice; entry_key = $EntryKey; host_kind = [string]$HostKind
+                session_id = [string]$SessionId; recorded_at = $NowUtc
             }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
         [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED: the message reached the conversation but not Specrew. Type it again, alone: '{1}'." -f ([string]$Shape.Kind).ToUpperInvariant().Replace('-', ' '), [string]$Shape.Retype))
         return $true
@@ -1038,12 +1125,16 @@ function Write-SpecrewAuthorityNotRecordedReport {
 
 function Get-SpecrewAuthorityNotRecordedDisclosure {
     # The one visible line for a not-recorded approval, said once, at the human's next message on that host.
+    # Co-review round 1 (iteration 002): in THE SESSION THAT MISSED IT. Another session on the same project never
+    # hears about it and never marks it said, so the session the human typed into still gets its line.
     [OutputType([string])]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    $session = ([string]$SessionId).Trim()
     $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($journal)) { return $null }
     try {
@@ -1053,6 +1144,8 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
             $row = $null
             try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
             if ([string]$row.host_kind -cne [string]$HostKind) { continue }
+            $rowSession = if ($row.PSObject.Properties['session_id']) { ([string]$row.session_id).Trim() } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($rowSession) -and $rowSession -cne $session) { continue }
             $key = [string]$row.entry_key
             if ([string]$row.event -ceq 'authority-phrase-not-recorded') { $pending[$key] = $row }
             elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-disclosed') { $pending.Remove($key) }
@@ -1060,7 +1153,7 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
         if ($pending.Count -eq 0) { return $null }
         $lines = foreach ($key in @($pending.Keys)) {
             $row = $pending[$key]
-            (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = $key; host_kind = [string]$HostKind; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = $key; host_kind = [string]$HostKind; session_id = $session; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
                 Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
             ("Specrew: your earlier '{0}' was not recorded - it reached the conversation, but Specrew did not receive it, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
         }
@@ -1080,6 +1173,10 @@ function Register-SpecrewExhaustedTurn {
         [AllowEmptyString()][AllowNull()][string]$SourceEvent,
         [AllowEmptyString()][AllowNull()][string]$MintedWriters,
         [AllowEmptyString()][AllowNull()][string]$ContentHash,
+        # Co-review round 1 (iteration 002): which session reserved it, and `message-id` when the key is the host's
+        # message ID, so the turn end can tell history (no identity) from a record made under the current key.
+        [AllowEmptyString()][AllowNull()][string]$SessionId,
+        [AllowEmptyString()][AllowNull()][string]$Identity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
@@ -1090,7 +1187,7 @@ function Register-SpecrewExhaustedTurn {
             schema_version = '1.0'; fact_type = 'typed-turn-exhausted'; turn_id = [string]$TurnId
             content_hash = [string]$ContentHash
             host_kind = [string]$HostKind; source_event = [string]$SourceEvent
-            minted = [string]$MintedWriters; observed_at = $NowUtc
+            minted = [string]$MintedWriters; session_id = [string]$SessionId; identity = [string]$Identity; observed_at = $NowUtc
         }
         # -ErrorAction Stop, and it is load-bearing. Add-Content raises a NON-TERMINATING error, so a
         # plain try/catch around it never fires: the append failed, the catch was skipped, and this

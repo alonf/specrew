@@ -52,8 +52,10 @@ BeforeAll {
                 Add-Line -P $P -Entry $e
             }
             'codex' {
-                Add-Line -P $P -Entry @{ type = 'turn_context'; payload = @{ turn_id = $MessageId; cwd = $P.Root } }
-                Add-Line -P $P -Entry @{ type = 'response_item'; payload = @{ type = 'message'; role = 'user'; content = @(@{ type = 'input_text'; text = $Text }) } }
+                # Every line of a Codex rollout carries a top-level timestamp.
+                $ts = [DateTimeOffset]::UtcNow.ToString('o')
+                Add-Line -P $P -Entry @{ timestamp = $ts; type = 'turn_context'; payload = @{ turn_id = $MessageId; cwd = $P.Root } }
+                Add-Line -P $P -Entry @{ timestamp = $ts; type = 'response_item'; payload = @{ type = 'message'; role = 'user'; content = @(@{ type = 'input_text'; text = $Text }) } }
             }
             'copilot' {
                 Add-Line -P $P -Entry @{ type = 'user.message'; id = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = $Text; messageId = ([guid]::NewGuid().ToString()) } }
@@ -79,21 +81,24 @@ BeforeAll {
     function script:Get-Declaration { param([string]$HostKind) if ($HostKind -eq 'copilot') { 'none' } else { 'declared' } }
 
     function script:Invoke-Prompt {
-        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId)
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId,
+            [string]$Session = 's1', [switch]$BeforeMessageIds)
         $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
-            '--source-event', 'UserPromptSubmit', '--last-user-message', $Text, '--turn-origin', 'typed-user', '--session-id', 's1',
-            '--message-identity', (Get-Declaration $HostKind))
-        if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $a += @('--message-id', $MessageId) }
+            '--source-event', 'UserPromptSubmit', '--last-user-message', $Text, '--turn-origin', 'typed-user', '--session-id', $Session)
+        # -BeforeMessageIds replays the message hook as it ran before T017: no message ID, no declaration.
+        if (-not $BeforeMessageIds) { $a += @('--message-identity', (Get-Declaration $HostKind)) }
+        if (-not [string]::IsNullOrWhiteSpace($MessageId) -and -not $BeforeMessageIds) { $a += @('--message-id', $MessageId) }
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         $out = & pwsh @a 2>$null
         return (@($out) -join "`n")
     }
 
     function script:Invoke-TurnEnd {
-        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind)
+        param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [string]$Session = 's1', [string]$Transcript)
         $event = if ($HostKind -eq 'copilot') { 'agentStop' } else { 'Stop' }
+        $tp = if ([string]::IsNullOrWhiteSpace($Transcript)) { $P.Transcript } else { $Transcript }
         $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
-            '--source-event', $event, '--transcript-path', $P.Transcript, '--session-id', 's1', '--message-identity', (Get-Declaration $HostKind))
+            '--source-event', $event, '--transcript-path', $tp, '--session-id', $Session, '--message-identity', (Get-Declaration $HostKind))
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         & pwsh @a *> $null
     }
@@ -248,5 +253,118 @@ Describe 'Copilot: the message hook is the only recording path, and a miss is re
         $shown | Should -Match 'approved for review round'
         $again = Invoke-Prompt -P $p -HostKind 'copilot' -Text 'and now?'
         $again | Should -Not -Match 'was not recorded'
+    }
+}
+
+Describe 'Co-review round 1 (iteration 002): the six findings, each as its own replay' {
+    It 'finding 1, <HostKind>: a spent approval recorded before the message-ID key is not recorded again by the first turn ends after an update' -ForEach @(
+        @{ HostKind = 'claude' }, @{ HostKind = 'codex' }
+    ) {
+        $p = New-Project
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -BeforeMessageIds | Out-Null
+        Set-RoundSpent -P $p
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
+        Get-RoundCaptures -P $p | Should -Be 1
+        Test-RoundUnspent -P $p | Should -BeFalse
+    }
+
+    It 'finding 1: a genuine retype after the update still records' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -BeforeMessageIds | Out-Null
+        Set-RoundSpent -P $p
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude'
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-2'; Invoke-TurnEnd -P $p -HostKind 'claude'
+        Get-RoundCaptures -P $p | Should -Be 2
+        Test-RoundUnspent -P $p | Should -BeTrue
+    }
+
+    It 'finding 2, copilot: a withdrawal the message hook missed is still recorded by the turn end, once' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        Test-RoundUnspent -P $p | Should -BeTrue
+        Add-Human -P $p -HostKind 'copilot' -Text 'withdraw the approval'
+        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot' }
+        Test-RoundUnspent -P $p | Should -BeFalse
+        $w = Join-Path $p.Root '.specrew/authority/withdrawals.jsonl'
+        @(Get-Content -LiteralPath $w | Where-Object { $_.Trim() }).Count | Should -Be 1
+    }
+
+    It 'finding 2, copilot: a missed <Kind> is reported too' -ForEach @(
+        @{ Kind = 'workshop-repair'; Text = 'approved for workshop repair' }
+        @{ Kind = 'partial-review-signoff'; Text = 'approved for partial review signoff - the open finding is a wording note' }
+    ) {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text $Text
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        $r = @(Get-NotRecordedReports -P $p)
+        $r.Count | Should -Be 1
+        [string]$r[0].phrase | Should -Be $Kind
+    }
+
+    It 'finding 3, copilot: the same phrase typed again and missed is reported, though the first was recorded' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        Set-RoundSpent -P $p
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 1
+    }
+
+    It 'finding 3, copilot: another session recording the same phrase does not vouch for this one' {
+        $p = New-Project
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' -Session 's2' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 1
+    }
+
+    It 'finding 4, copilot: a miss in one session is said in that session, and never in another' {
+        $p = New-Project
+        $t2 = Join-Path $p.Root 'transcript-s2.jsonl'
+        Add-Content -LiteralPath $t2 -Value ((@{ type = 'user.message'; id = 'e-s2'; timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = 'approved for review round'; messageId = 'm-s2' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
+        Add-Content -LiteralPath $t2 -Value ((@{ type = 'assistant.message'; id = 'a-s2'; data = @{ content = 'Working on it.' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
+        Invoke-TurnEnd -P $p -HostKind 'copilot' -Session 's2' -Transcript $t2
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 1
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' -Session 's1' | Should -Not -Match 'was not recorded'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' -Session 's2' | Should -Match 'was not recorded'
+    }
+
+    It 'finding 5, copilot: a missed abandon is reported with its own retype, never stop-here' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'abandon this review campaign'
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        $r = @(Get-NotRecordedReports -P $p)
+        $r.Count | Should -Be 1
+        [string]$r[0].retype | Should -Be 'abandon this review campaign'
+        [string]$r[0].choice | Should -Be 'abandon'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' | Should -Match 'abandon this review campaign'
+    }
+
+    It 'finding 6, copilot: an approval recorded with a trailing space is not reported as missing' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round '
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round ' | Out-Null
+        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        Get-RoundCaptures -P $p | Should -Be 1
+        @(Get-NotRecordedReports -P $p).Count | Should -Be 0
+    }
+
+    It 'under a message-ID key, a retype is not logged as a double mint' {
+        $p = New-Project
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1'
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude'
+        Set-RoundSpent -P $p
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
+        $f = Join-Path $p.Root '.specrew/authority/exhausted-turns.jsonl'
+        (Get-Content -LiteralPath $f -Raw) | Should -Not -Match 'cross-channel-double-mint'
     }
 }
