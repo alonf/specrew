@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "feature": "202-beta4-1-ux-stabilization",
+  "iteration": "001",
+  "sealed_at": "2026-10-17T03:24:25.2184427+00:00",
+  "sealed_files": [
+    {
+      "path": "acceptance-evidence.md",
+      "sha256": "d540d292d019c101603cdf6cf1f1d9e4bf3b66e5737475953b3b9119cded7b34"
+    },
+    {
+      "path": "b4f-125-live-messages.json",
+      "sha256": "19cc5880634125afc43f0f681b3f6b3230e10ab9f6ec107d4c80e52e3e9d18e8"
+    },
+    {
+      "path": "b4f-127-reproduction.md",
+      "sha256": "a829574e86729075fcb672af1307fafe7054286ad779a67235b11c4ad4cc5063"
+    },
+    {
+      "path": "dashboard.md",
+      "sha256": "5609270df5c1b565c06b83f7b79c52f2afdb1bbd3dd0e65f86391f9b1dce24ae"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "c87db30e013257ec88fd264911e66bdc7839fd3edc239b818dace8486547a20f"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "f81ef0ae7ff6f0dc93a2436575feb5480930ec3f501f85bee514d241ca58f7f9"
+    },
+    {
+      "path": "lens-applicability.json",
+      "sha256": "a8ca99db1b03147870302c817521c5ee948483af78a8c053e81ef08d1d86ef0c"
+    },
+    {
+      "path": "live-walk.md",
+      "sha256": "637130085887f2cd6f5104ee9618a0b39de715ea1366f9ad1891358972d6ce58"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "33acaa09f570bd05d1380d94324a6c64ca187abe85e4ed1161b1ce021351808f"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "b0074decf24f785c3d696ddb74d26dbb4c4de3b6929398060e52e339012700cd"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "a3e20583241e8fbaeafd20bdafae22942fa21de339e50a0ac8b570139dc4d137"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "320780434077229c0b3de6fc7bffa2f22b67a37b046d3a8c89e39b277cb58281"
+    },
+    {
+      "path": "retro-inputs/consequence-grading.md",
+      "sha256": "90d78a63dc6d054780ac919dc80d40d308483dc5831be56211996294948986e0"
+    },
+    {
+      "path": "retro-inputs/findings-classification.md",
+      "sha256": "72b51a1576c36632b16e91533d0569415a41d013984e2f82b970bed4d190c5d3"
+    },
+    {
+      "path": "retro-inputs/README.md",
+      "sha256": "bb2d9763b8122b0526046a17706245c6da84610eb21cc2cd137f1c57cbd562f7"
+    },
+    {
+      "path": "retro-inputs/state-inventory.md",
+      "sha256": "6b23ee2d00c26736f1d7858f64f98d553aa788f8b28c8f3455245910294bff9b"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "6a5f8f32a635a08b37bd98f1e2359d88881624d5a21c2ee077a799e71609e819"
+    },
+    {
+      "path": "review.md",
+      "sha256": "980322bdb992e21a213a10b638e5b356f06a0b9239b45068c24a002446649a7e"
+    },
+    {
+      "path": "state.md",
+      "sha256": "e0047e8b0147d53a276a8b6646a5ee444ddc6aaa109b0a978e97a584edfb11fc"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "878cb625cc424d58b4d3cb32f3c8681a28804a2fbbcd49ae68a091de2de67a95"
+    },
+    {
+      "path": "verification-plan.signoff-lanes.json",
+      "sha256": "01f7d8d1983d0d947918f3207a4988aa601bbd86eb5e2c44214a603ea08b6e76"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}
