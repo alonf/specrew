@@ -3280,6 +3280,8 @@ sign-off (202 DRIFT-018).
 
 **Iteration 002 round 1 (2026-10-17, `run-20261017-093636207-bf1e4cc7`, codex):** 6 findings, 5 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 1 reported minor, and the summary again read "Nothing found that needs your attention." All 6 are real (38 of 38 across seven rounds of feature 202): among them, an update re-recorded a spent approval (B4F-127 for upgrading projects), and a withdrawal missed on Copilot left a revoked approval spendable (202 iteration 002 DRIFT-003).
 
+**Iteration 002 round 2 (2026-10-17, `run-20261017-134352532-0fb503db`, codex):** 4 findings, all reported blocking or major and all demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 4 are real (42 of 42 across eight rounds of feature 202): among them, an approval whose save failed read as recorded, and a not-recorded line was marked said before its output was delivered (202 iteration 002 DRIFT-003).
+
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
 **Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
@@ -4966,6 +4968,8 @@ approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
 review sign-off stage opened on it.
 
 **Recurred a fifth time:** 2026-10-17, feature 202 iteration 002. The maintainer's typed `approved for review round` drew the same notice ("NO crossing is pending ... send the phrase again: approved for review"). The round approval was recorded once by the message hook and became `cmp-202-beta4-1-ux-stabilization-i002-round-1`. The notice names a different phrase as the one to send.
+
+**Recurred a sixth time:** 2026-10-17, the round-2 approval drew the same notice; the round approval was recorded once and became `cmp-202-beta4-1-ux-stabilization-i002-round-2`.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 

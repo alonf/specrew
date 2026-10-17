@@ -34,7 +34,7 @@
 - **Class closure**: NONE - making the command name the active iteration is beta5 work (the review engine), per the
   iteration-2 scope ruling.
 
-### DRIFT-003 — co-review round 1 found six defects in T017; five were demoted, and all six are real (resolved)
+### DRIFT-003 — co-review rounds 1 and 2 found ten defects in T017 and its fixes; nine were demoted, and all ten are real (resolved)
 
 - **Observed**: 2026-10-17, co-review round 1 (`run-20261017-093636207-bf1e4cc7`, codex, 25 minutes), on the
   maintainer's typed `approved for review round`. The message hook recorded it once (09:35:47 UTC), and no turn end
@@ -72,3 +72,35 @@
   message. Finding 1 is the upgrade case of a key change: history under the old key is read once more.
 - **Not new**: the prompt hook answered the round approval with "reads as a verdict for 'review' ... nothing was
   recorded" (B4F-116, fifth recurrence; a beta5 candidate).
+- **Round 2 (2026-10-17, the maintainer's typed `approved for review round`, recorded once by the message hook with
+  the new session and identity fields)**: run `run-20261017-134352532-0fb503db` (codex, 26 minutes) reviewed the round-1
+  fixes, answering round 1's pause with "run another round". The crew had recommended carrying the fixes into the planned
+  round after T019; the maintainer chose to review them now. 4 findings, all reported blocking or major and demoted for
+  "no concrete failure scenario" (each states one). Each was checked against the code, and each is real:
+  1. **The history check missed an untrimmed record.** The old message hook hashed the untrimmed text, so a spent
+     pre-update approval typed with a trailing space still came back after an update.
+  2. **Received was read as saved.** A reservation is written before the writers run, so an approval whose writer failed
+     (a locked file) read as recorded, and nothing was reported.
+  3. **A message outside the transcript window could still vouch.** The count started 60 seconds before the earliest
+     counted message, so an identical approval just outside the window satisfied it.
+  4. **The not-recorded line was marked said before delivery.** When the dispatcher withheld that output, the line was
+     lost for good.
+- **Resolution** (`f98c0a96`, runtime `30a65e86`), each behind a failing test:
+  1. An old message-hook record within 15 seconds of the message's arrival matches on time alone. Measured on the live
+     ledgers: Copilot's hook records 4 to 6 s before the transcript entry, and Claude's about 4 s after.
+  2. The router reports a recognized act whose writer threw and stored nothing (`reason = not-saved`), and says it in the
+     same turn: "was received but could not be saved".
+  3. Each counted message is paired with a reservation within 15 s of its own arrival, and the answer is the latest
+     message's. **Residual, stated**: on Copilot, which sends no message ID, two identical approvals typed less than 15 s
+     apart, with the first pushed out of the 500-line window in between and the second missed, still cannot be told apart.
+  4. The dispatcher (both twins) appends an `undelivered` row for each line marked said during a withheld fire, as it
+     already takes back an undelivered recovery question, and the store says the line again at the next message.
+- **Tests (round 2)**: `message-identity` 5 new cases and `hook-output-journal` 1 new check, all RED on `48540631`;
+  `message-identity` 34 of 34 green. All eight lanes pass. `f199-class-guards-b` failed once in the 8-way parallel run
+  (`mechanical-checks-applicability`, untouched by these changes) and passed alone and on its lane rerun. The
+  `f202-i002-suites` lane takes 248 s alone, and its timeout goes from 480 s to 600 s (2.42x).
+- **Class closure (round 2)**: findings 2 and 4 are the same class: a record of success written before the success. The
+  reservation now stands only for "the hook saw it", with a failed save reported separately. The not-recorded line joins
+  the orientation stamp and the recovery question in the dispatcher's undelivered rollback.
+- **Plan effect**: round 2 is spent on the fixes, so the round planned after T019 becomes round 3 (3 of 4).
+- **Not new**: the round-2 approval drew B4F-116's notice again (sixth recurrence).

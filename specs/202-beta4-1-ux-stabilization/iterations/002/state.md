@@ -5,7 +5,7 @@
 **Iteration Status**: executing
 **Last Completed Task**: T016
 **Tasks Remaining**: T022, T020, T021, T018, T019, T023, T024
-**In Progress**: (none; co-review round 1 returned 6 real findings, fixed in `7a75987b` (DRIFT-003); the maintainer decides the next round)
+**In Progress**: (none; co-review rounds 1 and 2 returned 10 real findings, fixed in `7a75987b` and `f98c0a96` (DRIFT-003); the maintainer decides the next step)
 **Baseline Ref**: fe509311
 **Updated**: 2026-10-17T05:40:00Z
 
