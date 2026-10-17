@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "c9ffac9c8c14e1b9dea5838d02b9d712fa15e8f0677d756fa2f07c2280edea01"
+      "sha256": "eec3cd8f4706e861b8693325726925147cac2db57fe3903165baeaeafa63f8df"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
