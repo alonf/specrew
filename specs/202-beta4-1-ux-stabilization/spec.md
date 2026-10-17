@@ -16,7 +16,7 @@ Quality priority for conflicts, highest first: authority integrity, cross-host p
 ## Scope
 
 - **Tier 1 (iteration 1):** B4F-108, B4F-104, B4F-106, B4F-096, B4F-107, B4F-100, B4F-102, B4F-105, B4F-109, B4F-089, B4F-101. B4F-109 was added by the maintainer after the workshop, on 2026-10-13, when 202's own specify stop could open no crossing.
-- **Tier 2 (iteration 2):** starts only after the maintainer accepts Tier 1 at the iteration-1 closeout. Green tests do not start it. It covers the narrow review-ordering slices of B4F-054/056/058/061, bounded by B4F-074 and B4F-093, and the B4F-103 package-comparison correction (no beta4 republish).
+- **Tier 2 (iteration 2):** starts only after the maintainer accepts Tier 1 at the iteration-1 closeout. Green tests do not start it. **Amended at the iteration-2 plan (maintainer scope ruling, 2026-10-17):** iteration 2 covers "one human act, one record": B4F-127, B4F-129, B4F-125 with B4F-128, B4F-130, B4F-131, the receipt-outcomes journal's retirement (retro candidate 3) and the unread draft copy's removal (retro candidate 7), as FR-027 to FR-034 and US8. The review-ordering slices of B4F-054/056/058/061 and the B4F-103 package-comparison correction (US7, FR-022, FR-023) move to beta5. Iteration 2 changes the hook dispatcher and the stores only as far as FR-028 and FR-033 require; that is not the dispatcher or store redesign that stays out of scope.
 - **Out of scope (beta5):** both B4F-039 sub-findings; B4F-090; B4F-091 band semantics (B4F-107 changes presentation only); any broader review redesign; any redesign of the hook dispatcher or stores; B5F-004 (Stop reasons outside Tier 1 audited against the substance-only rule); B5F-005 (refusals that name the wrong cause when a path does not resolve); every other beta5 item.
 
 ## Host support tiers
@@ -151,7 +151,10 @@ B4F-101: the agent's saved reply drafts live in an ignored per-session location,
 
 ---
 
-### User Story 7 - Review ordering stops making the human accept twice (Priority: P3, Tier 2)
+### User Story 7 - Review ordering stops making the human accept twice (Priority: P3, moved to beta5)
+
+**Moved to beta5 at the iteration-2 plan (maintainer scope ruling, 2026-10-17).** Kept here as the record of what Tier 2
+originally held.
 
 B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own records, such as the iteration seal and the reviewer scaffold output, are not counted as product changes that invalidate review coverage. The package comparison checks only the declared content scope.
 
@@ -163,6 +166,35 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 
 1. **Given** an iteration seal or other Specrew-owned record written after review, **When** coverage is evaluated, **Then** it is not counted as uncovered source drift (B4F-093).
 2. **Given** the exact-byte package check, **When** it compares a published package, **Then** it compares only the declared content scope: NuGet-dropped zero-byte placeholders and the publish-stamped manifest lines are excluded, or the package stops shipping placeholders. No beta4 republish (B4F-103).
+
+### User Story 8 - One human act, one record (Priority: P1, iteration 2)
+
+Every typed approval, workshop answer and delegation is recorded exactly once, by the host it was typed in, and an act
+that is not recorded is reported, not dropped. A pasted or quoted menu never approves anything, and a delegation of the
+remaining lenses covers them.
+
+**Why this priority**: B4F-127 and B4F-129 are the release gate for beta4.1 (maintainer rulings, 2026-10-16 and
+2026-10-17). In the live walk, the remaining items cost a stop on every host.
+
+**Independent Test**: per-host replay tests from recorded payloads; the iteration-2 live re-walk on Copilot.
+
+**Acceptance Scenarios**:
+
+1. **Given** one typed approval, **When** both the prompt path and the turn-end path observe it on Claude or Codex,
+   **Then** exactly one approval row is recorded, and N later turns with no human message record nothing (B4F-127).
+2. **Given** a Copilot session in a project that also holds Claude's hook settings, **When** a hook installed for Claude
+   receives a Copilot payload, **Then** it does nothing, and every receipt and stop-block row is written once, under
+   `copilot` (B4F-129).
+3. **Given** a payload that matches no known host, **When** a hook receives it, **Then** it is handled as today and
+   logged once (B4F-129).
+4. **Given** a Claude message with a long paste and a phrase typed on its own line outside it, **When** the phrase is an
+   approval, **Then** it counts; **Given** a message quoting the packet's menu, **Then** it is refused, and the refusal
+   names a quoted menu (B4F-125).
+5. **Given** a reply in a wide delegation form, **When** lenses remain on the agenda, **Then** each remaining lens is
+   delegated and the crew names them in one line; **Given** a narrow delegation with lenses pending, **Then** the line
+   says so and names the wide phrase (B4F-130).
+6. **Given** two sessions in one project, **When** a reply is refused in one, **Then** the other never shows that refusal
+   (R5-5).
 
 ### Edge Cases
 
@@ -209,10 +241,43 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 - **FR-021**: Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it.
 - **FR-026**: `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. A feature is new when it differs from the feature whose feature-closeout was last authorized; a re-sync of the same feature is never a reset. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries. On a new-feature reset, all per-feature runtime state MUST be keyed to the new feature: the crossing, the current-feature pointer, and the review-campaign coverage line shown at boundary stops. The out-of-band specify authorization recorded for 202 (`auth-83b0f0c2...`) MUST stay in the append-only ledger as B4F-109's audit trail; it is never rewritten or removed (B4F-109).
 
-**Tier 2 (iteration 2, after Tier 1 acceptance)**
+**Moved to beta5 (iteration-2 plan, maintainer scope ruling, 2026-10-17)**
 
 - **FR-022**: Specrew-owned records written after review, such as the iteration seal and the reviewer scaffold output, MUST NOT count as uncovered source drift. The exact review-ordering slices of B4F-054/056/058/061 are set at iteration-2 design analysis, within the bounds of B4F-074 and B4F-093, and approved there. No broader review redesign.
 - **FR-023**: The exact-byte package check MUST compare only the declared content scope (B4F-018's rule). No beta4 republish.
+
+**Iteration 2: one human act, one record (added at the iteration-2 plan, 2026-10-17; design in
+`iterations/002/design-analysis.md`, DA-1 to DA-5)**
+
+- **FR-027**: One human message MUST produce at most one recorded approval of each kind, however many recording paths
+  observe it. The key is the host's own message identity: Claude's `prompt_id`, read on the turn-end path from the
+  human-typed transcript entry and never from that entry's `uuid`; Codex's `turn_id`. Injected entries are skipped. A
+  spent approval from the same message is final. On Copilot the prompt hook is the only recording path, and an
+  approval-shaped typed message it did not record MUST be reported in the journal and in one visible line (B4F-127, DA-2).
+- **FR-028**: A hook MUST stand down only when its payload positively matches another known host's declared fields; a
+  payload that matches no known host is handled as today and logged once. Each host binding declares the fields only its
+  host sends, distinguishing all three validated hosts. The workshop receipt store MUST refuse a receipt ID it already
+  holds (B4F-129, DA-1).
+- **FR-029**: A typed approval is a phrase leading its own line in the human's own text. On a host that marks pastes,
+  nothing inside a paste counts, and a paste is marked only by an opening and a closing tag carrying the same ID. A
+  message carrying more than one verdict option is never an approval, and the refusal names it as a quoted menu. On a
+  host with no recorded paste marking, the phrase must stand alone and the refusal names the reason. An allowance reset
+  requested in order to run a round authorizes that round. No approval request offers a command as the approval
+  (B4F-125, DA-3).
+- **FR-030**: FR-015's meaning match MUST extend to discussion question lines: a reworded question counts as present
+  when its meaning matches (B4F-128).
+- **FR-031**: A reply in one of a short list of exact wide forms ("the remaining lenses", "all remaining lenses") MUST
+  record one delegation per lens left on the agenda, bound to that message, and the crew names the lenses covered. A
+  narrow delegation with lenses pending MUST say so and name the wide phrase. The reviewer choice stays outside
+  delegation, is asked once at agenda confirmation with the default named, and a lens with delegated craft decisions and
+  a confirmed reviewer pick closes without a question (B4F-130, DA-4).
+- **FR-032**: No instruction shipped to any host MAY permit a question tool for workshop questions; workshop questions
+  are typed prose on every host (B4F-131).
+- **FR-033**: A workshop receipt outcome MUST be recorded on the current turn's record in the session's own folder and
+  read only from there, so no session reads another session's outcome. The shared `workshop-receipt-outcomes.jsonl`
+  journal MUST no longer be written, and `specrew update` deletes it (retro candidate 3, R5-5, DA-5).
+- **FR-034**: The turn-end script MUST NOT write the unread draft copy `turn-message.md`; the message stays inline in the
+  turn record (retro candidate 7).
 
 **Test evidence**
 
@@ -237,7 +302,8 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 | US4 | B4F-105, B4F-109, B4F-089 | FR-017 to FR-019, FR-026 | Implementer; Spec Steward (pointer and cycle-reset contract) | 1 |
 | US5 | B4F-102 | FR-020 | Implementer | 1 |
 | US6 | B4F-101 | FR-021 | Implementer | 1 |
-| US7 | B4F-054/056/058/061 (bounded by 074, 093), B4F-103 | FR-022, FR-023 | Implementer; Reviewer; maintainer approves the slice | 2 |
+| US7 | B4F-054/056/058/061 (bounded by 074, 093), B4F-103 | FR-022, FR-023 | Implementer; Reviewer; maintainer approves the slice | beta5 (moved 2026-10-17) |
+| US8 | B4F-127, B4F-129, B4F-125, B4F-128, B4F-130, B4F-131, retro candidates 3 and 7 | FR-027 to FR-034 | Implementer; Reviewer (codex); maintainer for the Copilot re-walk | 2 |
 
 ### Key Entities
 
@@ -269,6 +335,10 @@ B4F-054/056/058/061, bounded by B4F-074 and B4F-093, plus B4F-103. Specrew's own
 - **SC-009**: In a worktree where a closed feature's review campaign exists, every boundary stop of a new feature shows 0 references to the closed feature's campaign in its review-coverage line (B4F-109, US4 scenario 8).
 - **SC-007**: Every Tier 1 refusal path names its actual cause and one recovery action.
 - **SC-008**: The validator run at iteration-1 closeout shows no new failures in the known-baseline categories below.
+- **SC-010**: On each validated host, a replay from recorded payloads of one approval through every recording path gives
+  exactly one approval row, and N later turns with no human message add none (FR-027).
+- **SC-011**: In a live Copilot walk in a project that also holds Claude's hook settings, 0 receipts or stop-block rows
+  are written under `claude`, and every receipt ID appears once (FR-028).
 
 ## Known validator baseline
 

@@ -1,9 +1,9 @@
-# Iteration Plan: 002 (Stub)
+# Iteration Plan: 002
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 17/20 story_points
 **Started**: 2026-10-17
 **Completed**:
 
@@ -21,39 +21,38 @@
 
 ## Scope Summary
 
+Iteration 002 is "one human act, one record" (spec US8, FR-027 to FR-034), scoped by the maintainer on 2026-10-17
+("scope as recommended") and designed with the maintainer in `design-analysis.md` (DA-1 to DA-5). B4F-127 and B4F-129
+are the release gate for beta4.1. FR-022 and FR-023 moved to beta5 (spec amendment, DRIFT-001).
+
 | Requirement | Summary | Stories |
 | ----------- | ------- | ------- |
-| FR-001 | The hook-output journal MUST accept concurrent appends from separate hook processes without failure or torn lines. A share mode that permits concurrent appends is preferred. A per-write cross-process lock on that journal only is permitted when fault-injection case (e) shows the share mode alone is insufficient. | — |
-| FR-002 | A failed journal append MUST be retried within a bounded window as a backup. Only a failure that persists past it enters a degraded state. | — |
-| FR-003 | The degraded state MUST clear on the next successful append and record its recovery time. An unhealthy state left by an older version MUST be treated the same way. | — |
-| FR-004 | While degraded, hook output that cannot be journaled MUST be recorded as hashes in per-process outage-buffer files. The integrity check MUST read them before the next prompt decision, and they MUST be flushed into the journal and removed on recovery. | — |
-| FR-005 | A typed reply MUST be refused as authority only when it matches journaled or buffered hook output. If the buffer write itself fails, only that turn fails closed. | — |
-| FR-006 | Each host adapter MUST normalize its host's payload into a standard turn record (event, typed user text, host, origin) under a declared, tested contract. Origin MUST be one of typed-user, host-injected or unknown. Only typed-user can produce a receipt, and the journal and buffer match MUST apply to every reply. | — |
-| FR-007 | A degraded state MUST be disclosed in the affected turn, stating whether the reply was consumed. It MUST also appear in `specrew status` / `where` while degraded, and in session-start orientation. | — |
-| FR-008 | A health journal MUST record each transition (class, error text, first-seen, count, recovered-at) with hashes only and no user text. | — |
-| FR-009 | When self-recovery fails, the system MUST ask the maintainer one decision, in project terms that pass the banned-noun check and never imply loss when nothing is lost. The recovery action MUST record the receipt of the approving reply. | — |
-| FR-010 | A refusal MUST name the actual cause and never attribute a reply to a channel the maintainer did not use. | — |
-| FR-011 | An unchanged pending crossing MUST be presented in full once per session and again only after a context gap. In between, the pending decision MAY appear at most as a brief mention inside a reply that answers the maintainer: one line naming the decision and its approval phrase, with no verdict options, no marker and no packet sections. It MUST NOT produce a `Stop hook error`. The duration of a "long gap" is a named tuning value set in the plan. | — |
-| FR-012 | The Stop hook MUST NOT block a reply over formatting. It checks substance only: that a needed decision is clear, and that authority is intact. | — |
-| FR-013 | Deterministic text the system can supply, such as the dials line and orientation facts, MUST be filled in by the system, marked as system output, and recorded in the hook-output journal, with 0 human-visible cycles. | — |
-| FR-014 | The orientation MUST reach the maintainer before the first question of a session. The mechanism is chosen at design-analysis. | — |
-| FR-015 | The "presented" check MUST compare a meaning-bearing line set declared once in the shared path: headings, review-target links, question line, approval line, verdict options and marker. It MUST NOT compare the whole draft. | — |
-| FR-016 | The adaptation text MUST be one shared sentence, identical on every host and with no numbers or keys. Only the correction-command reference comes from the adapter. | — |
-| FR-017 | `.specrew/start-context.json` MUST be the single current-feature pointer, MUST record the branch it was written for, and MUST be updated by every writer that creates or advances a feature. | — |
-| FR-018 | The branch is not the feature. Readers MUST resolve the current feature in this order: (1) the in-flight controller or pending crossing; (2) the pointer, if it was written for the current branch; (3) the branch name, as a hint only. A pointer written for another branch is stale. Readers MUST always disclose which source decided (reconciled at design-analysis, iteration 001 DRIFT-001). They MUST ask only when two in-flight features genuinely compete. A Shipped or closed feature MUST never be shown as active while one is in flight. | — |
-| FR-019 | The resume "where we are / starting now" lines MUST come from disk only: the pending crossing, `from_commit..HEAD`, and progress. The handover narrative MUST be shown only as context with its age, and flagged when it is stale or names another feature. | — |
-| FR-020 | A gate refusal for a missing artifact MUST name the step that produces it. | — |
-| FR-021 | Turn drafts MUST be saved to an ignored per-session location that the saving script resolves itself. The three skills MUST name it. | — |
-| FR-026 | `feature-closeout -> specify` for a new feature MUST be treated as a cycle reset, like `iteration-closeout -> plan`, in both the crossing calculation and the authorization writer. A feature is new when it differs from the feature whose feature-closeout was last authorized; a re-sync of the same feature is never a reset. The new feature's specify sync MUST open a scoped specify crossing, and a closed feature's history MUST NOT authorize or block another feature's boundaries. On a new-feature reset, all per-feature runtime state MUST be keyed to the new feature: the crossing, the current-feature pointer, and the review-campaign coverage line shown at boundary stops. The out-of-band specify authorization recorded for 202 (`auth-83b0f0c2...`) MUST stay in the append-only ledger as B4F-109's audit trail; it is never rewritten or removed (B4F-109). | — |
-| FR-022 | Specrew-owned records written after review, such as the iteration seal and the reviewer scaffold output, MUST NOT count as uncovered source drift. The exact review-ordering slices of B4F-054/056/058/061 are set at iteration-2 design analysis, within the bounds of B4F-074 and B4F-093, and approved there. No broader review redesign. | — |
-| FR-023 | The exact-byte package check MUST compare only the declared content scope (B4F-018's rule). No beta4 republish. | — |
-| FR-024 | Real hook payloads from Claude, Codex and Copilot MUST be captured as test fixtures, in scratch directories only and never in a governed worktree. The cross-host tests MUST run through each host's real adapter with those payloads, never by calling the shared path directly. | — |
-| FR-025 | The B4F-108 fault-injection suite MUST cover cases a-e (a: lock released within the retry window; b: lock held beyond it; c: recovery; d: hook output never counts; e: two real processes appending at once), with case (e) on Windows, macOS and Linux. | — |
+| FR-027 | One human message, at most one recorded approval of each kind, keyed by the host's message identity (B4F-127, DA-2) | US8 |
+| FR-028 | A hook stands down only on a positive match with another host; unknown shapes handled and logged once; receipt IDs unique (B4F-129, DA-1) | US8 |
+| FR-029 | Approval form: paired paste tags, quoted menus refused, reset authorizes its round, no command offered (B4F-125, DA-3) | US8 |
+| FR-030 | A reworded discussion question counts when its meaning matches (B4F-128) | US8 |
+| FR-031 | Wide delegation forms, loud narrow case, reviewer choice at agenda confirmation (B4F-130, DA-4) | US8 |
+| FR-032 | No host instruction permits a question tool for workshop questions (B4F-131) | US8 |
+| FR-033 | Receipt outcome on the session's own turn record; shared journal retired and deleted on update (candidate 3, DA-5) | US8 |
+| FR-034 | No unread draft copy (candidate 7) | US8 |
 
 ## Tasks
 
+Order: the two release-gate items first, then the receipt simplification before the receipt-touching items. Review
+rounds sit after the tasks that touch approval handling (after T017 and T016, and after T018 and T019). Every task lands
+red first, through the shipped entry point, with recorded payloads.
+
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T017 | Message identity: `prompt_id` and `turn_id` in the host field maps and the turn record; identity hash without the source event; turn-end transcript path reads `prompt_id` from typed entries, skips injected ones, handles the compaction summary; spent-from-same-message is final; Copilot turn-end records no approvals and reports an unrecorded approval-shaped message; per-host replay test (SC-010) | FR-027 | US8 | 4.5 | Implementer | `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `hosts/*/host.psd1`, dispatcher twins | planned | | | |
+| T016 | Host binding: declared host fields per binding and event; positive-match stand-down in the shared path; unknown shape handled and logged once; receipt store refuses a duplicate ID; fixture matrix over every recorded payload | FR-028 | US8 | 3.0 | Implementer | `hosts/*/host.psd1`, dispatcher twins, `extensions/specrew-speckit/scripts/workshop-authority-store.ps1` | planned | | | |
+| T022 | Retire the receipt-outcomes journal: outcome on the session's turn record, both readers switched, writer removed, `specrew update` deletes the file, R5-5 two-session test | FR-033 | US8 | 2.25 | Implementer | `workshop-authority-store.ps1`, dispatcher twins, `specrew-conformance-provider.ps1`, `specrew-update.ps1` | planned | | | |
+| T018 | Approval form: paired paste-tag parsing, quoted-menu refusal, refusal reasons, the coverage-deferral copy, reset authorizes its round, no command offered; tests from `b4f-125-live-messages.json` and the observed paste-size boundary | FR-029 | US8 | 3.0 | Implementer | `HumanAuthorityStore.ps1`, `shared-governance.ps1` | planned | | | |
+| T019 | Discussion question meaning match, failing test from B4F-128's two exact lines | FR-030 | US8 | 0.5 | Implementer | `turn-end-store.ps1` | planned | | | |
+| T020 | Wide delegation forms, loud narrow line, reviewer choice at agenda confirmation, mixed-receipt lens close | FR-031 | US8 | 2.0 | Implementer | `workshop-authority-store.ps1`, `confirm-workshop-lens.ps1`, workshop skill | planned | | | |
+| T021 | Find and fix the instruction that permits Copilot's question box; text test across every shipped host instruction | FR-032 | US8 | 1.0 | Implementer | `extensions/specrew-speckit/squad-templates/**`, host instruction files | planned | | | |
+| T023 | Remove the `turn-message.md` writer and its mentions | FR-034 | US8 | 0.25 | Implementer | `declare-turn-end.ps1`, `turn-end-store.ps1`, skills | planned | | | |
+| T024 | Acceptance: evidence file, validator run, Copilot re-walk script for the maintainer (SC-011) | SC-010, SC-011 | US8 | 0.5 | Implementer | `iterations/002/` | planned | | | |
 
 ## Effort Model
 
@@ -69,34 +68,34 @@
 
 ## Concurrency Rationale
 
-- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
-- Technology and scope signals: Mixed frontend and backend/service signals are present in the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
-- Workstream separability: Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.
-- Shared-surface conflict risk: elevated due to shared-state / cross-cutting cues in scope text.
-- Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- Roster: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator.
+- Dependencies: T017 before T016 (both change the turn record and the dispatcher twins); T022 before T020 and T021
+  (receipt area); T018 after T017 (the approval writers); T019 and T023 are independent; T024 last.
+- Shared-surface risk is high: T016, T017 and T022 all touch the dispatcher twins, and T017, T018 and T022 the
+  authority and receipt stores. The work stays serial, one implementer.
 
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | done | Scope ruling and DA-1 to DA-5, 2026-10-17 |
+| Discovery/Spikes | 0 | The code map is in `design-analysis.md`; paste tagging settled from transcripts |
+| Implementation | 16.5 | T016 to T023 |
+| Review | rounds, not SP | Governed by the codex round allowance (199 retro ruling); rounds after T016/T017 and after T018/T019 |
+| Rework | inside the round allowance | Iteration 001's review loop was the cost driver; the retro's lessons apply |
+| Acceptance | 0.5 | T024 |
 
 ## Traceability Summary
 
-- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-026, FR-022, FR-023, FR-024, FR-025
-- User stories represented in current scope:
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- Requirement scope: FR-027 to FR-034 (US8); SC-010 and SC-011. FR-022 and FR-023 moved to beta5 (DRIFT-001).
+- Every task maps to one requirement, and every requirement has a task.
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+- **Size: 17 SP against the 15.25 SP the maintainer accepted at the scope ruling.** The 1.75 SP of growth comes from the
+  design decisions and the release-gate proof: DA-2's two conditions (+0.5 on T017), DA-4's reviewer choice and loud
+  narrow case (+0.5 on T020), DA-5's deletion on update (+0.25 on T022), and the Copilot re-walk for SC-011 (+0.5, T024).
+  It is within the 20 SP convention, above the maintainer's 15 SP line, and decided at the plan stop.
+- Task IDs continue from iteration 001 (T001 to T015).
+- Out of iteration 002: B4F-055 and B4F-121 (beta5, review engine); B4F-132 to B4F-136 (queue after iteration 002).
+- The release gate: beta4.1 does not ship until B4F-127 (T017) and B4F-129 (T016) are fixed.
