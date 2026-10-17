@@ -5087,6 +5087,10 @@ is the governing principle's case: a stop with no decision for the human to make
 **Recurred, after the review sign-off:** 2026-10-17, while the crew recorded the 202 live walk, the Stop review check asked three times for a fresh round approval, naming round 6's run. The review sign-off had been approved the day before (`e1d3bbcd`), and one of the three turns had no commit in it. Three short replies with no decision for the maintainer. A fourth
 followed the iteration closeout packet, while that decision was pending; the check itself said the decision was
 unaffected.
+**Recurred in a new form, during iteration 002's planning:** 2026-10-17, after the iteration 001 closeout, the check
+changed its wording to "these files have not been reviewed yet" and asked for a review round at five turn ends of the
+iteration 002 scope and design questions, with no implementation in the iteration to review. Five stops with no
+decision for the maintainer. Moved to beta5 with the review engine by the iteration 002 scope ruling.
 
 ## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
 
