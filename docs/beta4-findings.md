@@ -5371,6 +5371,20 @@ code, and no stack text.
   store, the one durable copy, is empty. Whatever fixes the store should read the packet from the turn record, which
   survives T023.
 
+## B4F-137 - A TYPED APPROVAL IS FOLDED INTO AN OLDER UNSPENT RECORD FROM THE TURN-END PATH (candidate; B4F-127 class)
+
+**Observed:** 2026-10-17, 202 iteration 002, after co-review round 4. The maintainer typed `approved for allowance
+reset` at 19:13:37Z. The message hook recorded the act in the ledger as minted by the allowance-reset writer, but the
+stored approval was still a record from 2026-10-16 00:20Z, written by the turn-end transcript path and never spent: the
+writer returns an existing unspent record with the same text instead of writing the new one. That record was most
+likely a B4F-127 double record left from before T017, and a reset could have run on it at any time without a typed act.
+The B4F-127 interim check caught the provenance; the maintainer confirmed the go-ahead, and the reset
+(`reset-7b13db76ba620c12794b`) spent the old record.
+**Fix direction (proposal):** a typed approval replaces an unspent record whose evidence is the turn-end path, so the
+stored approval carries the provenance of the act that authorizes it. The same idempotent return exists in the other
+pending-approval writers; check each.
+**Disposition:** recorded; to be fixed in iteration 002 under the restored round coverage.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

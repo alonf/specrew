@@ -160,3 +160,7 @@
 - **Plan effect**: the allowance is spent (4 of 4), and the round-4 fixes are unreviewed. T022, T020, T021, T018 and T019
   reach review only through the maintainer's allowance reset; the review is left paused, not stopped, because stopping
   would sign off an iteration with seven tasks still open.
+- **Allowance reset (2026-10-17)**: the maintainer typed `approved for allowance reset` and, after the B4F-127 interim
+  check found the stored approval was an older turn-end record (B4F-137), confirmed the go-ahead. Reset
+  `reset-7b13db76ba620c12794b` restored the rounds; the next round comes after T019 and covers the round-4 fixes and
+  T022, T020, T021, T018 and T019.

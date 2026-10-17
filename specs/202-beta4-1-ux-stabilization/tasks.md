@@ -299,7 +299,7 @@ allowance reset, T023, T024.
 - T022 before T020 and T021: the receipt area is simplified before the items that change receipts.
 - **Review cadence:** round 1 after T016 (covers T016 and T017, the approval handling and the release gate); round 2
   to 4 on the fixes, by the maintainer's choice (DRIFT-003), which spends the allowance. A round after T019 (covering the
-  round-4 fixes, T022, T020, T021, T018, T019) needs the maintainer's allowance reset. Sign-off covers T023 and T024.
+  round-4 fixes, T022, T020, T021, T018, T019) follows the maintainer's allowance reset of 2026-10-17. Sign-off covers T023 and T024.
 - **Standing rules for every round:** no commit between an approval and the step that uses it; before a round launch, a
   stop decision or an allowance reset, the stored approval must come from the maintainer's own typed message for that run
   (the B4F-127 interim rule, until T017 is reviewed); every demoted finding is checked against the code and listed as
