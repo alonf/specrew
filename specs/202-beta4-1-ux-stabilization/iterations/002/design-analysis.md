@@ -65,7 +65,7 @@ deletion; neither needs a design decision.
 
 | Point | Decision | Date |
 | --- | --- | --- |
-| DA-1 | pending | |
+| DA-1 | **Option A, with the maintainer's change.** Each host binding declares the payload fields only its host sends. A hook stands down (does nothing, exits 0) only when the payload positively matches another known host's fields. A payload that matches no known host is handled as today and logged once, so a host changing its payload shape can never switch governance off without a trace. The receipt store refuses a receipt ID it already holds. Note from the fixtures: Codex also sends `hook_event_name` and snake_case `session_id`, so the declared fields must tell all three apart (Claude `prompt_id`, Codex `turn_id`, Copilot camelCase `sessionId`), per event, proven against every recorded fixture. | 2026-10-17 |
 | DA-2 | pending | |
 | DA-3 | pending | |
 | DA-4 | pending | |
