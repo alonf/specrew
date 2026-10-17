@@ -5345,6 +5345,15 @@ code, and no stack text.
   confusing paragraph; the repair was rejected because of `file:///` links against Codex's native links.
 - The hosts diverge: Claude chose 3 lenses, Codex 5, Copilot 6, and the delegated defaults differ (a CRLF counts as 1
   character on Claude and 2 on Copilot).
+- **The handoff store saves no packets (maintainer's note at the iteration 002 before-implement, 2026-10-17; queued with
+  the six `handoff-block-missing` warnings).** `.specrew/handoff-evidence.json` holds 35 stage events from 2026-08-10 to
+  2026-10-17, and all 35 have `handoff_present: false` and an empty `response_text`: 0 of 35 packets saved since August.
+  The maintainer noted that the boundary draft T023 deletes (`turn-message.md`) is the only copy of the packet text.
+  The crew's check of this session's folder, recorded beside it: each turn record (`turn-N.json`) also carries the full
+  message inline, and the latest boundary record holds the whole before-implement packet down to its last line. Both
+  copies are in `.specrew/runtime/`, which is git-ignored and per session, so neither is durable evidence; the handoff
+  store, the one durable copy, is empty. Whatever fixes the store should read the packet from the turn record, which
+  survives T023.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
