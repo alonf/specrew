@@ -151,4 +151,21 @@ Size: 15 SP or less. Review rounds are placed after the tasks that touch approva
 
 It fits within 15 SP, with 0.75 to 1.25 SP of slack, which is thin for a plan where every task touches approval handling. Two cautions for the plan stop. B4F-121 and B4F-055 are review-engine code, which the spec puts out of 202's scope (beta5), so taking either needs a scope ruling. And if B4F-127's estimate grows at capacity planning, B4F-121 is the first item to move back to beta5.
 
-**Release gate (maintainer ruling at review sign-off, 2026-10-16):** closing iteration 001 is not a release. Beta4.1 does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.
+**Release gate (maintainer ruling at review sign-off, 2026-10-16):** closing iteration 001 is not a release. Beta4.1 does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002. **Widened at the iteration 001 closeout (2026-10-17):** and until B4F-129 is fixed.
+
+**Iteration 002 scope (maintainer ruling, 2026-10-17, "scope as recommended"):** about 15.25 SP, 0.25 over the 15 SP
+line, accepted as recommended.
+
+| In | SP | Why |
+| --- | --- | --- |
+| B4F-127, one approval recorded twice | 4.0 | Release gate |
+| B4F-129, Copilot also runs Claude's hooks | 3.0 | Release gate; shares the one-message-one-record fix with B4F-127 |
+| B4F-125 with B4F-128, approval form and the reworded discussion question | 3.5 | First-item ruling of 2026-10-16 |
+| B4F-130, a delegation of the remaining lenses covers one lens only | 1.5 | Cost a stop on all three hosts in the live walk |
+| B4F-131, Copilot's question box records no receipt | 1.0 | The box is kept out of lens questions, beside B4F-125 |
+| Candidate 3, replace the receipt-outcomes journal | 2.0 | Three items above change receipts; no requirement change |
+| Candidate 7, delete the unread draft copy (`turn-message.md`) | 0.25 | Retro ruling: done regardless |
+
+Out of iteration 002: B4F-055 and B4F-121 to beta5 (review-engine code, outside 202's spec scope). FR-022 and FR-023,
+the original Tier 2 items, to beta5; the spec change is recorded at the iteration 002 plan stop. Candidate 1 drops,
+since candidate 3 is the simplification taken. B4F-132 to B4F-136 queue after iteration 002.
