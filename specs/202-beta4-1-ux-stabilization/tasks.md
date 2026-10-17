@@ -1,11 +1,11 @@
-# Tasks: beta4.1 UX stabilization (Tier 1, iteration 001)
+# Tasks: beta4.1 UX stabilization (iterations 001 and 002)
 
 **Feature**: 202-beta4-1-ux-stabilization
 **Plan**: file:///C:/Dev/specrew-beta3-stabilization/specs/202-beta4-1-ux-stabilization/plan.md
 **Date**: 2026-10-13
 **Effort unit**: story points. 25.5 SP is planned against the 20 SP convention, an overcommit of 5.5 SP recorded by the maintainer's plan verdict. Review is governed by the codex round allowance, not SP.
 
-Iteration 001 only. Tier 2 (US7, FR-022/023) is planned after the maintainer's Tier 1 acceptance at the iteration-001 closeout.
+Iteration 001 (Tier 1, T001 to T015, closed 2026-10-17) and iteration 002 (US8, T016 to T024, below). US7 (FR-022/023) moved to beta5 at the iteration-002 plan.
 
 Tasks are numbered feature-globally and mirror plan work items W1 to W15 one-to-one. **Every task lands RED-first:** its fixture first reproduces the defect through the shipped entry point (the real launcher and dispatcher with a deployed binding, or the real script), and only then does the fix turn it green. On every commit:
 
@@ -279,3 +279,154 @@ These are limited by design: the conformance provider, dispatcher and turn-end s
 - **US6:** T014.
 - **Cross-cutting evidence:** T001, T015.
 - **FR-001 to FR-021 and FR-024 to FR-026** each map to at least one task. FR-022 and FR-023 belong to iteration 002.
+
+## Iteration 002: one human act, one record (US8)
+
+**Planned**: 2026-10-17, plan approved by the maintainer (`09fcbe07`). 17 SP against the 20 SP convention, accepted at
+the plan stop above the maintainer's 15.25 SP scope ruling. Design: `iterations/002/design-analysis.md`, DA-1 to DA-5,
+each with the maintainer's changes. B4F-127 (T017) and B4F-129 (T016) are the beta4.1 release gate.
+
+The iteration-001 rules above carry over: RED first through the shipped entry point; mirror, twin-copy and psd1 FileList
+parity; SelfLeakLintLane; the consumer-language check.
+
+### Execution order (iteration 002)
+
+T017, T016, co-review round 1, T022, T020, T021, T018, T019, co-review round 2, T023, T024.
+
+- T017 before T016: both change the turn record and the dispatcher twins, and T016's duplicate-receipt refusal builds on
+  T017's message identity.
+- T022 before T020 and T021: the receipt area is simplified before the items that change receipts.
+- **Review cadence:** round 1 after T016 (covers T016 and T017, the approval handling and the release gate); round 2
+  after T019 (covers T022, T020, T021, T018, T019). Sign-off covers T023, T024 and the round-2 fixes.
+- **Standing rules for every round:** no commit between an approval and the step that uses it; before a round launch, a
+  stop decision or an allowance reset, the stored approval must come from the maintainer's own typed message for that run
+  (the B4F-127 interim rule, until T017 is reviewed); every demoted finding is checked against the code and listed as
+  real or not, with the reason (B4F-055 is in beta5).
+
+### Phase 10: US8, release gate
+
+- [ ] T017 [owner: Implementer] [sp: 4.5] [US8] **One message, one key (DA-2, B4F-127).**
+  - **Work:** add `PromptId` (`prompt_id`) to Claude's input field map and `turn_id` to Codex's; carry the message ID on
+    the turn record (dispatcher twins) and through the provider args to both recording paths. Drop the source event from
+    `Get-SpecrewTypedTurnIdentity`; key on host, session and message ID. The turn-end transcript path reads `prompt_id` from
+    the human-typed transcript entry, never the entry's `uuid`; injected entries are skipped; the compaction summary's
+    reuse of the `/compact` entry's ID is handled. A spent approval from the same message is final in every writer's
+    unspent check. On Copilot the turn-end path records no approvals, and an approval-shaped typed message the prompt hook
+    did not record is written to the journal and reported in one visible line.
+  - **RED:** a replay per host from recorded payloads: one typed approval through both paths gives two rows today
+    (`iterations/001/b4f-127-reproduction.md`).
+  - **Acceptance:** SC-010 on Claude, Codex and Copilot: one approval gives exactly one row, and N later turns with no human
+    message add none; the four affected kinds (round approval, allowance reset, stop decision, coverage deferral) each
+    covered; the Copilot unrecorded-approval line covered.
+  - **Trace:** FR-027; SC-010; DA-2.
+  - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
+    `hosts/claude/host.psd1`, `hosts/codex/host.psd1`, `hosts/copilot/host.psd1`, both `specrew-hook-dispatcher.ps1` twins,
+    both `specrew-handover-provider.ps1` twins, `extensions/specrew-speckit/scripts/shared-governance.ps1` (coverage deferral
+    writer), `tests/unit/message-identity*.tests.ps1`.
+
+- [ ] T016 [owner: Implementer] [sp: 3.0] [US8] **A hook acts only for its own host (DA-1, B4F-129).**
+  - **Work:** each host binding declares, per event, the payload fields only its host sends (Claude `prompt_id` or its
+    event-specific fields, Codex `turn_id`, Copilot camelCase `sessionId`). The shared path stands a hook down (exit 0,
+    nothing written) only when the payload positively matches another known host; a payload matching no known host is
+    handled as today and logged once. The workshop receipt store refuses a receipt ID it already holds.
+  - **RED:** the recorded Copilot payloads fed to the deployed Claude hook command write rows today (the walk's doubled
+    receipts and the Claude-labelled stop-blocks).
+  - **Acceptance:** a fixture matrix over every recorded payload (14 Copilot, plus Claude's and Codex's) against every
+    host's deployed command: own host handled, another host's payload stood down, an unknown shape handled and logged
+    once; a duplicate receipt ID refused.
+  - **Trace:** FR-028; SC-011 (proven live in T024); DA-1.
+  - **Depends:** T017.
+  - **Owns:** `hosts/*/host.psd1`, both dispatcher twins, both `deploy-refocus-hooks.ps1` twins if the command needs the
+    binding, `extensions/specrew-speckit/scripts/workshop-authority-store.ps1`, `tests/unit/host-binding-match*.tests.ps1`.
+
+### Phase 11: US8, receipts and delegation
+
+- [ ] T022 [owner: Implementer] [sp: 2.25] [US8] **Retire the receipt-outcomes journal (DA-5, retro candidate 3).**
+  - **Work:** the receipt outcome becomes a field on the current turn's record in the session's own folder; the
+    dispatcher's recording disclosure and the conformance provider's latest-refusal check read it there; the journal
+    writer is removed in the same change; `specrew update` deletes `.specrew/runtime/workshop-receipt-outcomes.jsonl`.
+  - **RED:** two sessions in one project: a refusal in one shows in the other today (R5-5).
+  - **Acceptance:** the R5-5 test green; the same-turn disclosure and the Stop's refusal check unchanged in behaviour for
+    one session; no code writes or reads the journal; update removes it and says so.
+  - **Trace:** FR-033; DA-5.
+  - **Depends:** T016.
+  - **Owns:** `extensions/specrew-speckit/scripts/workshop-authority-store.ps1`, both dispatcher twins,
+    `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `scripts/specrew-update.ps1`, the
+    tests that read the journal today (cross-host-workshop, hook-output-journal, receipt-disclosure).
+
+- [ ] T020 [owner: Implementer] [sp: 2.0] [US8] **Delegation of the remaining lenses (DA-4, B4F-130).**
+  - **Work:** exact wide forms ("the remaining lenses", "all remaining lenses") record one delegation per lens left on
+    the agenda, bound to the message ID, and the crew names them in one line; "the rest" is not a wide form; a narrow
+    delegation with lenses pending says so and names the wide phrase; the reviewer choice is asked once at agenda
+    confirmation with the default named, and stays outside delegation; a lens with delegated craft decisions and a
+    confirmed reviewer pick closes without a question.
+  - **RED:** the walk's case: "you decide the remaining lenses" records one lens and the next lens asks again.
+  - **Acceptance:** wide form covers every remaining lens; narrow form's line names the phrase; the mixed lens closes with
+    both receipts and no question.
+  - **Trace:** FR-031; DA-4.
+  - **Depends:** T022.
+  - **Owns:** `workshop-authority-store.ps1`, `extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1`,
+    `extensions/specrew-speckit/squad-templates/skills/design-workshop.md`, `tests/unit/workshop-delegation*.tests.ps1`.
+
+- [ ] T021 [owner: Implementer] [sp: 1.0] [US8] **No instruction permits a question tool for workshop questions (B4F-131).**
+  - **Work:** find the shipped instruction that let Copilot use its question box for lens questions and make it agree
+    with the workshop rule.
+  - **RED:** a text test over every shipped host instruction and skill finds the permitting text.
+  - **Acceptance:** the text test is green across every host's instructions.
+  - **Trace:** FR-032.
+  - **Depends:** T022.
+  - **Owns:** `extensions/specrew-speckit/squad-templates/**`, host instruction templates, `tests/unit/workshop-question-tool*.tests.ps1`.
+
+### Phase 12: US8, approval form
+
+- [ ] T018 [owner: Implementer] [sp: 3.0] [US8] **Approval form (DA-3, B4F-125).**
+  - **Work:** on Claude, a paste is a paired `<pasted_content id="N">` ... `</pasted_content id="N">` span with the same ID;
+    nothing inside counts, and a phrase leading its own line outside every paste is an approval. A message with more than
+    one verdict option is refused as a quoted menu. Other hosts keep "the phrase alone", with a refusal naming the reason.
+    The coverage-deferral copy of the guard follows the same rule. An allowance reset requested in order to run a round
+    authorizes that round. No approval request offers a command as the approval.
+  - **RED:** `iterations/001/b4f-125-live-messages.json` (the reset typed below the maintainer's own paste is refused
+    today); a quoted closing tag inside a paste; a quoted menu; the observed paste-size boundary.
+  - **Acceptance:** each case above; the residual (a short untagged single approval line counts) is a named test, not a gap.
+  - **Trace:** FR-029; DA-3.
+  - **Depends:** T017.
+  - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`,
+    `tests/unit/approval-form*.tests.ps1`.
+
+- [ ] T019 [owner: Implementer] [sp: 0.5] [US8] **A reworded discussion question counts (B4F-128).**
+  - **Work:** extend the heading meaning match to question lines.
+  - **RED:** B4F-128's two exact lines.
+  - **Acceptance:** the reworded question passes; a question with a changed number or negation still fails.
+  - **Trace:** FR-030.
+  - **Owns:** `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `tests/unit/presented-check.tests.ps1`.
+
+### Phase 13: cleanup and acceptance
+
+- [ ] T023 [owner: Implementer] [sp: 0.25] [US8] **Remove the unread draft copy (retro candidate 7).**
+  - **Work:** `declare-turn-end.ps1` stops writing `turn-message.md`; `draft_path` and the skill mentions go.
+  - **Acceptance:** no writer; `turn-draft-intake.tests.ps1` updated; the message stays inline in the turn record.
+  - **Trace:** FR-034.
+  - **Owns:** `extensions/specrew-speckit/scripts/declare-turn-end.ps1`, `turn-end-store.ps1`, the three skills,
+    `tests/unit/turn-draft-intake.tests.ps1`.
+
+- [ ] T024 [owner: Implementer] [sp: 0.5] [US8] **Iteration 002 acceptance evidence and the Copilot re-walk script.**
+  - **Work:** `iterations/002/acceptance-evidence.md` maps FR-027 to FR-034, SC-010 and SC-011 to evidence; validator run
+    against the baseline; a short re-walk script for the maintainer on Copilot in a project that also holds Claude's hook
+    settings (SC-011), with its disk checks split by host.
+  - **Trace:** SC-010, SC-011.
+  - **Depends:** all iteration 002 tasks.
+  - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/002/**`.
+
+### Dependencies (iteration 002)
+
+```text
+T017 -> T016 -> [round 1] -> T022 -> T020, T021
+T017 -> T018 -> T019 -> [round 2] -> T023 -> T024
+```
+
+### Coverage (iteration 002)
+
+- **US8:** T016 to T024.
+- **FR-027:** T017. **FR-028:** T016. **FR-029:** T018. **FR-030:** T019. **FR-031:** T020. **FR-032:** T021.
+  **FR-033:** T022. **FR-034:** T023. **SC-010:** T017, T024. **SC-011:** T016, T024.
+- FR-022 and FR-023 moved to beta5 (iteration 002 DRIFT-001).
