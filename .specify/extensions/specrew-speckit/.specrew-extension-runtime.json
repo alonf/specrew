@@ -268,7 +268,7 @@
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
-      "sha256": "b369804443939b3047b44a0ddb50fab9105afddfbeadcc07016d6dcda93991ab"
+      "sha256": "bf57bc8cb4cd4af226a7b2dc3917a5c1c4c9a396fd02ad5eec4b9e10d8cedcce"
     },
     {
       "path": "scripts/deploy-speckit-extension.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "79ac95e4f0751fd610173aa4d99e2301e077ced5fcebada2de215a86e4906445"
+      "sha256": "c9ffac9c8c14e1b9dea5838d02b9d712fa15e8f0677d756fa2f07c2280edea01"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "a233f9431380e63e989c1f8378437517cd9aa2b76ef18d55e9e3da70f4c02d92"
+      "sha256": "2ce58ffef59a096baddff7340cc4868c16459a27545ecb4a1d1988589016a2df"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",

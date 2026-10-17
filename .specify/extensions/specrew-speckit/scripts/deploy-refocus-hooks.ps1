@@ -118,6 +118,44 @@ function Resolve-ProjectPathFromManifest {
     return (Join-Path $projectRoot $RelativePath)
 }
 
+function ConvertTo-StablePayloadSignature {
+    # Feature 202 iteration 002, T016: a host's PayloadSignature as sorted, string-only data.
+    param($Signature)
+    if ($null -eq $Signature) { return $null }
+    $stable = [ordered]@{}
+    foreach ($eventKey in @(Get-ManifestKeys -Map $Signature | Sort-Object)) {
+        $rule = Get-ManifestValue -Map $Signature -Key ([string]$eventKey)
+        $stable[[string]$eventKey] = [ordered]@{
+            AllOf  = @(@(Get-ManifestValue -Map $rule -Key 'AllOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
+            NoneOf = @(@(Get-ManifestValue -Map $rule -Key 'NoneOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
+        }
+    }
+    if ($stable.Count -eq 0) { return $null }
+    return $stable
+}
+
+function Get-ForeignPayloadSignatures {
+    # Every other host manifest beside this one that declares a PayloadSignature, keyed by host kind.
+    $result = [ordered]@{}
+    $hostsRoot = Split-Path -Parent (Split-Path -Parent $hostManifestPath)
+    foreach ($dir in @(Get-ChildItem -LiteralPath $hostsRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+        if ($dir.Name -ceq $HostKind) { continue }
+        $manifestFile = Join-Path $dir.FullName 'host.psd1'
+        if (-not (Test-Path -LiteralPath $manifestFile -PathType Leaf)) { continue }
+        try {
+            $other = Import-PowerShellDataFile -LiteralPath $manifestFile
+            $otherBindings = Get-ManifestValue -Map $other -Key 'RefocusHookBindings' -Default $null
+            if ($null -eq $otherBindings) { continue }
+            $otherRuntime = Get-ManifestValue -Map $otherBindings -Key 'DispatcherRuntime' -Default $null
+            if ($null -eq $otherRuntime) { continue }
+            $sig = ConvertTo-StablePayloadSignature -Signature (Get-ManifestValue -Map $otherRuntime -Key 'PayloadSignature' -Default $null)
+            if ($null -ne $sig) { $result[$dir.Name] = $sig }
+        }
+        catch { continue }
+    }
+    return $result
+}
+
 function Get-HostRuntimeBindingEncoded {
     param($Bindings)
     if (-not (Test-ManifestKey -Map $Bindings -Key 'DispatcherRuntime')) { return $null }
@@ -163,6 +201,14 @@ function Get-HostRuntimeBindingEncoded {
     if (Test-ManifestKey -Map $runtime -Key 'InputTransform') {
         $stableRuntime['InputTransform'] = [string](Get-ManifestValue -Map $runtime -Key 'InputTransform')
     }
+    # Feature 202 iteration 002, T016 (FR-028, DA-1): this host's payload signature, and every OTHER host's, ride the
+    # baked binding. A host can read another host's hook settings (Copilot runs Claude's), so the hook has to be able
+    # to recognise a payload that positively belongs to another host - and only then stand down. Sorted, so a
+    # re-deploy stays byte-idempotent.
+    $ownSignature = ConvertTo-StablePayloadSignature -Signature (Get-ManifestValue -Map $runtime -Key 'PayloadSignature' -Default $null)
+    if ($null -ne $ownSignature) { $stableRuntime['PayloadSignature'] = $ownSignature }
+    $foreign = Get-ForeignPayloadSignatures
+    if ($foreign.Count -gt 0) { $stableRuntime['ForeignPayloadSignatures'] = $foreign }
     $json = $stableRuntime | ConvertTo-Json -Depth 8 -Compress
     return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
 }

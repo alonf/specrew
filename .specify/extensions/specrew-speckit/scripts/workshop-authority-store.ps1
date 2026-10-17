@@ -973,6 +973,21 @@ function Write-SpecrewWorkshopAuthorityReceipt {
                 try { $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
                 catch { if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }; Start-Sleep -Milliseconds 25 }
             } until ($null -ne $lockStream)
+            # Feature 202 iteration 002, T016 (FR-028; B4F-129): a receipt ID the store already holds is the same reply
+            # offered again - by a second host's hooks reading the same session, or a second path - so it is never
+            # written twice. The record already there is the answer; the reply was recorded, once.
+            if ([IO.File]::Exists($path)) {
+                $idNeedle = '"receipt_id":"' + $receiptId + '"'
+                foreach ($existingLine in [IO.File]::ReadAllLines($path)) {
+                    if (-not $existingLine.Contains($idNeedle)) { continue }
+                    $existingRecord = $null
+                    try { $existingRecord = $existingLine | ConvertFrom-Json -ErrorAction Stop } catch { $existingRecord = $null }
+                    if ($null -ne $existingRecord -and [string]$existingRecord.receipt_id -ceq $receiptId) {
+                        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'recorded' -Reason 'recorded' -FeatureRef $featureRef -Phase $phase -Response $Response
+                        return $existingRecord
+                    }
+                }
+            }
             [IO.File]::AppendAllText($path, $line, [Text.UTF8Encoding]::new($false))
         }
         finally {

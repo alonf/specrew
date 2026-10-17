@@ -493,6 +493,13 @@ function Get-DispatcherMapValue {
     return $Map.PSObject.Properties[$Key].Value
 }
 
+function Get-DispatcherMapKeys {
+    param($Map)
+    if ($null -eq $Map) { return @() }
+    if ($Map -is [System.Collections.IDictionary]) { return @($Map.Keys | ForEach-Object { [string]$_ }) }
+    return @($Map.PSObject.Properties | ForEach-Object { [string]$_.Name })
+}
+
 function ConvertTo-DispatcherStringArray {
     param($Value)
     if ($null -eq $Value) { return @() }
@@ -522,7 +529,67 @@ function ConvertFrom-DispatcherRuntimeBinding {
         InputFieldMap           = Get-DispatcherMapValue -Map $Runtime -Key 'InputFieldMap'
         OriginRules             = Get-DispatcherMapValue -Map $Runtime -Key 'OriginRules'
         InputTransform          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'InputTransform' -Default '')
+        # Feature 202 iteration 002, T016 (FR-028, DA-1): this host's payload signature and the other hosts'.
+        PayloadSignature         = Get-DispatcherMapValue -Map $Runtime -Key 'PayloadSignature'
+        ForeignPayloadSignatures = Get-DispatcherMapValue -Map $Runtime -Key 'ForeignPayloadSignatures'
     }
+}
+
+function Test-DispatcherPayloadSignature {
+    # $true when the payload carries every AllOf field and none of the NoneOf fields of the rule for this event
+    # ('Default' when the event has no rule of its own); $false when it does not; $null when there is no rule.
+    param($PayloadKeys, $Signature, [string]$EventName)
+    if ($null -eq $Signature) { return $null }
+    $rule = $null
+    if (Test-DispatcherMapKey -Map $Signature -Key $EventName) { $rule = Get-DispatcherMapValue -Map $Signature -Key $EventName }
+    elseif (Test-DispatcherMapKey -Map $Signature -Key 'Default') { $rule = Get-DispatcherMapValue -Map $Signature -Key 'Default' }
+    if ($null -eq $rule) { return $null }
+    $keys = @($PayloadKeys)
+    foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $rule -Key 'AllOf' -Default @()))) { if ($keys -cnotcontains $field) { return $false } }
+    foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $rule -Key 'NoneOf' -Default @()))) { if ($keys -ccontains $field) { return $false } }
+    return $true
+}
+
+function Get-DispatcherPayloadHostMatch {
+    # Feature 202 iteration 002, T016 (FR-028, DA-1, with the maintainer's change): whose payload is this?
+    #   own      - it matches this host's signature (or the binding declares none): handle it.
+    #   foreign  - it matches ANOTHER known host's signature and not this host's: stand down, write nothing.
+    #   unknown  - this host declares a signature and the payload matches no known host: handle it as today and
+    #              log the shape once, so a host that changes its payload can never switch governance off silently.
+    param($Payload, $Binding, [string]$EventName)
+    if ($null -eq $Payload -or -not ($Payload -is [psobject])) { return [pscustomobject]@{ Kind = 'own'; Host = '' } }
+    $keys = @($Payload.PSObject.Properties | ForEach-Object { [string]$_.Name })
+    $ownSignature = Get-DispatcherMapValue -Map $Binding -Key 'PayloadSignature'
+    $own = Test-DispatcherPayloadSignature -PayloadKeys $keys -Signature $ownSignature -EventName $EventName
+    if ($own -eq $true) { return [pscustomobject]@{ Kind = 'own'; Host = '' } }
+    $foreign = Get-DispatcherMapValue -Map $Binding -Key 'ForeignPayloadSignatures'
+    if ($null -ne $foreign) {
+        foreach ($otherHost in @(Get-DispatcherMapKeys -Map $foreign)) {
+            if ((Test-DispatcherPayloadSignature -PayloadKeys $keys -Signature (Get-DispatcherMapValue -Map $foreign -Key ([string]$otherHost)) -EventName $EventName) -eq $true) {
+                return [pscustomobject]@{ Kind = 'foreign'; Host = [string]$otherHost }
+            }
+        }
+    }
+    if ($null -eq $own) { return [pscustomobject]@{ Kind = 'own'; Host = '' } }
+    return [pscustomobject]@{ Kind = 'unknown'; Host = ''; Keys = @($keys | Sort-Object) }
+}
+
+function Write-DispatcherUnrecognizedPayloadLog {
+    # Once per (host, event, set of field names): the field names only, never a value. Fail-open.
+    param([string]$ProjectRoot, [string]$HostKind, [string]$EventName, [string[]]$Keys)
+    try {
+        $joined = (@($Keys) -join ',')
+        $hash = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($HostKind + '|' + $EventName + '|' + $joined)))).ToLowerInvariant().Substring(0, 12)
+        $dir = Join-Path $ProjectRoot '.specrew/runtime/hook-health'
+        $path = Join-Path $dir ("unrecognized-payload-{0}-{1}-{2}.json" -f ($HostKind -replace '[^A-Za-z0-9_.-]', ''), ($EventName -replace '[^A-Za-z0-9_.-]', ''), $hash)
+        if (Test-Path -LiteralPath $path -PathType Leaf) { return }
+        [IO.Directory]::CreateDirectory($dir) | Out-Null
+        $record = [ordered]@{ schema = 'specrew-unrecognized-payload/v1'; host = $HostKind; event = $EventName; field_names = @($Keys); first_seen = [DateTimeOffset]::UtcNow.ToString('o')
+            note = 'This hook received a payload that matches no known host signature. It was handled as before; this record is written once per shape.' }
+        [IO.File]::WriteAllText($path, ($record | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+        Write-DispatcherWarn -Code 'PAYLOAD_SHAPE' -Message ("{0} {1}: payload matches no known host signature; handled as before and recorded once" -f $HostKind, $EventName)
+    }
+    catch { $null = $_ }
 }
 
 function Find-DispatcherHostManifestPath {
@@ -1530,6 +1597,17 @@ try {
     # Feature 202 T002: the host's declared binding (baked into the deployed hook, else its manifest) drives the
     # single normalizer; every field below comes from the standard turn record, never from the raw payload.
     $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
+    # Feature 202 iteration 002, T016 (FR-028, DA-1; B4F-129): a hook acts only for its own host. Copilot also runs
+    # the hooks in Claude's settings, so the same event arrives here twice. Stand down - nothing written, not even a
+    # health receipt - only when the payload positively belongs to another known host.
+    $payloadMatch = Get-DispatcherPayloadHostMatch -Payload $hostEvent -Binding $hostRuntimeBinding -EventName $Event
+    if ($payloadMatch.Kind -eq 'foreign') {
+        Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $hostRuntimeBinding
+        exit 0
+    }
+    if ($payloadMatch.Kind -eq 'unknown') {
+        Write-DispatcherUnrecognizedPayloadLog -ProjectRoot $projectRoot -HostKind $HostKind -EventName $Event -Keys @($payloadMatch.Keys)
+    }
     $turnRecord = ConvertTo-SpecrewTurnRecord -EventName $Event -HostName $HostKind -Payload $hostEvent -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
     $rawSessionId = $turnRecord.session_id
     $sessionId = $turnRecord.safe_session_id
