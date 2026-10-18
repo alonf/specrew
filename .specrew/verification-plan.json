@@ -111,7 +111,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$fail = 0; $r = Invoke-Pester -Path tests/unit/message-identity.tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0 -or $r.PassedCount -lt 1) { $fail = 1; Write-Host \"f202 i002 suite FAILED: message-identity $($r.FailedCount) failed, $($r.PassedCount) passed\" }; foreach ($s in @('tests/unit/host-binding-match.tests.ps1','tests/unit/workshop-delegation.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 i002 suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; $r = Invoke-Pester -Path tests/unit/message-identity.tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0 -or $r.PassedCount -lt 1) { $fail = 1; Write-Host \"f202 i002 suite FAILED: message-identity $($r.FailedCount) failed, $($r.PassedCount) passed\" }; foreach ($s in @('tests/unit/host-binding-match.tests.ps1','tests/unit/workshop-delegation.tests.ps1','tests/unit/workshop-question-tool.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 i002 suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 600,
       "env_refs": [
@@ -135,7 +135,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 202 iteration 002 suites (T016 to T023), added 2026-10-17 with T017. Its own lane because lanes a and b would drop under the 2.4x headroom floor with it. message-identity (T017, FR-027, SC-010): one typed approval through the message hook and N turn ends records once on Claude, Codex and Copilot, a retype still records, the backup path records once, and a Copilot miss is reported, and co-review rounds 1 to 4 replay their sixteen findings, and B4F-137 (a typed approval replaces an unspent turn-end record). workshop-delegation (T020, FR-031): the wide forms cover every remaining lens, the narrow form names the phrase, the mixed lens closes as delegated (12 s). host-binding-match (T016, FR-028): every recorded payload against every validated host's deployed hook - another host's payload stands down and writes nothing, an unknown shape is handled and logged once, a duplicate receipt ID is refused (71 s). Measured alone 236 s against 600 s (2.54x), after round 4's fixes."
+      "label": "Feature 202 iteration 002 suites (T016 to T023), added 2026-10-17 with T017. Its own lane because lanes a and b would drop under the 2.4x headroom floor with it. message-identity (T017, FR-027, SC-010): one typed approval through the message hook and N turn ends records once on Claude, Codex and Copilot, a retype still records, the backup path records once, and a Copilot miss is reported, and co-review rounds 1 to 4 replay their sixteen findings, and B4F-137 (a typed approval replaces an unspent turn-end record). workshop-delegation (T020, FR-031): the wide forms cover every remaining lens, the narrow form names the phrase, the mixed lens closes as delegated (12 s). workshop-question-tool (T021, FR-032): no shipped host instruction or skill permits a question tool for workshop questions (2 s). host-binding-match (T016, FR-028): every recorded payload against every validated host's deployed hook - another host's payload stands down and writes nothing, an unknown shape is handled and logged once, a duplicate receipt ID is refused (71 s). Measured alone 236 s against 600 s (2.54x), after round 4's fixes."
     },
 {
       "command_id": "f199-class-guards-a",

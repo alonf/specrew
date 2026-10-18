@@ -370,7 +370,7 @@ allowance reset, T023, T024.
   - **Owns:** `workshop-authority-store.ps1`, `extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1`,
     `extensions/specrew-speckit/squad-templates/skills/design-workshop.md`, `tests/unit/workshop-delegation*.tests.ps1`.
 
-- [ ] T021 [owner: Implementer] [sp: 1.0] [US8] **No instruction permits a question tool for workshop questions (B4F-131).**
+- [x] T021 [owner: Implementer] [sp: 1.0] [US8] **No instruction permits a question tool for workshop questions (B4F-131).** Done 2026-10-18. The permitting text was in the boundary-stop skill, which every host reads: "A picker in a design discussion ... is doing good work and stays". It now keeps pickers for exchanges nothing records and says workshop questions are never asked through a picker or question tool on any host. The launch instructions and the coordinator governance asked for "an explicit interactive question" for greenfield intake; they now ask for visible prose answered by a typed reply. `workshop-question-tool.tests.ps1` (47 shipped files, lane `f202-i002-suites`): RED on the old text with those three findings, green after.
   - **Work:** find the shipped instruction that let Copilot use its question box for lens questions and make it agree
     with the workshop rule.
   - **RED:** a text test over every shipped host instruction and skill finds the permitting text.

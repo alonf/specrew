@@ -345,7 +345,7 @@ Follow this conversational sequence before implementation work:
    - "brownfield-new": existing app/project content but no active Specrew feature to continue
    - "existing-continue": active feature directory or in-progress lifecycle work already exists
 3. If the state is "existing-continue", continue from the earliest incomplete lifecycle phase without asking the human to restate the feature.
-4. If the state is "greenfield-new" and no concrete feature request is available yet, ask an explicit interactive question such as "What do you want to build?" and wait for the human developer's answer before invoking any `speckit.*` lifecycle agent or command.
+4. If the state is "greenfield-new" and no concrete feature request is available yet, ask an explicit question in visible prose, answered by a typed reply and never through a question tool or picker, such as "What do you want to build?" and wait for the human developer's answer before invoking any `speckit.*` lifecycle agent or command.
 5. If greenfield intake is still incomplete after the first answer, continue with one targeted follow-up question at a time and keep intake open until the scope is concrete enough for `speckit.specify`.
 6. If the state is "brownfield-new", perform brownfield discovery before asking the human broad intake questions: inspect existing code structure, package/manifests, markdown/docs files, and recent git history to reconstruct the current product/system baseline.
 7. For "brownfield-new", use that repo evidence to draft or update the starting spec context yourself, identify likely technology/domain constraints, and ask only targeted follow-up questions about the intended change, corrections, or unresolved decisions.
