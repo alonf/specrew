@@ -395,7 +395,7 @@ allowance reset, T023, T024.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`,
     `tests/unit/approval-form*.tests.ps1`.
 
-- [ ] T019 [owner: Implementer] [sp: 0.5] [US8] **A reworded discussion question counts (B4F-128).**
+- [x] T019 [owner: Implementer] [sp: 0.5] [US8] **A reworded discussion question counts (B4F-128).** Done 2026-10-18. A declared question line absent verbatim is present when a reply question carries its meaning: identical numbers and identifiers, identical negations, and content words (lightly stemmed, without the words any question carries) of which at least 0.8 of the shorter question's are in the other and 0.5 of all are shared; each reply question answers for one declared question. `presented-check` case 9 holds B4F-128's two exact lines (RED on the old code, green after) and keeps a changed number, a changed ID, an added negation, a different question and a dropped question missing.
   - **Work:** extend the heading meaning match to question lines.
   - **RED:** B4F-128's two exact lines.
   - **Acceptance:** the reworded question passes; a question with a changed number or negation still fails.

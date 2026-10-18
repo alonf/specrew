@@ -1267,6 +1267,59 @@ function Test-SpecrewHeadingMeaningMatch {
     return (($common.Count / [double]$union.Count) -ge 0.75)
 }
 
+# A DISCUSSION QUESTION IS PRESENT WHEN ITS MEANING IS (202 iteration 002, T019, FR-030; B4F-128). The review sign-off
+# packet of 2026-10-16: the reply reworded discussion prompt 1 ("Does closing with B4F-127 open fit the consequence
+# grading, ..." became "Is closing with B4F-127 open consistent with how you grade defects by consequence, ..."), the
+# Stop counted it missing, and the whole packet was rendered again - the FR-012 repaint class on a line kind the heading
+# match did not reach. The same three tests as a heading, tuned for a sentence: its numbers and identifiers, and its
+# negations, must be identical; its content words, lightly stemmed ("grading" and "grade" are one word) and without the
+# words any question carries, must largely overlap - nearly all of the shorter question's words in the longer one
+# (0.8), and half of all the words in common (0.5). Options, links and the marker stay exact.
+$script:SpecrewQuestionFunctionWords = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'do', 'does', 'did', 'how', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'whether', 'you', 'your',
+        'we', 'our', 'i', 'my', 'me', 'us', 'should', 'would', 'could', 'can', 'will', 'shall', 'may', 'might', 'must',
+        'given', 'since', 'because', 'before', 'after', 'while', 'if', 'about', 'any', 'some', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
+
+function Get-SpecrewQuestionMeaning {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Question)
+    $text = ($Question -replace '^\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+)+', '').ToLowerInvariant() -replace "['’]", ''
+    $last = $text.LastIndexOf('?')
+    if ($last -ge 0) { $text = $text.Substring(0, $last) }
+    $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
+        $token = $m.Value
+        if ($token -match '\d') { [void]$anchors.Add($token); continue }
+        if ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token); continue }
+        if ($script:SpecrewHeadingFunctionWords.Contains($token) -or $script:SpecrewQuestionFunctionWords.Contains($token)) { continue }
+        $stem = $token
+        foreach ($suffix in @('ing', 'es', 'ed', 's')) {
+            if ($stem.Length -gt ($suffix.Length + 3) -and $stem.EndsWith($suffix)) { $stem = $stem.Substring(0, $stem.Length - $suffix.Length); break }
+        }
+        if ($stem.Length -gt 4 -and $stem.EndsWith('e')) { $stem = $stem.Substring(0, $stem.Length - 1) }
+        [void]$words.Add($stem)
+    }
+    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words }
+}
+
+function Test-SpecrewQuestionMeaningMatch {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Declared, [Parameter(Mandatory)][string] $Replied)
+    $d = Get-SpecrewQuestionMeaning -Question $Declared
+    $r = Get-SpecrewQuestionMeaning -Question $Replied
+    if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
+    if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
+    if ($d.Words.Count -eq 0 -or $r.Words.Count -eq 0) { return $false }
+    $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $common.IntersectWith($r.Words)
+    $union = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $union.UnionWith($r.Words)
+    $smaller = [Math]::Min($d.Words.Count, $r.Words.Count)
+    return ((($common.Count / [double]$smaller) -ge 0.8) -and (($common.Count / [double]$union.Count) -ge 0.5))
+}
+
 function Get-SpecrewTurnMeaningLinesMissing {
     # The declared meaning lines the reply does not carry, in draft order. Empty when every one is present - the
     # wording around them may differ freely. Whitespace is normalized on both sides, as the host accessors do. A heading
@@ -1287,6 +1340,13 @@ function Get-SpecrewTurnMeaningLinesMissing {
     }
     $missing = [System.Collections.Generic.List[string]]::new()
     $pendingHeadings = [System.Collections.Generic.List[string]]::new()
+    $pendingQuestions = [System.Collections.Generic.List[string]]::new()
+    # T019: the reply's questions, from the flattened text - each sentence that ends in '?', without its list marker.
+    $replyQuestions = [System.Collections.Generic.List[object]]::new()
+    foreach ($q in [regex]::Matches($replyText, '[^?!.#]+\?')) {
+        $qText = ($q.Value -replace '^\s*(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '').Trim()
+        if ($qText.Length -gt 0) { $replyQuestions.Add([pscustomobject]@{ Text = $qText; Used = $false }) }
+    }
     foreach ($line in @($MeaningLines)) {
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         if ($line -match '^#{1,6}\s+\S') {
@@ -1301,7 +1361,22 @@ function Get-SpecrewTurnMeaningLinesMissing {
             $pendingHeadings.Add($line)
             continue
         }
-        if (-not $replyText.Contains($line, [StringComparison]::Ordinal)) { $missing.Add($line) }
+        if ($replyText.Contains($line, [StringComparison]::Ordinal)) {
+            # A question present verbatim claims its reply question, so no reworded match can take it.
+            foreach ($rq in $replyQuestions) { if (-not $rq.Used -and $line.Contains($rq.Text, [StringComparison]::Ordinal)) { $rq.Used = $true; break } }
+            continue
+        }
+        $optionCore = $line -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '' -replace '^(?:`+|\*\*|__|\*|_)', ''
+        $isQuestion = ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') -and ($line -notmatch '^<!--') -and ($optionCore -notmatch '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)')
+        if ($isQuestion) { $pendingQuestions.Add($line) } else { $missing.Add($line) }
+    }
+    foreach ($line in $pendingQuestions) {
+        $hitQ = $null
+        foreach ($rq in $replyQuestions) {
+            if ($rq.Used) { continue }
+            if (Test-SpecrewQuestionMeaningMatch -Declared $line -Replied $rq.Text) { $hitQ = $rq; break }
+        }
+        if ($null -ne $hitQ) { $hitQ.Used = $true } else { $missing.Add($line) }
     }
     # A reworded heading matches a slot when the slot's first k words carry its meaning, for k within a few words of the
     # declared heading's length (the slot also holds the prose that follows the heading).

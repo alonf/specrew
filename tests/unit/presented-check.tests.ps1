@@ -286,6 +286,32 @@ try {
     $twoDeclared = "## The lock: kept at 1000 ms, now as one budget per hook fire`n`n## The lock: kept at 1000 ms, as one budget per fire`n`n" + $body8
     $oneReplied = "## The lock: kept at 1000 ms, now one budget per hook fire`n`n" + $body8
     Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $oneReplied -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $twoDeclared)).Count -eq 1) 'one reply heading answers for one declared heading, not two'
+
+    # Feature 202 iteration 002, T019 (FR-030; B4F-128): the review sign-off packet of 2026-10-16. The reply reworded
+    # discussion prompt 1, the Stop counted it missing, and the whole packet was rendered again. The two exact lines.
+    Write-Host 'Case 9: a reworded discussion question with the same meaning is present; a changed number or negation is not'
+    $declaredQ = 'Does closing with B4F-127 open fit the consequence grading, since it predates 202 and the interim launch check is in place?'
+    $repliedQ = 'Is closing with B4F-127 open consistent with how you grade defects by consequence, given that it predates 202 and the interim check before launches is in place?'
+    $draft9 = "## Discussion Prompts`n`n1. $declaredQ`n`n## What I Need From You`n`n  approved for review-signoff"
+    $reply9 = "## Discussion Prompts`n`n1. $repliedQ`n`n## What I Need From You`n`n  approved for review-signoff"
+    $meaning9 = @(Get-SpecrewTurnMeaningLines -Message $draft9)
+    Assert-True (@($meaning9 | Where-Object { $_ -like '*B4F-127*' }).Count -eq 1) 'the discussion question is a meaning line'
+    $missing9 = @(Get-SpecrewTurnMeaningLinesMissing -Reply $reply9 -MeaningLines $meaning9)
+    Assert-True ($missing9.Count -eq 0) ("B4F-128's reworded question counts as present ({0})" -f ($missing9 -join ' | '))
+    $mustMiss9 = [ordered]@{
+        'a changed number'  = ($repliedQ -replace 'predates 202', 'predates 201')
+        'a changed id'      = ($repliedQ -replace 'B4F-127', 'B4F-126')
+        'an added negation' = ($repliedQ -replace 'is closing', 'is not closing')
+        'a different question' = 'Should the withdrawal path record a second approval for the sign-off packet?'
+        'a dropped question' = ''
+    }
+    foreach ($case in $mustMiss9.GetEnumerator()) {
+        $r = "## Discussion Prompts`n`n1. $($case.Value)`n`n## What I Need From You`n`n  approved for review-signoff"
+        $m = @(Get-SpecrewTurnMeaningLinesMissing -Reply $r -MeaningLines $meaning9)
+        Assert-True (@($m | Where-Object { $_ -like '*B4F-127 open fit*' }).Count -eq 1) ("{0} is still missing" -f $case.Key)
+    }
+    $twoQ = "## Discussion Prompts`n`n1. $declaredQ`n`n2. Does closing with B4F-127 open fit the consequence grading, since it predates 202 and the interim launch check is still in place?`n`n## What I Need From You`n`n  approved for review-signoff"
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $reply9 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $twoQ)).Count -eq 1) 'one reply question answers for one declared question, not two'
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
