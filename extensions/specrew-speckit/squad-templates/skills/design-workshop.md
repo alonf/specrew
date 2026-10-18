@@ -430,8 +430,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      "confirm all as proposed" at the agenda or summary level, that confirms only the agenda/scope and cannot
      produce `human-confirmed` / `lens-question` for any lens. **Delegating the remaining lenses.** A delegation
      in one of the two exact wide forms, "the remaining lenses" or "all remaining lenses" (for example "you decide
-     the remaining lenses"), is recorded for every lens still open on the confirmed agenda, each as
-     `human-delegated` + `explicit-delegation` and bound to that one message. The turn tells you which lenses it
+     the remaining lenses"), is recorded for every lens still open on the confirmed agenda:
+     record each affected lens as `human-delegated` +
+     `explicit-delegation`, not `human-confirmed`, each bound to that one message. The turn tells you which lenses it
      covered: name them to the human in one line, and do not ask those lenses again. Lenses added to the agenda
      later are not covered. "the rest" is not a wide form, because it can mean the rest of this lens: it delegates
      only the open lens. When a delegation covers only the open lens while others are still open, the turn says so:

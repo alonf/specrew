@@ -430,7 +430,15 @@ try {
         # without the line, and nothing was withheld. The line is put back all the same.
         $r = Invoke-PromptWithPayload -Root $p4 -Payload ('Guidance from a provider that lost the line ' + [guid]::NewGuid().ToString('N')) -NotRecordedKey 'nr-lost' -NotRecordedLost
         Assert-True ($null -ne $r.Context -and $r.Context -notmatch 'held back') 'lost not-recorded line: the output itself was delivered'
-        Assert-True ((& $undelivered 'nr-lost') -eq 1) 'lost not-recorded line: the line the human did not get is put back'
+        $lostCount = & $undelivered 'nr-lost'
+        if ($lostCount -ne 1) {
+            # Fails on Linux and macOS CI only (2026-10-18); this says what that run saw.
+            Write-Host ("  diagnostic: put-back rows for nr-lost = {0}; exit {1}" -f $lostCount, $r.ExitCode)
+            Write-Host ("  diagnostic: stderr = {0}" -f (([string]$r.StdErr) -replace '\s+', ' '))
+            Write-Host ("  diagnostic: context = {0}" -f (([string]$r.Context) -replace '\s+', ' '))
+            Write-Host ("  diagnostic: journal rows for nr-lost = {0}" -f ((@(if (Test-Path -LiteralPath $drops) { [IO.File]::ReadAllLines($drops) | Where-Object { $_ -match '"nr-lost"' } }) -join ' | ')))
+        }
+        Assert-True ($lostCount -eq 1) 'lost not-recorded line: the line the human did not get is put back'
     }
     finally { Remove-Item -LiteralPath $p4 -Recurse -Force -ErrorAction SilentlyContinue }
 
@@ -452,6 +460,11 @@ try {
         $r = Invoke-PromptWithPayload -Root $p5 -Payload ('Guidance from a fire that fails after the line was marked ' + [guid]::NewGuid().ToString('N')) -NotRecordedKey 'nr-dispatcher-failed'
         Assert-True ($r.StdErr -match 'dispatcher fail-open') 'dispatcher failure: the fire took the fail-open exit'
         $restored5 = @(if (Test-Path -LiteralPath $drops5) { [IO.File]::ReadAllLines($drops5) | Where-Object { $_ -match 'not-recorded-undelivered' -and $_ -match '"nr-dispatcher-failed"' } }).Count
+        if ($restored5 -ne 1) {
+            Write-Host ("  diagnostic: put-back rows for nr-dispatcher-failed = {0}; exit {1}" -f $restored5, $r.ExitCode)
+            Write-Host ("  diagnostic: stderr = {0}" -f (([string]$r.StdErr) -replace '\s+', ' '))
+            Write-Host ("  diagnostic: journal rows = {0}" -f ((@(if (Test-Path -LiteralPath $drops5) { [IO.File]::ReadAllLines($drops5) | Where-Object { $_ -match '"nr-dispatcher-failed"' } }) -join ' | ')))
+        }
         Assert-True ($restored5 -eq 1) 'dispatcher failure: the line the human did not get is put back'
     }
     finally {
