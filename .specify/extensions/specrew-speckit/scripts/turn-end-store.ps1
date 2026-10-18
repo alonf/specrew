@@ -1238,6 +1238,11 @@ $script:SpecrewQuestionFunctionWords = [System.Collections.Generic.HashSet[strin
         'do', 'does', 'did', 'how', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'whether', 'you', 'your',
         'we', 'our', 'i', 'my', 'me', 'us', 'should', 'would', 'could', 'can', 'will', 'shall', 'may', 'might', 'must',
         'given', 'since', 'because', 'before', 'after', 'while', 'if', 'about', 'any', 'some', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
+# Co-review round 6 (iteration 002): the order words are carried by any question, but not interchangeably. 'before' and
+# 'after' were both dropped, so 'Should the migration run before deployment?' and '... after deployment?' read as one
+# question. A rewording may add or drop one ("the interim launch check" became "the interim check before launches" in
+# B4F-128's reply); a question that has one where the other has its opposite is a changed question.
+$script:SpecrewQuestionOrderOpposites = @(@('before', 'after'), @('earlier', 'later'), @('first', 'last'))
 
 function Get-SpecrewQuestionMeaning {
     [OutputType([pscustomobject])]
@@ -1248,8 +1253,10 @@ function Get-SpecrewQuestionMeaning {
     $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $order = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
         $token = $m.Value
+        foreach ($pair in $script:SpecrewQuestionOrderOpposites) { if ($pair -contains $token) { [void]$order.Add($token) } }
         if ($token -match '\d') { [void]$anchors.Add($token); continue }
         if ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token); continue }
         if ($script:SpecrewHeadingFunctionWords.Contains($token) -or $script:SpecrewQuestionFunctionWords.Contains($token)) { continue }
@@ -1260,7 +1267,7 @@ function Get-SpecrewQuestionMeaning {
         if ($stem.Length -gt 4 -and $stem.EndsWith('e')) { $stem = $stem.Substring(0, $stem.Length - 1) }
         [void]$words.Add($stem)
     }
-    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words }
+    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words; Order = $order }
 }
 
 function Test-SpecrewQuestionMeaningMatch {
@@ -1270,6 +1277,11 @@ function Test-SpecrewQuestionMeaningMatch {
     $r = Get-SpecrewQuestionMeaning -Question $Replied
     if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
     if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
+    foreach ($pair in $script:SpecrewQuestionOrderOpposites) {
+        $dOrder = @($pair | Where-Object { $d.Order.Contains($_) })
+        $rOrder = @($pair | Where-Object { $r.Order.Contains($_) })
+        if ($dOrder.Count -gt 0 -and $rOrder.Count -gt 0 -and (($dOrder -join ' ') -cne ($rOrder -join ' '))) { return $false }
+    }
     if ($d.Words.Count -eq 0 -or $r.Words.Count -eq 0) { return $false }
     $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
     $common.IntersectWith($r.Words)
