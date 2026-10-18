@@ -1374,10 +1374,10 @@ try {
             if (Get-Command Get-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) {
                 $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref) -Phase 'product-domain'
                 $workshopProductRecordsUnreceipted = ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid')
-                # Feature 202 T004 (FR-010): the actual cause, from the receipt outcome the prompt-entry writer journaled
-                # when the answer was given - never an inferred channel the human may not have used.
+                # Feature 202 T004 (FR-010): the actual cause, from the receipt outcome the prompt-entry writer recorded in this
+                # session's own folder (T022) when the answer was given - never an inferred channel the human may not have used.
                 if ($workshopProductRecordsUnreceipted -and (Get-Command Get-SpecrewWorkshopLatestRefusal -ErrorAction SilentlyContinue)) {
-                    $latestRefusal = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref) -Phase 'product-domain'
+                    $latestRefusal = Get-SpecrewWorkshopLatestRefusal -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref) -Phase 'product-domain' -HostKind $hostKindArg -SessionId $sessionIdArg
                     if ($null -ne $latestRefusal) { $workshopProductRecordsUnreceiptedCause = Get-SpecrewWorkshopRefusalCauseText -Reason ([string]$latestRefusal.reason) }
                 }
             }

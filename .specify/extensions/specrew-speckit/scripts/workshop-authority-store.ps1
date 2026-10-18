@@ -469,9 +469,45 @@ $script:SpecrewWorkshopLastHookOutputCheck = 'none'
 $script:SpecrewWorkshopLastHookOutputSkipped = 0
 $script:SpecrewWorkshopLastReceiptOutcome = $null
 
+# Feature 202 T022 (FR-033, DA-5; R5-5): THE RECEIPT OUTCOME LIVES IN THE SESSION'S OWN FOLDER.
+#
+# It used to be appended to one journal shared by every session in the project, and both readers - the dispatcher's
+# same-turn disclosure and the Stop's latest-refusal check - filtered it after the fact. A refusal in one session could
+# then show in another (R5-5). Now each session keeps its own record beside its turn records, under the same per-session
+# folder the turn-end store resolves, and the readers read only that. Hashes, never the reply text.
+function Get-SpecrewWorkshopReceiptOutcomePath {
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$HostKind, [AllowNull()][string]$SessionId)
+    $runtimeRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime'
+    # The same arithmetic as Get-SpecrewTurnEndOwnerHash (turn-end-store.ps1), so the record sits in the session's own
+    # folder; a session-less host keeps one record at the runtime root, as its turn records do.
+    $owner = ''
+    if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+        $safeHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'unknown' } else { (($HostKind -replace '[^a-zA-Z0-9-]+', '-').Trim('-').ToLowerInvariant()) }
+        $safeSession = (($SessionId -replace '[^a-zA-Z0-9-]+', '-').Trim('-'))
+        if (-not [string]::IsNullOrWhiteSpace($safeSession)) {
+            $bytes = [Text.Encoding]::UTF8.GetBytes(('{0}|{1}' -f $safeHost, $safeSession))
+            $owner = -join ([Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+        }
+    }
+    $stateRoot = if ([string]::IsNullOrWhiteSpace($owner)) { $runtimeRoot } else { Join-Path (Join-Path $runtimeRoot 'conformance-sessions') $owner }
+    return (Join-Path $stateRoot 'workshop-receipt-outcome.json')
+}
+
+function Read-SpecrewWorkshopReceiptOutcomeRecord {
+    # The session's record, or $null when absent or unreadable. Shape: { schema_version; last; refusals{feature|phase} }.
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $record = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+        if ($record -isnot [pscustomobject] -or -not $record.PSObject.Properties['schema_version'] -or [string]$record.schema_version -cne '1.0') { return $null }
+        return $record
+    }
+    catch { return $null }
+}
+
 function Set-SpecrewWorkshopReceiptOutcome {
     # status: recorded | not-applicable | refused | degraded. Only 'recorded' means the reply was used as the
-    # answer (consumed). Every outcome other than not-applicable is journaled - hashes, never the reply text.
+    # answer (consumed). Every outcome other than not-applicable is recorded in the session's own folder.
     param(
         [AllowNull()][string]$ProjectRoot,
         [Parameter(Mandatory)][ValidateSet('recorded', 'not-applicable', 'refused', 'degraded')][string]$Status,
@@ -490,19 +526,31 @@ function Set-SpecrewWorkshopReceiptOutcome {
     }
     $script:SpecrewWorkshopLastReceiptOutcome = $outcome
     if ($Status -ne 'not-applicable' -and -not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $temp = $null
         try {
-            $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
-            [IO.Directory]::CreateDirectory((Split-Path -Parent $journal)) | Out-Null
+            $path = Get-SpecrewWorkshopReceiptOutcomePath -ProjectRoot $ProjectRoot -HostKind ([string]$script:SpecrewWorkshopReceiptHostKind) -SessionId ([string]$script:SpecrewWorkshopReceiptSessionId)
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
             $row = [ordered]@{
-                schema_version = '1.0'; status = $Status; reason = $Reason; feature_ref = $FeatureRef; phase = $Phase
+                status = $Status; reason = $Reason; feature_ref = $FeatureRef; phase = $Phase
                 consumed = $outcome.consumed; recorded_at = $outcome.recorded_at
                 response_hash = if ([string]::IsNullOrWhiteSpace($Response)) { $null } else { Get-SpecrewWorkshopAuthorityHash -Text $Response }
-                # Co-review round 5 (202): the session the reply was typed in, so a reader correlates the row to its own turn.
                 session_id = if ([string]::IsNullOrWhiteSpace([string]$script:SpecrewWorkshopReceiptSessionId)) { $null } else { [string]$script:SpecrewWorkshopReceiptSessionId }
             }
-            [IO.File]::AppendAllText($journal, (($row | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+            # The latest outcome (the same-turn disclosure reads it) and, per feature and phase, the latest refusal (the
+            # Stop's check reads it), so a later used reply does not hide why an earlier one was refused.
+            $refusals = [ordered]@{}
+            $existing = Read-SpecrewWorkshopReceiptOutcomeRecord -Path $path
+            if ($null -ne $existing -and $existing.PSObject.Properties['refusals'] -and $existing.refusals -is [pscustomobject]) {
+                foreach ($p in $existing.refusals.PSObject.Properties) { $refusals[$p.Name] = $p.Value }
+            }
+            if ($Status -in @('refused', 'degraded')) { $refusals[('{0}|{1}' -f $FeatureRef, $Phase)] = $row }
+            $record = [ordered]@{ schema_version = '1.0'; last = $row; refusals = $refusals }
+            $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+            [IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Depth 8 -Compress), [Text.UTF8Encoding]::new($false))
+            [IO.File]::Move($temp, $path, $true)
         }
-        catch { $null = $_ }  # the outcome journal is evidence; the in-turn disclosure does not depend on it
+        catch { $null = $_ }  # the outcome record is evidence; the in-turn disclosure does not depend on it
+        finally { if ($null -ne $temp -and (Test-Path -LiteralPath $temp -PathType Leaf)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }
     }
     return $outcome
 }
@@ -510,18 +558,15 @@ function Set-SpecrewWorkshopReceiptOutcome {
 function Get-SpecrewWorkshopLastReceiptOutcome { return $script:SpecrewWorkshopLastReceiptOutcome }
 
 function Get-SpecrewWorkshopLatestRefusal {
-    # The newest refused/degraded outcome for one feature and phase, from the outcome journal; $null when none.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef, [Parameter(Mandatory)][string]$Phase)
-    $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
-    if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return $null }
-    $latest = $null
-    foreach ($line in [IO.File]::ReadAllLines($journal, [Text.Encoding]::UTF8)) {
-        if ([string]::IsNullOrWhiteSpace($line)) { continue }
-        try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
-        if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['feature_ref'] -or -not $row.PSObject.Properties['phase'] -or -not $row.PSObject.Properties['status']) { continue }  # co-review round 3: shape first
-        if ([string]$row.feature_ref -ceq $FeatureRef -and [string]$row.phase -ceq $Phase -and [string]$row.status -in @('refused', 'degraded')) { $latest = $row }
-    }
-    return $latest
+    # The newest refused/degraded outcome for one feature and phase IN THIS SESSION; $null when none (T022, R5-5).
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef, [Parameter(Mandatory)][string]$Phase,
+        [AllowNull()][string]$HostKind, [AllowNull()][string]$SessionId)
+    $record = Read-SpecrewWorkshopReceiptOutcomeRecord -Path (Get-SpecrewWorkshopReceiptOutcomePath -ProjectRoot $ProjectRoot -HostKind $HostKind -SessionId $SessionId)
+    if ($null -eq $record -or -not $record.PSObject.Properties['refusals'] -or $record.refusals -isnot [pscustomobject]) { return $null }
+    $row = $record.refusals.PSObject.Properties[('{0}|{1}' -f $FeatureRef, $Phase)]
+    if ($null -eq $row -or $row.Value -isnot [pscustomobject] -or -not $row.Value.PSObject.Properties['status'] -or -not $row.Value.PSObject.Properties['reason']) { return $null }  # co-review round 3: shape first
+    if ([string]$row.Value.status -notin @('refused', 'degraded')) { return $null }
+    return $row.Value
 }
 
 function Get-SpecrewWorkshopRefusalCauseText {
@@ -571,6 +616,7 @@ function Get-SpecrewWorkshopReceiptOutcomeDisclosure {
 # began - ask the human ONE decision, in the reference wording, and act only on their typed yes.
 $script:SpecrewReplyRecordingRecoveryAfterMinutes = 10
 $script:SpecrewWorkshopReceiptSessionId = $null
+$script:SpecrewWorkshopReceiptHostKind = $null
 $script:SpecrewReplyRecordingRecoveryQuestion = "Specrew couldn't record your reply safely. May I clear the stuck error so it can record again? Nothing is deleted."
 
 function Get-SpecrewReplyRecordingDegradedSince {
@@ -812,28 +858,25 @@ function Get-SpecrewWorkshopTurnReceiptOutcome {
     # Co-review round 5 (202, FR-007): the journal is shared by every session in the project, so a time bound alone picked
     # up another session's outcome and told this human their reply was used. A row counts only when it answers THIS
     # reply (its hash) and, when both sides know it, was typed in THIS session. No reply, no outcome.
-    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][DateTimeOffset]$Since, [AllowNull()][string]$Response, [AllowNull()][string]$SessionId)
+    #
+    # Feature 202 T022 (FR-033, DA-5): the outcome is read from THIS session's own record, so another session's outcome
+    # is never in reach; the hash and time checks stay, so a stale outcome of this session is not this turn's either.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][DateTimeOffset]$Since, [AllowNull()][string]$Response, [AllowNull()][string]$SessionId,
+        [AllowNull()][string]$HostKind)
     if ([string]::IsNullOrWhiteSpace($Response)) { return $null }
     $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
-    $journal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-receipt-outcomes.jsonl'
-    if (-not (Test-Path -LiteralPath $journal -PathType Leaf)) { return $null }
-    $latest = $null
     try {
-        foreach ($line in [IO.File]::ReadAllLines($journal, [Text.Encoding]::UTF8)) {
-            if ([string]::IsNullOrWhiteSpace($line)) { continue }
-            try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
-            if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['status'] -or -not $row.PSObject.Properties['recorded_at']) { continue }
-            $at = $null
-            try { $at = [DateTimeOffset]$row.recorded_at } catch { $at = $null }
-            if ($null -eq $at -or $at -lt $Since) { continue }
-            if (-not $row.PSObject.Properties['response_hash'] -or [string]$row.response_hash -cne $responseHash) { continue }
-            $rowSession = if ($row.PSObject.Properties['session_id']) { [string]$row.session_id } else { '' }
-            if (-not [string]::IsNullOrWhiteSpace($SessionId) -and $rowSession -cne [string]$SessionId) { continue }
-            $latest = $row
-        }
+        $record = Read-SpecrewWorkshopReceiptOutcomeRecord -Path (Get-SpecrewWorkshopReceiptOutcomePath -ProjectRoot $ProjectRoot -HostKind $HostKind -SessionId $SessionId)
+        if ($null -eq $record -or -not $record.PSObject.Properties['last']) { return $null }
+        $row = $record.last
+        if ($row -isnot [pscustomobject] -or -not $row.PSObject.Properties['status'] -or -not $row.PSObject.Properties['recorded_at']) { return $null }
+        $at = $null
+        try { $at = [DateTimeOffset]$row.recorded_at } catch { $at = $null }
+        if ($null -eq $at -or $at -lt $Since) { return $null }
+        if (-not $row.PSObject.Properties['response_hash'] -or [string]$row.response_hash -cne $responseHash) { return $null }
+        return $row
     }
     catch { return $null }
-    return $latest
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {
@@ -847,12 +890,13 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         # Feature 202 (FR-006): the dispatcher's origin for this prompt. Only typed-user can produce a receipt; empty
         # means a direct caller with no turn record, where the text checks below are the whole decision.
         [AllowNull()][string] $TurnOrigin,
-        # Co-review round 5 (202): the session the reply was typed in, journaled with its outcome.
+        # Co-review round 5 (202): the session the reply was typed in; T022 records its outcome in that session's own folder.
         [AllowNull()][string] $SessionId
     )
 
     $script:SpecrewWorkshopLastReceiptOutcome = $null
     $script:SpecrewWorkshopReceiptSessionId = $SessionId
+    $script:SpecrewWorkshopReceiptHostKind = $HostKind
     $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
     if ($null -eq $canonicalSourceEvent) { $null = Set-SpecrewWorkshopReceiptOutcome -Status 'not-applicable' -Reason 'not-a-prompt-event'; return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)

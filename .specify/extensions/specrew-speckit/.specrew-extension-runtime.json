@@ -420,7 +420,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "59e1002f3acbebaab0eb63ba4ca73b97fdb5cc61748b566f6c4aa4d5af85f61c"
+      "sha256": "91dbae553a15c61bdb8fe54d5b5a9de42c15c58f730d7251929ea9e7e7ecb8bd"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "48a7e56b781bd4d3ac7b38001503e11944270693d3ac8c496d8cdaf7cec17b3a"
+      "sha256": "33a01edeaf6324651140ec3737c594c4b38d07cecf1b05f5a0c66454541e2e0e"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "77383258fcf10ea1bc19b8614033a4438585ebdb9a1ee3220752287dc1adec8b"
+      "sha256": "ee611f1410eed2dbec1947e938fdcc01cc4720d6d79d6ed514b1c7c16e1e099f"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
