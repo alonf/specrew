@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "2db90874c1eb95a49c0982192dfa1b89c955ceddc430274fd7386922866bf7b4"
+      "sha256": "b160ef51b9f7ca7b3061a85308cfa04d64300a41b13da6d09646f6ef62ee0e2f"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
@@ -552,7 +552,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "85bde8c3e6446c49bf8e976eaead759be80c2f4750fef3618b8e701e1ac372eb"
+      "sha256": "bad02788957e7d04bbe2c4a0e629c12940ef981798f8132e49eb5ea7896ce7f3"
     },
     {
       "path": "squad-templates/skills/drift-check.md",

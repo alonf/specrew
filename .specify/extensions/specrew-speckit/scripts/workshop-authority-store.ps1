@@ -1197,11 +1197,13 @@ function Get-SpecrewWorkshopAuthorityReceipt {
 }
 
 function Get-SpecrewWorkshopLensClosingReceipt {
-    # T020 (FR-031, DA-4): THE RECEIPT A LENS CLOSES ON. Normally its newest receipt. One mix is allowed: a lens whose
-    # craft decisions the human delegated and whose reviewer pick they then confirmed closes as delegated, on the
+    # T020 (FR-031, DA-4): THE RECEIPT A LENS CLOSES ON. Normally its newest receipt: a newer answer replaces an older
+    # one, so an older reply cannot be replayed. One mix is allowed: a lens covered by a WIDE delegation ("you decide the
+    # remaining lenses", given in advance) whose reviewer pick the human then confirmed closes as delegated, on that
     # delegation receipt - the walk's Claude case, where the confirmed reviewer answer was newest and the close asked
-    # "confirm or you decide this lens" again. Only confirmed answers may stand after that delegation; a later skip or
-    # another delegation is the newest act and wins. Used by the lens checkpoint and by every reader that checks it.
+    # "confirm or you decide this lens" again. Only confirmed answers may stand after it; a later skip or delegation is the
+    # newest act and wins, and a narrow "you decide" followed by an answer is a changed mind, so the answer wins. Used by
+    # the lens checkpoint and by every reader that checks a closed lens.
     param(
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $FeatureRef,
@@ -1211,7 +1213,7 @@ function Get-SpecrewWorkshopLensClosingReceipt {
     )
     $latest = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase $Phase -Lens $Lens
     if ($null -eq $latest -or [string]$latest.confirmation -ceq [string]$Confirmation) { return $latest }
-    if ([string]$Confirmation -cne 'human-delegated' -or [string]$latest.confirmation -cne 'human-confirmed') { return $latest }
+    if ($Phase -cne 'lens' -or [string]$Confirmation -cne 'human-delegated' -or [string]$latest.confirmation -cne 'human-confirmed') { return $latest }
     $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $ProjectRoot
     $forLens = New-Object System.Collections.Generic.List[object]
     foreach ($line in [IO.File]::ReadLines($path, [Text.Encoding]::UTF8)) {
@@ -1224,7 +1226,7 @@ function Get-SpecrewWorkshopLensClosingReceipt {
     for ($i = $forLens.Count - 1; $i -ge 0; $i--) {
         $c = [string]$forLens[$i].confirmation
         if ($c -ceq 'human-confirmed') { continue }
-        if ($c -ceq 'human-delegated') { return $forLens[$i] }
+        if ($c -ceq 'human-delegated' -and $forLens[$i].PSObject.Properties['delegation_breadth'] -and [string]$forLens[$i].delegation_breadth -ceq 'remaining-lenses') { return $forLens[$i] }
         break
     }
     return $latest

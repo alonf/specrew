@@ -434,9 +434,10 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      covered: name them to the human in one line, and do not ask those lenses again. Lenses added to the agenda
      later are not covered. "the rest" is not a wide form, because it can mean the rest of this lens: it delegates
      only the open lens. When a delegation covers only the open lens while others are still open, the turn says so:
-     tell the human in one line that "you decide the remaining lenses" delegates those too. A lens whose craft
-     decisions are delegated and whose reviewer pick is confirmed closes as `human-delegated` without another
-     question. **Count self-check before you record:** you are about to write N lens records — you must have
+     tell the human in one line that "you decide the remaining lenses" delegates those too. A lens covered by
+     "you decide the remaining lenses" whose reviewer pick is then confirmed closes as `human-delegated` without
+     another question; after a narrow "you decide", a later answer is a changed mind, and the lens closes on that
+     answer. **Count self-check before you record:** you are about to write N lens records — you must have
      asked, or been explicitly told to decide/skip, for each of the N lenses (one wide delegation counts for every
      lens it covered).
      A dismissed picker is an absence, never explicit delegation. If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill in
