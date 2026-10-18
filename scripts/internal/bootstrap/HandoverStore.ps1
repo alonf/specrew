@@ -1513,8 +1513,15 @@ function Update-SpecrewRollingHandover {
         }
         if (-not $recoveryAnswered -and (Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            $receipt = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                -HostKind $fromHost -SourceEvent $Source -TurnOrigin $TurnOrigin -SessionId $SessionId
+            $receiptArgs = @{ ProjectRoot = $ProjectRoot; Response = $LastUserMessage; HostKind = $fromHost; SourceEvent = $Source; TurnOrigin = $TurnOrigin; SessionId = $SessionId }
+            # T020 (FR-031): every receipt one message produces is bound to that message's ID.
+            if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt).Parameters.ContainsKey('MessageId')) { $receiptArgs['MessageId'] = $MessageId }
+            $receipt = Write-SpecrewWorkshopAuthorityReceipt @receiptArgs
+            # T020 (FR-031, DA-4): a delegation says what it covered - every remaining lens, or only this one while others
+            # are still open, with the phrase that covers them.
+            if ($null -ne $receipt -and (Get-Command Get-SpecrewWorkshopDelegationLine -ErrorAction SilentlyContinue)) {
+                try { $workshopDisclosure = Get-SpecrewWorkshopDelegationLine } catch { $workshopDisclosure = $null }
+            }
             # PRED-BETA4-053: a confirmation the receipt could not bind is said here, in the turn, with the
             # remedy - not discovered later when the persist throws.
             if ($null -eq $receipt -and (Get-Command Get-SpecrewWorkshopReceiptDisclosure -ErrorAction SilentlyContinue)) {

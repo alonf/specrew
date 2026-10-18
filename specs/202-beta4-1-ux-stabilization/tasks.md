@@ -356,7 +356,7 @@ allowance reset, T023, T024.
     `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `scripts/specrew-update.ps1`, the
     tests that read the journal today (cross-host-workshop, hook-output-journal, receipt-disclosure).
 
-- [ ] T020 [owner: Implementer] [sp: 2.0] [US8] **Delegation of the remaining lenses (DA-4, B4F-130).**
+- [x] T020 [owner: Implementer] [sp: 2.0] [US8] **Delegation of the remaining lenses (DA-4, B4F-130).** Done 2026-10-18. A delegation in one of the two exact wide forms records one receipt per lens still open on the agenda, each bound to the message ID (receipts now carry `message_id`), and the turn tells the crew which lenses it covered; "the rest" delegates only the open lens; a narrow delegation with lenses open says so and names the wide phrase. A lens closes on its newest receipt, or on its delegation when only confirmed answers (the reviewer pick) came after it; the lens checkpoint and the readers that check a closed lens use the same rule, and a later skip still wins. The skill asks the reviewer choice once, at agenda confirmation, outside delegation. `workshop-delegation.tests.ps1` (12 s, lane `f202-i002-suites`): RED on the old code with the walk's case (one lens recorded, the mixed lens refused), green after.
   - **Work:** exact wide forms ("the remaining lenses", "all remaining lenses") record one delegation per lens left on
     the agenda, bound to the message ID, and the crew names them in one line; "the rest" is not a wide form; a narrow
     delegation with lenses pending says so and names the wide phrase; the reviewer choice is asked once at agenda
