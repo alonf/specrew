@@ -329,6 +329,7 @@ function Get-SpecrewAuthorityMessageLineCount {
 # closing tag carrying the same ID, so a closing tag quoted inside a paste never ends it, and an opening tag that is never
 # closed makes everything after it pasted. On every host, a message carrying more than one verdict option is a quoted
 # menu - the crew's own options, copied back - and never an approval.
+$script:SpecrewMachineryEnvelopeLinePattern = '(?im)^\s*</?(?:hook_prompt|task-notification|turn_aborted|system-reminder|environment_context|command-name|local-command|bash-stdout)\b'
 $script:SpecrewVerdictOptionLinePattern = '^(?:approv(?:e|ed)\s+for\b|changes\s+needed\s*:|discuss\s+prompt\b|stop\s+the\s+review\s+here\b|abandon\s+this\s+review\s+campaign\b|continue\s+without\s+coverage\b|hold\s+implementation\s+here\b|withdraw\s+the\s+approval\b)'
 
 # THE OBSERVED PASTE-SIZE BOUNDARY (T018). Claude tags a paste only above a size, so untagged text is typing only while it
@@ -377,6 +378,10 @@ function Resolve-SpecrewApprovalForm {
     param([AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
     $result = [pscustomobject]@{ Text = [string]$Text; Reason = ''; Options = @() }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $result }
+    # Co-review round 5 (iteration 002): text the host or the machinery wrapped in one of its envelopes is never reduced to
+    # the authority line inside it. Every writer refuses an envelope at the start of the message; reduced, the envelope was
+    # gone before any writer saw it, and '<hook_prompt>' around 'approved for review round' recorded a human approval.
+    if ($Text -match $script:SpecrewMachineryEnvelopeLinePattern) { $result.Reason = 'machinery-envelope'; return $result }
     $marks = Test-SpecrewHostMarksPastes -HostKind $HostKind
     $outside = if ($marks) { Remove-SpecrewPairedPastes -Text $Text } else { [string]$Text }
     $lines = @([regex]::Split($outside, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })

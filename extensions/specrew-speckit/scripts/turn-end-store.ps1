@@ -1343,7 +1343,9 @@ function Get-SpecrewTurnMeaningLinesMissing {
     $pendingQuestions = [System.Collections.Generic.List[string]]::new()
     # T019: the reply's questions, from the flattened text - each sentence that ends in '?', without its list marker.
     $replyQuestions = [System.Collections.Generic.List[object]]::new()
-    foreach ($q in [regex]::Matches($replyText, '[^?!.#]+\?')) {
+    # Co-review round 5 (iteration 002): a period inside a version or a file name ('1.2', 'plan.md') is not the end of a
+    # sentence, so the question keeps its identifier and its anchor can match.
+    foreach ($q in [regex]::Matches($replyText, '(?:[^?!.#]|\.(?=\S))+\?')) {
         $qText = ($q.Value -replace '^\s*(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '').Trim()
         if ($qText.Length -gt 0) { $replyQuestions.Add([pscustomobject]@{ Text = $qText; Used = $false }) }
     }

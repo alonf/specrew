@@ -8,7 +8,8 @@
 # receipt-disclosure harness), and the real lens checkpoint writer for the close.
 #
 # Mutations that turn this file red: drop the wide-form branch (case 1 records one lens); treat "the rest" as wide
-# (case 3); remove the narrow line (case 4); close a lens only from its newest receipt again (case 6).
+# (case 3); remove the narrow line (case 4); close a lens only from its newest receipt again (case 6); match the wide
+# phrase anywhere in the reply (case 8); suppress a receipt by its answer text alone (case 9).
 $ErrorActionPreference = 'Stop'
 $script:Failures = 0
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Host ('  PASS: ' + $Message) } else { Write-Host ('  FAIL: ' + $Message); $script:Failures++ } }
@@ -136,6 +137,36 @@ try {
     Assert-True ($skill -match 'reviewer choice' -and $skill -match 'at agenda confirmation' -and $skill -match 'default') 'case 7: the reviewer choice is asked at agenda confirmation, with the default named'
     Assert-True ($skill -match 'outside delegation') 'case 7: and stays outside delegation'
     Assert-True ($skill -match '"the remaining lenses"' -and $skill -match '"all remaining lenses"' -and $skill -match '"the rest"') 'case 7: the skill names the two wide forms and says "the rest" is not one'
+
+    # Co-review round 5 (iteration 002).
+    Write-Host '  --- case 8: a delegation that names the remaining lenses to exclude them covers only this lens ---'
+    foreach ($limited in @('you decide this lens, not all remaining lenses', 'you decide, but I will answer the remaining lenses myself')) {
+        $r8 = New-LensFixture; $roots.Add($r8)
+        $out8 = Invoke-Provider -Root $r8 -Reply $limited -MessageId ('msg-limit-' + $roots.Count)
+        $lenses8 = @(Get-DelegatedLenses $r8)
+        Assert-True ($lenses8.Count -eq 1 -and $lenses8[0] -eq 'architecture-core') ("case 8: '{0}' delegates only the open lens ({1})" -f $limited, ($lenses8 -join ', '))
+        Assert-True ($out8 -match 'covers only architecture-core') ("case 8: '{0}' is told it covers only this lens" -f $limited)
+    }
+
+    Write-Host '  --- case 9: the same words in a new message are a new act; the same message again is not ---'
+    foreach ($withIds in @($true, $false)) {
+        $label = if ($withIds) { 'with message IDs' } else { 'with no message ID (Copilot)' }
+        $r9 = New-LensFixture; $roots.Add($r9)
+        $id = { param([string]$Name) if ($withIds) { $Name } else { '' } }
+        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-1')
+        $null = Invoke-Provider -Root $r9 -Reply 'you decide' -MessageId (& $id 'msg-decide-2')
+        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3')
+        $open9 = @(Get-Receipts $r9 | Where-Object { [string]$_.lens -eq 'architecture-core' })
+        Assert-True ($open9.Count -eq 3 -and [string]$open9[2].confirmation -eq 'human-skipped') ("case 9, {0}: skip, you decide, skip keeps three acts, the skip newest ({1})" -f $label, (($open9 | ForEach-Object { [string]$_.confirmation }) -join ', '))
+        Assert-True (@($open9 | ForEach-Object { [string]$_.receipt_id } | Select-Object -Unique).Count -eq $open9.Count) ("case 9, {0}: each act has its own receipt" -f $label)
+        $closing9 = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $r9 -FeatureRef $feature -Phase 'lens' -Lens 'architecture-core' -Confirmation 'human-delegated'
+        Assert-True ($null -ne $closing9 -and [string]$closing9.confirmation -eq 'human-skipped') ("case 9, {0}: the superseded delegation cannot close the lens" -f $label)
+        $null = & pwsh -NoProfile -File $lensWriter -ProjectRoot $r9 -FeatureRef $feature -Lens 'architecture-core' -Decision 'Delegated.' -Depth 'light' -Agenda @('An open question?') -Confirmation 'human-delegated' 2>&1
+        Assert-True ($LASTEXITCODE -ne 0) ("case 9, {0}: closing as delegated is refused after the latest skip" -f $label)
+        # The same reply offered again - a second path, or a second host's hooks - is still one receipt.
+        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3')
+        Assert-True (@(Get-Receipts $r9 | Where-Object { [string]$_.lens -eq 'architecture-core' }).Count -eq 3) ("case 9, {0}: the same reply again adds nothing" -f $label)
+    }
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }

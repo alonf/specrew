@@ -164,3 +164,34 @@
   check found the stored approval was an older turn-end record (B4F-137), confirmed the go-ahead. Reset
   `reset-7b13db76ba620c12794b` restored the rounds; the next round comes after T019 and covers the round-4 fixes and
   T022, T020, T021, T018 and T019.
+- **Round 5 (2026-10-18, the maintainer's typed `approved for review round`, checked typed, fresh and unspent before
+  launch)**: run `run-20261018-075433218-7cbe648b` (codex, 29 minutes) reviewed the round-4 fixes, B4F-137 and T018 to
+  T022. The engine counts it as round 1 of the restored allowance (1 of 4). 5 findings: 4 reported blocking or major and
+  demoted for "no concrete failure scenario" (each states one), 1 reported minor. Each was checked against the code, and
+  each is real:
+  1. **A quoted menu reached the partial sign-off writer.** T018 left the one-line rule to each recognizer, and the
+     partial sign-off's reason runs to the end of the message, so a menu that began with that phrase was saved as an
+     override while the disclosure said nothing was approved.
+  2. **Reducing a Claude message to its authority line removed a machinery envelope first.** Every writer refuses a
+     message that starts with one, but the reduction ran before them: `<hook_prompt>` around `approved for review round`
+     recorded a human approval.
+  3. **A delegation that named the remaining lenses to exclude them covered them.** "you decide this lens, not all
+     remaining lenses" was recorded for every open lens, because the wide form was matched anywhere in the reply.
+  4. **Receipts were suppressed by their answer text.** 'skip', 'you decide', 'skip' to one question kept only the first
+     skip, so the delegation between them stayed newest and could close the lens after the human's latest skip.
+  5. **A period inside a version or a file name ended a reply question.** A reworded question carrying `1.2` lost its
+     identifier and was counted missing, and the packet would be rendered again.
+- **Resolution (round 5)**, each behind a failing test:
+  1. A quoted menu reaches no minting writer; only the withdrawal still runs, since refusing it fails open.
+  2. A message with a machinery envelope at the start of any line is not reduced; the writers see it whole and refuse it.
+  3. The wide form is the whole reply: the delegation and the remaining lenses, and nothing else.
+  4. A held receipt is the same reply only when it carries the same message ID or, where the host gives none, when it is
+     still its lens's newest record with the same answer to the same question. A new act gets its own receipt ID.
+  5. A period followed by a non-space does not end a question.
+- **Tests (round 5)**: `approval-form` 9 new cases (6 RED on `29ac6303`; 3 are controls that prove the fixture holds a
+  real sign-off request), `workshop-delegation` cases 8 and 9 (12 checks RED), `presented-check` case 10 (2 RED). The
+  first version of fix 4 suppressed too little, and a replayed message became a fourth receipt; case 9's replay check
+  caught it before the lanes. The first lane run then caught a replay check that matched on the message ID alone, which the cross-host walk (one recorded host message for every reply) exposed; a replay now matches both the message ID and the answer. All eight lanes pass; `f202-i002-suites` takes 390 s in the parallel run against 660 s.
+- **Class closure (round 5)**: findings 1 and 2 are one class, T018's own premise: the form the writers decide on must
+  keep every reason to refuse that the message had. Finding 4 closes identity by content for workshop receipts, the
+  class T017 closed for authority facts.

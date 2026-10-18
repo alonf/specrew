@@ -1208,11 +1208,17 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # no pastes, reaches them unchanged, and the one-line rule refuses it. Both recording paths reduce the same message
     # the same way, so its identity below is still one key.
     $receivedResponse = [string]$Response
+    # Co-review round 5 (iteration 002): A QUOTED MENU MINTS NOTHING, whichever writer would take it. The one-line rule
+    # lives in each recognizer, and the partial sign-off's reason runs to the end of the message, so a menu that began
+    # with 'approved for partial review signoff - ...' was saved as an override while the disclosure said nothing was
+    # approved. Only the withdrawal still runs: it removes authority, and refusing it fails open.
+    $quotedMenu = $false
     if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
         try {
             $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind
             if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { return }
             $Response = [string]$form.Text
+            $quotedMenu = ([string]$form.Reason -ceq 'quoted-menu')
         }
         catch { $null = $_ }
     }
@@ -1316,6 +1322,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
             'Write-SpecrewCoverageDeferralAuthorization'
             'Write-SpecrewReviewSignoffOverrideAuthorization'
             'Write-SpecrewWorkshopRepairAuthorization')) {
+        if ($quotedMenu -and $writerName -cne 'Write-SpecrewApprovalWithdrawal') { continue }
         $writer = Get-Command $writerName -ErrorAction SilentlyContinue
         if ($null -eq $writer) { continue }
         try {

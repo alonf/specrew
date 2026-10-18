@@ -312,6 +312,20 @@ try {
     }
     $twoQ = "## Discussion Prompts`n`n1. $declaredQ`n`n2. Does closing with B4F-127 open fit the consequence grading, since it predates 202 and the interim launch check is still in place?`n`n## What I Need From You`n`n  approved for review-signoff"
     Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $reply9 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $twoQ)).Count -eq 1) 'one reply question answers for one declared question, not two'
+
+    # Co-review round 5 (iteration 002): a period inside a version or a file name does not end the reply's question.
+    Write-Host 'Case 10: a reworded question that carries a dotted identifier keeps it'
+    foreach ($pair in @(
+            @('Does version 1.2 preserve the approval record?', 'Will version 1.2 preserve the approval record?'),
+            @('Does plan.md still name the reviewer choice?', 'Is the reviewer choice still named in plan.md?'))) {
+        $d10 = "## Discussion Prompts`n`n1. $($pair[0])`n`n## What I Need From You`n`n  approved for review-signoff"
+        $r10 = "## Discussion Prompts`n`n1. $($pair[1])`n`n## What I Need From You`n`n  approved for review-signoff"
+        $m10 = @(Get-SpecrewTurnMeaningLinesMissing -Reply $r10 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d10))
+        Assert-True ($m10.Count -eq 0) ("'{0}' counts as present ({1})" -f $pair[1], ($m10 -join ' | '))
+    }
+    $d10b = "## Discussion Prompts`n`n1. Does version 1.2 preserve the approval record?`n`n## What I Need From You`n`n  approved for review-signoff"
+    $r10b = "## Discussion Prompts`n`n1. Will version 1.3 preserve the approval record?`n`n## What I Need From You`n`n  approved for review-signoff"
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r10b -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d10b)).Count -eq 1) 'a changed version is still missing'
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
