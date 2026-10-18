@@ -398,18 +398,21 @@ function Resolve-SpecrewApprovalForm {
         $result.Reason = 'quoted-menu'; $result.Options = $options
         return $result
     }
+    # Co-review round 6: THE OTHER TYPED LINES CAN QUALIFY THE APPROVAL. Reduced to its line, 'approved for review round'
+    # above 'provided the security checks pass' reached the writer with nothing after it, so the condition every writer
+    # refuses on the same line was never seen and the round was spendable at once. When the typed text beside the line
+    # carries a condition or a reversal, the message is not reduced, and the one-line rule refuses it by name.
+    # Co-review round 8: on every host. Looked for only where the host marks pastes, the condition reached the partial
+    # sign-off writer unrefused on Codex and Copilot, and that writer reads every line after its dash as the reason.
+    $others = @($lines | Where-Object { $null -eq (& $shapeOf $_) })
+    $qualified = ($authorityLines.Count -eq 1 -and $others.Count -gt 0 -and (Test-SpecrewAuthorityContextQualifies -Text ($others -join ' ')))
     if ($marks) {
         $typedSized = ($lines.Count -le $script:SpecrewTypedTextMaxLines -and $outside.Trim().Length -le $script:SpecrewTypedTextMaxChars)
-        # Co-review round 6: THE OTHER TYPED LINES CAN QUALIFY THE APPROVAL. Reduced to its line, 'approved for review round'
-        # above 'provided the security checks pass' reached the writer with nothing after it, so the condition every writer
-        # refuses on the same line was never seen and the round was spendable at once. When the typed text beside the line
-        # carries a condition or a reversal, the message is not reduced, and the one-line rule refuses it by name.
-        $others = @($lines | Where-Object { $null -eq (& $shapeOf $_) })
-        $qualified = ($others.Count -gt 0 -and (Test-SpecrewAuthorityContextQualifies -Text ($others -join ' ')))
         if ($typedSized -and $authorityLines.Count -eq 1 -and -not $qualified) { $result.Text = [string]$authorityLines[0] }
-        elseif ($typedSized -and $authorityLines.Count -eq 1) { $result.Text = $outside.Trim(); $result.Reason = 'qualified' }
+        elseif ($typedSized -and $qualified) { $result.Text = $outside.Trim(); $result.Reason = 'qualified' }
         elseif ($outside -cne [string]$Text) { $result.Text = $outside.Trim() }
     }
+    elseif ($qualified) { $result.Reason = 'qualified' }
     return $result
 }
 

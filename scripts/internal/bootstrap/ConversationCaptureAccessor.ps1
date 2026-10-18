@@ -555,6 +555,22 @@ function Get-SpecrewPendingVerdictFallbackCapture {
     return (Find-SpecrewPendingVerdictFallbackCandidate -Turns $Turns -Pending $pending)
 }
 
+function Resolve-SpecrewBoundaryVerdictText {
+    # Co-review round 8 (iteration 002, FR-029): a boundary approval takes the form every other typed approval takes. On a
+    # host that marks pastes, the human's own text is what lies outside every paste, so 'approved for before-implement' on
+    # its own line above or below a paste is the approval, as it is for a review round. When the approval form names a
+    # reason to refuse (a quoted menu, a qualified message, a host envelope), or cannot be read, the message is left as it
+    # came, and the verdict reader's own rules refuse it as before. Hosts that mark no pastes get the message unchanged.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
+    if ([string]::IsNullOrWhiteSpace($Text) -or [string]::IsNullOrWhiteSpace($HostKind) -or
+        -not (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue)) { return [string]$Text }
+    $form = $null
+    try { $form = Resolve-SpecrewApprovalForm -Text $Text -HostKind $HostKind } catch { $form = $null }
+    if ($null -eq $form -or -not [string]::IsNullOrWhiteSpace([string]$form.Reason)) { return [string]$Text }
+    return [string]$form.Text
+}
+
 function Get-SpecrewPromptEntryBoundaryVerdict {
     # W45 (2026-08-22): CAPTURE THE VERDICT BEFORE THE TURN STARTS, EVEN WITH NO TRANSCRIPT.
     #
@@ -580,7 +596,8 @@ function Get-SpecrewPromptEntryBoundaryVerdict {
     [OutputType([pscustomobject])]
     param(
         [Parameter()][AllowNull()][string]$ProjectRoot,
-        [Parameter()][AllowNull()][string]$LastUserMessage
+        [Parameter()][AllowNull()][string]$LastUserMessage,
+        [Parameter()][AllowNull()][string]$HostKind
     )
 
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-prompt' }
@@ -589,6 +606,7 @@ function Get-SpecrewPromptEntryBoundaryVerdict {
     $text = $text -replace '(?is)^\s*<USER_REQUEST>\s*', '' -replace '(?is)\s*</USER_REQUEST>\s*$', ''
     $text = $text.Trim()
     if (Test-SpecrewConversationMachineryEnvelope -Text $text) { $result.Reason = 'machinery-envelope'; return $result }
+    $text = Resolve-SpecrewBoundaryVerdictText -Text $text -HostKind $HostKind
 
     if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
         $result.Reason = 'no-pending-state'
@@ -647,7 +665,8 @@ function Get-SpecrewCapturedBoundaryVerdict {
         [Parameter()][AllowNull()][string]$TranscriptPath,
         [Parameter()][AllowNull()][string]$ProjectRoot,
         [Parameter()][AllowNull()][string]$LastUserMessage,
-        [int]$MaxTailLines = 500
+        [int]$MaxTailLines = 500,
+        [Parameter()][AllowNull()][string]$HostKind
     )
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
@@ -724,7 +743,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         for ($j = $i + 1; $j -lt $turns.Count; $j++) {
             if ([string]$turns[$j].role -eq 'assistant' -and $markerRx.IsMatch([string]$turns[$j].text)) { break }
             if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j])) { continue }
-            $candidateText = [string]$turns[$j].text
+            $candidateText = Resolve-SpecrewBoundaryVerdictText -Text ([string]$turns[$j].text) -HostKind $HostKind
             $candidate = Test-SpecrewHumanVerdictToken -Text $candidateText
             if (-not $candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss) { continue }
             $humanText = $candidateText

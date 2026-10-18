@@ -224,9 +224,13 @@ Describe 'A quoted menu mints nothing, whichever writer would take it' {
 
     # Co-review round 7 (iteration 002): the router refused a qualified message only through the writers' one-line rule, and
     # the partial sign-off writer reads everything after its dash as the reason, so the condition was recorded with it.
-    It 'claude: the partial sign-off phrase above a condition typed on the next line records no override, and says why' {
+    # Co-review round 8: on every host. The form looked for a condition only where the host marks pastes, so on Codex and
+    # Copilot the same message reached the writer unrefused.
+    It '<HostKind>: the partial sign-off phrase above a condition typed on the next line records no override, and says why' -ForEach @(
+        @{ HostKind = 'claude' }, @{ HostKind = 'codex' }, @{ HostKind = 'copilot' }
+    ) {
         $p = New-Project; Add-PartialSignoffRequest -Root $p
-        $shown = Invoke-Prompt -Root $p -HostKind 'claude' -Text "approved for partial review signoff - the remaining files are documentation`nprovided the security checks pass"
+        $shown = Invoke-Prompt -Root $p -HostKind $HostKind -Text "approved for partial review signoff - the remaining files are documentation`nprovided the security checks pass"
         @(Get-Overrides -Root $p).Count | Should -Be 0
         $shown | Should -Match 'a verdict is ONE line'
     }

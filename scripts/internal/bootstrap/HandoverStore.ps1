@@ -1005,7 +1005,9 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         [Parameter()][string] $Source = 'stop',
         [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
         # Co-review round 6 (iteration 002): where the dispatcher says the prompt came from; empty at Stop.
-        [Parameter()][AllowNull()][string] $TurnOrigin = $null
+        [Parameter()][AllowNull()][string] $TurnOrigin = $null,
+        # Co-review round 8 (iteration 002, FR-029): the host, so a boundary approval takes the approval form there.
+        [Parameter()][AllowNull()][string] $HostKind = $null
     )
 
     $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
@@ -1040,10 +1042,10 @@ function Invoke-SpecrewBoundaryVerdictCapture {
 
     try {
         $captured = if ([string]::IsNullOrWhiteSpace($TranscriptPath)) {
-            Get-SpecrewPromptEntryBoundaryVerdict -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+            Get-SpecrewPromptEntryBoundaryVerdict -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind
         }
         else {
-            Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+            Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind
         }
         if (-not $captured.Found) { $result.reason = $captured.Reason; return $result }
 
@@ -1601,7 +1603,7 @@ function Update-SpecrewRollingHandover {
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin
+            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost
         # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
         # where the phrase first appears, and the alternative is the human learning it from a recap two
         # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).
@@ -1837,7 +1839,7 @@ function Update-SpecrewRollingHandover {
     # and NEVER blocks the stop.
     if ($isEndOfTurn) {
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
-            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc | Out-Null
+            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc -HostKind $fromHost | Out-Null
         # W44 Stop backstop for round approval: on hosts where prompt-entry does not deliver the prompt
         # text (observed on claude - verdict capture lands at Stop), read the MOST RECENT genuine human
         # turn from the transcript and offer it to the same writer. One turn only, verified human, every

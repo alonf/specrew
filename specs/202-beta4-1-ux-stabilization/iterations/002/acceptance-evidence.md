@@ -19,7 +19,7 @@ beta4.1 does not ship until B4F-127 and B4F-129 are both fixed (maintainer rulin
 | --- | --- | --- | --- | --- |
 | FR-027 | One message, at most one recorded approval of each kind, keyed by the host's message identity; on Copilot a miss is reported | T017 | `message-identity.tests.ps1` (43 cases, among them every finding of rounds 1 to 4 and B4F-137 as its own replay); `turn-record-contract.tests.ps1` (the dispatcher forwards the message ID and identity) | Green |
 | FR-028 | A hook stands down only on a positive foreign match; the receipt store refuses an ID it holds | T016 | `host-binding-match.tests.ps1`; `workshop-delegation.tests.ps1` case 9 (round 5: the same reply is refused, the same words in a new message are a new act, with and without message IDs) | Green |
-| FR-029 | The approval form: pastes on Claude, quoted menus, the named reason elsewhere, a reset that authorizes its round, no command offered as the approval | T018 | `approval-form.tests.ps1` (49 cases: 17 from T018, among them the live B4F-125 message; 9 from round 5, a quoted menu reaching no writer and a host envelope never reduced; 19 from round 6, bulleted options, a condition on its own line, an envelope inside a paste, and a message the host added; 4 from round 7, a qualified partial sign-off and a conditional coverage deferral) | Green |
+| FR-029 | The approval form: pastes on Claude, quoted menus, the named reason elsewhere, a reset that authorizes its round, no command offered as the approval | T018 | `approval-form.tests.ps1` (51 cases: 17 from T018, among them the live B4F-125 message; 9 from round 5, a quoted menu reaching no writer and a host envelope never reduced; 19 from round 6, bulleted options, a condition on its own line, an envelope inside a paste, and a message the host added; 4 from round 7, a qualified partial sign-off and a conditional coverage deferral; 2 from round 8, the qualified partial sign-off on Codex and Copilot), and `verdict-capture-blocks` W45 (9), round 8: a boundary approval beside a paste | Green |
 | FR-030 | A reworded discussion question counts as present | T019 | `presented-check.tests.ps1` case 9 (B4F-128's two exact lines) case 10 (round 5: a dotted identifier such as `1.2`) and case 11 (round 6: a reversed before or after) | Green |
 | FR-031 | The wide delegation forms cover every remaining lens; a narrow one says so; the reviewer choice is asked once, outside delegation | T020 | `workshop-delegation.tests.ps1` cases 1 to 10 (case 8, round 5: a reply that names the remaining lenses to exclude them covers only the open lens; case 10, round 6: only a reviewer pick may follow a wide delegation; case 11, round 7: a short reply is a reviewer pick only as the answer to the reviewer question) | Green |
 | FR-032 | No shipped instruction permits a question tool for workshop questions | T021 | `workshop-question-tool.tests.ps1` (47 shipped files) | Green |
@@ -35,8 +35,8 @@ beta4.1 does not ship until B4F-127 and B4F-129 are both fixed (maintainer rulin
 
 ## Co-review
 
-Seven rounds on codex in iteration 002, each started by the maintainer's own typed `approved for review round` (rounds
-5 to 7 after the allowance reset of 2026-10-17). Every finding was checked against the code and listed as real or not,
+Eight rounds on codex in iteration 002, each started by the maintainer's own typed `approved for review round` (rounds
+5 to 8 after the allowance reset of 2026-10-17). Every finding was checked against the code and listed as real or not,
 with the reason (`drift-log.md`, DRIFT-003).
 
 | Round | Run | Covered | Findings | Real |
@@ -48,9 +48,11 @@ with the reason (`drift-log.md`, DRIFT-003).
 | 5 | `run-20261018-075433218-7cbe648b` | round-4 fixes, B4F-137, T018 to T022 | 5 | 5 |
 | 6 | `run-20261018-114927550-9d62a483` | round-5 fixes, T023, T024 | 6 | 6 |
 | 7 | `run-20261018-125258950-98a6a63d` | round-6 fixes | 3 | 3 |
+| 8 | `run-20261018-163747348-5da84de1` | round-7 fixes | 2 | 2 |
 
-30 of 30 findings are real; across feature 202, 62 of 62 (B4F-055). The review engine demoted 26 of the 30 as having
-"no concrete failure scenario", and each one states one. The round-7 fixes have not been reviewed yet.
+32 of 32 findings are real; across feature 202, 64 of 64 (B4F-055). The review engine demoted 28 of the 32 as having
+"no concrete failure scenario", and each one states one. The round-8 fixes have not been reviewed: the allowance is
+spent.
 
 ## Validator against the known baseline
 

@@ -15,6 +15,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'scripts\internal\bootstrap\ConversationCaptureAccessor.ps1')
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
 . (Join-Path $repoRoot 'scripts\internal\bootstrap\HandoverStore.ps1')
+. (Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1')
 
 $scratch = Join-Path $repoRoot '.scratch\verdict-capture-blocks'
 if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
@@ -639,6 +640,33 @@ No open prompts.
         -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z' -TurnOrigin 'typed-user'
     if (-not $r.authorized) { Fail "W45: a typed prompt no longer authorizes (reason=$($r.reason))" }
     Write-Pass 'W45 (8): a prompt not typed by the human authorizes no boundary; a typed one still does'
+
+    # (9) Co-review round 8 (iteration 002, FR-029): a boundary approval takes the same form as every other typed approval.
+    #     On Claude, which marks pastes, the approval on its own line outside a paste authorizes, above or below it; nothing
+    #     inside a paste counts, and a quoted menu or a condition in the typed text still refuses. Hosts that mark no
+    #     pastes keep the phrase alone. Both readers: the prompt with no transcript, and the transcript at the turn end.
+    $paste = '<pasted_content id="7">' + "`nnotes from the planning call`n" + '</pasted_content id="7">'
+    $w45cases = @(
+        @{ Host = 'claude'; Text = "approved for before-implement`n$paste"; Authorized = $true; Name = 'the approval above a paste' }
+        @{ Host = 'claude'; Text = "$paste`napproved for before-implement"; Authorized = $true; Name = 'the approval below a paste' }
+        @{ Host = 'codex'; Text = "approved for before-implement`n$paste"; Authorized = $false; Name = 'codex: the approval above a paste it cannot tell from typing' }
+        @{ Host = 'copilot'; Text = "approved for before-implement`n$paste"; Authorized = $false; Name = 'copilot: the approval above a paste it cannot tell from typing' }
+        @{ Host = 'claude'; Text = ('Look at this:' + "`n" + '<pasted_content id="8">' + "`napproved for before-implement`n" + '</pasted_content id="8">'); Authorized = $false; Name = 'an approval only inside a paste' }
+        @{ Host = 'claude'; Text = "approved for before-implement`nchanges needed: the rollback path`n$paste"; Authorized = $false; Name = 'a quoted menu outside the paste' }
+        @{ Host = 'claude'; Text = "approved for before-implement`nprovided the hardening gate passes`n$paste"; Authorized = $false; Name = 'a condition typed on the next line' }
+    )
+    foreach ($case in $w45cases) {
+        $w45j = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+        $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45j -TranscriptPath $null -HostKind $case.Host `
+            -LastUserMessage $case.Text -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z' -TurnOrigin 'typed-user'
+        if ([bool]$r.authorized -ne [bool]$case.Authorized) { Fail "W45 (9) prompt: $($case.Name) - authorized=$($r.authorized), expected $($case.Authorized) (reason=$($r.reason))" }
+        $w45k = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+        $w45kt = New-CaptureTranscript -Path (Join-Path $scratch ('w45k-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.jsonl')) -HumanText $case.Text
+        $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45k -TranscriptPath $w45kt -HostKind $case.Host `
+            -LastAuthorizedBoundary 'tasks' -Source 'stop' -NowUtc '2026-08-22T12:00:00Z'
+        if ([bool]$r.authorized -ne [bool]$case.Authorized) { Fail "W45 (9) transcript: $($case.Name) - authorized=$($r.authorized), expected $($case.Authorized) (reason=$($r.reason))" }
+    }
+    Write-Pass 'W45 (9): a boundary approval on its own line outside a paste authorizes on Claude; every refusal of the approval form still holds'
 
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

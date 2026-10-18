@@ -259,3 +259,30 @@
   bind at the one place every writer passes through, which round 5 established for the quoted menu. Finding 2 is the
   fourth copy of the condition rule to drift from the shared one (DRIFT-199-I001-123); the matrix now runs the shared
   list against every recognizer, so a copy cannot drift silently again.
+- **Round 8 (2026-10-18, the maintainer's typed `approved for review round`, checked typed, fresh and unspent before
+  launch)**: run `run-20261018-163747348-5da84de1` (codex, 29 minutes) reviewed the round-7 fixes. The engine counts it as
+  round 4 of the restored allowance (4 of 4; none left). 2 findings, both reported blocking or major and demoted for "no
+  concrete failure scenario" (each states one). Each was checked against the code, and each is real:
+  1. **The qualified check ran only where the host marks pastes.** On Codex and Copilot, 'approved for partial review
+     signoff - the remaining files are documentation' above 'provided the security checks pass' had no reason to refuse,
+     so the router let it reach the partial sign-off writer, which reads every line after its dash as the reason, and
+     the override was saved with the condition inside it.
+  2. **A boundary approval did not take the approval form.** On Claude, 'approved for before-implement' on its own line
+     above a paste was refused as a multi-line message, and below a paste was not read as an approval at all, while
+     the same act is an approval for a review round (FR-029). Both verdict readers classified the raw message. This
+     fails closed (nothing is approved that was not typed), and it costs the human a second, bare reply.
+- **Resolution (round 8)**, each behind a failing test:
+  1. A condition or a reversal in the typed text beside the one authority line qualifies the message on every host, so
+     the router refuses it for every writer but the withdrawal, wherever the host stands on pastes.
+  2. Both boundary verdict readers (the prompt with no transcript, and the transcript at the turn end) read the message
+     through the approval form for the host. A reason to refuse leaves the message as it came, so every earlier refusal
+     still holds; hosts that mark no pastes are unchanged.
+- **Tests (round 8)**: `approval-form` the round-7 partial sign-off case now runs on all three hosts (codex and copilot
+  RED on `1ef797ba`); `verdict-capture-blocks` W45 (9), seven cases through both readers: the approval above and below a
+  paste on Claude authorize, and the same text on Codex and Copilot, an approval only inside a paste, a quoted menu and a
+  condition outside the paste do not. Its RED on the old code is a missing-parameter error; a direct probe of the old
+  reader shows the behaviour (above a paste: `refused-multi-line`; below: `none`).
+- **Class closure (round 8)**: both are the approval form applied in fewer places than its rule covers. Finding 1 is a
+  host-independent rule (a condition beside an approval qualifies it) placed inside the host-dependent branch. Finding
+  2 is a reader of typed approvals that never passed through the router, which is where T018 put the form; the boundary
+  readers now call the same form rather than carrying a copy.
