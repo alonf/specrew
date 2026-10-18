@@ -28,7 +28,7 @@ boundary stops and keep the picker. Only boundary **verdict** stops route throug
 
 Author the full Rule 46 six-section packet with specific review targets, a recommendation, discussion
 points and the next agent-owned step. Pipe the packet into the script on **stdin** as the turn's **last tool
-call**. The script saves it in this session's own ignored folder, so you choose no file:
+call**. The script keeps it in this turn's own record, so you write no draft file:
 
 ```powershell
 @'

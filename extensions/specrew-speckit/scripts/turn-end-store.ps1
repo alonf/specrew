@@ -509,39 +509,17 @@ function Get-SpecrewTurnEndPathsForStateRoot {
     }
 }
 
-# Feature 202 T014 (FR-021, DA-4): THE TURN DRAFT IS SAVED WHERE THIS STORE SAYS, never where the agent chose.
+# Feature 202 T014 (FR-021, DA-4): THE TURN DRAFT ARRIVES ON STDIN, never in a file the agent chose.
 #
 # B4F-101: agents wrote their drafts to paths of their own choosing, inside the repository too, so drafts rode into
-# commits, and two sessions in one project wrote the same file. The agent now pipes the draft into the turn-end script
-# and the script saves it in the session's own ignored folder. The bytes are read raw and decoded as strict UTF-8: the
-# child's console input encoding is ibm437 under some agent shells (research.md, DA-4), so any console decoder is the
-# B4F-065 class.
+# commits, and two sessions in one project wrote the same file. The agent now pipes the draft into the turn-end script.
+# The bytes are read raw and decoded as strict UTF-8: the child's console input encoding is ibm437 under some agent
+# shells (research.md, DA-4), so any console decoder is the B4F-065 class.
+# Iteration 002, T023 (FR-034): the message is kept in the turn record only; the separate draft copy, read by nothing,
+# is no longer written.
 $script:SpecrewTurnDraftMaxBytes = 131072
 $script:SpecrewTurnDraftFirstByteWaitMs = 1500
 $script:SpecrewTurnDraftCompleteWaitMs = 10000
-
-function Get-SpecrewTurnDraftLocation {
-    # Per session: beside the session's turn-end records. A host that passes no session id has no session folder, so
-    # the draft is kept per turn token (unique per turn, so two sessions still never share one), and the script says
-    # so. With neither, there is one shared path, and the script says that a second session would overwrite it.
-    [OutputType([pscustomobject])]
-    param(
-        [Parameter(Mandatory)][string] $ProjectRoot,
-        [Parameter(Mandatory)] $Paths,
-        [AllowNull()][AllowEmptyString()][string] $Token
-    )
-    if ([bool]$Paths.Anchored) {
-        return [pscustomobject]@{ Path = (Join-Path ([string]$Paths.TurnEndRoot) 'turn-message.md'); Scope = 'session'; Disclosure = '' }
-    }
-    $turnEndRoot = Join-Path $ProjectRoot '.specrew/runtime/turn-end'
-    $safeToken = if ([string]::IsNullOrWhiteSpace($Token)) { '' } else { (($Token.Trim() -replace '[^a-zA-Z0-9-]+', '-').Trim('-')) }
-    if (-not [string]::IsNullOrWhiteSpace($safeToken)) {
-        $path = Join-Path (Join-Path $turnEndRoot ('token-' + $safeToken)) 'turn-message.md'
-        return [pscustomobject]@{ Path = $path; Scope = 'token'; Disclosure = ("This host passes no session id, so this turn's draft is kept per turn token, at {0}." -f $path) }
-    }
-    $shared = Join-Path $turnEndRoot 'turn-message.md'
-    return [pscustomobject]@{ Path = $shared; Scope = 'shared'; Disclosure = ("This host passes no session id and no turn token was given, so the draft is kept at one shared path, {0}; a second session on this host would overwrite it." -f $shared) }
-}
 
 function Read-SpecrewTurnDraftFromStdin {
     # The draft's raw bytes, or $null when none was sent. A shell that leaves stdin open and sends nothing must not hang
@@ -574,25 +552,6 @@ function ConvertFrom-SpecrewTurnDraftBytes {
     $offset = if ($Bytes.Length -ge 3 -and $Bytes[0] -eq 0xEF -and $Bytes[1] -eq 0xBB -and $Bytes[2] -eq 0xBF) { 3 } else { 0 }
     try { return [Text.UTF8Encoding]::new($false, $true).GetString($Bytes, $offset, $Bytes.Length - $offset) }
     catch [Text.DecoderFallbackException] { throw 'The draft is not valid UTF-8. Send it as UTF-8 text (PowerShell 7 pipes UTF-8; Windows PowerShell 5.1 does not).' }
-}
-
-function Save-SpecrewTurnDraft {
-    # Byte-exact, atomic (temp then move), so a reader never sees half a draft.
-    [OutputType([bool])]
-    param([Parameter(Mandatory)][string] $Path, [Parameter(Mandatory)][AllowEmptyCollection()][byte[]] $Bytes)
-    $temp = $null
-    try {
-        $directory = Split-Path -Parent $Path
-        if ($directory -and -not (Test-Path -LiteralPath $directory -PathType Container)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
-        $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
-        [IO.File]::WriteAllBytes($temp, $Bytes)
-        [IO.File]::Move($temp, $Path, $true)
-        return $true
-    }
-    catch { return $false }
-    finally {
-        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }
-    }
 }
 
 function Read-SpecrewTurnEndRecord {
