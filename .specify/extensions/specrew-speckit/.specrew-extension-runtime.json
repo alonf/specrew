@@ -408,7 +408,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "8b40b418f7af6447b465402a265b7c3c71651b4d9b8b7dec223da0b420d3fe9e"
+      "sha256": "9c1d1c138475f046ebb8d00a130f277bfb80ec7c8e978e099788758f5bf63865"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "c1bcee817368ee81a399ef748db18a88a24e29110394be6607c2e425d6caef36"
+      "sha256": "e0c0968c56451217b5c1671b5d067c358060b331c66b4c68620c249284d719a3"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",

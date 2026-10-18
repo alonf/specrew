@@ -38,10 +38,15 @@ function Test-SpecrewWorkshopReviewerPick {
     # with nothing but the words of a choice around it ("Use codex as the reviewer.", "copilot", "Confirm the default
     # reviewer.", "The reviewer is claude."). It is the one confirmed reply that may follow a wide delegation without taking
     # the lens back. Anything more is an answer to the lens.
+    # Co-review round 7 (iteration 002): bound to the question it answers. 'Use the default.' to 'Use SQLite or the default
+    # in-memory store?' is a craft answer, and was passed over as a reviewer pick. A reply that does not itself say
+    # "reviewer" or "review" is a reviewer pick only when the open question asks about the reviewer.
     [OutputType([bool])]
-    param([AllowNull()][AllowEmptyString()][string] $Response)
+    param([AllowNull()][AllowEmptyString()][string] $Response, [AllowNull()][AllowEmptyString()][string] $Question)
     $normalized = (($Response -replace '\s+', ' ').Trim().ToLowerInvariant()) -replace '[.!]+$', ''
     if ([string]::IsNullOrWhiteSpace($normalized)) { return $false }
+    $aboutReview = '\breview(?:er|ers|s|ing)?\b'
+    if ($normalized -notmatch $aboutReview -and ([string]$Question).ToLowerInvariant() -notmatch $aboutReview) { return $false }
     $reviewer = '(?:the\s+)?(?:default|codex|copilot|claude|cursor|gemini|antigravity|agy)(?:\s+(?:reviewer|host|one))?'
     $choice = '(?:(?:yes|ok(?:ay)?|sure|confirm(?:ed)?)[\s,:;-]+)?(?:(?:i\s+)?(?:use|keep|pick|choose|want|go\s+with)\s+|let''?s\s+(?:use|go\s+with)\s+)?'
     $role = '(?:\s+(?:as|for)\s+(?:the\s+)?review(?:er|s)?)?(?:\s+(?:is\s+fine|please))?'
@@ -1052,7 +1057,7 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             }
             if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $record['message_id'] = [string]$MessageId }
             if ($wideDelegation) { $record['delegation_breadth'] = 'remaining-lenses' }
-            if ($phase -eq 'lens' -and [string]$authority.confirmation -ceq 'human-confirmed' -and (Test-SpecrewWorkshopReviewerPick -Response $Response)) { $record['answer_kind'] = 'reviewer-pick' }
+            if ($phase -eq 'lens' -and [string]$authority.confirmation -ceq 'human-confirmed' -and (Test-SpecrewWorkshopReviewerPick -Response $Response -Question $(if ($question.PSObject.Properties['question']) { [string]$question.question } else { '' }))) { $record['answer_kind'] = 'reviewer-pick' }
             if ($phase -eq 'agenda') {
                 $record['agenda_digest'] = $agendaDigest
                 $record['agenda_binding'] = $agendaBinding
