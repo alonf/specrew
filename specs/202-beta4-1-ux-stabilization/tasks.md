@@ -299,7 +299,9 @@ allowance reset, T023, T024.
 - T022 before T020 and T021: the receipt area is simplified before the items that change receipts.
 - **Review cadence:** round 1 after T016 (covers T016 and T017, the approval handling and the release gate); round 2
   to 4 on the fixes, by the maintainer's choice (DRIFT-003), which spends the allowance. A round after T019 (covering the
-  round-4 fixes, T022, T020, T021, T018, T019) follows the maintainer's allowance reset of 2026-10-17. Sign-off covers T023 and T024.
+  round-4 fixes, T022, T020, T021, T018, T019) follows the maintainer's allowance reset of 2026-10-17; it ran as round 5
+  on 2026-10-18 (5 findings, all real, fixed). A further round on the round-5 fixes, T023 and T024 needs the maintainer's
+  typed approval.
 - **Standing rules for every round:** no commit between an approval and the step that uses it; before a round launch, a
   stop decision or an allowance reset, the stored approval must come from the maintainer's own typed message for that run
   (the B4F-127 interim rule, until T017 is reviewed); every demoted finding is checked against the code and listed as
@@ -404,14 +406,14 @@ allowance reset, T023, T024.
 
 ### Phase 13: cleanup and acceptance
 
-- [ ] T023 [owner: Implementer] [sp: 0.25] [US8] **Remove the unread draft copy (retro candidate 7).**
+- [x] T023 [owner: Implementer] [sp: 0.25] [US8] **Remove the unread draft copy (retro candidate 7).** Done 2026-10-18. `declare-turn-end.ps1` no longer saves `turn-message.md`, and the record and the script's report no longer carry `draft_path`, `draft_scope` or `draft_disclosure`; the store's location and save functions are gone; the three skills and the launch contract say the message is kept in the turn's own record. `turn-draft-intake.tests.ps1` rewritten: no copy for stdin, `-MessagePath`, two sessions or no session ID, and no shipped file names the copy (RED on the old code with 11 failures, green after).
   - **Work:** `declare-turn-end.ps1` stops writing `turn-message.md`; `draft_path` and the skill mentions go.
   - **Acceptance:** no writer; `turn-draft-intake.tests.ps1` updated; the message stays inline in the turn record.
   - **Trace:** FR-034.
   - **Owns:** `extensions/specrew-speckit/scripts/declare-turn-end.ps1`, `turn-end-store.ps1`, the three skills,
     `tests/unit/turn-draft-intake.tests.ps1`.
 
-- [ ] T024 [owner: Implementer] [sp: 0.5] [US8] **Iteration 002 acceptance evidence and the Copilot re-walk script.**
+- [x] T024 [owner: Implementer] [sp: 0.5] [US8] **Iteration 002 acceptance evidence and the Copilot re-walk script.** Done 2026-10-18. `iterations/002/acceptance-evidence.md` maps FR-027 to FR-034, SC-010 and SC-011, the release gate, the five rounds and the validator run (23 iterations, every failure in a baseline category, 202 iteration 002 passing). `iterations/002/copilot-rewalk.md` is the maintainer's SC-011 walk, with its disk checks split by host; SC-011 stays `null` until it is walked.
   - **Work:** `iterations/002/acceptance-evidence.md` maps FR-027 to FR-034, SC-010 and SC-011 to evidence; validator run
     against the baseline; a short re-walk script for the maintainer on Copilot in a project that also holds Claude's hook
     settings (SC-011), with its disk checks split by host.
