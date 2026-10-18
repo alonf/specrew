@@ -264,7 +264,7 @@
     },
     {
       "path": "scripts/declare-turn-end.ps1",
-      "sha256": "df20ff60b1d457a529a161091a9e619a929335d6836925f0853f2fd2cb6961ff"
+      "sha256": "6653ff1e6fc066a7ed42cd9d12669583cd01f432cb45a391eb7945990707a2a2"
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "a7869d294113659f5038aa86874ef18aaf5feaf221309c99e0f9e7f078cef25c"
+      "sha256": "6aad0ddea797118a8b73a6cf4a1193598581129e23b0860c433777f0601be7e8"
     },
     {
       "path": "scripts/validate-governance.ps1",
@@ -552,7 +552,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "bad02788957e7d04bbe2c4a0e629c12940ef981798f8132e49eb5ea7896ce7f3"
+      "sha256": "c790adf839f2979461ea9d7f206d9043011b334a0fb6b3420f8ad5686620c239"
     },
     {
       "path": "squad-templates/skills/drift-check.md",
@@ -560,7 +560,7 @@
     },
     {
       "path": "squad-templates/skills/gate-stop.md",
-      "sha256": "aa8ba32deaa53cd6d13a4d039e1e8ee32a2ea40cb162280b40f0d0bdff37b195"
+      "sha256": "0b365567c63b4b106f63e81c5db901a292cb6ac3bef230197cc24f19d31a790b"
     },
     {
       "path": "squad-templates/skills/iteration-resume.md",
@@ -608,7 +608,7 @@
     },
     {
       "path": "squad-templates/skills/turn-end.md",
-      "sha256": "25bf819797df43c90ea556a60a7bb36b56bbf919c5d78978f25f03bd025d3662"
+      "sha256": "4ffedb8e5cb8a72d784e8ad48e641248663419d8d1ce4e14847a043471a32a44"
     },
     {
       "path": "squad-templates/skills/user-profile.md",

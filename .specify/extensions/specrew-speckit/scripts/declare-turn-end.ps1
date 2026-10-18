@@ -130,9 +130,10 @@ function Read-SpecrewPendingVerdictStop {
 
 # The agent authors the reply. This declaration verifies the draft and records facts for Stop.
 #
-# Feature 202 T014 (FR-021): the draft arrives on stdin, as raw bytes decoded as strict UTF-8, and is saved where the
-# store decides - the session's own ignored folder - never where the agent chose. -MessagePath still works for a
-# caller that has not moved to stdin; its draft is kept in the same per-session place.
+# Feature 202 T014 (FR-021): the draft arrives on stdin, as raw bytes decoded as strict UTF-8. -MessagePath still works
+# for a caller that has not moved to stdin.
+# Feature 202 iteration 002, T023 (FR-034, retro candidate 7): the message is kept in the turn record only, in the
+# session's own ignored folder. The separate draft copy this script also saved was read by nothing.
 $message = ''
 $draftBytes = $null
 $draftSource = 'none'
@@ -148,8 +149,6 @@ else {
     }
     if ($null -ne $draftBytes) { $draftSource = 'stdin' }
 }
-$draft = Get-SpecrewTurnDraftLocation -ProjectRoot $root -Paths $paths -Token ([string]$holder.token)
-$draftSaved = $false
 if ($null -ne $draftBytes) {
     if ($draftBytes.Length -gt 131072) { throw 'The authored message exceeds 128 KiB.' }
     try { $message = ConvertFrom-SpecrewTurnDraftBytes -Bytes $draftBytes }
@@ -157,7 +156,6 @@ if ($null -ne $draftBytes) {
         [Console]::Error.WriteLine(('Turn-end declaration refused: {0}' -f $_.Exception.Message))
         exit 2
     }
-    $draftSaved = Save-SpecrewTurnDraft -Path $draft.Path -Bytes $draftBytes
 }
 $owedItems = @(@($Owed) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 $declaredBoundary = ''
@@ -220,8 +218,6 @@ $record = [pscustomobject][ordered]@{
     pending = $(if ([string]::IsNullOrWhiteSpace($Pending)) { '' } else { $Pending.Trim() })
     summary = [string]$Summary
     draft_source = $draftSource
-    draft_path = $(if ($draftSaved) { [string]$draft.Path } else { '' })
-    draft_scope = [string]$draft.Scope
     orientation = $false
     rendered_at = [DateTimeOffset]::UtcNow.ToString('o')
     rendered_ms = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
@@ -242,16 +238,9 @@ if ($AsJson) {
         packet_missing = @($packetCheck.missing)
         owed = @($owedItems)
         draft_source = $draftSource
-        draft_path = $(if ($draftSaved) { [string]$draft.Path } else { '' })
-        draft_scope = [string]$draft.Scope
-        draft_disclosure = $(if ($draftSaved) { [string]$draft.Disclosure } else { '' })
         text = $machineText
     } | ConvertTo-Json -Depth 6
     return
-}
-if ($draftSaved -and -not [string]::IsNullOrWhiteSpace([string]$draft.Disclosure)) { [Console]::Error.WriteLine([string]$draft.Disclosure) }
-if ($null -ne $draftBytes -and -not $draftSaved) {
-    [Console]::Error.WriteLine(('The draft was verified but could not be saved at {0}; the declaration is recorded.' -f [string]$draft.Path))
 }
 if ($Kind -eq 'boundary' -and -not $packetCheck.valid) {
     [Console]::Error.WriteLine(('Packet not verified: {0}; pipe the agent-authored packet into this script on stdin, then include it in your reply.' -f ($packetCheck.missing -join ', ')))

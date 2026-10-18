@@ -12,9 +12,8 @@ source: "Specrew turn declaration and agent-authored presentation contract."
 
 The script is the **last tool call**, and its return is **for you, never your reply**. You author the
 human-facing question, complete agenda, answer or boundary packet, and pipe that draft into the script on
-**stdin**. You do not choose a file for it: the script saves it in this session's own ignored folder
-(`.specrew/runtime/turn-end/<session>/turn-message.md`), so a draft never lands in the repository and two
-sessions never share one. From PowerShell 7:
+**stdin**. You write no draft file: the script keeps the message in this turn's own record, in this
+session's ignored folder, so a draft never lands in the repository and two sessions never share one. From PowerShell 7:
 
 ```powershell
 @'

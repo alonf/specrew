@@ -44,7 +44,7 @@ shown. The failure mode this exists to stop is **menu-before-render**: render + 
 self-explanatory (not a terse "does this work? — 8 lenses").
 
 **The human-facing reply is yours.** Pipe the complete question or agenda into the turn-end script on
-**stdin** as the last tool call; it saves the draft in this session's own ignored folder, so you choose no
+**stdin** as the last tool call; it keeps the draft in this turn's own record, so you write no draft
 file. In PowerShell 7 the question goes in a `@'` ... `'@` here-string piped on, as in
 `'@ | pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind conversational -Token <this-turn-token>`;
 from a POSIX shell, use a heredoc with a quoted delimiter. Its return is for you, never the reply. Send the draft in your own assistant message and wait
