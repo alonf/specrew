@@ -1033,7 +1033,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     Write-Host ''
                 }
                 if ($resetAuthorizesRound) {
-                    Write-Host 'The same approval also covers the round that was waiting on the allowance. Run it with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                    Write-Host 'Their typed `approved for allowance reset` also counts as `approved for review round` for the round that was waiting on the allowance, so no second approval is needed. Run it with:  specrew review --live --approve-round' -ForegroundColor Cyan
                     exit 0
                 }
                 Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
