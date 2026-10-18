@@ -286,3 +286,13 @@
   host-independent rule (a condition beside an approval qualifies it) placed inside the host-dependent branch. Finding
   2 is a reader of typed approvals that never passed through the router, which is where T018 put the form; the boundary
   readers now call the same form rather than carrying a copy.
+- **Review close (2026-10-18)**: with the allowance spent, the crew recommended `stop the review here` and told the
+  maintainer the final check would cover the round-8 fixes. That was wrong, and it is iteration 001's DRIFT-033 again:
+  the maintainer typed the stop (checked typed, fresh and unspent), the stop refused at sign-off with
+  `latest-result-not-current` because the round-8 fixes were committed after round 8, and the decision was not spent.
+  The refusal refreshed the partial sign-off request against the current files; the maintainer typed
+  `approved for partial review signoff - <reason>` as the whole message, and the stop, run again with no write between,
+  completed: the remaining findings were saved as follow-ups and review sign-off is complete. The round-8 fixes are
+  signed off unreviewed by the maintainer's recorded acceptance. Cost: one extra human decision and two long waits,
+  for an outcome known when the round-8 fixes were committed (B4F-126, second recurrence). Crew rule from here: when
+  fixes land after the last round, the decision brought to the maintainer is the partial sign-off reply, not a stop.

@@ -4,8 +4,8 @@
 **Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T024
-**Tasks Remaining**: none (the stop decision on the review awaits the maintainer; the allowance is spent)
-**In Progress**: (none; co-review rounds 1 to 8 returned 32 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a`, `c43b3cec`, `cbb1ea74`, `aa7592aa`, `45b8cbfc` and the round-8 fix commit (DRIFT-003); rounds 5 to 8 ran on 2026-10-18 after the allowance reset)
+**Tasks Remaining**: none (review sign-off complete on the maintainer's partial sign-off; the review-signoff boundary is next)
+**In Progress**: (none; co-review rounds 1 to 8 returned 32 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a`, `c43b3cec`, `cbb1ea74`, `aa7592aa`, `45b8cbfc` and `ac87d96c` (DRIFT-003); rounds 5 to 8 ran on 2026-10-18 after the allowance reset)
 **Baseline Ref**: fe509311
 **Updated**: 2026-10-18T09:30:00Z
 

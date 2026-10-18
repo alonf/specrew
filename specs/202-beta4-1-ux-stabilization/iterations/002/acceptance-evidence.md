@@ -51,8 +51,8 @@ with the reason (`drift-log.md`, DRIFT-003).
 | 8 | `run-20261018-163747348-5da84de1` | round-7 fixes | 2 | 2 |
 
 32 of 32 findings are real; across feature 202, 64 of 64 (B4F-055). The review engine demoted 28 of the 32 as having
-"no concrete failure scenario", and each one states one. The round-8 fixes have not been reviewed: the allowance is
-spent.
+"no concrete failure scenario", and each one states one. The round-8 fixes were not reviewed: the allowance was
+spent, and the maintainer accepted them by a typed partial sign-off on 2026-10-18, with the reason recorded.
 
 ## Validator against the known baseline
 

@@ -4995,6 +4995,8 @@ review sign-off stage opened on it.
 
 **Recurred a twelfth time:** 2026-10-18, the round-8 approval drew the same notice; the round approval was recorded once and became round 8 of `cmp-202-beta4-1-ux-stabilization-i002`.
 
+**Recurred a thirteenth time, on a different phrase:** 2026-10-18, the maintainer's `approved for partial review signoff - <reason>` drew the same "reads as a verdict for 'review'" notice. The partial sign-off was recorded once against the pending request, and the stop completed on it.
+
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 
 **Observed:** 2026-10-13, feature 202 implement. The maintainer typed `approved for review round - Also record a
@@ -5219,6 +5221,14 @@ to accept that gap. The refusal did name a path this time: run the stop once, ha
 review in about fifteen more minutes. Cost: a second human decision and two long waits for an outcome that was known when
 round 6's fixes were committed. **Beta5 candidate, added:** (4) when fixes land after the last round, the pause offers
 the partial sign-off reply directly, as the one decision, instead of a stop that must fail first.
+**Recurred a second time, 2026-10-18, after iteration 002 round 8 (202 iteration 002 DRIFT-003):** the same shape,
+and this time the crew made it worse: it recommended the stop and told the maintainer the final check would cover the
+round-8 fixes, repeating the engine's own wording ("a final check runs on your files exactly as they are now"). The
+stop refused with `latest-result-not-current`; the decision was not spent, the refusal refreshed the partial sign-off
+request, and the maintainer's typed partial sign-off closed the review on the second run. The engine's description of
+the stop is what misled the crew: it promises a check of the current files that cannot accept them. **Beta5 candidate,
+added:** (5) the stop's description says it signs off only what the last round reviewed, and names the partial
+sign-off when the files have moved since.
 
 ## B4F-127 - ONE TYPED APPROVAL IS RECORDED TWICE, AND THE SPARE COPY CAN BE SPENT (critical; iteration 002, first item)
 
