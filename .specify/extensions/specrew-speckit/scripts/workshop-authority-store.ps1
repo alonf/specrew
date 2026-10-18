@@ -37,9 +37,12 @@ function Test-SpecrewWorkshopWideDelegation {
     # Feature 202 iteration 002, T020 (FR-031, DA-4; B4F-130): the exact wide forms of a delegation. "you decide the
     # remaining lenses" and "you decide all remaining lenses" cover every lens left on the agenda. "the rest" is NOT one:
     # it can mean the rest of this lens. Only a reply that is already a delegation is asked.
+    # Co-review round 5 (iteration 002): the wide form is the WHOLE reply - the delegation and the remaining lenses, and
+    # nothing else. 'you decide this lens, not all remaining lenses' mentions the phrase to limit the delegation, and a
+    # match anywhere in the reply recorded it for every open lens.
     param([AllowNull()][string] $Response)
     $normalized = ([string]$Response -replace '\s+', ' ').Trim().ToLowerInvariant()
-    return ($normalized -match '\b(?:the|all)\s+remaining\s+lenses\b')
+    return ($normalized -match '^(?:please\s+)?(?:you decide|decide for me|choose for me|use your (?:best )?judg(?:e)?ment)(?:\s+(?:on|for))?\s+(?:the|all(?:\s+the)?)\s+remaining\s+lenses(?:\s+please)?\s*[.!]?$')
 }
 
 function Get-SpecrewWorkshopAuthorityHash {
@@ -1061,20 +1064,50 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             # Feature 202 iteration 002, T016 (FR-028; B4F-129): a receipt ID the store already holds is the same reply
             # offered again - by a second host's hooks reading the same session, or a second path - so it is never
             # written twice. The record already there is the answer; the reply was recorded, once.
+            # Co-review round 5 (iteration 002): THE SAME REPLY, NOT THE SAME WORDS. The ID hashes the answer text, so
+            # 'skip', 'you decide', 'skip' to one question kept only the first skip, and the delegation between them stayed
+            # the newest act. A held record is this reply only when it carries the same message ID or, where the host gives
+            # none, when it is still the newest record for its lens and the same answer to the same question; otherwise this is a
+            # new act, and its ID is made its own.
             $existingLines = if ([IO.File]::Exists($path)) { [IO.File]::ReadAllLines($path) } else { @() }
+            $existingRecords = New-Object System.Collections.Generic.List[object]
+            foreach ($existingLine in $existingLines) {
+                if ([string]::IsNullOrWhiteSpace($existingLine)) { continue }
+                $existingRecord = $null
+                try { $existingRecord = $existingLine | ConvertFrom-Json -ErrorAction Stop } catch { $existingRecord = $null }
+                if ($null -ne $existingRecord -and $existingRecord.PSObject.Properties['receipt_id']) { $existingRecords.Add($existingRecord) | Out-Null }
+            }
             $toWrite = New-Object System.Text.StringBuilder
             $openExisting = $null
             foreach ($candidate in $records) {
-                $candidateId = [string]$candidate.receipt_id
-                $idNeedle = '"receipt_id":"' + $candidateId + '"'
+                $baseId = [string]$candidate.receipt_id
                 $held = $null
-                foreach ($existingLine in $existingLines) {
-                    if (-not $existingLine.Contains($idNeedle)) { continue }
-                    $existingRecord = $null
-                    try { $existingRecord = $existingLine | ConvertFrom-Json -ErrorAction Stop } catch { $existingRecord = $null }
-                    if ($null -ne $existingRecord -and [string]$existingRecord.receipt_id -ceq $candidateId) { $held = $existingRecord; break }
+                if (-not [string]::IsNullOrWhiteSpace($MessageId)) {
+                    # The host names the message: the same message, with the same answer, for the same lens is the same reply.
+                    foreach ($existingRecord in $existingRecords) {
+                        if ([string]$existingRecord.lens -ceq [string]$candidate.lens -and [string]$existingRecord.phase -ceq [string]$candidate.phase -and
+                            [string]$existingRecord.feature_ref -ceq [string]$candidate.feature_ref -and
+                            $existingRecord.PSObject.Properties['message_id'] -and [string]$existingRecord.message_id -ceq [string]$MessageId -and
+                            [string]$existingRecord.response_hash -ceq [string]$candidate.response_hash) { $held = $existingRecord }
+                    }
                 }
-                if ($null -ne $held) { if ($candidateId -ceq $receiptId) { $openExisting = $held }; continue }
+                else {
+                    # No message ID: the same reply is the same answer to the same question, still the newest for its lens.
+                    $lensNewest = $null
+                    foreach ($existingRecord in $existingRecords) {
+                        if ([string]$existingRecord.lens -ceq [string]$candidate.lens -and [string]$existingRecord.phase -ceq [string]$candidate.phase -and
+                            [string]$existingRecord.feature_ref -ceq [string]$candidate.feature_ref) { $lensNewest = $existingRecord }
+                    }
+                    if ($null -ne $lensNewest -and [string]$lensNewest.response_hash -ceq [string]$candidate.response_hash -and
+                        [string]$lensNewest.question_hash -ceq [string]$candidate.question_hash -and [string]$lensNewest.confirmation -ceq [string]$candidate.confirmation) { $held = $lensNewest }
+                }
+                if ($null -ne $held) { if ($baseId -ceq $receiptId) { $openExisting = $held }; continue }
+                # A new act. Its ID is the answer's own unless an earlier act already holds it.
+                if (@($existingRecords | Where-Object { [string]$_.receipt_id -ceq $baseId }).Count -gt 0) {
+                    $actKey = if (-not [string]::IsNullOrWhiteSpace($MessageId)) { [string]$MessageId } else { [string]$candidate.recorded_at }
+                    $candidate['receipt_id'] = Get-SpecrewWorkshopAuthorityHash -Text ($baseId + '|' + $actKey)
+                    if ($baseId -ceq $receiptId) { $receiptId = [string]$candidate.receipt_id }
+                }
                 [void]$toWrite.Append((($candidate | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine))
             }
             if ($toWrite.Length -gt 0) { [IO.File]::AppendAllText($path, $toWrite.ToString(), [Text.UTF8Encoding]::new($false)) }

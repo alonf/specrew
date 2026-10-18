@@ -452,7 +452,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "ed06917a62bcc1704138510e561fb5ac99018972a4fa335325129f3c3f1ad2d4"
+      "sha256": "a7869d294113659f5038aa86874ef18aaf5feaf221309c99e0f9e7f078cef25c"
     },
     {
       "path": "scripts/validate-governance.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "b160ef51b9f7ca7b3061a85308cfa04d64300a41b13da6d09646f6ef62ee0e2f"
+      "sha256": "1727f732feddcef629b148c4a453481cd70e27c5b8ab7eac4655092d27c509a0"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
