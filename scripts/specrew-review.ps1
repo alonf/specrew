@@ -970,7 +970,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     Write-Host ''
                     Write-Host '  approved for allowance reset' -ForegroundColor Cyan
                     Write-Host ''
-                    Write-Host 'Once they have typed it, run this same command again with their reason in --ack-reason. From their own terminal, the human can run it directly - their invocation is itself the approval.'
+                    Write-Host 'Once they have typed it, run this same command again with their reason in --ack-reason.'
                     exit 1
                 }
                 if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
@@ -1002,6 +1002,12 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                             -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingAtReset -Name 'run_id')) `
                             -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
                 }
+                # Feature 202 iteration 002, T018 (FR-029; B4F-125 b): A RESET TYPED IN ORDER TO RUN A ROUND AUTHORIZES IT.
+                # A round waiting on the spent allowance is what this reset was typed for, so the human's one typed
+                # approval also becomes that round's approval - the same text, evidence and time, marked as coming from
+                # this reset. With no round waiting, the reset only tops up the allowance, and a round still needs its own.
+                $resetAuthorizesRound = $false
+                if ($null -ne $outstandingAtReset -and $null -ne $capturedAllowanceReset -and (Get-Command -Name 'Write-SpecrewReviewRoundApprovalFromReset' -ErrorAction SilentlyContinue)) { try { $resetAuthorizesRound = ($null -ne (Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $resolvedProjectPath -ResetApproval $capturedAllowanceReset -ResetId ([string]$resetFact.reset_id))) } catch { $resetAuthorizesRound = $false } }
                 # The outcome is READ, not discarded: a swallowed failure here is what let one approval
                 # replenish the allowance twice. The reset itself has already landed and stands, so this
                 # is reported rather than refused - and the derived guard above is what makes the
@@ -1025,6 +1031,10 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     Write-Host 'One thing to know: Specrew could not mark your approval as used. The top-up itself is recorded and stands.' -ForegroundColor Yellow
                     Write-Host 'That approval cannot be used a second time - the top-up already on record is what it paid for - so type the phrase again if you want another one later.'
                     Write-Host ''
+                }
+                if ($resetAuthorizesRound) {
+                    Write-Host 'The same approval also covers the round that was waiting on the allowance. Run it with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                    exit 0
                 }
                 Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
                 exit 0
@@ -1180,8 +1190,7 @@ if ($Live) {
                     Write-Host '  approved for review round' -ForegroundColor Cyan
                     Write-Host ''
                     Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
-                    Write-Host 'They can also review the artifacts themselves instead of spending a round, or run this command'
-                    Write-Host 'from their own terminal, where their invocation is itself the approval.'
+                    Write-Host 'They can also review the artifacts themselves instead of spending a round.'
                     exit 1
                 }
             }
@@ -1467,7 +1476,6 @@ if ($Live) {
                 Write-Host 'Once they have typed `approved for review round`, run:  specrew review --live --approve-round' -ForegroundColor Cyan
                 Write-Host ''
                 Write-Host 'Approving one round runs one review. Nothing is spent until then, and Specrew records the phrase as the'
-                Write-Host 'approval. A human at their own terminal can run the command directly - their invocation is itself the'
                 Write-Host 'approval. If you keep your own approval records, supply your own label instead with --authorization-ref <label>.'
                 exit 1
             }
@@ -1625,7 +1633,6 @@ if ($Live) {
                         Write-Host ('  {0}' -f $decisionPhrase) -ForegroundColor Cyan
                         Write-Host ''
                         Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
-                        Write-Host 'From their own terminal they can run it directly, where their invocation is itself the decision.'
                         exit 1
                     }
                 }

@@ -319,6 +319,82 @@ function Get-SpecrewAuthorityMessageLineCount {
     return @([regex]::Split($Text.Trim(), '\r\n|\n|\r')).Count
 }
 
+# Feature 202 iteration 002, T018 (FR-029, DA-3; B4F-125): THE FORM A TYPED APPROVAL MAY TAKE.
+#
+# The one-line rule (PRED-BETA4-022) exists because a pasted transcript with the phrase at its top was once recorded as an
+# approval, and on a host that cannot tell a paste from typing it is the only safe rule. It also refused the maintainer's
+# own `approved for allowance reset`, typed on its own line below a paste of their own notes (B4F-125 a). Claude marks a
+# paste in the message itself, so there the rule is exact: nothing inside a paste counts, and a phrase leading its own
+# line outside every paste is an approval, whatever typed text surrounds it. A paste is marked only by an opening and a
+# closing tag carrying the same ID, so a closing tag quoted inside a paste never ends it, and an opening tag that is never
+# closed makes everything after it pasted. On every host, a message carrying more than one verdict option is a quoted
+# menu - the crew's own options, copied back - and never an approval.
+$script:SpecrewVerdictOptionLinePattern = '^(?:approv(?:e|ed)\s+for\b|changes\s+needed\s*:|discuss\s+prompt\b|stop\s+the\s+review\s+here\b|abandon\s+this\s+review\s+campaign\b|continue\s+without\s+coverage\b|hold\s+implementation\s+here\b|withdraw\s+the\s+approval\b)'
+
+# THE OBSERVED PASTE-SIZE BOUNDARY (T018). Claude tags a paste only above a size, so untagged text is typing only while it
+# is small. Measured on this project's Claude transcripts (2026-10-18): the smallest of 26 tagged pastes was 675 characters
+# over 9 lines, and no untagged multi-line human message appears at all. Untagged text past either limit cannot be told
+# from an untagged paste, so the one-line rule decides it - which is what keeps a large pasted transcript with the phrase
+# at its top refused on Claude as well (PRED-BETA4-022).
+$script:SpecrewTypedTextMaxLines = 8
+$script:SpecrewTypedTextMaxChars = 674
+
+function Test-SpecrewHostMarksPastes {
+    # The hosts whose recorded payloads mark a paste in the message (Claude's `<pasted_content id="N">`). Every other
+    # host keeps "the phrase alone" until a recorded payload shows how it marks one.
+    [OutputType([bool])]
+    param([AllowNull()][string]$HostKind)
+    return ((([string]$HostKind).Trim().ToLowerInvariant()) -ceq 'claude')
+}
+
+function Remove-SpecrewPairedPastes {
+    # The human's own text: every paste removed. A paste runs from `<pasted_content id="N">` to the first
+    # `</pasted_content id="N">` with the SAME ID after it; an opening tag never closed runs to the end of the message.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return '' }
+    $rest = $Text
+    $kept = New-Object System.Text.StringBuilder
+    while ($true) {
+        $open = [regex]::Match($rest, '<pasted_content\s+id="(?<id>[^"]+)"\s*>')
+        if (-not $open.Success) { [void]$kept.Append($rest); break }
+        [void]$kept.Append($rest.Substring(0, $open.Index))
+        $closeTag = '</pasted_content id="' + $open.Groups['id'].Value + '">'
+        $close = $rest.IndexOf($closeTag, $open.Index + $open.Length, [StringComparison]::Ordinal)
+        if ($close -lt 0) { break }
+        [void]$kept.Append([Environment]::NewLine)
+        $rest = $rest.Substring($close + $closeTag.Length)
+    }
+    return $kept.ToString()
+}
+
+function Resolve-SpecrewApprovalForm {
+    # What the recognizers decide on. { Text; Reason; Options }: Reason 'quoted-menu' when the human's own text carries
+    # more than one verdict option and one of them is a typed authority phrase (Text unchanged, so nothing mints); on a
+    # host that marks pastes, Text is the one authority line outside every paste, or the text with its pastes removed.
+    # Anywhere else Text is the message unchanged, and the one-line rule decides.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
+    $result = [pscustomobject]@{ Text = [string]$Text; Reason = ''; Options = @() }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $result }
+    $marks = Test-SpecrewHostMarksPastes -HostKind $HostKind
+    $outside = if ($marks) { Remove-SpecrewPairedPastes -Text $Text } else { [string]$Text }
+    $lines = @([regex]::Split($outside, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })
+    $shapeOf = { param([string]$Line) if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { Get-SpecrewTypedAuthorityShape -Text $Line } else { $null } }
+    $options = @($lines | Where-Object { $_.ToLowerInvariant() -match $script:SpecrewVerdictOptionLinePattern } | Select-Object -Unique)
+    $authorityLines = @($lines | Where-Object { $null -ne (& $shapeOf $_) })
+    if ($options.Count -ge 2 -and $authorityLines.Count -ge 1) {
+        $result.Reason = 'quoted-menu'; $result.Options = $options
+        return $result
+    }
+    if ($marks) {
+        $typedSized = ($lines.Count -le $script:SpecrewTypedTextMaxLines -and $outside.Trim().Length -le $script:SpecrewTypedTextMaxChars)
+        if ($typedSized -and $authorityLines.Count -eq 1) { $result.Text = [string]$authorityLines[0] }
+        elseif ($outside -cne [string]$Text) { $result.Text = $outside.Trim() }
+    }
+    return $result
+}
+
 function Get-SpecrewAuthorityMultiLineRefusal {
     # THE SWEEP BEHIND THE DISCLOSURE. Runs the minting recognizers that carry the one-line rule and
     # names the first that refused THIS text for continuing past its line - so the drop writer below
@@ -328,8 +404,27 @@ function Get-SpecrewAuthorityMultiLineRefusal {
     # The WITHDRAWAL is deliberately absent: it REMOVES authority, and its recognizer's own doctrine
     # is that a false negative runs a review the human said to stop. The one-line rule bounds what
     # MINTS; refusing a multi-line withdrawal would fail open.
+    #
+    # T018 (FR-029, DA-3): decided on the approval form - a quoted menu is refused as one, on every host, and on a host
+    # that marks pastes the one-line rule applies to the human's own text, outside every paste.
     [OutputType([pscustomobject])]
-    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $form = Resolve-SpecrewApprovalForm -Text $Text -HostKind $HostKind
+    if ([string]$form.Reason -ceq 'quoted-menu') {
+        $menuShape = $null
+        foreach ($option in @($form.Options)) { if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { $menuShape = Get-SpecrewTypedAuthorityShape -Text $option }; if ($null -ne $menuShape) { break } }
+        return [pscustomobject]@{
+            Kind      = if ($null -ne $menuShape) { [string]$menuShape.Kind } else { 'approval' }
+            FirstLine = (Get-SpecrewAuthorityApprovalLine -Text $Text)
+            LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
+            Retype    = if ($null -ne $menuShape) { [string]$menuShape.Retype } else { [string]@($form.Options)[0] }
+            Reason    = 'quoted-menu'
+            Options   = @($form.Options)
+            HostKind  = [string]$HostKind
+        }
+    }
+    $Text = [string]$form.Text
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
     $table = @(
         @{ Kind = 'review-round-approval'; Fn = 'Test-SpecrewReviewRoundApprovalPhrase'; Retype = 'approved for review round' }
@@ -348,6 +443,28 @@ function Get-SpecrewAuthorityMultiLineRefusal {
             FirstLine = (Get-SpecrewAuthorityApprovalLine -Text $Text)
             LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
             Retype    = [string]$row.Retype
+            Reason    = 'multi-line'
+            Options   = @()
+            HostKind  = [string]$HostKind
+        }
+    }
+    # T018 (FR-029): on a host that marks no pastes the phrase must stand alone, wherever it sits in the message. A phrase
+    # on a later line - typed below a paste the host cannot mark, as in B4F-125 - is refused with that reason, not
+    # passed over in silence because the first line was something else.
+    if (-not (Test-SpecrewHostMarksPastes -HostKind $HostKind) -and (Get-SpecrewAuthorityMessageLineCount -Text $Text) -gt 1 -and
+        (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue)) {
+        foreach ($line in @([regex]::Split($Text, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })) {
+            $lineShape = Get-SpecrewTypedAuthorityShape -Text $line
+            if ($null -eq $lineShape -or [string]$lineShape.Kind -ceq 'approval-withdrawal') { continue }
+            return [pscustomobject]@{
+                Kind      = [string]$lineShape.Kind
+                FirstLine = $line
+                LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
+                Retype    = [string]$lineShape.Retype
+                Reason    = 'multi-line'
+                Options   = @()
+                HostKind  = [string]$HostKind
+            }
         }
     }
     return $null
@@ -358,8 +475,17 @@ function Get-SpecrewAuthorityMultiLineDisclosure {
     # in the words the docs use - the refusal standard (B4F-009 family, B4F-064), not a code word.
     [OutputType([string])]
     param([Parameter(Mandatory)][pscustomobject]$Refusal)
+    $reason = if ($Refusal.PSObject.Properties['Reason']) { [string]$Refusal.Reason } else { 'multi-line' }
+    if ($reason -ceq 'quoted-menu') {
+        $quoted = (@($Refusal.Options) | Select-Object -First 3 | ForEach-Object { "'" + $(if ($_.Length -gt 60) { $_.Substring(0, 57) + '...' } else { $_ }) + "'" }) -join ', '
+        return ("Specrew: your reply was received but NOT recorded as a {0}. It carries more than one verdict option ({1}), so it reads as a quoted menu, not a choice. Nothing you wrote is lost and no authority was changed. To record your choice, send it on its own line: '{2}'." -f $Refusal.Kind, $quoted, $Refusal.Retype)
+    }
     $shown = [string]$Refusal.FirstLine
     if ($shown.Length -gt 80) { $shown = $shown.Substring(0, 77) + '...' }
+    $refusalHost = if ($Refusal.PSObject.Properties['HostKind']) { [string]$Refusal.HostKind } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace($refusalHost) -and -not (Test-SpecrewHostMarksPastes -HostKind $refusalHost)) {
+        return ("Specrew: your reply was received but NOT recorded as a {0}. Its first line is '{1}', but the message continues for {2} more line(s), and on this host Specrew cannot tell a paste from typing, so a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash. Nothing you wrote is lost and no authority was changed. To record it, send a message that is exactly one line: '{3}' or '{3} - <your instructions>'." -f $Refusal.Kind, $shown, ([int]$Refusal.LineCount - 1), $Refusal.Retype)
+    }
     return ("Specrew: your reply was received but NOT recorded as a {0}. Its first line is '{1}', but the message continues for {2} more line(s), and a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash. A pasted transcript or a block of notes under the phrase is not a verdict. Nothing you wrote is lost and no authority was changed. To record it, send a message that is exactly one line: '{3}' or '{3} - <your instructions>'." -f $Refusal.Kind, $shown, ([int]$Refusal.LineCount - 1), $Refusal.Retype)
 }
 
@@ -385,7 +511,8 @@ function Write-SpecrewAuthorityMultiLineDrop {
         $shown = [string]$Refusal.FirstLine
         if ($shown.Length -gt 80) { $shown = $shown.Substring(0, 77) + '...' }
         (([pscustomobject][ordered]@{
-                event = 'authority-phrase-matched-but-rejected'; phrase = [string]$Refusal.Kind; reason = 'multi-line'
+                event = 'authority-phrase-matched-but-rejected'; phrase = [string]$Refusal.Kind
+                reason = $(if ($Refusal.PSObject.Properties['Reason'] -and -not [string]::IsNullOrWhiteSpace([string]$Refusal.Reason)) { [string]$Refusal.Reason } else { 'multi-line' })
                 first_line = $shown; line_count = [int]$Refusal.LineCount
                 host_kind = [string]$HostKind; source_event = [string]$SourceEvent; recorded_at = $NowUtc
                 fix = ("send exactly one line: '{0}' or '{0} - <your instructions>'" -f [string]$Refusal.Retype)
@@ -1298,6 +1425,40 @@ function Register-SpecrewExhaustedTurn {
     catch { return $false }
 }
 
+function Write-SpecrewReviewRoundApprovalFromReset {
+    # T018 (FR-029; B4F-125 b): AN ALLOWANCE RESET TYPED IN ORDER TO RUN A ROUND AUTHORIZES THAT ROUND.
+    #
+    # Observed: the maintainer typed `approved for allowance reset` because a round was waiting on the spent allowance;
+    # the reset landed, and the round was then refused until a second message, `approved for review round`. One human
+    # act, one decision. The review command calls this only when the reset answered a round waiting on the allowance;
+    # the round approval it writes IS the reset's own typed approval - its text, its evidence and its time - plus where
+    # it came from, and it is spent, withdrawn and checked exactly like a typed one. Nothing is minted that the human did
+    # not type; a fresh typed round approval later replaces it as usual.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)]$ResetApproval,
+        [Parameter(Mandatory)][string]$ResetId
+    )
+    if ($null -eq $ResetApproval -or -not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$ResetApproval.verdict_text)).Matched) { return $null }
+    $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root 'pending-round-approval.json'
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-round-approval'; authority_kind = 'human'
+        authorized_by = [string]$ResetApproval.authorized_by; approval_kind = 'typed-phrase'
+        verdict_text = [string]$ResetApproval.verdict_text; response_hash = [string]$ResetApproval.response_hash
+        evidence_source = [string]$ResetApproval.evidence_source; source_event = [string]$ResetApproval.source_event
+        host_kind = [string]$ResetApproval.host_kind; observed_at = [string]$ResetApproval.observed_at
+        derived_from = ('allowance-reset:' + $ResetId)
+        spent_at = $null; authorization_ref = $null; minted_ref = ''; minted_at = ''
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    return $fact
+}
+
 function Get-SpecrewReviewRoundApprovalAuthorization {
     # The unspent captured approval, or $null. Shape-validated: a hand-authored file that does not carry
     # the full fact is treated as absent, and absent refuses - which is this control's fail direction.
@@ -1317,8 +1478,13 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     if ([string]$fact.fact_type -cne 'review-round-approval' -or [string]$fact.authority_kind -cne 'human') { return $null }
     if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
     # The stored text must still BE an approval by the live recognizer - a phrase file whose content
-    # would not capture today does not authorize today.
-    if (-not [bool](Test-SpecrewReviewRoundApprovalPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    # would not capture today does not authorize today. T018 (B4F-125 b): a round approval that came from the reset
+    # typed in order to run it carries the reset's text, checked by the reset's recognizer.
+    $derivedFrom = if ($fact.PSObject.Properties['derived_from']) { [string]$fact.derived_from } else { '' }
+    if ($derivedFrom -cmatch '^allowance-reset:\S+$') {
+        if (-not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    }
+    elseif (-not [bool](Test-SpecrewReviewRoundApprovalPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
     $spent = $fact.PSObject.Properties['spent_at']
     if ($spent -and -not [string]::IsNullOrWhiteSpace([string]$spent.Value)) { return $null }
     # W68 / round-25 finding (DRIFT-199-I001-141): A WITHDRAWAL THAT COULD NOT DELETE STILL REVOKES.

@@ -1203,6 +1203,19 @@ function Invoke-SpecrewTypedAuthorityCapture {
         [AllowEmptyString()][AllowNull()][string]$SessionId
     )
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
+    # Feature 202 iteration 002, T018 (FR-029, DA-3): the writers decide on the approval form. On a host that marks pastes
+    # that is the human's own authority line outside every paste; a quoted menu, and every message on a host that marks
+    # no pastes, reaches them unchanged, and the one-line rule refuses it. Both recording paths reduce the same message
+    # the same way, so its identity below is still one key.
+    $receivedResponse = [string]$Response
+    if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
+        try {
+            $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind
+            if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { return }
+            $Response = [string]$form.Text
+        }
+        catch { $null = $_ }
+    }
     # W69 (maintainer ruling, 2026-08-26): A TURN MINTS AT MOST ONCE, EVER.
     #
     # The Stop backstop re-offers the most recent human turn at the end of EVERY assistant turn. Once a
@@ -1340,7 +1353,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
     if ($mintedBy.Count -eq 0 -and (Get-Command Get-SpecrewAuthorityMultiLineRefusal -ErrorAction SilentlyContinue) -and
         (Get-Command Write-SpecrewAuthorityMultiLineDrop -ErrorAction SilentlyContinue)) {
         try {
-            $refusal = Get-SpecrewAuthorityMultiLineRefusal -Text $Response
+            $refusal = Get-SpecrewAuthorityMultiLineRefusal -Text $receivedResponse -HostKind $HostKind
             if ($null -ne $refusal) {
                 Write-SpecrewAuthorityMultiLineDrop -ProjectRoot $ProjectRoot -Refusal $refusal -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc | Out-Null
             }
@@ -1576,7 +1589,7 @@ function Update-SpecrewRollingHandover {
         if ((Get-Command Get-SpecrewAuthorityMultiLineRefusal -ErrorAction SilentlyContinue) -and
             (Get-Command Get-SpecrewAuthorityMultiLineDisclosure -ErrorAction SilentlyContinue)) {
             try {
-                $typedRefusal = Get-SpecrewAuthorityMultiLineRefusal -Text $LastUserMessage
+                $typedRefusal = Get-SpecrewAuthorityMultiLineRefusal -Text $LastUserMessage -HostKind $fromHost
                 if ($null -ne $typedRefusal) {
                     $typedDisclosure = Get-SpecrewAuthorityMultiLineDisclosure -Refusal $typedRefusal
                     $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $typedDisclosure } else { ([string]$disclosure + "`n" + $typedDisclosure) }
