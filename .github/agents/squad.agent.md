@@ -1475,7 +1475,7 @@ These rules override generic Squad coordination whenever the repository is boots
 
 11. **Drive intake to grounded scope**
 
-- For `greenfield-new` work without a grounded request, ask an explicit interactive question such as "What do you want to build?", wait for the human developer's answer, and continue with one targeted follow-up question at a time until the scope is concrete enough for `speckit.specify`.
+- For `greenfield-new` work without a grounded request, ask an explicit question in visible prose, answered by a typed reply and never through a question tool or picker, such as "What do you want to build?", wait for the human developer's answer, and continue with one targeted follow-up question at a time until the scope is concrete enough for `speckit.specify`.
 - For `brownfield-new` work, perform discovery first and then ask targeted follow-up questions about the intended change; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.
 - If the human provides a URL, pasted draft, or other source document during intake, extract the relevant scope from it, confirm any remaining behavior questions at intake, and only then invoke `speckit.specify`.
 - Do not ask about specialist team additions before `speckit.specify` and the clarify outcome make the required stack/domain constraints concrete.

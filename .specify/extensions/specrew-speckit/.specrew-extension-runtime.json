@@ -516,7 +516,7 @@
     },
     {
       "path": "squad-templates/coordinator/specrew-governance.md",
-      "sha256": "4f876160d680dc5d7ee8d98933949d90b44b8bd742cab90432b4bcd5ec22b679"
+      "sha256": "b7ba9ebe7d1ffed5acb255636697d3687a035f99285cc35b43a1411780cedd03"
     },
     {
       "path": "squad-templates/directives/drift-reporting.md",
@@ -560,7 +560,7 @@
     },
     {
       "path": "squad-templates/skills/gate-stop.md",
-      "sha256": "ae4110d85c40d8760b2165722555db716c3d7920f9cebf16e7ca2a7e7d629e5c"
+      "sha256": "aa8ba32deaa53cd6d13a4d039e1e8ee32a2ea40cb162280b40f0d0bdff37b195"
     },
     {
       "path": "squad-templates/skills/iteration-resume.md",

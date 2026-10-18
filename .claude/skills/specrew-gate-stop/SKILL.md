@@ -94,9 +94,11 @@ Measured on two hosts: a Copilot picker selection was not captured and its agent
 authorization writer directly; a Claude numbered option was not captured and its agent edited and
 committed the spec on the strength of it. Same cause, opposite failure modes.
 
-**This rule is about the BOUNDARY VERDICT, not about pickers.** A picker in a design discussion, a
-clarify question, or any exchange where no ledger records the answer and no boundary advances is doing
-good work and stays. The rule binds only where a typed phrase is the sole captured channel.
+**This rule is about the BOUNDARY VERDICT, not about pickers.** A picker in a clarify question, or any
+exchange where no ledger records the answer and no boundary advances, is doing good work and stays. The
+rule binds only where a typed phrase is the sole captured channel. Workshop questions (product-domain,
+agenda and lens questions) are such a channel: their typed answers are recorded, so they are never asked
+through a picker or question tool on any host (the design-workshop skill holds the full rule).
 
 Each line above is literally sendable, which is the whole point: the human reads four lines and every one
 of them is text they can type. All four response kinds are kept — **approve with instructions** is how a
