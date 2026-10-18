@@ -605,6 +605,17 @@ Describe 'W57 round 16: authority must survive a reversal, a lost stamp, and a p
         }
     }
 
+    It 'every condition the shared guard names defers the approval, in every recognizer (co-review round 6, iteration 002 of 202)' {
+        # The coverage deferral kept its own six words, so 'continue without coverage until the review phase, provided the
+        # security checks pass' was saved at once and silenced the coverage stop before the condition held.
+        foreach ($r in $script:W57Recognizers) {
+            foreach ($suffix in @(', once the tests pass', ', provided the security checks pass', ', providing the lanes pass', ', assuming the walk is clean',
+                    ', contingent on the walk', ', subject to the walk', ', as long as the lanes pass', ', so long as nothing regresses', ', pending the walk')) {
+                & $r.Fn ($r.Phrase + $suffix) | Should -BeFalse -Because "$($r.Name)$suffix states a condition"
+            }
+        }
+    }
+
     It 'the reversal scan does not eat ordinary same-line instructions' {
         # The floor cuts one way, but it must not swallow the W44 shape it was built around.
         foreach ($r in $script:W57Recognizers) {

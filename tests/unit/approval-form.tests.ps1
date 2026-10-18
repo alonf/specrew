@@ -222,6 +222,15 @@ Describe 'A quoted menu mints nothing, whichever writer would take it' {
         @(Get-Overrides -Root $p).Count | Should -Be 0
     }
 
+    # Co-review round 7 (iteration 002): the router refused a qualified message only through the writers' one-line rule, and
+    # the partial sign-off writer reads everything after its dash as the reason, so the condition was recorded with it.
+    It 'claude: the partial sign-off phrase above a condition typed on the next line records no override, and says why' {
+        $p = New-Project; Add-PartialSignoffRequest -Root $p
+        $shown = Invoke-Prompt -Root $p -HostKind 'claude' -Text "approved for partial review signoff - the remaining files are documentation`nprovided the security checks pass"
+        @(Get-Overrides -Root $p).Count | Should -Be 0
+        $shown | Should -Match 'a verdict is ONE line'
+    }
+
     # Co-review round 6 (iteration 002): the options were counted only when a line began with one, so a menu copied with
     # its bullets had one counted option and was recorded.
     It '<HostKind>: a quoted menu whose alternatives carry bullets, quotes or numbers records no override' -ForEach @(
@@ -263,6 +272,16 @@ Describe 'A condition on its own line is part of the approval (co-review round 6
         $shown = Invoke-Prompt -Root $p -HostKind 'claude' -Text $Text
         Test-Stored -Root $p -Kind $Kind | Should -BeFalse
         $shown | Should -Match 'a verdict is ONE line'
+    }
+
+    It '<HostKind>: a coverage deferral with a condition after it records nothing (co-review round 7)' -ForEach @(
+        @{ HostKind = 'claude' }, @{ HostKind = 'codex' }, @{ HostKind = 'copilot' }
+    ) {
+        $p = New-Project
+        Invoke-Prompt -Root $p -HostKind $HostKind -Text 'continue without coverage until the review phase, provided the security checks pass' | Out-Null
+        Test-Path -LiteralPath (Join-Path $p '.specrew/review/coverage-disposition/coverage-deferral.json') | Should -BeFalse
+        Invoke-Prompt -Root $p -HostKind $HostKind -Text 'continue without coverage until the review phase' | Out-Null
+        Test-Path -LiteralPath (Join-Path $p '.specrew/review/coverage-disposition/coverage-deferral.json') | Should -BeTrue -Because 'the phrase alone is still recorded, so the fixture can record one'
     }
 
     It 'claude: typed text with no condition beside the phrase still leaves the phrase recorded' {

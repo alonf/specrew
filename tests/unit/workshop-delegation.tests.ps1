@@ -23,7 +23,7 @@ $lensWriter = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/confirm-wo
 
 $feature = '001-mail-summary'
 function New-LensFixture {
-    param([string[]]$Selected = @('architecture-core', 'ui-ux', 'code-implementation'), [string]$OpenLens = 'architecture-core', [string[]]$Closed = @())
+    param([string[]]$Selected = @('architecture-core', 'ui-ux', 'code-implementation'), [string]$OpenLens = 'architecture-core', [string[]]$Closed = @(), [string]$OpenQuestion = 'How should we approach this?')
     $root = Join-Path ([IO.Path]::GetTempPath()) ('wdel-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
     foreach ($d in @('.specrew/handover', '.specrew/runtime', '.specify/extensions/specrew-speckit/scripts', "specs/$feature/workshop")) {
         New-Item -ItemType Directory -Path (Join-Path $root $d) -Force | Out-Null
@@ -47,7 +47,7 @@ function New-LensFixture {
     }
     [IO.File]::WriteAllText((Join-Path $root "specs/$feature/lens-applicability.json"), ($controller | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
     $question = [ordered]@{ schema = 'v3'; status = 'workshop-active'; scope = 'feature'; feature_ref = $feature; iteration_number = ''; lens = $OpenLens
-        phase = 'lens'; agenda_status = 'confirmed'; question = 'How should we approach this?'; message_hash = ('b' * 64); artifact_path = '' }
+        phase = 'lens'; agenda_status = 'confirmed'; question = $OpenQuestion; message_hash = ('b' * 64); artifact_path = '' }
     [IO.File]::WriteAllText((Join-Path $root '.specrew/handover/workshop-question.json'), ($question | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
     $ctx = [ordered]@{ schema = 'v2'; session_state = [ordered]@{ active = $true; feature_ref = $feature; boundary_type = 'specify'; host = 'claude' } }
     [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
@@ -180,12 +180,28 @@ try {
         $null = & pwsh -NoProfile -File $lensWriter -ProjectRoot $r10 -FeatureRef $feature -Lens 'architecture-core' -Decision 'Delegated.' -Depth 'light' -Agenda @('An open question?') -Confirmation 'human-delegated' 2>&1
         Assert-True ($LASTEXITCODE -ne 0) ("case 10: after '{0}' the lens does not close as delegated" -f $answer)
     }
-    foreach ($pick in @('Use codex as the reviewer.', 'copilot', 'Confirm the default reviewer.', 'The reviewer is claude.')) {
+    foreach ($pick in @('Use codex as the reviewer.', 'Confirm the default reviewer.', 'The reviewer is claude.')) {
         $r10b = New-LensFixture -Selected @('ui-ux', 'architecture-core') -OpenLens 'architecture-core'; $roots.Add($r10b)
         $null = Invoke-Provider -Root $r10b -Reply 'you decide the remaining lenses' -MessageId 'msg-wide-10b'
         $null = Invoke-Provider -Root $r10b -Reply $pick -MessageId 'msg-pick-10b'
         $closing10b = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $r10b -FeatureRef $feature -Phase 'lens' -Lens 'architecture-core' -Confirmation 'human-delegated'
         Assert-True ($null -ne $closing10b -and [string]$closing10b.confirmation -eq 'human-delegated') ("case 10: the reviewer pick '{0}' leaves the delegation as the act the lens closes on" -f $pick)
+    }
+
+    # Co-review round 7 (iteration 002): a reply that does not name the reviewer is a reviewer pick only as the answer to
+    # the reviewer question. 'Use the default.' to a craft question was marked a reviewer pick and passed over.
+    Write-Host '  --- case 11: a short reply is a reviewer pick only when the open question is the reviewer question ---'
+    foreach ($row in @(
+            @{ Question = 'Use SQLite or the default in-memory store?'; Reply = 'Use the default.'; Pick = $false }
+            @{ Question = 'Which host should the app target first?'; Reply = 'copilot'; Pick = $false }
+            @{ Question = 'Which reviewer should run: codex (the default) or copilot?'; Reply = 'copilot'; Pick = $true }
+            @{ Question = 'Should the review use the default reviewer?'; Reply = 'Use the default.'; Pick = $true })) {
+        $r11 = New-LensFixture -Selected @('ui-ux', 'architecture-core') -OpenLens 'architecture-core' -OpenQuestion $row.Question; $roots.Add($r11)
+        $null = Invoke-Provider -Root $r11 -Reply 'you decide the remaining lenses' -MessageId 'msg-wide-11'
+        $null = Invoke-Provider -Root $r11 -Reply $row.Reply -MessageId 'msg-reply-11'
+        $closing11 = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $r11 -FeatureRef $feature -Phase 'lens' -Lens 'architecture-core' -Confirmation 'human-delegated'
+        $expected = if ($row.Pick) { 'human-delegated' } else { 'human-confirmed' }
+        Assert-True ($null -ne $closing11 -and [string]$closing11.confirmation -eq $expected) ("case 11: '{0}' to '{1}' closes on the {2} receipt" -f $row.Reply, $row.Question, $expected)
     }
 }
 finally {

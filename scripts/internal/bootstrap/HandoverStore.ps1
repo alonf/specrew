@@ -1231,13 +1231,17 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # lives in each recognizer, and the partial sign-off's reason runs to the end of the message, so a menu that began
     # with 'approved for partial review signoff - ...' was saved as an override while the disclosure said nothing was
     # approved. Only the withdrawal still runs: it removes authority, and refusing it fails open.
-    $quotedMenu = $false
+    # Co-review round 7: EVERY REASON THE FORM GIVES TO REFUSE binds every writer the same way. A qualified message (a
+    # condition typed beside the approval line) was left to the writers' one-line rule, and the partial sign-off writer has
+    # none, so 'approved for partial review signoff - <reason>' above 'provided the security checks pass' was saved as an
+    # override. A message in a host envelope is the same case.
+    $formRefused = $false
     if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
         try {
             $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind
             if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { return }
             $Response = [string]$form.Text
-            $quotedMenu = ([string]$form.Reason -ceq 'quoted-menu')
+            $formRefused = ([string]$form.Reason -cin @('quoted-menu', 'qualified', 'machinery-envelope'))
         }
         catch { $null = $_ }
     }
@@ -1341,7 +1345,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
             'Write-SpecrewCoverageDeferralAuthorization'
             'Write-SpecrewReviewSignoffOverrideAuthorization'
             'Write-SpecrewWorkshopRepairAuthorization')) {
-        if (($quotedMenu -or $originRefused) -and $writerName -cne 'Write-SpecrewApprovalWithdrawal') { continue }
+        if (($formRefused -or $originRefused) -and $writerName -cne 'Write-SpecrewApprovalWithdrawal') { continue }
         $writer = Get-Command $writerName -ErrorAction SilentlyContinue
         if ($null -eq $writer) { continue }
         try {

@@ -7925,7 +7925,13 @@ function Test-SpecrewCoverageDeferralPhrase {
     # against all three recognizers rather than against the two the finding named. A deferred
     # disposition ("continue without coverage, once the walk finishes") must not silence the
     # coverage stop before the human's stated condition holds.
-    if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
+    # Co-review round 7 (iteration 002 of 202): every condition the shared guard names, not six of them. 'continue without
+    # coverage until the review phase, provided the security checks pass' was saved at once. The shared guard is used when
+    # it is loaded; this recognizer must also work alone, so the same words stand here as its fallback, and the shared
+    # matrix runs every one of them against every recognizer.
+    $conditional = if (Get-Command Test-SpecrewConditionalDeferralClause -ErrorAction SilentlyContinue) { Test-SpecrewConditionalDeferralClause -Text $tail }
+    else { $tail -match '\b(?:later|after|once|when|unless|if|provided|providing|assuming|contingent|subject\s+to|as\s+long\s+as|so\s+long\s+as|pending)\b' }
+    if ($conditional) { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not)\b') { return $r }
     # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before
     # it. The negation check was anchored to the start of the utterance and could not see

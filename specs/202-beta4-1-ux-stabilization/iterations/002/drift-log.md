@@ -233,3 +233,29 @@
   decide on must keep every reason to refuse that the message had - an option in any wrapping, a condition on any line, an
   envelope only where the human typed it. Finding 3 closes provenance for every writer that records authority from a
   prompt, the class FR-006 closed for the workshop receipt.
+- **Round 7 (2026-10-18, the maintainer's typed `approved for review round`, checked typed, fresh and unspent before
+  launch)**: run `run-20261018-125258950-98a6a63d` (codex, 27 minutes) reviewed the round-6 fixes. The engine counts it as
+  round 3 of the restored allowance (3 of 4). 3 findings, all reported major and demoted for "no concrete failure
+  scenario" (each states one). Each was checked against the code, and each is real:
+  1. **A qualified message still reached the partial sign-off writer.** Round 6 left a qualified message multi-line for
+     the writers' one-line rule, but that writer reads everything after its dash as the reason and has no such rule, so
+     the condition typed on the next line was saved with the override.
+  2. **The coverage deferral kept its own six condition words.** 'continue without coverage until the review phase,
+     provided the security checks pass' was saved at once; the shared guard also names provided, assuming, contingent,
+     subject to, as long as and pending.
+  3. **'Use the default.' was a reviewer pick whatever it answered.** After a wide delegation, that reply to a craft
+     question ("Use SQLite or the default in-memory store?") was passed over, and the lens could close as delegated.
+- **Resolution (round 7)**, each behind a failing test:
+  1. Every reason the approval form gives to refuse (a quoted menu, a qualified message, a host envelope) keeps the
+     message from every writer but the withdrawal, in the router, not in each writer.
+  2. The coverage deferral uses the shared condition guard, with the same words as its fallback when loaded alone.
+  3. A reply that does not itself say "reviewer" or "review" is a reviewer pick only when the open question asks about
+     the reviewer.
+- **Tests (round 7)**: `approval-form` 4 new cases (all RED on `96b2fc32`: the qualified partial sign-off, and the
+  conditional deferral through the message hook on three hosts, each with the bare phrase as its control);
+  `round-approval-typed-authority` one matrix case, every shared condition against every recognizer (RED);
+  `workshop-delegation` case 11 (2 RED; 2 reviewer-question controls).
+- **Class closure (round 7)**: finding 1 is round 6's own fix one step short: a reason to refuse that the form found must
+  bind at the one place every writer passes through, which round 5 established for the quoted menu. Finding 2 is the
+  fourth copy of the condition rule to drift from the shared one (DRIFT-199-I001-123); the matrix now runs the shared
+  list against every recognizer, so a copy cannot drift silently again.
