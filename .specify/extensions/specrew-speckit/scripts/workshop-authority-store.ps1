@@ -33,6 +33,15 @@ function Get-SpecrewWorkshopResponseAuthority {
     return [pscustomobject]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
 }
 
+function Test-SpecrewWorkshopWideDelegation {
+    # Feature 202 iteration 002, T020 (FR-031, DA-4; B4F-130): the exact wide forms of a delegation. "you decide the
+    # remaining lenses" and "you decide all remaining lenses" cover every lens left on the agenda. "the rest" is NOT one:
+    # it can mean the rest of this lens. Only a reply that is already a delegation is asked.
+    param([AllowNull()][string] $Response)
+    $normalized = ([string]$Response -replace '\s+', ' ').Trim().ToLowerInvariant()
+    return ($normalized -match '\b(?:the|all)\s+remaining\s+lenses\b')
+}
+
 function Get-SpecrewWorkshopAuthorityHash {
     param([AllowEmptyString()][string] $Text)
     $bytes = [Text.Encoding]::UTF8.GetBytes([string]$Text)
@@ -468,6 +477,7 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
 $script:SpecrewWorkshopLastHookOutputCheck = 'none'
 $script:SpecrewWorkshopLastHookOutputSkipped = 0
 $script:SpecrewWorkshopLastReceiptOutcome = $null
+$script:SpecrewWorkshopLastDelegation = $null
 
 # Feature 202 T022 (FR-033, DA-5; R5-5): THE RECEIPT OUTCOME LIVES IN THE SESSION'S OWN FOLDER.
 #
@@ -891,10 +901,13 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         # means a direct caller with no turn record, where the text checks below are the whole decision.
         [AllowNull()][string] $TurnOrigin,
         # Co-review round 5 (202): the session the reply was typed in; T022 records its outcome in that session's own folder.
-        [AllowNull()][string] $SessionId
+        [AllowNull()][string] $SessionId,
+        # T020 (FR-031, DA-2): the host's ID for this message, so every receipt one message produces is bound to it.
+        [AllowNull()][string] $MessageId
     )
 
     $script:SpecrewWorkshopLastReceiptOutcome = $null
+    $script:SpecrewWorkshopLastDelegation = $null
     $script:SpecrewWorkshopReceiptSessionId = $SessionId
     $script:SpecrewWorkshopReceiptHostKind = $HostKind
     $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
@@ -983,25 +996,53 @@ function Write-SpecrewWorkshopAuthorityReceipt {
 
         $authority = Get-SpecrewWorkshopResponseAuthority -Phase $phase -Response $Response
         $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
-        $receiptId = Get-SpecrewWorkshopAuthorityHash -Text ($featureRef + '|' + $phase + '|' + $lens + '|' + $questionHash + '|' + $agendaDigest + '|' + $responseHash)
-        $record = [ordered]@{
-            schema_version      = '1'
-            receipt_id         = $receiptId
-            feature_ref        = $featureRef
-            iteration_number   = [string]$question.iteration_number
-            phase              = $phase
-            lens               = $lens
-            question_hash      = $questionHash
-            response_hash      = $responseHash
-            confirmation       = [string]$authority.confirmation
-            confirmation_scope = [string]$authority.confirmation_scope
-            source_event       = $canonicalSourceEvent
-            host_kind          = [string]$HostKind
-            recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
+        # T020 (FR-031, DA-4; B4F-130): which lenses this reply answers. Normally the open one. A delegation in one of
+        # the exact wide forms answers every lens still open on the confirmed agenda, the open one first; lenses added
+        # to the agenda later are not covered. The walk recorded one lens for "you decide the remaining lenses", and
+        # every later lens asked again.
+        $coveredLenses = @($lens)
+        $pendingLenses = @()
+        $wideDelegation = $false
+        if ($phase -eq 'lens' -and [string]$authority.confirmation -ceq 'human-delegated') {
+            $openOnAgenda = @(@($controller.selected) | ForEach-Object { [string]$_ } | Where-Object {
+                    $closedProperty = if ($controller.PSObject.Properties['workshop']) { $controller.workshop.PSObject.Properties[$_] } else { $null }
+                    -not ($closedProperty -and $closedProperty.Value.PSObject.Properties['moved_on'] -and [bool]$closedProperty.Value.moved_on)
+                })
+            if (Test-SpecrewWorkshopWideDelegation -Response $Response) {
+                $wideDelegation = $true
+                $coveredLenses = @(@($lens) + @($openOnAgenda | Where-Object { $_ -cne $lens }))
+            }
+            else { $pendingLenses = @($openOnAgenda | Where-Object { $_ -cne $lens }) }
         }
-        if ($phase -eq 'agenda') {
-            $record['agenda_digest'] = $agendaDigest
-            $record['agenda_binding'] = $agendaBinding
+        $records = New-Object System.Collections.Generic.List[object]
+        foreach ($coveredLens in $coveredLenses) {
+            $record = [ordered]@{
+                schema_version      = '1'
+                receipt_id         = Get-SpecrewWorkshopAuthorityHash -Text ($featureRef + '|' + $phase + '|' + $coveredLens + '|' + $questionHash + '|' + $agendaDigest + '|' + $responseHash)
+                feature_ref        = $featureRef
+                iteration_number   = [string]$question.iteration_number
+                phase              = $phase
+                lens               = $coveredLens
+                question_hash      = $questionHash
+                response_hash      = $responseHash
+                confirmation       = [string]$authority.confirmation
+                confirmation_scope = [string]$authority.confirmation_scope
+                source_event       = $canonicalSourceEvent
+                host_kind          = [string]$HostKind
+                recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
+            }
+            if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $record['message_id'] = [string]$MessageId }
+            if ($wideDelegation) { $record['delegation_breadth'] = 'remaining-lenses' }
+            if ($phase -eq 'agenda') {
+                $record['agenda_digest'] = $agendaDigest
+                $record['agenda_binding'] = $agendaBinding
+            }
+            $records.Add($record) | Out-Null
+        }
+        $record = $records[0]
+        $receiptId = [string]$record.receipt_id
+        if ([string]$authority.confirmation -ceq 'human-delegated') {
+            $script:SpecrewWorkshopLastDelegation = [pscustomobject]@{ Wide = $wideDelegation; Covered = @($coveredLenses); Pending = @($pendingLenses) }
         }
 
         $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $root
@@ -1009,7 +1050,6 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
         }
-        $line = ($record | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine
         $lockPath = $path + '.lock'
         $lockStream = $null
         try {
@@ -1021,19 +1061,27 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             # Feature 202 iteration 002, T016 (FR-028; B4F-129): a receipt ID the store already holds is the same reply
             # offered again - by a second host's hooks reading the same session, or a second path - so it is never
             # written twice. The record already there is the answer; the reply was recorded, once.
-            if ([IO.File]::Exists($path)) {
-                $idNeedle = '"receipt_id":"' + $receiptId + '"'
-                foreach ($existingLine in [IO.File]::ReadAllLines($path)) {
+            $existingLines = if ([IO.File]::Exists($path)) { [IO.File]::ReadAllLines($path) } else { @() }
+            $toWrite = New-Object System.Text.StringBuilder
+            $openExisting = $null
+            foreach ($candidate in $records) {
+                $candidateId = [string]$candidate.receipt_id
+                $idNeedle = '"receipt_id":"' + $candidateId + '"'
+                $held = $null
+                foreach ($existingLine in $existingLines) {
                     if (-not $existingLine.Contains($idNeedle)) { continue }
                     $existingRecord = $null
                     try { $existingRecord = $existingLine | ConvertFrom-Json -ErrorAction Stop } catch { $existingRecord = $null }
-                    if ($null -ne $existingRecord -and [string]$existingRecord.receipt_id -ceq $receiptId) {
-                        $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'recorded' -Reason 'recorded' -FeatureRef $featureRef -Phase $phase -Response $Response
-                        return $existingRecord
-                    }
+                    if ($null -ne $existingRecord -and [string]$existingRecord.receipt_id -ceq $candidateId) { $held = $existingRecord; break }
                 }
+                if ($null -ne $held) { if ($candidateId -ceq $receiptId) { $openExisting = $held }; continue }
+                [void]$toWrite.Append((($candidate | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine))
             }
-            [IO.File]::AppendAllText($path, $line, [Text.UTF8Encoding]::new($false))
+            if ($toWrite.Length -gt 0) { [IO.File]::AppendAllText($path, $toWrite.ToString(), [Text.UTF8Encoding]::new($false)) }
+            if ($null -ne $openExisting) {
+                $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'recorded' -Reason 'recorded' -FeatureRef $featureRef -Phase $phase -Response $Response
+                return $openExisting
+            }
         }
         finally {
             if ($null -ne $lockStream) { $lockStream.Dispose() }
@@ -1046,6 +1094,26 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         $null = Set-SpecrewWorkshopReceiptOutcome -ProjectRoot $root -Status 'degraded' -Reason 'reply-write-failed' -FeatureRef $featureRef -Phase $phase -Response $Response
         return $null
     }
+}
+
+function Get-SpecrewWorkshopDelegationLine {
+    # T020 (FR-031, DA-4): what this turn's delegation covered, for the crew to say in one line. Wide: the lenses it
+    # covers. Narrow, with other lenses still open: that it covers only this one, and the phrase that covers the rest
+    # (the narrow case is loud too). $null otherwise.
+    $delegation = $script:SpecrewWorkshopLastDelegation
+    if ($null -eq $delegation) { return $null }
+    $join = {
+        param([string[]]$Names)
+        if ($Names.Count -le 1) { return ($Names -join '') }
+        return ((($Names | Select-Object -First ($Names.Count - 1)) -join ', ') + ' and ' + $Names[$Names.Count - 1])
+    }
+    if ([bool]$delegation.Wide) {
+        return ("Specrew: this reply delegates the remaining lenses: {0}. Each one is recorded as delegated, so do not ask about them again; name them to the human in one line." -f (& $join @($delegation.Covered)))
+    }
+    if (@($delegation.Pending).Count -gt 0) {
+        return ("Specrew: this delegation covers only {0}; {1} still open. Tell the human in one line that typing 'you decide the remaining lenses' delegates those too." -f (& $join @($delegation.Covered)), ((& $join @($delegation.Pending)) + $(if (@($delegation.Pending).Count -eq 1) { ' is' } else { ' are' })))
+    }
+    return $null
 }
 
 function Get-SpecrewWorkshopReceiptDisclosure {
@@ -1102,7 +1170,9 @@ function Get-SpecrewWorkshopAuthorityReceipt {
         [Parameter(Mandatory)][string] $FeatureRef,
         [Parameter(Mandatory)][ValidateSet('product-domain', 'agenda', 'lens')][string] $Phase,
         [AllowNull()][string] $Lens,
-        [AllowNull()][string] $ReceiptId
+        [AllowNull()][string] $ReceiptId,
+        # T020: the newest receipt with this confirmation, for a lens that holds more than one kind.
+        [AllowNull()][string] $Confirmation
     )
 
     $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $ProjectRoot
@@ -1118,11 +1188,46 @@ function Get-SpecrewWorkshopAuthorityReceipt {
                 [string]$record.phase -cne $Phase) { continue }
             if (-not [string]::IsNullOrWhiteSpace($Lens) -and [string]$record.lens -cne $Lens) { continue }
             if (-not [string]::IsNullOrWhiteSpace($ReceiptId) -and [string]$record.receipt_id -cne $ReceiptId) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($Confirmation) -and [string]$record.confirmation -cne $Confirmation) { continue }
             $latest = $record
         }
         return $latest
     }
     catch { throw ('workshop-authority-store-invalid:' + $_.Exception.Message) }
+}
+
+function Get-SpecrewWorkshopLensClosingReceipt {
+    # T020 (FR-031, DA-4): THE RECEIPT A LENS CLOSES ON. Normally its newest receipt. One mix is allowed: a lens whose
+    # craft decisions the human delegated and whose reviewer pick they then confirmed closes as delegated, on the
+    # delegation receipt - the walk's Claude case, where the confirmed reviewer answer was newest and the close asked
+    # "confirm or you decide this lens" again. Only confirmed answers may stand after that delegation; a later skip or
+    # another delegation is the newest act and wins. Used by the lens checkpoint and by every reader that checks it.
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $FeatureRef,
+        [Parameter(Mandatory)][ValidateSet('product-domain', 'agenda', 'lens')][string] $Phase,
+        [AllowNull()][string] $Lens,
+        [AllowNull()][string] $Confirmation
+    )
+    $latest = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase $Phase -Lens $Lens
+    if ($null -eq $latest -or [string]$latest.confirmation -ceq [string]$Confirmation) { return $latest }
+    if ([string]$Confirmation -cne 'human-delegated' -or [string]$latest.confirmation -cne 'human-confirmed') { return $latest }
+    $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $ProjectRoot
+    $forLens = New-Object System.Collections.Generic.List[object]
+    foreach ($line in [IO.File]::ReadLines($path, [Text.Encoding]::UTF8)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $record = [string]$line | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+        if ([string]$record.schema_version -cne '1' -or [string]$record.feature_ref -cne $FeatureRef -or [string]$record.phase -cne $Phase) { continue }
+        if (-not [string]::IsNullOrWhiteSpace($Lens) -and [string]$record.lens -cne $Lens) { continue }
+        $forLens.Add($record) | Out-Null
+    }
+    for ($i = $forLens.Count - 1; $i -ge 0; $i--) {
+        $c = [string]$forLens[$i].confirmation
+        if ($c -ceq 'human-confirmed') { continue }
+        if ($c -ceq 'human-delegated') { return $forLens[$i] }
+        break
+    }
+    return $latest
 }
 
 function Test-SpecrewWorkshopAuthorityReceipt {
@@ -1138,7 +1243,7 @@ function Test-SpecrewWorkshopAuthorityReceipt {
         [AllowNull()][string] $AgendaDigest
     )
 
-    $record = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase $Phase -Lens $Lens
+    $record = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase $Phase -Lens $Lens -Confirmation $Confirmation
     if ($null -eq $record) { return $false }
     $digestMatches = [string]::IsNullOrWhiteSpace($AgendaDigest) -or
         ($record.PSObject.Properties['agenda_digest'] -and [string]$record.agenda_digest -ceq $AgendaDigest)

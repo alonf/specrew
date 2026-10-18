@@ -159,8 +159,9 @@ run-cadence, and the full conduct. The conduct in brief:
    `implementation-rules.schema.json` (beside the lens in the design-lens catalog), plus the human-readable
    `workshop/code-implementation.md`; record the lens in `lens-applicability.json`. (Like `product-domain`,
    you author the record by hand following the schema -- you do NOT call a PowerShell writer; the lens
-   helper validates, it is not invoked mid-workshop.) Reviewer setup is part of this capture: list the live
-   hosts, present the marked default, record one concrete host + authorization reference, and run the explicit
+   helper validates, it is not invoked mid-workshop.) Reviewer setup is part of this capture: use the reviewer
+   choice the human made at agenda confirmation (ask it here only if it was not asked then: list the live hosts and
+   present the marked default), record one concrete host + authorization reference, and run the explicit
    `specrew review --host ... --authorization-ref ...` setup command. Never leave a completed code lens with
    an unresolved `auto-select`; that state cannot launch a reviewer in a fresh project.
 6. **Run cadence**: the rules are mostly product-level — decide once at a product-level workshop, inherit
@@ -251,6 +252,11 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as
    `human-confirmed` / `lens-question`. After the agenda is confirmed, every selected lens still needs its own
    lens-specific turn and its own human answer, explicit delegation, or explicit skip.
+   **The reviewer choice is asked once, at agenda confirmation.** In the same message as the agenda, name the
+   reviewer choice: the live reviewer hosts, with the default marked, and ask the human to confirm or change it in
+   the same reply. It spends the human's review quota, so it stays outside delegation: "you decide the remaining
+   lenses" never chooses the reviewer. The code-implementation lens then records the host the human named, or the
+   default they confirmed, without asking again.
 3. **Per-lens facilitated discussion — open with a presentation + an OPEN question, never a menu first (A4/FR-025, A8/FR-041b).**
    The **first turn of every lens** MUST be you *presenting* the lens — its decision points, and as it develops
    its diagram / component map — followed by an **open, free-text question** ("how should we approach this?",
@@ -421,10 +427,18 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      `human-skipped` + `explicit-skip` and say so honestly in `decision` — do NOT write a fabricated "the human
      agreed to X" for a lens they never saw. **A batch confirmation is not valid provenance:** if the human says
      "confirm all as proposed" at the agenda or summary level, that confirms only the agenda/scope and cannot
-     produce `human-confirmed` / `lens-question` for any lens. If the human explicitly delegates a shortcut such
-     as "you decide the remaining lenses", record each affected lens as `human-delegated` +
-     `explicit-delegation`, not `human-confirmed`. **Count self-check before you record:** you are about to write
-     N lens records — you must have asked, or been explicitly told to decide/skip, N times, one lens at a time.
+     produce `human-confirmed` / `lens-question` for any lens. **Delegating the remaining lenses.** A delegation
+     in one of the two exact wide forms, "the remaining lenses" or "all remaining lenses" (for example "you decide
+     the remaining lenses"), is recorded for every lens still open on the confirmed agenda, each as
+     `human-delegated` + `explicit-delegation` and bound to that one message. The turn tells you which lenses it
+     covered: name them to the human in one line, and do not ask those lenses again. Lenses added to the agenda
+     later are not covered. "the rest" is not a wide form, because it can mean the rest of this lens: it delegates
+     only the open lens. When a delegation covers only the open lens while others are still open, the turn says so:
+     tell the human in one line that "you decide the remaining lenses" delegates those too. A lens whose craft
+     decisions are delegated and whose reviewer pick is confirmed closes as `human-delegated` without another
+     question. **Count self-check before you record:** you are about to write N lens records — you must have
+     asked, or been explicitly told to decide/skip, for each of the N lenses (one wide delegation counts for every
+     lens it covered).
      A dismissed picker is an absence, never explicit delegation. If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill in
      the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens carries
      a `confirmation` and matching `confirmation_scope` — but it cannot see transcript truthfulness; that

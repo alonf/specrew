@@ -213,7 +213,9 @@ if (-not $isIntakeLens) {
 # deadlock one line down and reported "no typed reply from you is on record" for a reply that was.
 # A fact that fails two contracts reports only one of them.
 $receiptPhase = if ($isIntakeLens) { $Lens } else { 'lens' }
-$receipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase $receiptPhase -Lens $Lens
+# T020 (FR-031, DA-4): the receipt the lens closes on - its newest, or its delegation when only confirmed answers (the
+# reviewer pick) came after it - so delegated craft decisions plus a confirmed reviewer pick close without a question.
+$receipt = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase $receiptPhase -Lens $Lens -Confirmation $Confirmation
 if ($null -eq $receipt) {
     throw (New-SpecrewLensCheckpointRefusal `
             -Summary ("No typed reply from you is on record for the '{0}' question, so the topic was not closed." -f $Lens) `

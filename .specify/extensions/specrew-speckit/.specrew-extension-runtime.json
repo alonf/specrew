@@ -252,7 +252,7 @@
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
-      "sha256": "daa65da216cd9f0d9bc9e05a661462f345b2361705bab8ab1223e5cef5bd6639"
+      "sha256": "8fc878bfe5e9bb657e0af8269ae2e2526465735cb9b21a0fd47836d14c5405e7"
     },
     {
       "path": "scripts/conformance-turn-delta.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "ee611f1410eed2dbec1947e938fdcc01cc4720d6d79d6ed514b1c7c16e1e099f"
+      "sha256": "2db90874c1eb95a49c0982192dfa1b89c955ceddc430274fd7386922866bf7b4"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
@@ -552,7 +552,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "6b6ee325521676ac4af3b208ad7de94d91197c4553f49ae125a21caabb11ecbe"
+      "sha256": "85bde8c3e6446c49bf8e976eaead759be80c2f4750fef3618b8e701e1ac372eb"
     },
     {
       "path": "squad-templates/skills/drift-check.md",
