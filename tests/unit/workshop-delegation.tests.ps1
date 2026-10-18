@@ -167,6 +167,26 @@ try {
         $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3')
         Assert-True (@(Get-Receipts $r9 | Where-Object { [string]$_.lens -eq 'architecture-core' }).Count -eq 3) ("case 9, {0}: the same reply again adds nothing" -f $label)
     }
+
+    # Co-review round 6 (iteration 002): only a reviewer pick may stand after a wide delegation. Every later confirmed
+    # reply was passed over, so a craft answer that took the lens back still let it close as delegated.
+    Write-Host '  --- case 10: after a wide delegation, a craft answer takes the lens back; a reviewer pick does not ---'
+    foreach ($answer in @('Do not decide this lens for me; I choose a local queue.', 'Keep one pipeline with bounded concurrency.')) {
+        $r10 = New-LensFixture -Selected @('ui-ux', 'architecture-core') -OpenLens 'architecture-core'; $roots.Add($r10)
+        $null = Invoke-Provider -Root $r10 -Reply 'you decide the remaining lenses' -MessageId 'msg-wide-10'
+        $null = Invoke-Provider -Root $r10 -Reply $answer -MessageId 'msg-answer-10'
+        $closing10 = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $r10 -FeatureRef $feature -Phase 'lens' -Lens 'architecture-core' -Confirmation 'human-delegated'
+        Assert-True ($null -ne $closing10 -and [string]$closing10.confirmation -eq 'human-confirmed') ("case 10: '{0}' is the act the lens closes on" -f $answer)
+        $null = & pwsh -NoProfile -File $lensWriter -ProjectRoot $r10 -FeatureRef $feature -Lens 'architecture-core' -Decision 'Delegated.' -Depth 'light' -Agenda @('An open question?') -Confirmation 'human-delegated' 2>&1
+        Assert-True ($LASTEXITCODE -ne 0) ("case 10: after '{0}' the lens does not close as delegated" -f $answer)
+    }
+    foreach ($pick in @('Use codex as the reviewer.', 'copilot', 'Confirm the default reviewer.', 'The reviewer is claude.')) {
+        $r10b = New-LensFixture -Selected @('ui-ux', 'architecture-core') -OpenLens 'architecture-core'; $roots.Add($r10b)
+        $null = Invoke-Provider -Root $r10b -Reply 'you decide the remaining lenses' -MessageId 'msg-wide-10b'
+        $null = Invoke-Provider -Root $r10b -Reply $pick -MessageId 'msg-pick-10b'
+        $closing10b = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $r10b -FeatureRef $feature -Phase 'lens' -Lens 'architecture-core' -Confirmation 'human-delegated'
+        Assert-True ($null -ne $closing10b -and [string]$closing10b.confirmation -eq 'human-delegated') ("case 10: the reviewer pick '{0}' leaves the delegation as the act the lens closes on" -f $pick)
+    }
 }
 finally {
     foreach ($d in $roots) { if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue } }

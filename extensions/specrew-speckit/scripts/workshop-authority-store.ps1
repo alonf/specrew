@@ -33,6 +33,22 @@ function Get-SpecrewWorkshopResponseAuthority {
     return [pscustomobject]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
 }
 
+function Test-SpecrewWorkshopReviewerPick {
+    # Co-review round 6 (iteration 002; FR-031, DA-4): a reply that only names the reviewer - a reviewer host or the default,
+    # with nothing but the words of a choice around it ("Use codex as the reviewer.", "copilot", "Confirm the default
+    # reviewer.", "The reviewer is claude."). It is the one confirmed reply that may follow a wide delegation without taking
+    # the lens back. Anything more is an answer to the lens.
+    [OutputType([bool])]
+    param([AllowNull()][AllowEmptyString()][string] $Response)
+    $normalized = (($Response -replace '\s+', ' ').Trim().ToLowerInvariant()) -replace '[.!]+$', ''
+    if ([string]::IsNullOrWhiteSpace($normalized)) { return $false }
+    $reviewer = '(?:the\s+)?(?:default|codex|copilot|claude|cursor|gemini|antigravity|agy)(?:\s+(?:reviewer|host|one))?'
+    $choice = '(?:(?:yes|ok(?:ay)?|sure|confirm(?:ed)?)[\s,:;-]+)?(?:(?:i\s+)?(?:use|keep|pick|choose|want|go\s+with)\s+|let''?s\s+(?:use|go\s+with)\s+)?'
+    $role = '(?:\s+(?:as|for)\s+(?:the\s+)?review(?:er|s)?)?(?:\s+(?:is\s+fine|please))?'
+    if ($normalized -match ('^' + $choice + $reviewer + $role + '$')) { return $true }
+    return [bool]($normalized -match ('^(?:the\s+)?reviewer(?:\s+is|\s+should\s+be|:)\s+' + $reviewer + '(?:\s+please)?$'))
+}
+
 function Test-SpecrewWorkshopWideDelegation {
     # Feature 202 iteration 002, T020 (FR-031, DA-4; B4F-130): the exact wide forms of a delegation. "you decide the
     # remaining lenses" and "you decide all remaining lenses" cover every lens left on the agenda. "the rest" is NOT one:
@@ -1036,6 +1052,7 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             }
             if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $record['message_id'] = [string]$MessageId }
             if ($wideDelegation) { $record['delegation_breadth'] = 'remaining-lenses' }
+            if ($phase -eq 'lens' -and [string]$authority.confirmation -ceq 'human-confirmed' -and (Test-SpecrewWorkshopReviewerPick -Response $Response)) { $record['answer_kind'] = 'reviewer-pick' }
             if ($phase -eq 'agenda') {
                 $record['agenda_digest'] = $agendaDigest
                 $record['agenda_binding'] = $agendaBinding
@@ -1234,7 +1251,7 @@ function Get-SpecrewWorkshopLensClosingReceipt {
     # one, so an older reply cannot be replayed. One mix is allowed: a lens covered by a WIDE delegation ("you decide the
     # remaining lenses", given in advance) whose reviewer pick the human then confirmed closes as delegated, on that
     # delegation receipt - the walk's Claude case, where the confirmed reviewer answer was newest and the close asked
-    # "confirm or you decide this lens" again. Only confirmed answers may stand after it; a later skip or delegation is the
+    # "confirm or you decide this lens" again. Only a reviewer pick may stand after it; a later answer, skip or delegation is the
     # newest act and wins, and a narrow "you decide" followed by an answer is a changed mind, so the answer wins. Used by
     # the lens checkpoint and by every reader that checks a closed lens.
     param(
@@ -1256,9 +1273,12 @@ function Get-SpecrewWorkshopLensClosingReceipt {
         if (-not [string]::IsNullOrWhiteSpace($Lens) -and [string]$record.lens -cne $Lens) { continue }
         $forLens.Add($record) | Out-Null
     }
+    # Co-review round 6 (iteration 002): only a REVIEWER PICK stands after the delegation. Every confirmed reply was passed
+    # over, so 'Do not decide this lens for me; I choose a local queue' still let the lens close as delegated, on the older
+    # receipt and a decision the agent wrote. A reply that answers the lens itself is the newest act and wins.
     for ($i = $forLens.Count - 1; $i -ge 0; $i--) {
         $c = [string]$forLens[$i].confirmation
-        if ($c -ceq 'human-confirmed') { continue }
+        if ($c -ceq 'human-confirmed' -and $forLens[$i].PSObject.Properties['answer_kind'] -and [string]$forLens[$i].answer_kind -ceq 'reviewer-pick') { continue }
         if ($c -ceq 'human-delegated' -and $forLens[$i].PSObject.Properties['delegation_breadth'] -and [string]$forLens[$i].delegation_breadth -ceq 'remaining-lenses') { return $forLens[$i] }
         break
     }

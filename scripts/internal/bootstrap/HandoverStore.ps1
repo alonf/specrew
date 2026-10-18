@@ -1003,10 +1003,19 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         [Parameter()][AllowNull()][string] $LastUserMessage,
         [Parameter()][AllowNull()][string] $LastAuthorizedBoundary,
         [Parameter()][string] $Source = 'stop',
-        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o'))
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
+        # Co-review round 6 (iteration 002): where the dispatcher says the prompt came from; empty at Stop.
+        [Parameter()][AllowNull()][string] $TurnOrigin = $null
     )
 
     $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
+    # Co-review round 6 (iteration 002): a prompt the dispatcher did not find typed by the human - a replay of the hook's own
+    # output, or a message whose records it could not read - authorizes no boundary, as it records no other approval.
+    if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation') -and
+        -not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user') {
+        $result.reason = 'not-typed-by-human'
+        return $result
+    }
     # W45 (2026-08-22): a prompt-entry event with no transcript is no longer a dead end. On hosts whose
     # prompt event carries no transcript path (Copilot), capture used to land only at Stop - AFTER the
     # turn that was processing the verdict - so a mid-turn controller read told the session the crossing
@@ -1200,9 +1209,19 @@ function Invoke-SpecrewTypedAuthorityCapture {
         # paths pass the same value for the same message, so the identity below is one key, not one per path.
         [AllowEmptyString()][AllowNull()][string]$MessageId,
         # Co-review round 1 (iteration 002): the session the message belongs to, recorded on the reservation.
-        [AllowEmptyString()][AllowNull()][string]$SessionId
+        [AllowEmptyString()][AllowNull()][string]$SessionId,
+        # Co-review round 6 (iteration 002): where the dispatcher says the message came from (typed-user | host-injected |
+        # unknown). Empty from a path that reads no origin (the turn end), which keeps its own checks.
+        [AllowEmptyString()][AllowNull()][string]$TurnOrigin
     )
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
+    # Co-review round 6 (iteration 002): ONLY A MESSAGE THE HUMAN TYPED RECORDS AN APPROVAL. The dispatcher labels a replay
+    # of the hook's own output 'host-injected', and a message whose records it could not read 'unknown', and the workshop
+    # receipt refused both while every writer here still ran - so 'approved for review round' arriving as a replay was a
+    # spendable round. Neither reaches a writer that records authority. The withdrawal still runs, for the reason it runs
+    # on a quoted menu: it removes authority, and refusing it would leave an approval the human retracted spendable. An
+    # unknown origin may be the human's own typing, so it is reported and said in this turn, with the phrase to retype.
+    $originRefused = (-not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user')
     # Feature 202 iteration 002, T018 (FR-029, DA-3): the writers decide on the approval form. On a host that marks pastes
     # that is the human's own authority line outside every paste; a quoted menu, and every message on a host that marks
     # no pastes, reaches them unchanged, and the one-line rule refuses it. Both recording paths reduce the same message
@@ -1322,7 +1341,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
             'Write-SpecrewCoverageDeferralAuthorization'
             'Write-SpecrewReviewSignoffOverrideAuthorization'
             'Write-SpecrewWorkshopRepairAuthorization')) {
-        if ($quotedMenu -and $writerName -cne 'Write-SpecrewApprovalWithdrawal') { continue }
+        if (($quotedMenu -or $originRefused) -and $writerName -cne 'Write-SpecrewApprovalWithdrawal') { continue }
         $writer = Get-Command $writerName -ErrorAction SilentlyContinue
         if ($null -eq $writer) { continue }
         try {
@@ -1337,6 +1356,17 @@ function Invoke-SpecrewTypedAuthorityCapture {
             if ($null -ne $written) { [void]$mintedBy.Add($writerName) }
         }
         catch { $writerFailed = $true }
+    }
+    if ($originRefused -and $TurnOrigin -ceq 'unknown' -and $mintedBy.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) -and (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
+        try {
+            $unconfirmedShape = Get-SpecrewTypedAuthorityShape -Text $Response
+            if ($null -ne $unconfirmedShape -and [string]$unconfirmedShape.Kind -cne 'approval-withdrawal') {
+                Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $unconfirmedShape -EntryKey $turnId -HostKind $HostKind `
+                    -SessionId $SessionId -Reason 'origin-unconfirmed' -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
     }
     # Co-review round 2 (iteration 002): RECEIVED IS NOT SAVED. The reservation above proves the hook saw the message, and
     # the turn end on a single-path host reads it that way. When a writer threw and nothing was stored, the act is reported
@@ -1510,7 +1540,7 @@ function Update-SpecrewRollingHandover {
         # which is a second act - correctly.
         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
             -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc `
-            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId
+            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId -TurnOrigin $TurnOrigin
         # T017 (DA-2 condition 2): an approval an earlier turn end found not recorded on this host is said here,
         # once, in the turn the human reads.
         $notRecordedDisclosure = $null
@@ -1567,7 +1597,7 @@ function Update-SpecrewRollingHandover {
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc
+            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin
         # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
         # where the phrase first appears, and the alternative is the human learning it from a recap two
         # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).

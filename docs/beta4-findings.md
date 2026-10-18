@@ -3288,6 +3288,8 @@ sign-off (202 DRIFT-018).
 
 **Iteration 002 round 5 (2026-10-18, `run-20261018-075433218-7cbe648b`, codex):** 5 findings, 4 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 1 reported minor; the summary again read "Nothing found that needs your attention." All 5 are real (53 of 53 across eleven rounds of feature 202): among them, a quoted menu was saved as a partial sign-off override, and a host envelope around a round phrase recorded a human approval (202 iteration 002 DRIFT-003).
 
+**Iteration 002 round 6 (2026-10-18, `run-20261018-114927550-9d62a483`, codex):** 6 findings, 4 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 2 reported minor; the summary again read "Nothing found that needs your attention." All 6 are real (59 of 59 across twelve rounds of feature 202): among them, a round approval above a condition typed on the next line was recorded, and a message the host added still reached every approval writer (202 iteration 002 DRIFT-003).
+
 ## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
 
 **Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
@@ -4982,6 +4984,8 @@ review sign-off stage opened on it.
 **Recurred an eighth time:** 2026-10-17, the round-4 approval drew the same notice; the round approval was recorded once and became round 4 of `cmp-202-beta4-1-ux-stabilization-i002`.
 
 **Recurred a ninth time:** 2026-10-18, the round-5 approval drew the same notice; the round approval was recorded once and became round 5 of `cmp-202-beta4-1-ux-stabilization-i002`.
+
+**Recurred a tenth time:** 2026-10-18, the round-6 approval drew the same notice; the round approval was recorded once and became round 6 of `cmp-202-beta4-1-ux-stabilization-i002`.
 
 ## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
 

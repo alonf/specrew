@@ -300,8 +300,8 @@ allowance reset, T023, T024.
 - **Review cadence:** round 1 after T016 (covers T016 and T017, the approval handling and the release gate); round 2
   to 4 on the fixes, by the maintainer's choice (DRIFT-003), which spends the allowance. A round after T019 (covering the
   round-4 fixes, T022, T020, T021, T018, T019) follows the maintainer's allowance reset of 2026-10-17; it ran as round 5
-  on 2026-10-18 (5 findings, all real, fixed). A further round on the round-5 fixes, T023 and T024 needs the maintainer's
-  typed approval.
+  on 2026-10-18 (5 findings, all real, fixed). Round 6, on the round-5 fixes, T023 and T024, ran on 2026-10-18 (6
+  findings, all real, fixed). A further round on the round-6 fixes needs the maintainer's typed approval.
 - **Standing rules for every round:** no commit between an approval and the step that uses it; before a round launch, a
   stop decision or an allowance reset, the stored approval must come from the maintainer's own typed message for that run
   (the B4F-127 interim rule, until T017 is reviewed); every demoted finding is checked against the code and listed as

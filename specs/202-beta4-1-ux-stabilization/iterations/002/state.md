@@ -4,8 +4,8 @@
 **Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T024
-**Tasks Remaining**: none (a review round on the round-5 fixes, T023 and T024 awaits the maintainer)
-**In Progress**: (none; co-review rounds 1 to 5 returned 21 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a`, `c43b3cec` and `cbb1ea74` (DRIFT-003); round 5 ran on 2026-10-18 after the allowance reset)
+**Tasks Remaining**: none (a review round on the round-6 fixes awaits the maintainer)
+**In Progress**: (none; co-review rounds 1 to 6 returned 27 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a`, `c43b3cec`, `cbb1ea74` and the round-6 fix commit (DRIFT-003); rounds 5 and 6 ran on 2026-10-18 after the allowance reset)
 **Baseline Ref**: fe509311
 **Updated**: 2026-10-18T09:30:00Z
 

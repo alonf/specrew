@@ -326,6 +326,21 @@ try {
     $d10b = "## Discussion Prompts`n`n1. Does version 1.2 preserve the approval record?`n`n## What I Need From You`n`n  approved for review-signoff"
     $r10b = "## Discussion Prompts`n`n1. Will version 1.3 preserve the approval record?`n`n## What I Need From You`n`n  approved for review-signoff"
     Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r10b -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d10b)).Count -eq 1) 'a changed version is still missing'
+
+    # Co-review round 6 (iteration 002): 'before' and 'after' were both words any question carries, so a question whose
+    # order was reversed read as the same question.
+    Write-Host 'Case 11: a reversed order or condition is a changed question; a rewording that keeps it is not'
+    foreach ($pair in @(
+            @('Should the migration run before deployment?', 'Should the migration run after deployment?'),
+            @('Should the lock be released after the write?', 'Should the lock be released before the write?'),
+            @('Does the round run if the checks pass?', 'Does the round run unless the checks pass?'))) {
+        $d11 = "## Discussion Prompts`n`n1. $($pair[0])`n`n## What I Need From You`n`n  approved for review-signoff"
+        $r11 = "## Discussion Prompts`n`n1. $($pair[1])`n`n## What I Need From You`n`n  approved for review-signoff"
+        Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r11 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d11)).Count -eq 1) ("'{0}' is not '{1}'" -f $pair[1], $pair[0])
+    }
+    $d11b = "## Discussion Prompts`n`n1. Should the migration run before deployment?`n`n## What I Need From You`n`n  approved for review-signoff"
+    $r11b = "## Discussion Prompts`n`n1. Does the migration need to run before deployment?`n`n## What I Need From You`n`n  approved for review-signoff"
+    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r11b -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d11b)).Count -eq 0) 'a rewording that keeps the order counts as present'
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }

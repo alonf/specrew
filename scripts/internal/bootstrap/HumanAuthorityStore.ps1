@@ -373,20 +373,26 @@ function Resolve-SpecrewApprovalForm {
     # What the recognizers decide on. { Text; Reason; Options }: Reason 'quoted-menu' when the human's own text carries
     # more than one verdict option and one of them is a typed authority phrase (Text unchanged, so nothing mints); on a
     # host that marks pastes, Text is the one authority line outside every paste, or the text with its pastes removed.
+    # Reason 'machinery-envelope' when the human's own text is wrapped in a host envelope, and 'qualified' when the typed
+    # text beside the one authority line carries a condition or a reversal (Text is then left multi-line, so it refuses).
     # Anywhere else Text is the message unchanged, and the one-line rule decides.
     [OutputType([pscustomobject])]
     param([AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
     $result = [pscustomobject]@{ Text = [string]$Text; Reason = ''; Options = @() }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $result }
+    $marks = Test-SpecrewHostMarksPastes -HostKind $HostKind
+    $outside = if ($marks) { Remove-SpecrewPairedPastes -Text $Text } else { [string]$Text }
     # Co-review round 5 (iteration 002): text the host or the machinery wrapped in one of its envelopes is never reduced to
     # the authority line inside it. Every writer refuses an envelope at the start of the message; reduced, the envelope was
     # gone before any writer saw it, and '<hook_prompt>' around 'approved for review round' recorded a human approval.
-    if ($Text -match $script:SpecrewMachineryEnvelopeLinePattern) { $result.Reason = 'machinery-envelope'; return $result }
-    $marks = Test-SpecrewHostMarksPastes -HostKind $HostKind
-    $outside = if ($marks) { Remove-SpecrewPairedPastes -Text $Text } else { [string]$Text }
+    # Co-review round 6: looked for in the human's own text, outside every paste. A pasted log that quoted a
+    # '<system-reminder>' line hid the approval typed below it, and no refusal said so.
+    if ($outside -match $script:SpecrewMachineryEnvelopeLinePattern) { $result.Reason = 'machinery-envelope'; return $result }
     $lines = @([regex]::Split($outside, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })
     $shapeOf = { param([string]$Line) if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { Get-SpecrewTypedAuthorityShape -Text $Line } else { $null } }
-    $options = @($lines | Where-Object { $_.ToLowerInvariant() -match $script:SpecrewVerdictOptionLinePattern } | Select-Object -Unique)
+    # Co-review round 6: an option is an option whatever it is wrapped in. A menu copied with its bullets, quote marks,
+    # numbers or inline code had one counted option, so it was not a quoted menu and its approval line was recorded.
+    $options = @($lines | ForEach-Object { ConvertTo-SpecrewVerdictOptionText -Line $_ } | Where-Object { $_ -match $script:SpecrewVerdictOptionLinePattern } | Select-Object -Unique)
     $authorityLines = @($lines | Where-Object { $null -ne (& $shapeOf $_) })
     if ($options.Count -ge 2 -and $authorityLines.Count -ge 1) {
         $result.Reason = 'quoted-menu'; $result.Options = $options
@@ -394,10 +400,44 @@ function Resolve-SpecrewApprovalForm {
     }
     if ($marks) {
         $typedSized = ($lines.Count -le $script:SpecrewTypedTextMaxLines -and $outside.Trim().Length -le $script:SpecrewTypedTextMaxChars)
-        if ($typedSized -and $authorityLines.Count -eq 1) { $result.Text = [string]$authorityLines[0] }
+        # Co-review round 6: THE OTHER TYPED LINES CAN QUALIFY THE APPROVAL. Reduced to its line, 'approved for review round'
+        # above 'provided the security checks pass' reached the writer with nothing after it, so the condition every writer
+        # refuses on the same line was never seen and the round was spendable at once. When the typed text beside the line
+        # carries a condition or a reversal, the message is not reduced, and the one-line rule refuses it by name.
+        $others = @($lines | Where-Object { $null -eq (& $shapeOf $_) })
+        $qualified = ($others.Count -gt 0 -and (Test-SpecrewAuthorityContextQualifies -Text ($others -join ' ')))
+        if ($typedSized -and $authorityLines.Count -eq 1 -and -not $qualified) { $result.Text = [string]$authorityLines[0] }
+        elseif ($typedSized -and $authorityLines.Count -eq 1) { $result.Text = $outside.Trim(); $result.Reason = 'qualified' }
         elseif ($outside -cne [string]$Text) { $result.Text = $outside.Trim() }
     }
     return $result
+}
+
+function ConvertTo-SpecrewVerdictOptionText {
+    # One line as an option reads: lower-cased, its list, quote and number markers and its inline emphasis or code marks
+    # removed, as the turn's meaning lines are read.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Line)
+    $text = ([string]$Line).Trim().ToLowerInvariant()
+    $previous = $null
+    while ($text -cne $previous) {
+        $previous = $text
+        $text = ($text -replace '^(?:[-*+>]\s+|>|\d+[.)]\s+|[`*_~"''“”]+)', '').TrimStart()
+    }
+    return $text
+}
+
+# A condition or reversal in the typed text beside an approval line: the clauses the writers refuse after the phrase on its
+# own line (Test-SpecrewConditionalDeferralClause, and the reversals the round writer names).
+$script:SpecrewAuthorityContextReversalPattern = '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|wait|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that|only)\b'
+
+function Test-SpecrewAuthorityContextQualifies {
+    [OutputType([bool])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $lower = $Text.ToLowerInvariant()
+    if (Test-SpecrewConditionalDeferralClause -Text $lower) { return $true }
+    return [bool]($lower -match $script:SpecrewAuthorityContextReversalPattern)
 }
 
 function Get-SpecrewAuthorityMultiLineRefusal {
@@ -455,8 +495,9 @@ function Get-SpecrewAuthorityMultiLineRefusal {
     }
     # T018 (FR-029): on a host that marks no pastes the phrase must stand alone, wherever it sits in the message. A phrase
     # on a later line - typed below a paste the host cannot mark, as in B4F-125 - is refused with that reason, not
-    # passed over in silence because the first line was something else.
-    if (-not (Test-SpecrewHostMarksPastes -HostKind $HostKind) -and (Get-SpecrewAuthorityMessageLineCount -Text $Text) -gt 1 -and
+    # passed over in silence because the first line was something else. Co-review round 6: the same on a host that marks
+    # pastes when the typed text beside the phrase qualifies it, so a condition typed above the phrase is refused by name too.
+    if (((-not (Test-SpecrewHostMarksPastes -HostKind $HostKind)) -or [string]$form.Reason -ceq 'qualified') -and (Get-SpecrewAuthorityMessageLineCount -Text $Text) -gt 1 -and
         (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue)) {
         foreach ($line in @([regex]::Split($Text, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })) {
             $lineShape = Get-SpecrewTypedAuthorityShape -Text $line
@@ -1376,6 +1417,9 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
                 Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
             if ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-saved') {
                 ("Specrew: your earlier '{0}' was received but could not be saved, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
+            elseif ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'origin-unconfirmed') {
+                ("Specrew: your '{0}' was received but not recorded - Specrew could not confirm it was typed in this conversation, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
             }
             else {
                 ("Specrew: your earlier '{0}' was not recorded - it reached the conversation, but Specrew did not receive it, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)

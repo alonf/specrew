@@ -195,3 +195,41 @@
 - **Class closure (round 5)**: findings 1 and 2 are one class, T018's own premise: the form the writers decide on must
   keep every reason to refuse that the message had. Finding 4 closes identity by content for workshop receipts, the
   class T017 closed for authority facts.
+- **Round 6 (2026-10-18, the maintainer's typed `approved for review round`, checked typed, fresh and unspent before
+  launch)**: run `run-20261018-114927550-9d62a483` (codex, 30 minutes) reviewed the round-5 fixes, T023 and T024. The
+  engine counts it as round 2 of the restored allowance (2 of 4). 6 findings: 4 reported blocking or major and demoted for
+  "no concrete failure scenario" (each states one), 2 reported minor. Each was checked against the code, and each is real:
+  1. **Bulleted alternatives were not counted as options.** An option counted only when its line began with one, so on
+     Claude `approved for review round` above `- changes needed: ...` and `- discuss prompt 1` was reduced to its line and
+     recorded, and the same bullets let a partial sign-off menu reach the override writer on every host.
+  2. **Reducing a Claude message to its approval line dropped a condition typed on the next line.** `approved for review
+     round` above `provided the security checks pass` reached the writer with nothing after the phrase, so the condition
+     the writer refuses on the same line was never seen and the round was spendable at once.
+  3. **A message the host added still reached the approval writers.** The dispatcher labels a replay of the hook's own
+     output `host-injected` and an unreadable records check `unknown`; the workshop receipt refused both, while every
+     approval writer ran. The prompt-entry boundary approval had the same gap (closed with it).
+  4. **After a wide delegation, every confirmed reply was passed over.** A craft answer such as "Do not decide this lens
+     for me; I choose a local queue" still let the lens close as delegated, on the older receipt.
+  5. **The envelope check ran before pastes were removed.** A pasted log quoting a `<system-reminder>` line hid the reset
+     typed below it, and no refusal said so.
+  6. **'before' and 'after' were both dropped from a question's meaning.** "Should the migration run before
+     deployment?" and "... after deployment?" read as the same question.
+- **Resolution (round 6)**, each behind a failing test:
+  1. A line's list, quote and number markers and inline marks are removed before it is read as an option.
+  2. When the typed text beside the one approval line carries a condition or a reversal, the message is not reduced; the
+     writers refuse it as more than one line, and the refusal says so, for a condition above the phrase too.
+  3. A message whose origin is not `typed-user` reaches only the withdrawal, which removes authority. An `unknown`
+     origin, which may be the human's own typing, is reported in the same turn with the phrase to type again. The
+     prompt-entry boundary approval refuses both origins.
+  4. The receipt marks a reply that only names the reviewer (a reviewer host or the default) as a reviewer pick, and only
+     that reply may stand after a wide delegation.
+  5. The envelope check reads the human's own text, outside every paste.
+  6. A question that has 'before' (or 'earlier', 'first') where the other has its opposite is a changed question; a
+     rewording may still add or drop one, as B4F-128's reply did.
+- **Tests (round 6)**: `approval-form` 19 new cases (15 RED on `d8b0a092`; 4 controls, among them the withdrawal that
+  still runs whatever the origin), `workshop-delegation` case 10 (4 checks RED; 4 reviewer picks are controls),
+  `presented-check` case 11 (2 RED), `verdict-capture-blocks` W45 (8) (RED: the old capture takes no origin at all).
+- **Class closure (round 6)**: findings 1, 2 and 5 are T018's premise again, in three more places: the form the writers
+  decide on must keep every reason to refuse that the message had - an option in any wrapping, a condition on any line, an
+  envelope only where the human typed it. Finding 3 closes provenance for every writer that records authority from a
+  prompt, the class FR-006 closed for the workshop receipt.

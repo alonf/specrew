@@ -622,6 +622,24 @@ No open prompts.
     if ($r.authorized) { Fail 'W45: with a transcript present, the prompt-only path rescued an approval past a send-back' }
     Write-Pass 'W45 (7): a transcript-bearing call keeps every transcript conservatism - no rescue past a send-back'
 
+    # (8) Co-review round 6 (iteration 002): a prompt the dispatcher did not find typed by the human authorizes nothing,
+    #     with or without a transcript; the same prompt typed by the human still does.
+    foreach ($origin in @('host-injected', 'unknown')) {
+        $w45h = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+        $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45h -TranscriptPath $null `
+            -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z' -TurnOrigin $origin
+        if ($r.authorized -or @(Get-CaptureLedger -ProjectRoot $w45h).Count -ne 0) { Fail "W45: a prompt whose origin is '$origin' authorized the pending crossing" }
+        $w45ht = New-CaptureTranscript -Path (Join-Path $scratch "w45h-$origin.jsonl") -HumanText 'approved for before-implement'
+        $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45h -TranscriptPath $w45ht `
+            -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z' -TurnOrigin $origin
+        if ($r.authorized -or @(Get-CaptureLedger -ProjectRoot $w45h).Count -ne 0) { Fail "W45: a prompt whose origin is '$origin' authorized the pending crossing from its transcript" }
+    }
+    $w45i = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45i -TranscriptPath $null `
+        -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z' -TurnOrigin 'typed-user'
+    if (-not $r.authorized) { Fail "W45: a typed prompt no longer authorizes (reason=$($r.reason))" }
+    Write-Pass 'W45 (8): a prompt not typed by the human authorizes no boundary; a typed one still does'
+
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }
