@@ -556,6 +556,25 @@ function Test-SpecrewReviewRoundApprovalPhrase {
     return $r
 }
 
+function Test-SpecrewTypedActReplacesRecord {
+    # B4F-137 (202 iteration 002): AN APPROVAL THE HUMAN TYPES IS NEVER FOLDED INTO AN OLDER TURN-END RECORD.
+    #
+    # The writers below return an unspent record with the same text as "the same act", so a duplicate never mints twice.
+    # But a record the turn-end path recovered from the transcript is not this typed message: with message identity
+    # (T017) the turn-end path never re-offers a message the message hook recorded, so a typed approval reaching a writer
+    # that already holds a turn-end record is a NEWER act. Returning the old record kept its provenance - an approval
+    # left from an earlier double record, observed 43 hours old, then authorized the step the human had just typed. The
+    # typed act replaces it, so the stored approval carries the evidence of the act that authorizes it.
+    [OutputType([bool])]
+    param([AllowNull()]$Existing, [AllowNull()]$Fact)
+    if ($null -eq $Existing -or $null -eq $Fact) { return $false }
+    # A record that has already become a grant keeps it: its minted_ref is how ownership is joined (W61), and an
+    # undelivered attempt keeps the entitlement it carries.
+    if ($Existing.PSObject.Properties['minted_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$Existing.minted_ref)) { return $false }
+    $existingSource = if ($Existing.PSObject.Properties['evidence_source']) { [string]$Existing.evidence_source } else { '' }
+    return ([string]$Fact.evidence_source -ceq 'hook-captured-user-prompt' -and $existingSource -cne 'hook-captured-user-prompt')
+}
+
 function Write-SpecrewReviewRoundApprovalAuthorization {
     # SPECREW-AUTHORITY-CONTROL: review-round-approval
     <# Capture only from a genuine human utterance: a prompt-entry event's own text, or a verified human
@@ -629,7 +648,8 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         # called, so this branch is never reached by a re-offer.
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
-            [string]$existing.response_hash -ceq [string]$fact.response_hash) {
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) {
             Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
             return $existing
         }
@@ -1593,7 +1613,8 @@ function Write-SpecrewPauseDecisionAuthorization {
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
             [string]$existing.response_hash -ceq [string]$fact.response_hash -and
-            [string]$(if ($existing.PSObject.Properties['run_id']) { $existing.run_id } else { '' }) -ceq [string]$fact.run_id) { return $existing }
+            [string]$(if ($existing.PSObject.Properties['run_id']) { $existing.run_id } else { '' }) -ceq [string]$fact.run_id -and
+            -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) { return $existing }
     }
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
@@ -2180,7 +2201,8 @@ function Write-SpecrewAllowanceResetAuthorization {
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
-            [string]$existing.response_hash -ceq [string]$fact.response_hash) {
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) {
             Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
             return $existing
         }

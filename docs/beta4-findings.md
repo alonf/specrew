@@ -5383,7 +5383,10 @@ The B4F-127 interim check caught the provenance; the maintainer confirmed the go
 **Fix direction (proposal):** a typed approval replaces an unspent record whose evidence is the turn-end path, so the
 stored approval carries the provenance of the act that authorizes it. The same idempotent return exists in the other
 pending-approval writers; check each.
-**Disposition:** recorded; to be fixed in iteration 002 under the restored round coverage.
+**Disposition:** fixed 2026-10-18 in iteration 002, behind a failing test (`message-identity`, B4F-137 cases for the round
+approval and the allowance reset): a typed approval replaces an unspent turn-end record in the round-approval,
+pause-decision and allowance-reset writers, unless that record has already become a grant. The sign-off override
+writer refuses a differing record instead, and the coverage-deferral writer appends, so neither folds an act.
 
 ## Beta4.1 intake rulings — 2026-10-13
 

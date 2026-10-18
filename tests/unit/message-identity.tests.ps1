@@ -534,3 +534,25 @@ Describe 'Co-review round 4 (iteration 002): the three findings, each as its own
         $shown | Should -Match 'could not be saved'
     }
 }
+
+Describe 'B4F-137: an approval the human types replaces an unspent record from the turn-end path' {
+    It '<Phrase>: the stored approval carries the typed message, not an older turn-end record' -ForEach @(
+        @{ Phrase = 'approved for review round'; Store = '.specrew/review/round-approval/pending-round-approval.json' }
+        @{ Phrase = 'approved for allowance reset'; Store = '.specrew/review/allowance-reset/pending-allowance-reset.json' }
+    ) {
+        $p = New-Project
+        # An older message the message hook missed: the turn end recorded it from the transcript, and it was never spent.
+        Add-Human -P $p -HostKind 'claude' -Text $Phrase -MessageId 'msg-old' -SecondsFromNow -120
+        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-old'
+        Invoke-TurnEnd -P $p -HostKind 'claude'
+        $stored = Join-Path $p.Root $Store
+        [string]((Get-Content -LiteralPath $stored -Raw | ConvertFrom-Json).evidence_source) | Should -Be 'hook-captured-from-transcript'
+        # The human types the phrase now, and the message hook records it.
+        Add-Human -P $p -HostKind 'claude' -Text $Phrase -MessageId 'msg-new'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text $Phrase -MessageId 'msg-new' | Out-Null
+        $fact = Get-Content -LiteralPath $stored -Raw | ConvertFrom-Json
+        [string]$fact.evidence_source | Should -Be 'hook-captured-user-prompt'
+        [string]$fact.source_event | Should -Be 'UserPromptSubmit'
+        [string]::IsNullOrWhiteSpace([string]$fact.spent_at) | Should -BeTrue
+    }
+}
