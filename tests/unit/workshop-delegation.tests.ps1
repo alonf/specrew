@@ -123,6 +123,13 @@ try {
     $null = Invoke-Provider -Root $r6b -Reply 'skip' -MessageId 'msg-skip-6b'
     $null = & pwsh -NoProfile -File $lensWriter -ProjectRoot $r6b -FeatureRef $feature -Lens 'architecture-core' -Decision 'Delegated.' -Depth 'light' -Agenda @('An open question?') -Confirmation 'human-delegated' 2>&1
     Assert-True ($LASTEXITCODE -ne 0) 'case 6: a delegation followed by a skip does not close as delegated'
+    # A narrow "you decide" followed by an answer is a changed mind: the newer answer wins, and the older reply cannot
+    # be replayed (workshop-typed-turn-authority pins the same rule for the product-domain phase).
+    $r6c = New-LensFixture -Selected @('ui-ux', 'architecture-core') -OpenLens 'architecture-core'; $roots.Add($r6c)
+    $null = Invoke-Provider -Root $r6c -Reply 'you decide' -MessageId 'msg-narrow-6c'
+    $null = Invoke-Provider -Root $r6c -Reply 'Actually, keep one pipeline with bounded concurrency.' -MessageId 'msg-answer-6c'
+    $null = & pwsh -NoProfile -File $lensWriter -ProjectRoot $r6c -FeatureRef $feature -Lens 'architecture-core' -Decision 'Delegated.' -Depth 'light' -Agenda @('An open question?') -Confirmation 'human-delegated' 2>&1
+    Assert-True ($LASTEXITCODE -ne 0) 'case 6: a narrow delegation followed by an answer does not close as delegated'
 
     Write-Host '  --- case 7: the workshop skill asks the reviewer choice once, at agenda confirmation, outside delegation ---'
     $skill = [IO.File]::ReadAllText((Join-Path $repoRoot 'extensions/specrew-speckit/squad-templates/skills/design-workshop.md'))
