@@ -4,7 +4,7 @@
 
 ## Summary
 
-**Total drift events**: 3 (DRIFT-001 to DRIFT-003)
+**Total drift events**: 4 (DRIFT-001 to DRIFT-004)
 
 ## Events
 
@@ -296,3 +296,39 @@
   signed off unreviewed by the maintainer's recorded acceptance. Cost: one extra human decision and two long waits,
   for an outcome known when the round-8 fixes were committed (B4F-126, second recurrence). Crew rule from here: when
   fixes land after the last round, the decision brought to the maintainer is the partial sign-off reply, not a stop.
+
+### DRIFT-004 — CI was red from T016 to review sign-off, unwatched; one of its failures was a time-reading defect in the approval checks (resolved)
+
+- **Observed**: 2026-10-18, after review sign-off. Specrew CI and Cross-Platform Validation had failed on every push
+  since `46639843` (T016). The eight local lanes do not run those suites, and no one looked at CI between T016 and
+  sign-off, through eight co-review rounds. Three failures: two regressions (fixed in `cc6126ae`), and two put-back
+  cases in `hook-output-journal` that failed on Linux and macOS only.
+- **Root cause of the third**: Specrew reads its stored times back with ConvertFrom-Json, which hands an ISO time back as
+  a [datetime]. Six comparison sites cast that to [string] and parsed it again as UTC. The string drops the fraction of a
+  second, and for a time written with a `+00:00` offset it prints LOCAL time, so the re-parse shifted it by the machine's
+  zone. The dispatcher's put-back check writes `+00:00` rows: in UTC (CI) a line disclosed in the same second the hook
+  fire started read as older than the fire and was never put back; on this machine (UTC+3) a line from hours earlier read
+  as current. Three of the T017 approval checks ("was this message already recorded?") use the same pattern. The real
+  ledger stores `Z` times, which lose only the fraction, so no live double record follows from it; but behind UTC a
+  `+00:00` row made the legacy check miss this message's own record, which is B4F-127's double record.
+- **Requirement citation**: FR-027 / SC-010 (one human message, one key); FR-027's put-back of an undelivered
+  not-recorded line; B4F-127, a beta4.1 release gate.
+- **Resolution**, on the maintainer's `fix it now`, behind failing tests: every site that compares a stored time reads
+  it as an instant: the object ConvertFrom-Json made keeps its own instant, and only a genuine string is parsed. The T017
+  checks use the store's existing `ConvertTo-SpecrewAuthorityInstant`; the dispatcher (both copies) carries the same rule,
+  since it loads no store module. The sweep also covered the review engine's two "latest result" orderings, the passing-run
+  order and the reply-recording episode, which lost the fraction (two records from the same second tied, and the run-id
+  tie-breaker, not time, picked the newest). The other parse sites read values whose stored form they already read
+  correctly (Z-only deadlines, YAML session records, front-matter handovers, hook-health receipts).
+- **Tests**: `timestamp-read` cases 6 to 9: the T017 checks on `+00:00` and `Z` rows, the dispatcher put-back on a line
+  disclosed 300 ms into the fire and one from two hours before, the run order and the episode time to the tick, and a text
+  guard on every converted site. On the old code: 10 failures on this machine; in UTC on Linux, the same-second put-back
+  fails (CI's failure); under `TZ=America/New_York` the legacy check misses this message's own record. On Linux and macOS
+  the suite now runs itself a second time under `TZ=America/New_York`, and Cross-Platform Validation runs it on all three.
+- **Class closure**: this is the fourth time the pattern has been found (the round-19 walk's `ConvertTo-SpecrewAuthorityInstant`,
+  the three sites behind `timestamp-read.ps1`, and now six more). Each time the fix was a reader for the sites in view.
+  This time a text guard covers the authority store and both dispatcher copies. The tree-wide rule (no stored time
+  compared through a string) is a candidate lint for beta5. The CI half belongs to the retro: a signal that was red for
+  the whole of review.
+- **Timing**: the fix was made after review sign-off, so it is unreviewed. The sign-off packet lists it, and the
+  maintainer decides there whether it gets a review round.

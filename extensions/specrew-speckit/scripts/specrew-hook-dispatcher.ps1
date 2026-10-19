@@ -97,6 +97,25 @@ function Write-DispatcherWarn {
     [Console]::Error.WriteLine(("{0} WARN {1} {2}" -f $script:Banner, $Code, $Message))
 }
 
+function ConvertTo-DispatcherInstant {
+    # A STORED TIME IS AN INSTANT, NOT A RENDERED STRING (202 iteration 002, after review sign-off). ConvertFrom-Json
+    # hands an ISO time back as a [datetime]; casting that to [string] drops the fraction and, for a `+00:00` row,
+    # prints LOCAL time, which a UTC re-parse then shifts by this machine's zone. An object keeps its own instant, and
+    # only a genuine string is parsed: offset-bearing round-trips exactly, a bare one is UTC, because the stores write UTC.
+    # The same rule as ConvertTo-SpecrewAuthorityInstant; the dispatcher loads no store module, so it carries its own.
+    param([AllowNull()][object]$Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [DateTimeOffset]) { return $Value }
+    if ($Value -is [datetime]) {
+        $dt = [datetime]$Value
+        if ($dt.Kind -eq [DateTimeKind]::Unspecified) { $dt = [datetime]::SpecifyKind($dt, [DateTimeKind]::Utc) }
+        return [DateTimeOffset]::new($dt)
+    }
+    $parsed = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse(([string]$Value).Trim(), [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { return $parsed }
+    return $null
+}
+
 function Get-DispatcherHookOutputHash {
     param([AllowEmptyString()][string]$Text)
     $bytes = [Text.Encoding]::UTF8.GetBytes(([string]$Text).Trim())
@@ -1500,9 +1519,8 @@ function Restore-DispatcherUndeliveredNotRecordedLine {
             if ([string]$row.event -cne 'authority-phrase-not-recorded-disclosed') { continue }
             $rowSession = if ($row.PSObject.Properties['session_id']) { [string]$row.session_id } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($rowSession) -and $rowSession -cne [string]$SessionId) { continue }
-            $at = [DateTimeOffset]::MinValue
-            if (-not [DateTimeOffset]::TryParse([string]$row.recorded_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) { continue }
-            if ($at -lt $script:DispatcherStartedUtc) { continue }
+            $at = if ($row.PSObject.Properties['recorded_at']) { ConvertTo-DispatcherInstant -Value $row.recorded_at } else { $null }
+            if ($null -eq $at -or $at -lt $script:DispatcherStartedUtc) { continue }
             $retype = if ($retypes.ContainsKey([string]$row.entry_key)) { [string]$retypes[[string]$row.entry_key] } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($retype) -and $delivered.Contains(("your earlier '{0}'" -f $retype))) { continue }
             (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-undelivered'; entry_key = [string]$row.entry_key; host_kind = [string]$row.host_kind; session_id = $rowSession; recorded_at = [DateTimeOffset]::UtcNow.ToString('o') }) | ConvertTo-Json -Compress) |

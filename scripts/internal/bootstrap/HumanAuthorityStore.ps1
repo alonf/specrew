@@ -1204,22 +1204,15 @@ function Test-SpecrewPromptChannelSawContent {
     )
     if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $false }
     if ($ExpectedCount -lt 1) { $ExpectedCount = 1 }
-    $parseUtc = {
-        param([string]$Text)
-        $v = [DateTimeOffset]::MinValue
-        if (-not [string]::IsNullOrWhiteSpace($Text) -and [DateTimeOffset]::TryParse($Text, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$v)) { return $v }
-        return $null
-    }
-    $messageTimes = @(@($MessageTimesUtc) | ForEach-Object { & $parseUtc ([string]$_) } | Where-Object { $null -ne $_ })
+    # 202 iteration 002, after review sign-off: every time here is read as an instant (ConvertTo-SpecrewAuthorityInstant),
+    # never through a [string] cast. A ledger row's observed_at comes back from ConvertFrom-Json as a [datetime]; its
+    # string drops the fraction and, for a `+00:00` row, prints local time, so a UTC re-parse shifted it by the zone.
+    $messageTimes = @(@($MessageTimesUtc) | ForEach-Object { ConvertTo-SpecrewAuthorityInstant -Value $_ } | Where-Object { $null -ne $_ })
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
     $since = [DateTimeOffset]::MinValue
-    if (-not [string]::IsNullOrWhiteSpace($SinceUtc)) {
-        $parsed = [DateTimeOffset]::MinValue
-        if ([DateTimeOffset]::TryParse($SinceUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) {
-            $since = $parsed.AddSeconds(-60)
-        }
-    }
+    $sinceInstant = ConvertTo-SpecrewAuthorityInstant -Value $SinceUtc
+    if ($null -ne $sinceInstant) { $since = $sinceInstant.AddSeconds(-60) }
     $session = ([string]$SessionId).Trim()
     $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $candidates = [System.Collections.Generic.List[object]]::new()
@@ -1235,14 +1228,12 @@ function Test-SpecrewPromptChannelSawContent {
             $entrySession = if ($entry.PSObject.Properties['session_id']) { ([string]$entry.session_id).Trim() } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($session) -and -not [string]::IsNullOrWhiteSpace($entrySession) -and $entrySession -cne $session) { continue }
             if ($messageTimes.Count -gt 0) {
-                $when = if ($entry.PSObject.Properties['observed_at']) { & $parseUtc ([string]$entry.observed_at) } else { $null }
+                $when = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
                 if ($null -ne $when -and $seen.Add([string]$entry.turn_id)) { $candidates.Add([pscustomobject]@{ At = $when; Used = $false }) | Out-Null }
                 continue
             }
-            $at = [DateTimeOffset]::MinValue
-            if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at)) {
-                if ($at -lt $since) { continue }
-            }
+            $at = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+            if ($null -ne $at -and $at -lt $since) { continue }
             [void]$seen.Add([string]$entry.turn_id)
             if ($seen.Count -ge $ExpectedCount) { return $true }
         }
@@ -1284,11 +1275,10 @@ function Test-SpecrewLegacyTurnRecorded {
     )
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
+    # Times read as instants, never through a [string] cast - see Test-SpecrewPromptChannelSawContent.
     $since = $null
-    if (-not [string]::IsNullOrWhiteSpace($SinceUtc)) {
-        $parsed = [DateTimeOffset]::MinValue
-        if ([DateTimeOffset]::TryParse($SinceUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { $since = $parsed.AddSeconds(-60) }
-    }
+    $sinceInstant = ConvertTo-SpecrewAuthorityInstant -Value $SinceUtc
+    if ($null -ne $sinceInstant) { $since = $sinceInstant.AddSeconds(-60) }
     try {
         $lines = [IO.File]::ReadAllLines($path)
         # Co-review round 4 (iteration 002): what each old turn RECORDED, read from its second ledger line.
@@ -1320,16 +1310,15 @@ function Test-SpecrewLegacyTurnRecorded {
             if ($null -ne $since -and -not [string]::IsNullOrWhiteSpace($ExpectedWriter) -and
                 $mintedByTurn.ContainsKey([string]$entry.turn_id + '|' + $ExpectedWriter) -and [string]$entry.host_kind -ceq [string]$HostKind -and
                 (([string]$entry.source_event).Trim().ToLowerInvariant()) -notin @('stop', 'stop-transcript', 'agentstop')) {
-                $near = [DateTimeOffset]::MinValue
-                if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$near) -and
-                    [math]::Abs(($near - $since.AddSeconds(60)).TotalSeconds) -le 15) { return $true }
+                $near = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+                if ($null -ne $near -and [math]::Abs(($near - $since.AddSeconds(60)).TotalSeconds) -le 15) { return $true }
             }
             # With no arrival to compare, any old record of the same text counts: this check fails closed.
             if ([string]::IsNullOrWhiteSpace($ContentHash)) { continue }
             if (-not $entry.PSObject.Properties['content_hash'] -or [string]$entry.content_hash -cne [string]$ContentHash) { continue }
             if ([string]$entry.host_kind -cne [string]$HostKind) { continue }
-            $at = [DateTimeOffset]::MinValue
-            if ($entry.PSObject.Properties['observed_at'] -and [DateTimeOffset]::TryParse([string]$entry.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$at) -and ($null -eq $since -or $at -ge $since)) { return $true }
+            $at = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+            if ($null -ne $at -and ($null -eq $since -or $at -ge $since)) { return $true }
             if ($null -eq $since) { return $true }
         }
     }

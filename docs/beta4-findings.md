@@ -5414,6 +5414,20 @@ approval and the allowance reset): a typed approval replaces an unspent turn-end
 pause-decision and allowance-reset writers, unless that record has already become a grant. The sign-off override
 writer refuses a differing record instead, and the coverage-deferral writer appends, so neither folds an act.
 
+## B4F-138 - STORED TIMES ARE COMPARED THROUGH A STRING, SHIFTED BY THE MACHINE'S ZONE (fixed; B4F-127 class)
+
+**Observed:** 2026-10-18, 202 iteration 002, after review sign-off, while tracing a Cross-Platform Validation failure
+that had been red since T016 (202 iteration 002 DRIFT-004). ConvertFrom-Json hands an ISO time back as a [datetime];
+six comparison sites cast it to [string] and parsed it again as UTC. The fraction of a second is lost, and a time written
+with a `+00:00` offset is shifted by the machine's zone. Hit: the dispatcher's put-back of an undelivered not-recorded
+line (the CI failure), and three of T017's approval checks. Behind UTC, a `+00:00` ledger row made the legacy check miss
+the message's own record, so the turn end would record the approval again. The real ledger writes `Z` times, which lose
+only the fraction, so no live double record was found.
+**Disposition:** fixed 2026-10-18 in iteration 002, behind failing tests (`timestamp-read` cases 6 to 9, which also run
+under `TZ=America/New_York` on Linux and macOS, now on all three CI platforms). Every site that compares a stored time
+reads it as an instant. The fourth recurrence of the pattern; a tree-wide lint (no stored time compared through a
+string) is a beta5 candidate. Not reviewed: made after review sign-off.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

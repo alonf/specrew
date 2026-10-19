@@ -664,6 +664,8 @@ function Get-SpecrewReplyRecordingDegradedSince {
         if ($lines.Count -eq 0) { return $null }
         $last = $lines[$lines.Count - 1] | ConvertFrom-Json -ErrorAction Stop
         if ([string]$last.state -ne 'degraded') { return $null }
+        # The same instant read as degraded_since below: the [datetime] ConvertFrom-Json made of it, not its string.
+        if ($last.first_seen -is [datetime] -or $last.first_seen -is [DateTimeOffset]) { return [DateTimeOffset]$last.first_seen }
         return [DateTimeOffset]::Parse([string]$last.first_seen, [Globalization.CultureInfo]::InvariantCulture)
     }
     catch { return $null }

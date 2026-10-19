@@ -629,9 +629,12 @@ function Get-ContinuousCoReviewPassingReviewRuns {
     return @(
         $candidates | Sort-Object -Property `
             @{ Expression = {
-                    $createdAtValue = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $_ -Name 'created_at')
+                    # A [datetime] that ConvertFrom-Json made of created_at is read as that instant; only a string is parsed.
+                    $createdAtValue = Get-ContinuousCoReviewRunIndexProperty -Object $_ -Name 'created_at'
                     $parsed = [datetime]::MinValue
-                    [void] [datetime]::TryParse($createdAtValue, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal, [ref] $parsed)
+                    if ($createdAtValue -is [System.DateTimeOffset]) { $parsed = $createdAtValue.UtcDateTime }
+                    elseif ($createdAtValue -is [datetime]) { $parsed = $(if ($createdAtValue.Kind -eq [DateTimeKind]::Unspecified) { [datetime]::SpecifyKind($createdAtValue, [DateTimeKind]::Utc) } else { $createdAtValue.ToUniversalTime() }) }
+                    else { [void] [datetime]::TryParse([string]$createdAtValue, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal, [ref] $parsed) }
                     $parsed
                 }; Descending = $true
             }, `
