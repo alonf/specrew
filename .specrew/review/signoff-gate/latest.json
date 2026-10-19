@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-10-16T16:33:34Z",
+  "recorded_at": "2026-10-18T22:48:30Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-ece5b1e99d4e9d59bf9ea104",
-      "target_tree_id": "5404acf05b51e7b3c2222a0cd4412364f3b02709",
-      "campaign_id": "cmp-202-beta4-1-ux-stabilization-i001",
-      "run_id": "run-20261016-031317319-8c4537dd",
+      "request_id": "override-feb2f5e86498b7a25959dd2f",
+      "target_tree_id": "231d7d43a6ef0a6579e76e1cf3400028b33f6a02",
+      "campaign_id": "cmp-202-beta4-1-ux-stabilization-i002",
+      "run_id": "run-20261018-163747348-5da84de1",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - round 6's four fixes each have a failing-first test, CI is green at bf94e30a, I accepted them unreviewed in advance, and every commit since is records only",
-      "rationale": "round 6's four fixes each have a failing-first test, CI is green at bf94e30a, I accepted them unreviewed in advance, and every commit since is records only",
-      "response_hash": "fd165acd7cddcc6650425c070c41360a109bba6ff00fea3dc5d8b61c101772c2",
+      "verdict_text": "approved for partial review signoff - the round-8 fixes have failing-first tests, all eight lanes pass, and the Copilot re-walk exercises the conditional partial sign-off on a non-Claude host",
+      "rationale": "the round-8 fixes have failing-first tests, all eight lanes pass, and the Copilot re-walk exercises the conditional partial sign-off on a non-Claude host",
+      "response_hash": "d8bfa20ad85a595bbe93ceab525cfe3a78c84181aa76015d171874fcc55ef2d1",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-10-16T16:33:18.7439121Z"
+      "observed_at": "2026-10-18T22:25:01.0589668Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
