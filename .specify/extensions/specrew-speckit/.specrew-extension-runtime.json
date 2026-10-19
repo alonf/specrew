@@ -408,7 +408,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "9c1d1c138475f046ebb8d00a130f277bfb80ec7c8e978e099788758f5bf63865"
+      "sha256": "ba92a4648ba6aa4f1b40ecf583a02ead50e2e3379697ac9a22d5b571f70dd3f8"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "33a01edeaf6324651140ec3737c594c4b38d07cecf1b05f5a0c66454541e2e0e"
+      "sha256": "415e421a99971e1281934cc3bcaddccbb8f7b2171d4b3366696307689a1ec839"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -476,7 +476,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "e0c0968c56451217b5c1671b5d067c358060b331c66b4c68620c249284d719a3"
+      "sha256": "9508b74abc8e477c12d33a101e2257f5e7b3414e63b0be9157a5f97bb84819c7"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",

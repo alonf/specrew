@@ -7758,10 +7758,13 @@ function Get-SpecrewReviewCoverageState {
             try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 } catch { continue }
             if ($null -eq $result -or [string]$result.completion -cne 'complete') { continue }
             $resultEnded = [System.DateTimeOffset]::MinValue
-            $endedRaw = if ($result.PSObject.Properties['ended_at']) { [string]$result.ended_at } else { '' }
-            if (-not [string]::IsNullOrWhiteSpace($endedRaw)) {
+            # ConvertFrom-Json hands ended_at back as a [datetime]: read it as that instant, not through a [string]
+            # cast that drops the fraction and so ties two results that ended in the same second.
+            $endedValue = if ($result.PSObject.Properties['ended_at']) { $result.ended_at } else { $null }
+            if ($endedValue -is [datetime] -or $endedValue -is [System.DateTimeOffset]) { $resultEnded = [System.DateTimeOffset]$endedValue }
+            elseif (-not [string]::IsNullOrWhiteSpace([string]$endedValue)) {
                 $parsedEnded = [System.DateTimeOffset]::MinValue
-                if ([System.DateTimeOffset]::TryParse($endedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)) { $resultEnded = $parsedEnded }
+                if ([System.DateTimeOffset]::TryParse([string]$endedValue, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)) { $resultEnded = $parsedEnded }
             }
             $newer = ($null -eq $delivered) -or ($resultEnded -gt $deliveredEnded) -or
                 (($resultEnded -eq $deliveredEnded) -and ([string]::CompareOrdinal([string]$result.run_id, [string]$delivered.run_id) -gt 0))
@@ -8628,9 +8631,11 @@ function Get-SpecrewReviewRunCandidates {
     # id only as the deterministic tie-breaker.
     return @($candidates | Sort-Object -Property @{ Expression = {
                 $parsedEnded = [System.DateTimeOffset]::MinValue
-                $endedRaw = if ($_.result.PSObject.Properties['ended_at']) { [string]$_.result.ended_at } else { '' }
-                if (-not [string]::IsNullOrWhiteSpace($endedRaw)) {
-                    $null = [System.DateTimeOffset]::TryParse($endedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)
+                # The [datetime] ConvertFrom-Json made of ended_at is read as that instant, fraction included.
+                $endedValue = if ($_.result.PSObject.Properties['ended_at']) { $_.result.ended_at } else { $null }
+                if ($endedValue -is [datetime] -or $endedValue -is [System.DateTimeOffset]) { $parsedEnded = [System.DateTimeOffset]$endedValue }
+                elseif (-not [string]::IsNullOrWhiteSpace([string]$endedValue)) {
+                    $null = [System.DateTimeOffset]::TryParse([string]$endedValue, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)
                 }
                 $parsedEnded
             } }, @{ Expression = { [string]$_.result.run_id } })

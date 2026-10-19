@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0-beta4",
-  "runtime_bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+  "runtime_bundle_sha256": "f98ec871c1dace4b267e5771ffe12ec79f1dda142d2151b91d815fe671cecf14",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -141,7 +141,7 @@
     },
     {
       "path": "review-run-index-writer.ps1",
-      "sha256": "5eb10315717dcd38c34fbb61800d35f3b6ca695ae0b7a3409d4378f495e70d87"
+      "sha256": "68ca1d9b7c33c05c83032df433334d43ef1da81cb4a49e388eaa7e0112625b6b"
     },
     {
       "path": "review-run-reconciler.ps1",
