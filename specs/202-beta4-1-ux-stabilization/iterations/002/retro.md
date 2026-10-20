@@ -223,3 +223,46 @@ and only CI runs on Linux and macOS.
 - Line counts exclude `tests/`, `specs/`, `docs/`, `.specify/` and `.specrew/`; the dispatcher's two copies both count.
 - The plan's task statuses for T018 to T024 still read "planned" at sign-off although each had landed; they are
   corrected to "done" with this retro.
+
+## Rulings Recorded at the Retro Verdict
+
+The maintainer approved the retro on 2026-10-20 with three instructions, recorded here after the approval so the
+approved text did not change under it.
+
+### 1. A finding that misleads the human about an approval or a review result is critical
+
+The grade scale gains one case: a major finding that misleads the human about an approval or a review result is
+graded critical. It applies at every round checkpoint from now on, and so to rule 2 of the round-ending rule.
+
+Regraded under it, 11 of the 17 major findings become critical: each one either told the human an approval was
+recorded when it was not, withheld or misdirected a "not recorded" notice, or reported a save or a receipt that did
+not happen (R1-3, R1-4, R1-5, R2-2, R2-3, R2-4, R3-2, R3-3, R4-2, R4-3, R5-4).
+
+| Round | Critical | Major | Minor | Total |
+| --- | --- | --- | --- | --- |
+| 1 | 6 | 0 | 0 | 6 |
+| 2 | 4 | 0 | 0 | 4 |
+| 3 | 2 | 1 | 0 | 3 |
+| 4 | 3 | 0 | 0 | 3 |
+| 5 | 4 | 0 | 1 | 5 |
+| 6 | 4 | 2 | 0 | 6 |
+| 7 | 3 | 0 | 0 | 3 |
+| 8 | 1 | 1 | 0 | 2 |
+| 9 | 0 | 2 | 1 | 3 |
+| 10 | 0 | 0 | 0 | 0 |
+| **All** | **27** | **6** | **2** | **35** |
+
+The rule's effect on this iteration is unchanged: round 3 now has two criticals, so it continues for that reason as
+well as for its new paths, and round 9 still has none, so round 10 would not have run. By the same grade, the engine's
+own B4F-139 ("found nothing" over three stored findings) misleads about a review result, and is critical.
+
+### 2. Lesson 1 is decided at the beta5 plan, and the instruction tail stays
+
+The closed form proposed in lesson 1 and action 1 keeps the instruction tail: an approval is the phrase as the whole
+message, or the phrase followed by a dash and the instructions (`approved for <boundary> - <instructions>`).
+Everything else is refused with its reason. The decision is taken at the beta5 plan, not before beta4.1 ships.
+
+### 3. Action 8 lands at this closeout; action 7 goes to beta5
+
+`.specrew/review/pause-decision/` is ignored in git and its two tracked files are untracked, at the iteration-002
+closeout. The files stay on disk. Deriving the drift summary from its entries (action 7) moves to beta5.

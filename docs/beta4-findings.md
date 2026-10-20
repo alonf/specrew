@@ -5443,7 +5443,8 @@ found nothing when it found three real defects. The crew relayed a third explana
 also wrong and was corrected in the next message.
 **Fix direction (proposal):** a reviewer's partial coverage is a coverage statement, not a failed delivery: report the
 stored findings, say what the reviewer did not read, and spend the approval on the delivered round.
-**Disposition:** beta5, with the review-engine items, by the maintainer's review-signoff instruction (2026-10-20).
+**Disposition:** beta5, with the review-engine items, by the maintainer's review-signoff instruction (2026-10-20). Graded
+critical under the 202 iteration-002 retro ruling: it misleads the human about a review result.
 
 ## B4F-140 - A RE-TYPED ROUND APPROVAL IS NOT STORED WHILE AN OLDER TYPED ONE WAITS (candidate; B4F-137 class)
 
