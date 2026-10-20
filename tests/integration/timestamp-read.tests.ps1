@@ -240,6 +240,45 @@ try {
 }
 finally { if (Test-Path -LiteralPath $root9) { Remove-Item -LiteralPath $root9 -Recurse -Force -ErrorAction SilentlyContinue } }
 
+# ============ Case 10: the allowance-reset approval keeps its own instant ====================================
+# Round 9 on the stored-time fix: two allowance-reset paths still sent a stored observed_at through a [string] cast. The
+# round approval derived from a reset stored that rendering as its own time, and the "has this capture already paid for
+# a reset?" guard compared it. A `+00:00` capture came back hours off in any zone but UTC, and both lost the fraction.
+Write-Host '  --- Case 10: the reset''s round approval and the reset reuse guard read the capture time as an instant ---'
+foreach ($form in @(@{ n = '+00:00'; f = { param($t) $t.ToString('o') } }, @{ n = 'Z'; f = { param($t) $t.UtcDateTime.ToString('o') } })) {
+    $root10 = Join-Path ([IO.Path]::GetTempPath()) ('tsr10-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $root10 '.specrew') -Force | Out-Null
+        $typed10 = [DateTimeOffset]::new(2026, 10, 20, 9, 15, 0, 900, [TimeSpan]::Zero)
+        $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root10 -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc (& $form.f $typed10)
+        $capture10 = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root10
+        Assert-True ($null -ne $capture10 -and $capture10.observed_at -is [datetime]) ('{0} capture: the fixture is real, observed_at came back from JSON as a [datetime]' -f $form.n)
+
+        $null = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $root10 -ResetApproval $capture10 -ResetId 'reset-tsr10'
+        $round10 = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root10
+        $roundAt10 = if ($null -ne $round10) { ConvertTo-SpecrewAuthorityInstant -Value $round10.observed_at } else { $null }
+        Assert-True ($null -ne $roundAt10 -and $roundAt10.UtcTicks -eq $typed10.UtcTicks) ('{0} capture: the round approval the reset answers carries the typed time to the tick (got: {1})' -f $form.n, $(if ($null -ne $roundAt10) { $roundAt10.ToString('o') } else { 'null' }))
+
+        $campaign10 = 'cmp-tsr10'
+        $resets10 = Join-Path $root10 ('.specrew/review/authority/campaigns/' + $campaign10 + '/budget-resets')
+        New-Item -ItemType Directory -Path $resets10 -Force | Out-Null
+        $writeReset10 = {
+            param([DateTimeOffset]$At)
+            Get-ChildItem -LiteralPath $resets10 -Filter '*.json' | Remove-Item -Force
+            [IO.File]::WriteAllText((Join-Path $resets10 'reset-tsr10.json'), ([ordered]@{ schema_version = '1.0'; fact_type = 'round-budget-reset'; campaign_id = $campaign10; reset_id = 'reset-tsr10'; observed_at = $At.ToString('o') } | ConvertTo-Json -Compress))
+        }
+        & $writeReset10 $typed10.AddMinutes(30)
+        Assert-True ($null -ne (Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $root10 -CampaignId $campaign10 -CaptureObservedAt $capture10.observed_at)) ('{0} capture: a reset that landed 30 minutes after it is the one it paid for' -f $form.n)
+        & $writeReset10 $typed10.AddMilliseconds(-300)
+        Assert-True ($null -eq (Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $root10 -CampaignId $campaign10 -CaptureObservedAt $capture10.observed_at)) ('{0} capture: a reset 300 ms before it, in the same second, is not' -f $form.n)
+    }
+    finally { if (Test-Path -LiteralPath $root10) { Remove-Item -LiteralPath $root10 -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+$reviewCliText = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/specrew-review.ps1') -Raw -Encoding UTF8
+Assert-True ($reviewCliText -notmatch '-CaptureObservedAt\s+\(\[string\]') 'specrew-review.ps1: the reset reuse guard is handed the capture time as stored, not a [string] rendering of it'
+$authorityText10 = Get-Content -LiteralPath $authorityStore -Raw -Encoding UTF8
+Assert-True ($authorityText10 -notmatch 'observed_at\s*=\s*\[string\]\$\w+\.observed_at') 'HumanAuthorityStore.ps1: no approval stores another record''s time as a [string] rendering'
+
 # ============ Case 8: no stored time is compared through a string any more ===============================
 Write-Host '  --- Case 8: the authority store and both dispatcher copies, asserted on the text ---'
 foreach ($site in @($authorityStore, $dispatcher, (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'))) {

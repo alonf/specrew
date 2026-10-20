@@ -167,7 +167,8 @@ Describe 'B4F-125 (b): a reset typed in order to run a round authorizes that rou
         $round | Should -Not -BeNullOrEmpty
         [string]$round.derived_from | Should -Be 'allowance-reset:reset-test-1'
         [string]$round.evidence_source | Should -Be 'hook-captured-user-prompt'
-        [string]$round.observed_at | Should -Be ([string]$reset.observed_at)
+        # Compared as instants, to the tick: two [string] renderings agree even when the stored time is wrong (round 9).
+        (ConvertTo-SpecrewAuthorityInstant -Value $round.observed_at).UtcTicks | Should -Be (ConvertTo-SpecrewAuthorityInstant -Value $reset.observed_at).UtcTicks
     }
 
     It 'the review command writes it only when the reset answered a round waiting on the spent allowance' {

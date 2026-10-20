@@ -945,7 +945,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                         $landedReset = $null
                         try {
                             $landedReset = Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $resolvedProjectPath `
-                                -CampaignId ([string]$guardIdentity.campaign_id) -CaptureObservedAt ([string]$capturedAllowanceReset.observed_at)
+                                -CampaignId ([string]$guardIdentity.campaign_id) -CaptureObservedAt $capturedAllowanceReset.observed_at
                         }
                         catch { $landedReset = $null }
                         if ($null -ne $landedReset) {

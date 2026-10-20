@@ -996,7 +996,6 @@ function Test-SpecrewTypedTurnExhausted {
     if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
-    $isStopOffer = (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript'))
     try {
         foreach ($line in [IO.File]::ReadAllLines($path)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
@@ -1485,12 +1484,16 @@ function Write-SpecrewReviewRoundApprovalFromReset {
     $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
     [IO.Directory]::CreateDirectory($root) | Out-Null
     $path = Join-Path $root 'pending-round-approval.json'
+    # The reset's time as an instant: ConvertFrom-Json handed it back as a [datetime], and a [string] rendering drops
+    # the fraction and, for a `+00:00` value, prints local time (round 9, after DRIFT-004).
+    $resetAt = ConvertTo-SpecrewAuthorityInstant -Value $ResetApproval.observed_at
+    $observedAt = if ($null -ne $resetAt) { $resetAt.ToUniversalTime().ToString('o') } else { [string]$ResetApproval.observed_at }
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'review-round-approval'; authority_kind = 'human'
         authorized_by = [string]$ResetApproval.authorized_by; approval_kind = 'typed-phrase'
         verdict_text = [string]$ResetApproval.verdict_text; response_hash = [string]$ResetApproval.response_hash
         evidence_source = [string]$ResetApproval.evidence_source; source_event = [string]$ResetApproval.source_event
-        host_kind = [string]$ResetApproval.host_kind; observed_at = [string]$ResetApproval.observed_at
+        host_kind = [string]$ResetApproval.host_kind; observed_at = $observedAt
         derived_from = ('allowance-reset:' + $ResetId)
         spent_at = $null; authorization_ref = $null; minted_ref = ''; minted_at = ''
     }
@@ -2496,9 +2499,10 @@ function Get-SpecrewLandedResetForAllowanceCapture {
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$CaptureObservedAt
+        # As stored: the capture's own [datetime] keeps its instant; a string is parsed (round 9, after DRIFT-004).
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyString()][object]$CaptureObservedAt
     )
-    if ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($CaptureObservedAt)) { return $null }
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -or $null -eq $CaptureObservedAt -or [string]::IsNullOrWhiteSpace([string]$CaptureObservedAt)) { return $null }
     $root = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) ('.specrew/review/authority/campaigns/' + $CampaignId + '/budget-resets')
     if (-not [IO.Directory]::Exists($root)) { return $null }
     $capturedAt = $null
