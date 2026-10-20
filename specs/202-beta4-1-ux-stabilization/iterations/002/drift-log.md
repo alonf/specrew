@@ -4,7 +4,7 @@
 
 ## Summary
 
-**Total drift events**: 4 (DRIFT-001 to DRIFT-004)
+**Total drift events**: 5 (DRIFT-001 to DRIFT-005)
 
 ## Events
 
@@ -332,3 +332,20 @@
   the whole of review.
 - **Timing**: the fix was made after review sign-off, so it is unreviewed. The sign-off packet lists it, and the
   maintainer decides there whether it gets a review round.
+
+### DRIFT-005 — the review record was committed before the last review round, and the round refused to start (resolved)
+
+- **Observed**: 2026-10-20, review round 9 (`run-20261020-010713270-0a4f6c3f`). The round's pre-review check
+  `iteration-002-governance-202` failed after 22 minutes: "plan.md status 'executing' is stale: review.md exists, so the
+  iteration must be in reviewing, retro, or complete". The reviewer never started; no round was used and the
+  maintainer's round approval stayed unspent.
+- **Root cause**: the crew committed `review.md` (`7550f535`) after the partial sign-off but before the round on the
+  post-sign-off changes. The check reads a review record as the iteration having left implementation; the plan's status
+  moves only at the review sign-off step. Iteration 001 wrote its record after its final round, so the two never met.
+- **Requirement citation**: the lifecycle order (review record at sign-off, after the last round).
+- **Resolution**, on the maintainer's `move it aside`: `review.md` is taken out of the iteration folder until round 9 is
+  done (it stays in history at `7550f535`) and is written back with round 9 in it. The plan's status is not edited by
+  hand; the review sign-off step owns it. The commit means the unspent round approval is not used: the maintainer is
+  asked for a fresh one.
+- **Class closure**: the review record is written after the last round, never before one that may still run. A retro
+  input alongside B4F-126 (stop recommended where a further round or partial sign-off was the step).
