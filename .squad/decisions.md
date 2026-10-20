@@ -29344,3 +29344,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 61a17e878d6f35cf11cfd1ccb79b113970c1e271
 - **Recorded At**: 2026-10-20T11:31:41Z
+
+## 2026-10-20T12:01:50Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fd4c28be49ddb09f3b23570ee6156cb2b8f23ddc
+- **Recorded At**: 2026-10-20T12:01:44Z
