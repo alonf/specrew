@@ -79,4 +79,5 @@ testResults.xml
 .specrew/review/allowance-reset/
 .specrew/review/coverage-disposition/
 .specrew/review/signoff-gate/
+.specrew/review/pause-decision/
 .specrew/bootstrap-baseline.json
