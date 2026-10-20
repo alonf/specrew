@@ -330,8 +330,10 @@
   This time a text guard covers the authority store and both dispatcher copies. The tree-wide rule (no stored time
   compared through a string) is a candidate lint for beta5. The CI half belongs to the retro: a signal that was red for
   the whole of review.
-- **Timing**: the fix was made after review sign-off, so it is unreviewed. The sign-off packet lists it, and the
-  maintainer decides there whether it gets a review round.
+- **Timing**: the fix was made after review sign-off. The maintainer sent it to review: round 9 found two sites the
+  sweep missed (the allowance-reset paths), fixed behind a failing test in `cb5be72f` (`timestamp-read` case 10), and
+  round 10 was clean. A fifth site found afterwards (the hook-health record's carried start time, B4F-141) is logged
+  for beta5 by the maintainer's `log it`.
 
 ### DRIFT-005 — the review record was committed before the last review round, and the round refused to start (resolved)
 

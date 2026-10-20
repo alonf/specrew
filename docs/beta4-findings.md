@@ -5426,7 +5426,53 @@ only the fraction, so no live double record was found.
 **Disposition:** fixed 2026-10-18 in iteration 002, behind failing tests (`timestamp-read` cases 6 to 9, which also run
 under `TZ=America/New_York` on Linux and macOS, now on all three CI platforms). Every site that compares a stored time
 reads it as an instant. The fourth recurrence of the pattern; a tree-wide lint (no stored time compared through a
-string) is a beta5 candidate. Not reviewed: made after review sign-off.
+string) is a beta5 candidate. Reviewed after sign-off: co-review round 9 found two sites the sweep missed (the
+allowance-reset paths), fixed behind a failing test in `cb5be72f` (`timestamp-read` case 10); round 10 was clean. A
+fifth site, found afterwards, is B4F-141.
+
+## B4F-139 - A ROUND THE REVIEWER MARKS PARTIAL IS REPORTED AS "FOUND NOTHING", THOUGH ITS FINDINGS ARE STORED (candidate; SC-007 class)
+
+**Observed:** 2026-10-20, 202 iteration 002, co-review round 9 (`run-20261020-091334714-2512bac6`). The reviewer
+delivered three valid findings and marked its own coverage partial, because it had not read every file. The engine
+stored the findings in the run's result (`validation: valid`), then printed "That review did not finish, so it found
+nothing and cleared nothing", wrote a pending pause with `result_produced: false` and zero findings, and retried once
+automatically. The retry paused at once on the pending decision. The approval that ran the round stayed unspent until the
+next launch, which found the delivered round and spent it then.
+**Effect:** the human-facing text contradicts the stored evidence. A crew that relays it tells the maintainer a round
+found nothing when it found three real defects. The crew relayed a third explanation (Codex's file delivery), which was
+also wrong and was corrected in the next message.
+**Fix direction (proposal):** a reviewer's partial coverage is a coverage statement, not a failed delivery: report the
+stored findings, say what the reviewer did not read, and spend the approval on the delivered round.
+
+## B4F-140 - A RE-TYPED ROUND APPROVAL IS NOT STORED WHILE AN OLDER TYPED ONE WAITS (candidate; B4F-137 class)
+
+**Observed:** 2026-10-20, 202 iteration 002. Round 9's first launch was refused before the reviewer started (DRIFT-005),
+leaving the maintainer's typed approval (01:06Z) unspent. A commit followed, and the maintainer typed
+`approved for review round` again at 09:04Z. The message was seen but not stored: the writer kept the older unspent
+approval with the same text. The B4F-127 interim check caught it, the maintainer chose `use it`, and round 9 ran on the
+01:06Z approval, which is older than the tree it reviewed. B4F-137's fix replaces an unspent turn-end record, not an
+unspent typed one.
+**Fix direction (proposal):** the newest typed act replaces an older unspent typed record with the same text, so the
+stored approval is the one the human gave after the last change; or the re-type is recorded beside it.
+
+## B4F-141 - THE HOOK-HEALTH RECORD CARRIES AN EPISODE'S START TIME AS TEXT (logged for beta5; B4F-138 class)
+
+**Observed:** 2026-10-20, 202 iteration 002, found in a CI log after co-review round 10. When the dispatcher (both
+copies) writes the next line of an ongoing hook-output problem, it carries `first_seen` from the last line through a
+[string] cast, so the stored start time becomes `10/20/2026 09:00:36`: no fraction, no zone. The reply-recording
+recovery request matches that start time to the tick, so a request written while the episode had one line reads as
+stale after the next line, is removed, and the question is asked again. Round 10's tree-wide search did not catch it.
+**Disposition:** logged, by the maintainer's `log it` at the 202 iteration-002 review close, for the beta5 tree-wide
+check (no stored time compared or carried through a string), the fifth recurrence of the pattern.
+
+## B4F-142 - THE JOURNAL STRESS CASE COUNTED 4001 LINES FOR 4000 APPENDS, ONCE, ON LINUX (open; not investigated)
+
+**Observed:** 2026-10-20, Cross-Platform Validation run 39397465083 at `537352e3` (a records-only commit), job
+"Deterministic fake-provider review runtime (ubuntu-latest)": hook-output journal fault injection (e) found
+4001 lines for 4000 appends and a degraded health transition ("the journal lock stayed held past this hook fire's 1000 ms
+wait budget"). The next push (`cb5be72f`) passed on all three platforms.
+**Open question:** whether an append that times out on the lock can still land, and then be written again. One extra
+line in an authority journal is a duplicate record. Not investigated; a beta5 candidate.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
