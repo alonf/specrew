@@ -5443,6 +5443,7 @@ found nothing when it found three real defects. The crew relayed a third explana
 also wrong and was corrected in the next message.
 **Fix direction (proposal):** a reviewer's partial coverage is a coverage statement, not a failed delivery: report the
 stored findings, say what the reviewer did not read, and spend the approval on the delivered round.
+**Disposition:** beta5, with the review-engine items, by the maintainer's review-signoff instruction (2026-10-20).
 
 ## B4F-140 - A RE-TYPED ROUND APPROVAL IS NOT STORED WHILE AN OLDER TYPED ONE WAITS (candidate; B4F-137 class)
 
@@ -5454,6 +5455,7 @@ approval with the same text. The B4F-127 interim check caught it, the maintainer
 unspent typed one.
 **Fix direction (proposal):** the newest typed act replaces an older unspent typed record with the same text, so the
 stored approval is the one the human gave after the last change; or the re-type is recorded beside it.
+**Disposition:** beta5, with the review-engine items, by the maintainer's review-signoff instruction (2026-10-20).
 
 ## B4F-141 - THE HOOK-HEALTH RECORD CARRIES AN EPISODE'S START TIME AS TEXT (logged for beta5; B4F-138 class)
 
@@ -5463,7 +5465,8 @@ copies) writes the next line of an ongoing hook-output problem, it carries `firs
 recovery request matches that start time to the tick, so a request written while the episode had one line reads as
 stale after the next line, is removed, and the question is asked again. Round 10's tree-wide search did not catch it.
 **Disposition:** logged, by the maintainer's `log it` at the 202 iteration-002 review close, for the beta5 tree-wide
-check (no stored time compared or carried through a string), the fifth recurrence of the pattern.
+check (no stored time compared or carried through a string), the fifth recurrence of the pattern. Confirmed at the
+review-signoff verdict: the tree-wide time scan goes to beta5 with the review-engine items.
 
 ## B4F-142 - THE JOURNAL STRESS CASE COUNTED 4001 LINES FOR 4000 APPENDS, ONCE, ON LINUX (open; not investigated)
 
@@ -5473,6 +5476,18 @@ check (no stored time compared or carried through a string), the fifth recurrenc
 wait budget"). The next push (`cb5be72f`) passed on all three platforms.
 **Open question:** whether an append that times out on the lock can still land, and then be written again. One extra
 line in an authority journal is a duplicate record. Not investigated; a beta5 candidate.
+
+## B4F-143 - A FAILED SQUAD PROBE CLEANUP LEAVES A FOLDER IN THE PROJECT THAT BLOCKS EVERY BOUNDARY (candidate)
+
+**Observed:** 2026-10-20, 202 iteration 002, at the review-signoff sync. `specrew update` on 2026-10-18 created
+`.specrew-squad-probe-<guid>/` at the project root to test `squad init --non-interactive`, and its `finally` block
+removes it with `Remove-Item ... -ErrorAction SilentlyContinue` (`scripts/init/squad-deploy.ps1`). The removal
+failed silently and left two Squad template files. The boundary preflight then refused the review-signoff packet:
+"2 uncommitted product/methodology path(s)". The crew misattributed the two paths to the review-stop records (under
+`.specrew`, which the check ignores), and the maintainer was asked a decision that did not clear the block. The
+folder was moved out on the maintainer's `move it out`.
+**Fix direction (proposal):** create the probe outside the project (a temp directory), and report a cleanup failure
+instead of swallowing it; the preflight's refusal should name the paths it counted.
 
 ## Beta4.1 intake rulings — 2026-10-13
 
