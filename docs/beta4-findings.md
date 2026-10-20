@@ -5307,7 +5307,9 @@ active host's hook settings or by having each hook ignore an event from another 
 approval stores refuse an ID that is already present. Failing tests from the walk's doubled rows.
 **Disposition:** iteration 002, alongside B4F-127. **Release gate (maintainer ruling at the 202 iteration 001
 closeout, 2026-10-17): beta4.1 does not ship (no merge to main, no published module) until B4F-129 is fixed, as with
-B4F-127.**
+B4F-127.** **Not fixed live (2026-10-20):** the iteration-002 fix (T016) passed its tests, ten review rounds and CI,
+and failed the Copilot re-walk at M1, because its fixtures came through Copilot's own hooks and not the Claude-hook
+channel (B4F-144).
 
 ## B4F-130 - "YOU DECIDE THE REMAINING LENSES" IS RECORDED FOR ONE LENS ONLY (iteration 002 candidate)
 
@@ -5330,6 +5332,8 @@ for a typed chat reply. The two rules conflict.
 **Fix direction (proposal):** one rule. Either Copilot's workshop instructions keep the box out of lens questions, or a
 box answer is recorded with its source. With B4F-125, the form an approval may take.
 **Disposition:** recorded. The maintainer's read: iteration 002.
+**Seen again, 2026-10-20** (the SC-011 re-walk, Copilot 1.0.98): the product-domain question went through Copilot's
+question box, and the box answer recorded nothing. T021 covered lens questions only.
 
 ## B4F-132 - FEATURE SETUP REPORTS A BRANCH IT NEVER CREATES (candidate)
 
@@ -5489,6 +5493,50 @@ failed silently and left two Squad template files. The boundary preflight then r
 folder was moved out on the maintainer's `move it out`.
 **Fix direction (proposal):** create the probe outside the project (a temp directory), and report a cleanup failure
 instead of swallowing it; the preflight's refusal should name the paths it counted.
+
+## B4F-144 - B4F-129 IS NOT FIXED LIVE: THE FIX WAS TESTED AGAINST PAYLOADS FROM THE WRONG CHANNEL (critical; release gate)
+
+**Observed:** 2026-10-20, the maintainer's Copilot re-walk for SC-011 (202 iteration 002), Copilot CLI 1.0.98, build
+`7ebd9dba`, `C:\scratch\rewalk-202\copilot`. SC-011 failed at M1. After M2, rows under `claude`:
+`hook-output-authority.jsonl` holds 2 UserPromptSubmit and 1 SessionStart; `conformance-journal.jsonl` holds 1
+stop-block row with `block_kind` material. Two conformance sessions, one per host label.
+**Cause:** Copilot 1.0.98 sends Claude's hooks snake_case payloads. The build's own records name the shapes
+(`.specrew/runtime/hook-health/unrecognized-payload-claude-UserPromptSubmit-28e5be57dcde.json` and
+`unrecognized-payload-claude-Stop-9c5a641f3428.json`): UserPromptSubmit carries `cwd`, `hook_event_name`, `prompt`,
+`session_id`, `timestamp`; Stop carries `cwd`, `hook_event_name`, `session_id`, `stop_hook_active`, `stop_reason`,
+`timestamp`, `transcript_path`. T016's 12 Copilot fixtures (`tests/fixtures/hook-payloads/copilot`, captured
+2026-10-13 on 1.0.92 and 1.0.96) all came through Copilot's own hooks (`sessionId`, `stopReason`, `transcriptPath`).
+None came through the Claude-hook channel B4F-129 is about. The live shape matched no signature, so DA-1's unknown-shape
+rule handled it as Claude and logged it once, and nothing reads that log.
+**Process cause:** a fix for a bug seen live was accepted without a payload captured from the failing channel, and the
+unrecognized-payload record had no reader. Ten review rounds, eight lanes and green CI all passed it, because each
+checked the code against the fixtures it was given. The crew reported B4F-129 as "fixed in code and covered by the
+review" without checking the fixtures' channel, and the maintainer passed on it without checking either.
+**Disposition:** iteration 002 stays open; its closeout waits for the B4F-129 fix and a passing re-walk (maintainer
+ruling, 2026-10-20). The fix starts by capturing the real payloads through a committed probe (B4F-145, layer 1).
+Beta4.1's release gate on B4F-129 stands.
+
+## B4F-145 - THE LIVE WALK, AUTOMATED IN THREE LAYERS (beta5 proposal; layer 1 pulled into iteration 002)
+
+**Observed:** 2026-10-20, from B4F-144. The live walk is the only check that runs the real hosts, and it runs by hand,
+late, and leaves no payloads behind.
+**Proposal (the maintainer's):**
+
+- **Layer 1, host payload probes.** Per host, on every host version change and before every beta: run the real CLI
+  headless in a scratch project with a capture hook on every hook channel, including Claude's hooks run by Copilot,
+  and fail on any unrecognized-payload record. Built on `tests/host-probes/copilot-hook-firing-probe.ps1`. **This layer
+  belongs to the B4F-129 fix in iteration 002, not to beta5:** the fix starts by capturing the real payloads through a
+  committed probe.
+- **Layer 2, headless scripted walk.** M1 to M8 through `claude -p --resume`, `codex exec resume` and
+  `copilot -p --resume` (exact flags to be verified), asserting disk invariants only: no foreign-host rows, one receipt
+  per typed answer, nothing recorded by M7, one verdict row for M8, no stop block on approval turns, no
+  unrecognized-payload record. Runs per release candidate. Beta5's headline item; beta5's exit test runs on it.
+- **Layer 3, human walk.** Only the interactive-screen behaviour (question box, paste tags, rendering, compaction) and
+  how it feels, about 5 minutes per host, run after layers 1 and 2 pass.
+- **From now on, every walk project carries a capture hook,** so every walk finding leaves its payload behind as a
+  replay fixture.
+
+**Disposition:** layer 1 in iteration 002, with the B4F-129 fix; layers 2 and 3 and the capture-hook rule to beta5.
 
 ## Beta4.1 intake rulings — 2026-10-13
 

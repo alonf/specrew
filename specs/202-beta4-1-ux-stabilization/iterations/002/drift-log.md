@@ -4,7 +4,7 @@
 
 ## Summary
 
-**Total drift events**: 5 (DRIFT-001 to DRIFT-005)
+**Total drift events**: 6 (DRIFT-001 to DRIFT-006)
 
 ## Events
 
@@ -351,3 +351,21 @@
   asked for a fresh one.
 - **Class closure**: the review record is written after the last round, never before one that may still run. A retro
   input alongside B4F-126 (stop recommended where a further round or partial sign-off was the step).
+
+### DRIFT-006 — SC-011 failed on the Copilot re-walk: B4F-129's fix was tested against the wrong channel; the closeout waits (open)
+
+- **Observed**: 2026-10-20, after the retro was approved and while the iteration-closeout stop was pending. The
+  maintainer's Copilot re-walk (Copilot 1.0.98, build `7ebd9dba`) failed SC-011 at M1: rows under `claude` in the
+  hook-output journal and the conformance journal, and two conformance sessions, one per host label.
+- **Requirement citation**: FR-028 (a hook acts only for its own host), SC-011, B4F-129 (a beta4.1 release gate).
+- **Root cause**: Copilot sends Claude's hooks snake_case payloads; T016's 12 Copilot fixtures were all captured from
+  Copilot's own hooks, so the positive-match stand-down was never tested on the channel B4F-129 is about. The live shape
+  fell to DA-1's unknown-shape rule (handled as Claude, logged once), and nothing reads that log (B4F-144).
+- **What it supersedes**: the review record's claim that B4F-129 is fixed in code holds only for the payloads it was
+  tested on; the acceptance evidence now records SC-011 as failed.
+- **Resolution (pending)**: by the maintainer's ruling, iteration 002 stays open and its closeout waits for the B4F-129
+  fix and a passing re-walk. The fix starts by capturing the real payloads through a committed probe (B4F-145, layer 1).
+  The fix plan is a separate decision. The iteration-closeout crossing recorded at `7ebd9dba` was not approved and is not
+  used.
+- **Class closure**: a fix for a bug seen live is accepted only with a payload captured from the failing channel, and
+  every unrecognized-payload record has a reader that fails a check.
