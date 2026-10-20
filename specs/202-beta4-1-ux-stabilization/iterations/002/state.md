@@ -1,7 +1,7 @@
 # Iteration State: 002
 
 **Schema**: v2
-**Current Phase**: before-implement
+**Current Phase**: review-signoff
 **Iteration Status**: executing
 **Last Completed Task**: T024
 **Tasks Remaining**: none (review sign-off complete on the maintainer's partial sign-off; the review-signoff boundary is next)
