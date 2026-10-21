@@ -86,7 +86,7 @@ function New-ClosedFirstIterationRepo {
     [IO.File]::WriteAllText((Join-Path $iter 'review.md'), "# Review: Iteration 001`n`n**Overall Verdict**: accepted`n", $utf8)
     [IO.File]::WriteAllText((Join-Path $iter 'retro.md'), "# Retro: Iteration 001`n`nWhat went well.`n", $utf8)
     [IO.File]::WriteAllText((Join-Path $iter 'dashboard.md'), "# Dashboard`n`nCaptured At: arrival`n", $utf8)
-    [IO.File]::WriteAllText((Join-Path $root '.specrew/closed-iterations.yml'), "closed_iterations:`n  - feature: 001-fixture`n    iteration: `"001`"`n    closed_at: `"2026-09-10T12:30:00Z`"`n", $utf8)
+    # No closed-iterations entry at arrival: the closeout approval's capture writes it (202 T031, B4F-146).
     $null = & git -C $root init -q -b 001-fixture 2>&1
     $null = & git -C $root config user.email 'fixture@specrew.local' 2>&1
     $null = & git -C $root config user.name 'Fixture' 2>&1

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 4.75/20 story_points
 **Started**: 2026-10-21
 **Completed**:
@@ -55,7 +55,7 @@ progress.
 | T027 | A reader for the unrecognized-payload record: the binding suite, the probe and the re-walk each fail on any record | FR-028 | US8 | 0.25 | Implementer | `tests/unit/host-binding-match.tests.ps1`, `tests/host-probes/**`, `iterations/002/copilot-rewalk.md` | done | | | |
 | T028 | A payload carrying a sub-agent field is never typed by the human and never records an approval, on every channel (B4F-147) | FR-027 | US8 | 0.5 | Implementer | `hosts/*/host.psd1`, dispatcher twins, `tests/unit/subagent-prompt-authority.tests.ps1` | done | | | |
 | T029 | Product-domain and grounding questions are workshop questions in prose on every host; the text test reaches every shipped instruction (B4F-131, T021's rule) | FR-032 | US8 | 0.5 | Implementer | host bindings, launch and coordinator guidance, templates, `tests/unit/workshop-question-tool.tests.ps1` | done | | | |
-| T031 | The closed-iterations entry is written by the closeout approval's capture, beside the seal, not by the step that asks for it; a re-asked or declined closeout leaves the index unchanged (B4F-146) | FR-027 | US8 | 0.75 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `shared-governance.ps1` twins, a new unit suite | planned | | | |
+| T031 | The closed-iterations entry is written by the closeout approval's capture, beside the seal, not by the step that asks for it; a re-asked or declined closeout leaves the index unchanged (B4F-146) | FR-027 | US8 | 0.75 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `shared-governance.ps1` twins, a new unit suite | done | | | |
 | T032 | Feature closeout: the active-feature clear and the session-lock release move from the step that asks to the approval's capture (B4F-146's class) | FR-027 | US8 | 0.75 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `shared-governance.ps1` twins, the T031 suite | planned | | | |
 | T030 | Acceptance: evidence for T025 to T029 and T031 to T032, and the maintainer's Copilot re-walk with the capture hook; captured shapes replayed as fixtures (SC-011) | SC-011 | US8 | 0.25 | Implementer | `iterations/003/`, `iterations/002/copilot-rewalk.md`, `tests/host-probes/walk-capture-hook.ps1` | in-progress | | | |
 

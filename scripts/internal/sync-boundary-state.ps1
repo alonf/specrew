@@ -2089,17 +2089,11 @@ function Invoke-SpecrewBoundaryStateSync {
         Write-Warning ("Boundary sync '{0}' could not record handoff evidence: {1}" -f $BoundaryType, $_.Exception.Message)
     }
 
-    # Proposal 085: append to the closed-iteration index at iteration-closeout
-    # boundary (idempotent on re-sync). Validator full-repo path uses this to
-    # skip closed iterations unless -IncludeClosed is set.
+    # THE CLOSED-ITERATION INDEX ENTRY IS NOT WRITTEN HERE ANY MORE (202 T031, B4F-146). This sync runs when the
+    # crew ASKS for the closeout; an entry written now listed the iteration as closed while the human's decision
+    # was pending, and kept it closed had the answer been no. Like the seal (B4F-063, below), the entry is written
+    # by the approval's capture, in Add-SpecrewBoundaryAuthorization.
     if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($effectiveIterationNumber)) {
-        try {
-            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $effectiveIterationNumber
-        }
-        catch {
-            Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
-        }
-
 
         # Proposal 046 (inline-ship per F-040 dogfooding 2026-05-23): auto-render the iteration
         # dashboard snapshot to specs/<feature>/iterations/<NNN>/dashboard.md so the historical

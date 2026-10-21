@@ -105,15 +105,20 @@ if ($testResult -notmatch 'TEST_OK') {
 }
 Write-Pass 'Test-SpecrewIterationClosed returns correct boolean'
 
-# Test 10: Boundary sync at iteration-closeout calls Add-SpecrewClosedIterationEntry
+# Test 10: the closeout APPROVAL's capture writes the index entry; the sync that asks for it does not
+# (202 T031, B4F-146). The behaviour is proven end to end in tests/unit/closeout-records-on-approval.tests.ps1.
 $boundarySyncContent = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/sync-boundary-state.ps1') -Raw -Encoding UTF8
-if ($boundarySyncContent -notmatch "BoundaryType -eq 'iteration-closeout'[\s\S]*?Add-SpecrewClosedIterationEntry") {
-    Write-Fail 'sync-boundary-state.ps1 does not call Add-SpecrewClosedIterationEntry at iteration-closeout boundary'
+if ($boundarySyncContent -match '(?m)^\s*Add-SpecrewClosedIterationEntry\b') {
+    Write-Fail 'sync-boundary-state.ps1 still writes the closed-iteration index when the closeout is asked for (B4F-146)'
 }
-if ($boundarySyncContent -notmatch 'Add-SpecrewClosedIterationEntry[\s\S]*?-Iteration \$effectiveIterationNumber' -or $boundarySyncContent -notmatch 'iterations\\\{1\}\\dashboard\.md" -f \$effectiveFeatureRef, \$effectiveIterationNumber') {
-    Write-Fail 'sync-boundary-state.ps1 does not use the normalized iteration number for closeout index/dashboard writes'
+if ($boundarySyncContent -notmatch 'iterations\\\{1\}\\dashboard\.md" -f \$effectiveFeatureRef, \$effectiveIterationNumber') {
+    Write-Fail 'sync-boundary-state.ps1 does not use the normalized iteration number for the closeout dashboard write'
 }
-Write-Pass 'Boundary sync calls Add-SpecrewClosedIterationEntry at iteration-closeout'
+$authorizationContent = Get-Content -LiteralPath $sharedGovernance -Raw -Encoding UTF8
+if ($authorizationContent -notmatch "function Add-SpecrewBoundaryAuthorization \{[\s\S]*?authorizedCanonical -ceq 'iteration-closeout'[\s\S]*?Add-SpecrewClosedIterationEntry -ProjectRoot \`$ProjectRoot -Feature \`$rebindFeature -Iteration \`$rebindIteration") {
+    Write-Fail 'Add-SpecrewBoundaryAuthorization does not write the closed-iteration index entry on the closeout approval'
+}
+Write-Pass 'The closeout approval writes the closed-iteration index entry; the closeout sync does not'
 
 # Test 11: -RebuildClosedIndex against scratch tree produces populated index
 # Per Copilot review PR #661: verify rebuild end-to-end.

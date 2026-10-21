@@ -4400,6 +4400,18 @@ function Add-SpecrewBoundaryAuthorization {
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
 
+    # 202 T031 (B4F-146): the iteration is listed as closed HERE, when the human's closeout approval is recorded -
+    # never by the sync that asks for it. The entry is idempotent and lives outside the iteration, so the seal
+    # below still pins exactly what the verdict accepted. A failure is loud but never un-records the verdict.
+    if ($authorizedCanonical -ceq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($rebindFeature) -and -not [string]::IsNullOrWhiteSpace($rebindIteration)) {
+        try {
+            Add-SpecrewClosedIterationEntry -ProjectRoot $ProjectRoot -Feature $rebindFeature -Iteration $rebindIteration -ClosedAt $effectiveRecordedAt
+        }
+        catch {
+            try { [Console]::Error.WriteLine(('[specrew-governance] WARN CLOSED_INDEX_NOT_WRITTEN the closeout verdict for {0}/{1} is recorded but the closed-iteration index could not be updated: {2}. Run: validate-governance.ps1 -RebuildClosedIndex' -f $rebindFeature, $rebindIteration, $_.Exception.Message)) } catch { $null = $_ }
+        }
+    }
+
     # FR-030 (T021): the authority is written; now every enumerated copy of it is written by the SAME writer,
     # in the same act. The mirror write is subordinate to the authority write - a failure here is loud but
     # never un-records the verdict - and the truth gate at the next sync compares every copy it names.

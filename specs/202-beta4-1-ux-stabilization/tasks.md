@@ -475,8 +475,15 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
   - **Owns:** `hosts/*/host.psd1`, `scripts/internal/launch-contract.ps1`, coordinator guidance and templates,
     `tests/unit/workshop-question-tool.tests.ps1`.
 
-- [ ] T031 [owner: Implementer] [sp: 0.75] [US8] **A closeout is recorded as closed only on its approval (B4F-146).**
-  Added 2026-10-21 at iteration 003's plan stop (`B4F-146 joins this iteration`).
+- [x] T031 [owner: Implementer] [sp: 0.75] [US8] **A closeout is recorded as closed only on its approval (B4F-146).**
+  Added 2026-10-21 at iteration 003's plan stop (`B4F-146 joins this iteration`). Done 2026-10-21. The entry moved from
+  `scripts/internal/sync-boundary-state.ps1` to `Add-SpecrewBoundaryAuthorization`, written when the closeout approval
+  is recorded. `tests/unit/closeout-records-on-approval.tests.ps1` (lane `f202-i003-suites`): RED on the old code with
+  2 failures (the index listed the iteration on both asks), green after; with the capture's write removed it fails 3.
+  `closed-iteration-index` test 10 now pins the new site; the seal suite's fixtures no longer write the entry at
+  arrival, except the beta3-consumer shape. Not yet deployed to this project: the runtime refresh waits for the review
+  round (the maintainer, at before-implement), so `closed-iteration-index`'s deployed-copy parity check fails until
+  then.
   - **Work:** the closed-iterations entry moves from the iteration-closeout step that asks for the approval to the
     approval's capture, written before the seal (B4F-063's precedent). The step that asks still renders the dashboard,
     which says the decision is awaited.

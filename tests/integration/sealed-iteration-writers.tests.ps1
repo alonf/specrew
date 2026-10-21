@@ -68,8 +68,8 @@ function Get-FileHashes {
 function New-ClosedIterationProject {
     # A project with one feature, one iteration that has ARRIVED at iteration-closeout: plan.md with a tasks
     # table, tasks.md with every task checked, tasks-progress.yml, state.md at retro (the shape the consumer
-    # was in), the closed-index entry written, the dashboard rendered - and NO seal, because the seal is the
-    # verdict's, not the arrival's. -SealedAtArrival builds the pre-fix (and beta3-consumer) shape instead.
+    # was in), the dashboard rendered - and NO seal and NO closed-index entry, because both are the verdict's, not
+    # the arrival's (B4F-063; 202 T031, B4F-146). -SealedAtArrival builds the pre-fix (and beta3-consumer) shape instead.
     param([switch] $SealedAtArrival)
     $root = Join-Path ([IO.Path]::GetTempPath()) ('siw-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
     $iter = Join-Path $root 'specs/001-fixture/iterations/001'
@@ -125,7 +125,6 @@ The work is done and reviewed.
 "@ + "`n", $utf8)
     [IO.File]::WriteAllText((Join-Path $iter 'review.md'), "# Review: Iteration 001`n`n**Overall Verdict**: accepted`n", $utf8)
     [IO.File]::WriteAllText((Join-Path $iter 'retro.md'), "# Retro: Iteration 001`n`nWhat went well.`n", $utf8)
-    [IO.File]::WriteAllText((Join-Path $root '.specrew/closed-iterations.yml'), "closed_iterations:`n  - feature: 001-fixture`n    iteration: `"001`"`n    closed_at: `"2026-09-10T12:30:00Z`"`n", $utf8)
     $ctx = [ordered]@{
         schema = 'v2'
         feature_path = (Join-Path $root 'specs/001-fixture')
@@ -138,6 +137,8 @@ The work is done and reviewed.
         # what the closeout sync used to do at the boundary's arrival - and what a consumer that closed an
         # iteration on beta3 still carries
         $null = Write-SpecrewIterationSeal -IterationDirectory $iter -Feature '001-fixture' -Iteration '001' -Source 'iteration-closeout'
+        # and the closed-index entry, which that sync also wrote at arrival before 202 T031
+        [IO.File]::WriteAllText((Join-Path $root '.specrew/closed-iterations.yml'), "closed_iterations:`n  - feature: 001-fixture`n    iteration: `"001`"`n    closed_at: `"2026-09-10T12:30:00Z`"`n", $utf8)
     }
     return $root
 }

@@ -170,6 +170,39 @@
       },
       "label": "Feature 202 iteration 002 suites, lane b, added 2026-10-21 (T026, T028). host-binding-match (T016, T026, FR-028): every recorded payload, the layer-1 probe payloads included (Claude's hooks as Copilot runs them), against every validated host's deployed hook - its own host handles it, another host's payload stands down and writes nothing, no recorded payload leaves an unrecognized-payload record (114 s alone). subagent-prompt-authority (T028, FR-027, B4F-147): a payload carrying a sub-agent field is never typed by the human and records no approval on any channel, through the real provider pinned to a temp project, and the repository's own stores stay unchanged (24 s alone). Measured alone 138 s against 340 s (2.46x)."
     },
+    {
+      "command_id": "f202-i003-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/closeout-records-on-approval.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 i003 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 003 suites, added 2026-10-21 (T031, B4F-146). closeout-records-on-approval: through the real closeout sync and the real approval capture in a temp git project, the closed-iterations index does not list an iteration while its closeout decision is pending (asked once or twice), the approval adds it once and seals the iteration, and the repository's own stores stay unchanged (13 s alone). Measured alone 13 s against 120 s."
+    },
 {
       "command_id": "f199-class-guards-a",
       "executable": "pwsh",
