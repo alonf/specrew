@@ -18,5 +18,5 @@
   DRIFT-011).
 - **Resolution**: re-pointed to `iterations/003` (command `iteration-003-governance-202`), before the round, so the
   round's pre-review check reads this iteration.
-- **Class closure**: NONE in this iteration. Making the command name the active iteration is beta5 work (the review
-  engine), as ruled at the fourth instance (iteration 002 DRIFT-002).
+- **Class closure**: NONE - making the command name the active iteration is beta5 work (the review engine), as ruled
+  at the fourth instance (iteration 002 DRIFT-002).
