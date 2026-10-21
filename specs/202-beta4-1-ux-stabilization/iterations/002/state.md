@@ -1,8 +1,8 @@
 # Iteration State: 002
 
 **Schema**: v2
-**Current Phase**: retro
-**Iteration Status**: executing
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T024
 **Tasks Remaining**: none (review sign-off complete on the maintainer's partial sign-off; the review-signoff boundary is next)
 **In Progress**: (none; co-review rounds 1 to 8 returned 32 real findings, fixed in `7a75987b`, `f98c0a96`, `8222019a`, `c43b3cec`, `cbb1ea74`, `aa7592aa`, `45b8cbfc` and `ac87d96c` (DRIFT-003); rounds 5 to 8 ran on 2026-10-18 after the allowance reset)
