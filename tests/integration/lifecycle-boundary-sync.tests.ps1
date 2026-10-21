@@ -132,9 +132,25 @@ if ($decisionsContent -match 'Auth Commit Hash\*\*:\s*HEAD') {
     exit 1
 }
 
+# 202 T032 (B4F-146's class): the feature-closeout sync ASKS for the closeout, so the pointer still names the feature;
+# the human's approval clears it.
+$featureJson = Get-Content -LiteralPath (Join-Path $orderedProject '.specify\feature.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ([string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
+    Write-Fail 'Asking for the feature closeout already cleared .specify\feature.json; it is cleared by the approval.'
+    exit 1
+}
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+$closeoutContext = Get-Content -LiteralPath (Join-Path $orderedProject '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -AsHashtable
+$pendingCrossing = if ($closeoutContext.Contains('boundary_enforcement') -and $closeoutContext['boundary_enforcement'] -is [System.Collections.IDictionary] -and $closeoutContext['boundary_enforcement'].Contains('pending_crossing')) { $closeoutContext['boundary_enforcement']['pending_crossing'] } else { $null }
+$fromBoundary = if ($pendingCrossing -is [System.Collections.IDictionary] -and $pendingCrossing.Contains('from_boundary') -and $pendingCrossing['from_boundary']) { [string]$pendingCrossing['from_boundary'] } else { 'iteration-closeout' }
+$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $orderedProject -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+if ($null -eq $closeoutVerdict -or [string]$closeoutVerdict.AuthorizedBoundary -ne 'feature-closeout') {
+    Write-Fail 'The feature-closeout approval was not recorded.'
+    exit 1
+}
 $featureJson = Get-Content -LiteralPath (Join-Path $orderedProject '.specify\feature.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not [string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
-    Write-Fail 'Feature closeout should clear .specify\feature.json only after syncing the closeout boundary.'
+    Write-Fail 'The feature-closeout approval should clear .specify\feature.json.'
     exit 1
 }
 

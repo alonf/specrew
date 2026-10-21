@@ -201,7 +201,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 202 iteration 003 suites, added 2026-10-21 (T031, B4F-146). closeout-records-on-approval: through the real closeout sync and the real approval capture in a temp git project, the closed-iterations index does not list an iteration while its closeout decision is pending (asked once or twice), the approval adds it once and seals the iteration, and the repository's own stores stay unchanged (13 s alone). Measured alone 13 s against 120 s."
+      "label": "Feature 202 iteration 003 suites, added 2026-10-21 (T031, T032, B4F-146). closeout-records-on-approval: through the real closeout sync and the real approval capture in a temp git project, the closed-iterations index does not list an iteration while its closeout decision is pending (asked once or twice), the approval adds it once and seals the iteration; T032: while the feature-closeout decision is pending the session stays active and the pointer, the session lock and the claim stay, the approval releases all four and rewrites the identity and launch-prompt text, and the validator's closure rule allows the pending decision; the repository's own stores stay unchanged. Measured alone 19 s against 120 s."
     },
 {
       "command_id": "f199-class-guards-a",

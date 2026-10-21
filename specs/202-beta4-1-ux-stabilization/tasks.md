@@ -493,12 +493,24 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
   - **Trace:** FR-027; B4F-146.
   - **Owns:** `scripts/internal/sync-boundary-state.ps1`, both `shared-governance.ps1` twins, a new unit suite.
 
-- [ ] T032 [owner: Implementer] [sp: 0.75] [US8] **Feature closeout: nothing cleared before the approval (B4F-146's
-  class).**
-  - **Work:** the feature-closeout step that asks for the approval clears the active feature and releases the session
-    lock. Both move to the approval's capture.
-  - **RED:** a feature-closeout sync with no approval leaves the active feature and the session lock as they were; the
-    captured approval clears them.
+- [x] T032 [owner: Implementer] [sp: 1.75] [US8] **Feature closeout: nothing cleared before the approval (B4F-146's
+  class).** Done 2026-10-21. Grown from 0.75 SP on the maintainer's `move all four`.
+  - **Work:** the feature-closeout step that asks for the approval wrote four things: the session marked inactive (and
+    the launch prompt's and identity file's copies of the flag), the active-feature pointer cleared, the session lock
+    released, and the feature claim removed when the branch is merged. All four move to the approval's capture
+    (`Invoke-SpecrewFeatureCloseoutRelease`, from `Add-SpecrewBoundaryAuthorization`); the capture finds the module's
+    lock and claim helpers the way the sync wrapper finds its own. The merge check moves into `feature-claims.ps1` with
+    the claim removal. The validator's closure rule calls "active at feature closeout" a contradiction only once the
+    feature closeout is the last authorized boundary.
+  - **RED:** a feature-closeout sync with no approval leaves all four as they were; the captured approval releases
+    them. `closeout-records-on-approval.tests.ps1` cases 5 to 7: 5 failures on the old code, green after; with the
+    old closure rule it fails 1, and with the capture's release removed it fails 5.
+  - **Also found while writing it:** the closeout scaffold wrote "No active feature" into the identity file when the
+    closeout was asked for. It now writes "its closeout is waiting for the human's approval", and the approval's
+    capture writes the "No active feature" text into the identity file and the launch prompt. The capture loads the
+    lock and claim helpers from its own module tree first, so code and helpers are the same version. Four existing
+    suites pinned the old timing and now check both halves: `closeout-identity-schema-parity`,
+    `feature-051-iteration2a-callsite-wiring`, `lifecycle-boundary-sync`, `session-state-boundary-canonical`.
   - **Acceptance:** 202's own feature closeout, which comes before the release.
   - **Trace:** FR-027; B4F-146.
   - **Depends:** T031.

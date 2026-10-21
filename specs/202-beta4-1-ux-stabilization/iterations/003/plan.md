@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 4.75/20 story_points
+**Capacity**: 5.75/20 story_points
 **Started**: 2026-10-21
 **Completed**:
 
@@ -56,7 +56,7 @@ progress.
 | T028 | A payload carrying a sub-agent field is never typed by the human and never records an approval, on every channel (B4F-147) | FR-027 | US8 | 0.5 | Implementer | `hosts/*/host.psd1`, dispatcher twins, `tests/unit/subagent-prompt-authority.tests.ps1` | done | | | |
 | T029 | Product-domain and grounding questions are workshop questions in prose on every host; the text test reaches every shipped instruction (B4F-131, T021's rule) | FR-032 | US8 | 0.5 | Implementer | host bindings, launch and coordinator guidance, templates, `tests/unit/workshop-question-tool.tests.ps1` | done | | | |
 | T031 | The closed-iterations entry is written by the closeout approval's capture, beside the seal, not by the step that asks for it; a re-asked or declined closeout leaves the index unchanged (B4F-146) | FR-027 | US8 | 0.75 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `shared-governance.ps1` twins, a new unit suite | done | | | |
-| T032 | Feature closeout: the active-feature clear and the session-lock release move from the step that asks to the approval's capture (B4F-146's class) | FR-027 | US8 | 0.75 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `shared-governance.ps1` twins, the T031 suite | planned | | | |
+| T032 | Feature closeout: the four writes made when it is asked for (session inactive, pointer cleared, session lock released, claim removed when merged) move to the approval's capture; the validator's closure rule allows the pending decision (B4F-146's class) | FR-027 | US8 | 1.75 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/feature-claims.ps1`, `shared-governance.ps1`, `validate-governance.ps1`, the T031 suite | done | | | |
 | T030 | Acceptance: evidence for T025 to T029 and T031 to T032, and the maintainer's Copilot re-walk with the capture hook; captured shapes replayed as fixtures (SC-011) | SC-011 | US8 | 0.25 | Implementer | `iterations/003/`, `iterations/002/copilot-rewalk.md`, `tests/host-probes/walk-capture-hook.ps1` | in-progress | | | |
 
 ## Effort Model
@@ -85,7 +85,7 @@ progress.
 | ----- | ---------------- | ----- |
 | Planning | done | The fix plan was approved in iteration 002 (DRIFT-006); this plan carries it over unchanged |
 | Discovery/Spikes | 0 | The payload probe (T025) was the discovery; 108 of 108 checks pass live |
-| Implementation | 4.5 | T025 to T029, in code since `2fd7f2d6`; T031 and T032 |
+| Implementation | 5.5 | T025 to T029, in code since `2fd7f2d6`; T031 and T032 |
 | Review | rounds, not SP | One round over T025 to T029, T031, T032 and round 8's fixes, under the codex round allowance |
 | Rework | inside the round allowance | Fixes from the round land before the re-walk |
 | Acceptance | 0.25 | T030 and the maintainer's re-walk |
@@ -106,5 +106,7 @@ progress.
 - B4F-146 joined at the plan stop. Its precedent is B4F-063: the iteration seal already moved from the step that asks
   for the closeout to the approval's capture. T031 moves the closed-iterations entry the same way; T032 does it for the
   feature closeout's early writes.
+- **T032 grew from 0.75 to 1.75 SP on 2026-10-21** (`move all four`, the maintainer): the feature-closeout step wrote
+  four things when asked for, not two, and the validator's closure rule had to allow the pending decision.
 - Not in this iteration: B4F-148 (a store writer that finds its project from its working directory) and B4F-149 (the
   withdrawal record's time format).

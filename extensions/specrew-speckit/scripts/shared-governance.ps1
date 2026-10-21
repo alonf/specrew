@@ -4398,7 +4398,24 @@ function Add-SpecrewBoundaryAuthorization {
         # the very reading that made the frozen evidence look like a clean run.
         bypass_history           = @($bypassHistoryForAuthorization.ToArray())
     }
+    # 202 T032 (B4F-146's class): an approved feature closeout is where the feature stops being active - in the
+    # session state this capture writes, never when the closeout is asked for.
+    $featureCloseoutApproved = ($authorizedCanonical -ceq 'feature-closeout')
+    if ($featureCloseoutApproved -and $null -ne $rebindSession -and $null -ne $enforcementState.Context) {
+        $rebindSession['active'] = $false
+        $enforcementState.Context['session_state'] = $rebindSession
+    }
+
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
+
+    # 202 T032: and the rest of what the feature closeout releases - the pointer, the lock, the claim, the
+    # frontmatter copies of the active flag. A failure is loud but never un-records the verdict.
+    if ($featureCloseoutApproved -and -not [string]::IsNullOrWhiteSpace($rebindFeature)) {
+        try { $null = Invoke-SpecrewFeatureCloseoutRelease -ProjectRoot $ProjectRoot -FeatureRef $rebindFeature -SessionState $rebindSession -ApprovedAt $effectiveRecordedAt }
+        catch {
+            try { [Console]::Error.WriteLine(('[specrew-governance] WARN FEATURE_CLOSEOUT_NOT_RELEASED the feature-closeout approval for {0} is recorded but its release failed: {1}' -f $rebindFeature, $_.Exception.Message)) } catch { $null = $_ }
+        }
+    }
 
     # 202 T031 (B4F-146): the iteration is listed as closed HERE, when the human's closeout approval is recorded -
     # never by the sync that asks for it. The entry is idempotent and lives outside the iteration, so the seal
@@ -8322,6 +8339,162 @@ function Resolve-SpecrewActiveFeature {
         return $result
     }
     return $result
+}
+
+function Resolve-SpecrewModuleInternalDirectory {
+    # 202 T032: the module's scripts/internal folder, for a writer that runs outside the boundary sync (the approval
+    # capture runs in the hook). Found the way the sync wrapper finds its helper: SPECREW_MODULE_PATH; then the module
+    # tree this file belongs to, when it runs from a module (so its helpers are the same version as its own code);
+    # then the project itself when it is Specrew's own repository; then the installed module. $null when none holds
+    # the helpers.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal')) }
+    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) { $candidates.Add((Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'scripts/internal')) }
+    $candidates.Add((Join-Path $ProjectRoot 'scripts/internal'))
+    try {
+        $module = Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
+        if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts/internal')) }
+    }
+    catch { $null = $_ }
+    foreach ($candidate in $candidates) {
+        if ((Test-Path -LiteralPath (Join-Path $candidate 'session-management.ps1') -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $candidate 'feature-claims.ps1') -PathType Leaf)) { return $candidate }
+    }
+    return $null
+}
+
+function Get-SpecrewInactivePromptBody {
+    # The launch prompt's body once no feature is active. Shared by the boundary sync and the feature-closeout
+    # approval's capture (202 T032), so both write the same text.
+    [OutputType([string])]
+    param([AllowNull()][string]$FeatureRef, [AllowNull()][string]$Boundary, [AllowNull()][string]$RecordedAt, [AllowNull()][string]$AuthCommitHash)
+    return @"
+# Specrew Session State
+
+- No active feature.
+- Last feature: $(if ($FeatureRef) { $FeatureRef } else { '(none)' })
+- Last boundary: $Boundary
+- Recorded at: $RecordedAt
+- Authorization commit: $(if ($AuthCommitHash) { $AuthCommitHash } else { '(none)' })
+"@
+}
+
+function Get-SpecrewClosedFeatureIdentityBody {
+    # The identity file's body once the human has approved a feature's closeout (202 T032).
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$FeatureRef, [AllowNull()][string]$ApprovedAt)
+    $label = if ($FeatureRef -match '^(?<number>\d{3})') { 'Feature {0}' -f $Matches['number'] } else { $FeatureRef }
+    return @"
+# What We're Focused On
+
+No active feature. Last completed: $label ($FeatureRef), its closeout approved at $ApprovedAt.
+"@
+}
+
+function Set-SpecrewStateFileInactive {
+    # 202 T032: a state file (the launch prompt, the identity file) rewritten for a feature whose closeout the human
+    # has approved: the named frontmatter keys set (added when absent) and, when -Body is given, the body after the
+    # frontmatter replaced. Every other frontmatter line is kept. A file without frontmatter is left as it is.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][System.Collections.IDictionary]$Frontmatter, [AllowNull()][string]$Body)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    $text = [IO.File]::ReadAllText($Path)
+    $match = [regex]::Match($text, '\A---\r?\n(?<fm>[\s\S]*?)\r?\n---[^\r\n]*(\r?\n|\z)')
+    if (-not $match.Success) { return $false }
+    $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $lines = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in ($match.Groups['fm'].Value -split '\r?\n')) { $lines.Add($line) }
+    foreach ($key in $Frontmatter.Keys) {
+        $value = '{0}: {1}' -f $key, $Frontmatter[$key]
+        $index = -1
+        for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match ('^' + [regex]::Escape([string]$key) + ':')) { $index = $i; break } }
+        if ($index -ge 0) { $lines[$index] = $value } else { $lines.Add($value) }
+    }
+    $rest = $text.Substring($match.Index + $match.Length)
+    if (-not [string]::IsNullOrWhiteSpace($Body)) { $rest = $nl + (($Body.Trim()) -replace '\r?\n', $nl) + $nl }
+    $updated = '---' + $nl + ($lines -join $nl) + $nl + '---' + $nl + $rest
+    if ($updated -ceq $text) { return $false }
+    [IO.File]::WriteAllText($Path, $updated, [Text.UTF8Encoding]::new($false))
+    return $true
+}
+function Invoke-SpecrewFeatureCloseoutRelease {
+    # 202 T032 (B4F-146's class): what a feature closeout releases, done when the human's approval is recorded and
+    # never when the closeout is asked for. The capture itself writes the session state's `active: false`; this
+    # writes the rest: the launch prompt and the identity file rewritten as inactive (their copy of the flag and
+    # their text, which the closeout step now writes as awaiting approval), the active-feature
+    # pointer (only when it names this feature), this machine's session lock for the feature, and the feature's
+    # claim once its branch is merged to main. Each step is separate, so one failure leaves the others done; the
+    # caller reports a failure without un-recording the approval.
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef,
+        [AllowNull()][System.Collections.IDictionary]$SessionState, [AllowNull()][string]$ApprovedAt)
+
+    $root = [IO.Path]::GetFullPath($ProjectRoot)
+    $released = [System.Collections.Generic.List[string]]::new()
+    $problems = [System.Collections.Generic.List[string]]::new()
+
+    $session = if ($null -ne $SessionState) { $SessionState } else { @{} }
+    $sessionValue = { param([string]$Key) if ($session.Contains($Key) -and $null -ne $session[$Key]) { [string]$session[$Key] } else { '' } }
+    $approvedAt = if ([string]::IsNullOrWhiteSpace($ApprovedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $ApprovedAt }
+    $stateFiles = @(
+        [pscustomobject]@{ Relative = '.specrew/last-start-prompt.md'; Frontmatter = [ordered]@{ session_state_active = 'false' }
+            Body = (Get-SpecrewInactivePromptBody -FeatureRef $FeatureRef -Boundary 'feature-closeout' -RecordedAt $approvedAt -AuthCommitHash (& $sessionValue 'auth_commit_hash')) }
+        [pscustomobject]@{ Relative = '.squad/identity/now.md'; Frontmatter = [ordered]@{ focus_area = '"No active feature"'; active_issues = '"[]"'; session_state_active = 'false' }
+            Body = (Get-SpecrewClosedFeatureIdentityBody -FeatureRef $FeatureRef -ApprovedAt $approvedAt) }
+    )
+    foreach ($file in $stateFiles) {
+        try { if (Set-SpecrewStateFileInactive -Path (Join-Path $root $file.Relative) -Frontmatter $file.Frontmatter -Body $file.Body) { $released.Add($file.Relative) } }
+        catch { $problems.Add(('{0}: {1}' -f $file.Relative, $_.Exception.Message)) }
+    }
+
+    $pointerPath = Join-Path $root '.specify/feature.json'
+    try {
+        if (Test-Path -LiteralPath $pointerPath -PathType Leaf) {
+            $pointer = [ordered]@{}
+            $existing = Get-Content -LiteralPath $pointerPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            foreach ($key in $existing.Keys) { $pointer[$key] = $existing[$key] }
+            $current = if ($pointer.Contains('feature_directory')) { [string]$pointer['feature_directory'] } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($current) -and (Split-Path -Leaf $current) -ceq (Split-Path -Leaf $FeatureRef)) {
+                $pointer['feature_directory'] = ''
+                if (-not $pointer.Contains('schema')) { $pointer['schema'] = 'v1' }
+                $temp = $pointerPath + '.tmp-' + [guid]::NewGuid().ToString('N')
+                try {
+                    [IO.File]::WriteAllText($temp, ((([pscustomobject]$pointer) | ConvertTo-Json -Depth 5) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+                    [IO.File]::Move($temp, $pointerPath, $true)
+                }
+                finally { if (Test-Path -LiteralPath $temp -PathType Leaf) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }
+                $released.Add('.specify/feature.json')
+            }
+        }
+    }
+    catch { $problems.Add(('.specify/feature.json: {0}' -f $_.Exception.Message)) }
+
+    $internal = Resolve-SpecrewModuleInternalDirectory -ProjectRoot $root
+    if ($null -eq $internal) {
+        $problems.Add('the session lock and the feature claim: the Specrew module''s helpers were not found')
+    }
+    else {
+        try {
+            . (Join-Path $internal 'session-management.ps1')
+            Remove-SessionLock -ProjectRoot $root -FeatureId $FeatureRef
+            $released.Add('.specrew/active-sessions.yml')
+        }
+        catch { $problems.Add(('.specrew/active-sessions.yml: {0}' -f $_.Exception.Message)) }
+        try {
+            . (Join-Path $internal 'feature-claims.ps1')
+            if (Remove-FeatureClaimIfMerged -ProjectRoot $root -FeatureId $FeatureRef) { $released.Add('.squad/active-features.yml') }
+        }
+        catch { $problems.Add(('.squad/active-features.yml: {0}' -f $_.Exception.Message)) }
+    }
+
+    if ($problems.Count -gt 0) {
+        try { [Console]::Error.WriteLine(('[specrew-governance] WARN FEATURE_CLOSEOUT_NOT_FULLY_RELEASED the feature-closeout approval for {0} is recorded, but not everything it releases was released: {1}' -f $FeatureRef, ($problems -join '; '))) } catch { $null = $_ }
+    }
+    return @($released.ToArray())
 }
 
 function Set-SpecrewActiveFeaturePointer {

@@ -244,36 +244,6 @@ function Get-SpecrewCurrentBranchName {
     return $null
 }
 
-function Test-SpecrewFeatureMergedToMain {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [AllowNull()][string]$FeatureRef
-    )
-
-    # Strict merge detection (Feature 141 FR-024) — see the matching helper in
-    # session-recovery.ps1. Match the FULL feature ref slug as an exact substring,
-    # never the bare numeric id, so unrelated merge bodies that merely mention a
-    # proposal number ("Proposal 120 + 141") cannot false-positive a feature.
-    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
-    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
-        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-    }
-
-    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --fixed-strings --grep="$FeatureRef" 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-    }
-
-    if ($logOutput.Count -gt 0) {
-        return [pscustomobject]@{
-            IsMerged = $true
-            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $FeatureRef, ($logOutput[0].ToString().Trim()))
-        }
-    }
-
-    return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-}
-
 function Sync-SpecrewFeatureClaimForBoundary {
     param(
         [Parameter(Mandatory = $true)]
@@ -304,10 +274,8 @@ function Sync-SpecrewFeatureClaimForBoundary {
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
-        $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
-        if ($mergeCheck.IsMerged) {
-            Remove-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef
-        }
+        # 202 T032 (B4F-146's class): the claim is removed when the human APPROVES the feature closeout
+        # (Invoke-SpecrewFeatureCloseoutRelease, from Add-SpecrewBoundaryAuthorization), never when it is asked for.
         return
     }
 
@@ -426,7 +394,9 @@ function New-SpecrewSessionState {
         task_id          = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId.Trim() }
         auth_commit_hash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) { $null } else { $AuthCommitHash.Trim() }
         recorded_at      = $recordedAt
-        active           = if ($BoundaryType -eq 'feature-closeout') { 'false' } else { 'true' }
+        # 202 T032: active at every arrival, feature-closeout included. The feature stops being active when the
+        # human approves its closeout; the approval's capture writes `false`.
+        active           = 'true'
     }
 }
 
@@ -434,15 +404,8 @@ function Get-SpecrewPromptBody {
     param([pscustomobject]$SessionState)
 
     if ($SessionState.active -eq 'false') {
-        return @"
-# Specrew Session State
-
-- No active feature.
-- Last feature: $(if ($SessionState.feature_ref) { $SessionState.feature_ref } else { '(none)' })
-- Last boundary: $($SessionState.boundary_type)
-- Recorded at: $($SessionState.recorded_at)
-- Authorization commit: $(if ($SessionState.auth_commit_hash) { $SessionState.auth_commit_hash } else { '(none)' })
-"@
+        # The same text the feature-closeout approval's capture writes (202 T032).
+        return (Get-SpecrewInactivePromptBody -FeatureRef $SessionState.feature_ref -Boundary $SessionState.boundary_type -RecordedAt $SessionState.recorded_at -AuthCommitHash $SessionState.auth_commit_hash)
     }
 
     return @"
@@ -2120,11 +2083,9 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
-        if (-not [string]::IsNullOrWhiteSpace($effectiveFeatureRef)) {
-            Remove-SessionLock -ProjectRoot $paths.ProjectRoot -FeatureId $effectiveFeatureRef
-        }
-
-        Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
+        # 202 T032 (B4F-146's class): the session lock and the active-feature pointer are NOT released here any more.
+        # This sync asks for the feature closeout; releasing them now told every reader the feature was closed while
+        # the decision was pending. Add-SpecrewBoundaryAuthorization releases them when the approval is recorded.
 
         # Proposal 046 feature-level companion: auto-render specs/<feature>/closeout-dashboard.md
         # so the feature-wide rollup exists at feature-closeout without manual invocation.

@@ -111,6 +111,33 @@ function Remove-FeatureClaim {
     }
 }
 
+function Test-FeatureBranchMergedToMain {
+    <# Strict merge detection (Feature 141 FR-024): the FULL feature ref slug as an exact substring of a merge on
+       main, never the bare number ("Proposal 120 + 141" is not feature 141). Moved here from sync-boundary-state.ps1
+       by 202 T032, with the claim removal it decides. #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+    if ([string]::IsNullOrWhiteSpace($FeatureRef) -or $FeatureRef -notmatch '^\d{3}[-_]') { return $false }
+    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --fixed-strings --grep="$FeatureRef" 2>&1)
+    if ($LASTEXITCODE -ne 0) { return $false }
+    return ($logOutput.Count -gt 0)
+}
+
+function Remove-FeatureClaimIfMerged {
+    <# At an approved feature closeout: the claim goes once the feature's branch is merged to main (FR-016). Returns
+       $true when a claim was removed. #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureId
+    )
+    if (-not (Test-FeatureBranchMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $FeatureId)) { return $false }
+    $before = @(Read-FeatureClaims -ProjectRoot $ProjectRoot).Count
+    Remove-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureId
+    return (@(Read-FeatureClaims -ProjectRoot $ProjectRoot).Count -ne $before)
+}
+
 function Test-FeatureClaimConflict {
     <# Return a claim on the same feature held by a DIFFERENT developer, else $null (FR-015). #>
     param(
