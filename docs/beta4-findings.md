@@ -5334,6 +5334,7 @@ box answer is recorded with its source. With B4F-125, the form an approval may t
 **Disposition:** recorded. The maintainer's read: iteration 002.
 **Seen again, 2026-10-20** (the SC-011 re-walk, Copilot 1.0.98): the product-domain question went through Copilot's
 question box, and the box answer recorded nothing. T021 covered lens questions only.
+**Pulled into iteration 002 (2026-10-21, the maintainer):** T021's rule, applied to the one question it missed (T029).
 
 ## B4F-132 - FEATURE SETUP REPORTS A BRANCH IT NEVER CREATES (candidate)
 
@@ -5537,6 +5538,60 @@ late, and leaves no payloads behind.
   replay fixture.
 
 **Disposition:** layer 1 in iteration 002, with the B4F-129 fix; layers 2 and 3 and the capture-hook rule to beta5.
+
+## B4F-146 - THE CLOSEOUT SYNC RECORDS THE ITERATION AS CLOSED BEFORE THE CLOSEOUT IS APPROVED (candidate)
+
+**Observed:** 2026-10-20, 202 iteration 002. The retro-to-closeout sync, run to present the closeout decision, added
+iteration 002 to `.specrew/closed-iterations.yml` (`closed_at: 2026-10-20T12:07:16Z`), wrote an iteration-closeout entry
+to `.squad/decisions.md`, set the session state to iteration-closeout in `.squad/identity/now.md`, rendered
+`iterations/002/dashboard.md` and appended a lifecycle event. The maintainer never approved the closeout: the SC-011
+re-walk failed, and the iteration stays open.
+**Effect:** anything that reads the closed-iterations list sees the iteration closed while its closeout decision is
+still pending, and it stays that way if the decision is never given. Nothing told the human the sync had written it.
+**Recovery (2026-10-21, on the maintainer's `go with the fix plan`):** the four files were restored to their committed
+state and the dashboard moved to `C:\Dev\specrew-moved-aside\202-i002-closeout-sync-2026-10-20\`. The lifecycle event
+was left as it is: it records a sync that did run.
+**Fix direction (proposal):** the closed-iterations entry is written when the closeout is approved, not by the sync that
+asks for the approval.
+**Disposition:** logged at the maintainer's request, 2026-10-21; not yet scheduled.
+
+## B4F-147 - A SUB-AGENT'S TASK TEXT ARRIVES AS A USER PROMPT, ON BOTH COPILOT CHANNELS (iteration 002, with B4F-144)
+
+**Observed:** 2026-10-20, the SC-011 re-walk, Copilot 1.0.98. At 22:15 and 22:19 the Claude-hook channel delivered two
+more shapes the dispatcher did not recognize, a UserPromptSubmit and a Stop, each carrying `agent_id`, `agent_type` and
+`parent_agent_id`. UserPromptSubmit fired on both hosts' hooks for the sub-agent's task text: the exhausted-turn rows
+for `copilot` (22:15:36) and `claude` (22:15:39) carry the same content hash, in a session of its own.
+**Risk:** a sub-agent's task text is written by the model. One that carries an approval phrase could be recorded as the
+human's approval.
+**Disposition:** iteration 002 (the maintainer, 2026-10-21): the probe and the tests cover Copilot sub-agents, and a
+payload carrying `agent_id` or `parent_agent_id` is never recorded as a human approval, on either channel (T028).
+
+## B4F-148 - A TEST THAT RUNS THE REAL PROVIDER WITHOUT A PROJECT ROOT WRITES INTO THE REPOSITORY RUNNING IT (iteration 002, fixed in the test)
+
+**Observed:** 2026-10-20, 202 iteration 002, T028. The first version of the sub-agent approval test ran the real
+handover provider with the dispatcher's arguments, from the repository. It stored an unspent `approved for review
+round` in the repository's own round-approval store, plus append-only rows in the authority and handover journals
+(iteration 002 DRIFT-007).
+**Cause:** the dispatcher hands the provider no `--project-root`. The provider then finds its project from its working
+directory, walking up to the nearest `.specrew`. A test that reuses the dispatcher's arguments and runs from the
+repository writes into the repository.
+**Effect:** the stored approval looked exactly like a typed one. The interim check before a round launch reads the
+evidence source, the time and the spent field, and all three would have passed. The maintainer withdrew it before any
+round ran.
+**Fix (iteration 002):** the test passes `--project-root`, runs the provider from its temp project with
+`CLAUDE_PROJECT_DIR`, `COPILOT_PROJECT_DIR` and `CURSOR_PROJECT_DIR` pointed at it, and fails if the repository's
+approval, authority or journal stores change.
+**Proposal:** a store writer that can record an approval runs only with an explicit project root, or the hook command
+carries one, so no caller depends on its working directory. Logged, not scheduled.
+
+## B4F-149 - THE WITHDRAWAL RECORD WRITES THE WITHDRAWN APPROVAL'S TIME IN A LOCAL DATE FORMAT (candidate)
+
+**Observed:** 2026-10-21, the withdrawal in B4F-148. The row in `.specrew/authority/withdrawals.jsonl` has
+`withdrew_observed_at: "10/20/2026 23:08:41"`, while the approval it withdrew carried `2026-10-20T23:08:41.3656690Z`.
+The row still names the approval, but its time has lost the fraction of a second and the time zone, so it no longer
+matches the approval's own field exactly.
+**Likely cause:** the time is read back from JSON as a date and written out as text. Not checked in the writer.
+**Disposition:** logged, not scheduled.
 
 ## Beta4.1 intake rulings — 2026-10-13
 

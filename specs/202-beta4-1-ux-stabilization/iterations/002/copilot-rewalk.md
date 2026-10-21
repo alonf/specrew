@@ -28,6 +28,15 @@ runs in the 202 worktree or in any other repository. A value that was not observ
    what made Copilot run every Specrew hook twice in the iteration-1 walk. If it prints `False`, the walk cannot test
    SC-011: stop, and write `null` with the reason.
 3. Record `copilot --version`.
+4. **Capture hook** (added for the second walk, T030). It keeps every payload Copilot sends during the walk, on both
+   channels, so a shape no test has can become a test. From the clone you made in step 1:
+
+   ```powershell
+   pwsh -File <clone>\tests\host-probes\walk-capture-hook.ps1 -Install -Project $p -OutDir C:\scratch\rewalk-202\capture
+   ```
+
+   It adds one file, `specrew-walk-capture.json`, to `~\.copilot\hooks`, beside Specrew's, and a capture entry per
+   event to the project's `.claude\settings.local.json`. It changes nothing else. Cleanup takes both out again.
 
 ## The walk
 
@@ -75,6 +84,31 @@ $j | Group-Object host | Format-Table Name, Count -AutoSize
 SC-011 expects `stop-block rows under claude: 0`. In the iteration-1 walk this was 8. Rows under `copilot` are turn
 ends Copilot's own hook sent back for more work; count an extra stop only for what you saw on screen.
 
+### Hook rows under claude (any time)
+
+This is the check the first walk failed at M1.
+
+```powershell
+$h = @(Get-Content .specrew\runtime\hook-output-authority.jsonl | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+$h | Group-Object host | Format-Table Name, Count -AutoSize
+"hook rows under claude: $(@($h | Where-Object host -eq 'claude').Count)"
+"conformance sessions: $(@(Get-ChildItem .specrew\runtime\conformance-sessions -Directory -ErrorAction SilentlyContinue).Count)"
+```
+
+SC-011 expects `hook rows under claude: 0`. In the first walk, M1 and M2 left 3, and two conformance sessions, one per
+host.
+
+### Payloads not recognized (any time)
+
+```powershell
+$u = @(Get-ChildItem .specrew\runtime\hook-health -Filter 'unrecognized-payload-*.json' -ErrorAction SilentlyContinue)
+"unrecognized-payload records: $($u.Count)"
+$u | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json } | Format-Table host, event, field_names -AutoSize -Wrap
+```
+
+Expected: `unrecognized-payload records: 0`. Each record is a payload shape no host binding knew; the first walk left
+4 (T027).
+
 ### Replies not recorded
 
 Each session keeps its own reply outcome now (T022); the shared outcomes file is gone.
@@ -96,19 +130,38 @@ $be.verdict_history | Format-Table to_boundary, verdict_text, evidence_source, r
 
 Expected: exactly one `specify` row, `evidence_source: hook-captured-user-prompt`.
 
+### Captured payloads (after the walk)
+
+```powershell
+pwsh -File <clone>\tests\host-probes\walk-capture-hook.ps1 -Summary -OutDir C:\scratch\rewalk-202\capture
+```
+
+It lists each payload shape seen, per channel and event, with its field names. Keep the folder: the crew replays the
+captures through the deployed hooks and adds any new shape to the fixtures.
+
 ## Record
 
 Fill one row, and add it to `acceptance-evidence.md` (iteration 002, SC-011).
 
 | Copilot version | Date | Commit | Receipts under claude | Receipt IDs written twice | Stop-block rows under claude | Real decisions | Corrective exchanges | Extra stops | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| null | null | null | null | null | null | null | null | null | not walked yet |
+| 1.0.98 | 2026-10-20 | `7ebd9dba` | 0 | 0 | 8 (5 boundary not-presented, 2 material, 1 cap announce), plus 5 workshop-intermediate material rows | 6 | 1 | 2 | **Failed at M1** (B4F-144). T020 delegation: 5 of 5 lenses human-delegated. Specify verdict: 1 row, hook-captured-user-prompt. 4 unrecognized-payload records, two of them from a sub-agent (B4F-147). Corrective exchange: M2 typed again after the question box (B4F-131). Extra stops: the specify packet shown again after M6, by the `claude` boundary block replayed as a message; and the full packet rendered again at M7, which Copilot's own hook recorded as presented-unchanged (B4F-134, independent of B4F-144) |
 
+In Notes, give the hook rows under `claude`, the unrecognized-payload records and the number of captured payloads.
 For every non-zero count, write down what you typed and what came back, word for word. If Copilot no longer runs
 Claude's hooks at all, the zeros still hold but do not show the hook standing down; say so in Notes
 (`host-binding-match.tests.ps1` shows the stand-down with recorded payloads).
 
 ## Cleanup
 
-As in `live-walk.md` (iteration 001), with `C:\scratch\rewalk-202` as the folder to remove. Copy
+First take the capture hook out. It moves its Copilot file into the capture folder and removes its entries from the
+project's Claude settings:
+
+```powershell
+pwsh -File <clone>\tests\host-probes\walk-capture-hook.ps1 -Remove -Project C:\scratch\rewalk-202\copilot -OutDir C:\scratch\rewalk-202\capture
+```
+
+Copy `C:\scratch\rewalk-202\capture` out, or tell the crew where it is, before the folder goes.
+
+Then as in `live-walk.md` (iteration 001), with `C:\scratch\rewalk-202` as the folder to remove. Copy
 `workshop-authority.jsonl`, `conformance-journal.jsonl` and `start-context.json` out first if you want to keep them.

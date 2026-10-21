@@ -18,7 +18,7 @@
     AgentDir                   = '.claude/agents/'
     InstructionsFile           = 'CLAUDE.md'
     StructuredQuestionPrimitive = 'AskUserQuestion'
-    StructuredQuestionGuidance  = 'Use Claude Code AskUserQuestion for human approval gates when it is available in the current session.'
+    StructuredQuestionGuidance  = 'Use Claude Code AskUserQuestion only for clarify questions, when it is available in the current session: never for a workshop question or a boundary verdict.'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'claude'
@@ -57,10 +57,12 @@
             # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends, per dispatcher event
             # ('Default' for the rest). A hook stands down only when a payload positively matches ANOTHER host's signature.
             # Measured on every recorded fixture (tests/fixtures/hook-payloads/claude): prompt and Stop carry prompt_id;
-            # SessionStart carries no permission_mode, which Codex's does.
+            # SessionStart carries no permission_mode, which Codex's does. No Claude payload carries a timestamp, which
+            # every payload Copilot sends Claude's hooks does (B4F-144, probe/copilot-claude-hooks), so the two rules
+            # Copilot's shape would otherwise also match exclude it.
             PayloadSignature    = @{
-                SessionStart = @{ AllOf = @('hook_event_name', 'session_id'); NoneOf = @('permission_mode', 'sessionId') }
-                PostToolUse  = @{ AllOf = @('hook_event_name', 'session_id', 'tool_name'); NoneOf = @('turn_id', 'sessionId') }
+                SessionStart = @{ AllOf = @('hook_event_name', 'session_id'); NoneOf = @('permission_mode', 'sessionId', 'timestamp') }
+                PostToolUse  = @{ AllOf = @('hook_event_name', 'session_id', 'tool_name'); NoneOf = @('turn_id', 'sessionId', 'timestamp') }
                 Default      = @{ AllOf = @('hook_event_name', 'session_id', 'prompt_id'); NoneOf = @('turn_id', 'sessionId') }
             }
             BootstrapDeliveryEvents = @('SessionStart')
@@ -91,6 +93,10 @@
             # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
             # replayed Specrew directive.
             OriginRules             = @(
+                # Feature 202 iteration 002, T028 (B4F-147): a sub-agent's task text reaches the prompt hook as a prompt. A payload
+                # carrying a sub-agent field was not typed by the human, whatever its text, so it can never be an approval.
+                # Claude marks a sub-agent's payloads agent_id (probe/claude, 2.1.303).
+                @{ Origin = 'host-injected'; Rule = 'payload-field'; Fields = @('agent_id', 'parent_agent_id') },
                 @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },

@@ -28,6 +28,9 @@ the technical lenses is untouched; this phase precedes it.
 - Always. The Crew proposes the depth from risk and novelty (see Depth Model), states the reason,
   and the human confirms or adjusts that product-domain depth in the typed product-domain reply.
   The selected depth is not persisted before that typed confirmation.
+- The product-domain question is a workshop question, never a clarify question, on every host: it is asked in visible
+  prose and answered by a typed reply, never through a question tool or picker such as Copilot's `ask_user`, whose
+  answers record nothing. That holds for the first question about a new feature too.
 
 ## Design Decision Points
 

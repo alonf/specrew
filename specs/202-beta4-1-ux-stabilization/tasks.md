@@ -292,7 +292,8 @@ parity; SelfLeakLintLane; the consumer-language check.
 ### Execution order (iteration 002)
 
 T017, T016, co-review round 1, (rounds 2 to 4 on the fixes), T022, T020, T021, T018, T019, a further round after an
-allowance reset, T023, T024.
+allowance reset, T023, T024. After the failed SC-011 re-walk (DRIFT-006): T025, T026, T027, T028, T029, one review
+round, T030.
 
 - T017 before T016: both change the turn record and the dispatcher twins, and T016's duplicate-receipt refusal builds on
   T017's message identity.
@@ -423,16 +424,77 @@ allowance reset, T023, T024.
   - **Depends:** all iteration 002 tasks.
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/002/**`.
 
+### Phase 14: US8, the failed Copilot re-walk (DRIFT-006)
+
+Added 2026-10-21 on the maintainer's `go with the fix plan`. The re-walk failed SC-011 at M1: Copilot also runs
+Claude's hooks, sends them a payload shape no test had, and the dispatcher handled it as Claude's (B4F-144).
+
+- [x] T025 [owner: Implementer] [sp: 1.0] [US8] **Capture the real payloads (B4F-145, layer 1).** Done 2026-10-21. The probe captured every channel on Copilot 1.0.101, Claude 2.1.303 and Codex 0.163.0, sub-agents included; Copilot runs Claude's hooks only in a trusted folder that is a git repository. The fixtures are in `tests/fixtures/hook-payloads/probe/`, with no secrets. On the old code the probe failed 14 checks, all on Claude's hooks under Copilot; after T026 it passes 108 of 108, with the user's own hook and config files unchanged.
+  - **Work:** `tests/host-probes/host-payload-capture-probe.ps1` runs Copilot, Claude and Codex in scratch folders with
+    capture hooks on every event, a plain prompt and a sub-agent prompt each, Copilot's own hooks and Claude's hooks as
+    Copilot runs them. It replays every capture through the deployed hooks, exports the payloads as fixtures with their
+    provenance, and leaves the user's own host settings unchanged. The deployed-hook harness moves out of the binding
+    suite into `tests/host-probes/deployed-hook-harness.ps1`, shared by the probe and the suites.
+  - **Acceptance:** a capture on every channel, including Claude's hooks under Copilot; a run that captures nothing on
+    that channel fails.
+  - **Trace:** FR-028; SC-011.
+  - **Owns:** `tests/host-probes/**`, `tests/fixtures/hook-payloads/probe/**`.
+
+- [x] T026 [owner: Implementer] [sp: 0.75] [US8] **Copilot's second payload shape (B4F-144).** Done 2026-10-21. Copilot's payload signature lists two shapes, its own and the one it sends Claude's hooks (`timestamp` on every event); Claude's SessionStart and PostToolUse rules refuse `timestamp`, which separates the two hosts without a SessionStart decision. `host-binding-match.tests.ps1` part 1b: 32 failures on the old code, green after; twin parity and the per-host checks pass.
+  - **Work:** a binding's payload signature may list alternatives. Copilot's gains the shape it sends Claude's hooks
+    (snake_case with `timestamp`, never `prompt_id`, `permission_mode`, `turn_id` or `model`); Claude's SessionStart and
+    PostToolUse rules refuse `timestamp`, which Claude never sends.
+  - **RED:** the probe payloads in `host-binding-match.tests.ps1` (part 1b): 32 failures on the old code, every one on
+    Claude's hooks under Copilot.
+  - **Acceptance:** every probe payload is handled by its own host's hook and stands down in the others with nothing
+    written; the live probe passes.
+  - **Trace:** FR-028; SC-011.
+  - **Depends:** T025.
+  - **Owns:** `hosts/*/host.psd1`, both dispatcher twins, both `deploy-refocus-hooks.ps1` twins,
+    `tests/unit/host-binding-match.tests.ps1`.
+
+- [x] T027 [owner: Implementer] [sp: 0.25] [US8] **A reader for the unrecognized-payload record.** Done 2026-10-21. `host-binding-match.tests.ps1` fails on any record from a recorded payload (parts 1 and 1b), the probe fails on any record from a capture, and `copilot-rewalk.md` counts the records in `.specrew/runtime/hook-health/` and expects 0, beside a new count of hook rows under `claude`, the check the first walk failed at M1.
+  - **Work:** the binding suite, the probe and the re-walk's disk checks each count `unrecognized-payload-*.json` and fail
+    on any.
+  - **Trace:** FR-028; DRIFT-006's class closure.
+  - **Depends:** T026.
+  - **Owns:** `tests/unit/host-binding-match.tests.ps1`, `tests/host-probes/**`, `iterations/002/copilot-rewalk.md`.
+
+- [x] T028 [owner: Implementer] [sp: 0.5] [US8] **A sub-agent's task text is never a human approval (B4F-147).** Done 2026-10-21. Each host's origin rules start with a rule on the payload's own fields: a payload carrying `agent_id`, `parent_agent_id`, `agentId` or `parentAgentId` is host-injected, never typed by the human. `subagent-prompt-authority.tests.ps1` puts `approved for review round` into ten sub-agent payloads across Copilot's own channel, Claude's hooks under Copilot and Claude's own channel, and runs the deployed hook and then the real provider: RED on the old code with 23 failures (every case typed-user, and every one stored), green after; the two controls without a sub-agent field store the approval. The test pins the provider to its temp project and fails if the repository's stores change (DRIFT-007, B4F-148).
+  - **Trace:** FR-027, FR-028.
+  - **Owns:** `hosts/*/host.psd1`, both dispatcher twins, `tests/unit/subagent-prompt-authority.tests.ps1`.
+
+- [x] T029 [owner: Implementer] [sp: 0.5] [US8] **Product-domain questions in prose (B4F-131, T021's rule).** Done 2026-10-21. Every host's composed guidance now says the first question about a new feature is the product-domain question and never a clarify question; Copilot's names `ask_user` as its question tool without declaring it a structured primitive (`QuestionTool` in its binding); the Codex and Claude bindings no longer say to use their question tool "for human approval gates"; the launch contract and the product-domain lens say the same. The extended scan found the instruction T021 missed, in Copilot's own agent file (`templates/github/agents/squad.agent.md`): "ask an explicit interactive question such as 'What do you want to build?'". It now asks in prose, never through `ask_user`. `workshop-question-tool.tests.ps1` (122 shipped files): RED on the old text with 11 failures, green after.
+  - **Work:** every shipped instruction says product-domain and grounding questions are workshop questions, asked as
+    prose and answered by a typed reply, never through the host's question tool; Copilot's guidance names `ask_user`.
+  - **RED:** T021's text test extended to the templates and refocus files, and to the clarify-picker lines.
+  - **Trace:** FR-032.
+  - **Owns:** `hosts/*/host.psd1`, `scripts/internal/launch-contract.ps1`, coordinator guidance and templates,
+    `tests/unit/workshop-question-tool.tests.ps1`.
+
+- [ ] T030 [owner: Implementer] [sp: 0.25] [US8] **Acceptance and the re-walk with a capture hook.**
+  - **Work:** the acceptance evidence for T025 to T029; `copilot-rewalk.md` installs a capture hook beside Specrew's, so
+    the walk keeps every payload it sees, and adds the unrecognized-payload check.
+  - **Progress (2026-10-21):** `tests/host-probes/walk-capture-hook.ps1` installs, summarizes and removes the capture
+    hook; checked in scratch: the captures are written, the hook groups survive Specrew's own hook redeploy, and removal
+    restores the project's Claude settings exactly. `copilot-rewalk.md` uses it. The evidence waits for the review round
+    and the walk.
+  - **Trace:** SC-011.
+  - **Depends:** T025 to T029 and their review round.
+  - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/002/**`.
+
 ### Dependencies (iteration 002)
 
 ```text
 T017 -> T016 -> [round 1] -> T022 -> T020, T021
 T017 -> T018 -> T019 -> [round after reset] -> T023 -> T024
+T025 -> T026 -> T027; T028; T029 -> [one round] -> T030
 ```
 
 ### Coverage (iteration 002)
 
-- **US8:** T016 to T024.
+- **US8:** T016 to T030.
 - **FR-027:** T017. **FR-028:** T016. **FR-029:** T018. **FR-030:** T019. **FR-031:** T020. **FR-032:** T021.
-  **FR-033:** T022. **FR-034:** T023. **SC-010:** T017, T024. **SC-011:** T016, T024.
+  **FR-033:** T022. **FR-034:** T023. **SC-010:** T017, T024. **SC-011:** T016, T024, T025 to T027, T030.
+  **FR-028** also T025 to T028; **FR-027** also T028; **FR-032** also T029.
 - FR-022 and FR-023 moved to beta5 (iteration 002 DRIFT-001).

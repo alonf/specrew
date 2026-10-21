@@ -136,7 +136,7 @@
     },
     {
       "path": "knowledge/design-lenses/product-domain.md",
-      "sha256": "a7b5bf73bfbe392fdd6efe3cfbb7547b31d54a80ed262a2b2b06c6d34a9139c4"
+      "sha256": "70323fdc2c4c622df3c643e08eadfaa3338a79c0b5afdc3b3a908bed969c97df"
     },
     {
       "path": "knowledge/design-lenses/product-domain.schema.json",
@@ -268,7 +268,7 @@
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
-      "sha256": "bf57bc8cb4cd4af226a7b2dc3917a5c1c4c9a396fd02ad5eec4b9e10d8cedcce"
+      "sha256": "565f9d36a2c6a8159b1add881b36b9ec66da3e2785d3ab1975d3f33313abf2f6"
     },
     {
       "path": "scripts/deploy-speckit-extension.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "415e421a99971e1281934cc3bcaddccbb8f7b2171d4b3366696307689a1ec839"
+      "sha256": "2abdeae9eca62b7d2c4cfd74db34b4714b7cb9cf15aaefd3b6040a8bad683a7c"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",

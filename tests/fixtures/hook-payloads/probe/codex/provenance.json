@@ -1,0 +1,127 @@
+{
+  "task": "B4F-144 fix (feature 202, iteration 002)",
+  "channel": "codex",
+  "method": "tests/host-probes/host-payload-capture-probe.ps1: the real host CLI, headless, in a scratch folder outside any repository; a capture hook copied raw stdin bytes. Environment values are not recorded.",
+  "fixtures": [
+    {
+      "fixture": "probe-posttooluse-1.json",
+      "channel": "codex",
+      "event": "PostToolUse",
+      "captured_utc": "10/20/2026 23:05:03",
+      "host_version": "codex-cli 0.163.0",
+      "stdin_bytes": 656,
+      "sha256": "2f5d3f7524479666eb0d25e0368c16bda7788c7860bcb3c6d9f14a9e18b238c8",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "session_id",
+        "tool_input",
+        "tool_name",
+        "tool_response",
+        "tool_use_id",
+        "transcript_path",
+        "turn_id"
+      ],
+      "host_env_names": [
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-pretooluse-1.json",
+      "channel": "codex",
+      "event": "PreToolUse",
+      "captured_utc": "10/20/2026 23:05:01",
+      "host_version": "codex-cli 0.163.0",
+      "stdin_bytes": 623,
+      "sha256": "33aa03d7f4755dbf9af6ca27aa5e36d6b694611e6d86cebd0fc92ebce51dcd12",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "session_id",
+        "tool_input",
+        "tool_name",
+        "tool_use_id",
+        "transcript_path",
+        "turn_id"
+      ],
+      "host_env_names": [
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-sessionstart-1.json",
+      "channel": "codex",
+      "event": "SessionStart",
+      "captured_utc": "10/20/2026 23:04:50",
+      "host_version": "codex-cli 0.163.0",
+      "stdin_bytes": 459,
+      "sha256": "2d3124a1f8274e4c2add218f0cb344ba4d10118a11d4668eab8a2998314ed562",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "session_id",
+        "source",
+        "transcript_path"
+      ],
+      "host_env_names": [
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-stop-1.json",
+      "channel": "codex",
+      "event": "Stop",
+      "captured_utc": "10/20/2026 23:04:54",
+      "host_version": "codex-cli 0.163.0",
+      "stdin_bytes": 538,
+      "sha256": "7ba6a77f07c96d2ac9fb18d093784b5f230d2572331fe84352fd5b537c486c83",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "last_assistant_message",
+        "model",
+        "permission_mode",
+        "session_id",
+        "stop_hook_active",
+        "transcript_path",
+        "turn_id"
+      ],
+      "host_env_names": [
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-userpromptsubmit-1.json",
+      "channel": "codex",
+      "event": "UserPromptSubmit",
+      "captured_utc": "10/20/2026 23:04:51",
+      "host_version": "codex-cli 0.163.0",
+      "stdin_bytes": 545,
+      "sha256": "548d852bd75a7269df56e79179cd73db1bb936d55b3438bb53eb3af982687cb1",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "prompt",
+        "session_id",
+        "transcript_path",
+        "turn_id"
+      ],
+      "host_env_names": [
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    }
+  ]
+}

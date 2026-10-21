@@ -15,112 +15,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $fixtureRoot = Join-Path $repoRoot 'tests\fixtures\hook-payloads'
-$deployer = Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'
-$deployedDispatcherSource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'
 $script:failCount = 0
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
-$probeBody = @'
-# Probe provider: records the arguments the dispatcher hands a provider, then stays silent.
-$out = Join-Path (Get-Location).Path '.probe'
-[IO.Directory]::CreateDirectory($out) | Out-Null
-$name = '{0}-{1}.json' -f (Split-Path -Leaf $PSCommandPath), [guid]::NewGuid().ToString('N')
-[IO.File]::WriteAllText((Join-Path $out $name), (ConvertTo-Json -InputObject @($args | ForEach-Object { [string]$_ }) -Compress), [Text.UTF8Encoding]::new($false))
-exit 0
-'@
-
-function New-TurnRecordProject {
-    param([string]$HostKind)
-    $base = [IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ('trc-{0}-{1}' -f $HostKind, [guid]::NewGuid().ToString('N').Substring(0, 8))))
-    $proj = Join-Path $base 'proj'
-    $userHome = Join-Path $base 'home'
-    $scripts = Join-Path $proj '.specify\extensions\specrew-speckit\scripts'
-    New-Item -ItemType Directory -Force -Path (Join-Path $proj '.specrew\runtime'), $scripts, $userHome | Out-Null
-    Copy-Item -LiteralPath $deployedDispatcherSource -Destination (Join-Path $scripts 'specrew-hook-dispatcher.ps1')
-    # The probes take the shipped providers' file names, so the dispatcher's provider-keyed argument rules apply.
-    foreach ($leaf in 'specrew-handover-provider.ps1', 'specrew-bootstrap-provider.ps1') {
-        [IO.File]::WriteAllText((Join-Path $scripts $leaf), $probeBody, [Text.UTF8Encoding]::new($false))
-    }
-    $catalog = [ordered]@{
-        schema_version = '1'
-        providers      = @(
-            [ordered]@{ id = 'bootstrap'; kind = 'inject'; events = @('SessionStart', 'PreInvocation'); order = 20; budget_share = 0.5; command = 'specrew-bootstrap-provider.ps1' },
-            [ordered]@{ id = 'handover'; kind = 'inject'; events = @('UserPromptSubmit', 'PreInvocation', 'Stop', 'agentStop'); order = 30; budget_share = 0.5; command = 'specrew-handover-provider.ps1' }
-        )
-    }
-    [IO.File]::WriteAllText((Join-Path $proj '.specify\extensions\specrew-speckit\refocus-scopes.json'), ($catalog | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
-    $deployLog = Join-Path $base 'deploy.log'
-    & pwsh -NoProfile -ExecutionPolicy Bypass -File $deployer -ProjectPath $proj -HostKind $HostKind -UserHomeOverride $userHome *> $deployLog
-    if ($LASTEXITCODE -ne 0) { throw ("deployer failed for {0}: {1}" -f $HostKind, (Get-Content -LiteralPath $deployLog -Raw)) }
-    return [pscustomobject]@{ Base = $base; Project = $proj; Home = $userHome; HostKind = $HostKind }
-}
-
-function Get-DeployedHookCommand {
-    param($Fixture, [string]$NativeEvent)
-    switch ($Fixture.HostKind) {
-        'claude' {
-            $cfg = Get-Content -LiteralPath (Join-Path $Fixture.Project '.claude\settings.local.json') -Raw | ConvertFrom-Json
-            return [string]$cfg.hooks.$NativeEvent[0].hooks[0].command
-        }
-        'codex' {
-            $cfg = Get-Content -LiteralPath (Join-Path $Fixture.Home '.codex\hooks.json') -Raw | ConvertFrom-Json
-            return [string]$cfg.hooks.$NativeEvent[0].hooks[0].command
-        }
-        'copilot' {
-            $cfg = Get-Content -LiteralPath (Join-Path $Fixture.Home '.copilot\hooks\specrew-refocus.json') -Raw | ConvertFrom-Json
-            return [string]$cfg.hooks.$NativeEvent[0].powershell
-        }
-    }
-    throw "no deployed command reader for $($Fixture.HostKind)"
-}
-
-function Split-CommandLine {
-    param([string]$CommandLine)
-    $tokens = [System.Collections.Generic.List[string]]::new()
-    foreach ($m in [regex]::Matches($CommandLine, '"((?:[^"\\]|\\.)*)"|(\S+)')) {
-        if ($m.Groups[1].Success) { $tokens.Add($m.Groups[1].Value.Replace('\"', '"')) } else { $tokens.Add($m.Groups[2].Value) }
-    }
-    return $tokens.ToArray()
-}
-
-function Invoke-DeployedHook {
-    # Runs the deployed command exactly as the host would: stdin carries the fixture's raw bytes, and every
-    # project-root variable any host manifest names is pinned to the temp project, so a fixture can never
-    # resolve to a real (governed) project from this test process's environment.
-    param($Fixture, [string]$NativeEvent, [byte[]]$StdinBytes)
-    Get-ChildItem -LiteralPath (Join-Path $Fixture.Project '.probe') -ErrorAction SilentlyContinue | Remove-Item -Force
-    $argv = Split-CommandLine -CommandLine (Get-DeployedHookCommand -Fixture $Fixture -NativeEvent $NativeEvent)
-    $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = $argv[0]
-    foreach ($a in $argv[1..($argv.Count - 1)]) { $psi.ArgumentList.Add($a) }
-    $psi.WorkingDirectory = $Fixture.Project
-    $psi.UseShellExecute = $false
-    # Hosts spawn hooks with a hidden console, so the hook's console input code page is the OEM one (measured
-    # ibm437 on every validated host, research.md T001). Without a console .NET falls back to UTF-8 and the
-    # decoding defect is invisible, so the test spawns the same way the hosts do.
-    $psi.CreateNoWindow = $true
-    $psi.RedirectStandardInput = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    foreach ($var in 'CLAUDE_PROJECT_DIR', 'CURSOR_PROJECT_DIR', 'COPILOT_PROJECT_DIR') { $psi.Environment[$var] = $Fixture.Project }
-    $psi.Environment.Remove('SPECREW_REFOCUS_DISABLE') | Out-Null
-    $psi.Environment.Remove('SPECREW_DISABLE_EVENTS') | Out-Null
-    $proc = [System.Diagnostics.Process]::Start($psi)
-    $outTask = $proc.StandardOutput.ReadToEndAsync()
-    $errTask = $proc.StandardError.ReadToEndAsync()
-    $proc.StandardInput.BaseStream.Write($StdinBytes, 0, $StdinBytes.Length)
-    $proc.StandardInput.Close()
-    if (-not $proc.WaitForExit(90000)) { $proc.Kill($true); throw "deployed hook timed out ($($Fixture.HostKind) $NativeEvent)" }
-    $null = $outTask.Result; $stderr = $errTask.Result
-    $calls = @{}
-    foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $Fixture.Project '.probe') -Filter *.json -ErrorAction SilentlyContinue)) {
-        $leaf = $f.Name -replace '-[0-9a-f]{32}\.json$', ''
-        $calls[$leaf] = @([IO.File]::ReadAllText($f.FullName, [Text.Encoding]::UTF8) | ConvertFrom-Json)
-    }
-    return [pscustomobject]@{ ExitCode = $proc.ExitCode; Calls = $calls; StdErr = $stderr }
-}
+# The deploy-and-run harness is shared with the layer-1 host payload probe (B4F-145).
+. (Join-Path $repoRoot 'tests\host-probes\deployed-hook-harness.ps1')
 
 function Get-ArgValue {
     param([string[]]$ArgList, [string]$Name)
@@ -165,6 +66,8 @@ try {
                 $r = Invoke-DeployedHook -Fixture $fx -NativeEvent $nativeEvent[$target][$kind] -StdinBytes ([IO.File]::ReadAllBytes($file.FullName))
                 $label = "[$source payload -> $target hook] $($file.BaseName)"
                 Assert-True ($r.ExitCode -eq 0) "$label - exits 0"
+                # The reader for the unrecognized-payload record (B4F-144): no recorded payload may produce one.
+                Assert-True (@(Get-UnrecognizedLogs $fx).Count -eq 0) "$label - recognized: no unrecognized-payload record"
                 $ran = @($r.Calls.Keys).Count -gt 0
                 if ($source -eq $target) {
                     Assert-True $ran "$label - its own host payload is handled (a provider ran)"
@@ -172,6 +75,51 @@ try {
                 else {
                     Assert-True (-not $ran) "$label - another host payload stands down: no provider ran"
                     Assert-True (@(Get-HealthFiles $fx).Count -eq 0) "$label - and nothing was written, not even a hook-health receipt"
+                }
+            }
+        }
+    }
+
+    Write-Host '--- part 1b: what the layer-1 probe captured from the real hosts, on every channel (B4F-144) ---'
+    # tests/fixtures/hook-payloads/probe/<channel>/ comes from tests/host-probes/host-payload-capture-probe.ps1. The
+    # copilot-claude-hooks channel is Claude's hooks as Copilot runs them: the channel B4F-129 is about, which T016's
+    # fixtures never covered. Its payloads must stand down in Claude's hook and in Codex's; Copilot's own hook never
+    # receives them. Every other channel is handled by its own host's hook and stands down in the others.
+    $probeRoot = Join-Path $fixtureRoot 'probe'
+    $probeNative = @{
+        claude  = @{ prompt = 'UserPromptSubmit'; start = 'SessionStart'; stop = 'Stop'; tool = 'PostToolUse' }
+        codex   = @{ prompt = 'UserPromptSubmit'; start = 'SessionStart'; stop = 'Stop'; tool = 'PostToolUse' }
+        copilot = @{ prompt = 'userPromptSubmitted'; start = 'sessionStart'; stop = 'agentStop' }
+    }
+    function Get-ProbeFixtureKind { param([string]$Name) if ($Name -match '(?i)userprompt') { 'prompt' } elseif ($Name -match '(?i)sessionstart') { 'start' } elseif ($Name -match '(?i)stop') { 'stop' } elseif ($Name -match '(?i)posttooluse') { 'tool' } else { $null } }
+    $probeChannels = @(Get-ChildItem -LiteralPath $probeRoot -Directory | Sort-Object Name)
+    Assert-True (@($probeChannels | Where-Object Name -eq 'copilot-claude-hooks').Count -eq 1) 'the probe fixtures include the Claude-hook channel as Copilot runs it'
+    foreach ($channel in $probeChannels) {
+        foreach ($file in @(Get-ChildItem -LiteralPath $channel.FullName -Filter *.json | Where-Object { $_.Name -ne 'provenance.json' })) {
+            $kind = Get-ProbeFixtureKind $file.BaseName
+            if ($null -eq $kind) { continue }
+            foreach ($target in 'claude', 'codex', 'copilot') {
+                if ($channel.Name -eq 'copilot-claude-hooks' -and $target -eq 'copilot') { continue }
+                $native = $probeNative[$target][$kind]
+                if ($null -eq $native) { continue }
+                $fx = $projects[$target]
+                $deployed = $null
+                try { $deployed = Get-DeployedHookCommand -Fixture $fx -NativeEvent $native } catch { $deployed = $null }
+                if ([string]::IsNullOrWhiteSpace($deployed)) { continue }   # Specrew deploys no hook on this event for this host
+                Clear-Runtime $fx
+                $before = Get-HarnessRuntimeSnapshot $fx
+                $r = Invoke-DeployedHook -Fixture $fx -NativeEvent $native -StdinBytes ([IO.File]::ReadAllBytes($file.FullName))
+                $label = "[probe $($channel.Name) payload -> $target hook] $($file.BaseName)"
+                Assert-True ($r.ExitCode -eq 0) "$label - exits 0"
+                Assert-True (@(Get-UnrecognizedLogs $fx).Count -eq 0) "$label - recognized: no unrecognized-payload record"
+                $ran = @($r.Calls.Keys).Count -gt 0
+                if ($channel.Name -eq $target) {
+                    if ($kind -ne 'tool') { Assert-True $ran "$label - its own host payload is handled (a provider ran)" }
+                }
+                else {
+                    Assert-True (-not $ran) "$label - another host payload stands down: no provider ran"
+                    $changed = @(Compare-Object -ReferenceObject $before -DifferenceObject (Get-HarnessRuntimeSnapshot $fx))
+                    Assert-True ($changed.Count -eq 0) "$label - and nothing under .specrew/runtime changed"
                 }
             }
         }

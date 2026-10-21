@@ -1,0 +1,298 @@
+{
+  "task": "B4F-144 fix (feature 202, iteration 002)",
+  "channel": "copilot",
+  "method": "tests/host-probes/host-payload-capture-probe.ps1: the real host CLI, headless, in a scratch folder outside any repository; a capture hook copied raw stdin bytes. Environment values are not recorded.",
+  "fixtures": [
+    {
+      "fixture": "probe-agentstop-subagent-1.json",
+      "channel": "copilot",
+      "event": "agentStop",
+      "captured_utc": "10/20/2026 23:04:16",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 527,
+      "sha256": "d70843937856936570ff1c637b5b17172092172412e3b7c0169a9681782b0f84",
+      "field_names": [
+        "agentId",
+        "agentType",
+        "cwd",
+        "parentAgentId",
+        "sessionId",
+        "stop_hook_active",
+        "stopReason",
+        "timestamp",
+        "transcriptPath"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-agentstop-1.json",
+      "channel": "copilot",
+      "event": "agentStop",
+      "captured_utc": "10/20/2026 23:04:01",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 395,
+      "sha256": "1d8899b339784c933e032837892d9b00c03fde240adeb772f8e203182457f324",
+      "field_names": [
+        "cwd",
+        "sessionId",
+        "stop_hook_active",
+        "stopReason",
+        "timestamp",
+        "transcriptPath"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-posttooluse-1.json",
+      "channel": "copilot",
+      "event": "postToolUse",
+      "captured_utc": "10/20/2026 23:04:19",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 573,
+      "sha256": "0d414e359f401af0b1c0691a0726c1a603bd821541e6924e28dcab638f988bfc",
+      "field_names": [
+        "cwd",
+        "sessionId",
+        "timestamp",
+        "toolArgs",
+        "toolName",
+        "toolResult"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-pretooluse-1.json",
+      "channel": "copilot",
+      "event": "preToolUse",
+      "captured_utc": "10/20/2026 23:04:11",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 504,
+      "sha256": "d1ecbc39d5033cfc6d568f53be3569435fb663f013af96280a9c67fcfcbb3877",
+      "field_names": [
+        "cwd",
+        "sessionId",
+        "timestamp",
+        "toolArgs",
+        "toolName"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-sessionend-1.json",
+      "channel": "copilot",
+      "event": "sessionEnd",
+      "captured_utc": "10/20/2026 23:04:03",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 193,
+      "sha256": "35079e420c7a06f752cb09bf0a924bdef25ed4f63180201363f77fda92bea7b0",
+      "field_names": [
+        "cwd",
+        "reason",
+        "sessionId",
+        "timestamp"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-sessionstart-1.json",
+      "channel": "copilot",
+      "event": "sessionStart",
+      "captured_utc": "10/20/2026 23:03:59",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 247,
+      "sha256": "f6aa17cbd826f08d69d8aeef67fa25443a7f2b24a7ced794f99dfc16848df63e",
+      "field_names": [
+        "cwd",
+        "initialPrompt",
+        "sessionId",
+        "source",
+        "timestamp"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-subagentstop-subagent-1.json",
+      "channel": "copilot",
+      "event": "subagentStop",
+      "captured_utc": "10/20/2026 23:04:18",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 572,
+      "sha256": "f4e5db06f947120c1949bc319e1314042cc920e8bf19234c6316830a7810eb08",
+      "field_names": [
+        "agentId",
+        "agentName",
+        "agentType",
+        "cwd",
+        "parentAgentId",
+        "response",
+        "sessionId",
+        "stop_hook_active",
+        "stopReason",
+        "timestamp",
+        "transcriptPath"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-userpromptsubmitted-subagent-1.json",
+      "channel": "copilot",
+      "event": "userPromptSubmitted",
+      "captured_utc": "10/20/2026 23:04:13",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 497,
+      "sha256": "f28c2998238f383db45230f9f96aeb46453d712d553b6498b3808134191230d5",
+      "field_names": [
+        "agentId",
+        "agentType",
+        "cwd",
+        "parentAgentId",
+        "prompt",
+        "sessionId",
+        "timestamp"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "probe-userpromptsubmitted-1.json",
+      "channel": "copilot",
+      "event": "userPromptSubmitted",
+      "captured_utc": "10/20/2026 23:03:59",
+      "host_version": "GitHub Copilot CLI 1.0.101.",
+      "stdin_bytes": 225,
+      "sha256": "f2af914680521add68aabe275f299b2ec57779f526f4723e2e084062436c9c11",
+      "field_names": [
+        "cwd",
+        "prompt",
+        "sessionId",
+        "timestamp"
+      ],
+      "host_env_names": [
+        "CLAUDE_PROJECT_DIR",
+        "COPILOT_CLI",
+        "COPILOT_CLI_BINARY_VERSION",
+        "COPILOT_CLI_RESOLVED_DIST_DIR",
+        "COPILOT_HOOK_DIR",
+        "COPILOT_PROJECT_DIR",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "POWERSHELL_UPDATECHECK",
+        "PROMPT",
+        "PSExecutionPolicyPreference"
+      ],
+      "origin": "recorded"
+    }
+  ]
+}

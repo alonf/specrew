@@ -2,6 +2,9 @@
     # Identity
     Kind          = 'copilot'
     DisplayName   = 'GitHub Copilot CLI'
+    # Feature 202 iteration 002, T029 (B4F-131): Copilot's question box. It is named so the guidance can keep it out of
+    # workshop questions; it is not a StructuredQuestionPrimitive, because a box answer is never captured.
+    QuestionTool = 'ask_user'
     CrewRuntimeDisplayName = 'Squad'
     Status        = 'supported'
     SchemaVersion = 1
@@ -44,11 +47,20 @@
         SettingsVersion = 1
         OwnsSettingsFile = $true
         DispatcherRuntime = @{
-            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends. Measured on every
-            # recorded fixture (tests/fixtures/hook-payloads/copilot): camelCase sessionId, never session_id or
-            # hook_event_name. Copilot runs Claude's hooks too (B4F-129); this is what lets those hooks stand down.
+            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends, on both of the channels
+            # it uses; a payload matching either alternative is Copilot's. Copilot runs Claude's hooks too (B4F-129), and
+            # this is what lets those hooks stand down.
+            #   1. Copilot's own hooks: camelCase sessionId, never session_id or hook_event_name (every fixture under
+            #      tests/fixtures/hook-payloads/copilot and probe/copilot).
+            #   2. Claude's hooks, as Copilot runs them (B4F-144): snake_case like Claude's, but always with a timestamp,
+            #      which no Claude or Codex payload carries, and never Claude's prompt_id or permission_mode, nor Codex's
+            #      turn_id or model. Measured by the layer-1 probe on Copilot 1.0.101 (probe/copilot-claude-hooks), every
+            #      event, sub-agents included.
             PayloadSignature = @{
-                Default = @{ AllOf = @('sessionId'); NoneOf = @('session_id', 'hook_event_name') }
+                Default = @(
+                    @{ AllOf = @('sessionId'); NoneOf = @('session_id', 'hook_event_name') },
+                    @{ AllOf = @('hook_event_name', 'session_id', 'timestamp'); NoneOf = @('prompt_id', 'permission_mode', 'turn_id', 'model', 'sessionId') }
+                )
             }
             BootstrapDeliveryEvents = @('SessionStart')
             B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
@@ -79,6 +91,10 @@
             # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
             # replayed Specrew directive.
             OriginRules             = @(
+                # Feature 202 iteration 002, T028 (B4F-147): a sub-agent's task text reaches the prompt hook as a prompt. A payload
+                # carrying a sub-agent field was not typed by the human, whatever its text, so it can never be an approval.
+                # Copilot marks its own channel's sub-agent payloads agentId and parentAgentId (probe/copilot, 1.0.101).
+                @{ Origin = 'host-injected'; Rule = 'payload-field'; Fields = @('agentId', 'parentAgentId', 'agent_id', 'parent_agent_id') },
                 @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },

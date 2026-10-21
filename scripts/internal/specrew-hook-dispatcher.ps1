@@ -561,6 +561,8 @@ function ConvertFrom-DispatcherRuntimeBinding {
 function Test-DispatcherPayloadSignature {
     # $true when the payload carries every AllOf field and none of the NoneOf fields of the rule for this event
     # ('Default' when the event has no rule of its own); $false when it does not; $null when there is no rule.
+    # A rule may list alternatives, and then any one of them matches (B4F-144: Copilot sends its own hooks one shape
+    # and Claude's hooks, which it also runs, another).
     param($PayloadKeys, $Signature, [string]$EventName)
     if ($null -eq $Signature) { return $null }
     $rule = $null
@@ -568,9 +570,14 @@ function Test-DispatcherPayloadSignature {
     elseif (Test-DispatcherMapKey -Map $Signature -Key 'Default') { $rule = Get-DispatcherMapValue -Map $Signature -Key 'Default' }
     if ($null -eq $rule) { return $null }
     $keys = @($PayloadKeys)
-    foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $rule -Key 'AllOf' -Default @()))) { if ($keys -cnotcontains $field) { return $false } }
-    foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $rule -Key 'NoneOf' -Default @()))) { if ($keys -ccontains $field) { return $false } }
-    return $true
+    foreach ($alternative in @($rule)) {
+        if ($null -eq $alternative) { continue }
+        $matched = $true
+        foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $alternative -Key 'AllOf' -Default @()))) { if ($keys -cnotcontains $field) { $matched = $false; break } }
+        if ($matched) { foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $alternative -Key 'NoneOf' -Default @()))) { if ($keys -ccontains $field) { $matched = $false; break } } }
+        if ($matched) { return $true }
+    }
+    return $false
 }
 
 function Get-DispatcherPayloadHostMatch {
@@ -745,6 +752,7 @@ $script:DefaultTurnInputFieldMap = @{
     StopHookActive = @('stop_hook_active')
 }
 $script:DefaultTurnOriginRules = @(
+    @{ Origin = 'host-injected'; Rule = 'payload-field'; Fields = @('agent_id', 'parent_agent_id', 'agentId', 'parentAgentId') },
     @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
     @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
     @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-—]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
@@ -831,7 +839,7 @@ function Test-DispatcherHookOutputJournalText {
 }
 
 function Get-DispatcherTurnOrigin {
-    param([string]$EventName, [AllowNull()][string]$TypedText, $Binding, [AllowNull()][string]$ProjectRoot)
+    param([string]$EventName, [AllowNull()][string]$TypedText, $Binding, [AllowNull()][string]$ProjectRoot, [string[]]$PayloadKeys = @())
     if ($EventName -notin @('UserPromptSubmit', 'PreInvocation')) { return 'unknown' }
     if ([string]::IsNullOrWhiteSpace($TypedText)) { return 'unknown' }
     $transformName = [string](Get-DispatcherMapValue -Map $Binding -Key 'InputTransform' -Default '')
@@ -860,6 +868,13 @@ function Get-DispatcherTurnOrigin {
                 $pattern = [string](Get-DispatcherMapValue -Map $rule -Key 'Pattern')
                 if (-not [string]::IsNullOrWhiteSpace($pattern) -and $TypedText -match $pattern) { return $ruleOrigin }
             }
+            'payload-field' {
+                # Feature 202 iteration 002, T028 (B4F-147): a payload that carries one of these fields was not typed by the
+                # human, whatever its text. A sub-agent's task text reaches the prompt hook marked this way.
+                foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $rule -Key 'Fields' -Default @()))) {
+                    if (@($PayloadKeys) -ccontains $field) { return $ruleOrigin }
+                }
+            }
             'prompt-present' { return $ruleOrigin }
         }
     }
@@ -877,6 +892,7 @@ function ConvertTo-SpecrewTurnRecord {
         [AllowNull()][string]$ProjectRoot
     )
     $sessionId = Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'SessionId')
+    $payloadKeys = if ($null -ne $Payload -and $Payload -is [psobject]) { @($Payload.PSObject.Properties | ForEach-Object { [string]$_.Name }) } else { @() }
     $isPromptEvent = $EventName -in @('UserPromptSubmit', 'PreInvocation')
     $typedText = if ($isPromptEvent) { Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'Prompt') } else { $null }
     $toolName = Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'ToolName')
@@ -902,7 +918,7 @@ function ConvertTo-SpecrewTurnRecord {
         safe_session_id  = Get-SanitizedSessionId -RawSessionId ([string]$sessionId)
         source           = $(Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'Source'))
         typed_text       = $typedText
-        origin           = Get-DispatcherTurnOrigin -EventName $EventName -TypedText $typedText -Binding $Binding -ProjectRoot $ProjectRoot
+        origin           = Get-DispatcherTurnOrigin -EventName $EventName -TypedText $typedText -Binding $Binding -ProjectRoot $ProjectRoot -PayloadKeys $payloadKeys
         transcript_path  = $(Get-DispatcherTurnFieldValue -Payload $Payload -Paths (Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'TranscriptPath'))
         stop_hook_active = ($stopHookActive -eq $true -or [string]$stopHookActive -eq 'True')
         tool             = $tool

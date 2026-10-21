@@ -119,16 +119,21 @@ function Resolve-ProjectPathFromManifest {
 }
 
 function ConvertTo-StablePayloadSignature {
-    # Feature 202 iteration 002, T016: a host's PayloadSignature as sorted, string-only data.
+    # Feature 202 iteration 002, T016: a host's PayloadSignature as sorted, string-only data. An event's rule may list
+    # alternatives (B4F-144); one alternative stays a single rule, so a binding without alternatives encodes as before.
     param($Signature)
     if ($null -eq $Signature) { return $null }
     $stable = [ordered]@{}
     foreach ($eventKey in @(Get-ManifestKeys -Map $Signature | Sort-Object)) {
-        $rule = Get-ManifestValue -Map $Signature -Key ([string]$eventKey)
-        $stable[[string]$eventKey] = [ordered]@{
-            AllOf  = @(@(Get-ManifestValue -Map $rule -Key 'AllOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
-            NoneOf = @(@(Get-ManifestValue -Map $rule -Key 'NoneOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
-        }
+        $alternatives = @(foreach ($rule in @(Get-ManifestValue -Map $Signature -Key ([string]$eventKey))) {
+                if ($null -eq $rule) { continue }
+                [ordered]@{
+                    AllOf  = @(@(Get-ManifestValue -Map $rule -Key 'AllOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
+                    NoneOf = @(@(Get-ManifestValue -Map $rule -Key 'NoneOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
+                }
+            })
+        if ($alternatives.Count -eq 1) { $stable[[string]$eventKey] = $alternatives[0] }
+        elseif ($alternatives.Count -gt 1) { $stable[[string]$eventKey] = $alternatives }
     }
     if ($stable.Count -eq 0) { return $null }
     return $stable
@@ -193,7 +198,11 @@ function Get-HostRuntimeBindingEncoded {
     if (Test-ManifestKey -Map $runtime -Key 'OriginRules') {
         $rules = foreach ($rule in @(Get-ManifestValue -Map $runtime -Key 'OriginRules')) {
             $stableRule = [ordered]@{}
-            foreach ($key in @(Get-ManifestKeys -Map $rule | Sort-Object)) { $stableRule[[string]$key] = [string](Get-ManifestValue -Map $rule -Key ([string]$key)) }
+            foreach ($key in @(Get-ManifestKeys -Map $rule | Sort-Object)) {
+                # A payload-field rule names a list of fields (T028); every other rule value is one string.
+                $value = Get-ManifestValue -Map $rule -Key ([string]$key)
+                $stableRule[[string]$key] = if ($value -is [System.Collections.IList]) { @($value | ForEach-Object { [string]$_ }) } else { [string]$value }
+            }
             $stableRule
         }
         $stableRuntime['OriginRules'] = @($rules)

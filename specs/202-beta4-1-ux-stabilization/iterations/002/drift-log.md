@@ -366,6 +366,34 @@
 - **Resolution (pending)**: by the maintainer's ruling, iteration 002 stays open and its closeout waits for the B4F-129
   fix and a passing re-walk. The fix starts by capturing the real payloads through a committed probe (B4F-145, layer 1).
   The fix plan is a separate decision. The iteration-closeout crossing recorded at `7ebd9dba` was not approved and is not
-  used.
+  used. **The fix plan was approved on 2026-10-21** (`go with the fix plan`), with three additions: B4F-131's
+  product-domain case (T029), the closeout sync's early write logged as a finding (B4F-146), and sub-agent payloads
+  (B4F-147, T028). Tasks T025 to T030 in `plan.md`. Its first step restored the four files the closeout sync had
+  written and moved its dashboard out of the project (B4F-146).
 - **Class closure**: a fix for a bug seen live is accepted only with a payload captured from the failing channel, and
   every unrecognized-payload record has a reader that fails a check.
+
+### DRIFT-007 — A new test ran the real provider against this repository and stored an approval nobody typed (resolved)
+
+- **Observed**: 2026-10-20, 23:08 to 23:11 UTC, while T028's test was being written red. The first version of
+  `tests/unit/subagent-prompt-authority.tests.ps1`, and a debug script run after it, ran the real handover provider with
+  the arguments the dispatcher hands it. It wrote into this repository:
+  - `.specrew/review/round-approval/pending-round-approval.json`: an unspent `approved for review round` with evidence
+    source `hook-captured-user-prompt`, host `copilot`, observed 23:08:41Z. It replaced round 10's spent approval. One row
+    in `captures.jsonl` records it.
+  - 23 rows in `.specrew/authority/exhausted-turns.jsonl` (lines 2570 to 2592), from three fixture sessions.
+  - Three `verdict-not-captured-disclosed` rows in `.specrew/runtime/handover-journal.jsonl`, and one folder under
+    `.specrew/runtime/conformance-sessions/`.
+
+  Nothing was committed and no round ran. No stop decision, receipt or reset was written.
+- **Root cause**: the dispatcher passes the provider no `--project-root`. The test replaced that argument with a temp
+  project, but there was none to replace, so the provider found its project from its working directory: this
+  repository.
+- **Resolution**: the maintainer typed `withdraw the approval` on 2026-10-21 (00:29Z). The stored approval is gone, and
+  the withdrawal is journaled in `.specrew/authority/withdrawals.jsonl`. The other rows are append-only and stay as
+  they are; they carry the fixture session IDs, not this project's. The test now passes `--project-root`, runs the
+  provider from the temp project with every host project variable pointed at it, and fails if the repository's
+  approval, authority or journal stores change. It was run red and then green again, with those stores unchanged
+  both times, checked inside the test and from outside it.
+- **Class closure**: B4F-148. A test that runs a real store writer pins its project three ways and guards the
+  repository's stores.

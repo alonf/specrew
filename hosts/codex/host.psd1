@@ -18,7 +18,7 @@
     AgentDir                   = '.codex/agents/'
     InstructionsFile           = 'AGENTS.md'
     StructuredQuestionPrimitive = 'request_user_input'
-    StructuredQuestionGuidance  = 'Use the Codex structured user-input/menu primitive for human approval gates when it is available in the current session.'
+    StructuredQuestionGuidance  = 'Use the Codex structured user-input/menu primitive only for clarify questions, when it is available in the current session: never for a workshop question or a boundary verdict.'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'codex'
@@ -81,6 +81,10 @@
             # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
             # replayed Specrew directive.
             OriginRules             = @(
+                # Feature 202 iteration 002, T028 (B4F-147): a sub-agent's task text reaches the prompt hook as a prompt. A payload
+                # carrying a sub-agent field was not typed by the human, whatever its text, so it can never be an approval.
+                # No Codex sub-agent payload has been recorded (probe/codex, 0.163.0); the rule holds the same fields as Claude's.
+                @{ Origin = 'host-injected'; Rule = 'payload-field'; Fields = @('agent_id', 'parent_agent_id') },
                 @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
