@@ -475,6 +475,28 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
   - **Owns:** `hosts/*/host.psd1`, `scripts/internal/launch-contract.ps1`, coordinator guidance and templates,
     `tests/unit/workshop-question-tool.tests.ps1`.
 
+- [ ] T031 [owner: Implementer] [sp: 0.75] [US8] **A closeout is recorded as closed only on its approval (B4F-146).**
+  Added 2026-10-21 at iteration 003's plan stop (`B4F-146 joins this iteration`).
+  - **Work:** the closed-iterations entry moves from the iteration-closeout step that asks for the approval to the
+    approval's capture, written before the seal (B4F-063's precedent). The step that asks still renders the dashboard,
+    which says the decision is awaited.
+  - **RED:** an iteration-closeout sync with no approval leaves `.specrew/closed-iterations.yml` unchanged; the captured
+    approval adds the entry once; a re-run sync adds nothing.
+  - **Acceptance:** iteration 003's own closeout: the index is unchanged until the maintainer's typed approval.
+  - **Trace:** FR-027; B4F-146.
+  - **Owns:** `scripts/internal/sync-boundary-state.ps1`, both `shared-governance.ps1` twins, a new unit suite.
+
+- [ ] T032 [owner: Implementer] [sp: 0.75] [US8] **Feature closeout: nothing cleared before the approval (B4F-146's
+  class).**
+  - **Work:** the feature-closeout step that asks for the approval clears the active feature and releases the session
+    lock. Both move to the approval's capture.
+  - **RED:** a feature-closeout sync with no approval leaves the active feature and the session lock as they were; the
+    captured approval clears them.
+  - **Acceptance:** 202's own feature closeout, which comes before the release.
+  - **Trace:** FR-027; B4F-146.
+  - **Depends:** T031.
+  - **Owns:** `scripts/internal/sync-boundary-state.ps1`, both `shared-governance.ps1` twins, the T031 suite.
+
 - [ ] T030 [owner: Implementer] [sp: 0.25] [US8] **Acceptance and the re-walk with a capture hook.**
   - **Work:** the acceptance evidence for T025 to T029; `copilot-rewalk.md` installs a capture hook beside Specrew's, so
     the walk keeps every payload it sees, and adds the unrecognized-payload check.
@@ -483,7 +505,7 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
     restores the project's Claude settings exactly. `copilot-rewalk.md` uses it. The evidence waits for the review round
     and the walk.
   - **Trace:** SC-011.
-  - **Depends:** T025 to T029 and their review round.
+  - **Depends:** T025 to T029, T031, T032 and their review round, which also reads round 8's fixes (`ac87d96c`).
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/003/**`, `iterations/002/copilot-rewalk.md`.
 
 ### Dependencies (iteration 002)
@@ -496,12 +518,12 @@ T017 -> T018 -> T019 -> [round after reset] -> T023 -> T024
 ### Dependencies (iteration 003)
 
 ```text
-T025 -> T026 -> T027; T028; T029 -> [one round] -> T030
+T025 -> T026 -> T027; T028; T029; T031 -> T032 -> [one round, also reading ac87d96c] -> T030
 ```
 
 ### Coverage (iteration 002)
 
-- **US8:** T016 to T024 in iteration 002; T025 to T030 in iteration 003.
+- **US8:** T016 to T024 in iteration 002; T025 to T032 in iteration 003. **FR-027** also T031, T032 (B4F-146).
 - **FR-027:** T017. **FR-028:** T016. **FR-029:** T018. **FR-030:** T019. **FR-031:** T020. **FR-032:** T021.
   **FR-033:** T022. **FR-034:** T023. **SC-010:** T017, T024. **SC-011:** T016, T024, T025 to T027, T030.
   **FR-028** also T025 to T028; **FR-027** also T028; **FR-032** also T029.

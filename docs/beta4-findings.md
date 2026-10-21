@@ -5545,7 +5545,7 @@ late, and leaves no payloads behind.
 **Disposition:** layer 1 with the B4F-129 fix, in iteration 003 (moved from iteration 002 on 2026-10-21); layers 2 and 3
 and the capture-hook rule to beta5.
 
-## B4F-146 - THE CLOSEOUT SYNC RECORDS THE ITERATION AS CLOSED BEFORE THE CLOSEOUT IS APPROVED (candidate)
+## B4F-146 - THE CLOSEOUT SYNC RECORDS THE ITERATION AS CLOSED BEFORE THE CLOSEOUT IS APPROVED (iteration 003)
 
 **Observed:** 2026-10-20, 202 iteration 002. The retro-to-closeout sync, run to present the closeout decision, added
 iteration 002 to `.specrew/closed-iterations.yml` (`closed_at: 2026-10-20T12:07:16Z`), wrote an iteration-closeout entry
@@ -5560,6 +5560,12 @@ was left as it is: it records a sync that did run.
 **Fix direction (proposal):** the closed-iterations entry is written when the closeout is approved, not by the sync that
 asks for the approval.
 **Disposition:** logged at the maintainer's request, 2026-10-21; not yet scheduled.
+**Seen again, 2026-10-21:** the closeout step for iteration 002, run again to ask for the closeout on the current tree,
+added the closed-iterations entry before the maintainer's approval. The approval followed, so the entry stood.
+**Joined iteration 003 (2026-10-21, the maintainer, at its plan stop):** "B4F-146 joins this iteration: 003's closeout
+and 202's feature closeout both come before the release." T031 moves the closed-iterations entry to the approval's
+capture, beside the seal (B4F-063's precedent); T032 does the same for the feature closeout's active-feature clear and
+session-lock release. Iteration 003's closeout and 202's feature closeout are each the fix's live proof.
 
 ## B4F-147 - A SUB-AGENT'S TASK TEXT ARRIVES AS A USER PROMPT, ON BOTH COPILOT CHANNELS (iteration 002, with B4F-144)
 
