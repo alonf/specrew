@@ -4,7 +4,7 @@
 
 ## Summary
 
-**Total drift events**: 6 (DRIFT-001 to DRIFT-006)
+**Total drift events**: 7 (DRIFT-001 to DRIFT-007)
 
 ## Events
 
@@ -352,7 +352,7 @@
 - **Class closure**: the review record is written after the last round, never before one that may still run. A retro
   input alongside B4F-126 (stop recommended where a further round or partial sign-off was the step).
 
-### DRIFT-006 — SC-011 failed on the Copilot re-walk: B4F-129's fix was tested against the wrong channel; the closeout waits (open)
+### DRIFT-006 — SC-011 failed on the Copilot re-walk: B4F-129's fix was tested against the wrong channel; the fixes moved to iteration 003 (resolved)
 
 - **Observed**: 2026-10-20, after the retro was approved and while the iteration-closeout stop was pending. The
   maintainer's Copilot re-walk (Copilot 1.0.98, build `7ebd9dba`) failed SC-011 at M1: rows under `claude` in the
@@ -370,6 +370,12 @@
   product-domain case (T029), the closeout sync's early write logged as a finding (B4F-146), and sub-agent payloads
   (B4F-147, T028). Tasks T025 to T030 in `plan.md`. Its first step restored the four files the closeout sync had
   written and moved its dashboard out of the project (B4F-146).
+- **Resolution (2026-10-21)**: T025 to T029 were implemented and committed (`2fd7f2d6`). Their review round could not
+  run inside iteration 002: its pre-review check validates this iteration, which is past its retro, and a retro
+  iteration may not carry unreviewed tasks. The maintainer ruled `move the fixes to iteration 003`: iteration 002
+  closes with T016 to T024 and SC-011 recorded as failed; T025 to T030 go to iteration 003, whose plan is decided at
+  its own plan stop after this closeout. The release gate moves with them: no closeout of feature 202, no merge to
+  main and no published module until iteration 003's Copilot re-walk passes.
 - **Class closure**: a fix for a bug seen live is accepted only with a payload captured from the failing channel, and
   every unrecognized-payload record has a reader that fails a check.
 

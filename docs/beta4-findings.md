@@ -5272,6 +5272,8 @@ does not ship (no merge to main, no published module) until B4F-127 is fixed in 
 once. B4F-129 is a second route to the same result, on Copilot.
 **Release gate widened (maintainer ruling at the 202 iteration 001 closeout, 2026-10-17):** beta4.1 does not ship until
 both B4F-127 and B4F-129 are fixed.
+**Release gate moved (maintainer ruling, 2026-10-21):** the gate sits at feature 202's closeout. No feature closeout, no
+merge to main and no published module until iteration 003's Copilot re-walk passes.
 
 ## B4F-128 - A REWORDED DISCUSSION QUESTION REPAINTS THE WHOLE PACKET (iteration 002, beside B4F-125)
 
@@ -5335,6 +5337,7 @@ box answer is recorded with its source. With B4F-125, the form an approval may t
 **Seen again, 2026-10-20** (the SC-011 re-walk, Copilot 1.0.98): the product-domain question went through Copilot's
 question box, and the box answer recorded nothing. T021 covered lens questions only.
 **Pulled into iteration 002 (2026-10-21, the maintainer):** T021's rule, applied to the one question it missed (T029).
+Moved to iteration 003 with T025 to T030 the same day.
 
 ## B4F-132 - FEATURE SETUP REPORTS A BRANCH IT NEVER CREATES (candidate)
 
@@ -5514,7 +5517,9 @@ unrecognized-payload record had no reader. Ten review rounds, eight lanes and gr
 checked the code against the fixtures it was given. The crew reported B4F-129 as "fixed in code and covered by the
 review" without checking the fixtures' channel, and the maintainer passed on it without checking either.
 **Disposition:** iteration 002 stays open; its closeout waits for the B4F-129 fix and a passing re-walk (maintainer
-ruling, 2026-10-20). The fix starts by capturing the real payloads through a committed probe (B4F-145, layer 1).
+ruling, 2026-10-20). **Moved to iteration 003 (2026-10-21, the maintainer):** iteration 002 closes with SC-011 recorded
+as failed; the fixes (T025 to T030), their review round and the re-walk are iteration 003's, and the release gate sits
+at feature 202's closeout. The fix starts by capturing the real payloads through a committed probe (B4F-145, layer 1).
 Beta4.1's release gate on B4F-129 stands.
 
 ## B4F-145 - THE LIVE WALK, AUTOMATED IN THREE LAYERS (beta5 proposal; layer 1 pulled into iteration 002)
@@ -5537,7 +5542,8 @@ late, and leaves no payloads behind.
 - **From now on, every walk project carries a capture hook,** so every walk finding leaves its payload behind as a
   replay fixture.
 
-**Disposition:** layer 1 in iteration 002, with the B4F-129 fix; layers 2 and 3 and the capture-hook rule to beta5.
+**Disposition:** layer 1 with the B4F-129 fix, in iteration 003 (moved from iteration 002 on 2026-10-21); layers 2 and 3
+and the capture-hook rule to beta5.
 
 ## B4F-146 - THE CLOSEOUT SYNC RECORDS THE ITERATION AS CLOSED BEFORE THE CLOSEOUT IS APPROVED (candidate)
 
@@ -5565,6 +5571,7 @@ for `copilot` (22:15:36) and `claude` (22:15:39) carry the same content hash, in
 human's approval.
 **Disposition:** iteration 002 (the maintainer, 2026-10-21): the probe and the tests cover Copilot sub-agents, and a
 payload carrying `agent_id` or `parent_agent_id` is never recorded as a human approval, on either channel (T028).
+Moved to iteration 003 with T025 to T030 the same day.
 
 ## B4F-148 - A TEST THAT RUNS THE REAL PROVIDER WITHOUT A PROJECT ROOT WRITES INTO THE REPOSITORY RUNNING IT (iteration 002, fixed in the test)
 

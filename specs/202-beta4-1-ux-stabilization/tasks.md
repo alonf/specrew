@@ -424,10 +424,13 @@ round, T030.
   - **Depends:** all iteration 002 tasks.
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/002/**`.
 
-### Phase 14: US8, the failed Copilot re-walk (DRIFT-006)
+### Phase 14: US8, the failed Copilot re-walk (iteration 003; DRIFT-006)
 
 Added 2026-10-21 on the maintainer's `go with the fix plan`. The re-walk failed SC-011 at M1: Copilot also runs
 Claude's hooks, sends them a payload shape no test had, and the dispatcher handled it as Claude's (B4F-144).
+Moved to iteration 003 the same day by the maintainer's ruling (`move the fixes to iteration 003`): iteration 002 closes
+with T016 to T024, and iteration 003's plan takes these tasks up with their review round and the re-walk. T025 to T029
+are implemented and committed (`2fd7f2d6`) but not yet reviewed.
 
 - [x] T025 [owner: Implementer] [sp: 1.0] [US8] **Capture the real payloads (B4F-145, layer 1).** Done 2026-10-21. The probe captured every channel on Copilot 1.0.101, Claude 2.1.303 and Codex 0.163.0, sub-agents included; Copilot runs Claude's hooks only in a trusted folder that is a git repository. The fixtures are in `tests/fixtures/hook-payloads/probe/`, with no secrets. On the old code the probe failed 14 checks, all on Claude's hooks under Copilot; after T026 it passes 108 of 108, with the user's own hook and config files unchanged.
   - **Work:** `tests/host-probes/host-payload-capture-probe.ps1` runs Copilot, Claude and Codex in scratch folders with
@@ -481,19 +484,24 @@ Claude's hooks, sends them a payload shape no test had, and the dispatcher handl
     and the walk.
   - **Trace:** SC-011.
   - **Depends:** T025 to T029 and their review round.
-  - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/002/**`.
+  - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/003/**`, `iterations/002/copilot-rewalk.md`.
 
 ### Dependencies (iteration 002)
 
 ```text
 T017 -> T016 -> [round 1] -> T022 -> T020, T021
 T017 -> T018 -> T019 -> [round after reset] -> T023 -> T024
+```
+
+### Dependencies (iteration 003)
+
+```text
 T025 -> T026 -> T027; T028; T029 -> [one round] -> T030
 ```
 
 ### Coverage (iteration 002)
 
-- **US8:** T016 to T030.
+- **US8:** T016 to T024 in iteration 002; T025 to T030 in iteration 003.
 - **FR-027:** T017. **FR-028:** T016. **FR-029:** T018. **FR-030:** T019. **FR-031:** T020. **FR-032:** T021.
   **FR-033:** T022. **FR-034:** T023. **SC-010:** T017, T024. **SC-011:** T016, T024, T025 to T027, T030.
   **FR-028** also T025 to T028; **FR-027** also T028; **FR-032** also T029.

@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: retro
-**Capacity**: 20.25/20 story_points
+**Capacity**: 17/20 story_points
 **Started**: 2026-10-17
 **Completed**:
 
@@ -53,12 +53,6 @@ red first, through the shipped entry point, with recorded payloads.
 | T021 | Find and fix the instruction that permits Copilot's question box; text test across every shipped host instruction | FR-032 | US8 | 1.0 | Implementer | `extensions/specrew-speckit/squad-templates/**`, host instruction files | done | | | |
 | T023 | Remove the `turn-message.md` writer and its mentions | FR-034 | US8 | 0.25 | Implementer | `declare-turn-end.ps1`, `turn-end-store.ps1`, skills | done | | | |
 | T024 | Acceptance: evidence file, validator run, Copilot re-walk script for the maintainer (SC-011) | SC-010, SC-011 | US8 | 0.5 | Implementer | `iterations/002/` | done | | | |
-| T025 | Committed payload probe on Copilot, Claude and Codex, with sub-agents; the deployed-hook test harness; the captured payloads as fixtures (B4F-145 layer 1) | FR-028 | US8 | 1.0 | Implementer | `tests/host-probes/**`, `tests/fixtures/hook-payloads/probe/**` | done | | | |
-| T026 | Copilot's second payload shape: failing test on the probe payloads first, signature alternatives in the dispatcher and deployer, Copilot's rule for Claude's hooks, Claude's rules refuse `timestamp` (B4F-144) | FR-028 | US8 | 0.75 | Implementer | `hosts/*/host.psd1`, dispatcher and deployer twins, `tests/unit/host-binding-match.tests.ps1` | done | | | |
-| T027 | A reader for the unrecognized-payload record: the binding suite, the probe and the re-walk each fail on any record | FR-028 | US8 | 0.25 | Implementer | `tests/unit/host-binding-match.tests.ps1`, `tests/host-probes/**`, `iterations/002/copilot-rewalk.md` | done | | | |
-| T028 | A payload carrying a sub-agent field is never typed by the human and never records an approval, on every channel (B4F-147) | FR-027, FR-028 | US8 | 0.5 | Implementer | `hosts/*/host.psd1`, dispatcher twins, `tests/unit/subagent-prompt-authority.tests.ps1` | done | | | |
-| T029 | Product-domain and grounding questions are workshop questions in prose on every host; the text test reaches every shipped instruction (B4F-131, T021's rule) | FR-032 | US8 | 0.5 | Implementer | host bindings, launch and coordinator guidance, templates, `tests/unit/workshop-question-tool.tests.ps1` | done | | | |
-| T030 | Acceptance: evidence, and the re-walk with a capture hook (SC-011) | SC-011 | US8 | 0.25 | Implementer | `iterations/002/`, `tests/host-probes/walk-capture-hook.ps1` | in-progress | | | |
 
 ## Effort Model
 
@@ -104,8 +98,10 @@ red first, through the shipped entry point, with recorded payloads.
   It is within the 20 SP convention, above the maintainer's 15 SP line, and decided at the plan stop.
 - Task IDs continue from iteration 001 (T001 to T015).
 - Out of iteration 002: B4F-055 and B4F-121 (beta5, review engine); B4F-132 to B4F-136 (queue after iteration 002).
-- **T025 to T030 (3.25 SP) were added on 2026-10-21**, when the maintainer approved the fix plan for the failed SC-011
-  re-walk (`go with the fix plan`, DRIFT-006), with three additions: B4F-131's product-domain question (T029), the
-  closeout sync's early write logged as B4F-146, and sub-agent payloads (T028, B4F-147). The total, 20.25 SP, is 0.25
-  over the 20 SP convention.
-- The release gate: beta4.1 does not ship until B4F-127 (T017) and B4F-129 (T016) are fixed.
+- **T025 to T030 (3.25 SP) moved to iteration 003 on 2026-10-21** by the maintainer's ruling (`move the fixes to
+  iteration 003`, DRIFT-006). They were planned here on the maintainer's `go with the fix plan` for the failed SC-011
+  re-walk. T025 to T029 are implemented and committed (`2fd7f2d6`), not yet reviewed; T030 is in progress. Iteration
+  003's plan takes them up with their review round and the re-walk. Iteration 002 closes at 17 SP with T016 to T024.
+- The release gate: beta4.1 does not ship until B4F-127 (T017) and B4F-129 (T016) are fixed. **Moved on 2026-10-21 (the
+  maintainer):** the gate sits at feature 202's closeout. No feature closeout, no merge to main and no published module
+  until iteration 003's Copilot re-walk passes.

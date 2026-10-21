@@ -98,15 +98,15 @@ All of these were reviewed in rounds 9 and 10.
 
 ## Gap Ledger
 
-- **Round-8 fixes**: accepted by the maintainer's partial sign-off, not reviewed line by line.
-- **SC-011 live value**: waits on the maintainer's Copilot re-walk.
-- **CI step for the stored-time suite**: committed locally, not pushed; it needs a login with workflow permission.
-- **B4F-141**: the hook-health record carries an episode's start time as text; logged for beta5 by the maintainer's
-  `log it`, with the tree-wide check for the class.
-- **B4F-142**: one Linux CI run counted 4001 journal lines for 4000 appends; passed on the next push; not investigated.
-- **Beta5 findings raised in iteration 002**: B4F-126 (second recurrence: a stop recommended after fixes outside the
-  last round), B4F-055 (the engine's demotions), B4F-139 and B4F-140 (round 9's report and approval), and the rest in
-  `docs/beta4-findings.md`.
+Every entry below is deferred; the deferrals are registered with their approving human in `.squad\decisions.md` under decision id `f202-i002-gap-ledger-deferrals`.
+
+- **Round-8 fixes**: deferred - accepted as they are by the maintainer's partial sign-off, not reviewed line by line.
+- **SC-011 live value**: deferred to iteration 003 - the re-walk failed at M1 (B4F-144, DRIFT-006); its fixes, T025 to T030, moved to iteration 003 by the maintainer's ruling, and beta4.1's gate now sits at feature 202's closeout.
+- **CI step for the stored-time suite**: deferred - committed locally, not pushed; the push needs a login with workflow permission and is the maintainer's.
+- **B4F-141**: deferred to beta5 - the hook-health record carries an episode's start time as text; logged by the maintainer's `log it`, with the tree-wide check for the class.
+- **B4F-142**: deferred - one Linux CI run counted 4001 journal lines for 4000 appends; passed on the next push; not investigated, reopened if it recurs.
+- **Beta5 findings raised in iteration 002**: deferred to beta5 - B4F-126 (second recurrence: a stop recommended after fixes outside the last round), B4F-055 (the engine's demotions), B4F-139 and B4F-140 (round 9's report and approval), and the rest in `docs/beta4-findings.md`.
+- **Findings raised after the retro**: deferred - B4F-144, B4F-145 (layer 1), B4F-147 and B4F-131's product-domain case go to iteration 003 with T025 to T030; B4F-146, B4F-148 and B4F-149 are logged, not scheduled.
 
 ## Notes
 

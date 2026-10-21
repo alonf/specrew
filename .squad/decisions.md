@@ -1,5 +1,30 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-10-21 — Verdict: 202 iteration 002 gap ledger - every open item deferred, and the re-walk fixes moved to iteration 003
+
+- **Decision ID**: f202-i002-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-028, SC-011
+- **Affected Iteration**: specs\202-beta4-1-ux-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-10-21T10:03:13Z
+- **Disposition**: The open items in iteration 002's review.md Gap Ledger, classified at the maintainer's ruling of
+  2026-10-21 (`move the fixes to iteration 003 ... close 002 first: take T025-T030 out of its records and mark its open
+  items`).
+  (1) Round 8's fixes: accepted as they are by the maintainer's partial review sign-off (2026-10-20).
+  (2) SC-011: the Copilot re-walk failed at M1 (B4F-144, DRIFT-006). Its fixes, T025 to T030, move to iteration 003;
+  T025 to T029 are committed in `2fd7f2d6` and not yet reviewed.
+  (3) The CI step for the stored-time suite: committed locally; its push needs a login with workflow permission and is
+  the maintainer's.
+  (4) B4F-141: beta5, by the maintainer's `log it` at the review close.
+  (5) B4F-142: one Linux CI count off by one, passed on the next push; not investigated, reopened if it recurs.
+  (6) Beta5 findings raised in iteration 002 (B4F-126, B4F-055, B4F-139, B4F-140 and the rest): beta5, by the
+  maintainer's review-signoff instruction.
+  (7) Findings raised after the retro: B4F-144, B4F-145 layer 1, B4F-147 and B4F-131's product-domain case go to
+  iteration 003; B4F-146, B4F-148 and B4F-149 are logged, not scheduled.
+- **Release gate**: moved by the same ruling to feature 202's closeout. No feature closeout, no merge to main and no
+  published module until iteration 003's Copilot re-walk passes.
+
 ### 2026-08-31 — Verdict: FR-026 deferred - the constrained readers have never run outside this repository
 
 - **Decision ID**: f199-i002-defer-fr026-no-field-execution
