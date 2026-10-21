@@ -250,6 +250,40 @@ finally {
     foreach ($r in $roots) { if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
+# ==================== where the capture finds the lock and claim helpers ====================
+# Round 1 of iteration 003 (finding-e1a26d059e3c7e32): in a consumer project the capture runs from the deployed
+# extension (.specify/extensions/specrew-speckit/scripts), where "the module tree this file belongs to" does not
+# exist, and the newest installed Specrew may not be the version the extension was deployed from. The capture now
+# picks the installed module whose version the deployed extension records.
+Write-Host '  --- 8: the helpers a consumer''s capture loads ---'
+$priorModulePath = $env:SPECREW_MODULE_PATH
+$env:SPECREW_MODULE_PATH = $null
+try {
+    $base = Join-Path ([IO.Path]::GetTempPath()) ('cra-mod-' + [guid]::NewGuid().ToString('N').Substring(0, 8)); $roots.Add($base) | Out-Null
+    $consumer = Join-Path $base 'consumer'
+    $extensionScripts = Join-Path $consumer '.specify/extensions/specrew-speckit/scripts'
+    New-Item -ItemType Directory -Path $extensionScripts -Force | Out-Null
+    $modules = foreach ($m in @(@{ Name = 'newer'; Version = '0.41.0'; Prerelease = '' }, @{ Name = 'deployed'; Version = '0.40.0'; Prerelease = 'beta4' }, @{ Name = 'older'; Version = '0.39.0'; Prerelease = '' })) {
+        $internal = Join-Path $base ('{0}/scripts/internal' -f $m.Name)
+        New-Item -ItemType Directory -Path $internal -Force | Out-Null
+        foreach ($helper in 'session-management.ps1', 'feature-claims.ps1') { Set-Content -LiteralPath (Join-Path $internal $helper) -Value '# fixture' }
+        [pscustomobject]@{ ModuleBase = (Join-Path $base $m.Name); Version = [version]$m.Version; Prerelease = $m.Prerelease }
+    }
+    $runtimeRecord = Join-Path $consumer '.specify/extensions/specrew-speckit/.specrew-extension-runtime.json'
+    Set-Content -LiteralPath $runtimeRecord -Value '{ "schema_version": "1.0", "specrew_version": "0.40.0-beta4" }'
+    $picked = Resolve-SpecrewModuleInternalDirectory -ProjectRoot $consumer -ExtensionScriptsRoot $extensionScripts -InstalledModules @($modules)
+    Assert-True ($picked -eq (Join-Path (Join-Path $base 'deployed') 'scripts/internal')) ('a consumer''s capture loads the installed module the extension was deployed from, not the newest (got: {0})' -f $picked)
+    Remove-Item -LiteralPath $runtimeRecord -Force
+    $picked = Resolve-SpecrewModuleInternalDirectory -ProjectRoot $consumer -ExtensionScriptsRoot $extensionScripts -InstalledModules @($modules)
+    Assert-True ($picked -eq (Join-Path (Join-Path $base 'newer') 'scripts/internal')) ('without the extension''s version record it falls back to the newest installed (got: {0})' -f $picked)
+    $picked = Resolve-SpecrewModuleInternalDirectory -ProjectRoot $consumer -ExtensionScriptsRoot (Join-Path $repoRoot 'extensions/specrew-speckit/scripts') -InstalledModules @($modules)
+    Assert-True ($picked -eq (Join-Path $repoRoot 'scripts/internal')) ('running from a module tree, it loads that tree''s own helpers (got: {0})' -f $picked)
+}
+finally {
+    $env:SPECREW_MODULE_PATH = $priorModulePath
+    foreach ($r in $roots) { if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
 Write-Host '  --- the repository''s own stores ---'
 $guardAfter = Get-GuardHashes
 foreach ($rel in $guarded) { Assert-True ($guardBefore[$rel] -eq $guardAfter[$rel]) ('unchanged: ' + $rel) }

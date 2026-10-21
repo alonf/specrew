@@ -511,6 +511,11 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
     lock and claim helpers from its own module tree first, so code and helpers are the same version. Four existing
     suites pinned the old timing and now check both halves: `closeout-identity-schema-parity`,
     `feature-051-iteration2a-callsite-wiring`, `lifecycle-boundary-sync`, `session-state-boundary-canonical`.
+  - **Round 1 (2026-10-21), one minor finding, fixed:** in a consumer project the capture runs from the deployed
+    extension, where "its own module tree" does not exist, and the newest installed Specrew may not be the version the
+    extension was deployed from. The capture now prefers the installed module whose version the deployed extension
+    records (`.specrew-extension-runtime.json`). `closeout-records-on-approval` case 8: RED (the resolver took no
+    layout), green after.
   - **Acceptance:** 202's own feature closeout, which comes before the release.
   - **Trace:** FR-027; B4F-146.
   - **Depends:** T031.

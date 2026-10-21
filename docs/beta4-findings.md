@@ -5606,6 +5606,21 @@ matches the approval's own field exactly.
 **Likely cause:** the time is read back from JSON as a date and written out as text. Not checked in the writer.
 **Disposition:** logged, not scheduled.
 
+## B4F-150 - A ROUND APPROVAL IS ANSWERED WITH "NOTHING WAS RECORDED" (candidate)
+
+**Observed:** 2026-10-21, 202 iteration 003. The maintainer typed `approved for review round`. The message hook's
+reply read: "your reply reads as a verdict for 'review', but NO crossing is pending right now, so nothing was recorded
+... When the 'review' crossing is presented, send the phrase again: approved for review". The round approval WAS
+recorded, in the round-approval store (evidence source `hook-captured-user-prompt`, unspent), and the round ran on it.
+**Effect:** the human is told their approval was not recorded, and asked to send a phrase (`approved for review`) that
+is not a boundary at all. A human who follows it sends a second message that means nothing; one who does not is left
+unsure whether the round was approved.
+**Likely cause:** the boundary-verdict reader matches `approved for review` as the prefix of a boundary verdict before
+the round-approval phrase is considered. Not checked in the code.
+**Fix direction (proposal):** the round-approval phrase is recognized first, and its reply says the round approval was
+recorded; the boundary reader never answers a phrase another store has taken.
+**Disposition:** logged, not scheduled.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

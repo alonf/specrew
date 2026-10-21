@@ -8343,29 +8343,57 @@ function Resolve-SpecrewActiveFeature {
 
 function Resolve-SpecrewModuleInternalDirectory {
     # 202 T032: the module's scripts/internal folder, for a writer that runs outside the boundary sync (the approval
-    # capture runs in the hook). Found the way the sync wrapper finds its helper: SPECREW_MODULE_PATH; then the module
-    # tree this file belongs to, when it runs from a module (so its helpers are the same version as its own code);
-    # then the project itself when it is Specrew's own repository; then the installed module. $null when none holds
-    # the helpers.
+    # capture runs in the hook). In order: SPECREW_MODULE_PATH; the module tree this file belongs to, when it runs from
+    # a module or Specrew's own repository (its helpers are then the same version as its own code); the project itself
+    # when it is Specrew's own repository; then the installed modules - first the one whose version the deployed
+    # extension records in .specrew-extension-runtime.json, so a consumer's capture pairs with the module its extension
+    # was deployed from (iteration 003 round 1, finding-e1a26d059e3c7e32), then the newest. $null when none holds the
+    # helpers. -ExtensionScriptsRoot and -InstalledModules exist for tests; callers omit them.
     [OutputType([string])]
-    param([Parameter(Mandatory)][string]$ProjectRoot)
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [string]$ExtensionScriptsRoot = $PSScriptRoot,
+        [AllowNull()][object[]]$InstalledModules
+    )
 
     $candidates = [System.Collections.Generic.List[string]]::new()
     if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal')) }
-    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) { $candidates.Add((Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'scripts/internal')) }
+    if (-not [string]::IsNullOrWhiteSpace($ExtensionScriptsRoot)) { $candidates.Add((Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $ExtensionScriptsRoot))) 'scripts/internal')) }
     $candidates.Add((Join-Path $ProjectRoot 'scripts/internal'))
-    try {
-        $module = Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
-        if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts/internal')) }
+
+    $modules = if ($null -ne $InstalledModules) { @($InstalledModules) } else {
+        try {
+            @(Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue | ForEach-Object {
+                    $prerelease = try { [string]$_.PrivateData.PSData.Prerelease } catch { '' }
+                    [pscustomobject]@{ ModuleBase = $_.ModuleBase; Version = $_.Version; Prerelease = $prerelease }
+                })
+        }
+        catch { @() }
     }
-    catch { $null = $_ }
+    $deployedVersion = ''
+    if (-not [string]::IsNullOrWhiteSpace($ExtensionScriptsRoot)) {
+        try {
+            $record = Join-Path (Split-Path -Parent $ExtensionScriptsRoot) '.specrew-extension-runtime.json'
+            if (Test-Path -LiteralPath $record -PathType Leaf) { $deployedVersion = [string](Get-Content -LiteralPath $record -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop).specrew_version }
+        }
+        catch { $deployedVersion = '' }
+    }
+    $ordered = @($modules | Sort-Object -Property @{ Expression = { [version]$_.Version }; Descending = $true })
+    if (-not [string]::IsNullOrWhiteSpace($deployedVersion)) {
+        $matching = @($ordered | Where-Object {
+                $label = if ([string]::IsNullOrWhiteSpace([string]$_.Prerelease)) { [string]$_.Version } else { '{0}-{1}' -f $_.Version, $_.Prerelease }
+                $label -ceq $deployedVersion.Trim()
+            })
+        $ordered = @($matching) + @($ordered | Where-Object { $matching -notcontains $_ })
+    }
+    foreach ($module in $ordered) { $candidates.Add((Join-Path ([string]$module.ModuleBase) 'scripts/internal')) }
+
     foreach ($candidate in $candidates) {
         if ((Test-Path -LiteralPath (Join-Path $candidate 'session-management.ps1') -PathType Leaf) -and
             (Test-Path -LiteralPath (Join-Path $candidate 'feature-claims.ps1') -PathType Leaf)) { return $candidate }
     }
     return $null
 }
-
 function Get-SpecrewInactivePromptBody {
     # The launch prompt's body once no feature is active. Shared by the boundary sync and the feature-closeout
     # approval's capture (202 T032), so both write the same text.
