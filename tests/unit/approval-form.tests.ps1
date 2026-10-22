@@ -56,6 +56,24 @@ BeforeAll {
         if (-not (Test-Path -LiteralPath $p)) { return @() }
         return @(Get-Content -LiteralPath $p | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.event -eq 'authority-phrase-matched-but-rejected' })
     }
+
+    function script:Add-PartialSignoffRequest {
+        param([Parameter(Mandatory)][string]$Root)
+        $tree = 'a' * 40; $campaign = 'cmp-202-form-fixture'
+        $sha = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($tree + '|' + $campaign))
+        $request = [ordered]@{ schema_version = '1.0'; request_id = ('override-' + ([Convert]::ToHexString($sha)).ToLowerInvariant().Substring(0, 24))
+            target_tree_id = $tree; campaign_id = $campaign; run_id = 'run-fixture'
+            required_phrase = 'approved for partial review signoff - <why accepting partial coverage is safe>'; created_at = [DateTimeOffset]::UtcNow.ToString('o') }
+        $dir = Join-Path $Root '.specrew/review/signoff-gate'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $dir 'pending-override.json'), ($request | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+    }
+    function script:Get-Overrides {
+        param([Parameter(Mandatory)][string]$Root)
+        $dir = Join-Path $Root '.specrew/review/signoff-gate/override-authorizations'
+        if (-not (Test-Path -LiteralPath $dir)) { return @() }
+        return @(Get-ChildItem -LiteralPath $dir -Filter '*.json')
+    }
 }
 
 AfterAll { Remove-Item env:SPECREW_MODULE_PATH -ErrorAction SilentlyContinue }
@@ -186,26 +204,6 @@ Describe 'No approval request offers a command as the approval (FR-029)' {
 
 # Co-review round 5 (iteration 002).
 Describe 'A quoted menu mints nothing, whichever writer would take it' {
-    BeforeAll {
-        function script:Add-PartialSignoffRequest {
-            param([Parameter(Mandatory)][string]$Root)
-            $tree = 'a' * 40; $campaign = 'cmp-202-form-fixture'
-            $sha = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($tree + '|' + $campaign))
-            $request = [ordered]@{ schema_version = '1.0'; request_id = ('override-' + ([Convert]::ToHexString($sha)).ToLowerInvariant().Substring(0, 24))
-                target_tree_id = $tree; campaign_id = $campaign; run_id = 'run-fixture'
-                required_phrase = 'approved for partial review signoff - <why accepting partial coverage is safe>'; created_at = [DateTimeOffset]::UtcNow.ToString('o') }
-            $dir = Join-Path $Root '.specrew/review/signoff-gate'
-            New-Item -ItemType Directory -Path $dir -Force | Out-Null
-            [IO.File]::WriteAllText((Join-Path $dir 'pending-override.json'), ($request | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
-        }
-        function script:Get-Overrides {
-            param([Parameter(Mandatory)][string]$Root)
-            $dir = Join-Path $Root '.specrew/review/signoff-gate/override-authorizations'
-            if (-not (Test-Path -LiteralPath $dir)) { return @() }
-            return @(Get-ChildItem -LiteralPath $dir -Filter '*.json')
-        }
-    }
-
     It '<HostKind>: the partial sign-off phrase alone, with its reason, is recorded (the fixture is a real request)' -ForEach @(
         @{ HostKind = 'claude' }, @{ HostKind = 'codex' }, @{ HostKind = 'copilot' }
     ) {
@@ -350,5 +348,63 @@ Describe 'Text inside a machinery envelope is never reduced to an approval line'
         Invoke-Prompt -Root $p -HostKind 'claude' -Text $Text | Out-Null
         Test-Stored -Root $p -Kind 'round' | Should -BeFalse
         Test-Stored -Root $p -Kind 'reset' | Should -BeFalse
+    }
+}
+
+# Co-review round 3 (iteration 003): the router read the approval form inside a try whose catch kept the raw message and
+# refused nothing, and skipped the form entirely when its function was not loaded. The partial sign-off writer reads every
+# line after its dash as the reason, so a condition typed beside the approval reached it again (the round 7 and 8 defect).
+# A form that cannot be read now refuses every writer that records authority; the withdrawal still runs.
+Describe 'An approval form that cannot be read records no authority' {
+    BeforeAll {
+        # Run in its own process, so the stand-in form function cannot leak into the other cases.
+        $script:FormRunner = Join-Path ([IO.Path]::GetTempPath()) ('f202-form-runner-' + [guid]::NewGuid().ToString('N') + '.ps1')
+        $runner = @'
+param([string]$RepoRoot, [string]$Root, [string]$Mode, [string]$Text, [string]$HostKind)
+$ErrorActionPreference = 'Stop'
+foreach ($dependency in @('HumanAuthorityStore', 'ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+    . (Join-Path $RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+}
+if ($Mode -eq 'throws') { function Resolve-SpecrewApprovalForm { throw 'the approval form could not be read' } }
+elseif ($Mode -eq 'missing') { Remove-Item -LiteralPath 'function:Resolve-SpecrewApprovalForm' }
+Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind $HostKind -SourceEvent 'UserPromptSubmit' `
+    -MessageId ('msg-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) -SessionId 's1' -TurnOrigin 'typed-user' | Out-Null
+'@
+        [IO.File]::WriteAllText($script:FormRunner, $runner, [Text.UTF8Encoding]::new($false))
+
+        function script:Invoke-Capture {
+            param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Mode, [Parameter(Mandatory)][string]$Text, [string]$HostKind = 'codex')
+            $null = & pwsh -NoProfile -NonInteractive -File $script:FormRunner -RepoRoot $script:RepoRoot -Root $Root -Mode $Mode -Text $Text -HostKind $HostKind 2>&1
+        }
+    }
+    AfterAll { Remove-Item -LiteralPath $script:FormRunner -Force -ErrorAction SilentlyContinue }
+
+    It 'control: with the form readable, the partial sign-off phrase alone is recorded through the same runner' {
+        $p = New-Project; Add-PartialSignoffRequest -Root $p
+        Invoke-Capture -Root $p -Mode 'normal' -Text 'approved for partial review signoff - the remaining files are documentation'
+        @(Get-Overrides -Root $p).Count | Should -Be 1
+    }
+
+    It '<HostKind>, form <Mode>: the partial sign-off phrase above a condition records no override' -ForEach @(
+        @{ HostKind = 'claude'; Mode = 'throws' }, @{ HostKind = 'codex'; Mode = 'throws' }, @{ HostKind = 'copilot'; Mode = 'throws' }
+        @{ HostKind = 'codex'; Mode = 'missing' }
+    ) {
+        $p = New-Project; Add-PartialSignoffRequest -Root $p
+        Invoke-Capture -Root $p -Mode $Mode -HostKind $HostKind -Text "approved for partial review signoff - the remaining files are documentation`nprovided the security checks pass"
+        @(Get-Overrides -Root $p).Count | Should -Be 0 -Because 'a form that cannot be read cannot show the condition is not part of the approval'
+    }
+
+    It 'form <Mode>: the round phrase records no round approval' -ForEach @(@{ Mode = 'throws' }, @{ Mode = 'missing' }) {
+        $p = New-Project
+        Invoke-Capture -Root $p -Mode $Mode -Text 'approved for review round'
+        Test-Stored -Root $p -Kind 'round' | Should -BeFalse
+    }
+
+    It 'form throws: a withdrawal still removes a stored round approval' {
+        $p = New-Project
+        Invoke-Capture -Root $p -Mode 'normal' -Text 'approved for review round'
+        Test-Stored -Root $p -Kind 'round' | Should -BeTrue -Because 'precondition: there is an approval to withdraw'
+        Invoke-Capture -Root $p -Mode 'throws' -Text 'withdraw the approval'
+        Test-Stored -Root $p -Kind 'round' | Should -BeFalse
     }
 }

@@ -1237,15 +1237,19 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # condition typed beside the approval line) was left to the writers' one-line rule, and the partial sign-off writer has
     # none, so 'approved for partial review signoff - <reason>' above 'provided the security checks pass' was saved as an
     # override. A message in a host envelope is the same case.
-    $formRefused = $false
+    # Co-review round 3 (iteration 003): A FORM THAT CANNOT BE READ REFUSES. The catch kept the raw message and refused
+    # nothing, and a missing form function skipped the check, so a condition typed beside the partial sign-off reached its
+    # writer again. Unlike the boundary readers, these writers have no refusal of their own to fall back on. The
+    # withdrawal still runs on the raw message.
+    $formRefused = $true
     if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
-        try {
-            $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind
+        $form = $null
+        try { $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind } catch { $form = $null }
+        if ($null -ne $form) {
             if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { return }
             $Response = [string]$form.Text
             $formRefused = ([string]$form.Reason -cin @('quoted-menu', 'qualified', 'machinery-envelope'))
         }
-        catch { $null = $_ }
     }
     # W69 (maintainer ruling, 2026-08-26): A TURN MINTS AT MOST ONCE, EVER.
     #

@@ -546,6 +546,16 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
       and the provenance gains `fixture_sha256` beside the captured `sha256`. `host-binding-match` part 4 fails on any
       fixture with a user path (34 failures before, green after). A walk capture goes through the same function before
       it becomes a fixture.
+  - **Review round 3 (2026-10-22), one minor finding, fixed on the maintainer's `fix the finding now`:** the round read
+    round 8's fixes (`ac87d96c`) and round 2's from a file list (`iterations/003/review-round-3-files.md`).
+    - The typed-authority router read the approval form in a `try` whose `catch` kept the raw message and refused
+      nothing, and skipped the form when its function was not loaded. A condition typed below the partial sign-off line
+      then reached that writer again, which reads every line after the dash as the reason (the round 7 and 8 defect).
+      A form that cannot be read now refuses every writer that records authority; the withdrawal still runs.
+      `approval-form` gains a case set run in its own process with the form function throwing or removed: RED on the old
+      router with 6 failures (the partial sign-off on Claude, Codex and Copilot with the form throwing and on Codex with
+      it removed, and the round phrase both ways), green after. A control with the form readable records the
+      override, and a withdrawal still removes a stored round approval with the form throwing.
   - **Trace:** SC-011.
   - **Depends:** T025 to T029, T031, T032 and their review round, which also reads round 8's fixes (`ac87d96c`).
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/003/**`, `iterations/002/copilot-rewalk.md`.
