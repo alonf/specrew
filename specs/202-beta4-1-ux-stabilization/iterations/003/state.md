@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T032
 **Tasks Remaining**: T030
-**In Progress**: (none; review rounds 1 to 3 read T025 to T032, round 1's and round 2's fixes and round 8's fixes, and all their findings are fixed; next the maintainer chooses between the last round and a partial sign-off, then T030's acceptance and the re-walk)
+**In Progress**: (none; four review rounds read T025 to T032, round 8's fixes and every fix since; review sign-off completed on 2026-10-22 with one note carried as B4F-151; next the runtime refresh, then T030's acceptance and the maintainer's re-walk)
 **Baseline Ref**: e948a634
-**Updated**: 2026-10-22T16:09:15Z
+**Updated**: 2026-10-22T23:16:45Z
 
 ## Execution Summary
 

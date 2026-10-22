@@ -5628,6 +5628,32 @@ stored and round 2 ran on it. So the store said "unused" about a used approval, 
 the new approval and made the hook's "nothing was recorded" true.
 **Disposition:** logged, not scheduled.
 
+## B4F-151 - AN APPROVAL FORM THAT CANNOT BE READ REFUSES WITHOUT TELLING THE HUMAN (follow-up from 202 iteration 003)
+
+**Observed:** 2026-10-22, review round 4 of 202 iteration 003, reading round 3's fix (`8aa15c19`). Confirmed in the
+code, not seen live.
+**What happens:** when `Resolve-SpecrewApprovalForm` throws or is not loaded, the typed-authority router now records no
+authority, which is right. But the "not recorded" report runs only for an unconfirmed origin or a failed writer, and
+the multi-line disclosure calls the same form again unguarded, so it fails too and the error is swallowed. The turn is
+still reserved as seen, so the end-of-turn backup does not offer it again.
+**Effect:** a correctly typed `approved for review round` records nothing and the human is told nothing. Nothing
+unsafe is recorded.
+**Fix direction (the reviewer's):** keep a form-unreadable flag and send it to `Write-SpecrewAuthorityNotRecordedReport`
+with its own reason, as the failed-writer branch does; assert in `approval-form` that the refusal is shown or recorded.
+**Disposition:** carried as a follow-up by the iteration 003 review sign-off; not scheduled.
+
+## B4F-152 - THE REVIEW'S OWN PAUSE PROMPT GIVES A COMMAND THAT REFUSES (candidate)
+
+**Observed:** 2026-10-22, 202 iteration 003, after round 4. The pause prompt said "Answer from this terminal with:
+specrew review --live --pause-choice <1|2|3>". Run as given, after the maintainer typed `stop the review here`, it
+refused: "Specrew does not know which feature you are answering for, so it cannot find the round waiting for you",
+and asked for `--feature <feature-id>`. With `--feature 202-beta4-1-ux-stabilization` the stop went through. The
+refusal spent nothing.
+**Effect:** one wasted run, and a prompt that names a command its own engine will not take.
+**Likely cause:** the feature is not resolved for the pause choice the way it is for `--approve-round`, which found the
+campaign without it. Not checked in the code.
+**Disposition:** logged, not scheduled.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,

@@ -556,6 +556,11 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
       router with 6 failures (the partial sign-off on Claude, Codex and Copilot with the form throwing and on Codex with
       it removed, and the round phrase both ways), green after. A control with the form readable records the
       override, and a withdrawal still removes a stored round approval with the form throwing.
+  - **Review round 4 (2026-10-22), the last of four, one minor note; the maintainer typed `stop the review here`:**
+    the round read round 3's fix from `iterations/003/review-round-4-files.md`. The note, carried as a follow-up
+    (B4F-151): when the form cannot be read, the router correctly records nothing but tells the human nothing either,
+    and the turn is still reserved, so the end-of-turn backup does not offer it again. The final check ran on
+    `f00da0f2` and review sign-off completed on 2026-10-22.
   - **Trace:** SC-011.
   - **Depends:** T025 to T029, T031, T032 and their review round, which also reads round 8's fixes (`ac87d96c`).
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/003/**`, `iterations/002/copilot-rewalk.md`.
