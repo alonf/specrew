@@ -37,6 +37,7 @@ Set-StrictMode -Version Latest
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $PSScriptRoot 'deployed-hook-harness.ps1')
+. (Join-Path $PSScriptRoot 'probe-fixture-redaction.ps1')
 
 $script:Passed = 0; $script:Failed = 0; $script:Skipped = 0
 function Note([string]$m) { Write-Host $m }
@@ -247,6 +248,12 @@ try {
                 $changed = @(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject (Get-HarnessRuntimeSnapshot $fx) | ForEach-Object { [string]$_.InputObject })
                 Check "$label - and wrote nothing under .specrew/runtime" ($changed.Count -eq 0) ($changed -join '; ')
             }
+            elseif ($handledEvents -contains $c.Event -and $c.Event -in @('Stop', 'agentStop') -and $c.Shape -cmatch '(^|,)(agent_id|parent_agent_id|agentId|parentAgentId)(,|$)') {
+                # Iteration 003 review round 2: a sub-agent's stop is not the end of the human's turn; the hook stands down.
+                Check "$label - a sub-agent's stop stands down: nothing ran" (-not $ran)
+                $changed = @(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject (Get-HarnessRuntimeSnapshot $fx) | ForEach-Object { [string]$_.InputObject })
+                Check "$label - and wrote nothing under .specrew/runtime" ($changed.Count -eq 0) ($changed -join '; ')
+            }
             elseif ($handledEvents -contains $c.Event) {
                 Check "$label - the host's own payload is handled" $ran
             }
@@ -268,17 +275,24 @@ try {
                 $sub = if ($c.Shape -match '(?i)(^|,)(agent_?id|parent_?agent_?id)(,|$)') { '-subagent' } else { '' }
                 $n = 1
                 do { $leaf = ('probe-{0}{1}-{2}.json' -f $c.Event.ToLowerInvariant(), $sub, $n); $n++ } while (Test-Path -LiteralPath (Join-Path $dir $leaf))
-                Copy-Item -LiteralPath $c.File.FullName -Destination (Join-Path $dir $leaf)
+                # The fixture is the captured payload with the user name in its profile paths replaced (review round 2).
+                $fixtureText = ConvertTo-ProbeRedactedFixtureText -Text ([IO.File]::ReadAllText($c.File.FullName, [Text.UTF8Encoding]::new($false)))
+                $fixtureBytes = [Text.UTF8Encoding]::new($false).GetBytes($fixtureText)
+                [IO.File]::WriteAllBytes((Join-Path $dir $leaf), $fixtureBytes)
                 $meta = Get-Content -LiteralPath ($c.File.FullName -replace '\.json$', '.meta.json') -Raw | ConvertFrom-Json
+                # ConvertFrom-Json turns the ISO time into a DateTime; [string] of that drops the zone and the fraction.
+                $capturedUtc = if ($meta.captured_utc -is [datetime]) { $meta.captured_utc.ToUniversalTime().ToString('o') } else { [string]$meta.captured_utc }
                 $hostKind = if ($chan -like 'copilot*') { 'copilot' } else { $chan }
                 $entries.Add([ordered]@{
-                        fixture = $leaf; channel = $chan; event = $c.Event; captured_utc = [string]$meta.captured_utc; host_version = $versions[$hostKind]
-                        stdin_bytes = [int]$meta.stdin_bytes; sha256 = [string]$meta.sha256; field_names = @($c.Fields)
+                        fixture = $leaf; channel = $chan; event = $c.Event; captured_utc = $capturedUtc; host_version = $versions[$hostKind]
+                        stdin_bytes = [int]$meta.stdin_bytes; sha256 = [string]$meta.sha256
+                        fixture_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($fixtureBytes)).ToLowerInvariant(); field_names = @($c.Fields)
                         host_env_names = @(@($meta.env_names) | Where-Object { @($script:LaunchEnvNames[$hostKind]) -notcontains $_ }); origin = 'recorded'
                     }) | Out-Null
             }
             $prov = [ordered]@{ task = 'B4F-144 fix (feature 202, iteration 002)'; channel = $chan
                 method = 'tests/host-probes/host-payload-capture-probe.ps1: the real host CLI, headless, in a scratch folder outside any repository; a capture hook copied raw stdin bytes. Environment values are not recorded.'
+                redaction = 'The user name in every profile path is replaced with probe-user (tests/host-probes/probe-fixture-redaction.ps1). sha256 is the captured bytes; fixture_sha256 is the file.'
                 fixtures = $entries.ToArray() }
             [IO.File]::WriteAllText((Join-Path $dir 'provenance.json'), ($prov | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
             Note ("fixtures written: {0}" -f $dir)

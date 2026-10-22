@@ -1605,6 +1605,25 @@ function Test-DispatcherIsLifecycleReceiptEvent {
     return ($n -eq 'sessionstart' -or $n -eq 'stop' -or $n -eq 'agentstop')
 }
 
+function Test-DispatcherIsSubAgentStop {
+    # Feature 202 iteration 003, review round 2: a sub-agent's stop is not the end of the human's turn. Copilot fires
+    # agentStop for a sub-agent too (probe/copilot/probe-agentstop-subagent-1.json: agentId and parentAgentId present,
+    # the parent's transcript), and the Stop-class providers - the end-of-turn capture, the rolling handover, the
+    # stop-block consumers - would run in the middle of the turn. The fields are the ones this host's payload-field
+    # origin rule declares (T028), so a prompt and a stop from a sub-agent are recognized by the same list.
+    param([AllowNull()][string]$EventName, [string[]]$PayloadKeys = @(), $Binding)
+    if (-not (Test-DispatcherIsLifecycleReceiptEvent -EventName $EventName) -or (Test-DispatcherIsSessionStartEvent -EventName $EventName)) { return $false }
+    $rules = Get-DispatcherMapValue -Map $Binding -Key 'OriginRules'
+    if ($null -eq $rules) { $rules = $script:DefaultTurnOriginRules }
+    foreach ($rule in @($rules)) {
+        if ([string](Get-DispatcherMapValue -Map $rule -Key 'Rule') -cne 'payload-field') { continue }
+        foreach ($field in @(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $rule -Key 'Fields' -Default @()))) {
+            if (@($PayloadKeys) -ccontains $field) { return $true }
+        }
+    }
+    return $false
+}
+
 function Test-DispatcherIsSessionStartEvent {
     # The ONE lifecycle event at which the host-version probe runs. Stop/agentStop must NEVER probe (a per-Stop
     # `--version` subprocess would tax the tight Stop budget, and only SessionStart is the trusted version fact) -
@@ -1690,6 +1709,12 @@ try {
     # health receipt - only when the payload positively belongs to another known host.
     $payloadMatch = Get-DispatcherPayloadHostMatch -Payload $hostEvent -Binding $hostRuntimeBinding -EventName $Event
     if ($payloadMatch.Kind -eq 'foreign') {
+        Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $hostRuntimeBinding
+        exit 0
+    }
+    # A sub-agent's stop stands down the same way: nothing runs and nothing is written (iteration 003, review round 2).
+    $payloadKeyNames = if ($null -ne $hostEvent -and $hostEvent -is [psobject]) { @($hostEvent.PSObject.Properties | ForEach-Object { [string]$_.Name }) } else { @() }
+    if (Test-DispatcherIsSubAgentStop -EventName $Event -PayloadKeys $payloadKeyNames -Binding $hostRuntimeBinding) {
         Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $hostRuntimeBinding
         exit 0
     }

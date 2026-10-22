@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T032
 **Tasks Remaining**: T030
-**In Progress**: (none; the review round over T025 to T032 and round 8's fixes is next, then T030's acceptance and the maintainer's re-walk)
+**In Progress**: (none; review rounds 1 and 2 read T025 to T032 and their findings are fixed; the round aimed at round 8's fixes and these fixes is next, then T030's acceptance and the maintainer's re-walk)
 **Baseline Ref**: e948a634
-**Updated**: 2026-10-21T15:42:48Z
+**Updated**: 2026-10-22T08:22:19Z
 
 ## Execution Summary
 

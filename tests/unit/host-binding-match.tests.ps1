@@ -92,6 +92,9 @@ try {
         copilot = @{ prompt = 'userPromptSubmitted'; start = 'sessionStart'; stop = 'agentStop' }
     }
     function Get-ProbeFixtureKind { param([string]$Name) if ($Name -match '(?i)userprompt') { 'prompt' } elseif ($Name -match '(?i)sessionstart') { 'start' } elseif ($Name -match '(?i)stop') { 'stop' } elseif ($Name -match '(?i)posttooluse') { 'tool' } else { $null } }
+    # Iteration 003 review round 2: a sub-agent's stop is not the end of the human's turn. Copilot fires agentStop for a
+    # sub-agent too; its own hook stands down on it, as on a payload from another host.
+    function Test-SubAgentPayload { param([string]$Path) $keys = @((Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json).PSObject.Properties.Name); return (@($keys | Where-Object { $_ -cin @('agent_id', 'parent_agent_id', 'agentId', 'parentAgentId') }).Count -gt 0) }
     $probeChannels = @(Get-ChildItem -LiteralPath $probeRoot -Directory | Sort-Object Name)
     Assert-True (@($probeChannels | Where-Object Name -eq 'copilot-claude-hooks').Count -eq 1) 'the probe fixtures include the Claude-hook channel as Copilot runs it'
     foreach ($channel in $probeChannels) {
@@ -113,7 +116,12 @@ try {
                 Assert-True ($r.ExitCode -eq 0) "$label - exits 0"
                 Assert-True (@(Get-UnrecognizedLogs $fx).Count -eq 0) "$label - recognized: no unrecognized-payload record"
                 $ran = @($r.Calls.Keys).Count -gt 0
-                if ($channel.Name -eq $target) {
+                if ($channel.Name -eq $target -and $kind -eq 'stop' -and (Test-SubAgentPayload $file.FullName)) {
+                    Assert-True (-not $ran) "$label - a sub-agent's stop stands down: no provider ran"
+                    $changed = @(Compare-Object -ReferenceObject $before -DifferenceObject (Get-HarnessRuntimeSnapshot $fx))
+                    Assert-True ($changed.Count -eq 0) "$label - and nothing under .specrew/runtime changed"
+                }
+                elseif ($channel.Name -eq $target) {
                     if ($kind -ne 'tool') { Assert-True $ran "$label - its own host payload is handled (a provider ran)" }
                 }
                 else {
@@ -168,6 +176,18 @@ try {
     Assert-True ($rows.Count -ge 1 -and [string]$rows[0].host_kind -eq 'copilot') 'the receipt kept is the first one written'
 }
 finally { if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue } }
+
+Write-Host '--- part 4: the recorded probe fixtures name no user and keep their capture times exact (review round 2) ---'
+. (Join-Path $repoRoot 'tests\host-probes\probe-fixture-redaction.ps1')
+foreach ($file in @(Get-ChildItem -LiteralPath (Join-Path $fixtureRoot 'probe') -Recurse -File -Filter *.json)) {
+    $text = [IO.File]::ReadAllText($file.FullName)
+    Assert-True (-not (Test-ProbeFixtureTextHasUserPath -Text $text)) ("[probe fixture] {0}/{1} - no user profile path" -f $file.Directory.Name, $file.Name)
+    if ($file.Name -eq 'provenance.json') {
+        $times = @((ConvertFrom-Json -InputObject $text -DateKind String).fixtures | ForEach-Object { [string]$_.captured_utc })
+        $bad = @($times | Where-Object { $_ -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$' })
+        Assert-True ($times.Count -gt 0 -and $bad.Count -eq 0) ("[probe provenance] {0} - every captured_utc is an ISO 8601 UTC time (not: {1})" -f $file.Directory.Name, ($bad -join '; '))
+    }
+}
 
 if ($script:failCount -gt 0) { Write-Host "host-binding-match: $($script:failCount) failure(s)" -ForegroundColor Red; exit 1 }
 Write-Host 'host-binding-match: all assertions pass' -ForegroundColor Green

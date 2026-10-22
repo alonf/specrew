@@ -278,6 +278,14 @@ try {
     Assert-True ($picked -eq (Join-Path (Join-Path $base 'newer') 'scripts/internal')) ('without the extension''s version record it falls back to the newest installed (got: {0})' -f $picked)
     $picked = Resolve-SpecrewModuleInternalDirectory -ProjectRoot $consumer -ExtensionScriptsRoot (Join-Path $repoRoot 'extensions/specrew-speckit/scripts') -InstalledModules @($modules)
     Assert-True ($picked -eq (Join-Path $repoRoot 'scripts/internal')) ('running from a module tree, it loads that tree''s own helpers (got: {0})' -f $picked)
+    # Round 2 of iteration 003: the capture names only -ProjectRoot, so the module tree and the version record come from
+    # the default -ExtensionScriptsRoot ($PSScriptRoot). A copy loaded from the consumer's deployed extension folder must
+    # resolve exactly as the explicit call did.
+    Set-Content -LiteralPath $runtimeRecord -Value '{ "schema_version": "1.0", "specrew_version": "0.40.0-beta4" }'
+    $deployedCopy = Join-Path $extensionScripts 'shared-governance.ps1'
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1') -Destination $deployedCopy
+    $picked = & { . $deployedCopy; Resolve-SpecrewModuleInternalDirectory -ProjectRoot $consumer -InstalledModules @($modules) }
+    Assert-True ($picked -eq (Join-Path (Join-Path $base 'deployed') 'scripts/internal')) ('loaded from a consumer''s deployed extension, the default route reads that extension''s version record (got: {0})' -f $picked)
 }
 finally {
     $env:SPECREW_MODULE_PATH = $priorModulePath

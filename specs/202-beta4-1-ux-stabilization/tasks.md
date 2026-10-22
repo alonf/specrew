@@ -528,6 +528,24 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
     hook; checked in scratch: the captures are written, the hook groups survive Specrew's own hook redeploy, and removal
     restores the project's Claude settings exactly. `copilot-rewalk.md` uses it. The evidence waits for the review round
     and the walk.
+  - **Review round 2 (2026-10-22), two minor findings and two notes, all fixed on the maintainer's
+    `fix the findings now`:** the round read T025 to T029 and round 1's fix from a file list
+    (`iterations/003/review-round-2-files.md`), because round 1 could not run `git diff`.
+    - A Copilot sub-agent's `agentStop` ran the end-of-turn providers in the middle of the turn (T028 guarded prompts
+      only). Both dispatcher twins now stand down on a stop-class event whose payload carries a field from the host's
+      payload-field origin rule: nothing runs and nothing is written. `host-binding-match` part 1b and the probe expect
+      the stand-down; RED on the old dispatcher with 6 failures (Copilot's `agentStop` and `subagentStop` sub-agent
+      payloads, and Claude's `SubagentStop` payload on its Stop hook), green after.
+    - The probe recorded `captured_utc` as a culture string without the zone or the fraction. It now keeps the ISO
+      time; the committed provenance is converted to ISO UTC to the second, with a note that the fraction is lost.
+    - A test for the round-1 fix's default route: case 8 loads a copy of `shared-governance.ps1` from a consumer's
+      deployed extension folder and calls the resolver with `-ProjectRoot` only. With the `$PSScriptRoot` default
+      broken it fails 1, green on the real code.
+    - The fixtures carried the user's profile paths. `tests/host-probes/probe-fixture-redaction.ps1` replaces the
+      user name with `probe-user`; the probe applies it when it writes fixtures, the 34 committed fixtures are redacted,
+      and the provenance gains `fixture_sha256` beside the captured `sha256`. `host-binding-match` part 4 fails on any
+      fixture with a user path (34 failures before, green after). A walk capture goes through the same function before
+      it becomes a fixture.
   - **Trace:** SC-011.
   - **Depends:** T025 to T029, T031, T032 and their review round, which also reads round 8's fixes (`ac87d96c`).
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/003/**`, `iterations/002/copilot-rewalk.md`.

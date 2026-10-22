@@ -5619,6 +5619,13 @@ unsure whether the round was approved.
 the round-approval phrase is considered. Not checked in the code.
 **Fix direction (proposal):** the round-approval phrase is recognized first, and its reply says the round approval was
 recorded; the boundary reader never answers a phrase another store has taken.
+**Second occurrence (2026-10-21, after round 1):** the maintainer typed `approved for review round` again for round 2,
+and the same reply came back. This time nothing WAS stored: the store still held round 1's approval with `spent_at`
+null, although round 1 had used it (its `minted_ref` named round 1, and the journal said `spent-without-delivery`), and
+the capture does not store a second approval while one reads as unspent. The launch on that approval was refused
+("That approval already paid for a review") and the refusal marked it spent; the maintainer's next typed approval was
+stored and round 2 ran on it. So the store said "unused" about a used approval, and that one wrong field both blocked
+the new approval and made the hook's "nothing was recorded" true.
 **Disposition:** logged, not scheduled.
 
 ## Beta4.1 intake rulings — 2026-10-13
