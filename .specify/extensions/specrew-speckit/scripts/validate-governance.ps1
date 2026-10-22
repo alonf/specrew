@@ -2217,6 +2217,19 @@ function Test-SessionStateBoundaryCanonical {
     $closureSet = Get-SpecrewClosureBoundaryTypes
     $failures = New-Object System.Collections.Generic.List[string]
 
+    # 202 T032 (B4F-146's class): a feature stays active while its closeout decision is pending, and becomes inactive
+    # when the human approves it. So "active at a closure boundary" is a contradiction only once that closure is
+    # the last authorized boundary; before that it is the pending decision.
+    $closureAuthorized = $false
+    $startContextForClosure = Join-Path -Path $ProjectRoot -ChildPath '.specrew\start-context.json'
+    if (Test-Path -LiteralPath $startContextForClosure -PathType Leaf) {
+        try {
+            $closureContext = Get-Content -LiteralPath $startContextForClosure -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $closureContext.boundary_enforcement -and [string]$closureContext.boundary_enforcement.last_authorized_boundary -in $closureSet) { $closureAuthorized = $true }
+        }
+        catch { $closureAuthorized = $false }
+    }
+
     # Check 1: .specrew/start-context.json
     $startContextPath = Join-Path -Path $ProjectRoot -ChildPath '.specrew\start-context.json'
     if (Test-Path -LiteralPath $startContextPath -PathType Leaf) {
@@ -2228,7 +2241,7 @@ function Test-SessionStateBoundaryCanonical {
                 if (-not [string]::IsNullOrWhiteSpace($boundary) -and $boundary -notin $canonicalSet) {
                     $null = $failures.Add("$startContextPath`: session_state.boundary_type value '$boundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
                 }
-                if ($active -eq $true -and $boundary -in $closureSet) {
+                if ($active -eq $true -and $boundary -in $closureSet -and $closureAuthorized) {
                     $null = $failures.Add("$startContextPath`: session_state.active=true is contradictory with session_state.boundary_type='$boundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
                 }
             }
@@ -2266,7 +2279,7 @@ function Test-SessionStateBoundaryCanonical {
             if (-not [string]::IsNullOrWhiteSpace($promptBoundary) -and $promptBoundary -notin $canonicalSet) {
                 $null = $failures.Add("$promptPath`: session_state_boundary value '$promptBoundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
             }
-            if ($promptActive -eq 'true' -and $promptBoundary -in $closureSet) {
+            if ($promptActive -eq 'true' -and $promptBoundary -in $closureSet -and $closureAuthorized) {
                 $null = $failures.Add("$promptPath`: session_state_active=true is contradictory with session_state_boundary='$promptBoundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
             }
         }
@@ -2303,7 +2316,7 @@ function Test-SessionStateBoundaryCanonical {
             if (-not [string]::IsNullOrWhiteSpace($nowBoundary) -and $nowBoundary -notin $canonicalSet) {
                 $null = $failures.Add("$nowPath`: session_state_boundary value '$nowBoundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
             }
-            if ($nowActive -eq 'true' -and $nowBoundary -in $closureSet) {
+            if ($nowActive -eq 'true' -and $nowBoundary -in $closureSet -and $closureAuthorized) {
                 $null = $failures.Add("$nowPath`: session_state_active=true is contradictory with session_state_boundary='$nowBoundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
             }
         }

@@ -380,7 +380,7 @@
     },
     {
       "path": "scripts/scaffold-feature-closeout-dashboard.ps1",
-      "sha256": "d57dd2ab19db4d72d47d5dfc6449f9958ec1cbb4f4a1db4d290428a89e21208a"
+      "sha256": "1ccc08c439c3be8cf5be4199f98fb073680c6bf5377a525f1debdab22d2f79a0"
     },
     {
       "path": "scripts/scaffold-governance.ps1",
@@ -408,7 +408,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "ba92a4648ba6aa4f1b40ecf583a02ead50e2e3379697ac9a22d5b571f70dd3f8"
+      "sha256": "34ae4e744303151e38d8eb866bf9be4dfe8f3d2422e90c70fe8482a3f8ea2097"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "2abdeae9eca62b7d2c4cfd74db34b4714b7cb9cf15aaefd3b6040a8bad683a7c"
+      "sha256": "5874771b9d40ce34e558f91a8db163f074c64f3af425581c26c47fbddf221f9c"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/validate-governance.ps1",
-      "sha256": "3a579c631077935ba260f8ac291f6dccacebb6ea1f1bc368993732b193f77420"
+      "sha256": "7cee2741ed356d8e0071ed6f585a5aaec5479d8da6a5f2d7bb364fc7a5f0e3bc"
     },
     {
       "path": "scripts/validate-versions.ps1",
