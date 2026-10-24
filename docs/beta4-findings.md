@@ -5338,6 +5338,14 @@ box answer is recorded with its source. With B4F-125, the form an approval may t
 question box, and the box answer recorded nothing. T021 covered lens questions only.
 **Pulled into iteration 002 (2026-10-21, the maintainer):** T021's rule, applied to the one question it missed (T029).
 Moved to iteration 003 with T025 to T030 the same day.
+**Seen again, 2026-10-23** (the iteration 003 re-walk, Copilot 1.0.101, `2ea34f92`), with T029's text deployed:
+`product-domain.md` line 32 names `ask_user` and forbids it, and the product-domain question at M1 still went through
+`ask_user`. After M2, a second `ask_user` offered "governed workshop recovery". Neither box answer recorded anything.
+Three walks in a row: an instruction does not keep Copilot off the tool. A fix would refuse the call itself, for
+example in Copilot's tool-use hook while a workshop question is open (not checked). The Esc that followed is B4F-153.
+**Outside the beta4.1 gate** (maintainer ruling, 2026-10-24, `keep the gate as ruled`): it records nothing false, it
+is in the released beta4, and 202 does not make it worse. T029 is recorded as not held live in iteration 003's
+acceptance evidence.
 
 ## B4F-132 - FEATURE SETUP REPORTS A BRANCH IT NEVER CREATES (candidate)
 
@@ -5652,6 +5660,60 @@ refusal spent nothing.
 **Effect:** one wasted run, and a prompt that names a command its own engine will not take.
 **Likely cause:** the feature is not resolved for the pause choice the way it is for `--approve-round`, which found the
 campaign without it. Not checked in the code.
+**Disposition:** logged, not scheduled.
+
+## B4F-153 - ON COPILOT, ESC ON THE QUESTION BOX FOLDS THE TYPED MESSAGE INTO THE RUNNING TURN, AND NO MESSAGE HOOK FIRES (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk (Copilot 1.0.101, `2ea34f92`). With the box from
+B4F-131 open, the maintainer pressed Esc and typed M2. Copilot folded the message into the turn that was running. The
+user-message hook did not fire for it, so nothing was recorded, and Specrew could not report the miss because it never
+saw the message. The maintainer typed M2 again: the walk's one corrective exchange.
+**Effect:** on this path, US8's rule that an act not recorded is reported, not dropped, cannot hold. Nothing false is
+recorded.
+**Fix direction:** it follows B4F-131: with no box, there is nothing to fold into. Whether Copilot shows a folded
+message to any hook is not known.
+**Disposition:** logged, not scheduled. Outside the beta4.1 gate (maintainer ruling, 2026-10-24).
+
+## B4F-154 - A "MOVE ON" CLOSING PRODUCT-DOMAIN IS REFUSED AS AGENDA-NOT-SHOWN, AND THE REFUSAL IS STORED IN LOCAL TIME (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk. The maintainer's first `move on`, closing the
+product-domain lens, was refused with the reason agenda-not-shown. The stored refusal carries a +03:00 local time,
+where the stores otherwise use UTC.
+**Effect:** one more typed reply. The agenda comes after product-domain, so a close of product-domain refused because
+the agenda was not shown reads as the wrong order. Separately, a local time in one store row makes rows hard to order
+against the others.
+**Likely cause:** not checked in the code.
+**Disposition:** logged, not scheduled.
+
+## B4F-155 - A SUB-AGENT'S TASK TEXT STILL LEAVES A REFUSED ROW AND OPENS A SESSION OF ITS OWN (candidate; follow-up to T028)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk. The `speckit.specify` sub-agent's instructions
+reached the user-message hook and were refused as not typed by the human. T028 holds: nothing was stored as an
+approval. But the refusal left a row and an extra conformance session, and one more session appeared after the specify
+approval.
+**What the captures show:** on Claude's hooks as Copilot runs them, the sub-agent's PreToolUse and PostToolUse carry a
+`session_id` equal to its own `agent_id`, not the parent's session, while its SubagentStop carries the parent's. Copilot's
+own channel does the same with `sessionId` on the sub-agent's tool calls. The fixtures are
+`probe-pretooluse-subagent-1.json`, `probe-posttooluse-subagent-1.json` and `probe-subagentstop-subagent-2.json` on
+both Copilot channels (`1509b896`). A hook keyed on the session ID would open a session per sub-agent; this is the
+likely source of the extra session, not checked in the code.
+**Fix direction:** a payload carrying a sub-agent field writes no refused row and opens no session.
+**Disposition:** logged, not scheduled.
+
+## B4F-156 - ON COPILOT, A BOUNDARY PACKET RUNS ITS REPLY OPTIONS TOGETHER AND SHOWS THE HIDDEN BOUNDARY TAG (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk, both packets (specify and clarify). The four reply
+lines ran together on one line, and the hidden tag at the end of the packet showed as visible text ending in `-->`.
+**Effect:** the human cannot read the reply lines as separate phrases to type, and the tag's text is noise.
+**Likely cause:** Copilot's renderer joins single line breaks and does not hide the HTML comment. Not checked.
+**Disposition:** logged, not scheduled.
+
+## B4F-157 - THE WORKSHOP AGENDA QUESTION ALSO ASKS FOR THE REVIEWER CHOICE (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk. The agenda question also asked the maintainer to
+choose the reviewer: two decisions in one question.
+**Effect:** one reply has to answer both, and a short answer to one leaves the other open.
+**Fix direction:** ask the reviewer choice as its own question.
 **Disposition:** logged, not scheduled.
 
 ## Beta4.1 intake rulings — 2026-10-13
