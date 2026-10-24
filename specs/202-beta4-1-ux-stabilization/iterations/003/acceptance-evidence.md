@@ -82,3 +82,11 @@ Four rounds on codex, each started by the maintainer's own typed `approved for r
 
 Review sign-off completed on 2026-10-22, on the maintainer's `stop the review here`, with the final check on
 `f00da0f2`. The runtime refresh followed (`2ea34f92`).
+
+## Validator against the known baseline
+
+`validate-governance.ps1 -ProjectPath .` (full repository, unscoped), on 2026-10-24 at `611f682a` plus DRIFT-002's
+class-closure wording: 23 iterations, 7 pass, 16 fail, every failure in a baseline category. 15 are review-evidence
+findings (features 001, 005, 007, 048 and 197), one of them with a defer-provenance finding as well (001 iteration
+011), and one is 198 iteration 011's needs-rework verdict. 202 iteration 003 passes. The first run that day failed
+`closed-iteration-edited` on iteration 002 (DRIFT-002); it passes since the revert.

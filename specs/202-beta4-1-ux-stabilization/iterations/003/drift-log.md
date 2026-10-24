@@ -33,5 +33,5 @@
 - **Cause**: the walk script tells the reader to fill the row in iteration 002's files, and T030's plan entry lists
   that file as owned. Both were written before iteration 002 closed and were not updated when the walk moved here. The
   crew ran the validator only after committing.
-- **Class closure**: NONE in code. The crew runs the validator before committing a record outside the active
-  iteration.
+- **Class closure**: NONE - the instruction that caused it sits in a closed record, which cannot be edited; the crew
+  runs the validator before committing any record outside the active iteration.
