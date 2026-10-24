@@ -5730,6 +5730,19 @@ failure.
 lifecycle passes through, or the lifecycle writes its records in the order CI accepts.
 **Disposition:** logged at the iteration 003 retro; for the beta5 plan.
 
+## B4F-159 - A CLOSED ITERATION IS SEALED IN A STATE CI'S VALIDATOR REJECTS, SO EVERY LATER PUSH THAT TOUCHES IT FAILS (candidate)
+
+**Observed:** 2026-10-25, the 202 iteration 003 closeout (`794f6559`), as at iteration 002's (`45f0d01c`). The approval's
+capture sets `plan.md` to `complete` and seals the iteration, but leaves `**Completed**:` blank, and the hardening gate
+still lists four concerns without runtime evidence or closure follow-through. CI's lint job fails the closeout push on
+both. The seal forbids editing the files afterwards, so any later push that touches the iteration fails the same way;
+iteration 002's re-walk row (DRIFT-002) and its revert hit it.
+**Effect:** the closeout push is always red, and the deterministic gate is skipped behind it (B4F-158).
+**Fix direction:** the closeout capture writes the Completed date before sealing, and the closeout step refuses to ask
+for approval while the hardening gate has concerns without follow-through, so they are settled while the files can
+still change.
+**Disposition:** logged, not scheduled.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
