@@ -521,7 +521,10 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
   - **Depends:** T031.
   - **Owns:** `scripts/internal/sync-boundary-state.ps1`, both `shared-governance.ps1` twins, the T031 suite.
 
-- [ ] T030 [owner: Implementer] [sp: 0.25] [US8] **Acceptance and the re-walk with a capture hook.**
+- [x] T030 [owner: Implementer] [sp: 0.25] [US8] **Acceptance and the re-walk with a capture hook.** Done 2026-10-24.
+  `iterations/003/acceptance-evidence.md`. The maintainer's re-walk (Copilot 1.0.101, `2ea34f92`) passed SC-011: 0
+  receipts, stop-block rows or hook rows under `claude`, and no receipt written twice. T029 did not hold live
+  (B4F-131 seen again); the maintainer ruled it and B4F-153 outside the beta4.1 gate (`keep the gate as ruled`).
   - **Work:** the acceptance evidence for T025 to T029; `copilot-rewalk.md` installs a capture hook beside Specrew's, so
     the walk keeps every payload it sees, and adds the unrecognized-payload check.
   - **Progress (2026-10-21):** `tests/host-probes/walk-capture-hook.ps1` installs, summarizes and removes the capture
@@ -561,6 +564,11 @@ are implemented and committed (`2fd7f2d6`) but not yet reviewed.
     (B4F-151): when the form cannot be read, the router correctly records nothing but tells the human nothing either,
     and the turn is still reserved, so the end-of-turn backup does not offer it again. The final check ran on
     `f00da0f2` and review sign-off completed on 2026-10-22.
+  - **Re-walk (2026-10-23 to 2026-10-24), passed; the maintainer typed `walk done` with the tally:** 641 payloads
+    captured. 8 real decisions, 1 corrective exchange, 0 extra stops. Seven misses, logged as B4F-131 (seen again),
+    B4F-153 to B4F-157 and B5F-011. The 8 payload shapes no fixture had are fixtures now (`1509b896`), and
+    `host-binding-match` and `subagent-prompt-authority` pass with them. The row first went into closed iteration
+    002's walk script and was moved here (DRIFT-002).
   - **Trace:** SC-011.
   - **Depends:** T025 to T029, T031, T032 and their review round, which also reads round 8's fixes (`ac87d96c`).
   - **Owns:** `specs/202-beta4-1-ux-stabilization/iterations/003/**`, `iterations/002/copilot-rewalk.md`.
