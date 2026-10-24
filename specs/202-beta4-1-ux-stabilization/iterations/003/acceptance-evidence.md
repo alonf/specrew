@@ -83,6 +83,10 @@ Four rounds on codex, each started by the maintainer's own typed `approved for r
 Review sign-off completed on 2026-10-22, on the maintainer's `stop the review here`, with the final check on
 `f00da0f2`. The runtime refresh followed (`2ea34f92`).
 
+**Correction, 2026-10-25** (the maintainer's instruction at the retro verdict): the stored round results hold 7
+findings, not 6, and 6 are fixed, not 5. Round 4's finding (B4F-151) was labelled minor by the engine, not a note.
+The text above is kept as approved; the retro grades the findings.
+
 ## Validator against the known baseline
 
 `validate-governance.ps1 -ProjectPath .` (full repository, unscoped), on 2026-10-24 at `611f682a` plus DRIFT-002's

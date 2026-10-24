@@ -22,6 +22,10 @@ That is 6 findings and notes, each checked against the code; 5 are fixed behind 
 note is a follow-up. The review allowance (4 of 4) is spent. On 2026-10-22 the maintainer typed `stop the review here`,
 and sign-off completed with the final check on `f00da0f2`.
 
+**Correction, 2026-10-25** (the maintainer's instruction at the retro verdict): the stored round results hold 7
+findings, not 6, and 6 are fixed, not 5. Round 4's finding (B4F-151) was labelled minor by the engine, not a note.
+The text above is kept as approved; the retro grades the findings.
+
 ## Changes After the Review Sign-off
 
 - `2ea34f92`: the runtime refresh, which deploys T031, T032 and the round fixes into this project. The deployed copies

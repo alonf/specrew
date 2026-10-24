@@ -207,3 +207,9 @@ fails again on Linux is not known until the gate runs in CI.
   T025, and rounds 3 and 4 under the carried approval-form code.
 - Line counts exclude `tests/`, `specs/`, `docs/`, `.specify/`, `.specrew/`, `.squad/`, `.claude/` and `.github/`.
 - CI causes are from each failed run's log, read on 2026-10-24.
+
+## Rulings Recorded at the Retro Verdict
+
+The maintainer approved the retro on 2026-10-25 with one instruction, recorded here after the approval so the approved
+text did not change under it: a dated correction line goes into the review record and the acceptance evidence (7
+findings, 6 fixed). Both now carry it.
