@@ -65,18 +65,16 @@ The text above is kept as approved; the retro grades the findings.
 
 ## Gap Ledger
 
-These items are open. None is deferred by this record. Their dispositions so far are the maintainer's rulings named
-on each.
+Every entry below is deferred except T031's live test, which is fixed-now; classified at the closeout by the maintainer's typed `classify the gap ledger as proposed` (2026-10-25), and open until then by their instruction at review sign-off. The deferrals are registered with their approving human in `.squad\decisions.md` under decision id `f202-i003-gap-ledger-deferrals`.
 
-- **B4F-151**: open - round 4's note: an approval form that cannot be read records nothing and tells the human nothing.
-  Carried as a follow-up by the maintainer's `stop the review here`.
-- **Fixtures added after sign-off**: open - `1509b896`, test data only, not read by a round. The allowance is spent.
-- **T029 live**: open - B4F-131 and B4F-153, outside the beta4.1 gate (`keep the gate as ruled`, 2026-10-24).
-- **B4F-146 live**: open - T031 at iteration 003's closeout, T032 at 202's feature closeout.
-- **Re-walk misses 3 to 7**: open - B4F-154 to B4F-157 and B5F-011, logged, not scheduled.
-- **B4F-152**: open - the pause prompt's command refuses without `--feature`; logged, not scheduled.
-- **CI step for the stored-time suite**: open - committed locally on `ci-stored-time-step`; its push needs a login with
-  workflow permission and is the maintainer's.
+- **B4F-146 live, T031**: fixed-now - a closeout is listed as closed only on its approval; shown by this closeout, where `.specrew/closed-iterations.yml` stays unchanged until the maintainer approves.
+- **B4F-151**: deferred to beta5 - an approval form that cannot be read records nothing and tells the human nothing; graded critical at the retro; nothing false is recorded, and it is outside the beta4.1 gate.
+- **Fixtures added after sign-off**: deferred - `1509b896`, test data not read by a round; their suites pass and the maintainer's partial review signoff covers them.
+- **T029 live**: deferred to beta5 - B4F-131 and B4F-153, outside the beta4.1 gate (`keep the gate as ruled`, 2026-10-24).
+- **B4F-146 live, T032**: deferred to feature 202's closeout - its live test.
+- **Re-walk misses 3 to 7**: deferred - B4F-154 to B4F-157 and B5F-011, logged, not scheduled.
+- **B4F-152**: deferred - the pause prompt's command refuses without `--feature`; logged, not scheduled.
+- **CI step for the stored-time suite**: deferred - committed locally on `ci-stored-time-step`; its push needs a login with workflow permission and is the maintainer's.
 
 ## Notes
 

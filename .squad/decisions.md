@@ -1,5 +1,26 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-10-25 — Verdict: 202 iteration 003 gap ledger - every open item deferred except T031's live test
+
+- **Decision ID**: f202-i003-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-027, FR-028, FR-032, SC-011
+- **Affected Iteration**: specs\202-beta4-1-ux-stabilization\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-10-24T21:53:36Z
+- **Disposition**: The open items in iteration 003's review.md Gap Ledger, classified at the maintainer's typed
+  `classify the gap ledger as proposed` (2026-10-25), on the crew's proposal of the same day.
+  (1) B4F-151: beta5. Graded critical by the maintainer's rule of 2026-10-20 at the iteration 003 retro; nothing false
+  is recorded, and it is outside the beta4.1 gate.
+  (2) The fixtures added after review sign-off (`1509b896`): accepted as they are. Test data, their suites pass, and the
+  maintainer's partial review signoff covers them; listed as open until this closeout by the maintainer's instruction
+  at review sign-off.
+  (3) T029 on Copilot (B4F-131, B4F-153): beta5, outside the beta4.1 gate (`keep the gate as ruled`, 2026-10-24).
+  (4) B4F-146 live, T032: feature 202's closeout, its live test. T031 is fixed-now, shown by this closeout.
+  (5) The re-walk's other misses (B4F-154 to B4F-157, B5F-011) and B4F-152: logged, not scheduled.
+  (6) The CI step for the stored-time suite: committed locally on `ci-stored-time-step`; its push needs a login with
+  workflow permission and is the maintainer's.
+
 ### 2026-10-21 — Verdict: 202 iteration 002 gap ledger - every open item deferred, and the re-walk fixes moved to iteration 003
 
 - **Decision ID**: f202-i002-gap-ledger-deferrals
