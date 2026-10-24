@@ -5716,6 +5716,20 @@ choose the reviewer: two decisions in one question.
 **Fix direction:** ask the reviewer choice as its own question.
 **Disposition:** logged, not scheduled.
 
+## B4F-158 - A CI LINT FAILURE ON A RECORD IN AN ORDINARY LIFECYCLE STATE HIDES THE DETERMINISTIC GATE (candidate)
+
+**Observed:** 2026-10-24, the 202 iteration 003 retro. Specrew CI failed on all 16 pushes from iteration 002's closeout
+to the iteration 003 review sign-off. Fifteen failures came from records or deployed copies in a state the lifecycle
+passes through: `state.md` written after the first code commit, `review.md` committed before its stop moved the plan
+status, an open gap ledger before closeout, a closed iteration in a push's scope, and the deployed copies differing from
+the sources between the review and the runtime refresh. One was a test (`co-review-service.Tests.ps1`, the owner-handoff
+case, at `2ea34f92`). The deterministic gate `needs: lint`, so since that push it has not run.
+**Effect:** red becomes the normal colour, nobody reads it, and a real test failure is hidden behind a record-order
+failure.
+**Fix direction:** the deterministic gate runs whether or not lint passes; the validator in CI accepts the states the
+lifecycle passes through, or the lifecycle writes its records in the order CI accepts.
+**Disposition:** logged at the iteration 003 retro; for the beta5 plan.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
