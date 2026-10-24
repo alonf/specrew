@@ -4,7 +4,7 @@
 
 ## Summary
 
-**Total drift events**: 2 (DRIFT-001, DRIFT-002)
+**Total drift events**: 3 (DRIFT-001 to DRIFT-003)
 
 ## Events
 
@@ -35,3 +35,18 @@
   crew ran the validator only after committing.
 - **Class closure**: NONE - the instruction that caused it sits in a closed record, which cannot be edited; the crew
   runs the validator before committing any record outside the active iteration.
+
+### DRIFT-003 — the review-signoff stop was skipped, and the engine's sign-off was committed under its name (resolved)
+
+- **Observed**: 2026-10-24, by the maintainer, when the crew offered to go on with the retro: iteration 003's last
+  approved stage was still before-implement. Iterations 001 and 002 each had a review record and a review-signoff stop
+  before the retro. On 2026-10-22 the crew committed the review engine's sign-off (the maintainer's `stop the review
+  here`) as `boundary(review-signoff)` (`9881b2d9`), with no review record and no stage approval, and treated the stage
+  as done.
+- **Requirement citation**: each stage boundary is approved by the human before the next starts; review-signoff is a
+  human-judgment boundary in the project's policy.
+- **Resolution**: `review.md` written, the review-signoff boundary synced, and the stop presented to the maintainer.
+  `9881b2d9`'s message stays as it is, because the branch is pushed; this entry and `review.md` say what it was.
+- **Class closure**: NONE - the engine's sign-off and the stage approval share a name, and nothing tells the crew the
+  first is not the second; the crew now checks the last approved stage in `.specrew/start-context.json` before
+  starting the next stage.
