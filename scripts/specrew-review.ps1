@@ -20,6 +20,27 @@ param(
     [string]$Model,
     [Alias('authorization-ref')]
     [string]$AuthorizationRef,
+    # T014. APPROVING A ROUND IS A DECISION, NOT AN IDENTIFIER.
+    #
+    # --authorization-ref accepts any non-empty string, nothing validates it, and its one real property
+    # - reuse the same string and no new approval is spent - was never explained anywhere a consumer
+    # reads. So there was nothing to know AND no way to discover there was nothing to know. The
+    # maintainer, holding full context, could not work out what to type. The system was asking a human
+    # to produce an identifier when what it needed was approval.
+    #
+    # This takes no value. The human's input is the APPROVAL; the identifier is filing, and filing is
+    # the system's job. --authorization-ref stays for scripts and for anyone who wants to name their
+    # own: a working interface is not removed to add a friendlier one.
+    [Alias('approve-round')]
+    [switch]$ApproveRound,
+    # FR-003/FR-005. The human's numbered reply to a paused round, as the ONLY way a further round is
+    # authorized. Accepts the number shown on the surface or the choice name behind it, because the
+    # surface shows numbers and a consumer reading a transcript later has only the words.
+    [Alias('pause-choice')]
+    [ValidateSet('1', '2', '3', 'fix-and-continue', 'stop-here', 'abandon')]
+    [string]$PauseChoice,
+    [Alias('pause-rationale')]
+    [string]$PauseRationale,
     [Alias('code-writer-host')]
     [string]$CodeWriterHost,
     [Alias('fallback-policy')]
@@ -81,6 +102,34 @@ if ($ListHosts) {
     return
 }
 
+function Assert-SpecrewAuthorityMachineryReady {
+    # W64 / round-22 finding (DRIFT-199-I001-133): AUTHORITY MACHINERY FAILS CLOSED.
+    #
+    # Every authority-bearing path loaded the store inside a swallowed catch and then ran its gate
+    # only if the functions "happened to exist". A missing, unreadable or broken
+    # HumanAuthorityStore therefore did not refuse - it DISABLED the gate, and an agent-supplied
+    # flag could replenish spend, launch a paid round, abandon a campaign, or complete sign-off with
+    # AuthorizedBy='human' and no captured human anywhere. The generalization of round 21: there one
+    # path could not load the store; here none of them cared whether it loaded.
+    #
+    # Called AFTER the site's own dot-source (which must stay at script scope - a dot-source inside a
+    # function dies with the function). Checks only; refuses in consumer language and exits.
+    param(
+        [Parameter(Mandatory)][string[]]$RequiredFunctions,
+        [Parameter(Mandatory)][string]$Action
+    )
+    $missing = @($RequiredFunctions | Where-Object { -not (Get-Command -Name $_ -ErrorAction SilentlyContinue) })
+    if ($missing.Count -eq 0) { return }
+    Write-Host ('Specrew cannot check whether the human authorized this, so it will not {0}.' -f $Action) -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host 'Its authority machinery did not load, which means every check that protects the human''s decisions is unavailable right now. Rather than continue without them, Specrew stops here.'
+    Write-Host 'Nothing was spent and nothing was recorded.'
+    Write-Host ''
+    Write-Host 'This is an installation problem, not something you did. Repair it with:  specrew update --project-path <this project>' -ForegroundColor Cyan
+    [Console]::Error.WriteLine('[specrew-review] WARN AUTHORITY_MACHINERY_UNAVAILABLE ' + ($missing -join ','))
+    exit 1
+}
+
 function Show-Usage {
     @'
 specrew review - run live continuous co-review or replay persisted reviewer evidence
@@ -117,7 +166,16 @@ Options:
   --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
   --model <model>        Requested reviewer model id for the host
   --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
-  --authorization-ref    Human-approved authorization reference for the requested reviewer
+  --approve-round        Approve one review round (the typed reply `approved for review round` in a
+                         conversation is the same approval, given as a normal chat message - a reply
+                         inside a question UI or picker is not captured). Specrew records it and
+                         mints the reference itself - there is no value to invent
+  --pause-choice <1|2|3> Carry a decided pause answer to Specrew (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign):
+                         1 run another round, 2 stop here and complete sign-off, 3 abandon
+  --pause-rationale      Optional note recorded with a stop-here answer
+  --authorization-ref    Your own authorization label. With --host and without --live, this
+                         only records reviewer setup and needs no --ack-reason or review spend.
+                         When it authorizes a live round, --ack-reason is required.
   --code-writer-host     Host that produced the implementation, used to prefer an independent reviewer
   --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
   --allowed-path         Path scope the reviewer may inspect; repeatable
@@ -126,7 +184,10 @@ Options:
   --reviewer-config      JSON host catalog override for live review
   --schema-root          Reviewer contract schema directory override
   --run-root             External temporary workspace-root override (campaign snapshots must stay outside the repository)
-  --timeout-seconds      Reviewer host timeout in seconds (default: 120)
+  --timeout-seconds      Reviewer host timeout in seconds. Default: resolved per run -
+                         co_review_timeout_seconds in .specrew\config.yml, else the
+                         reviewer host's catalog default (codex/antigravity 900,
+                         claude 600, copilot 300), else a 600-second floor
   --preserve-debug       Keep temporary request-bundle workspaces after live review
   --reconcile-run        Resume one interrupted campaign run without invoking a provider
   --quiet                Emit only the stable machine-parseable digest line
@@ -165,6 +226,13 @@ function Convert-UnixStyleArguments {
         Model           = $null
         Effort          = $null
         AuthorizationRef = $null
+        # Declared here, not only assigned when supplied. Reading an undeclared key off this object
+        # under Set-StrictMode throws, and the throw surfaces as a generic renderer error that masks
+        # whatever the command was actually reporting - which is exactly how three unrelated public
+        # command tests went red on a pause field they never use.
+        PauseChoice     = $null
+        PauseRationale  = $null
+        ApproveRound    = $false
         CodeWriterHost  = $null
         TimeoutSeconds  = 0
         FallbackPolicy  = 'none'
@@ -257,6 +325,7 @@ function Convert-UnixStyleArguments {
             '^--json$' { $result.Json = $true }
             '^--open$' { $result.Open = $true }
             '^--live$' { $result.Live = $true }
+            '^--approve-round$' { $result.ApproveRound = $true }
             '^--ack-degraded$' {
                 $index++
                 if ($index -ge $CliArgs.Count) { throw '--ack-degraded requires a run-id value.' }
@@ -543,12 +612,32 @@ function Get-ReviewBoundarySyncWarning {
 # no-feature project. ONLY on explicit --host + --authorization-ref (the human-provenance anchor).
 $authHostName = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } elseif (-not [string]::IsNullOrWhiteSpace($HostName)) { $HostName } else { '' }
 $authRefValue = $AuthorizationRef; $authModelValue = $Model
+$authProjectPathInput = $ProjectPath
 $cliArgList = @($CliArgs)
 for ($ai = 0; $ai -lt $cliArgList.Count; $ai++) {
-    switch ([string]$cliArgList[$ai]) {
-        '--host' { if (($ai + 1) -lt $cliArgList.Count) { $authHostName = [string]$cliArgList[$ai + 1] } }
-        '--authorization-ref' { if (($ai + 1) -lt $cliArgList.Count) { $authRefValue = [string]$cliArgList[$ai + 1] } }
-        '--model' { if (($ai + 1) -lt $cliArgList.Count) { $authModelValue = [string]$cliArgList[$ai + 1] } }
+    $earlyArgument = [string]$cliArgList[$ai]
+    switch -Regex ($earlyArgument) {
+        '^--(?<name>project-path|host|authorization-ref|model)=(?<value>.+)$' {
+            switch ($Matches['name']) {
+                'project-path' { $authProjectPathInput = [string]$Matches['value'] }
+                'host' { $authHostName = [string]$Matches['value'] }
+                'authorization-ref' { $authRefValue = [string]$Matches['value'] }
+                'model' { $authModelValue = [string]$Matches['value'] }
+            }
+        }
+        '^--(?<name>project-path|host|authorization-ref|model)$' {
+            if (($ai + 1) -ge $cliArgList.Count -or ([string]$cliArgList[$ai + 1]).StartsWith('--')) {
+                throw ("--{0} requires a value." -f $Matches['name'])
+            }
+            $ai++
+            $earlyValue = [string]$cliArgList[$ai]
+            switch ($Matches['name']) {
+                'project-path' { $authProjectPathInput = $earlyValue }
+                'host' { $authHostName = $earlyValue }
+                'authorization-ref' { $authRefValue = $earlyValue }
+                'model' { $authModelValue = $earlyValue }
+            }
+        }
     }
 }
 function Set-ReviewerHostRowField {
@@ -570,7 +659,7 @@ if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNu
     $authError = $null
     $reviewerHostsPath = $null
     try {
-        $authProjectPath = if ([string]::IsNullOrWhiteSpace($ProjectPath)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $ProjectPath -ErrorAction Stop).Path }
+        $authProjectPath = if ([string]::IsNullOrWhiteSpace($authProjectPathInput)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $authProjectPathInput -ErrorAction Stop).Path }
         . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')   # for New-ContinuousCoReviewDefaultReviewerHostConfig
         $authConfig = Get-LiveReviewConfiguration -HostName $authHostName -Model $authModelValue -AuthorizationRef $authRefValue -TimeoutSeconds 0 -FallbackPolicy 'none'
         if ($null -ne $authConfig) {
@@ -681,6 +770,9 @@ $boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHo
 if (-not [string]::IsNullOrWhiteSpace($boundHost)) { $parsedArgs.Host = $boundHost }
 if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
 if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
+if ($ApproveRound.IsPresent) { $parsedArgs.ApproveRound = $true }
+if (-not [string]::IsNullOrWhiteSpace($PauseChoice)) { $parsedArgs.PauseChoice = $PauseChoice }
+if (-not [string]::IsNullOrWhiteSpace($PauseRationale)) { $parsedArgs.PauseRationale = $PauseRationale }
 if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $parsedArgs.CodeWriterHost = $CodeWriterHost }
 if (-not [string]::IsNullOrWhiteSpace($FallbackPolicy)) { $parsedArgs.FallbackPolicy = $FallbackPolicy }
 if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.ReviewerConfigPath = $ReviewerConfigPath }
@@ -800,6 +892,153 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
             throw ("Review authority is unavailable ({0}); neither legacy nor campaign remediation may mutate review state." -f $remediationAuthority.reason)
         }
         if ([bool]$remediationAuthority.campaign_authority_enabled) {
+            # ALLOWANCE-RESET IS THE CEILING'S OWN ADVERTISED WAY OUT, and campaign authority used to
+            # reject it - so the exhausted-budget message named a command that could not run, and a
+            # consumer who reached the ceiling was permanently wedged. Round 4 found this by RUNNING
+            # into the ceiling rather than around it.
+            #
+            # It does NOT create signoff authority, which is why the old blanket refusal existed and why
+            # that reasoning was right about override-block. It creates ROUND allowance: permission to
+            # run more reviews, not permission to skip one. Those are different powers and only one of
+            # them is being granted here.
+            #
+            # It still demands explicit human evidence - a reason, in the human's own words - because
+            # lifting a spend limit is exactly the act that must never be implicit.
+            if ([string]$parsedArgs.Remediate -ceq 'allowance-reset') {
+                # W50 rider: replenishing spend authority is an authority act - the W44 gap one door
+                # down. In an agent session the human's typed `approved for allowance reset` is the
+                # authority this command consumes; a human at their own terminal stays self-evident.
+                $humanAuthorityStorePathReset = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
+                if ((Test-Path -LiteralPath $humanAuthorityStorePathReset -PathType Leaf) -and
+                    -not (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { . $humanAuthorityStorePathReset } catch { $null = $_ }
+                }
+                Assert-SpecrewAuthorityMachineryReady -Action 'replenish the review rounds' `
+                    -RequiredFunctions @(
+                        'Get-SpecrewAllowanceResetAuthorization',
+                        'Complete-SpecrewAllowanceResetAuthorization',
+                        'Get-SpecrewLandedResetForAllowanceCapture',
+                        'Test-SpecrewInsideAgentSession')
+                $capturedAllowanceReset = $null
+                # Round-22: an UNKNOWN session context reads as an agent session - the answer that
+                # keeps the human's approval required. Assuming "not an agent" removes the
+                # requirement, which is the fail-open direction on an authority path.
+                $insideAgentSessionReset = $true
+                try { $insideAgentSessionReset = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSessionReset = $true }
+                # SPECREW-AUTHORITY-CONSUMER: allowance-reset
+                if (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue) {
+                    try { $capturedAllowanceReset = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedAllowanceReset = $null }
+                }
+                # W66 / round-24 finding (DRIFT-199-I001-138): DERIVED REUSE GUARD, mirroring W61.
+                #
+                # If a budget reset already landed at or after this capture was observed, then THIS
+                # capture is what paid for it - nothing else could have authorized it - even when the
+                # stamp that should have recorded that never got written. Retire it here rather than
+                # replenish a second time from one human decision. A freshly typed phrase is a new
+                # capture with a later timestamp, so the recovery the refusal below prints still works;
+                # wedging it would repeat the round-19 mistake one door down.
+                if ($null -ne $capturedAllowanceReset -and
+                    (Get-Command -Name 'Get-SpecrewLandedResetForAllowanceCapture' -ErrorAction SilentlyContinue)) {
+                    $guardIdentity = $null
+                    try { $guardIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId) } catch { $guardIdentity = $null }
+                    if ($null -ne $guardIdentity) {
+                        $landedReset = $null
+                        try {
+                            $landedReset = Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $resolvedProjectPath `
+                                -CampaignId ([string]$guardIdentity.campaign_id) -CaptureObservedAt $capturedAllowanceReset.observed_at
+                        }
+                        catch { $landedReset = $null }
+                        if ($null -ne $landedReset) {
+                            $landedRef = if ($landedReset.PSObject.Properties['reset_id']) { [string]$landedReset.reset_id } else { 'already-landed' }
+                            try { Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference $landedRef | Out-Null } catch { $null = $_ }
+                            $capturedAllowanceReset = $null
+                        }
+                    }
+                }
+                if ($insideAgentSessionReset -and $null -eq $capturedAllowanceReset) {
+                    Write-Host 'Replenishing the review rounds is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
+                    Write-Host ''
+                    # W54: a phrase that arrived through a question UI was SEEN and correctly refused
+                    # - say so, or the agent re-asks through the same tool and the human answers the
+                    # same question again (measured: three asks for one decision on the walk).
+                    if ((Get-Command -Name 'Get-SpecrewQuestionUiPhraseObservation' -ErrorAction SilentlyContinue) -and
+                        $null -ne (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $resolvedProjectPath)) {
+                        Write-Host 'The conversation shows the phrase arriving from a question UI or picker. Those replies are not captured, by design: only a typed chat turn is authority. Ask the human to type it in the chat.' -ForegroundColor Yellow
+                        Write-Host ''
+                    }
+                    Write-Host 'Ask them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host '  approved for allowance reset' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host 'Once they have typed it, run this same command again with their reason in --ack-reason.'
+                    exit 1
+                }
+                if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+                    Write-Host 'Topping up the review rounds needs a reason recorded with it.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host 'Their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it, run:  specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
+                    exit 1
+                }
+                $resetIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                $resetActor = (& git -C $resolvedProjectPath config user.name 2>$null)
+                if ([string]::IsNullOrWhiteSpace([string]$resetActor)) { $resetActor = [string]$env:USERNAME }
+                if ([string]::IsNullOrWhiteSpace([string]$resetActor)) { $resetActor = 'human' }
+                $resetFact = New-ReviewCampaignBudgetResetFact -CampaignId $resetIdentity.campaign_id `
+                    -AuthorizedBy ([string]$resetActor) -Reason ([string]$parsedArgs.AckReason) `
+                    -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+                Write-ReviewCampaignBudgetResetFact -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -Fact $resetFact | Out-Null
+                # THE RESET MUST ALSO UNWEDGE THE ROUND IT WAS CALLED FOR. Round 5, blocking: recording
+                # the fact alone left the exhausted round's pause UNANSWERED, so the very next command -
+                # the one this message names - was refused with `pause-decision-pending`, and the
+                # resumed surface still omitted option 1 because its immutable pause fact says 4 of 4.
+                # The advertised recovery stayed wedged unless the consumer guessed an extra step nobody
+                # offered. Topping up the allowance IS the choice to continue, so the outstanding pause
+                # is answered as `fix-and-continue` in the same act.
+                $resetStore = Join-Path $resolvedProjectPath '.specrew/review/authority'
+                $outstandingAtReset = Get-ReviewCampaignPendingPause -StoreRoot $resetStore -CampaignId $resetIdentity.campaign_id
+                if ($null -ne $outstandingAtReset) {
+                    Write-ReviewCampaignPauseDecisionFact -StoreRoot $resetStore -Fact (
+                        New-ReviewCampaignPauseDecisionFact -CampaignId $resetIdentity.campaign_id `
+                            -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingAtReset -Name 'run_id')) `
+                            -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
+                }
+                # Feature 202 iteration 002, T018 (FR-029; B4F-125 b): A RESET TYPED IN ORDER TO RUN A ROUND AUTHORIZES IT.
+                # A round waiting on the spent allowance is what this reset was typed for, so the human's one typed
+                # approval also becomes that round's approval - the same text, evidence and time, marked as coming from
+                # this reset. With no round waiting, the reset only tops up the allowance, and a round still needs its own.
+                $resetAuthorizesRound = $false
+                if ($null -ne $outstandingAtReset -and $null -ne $capturedAllowanceReset -and (Get-Command -Name 'Write-SpecrewReviewRoundApprovalFromReset' -ErrorAction SilentlyContinue)) { try { $resetAuthorizesRound = ($null -ne (Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $resolvedProjectPath -ResetApproval $capturedAllowanceReset -ResetId ([string]$resetFact.reset_id))) } catch { $resetAuthorizesRound = $false } }
+                # The outcome is READ, not discarded: a swallowed failure here is what let one approval
+                # replenish the allowance twice. The reset itself has already landed and stands, so this
+                # is reported rather than refused - and the derived guard above is what makes the
+                # unstamped capture harmless.
+                $resetConsumed = $null
+                if ($null -ne $capturedAllowanceReset -and (Get-Command -Name 'Complete-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { $resetConsumed = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference ([string]$resetFact.reset_id) } catch { $resetConsumed = $null }
+                }
+                $resetStampLost = ($null -ne $capturedAllowanceReset -and ($null -eq $resetConsumed -or -not [bool]$resetConsumed.consumed))
+                if ($resetStampLost) {
+                    $resetStampReason = if ($null -ne $resetConsumed) { [string]$resetConsumed.reason } else { 'no-result' }
+                    [Console]::Error.WriteLine('[specrew-review] WARN ALLOWANCE_RESET_NOT_STAMPED ' + $resetStampReason)
+                }
+                if ($Json) {
+                    $resetFact | Add-Member -NotePropertyName 'approval_stamped' -NotePropertyValue (-not $resetStampLost) -Force
+                    $resetFact | ConvertTo-Json -Depth 10; exit 0
+                }
+                Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
+                Write-Host ''
+                if ($resetStampLost) {
+                    Write-Host 'One thing to know: Specrew could not mark your approval as used. The top-up itself is recorded and stands.' -ForegroundColor Yellow
+                    Write-Host 'That approval cannot be used a second time - the top-up already on record is what it paid for - so type the phrase again if you want another one later.'
+                    Write-Host ''
+                }
+                if ($resetAuthorizesRound) {
+                    Write-Host 'Their typed `approved for allowance reset` also counts as `approved for review round` for the round that was waiting on the allowance, so no second approval is needed. Run it with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                    exit 0
+                }
+                Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
+                exit 0
+            }
             if ([string]$parsedArgs.Remediate -cne 'override-block') { throw "Campaign remediation '$($parsedArgs.Remediate)' does not create signoff authority; use a new explicitly authorized run." }
             if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId) -or [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                 throw 'Campaign override-block requires --run-id and --ack-reason; the disposition is never implicit.'
@@ -860,6 +1099,174 @@ if ($Live) {
             $campaignHost = [string]$parsedArgs.Host
             $campaignModel = [string]$parsedArgs.Model
             $campaignGrantAuthorizationRef = [string]$parsedArgs.AuthorizationRef
+
+            # CHOOSING "RUN ANOTHER ROUND" IS APPROVING ONE (FR-003, 2026-08-17 walk).
+            #
+            # The pause menu offers `1. Fix these and run another review round`, and the surface tells the
+            # human to answer it with --pause-choice. That answer is the same act --approve-round names,
+            # arrived at from the menu instead of the flag - the file already says so: approving a round is
+            # a decision, and the identifier is filing.
+            #
+            # Without this, option 1 could not do what it offered. The answer passed the round-BUDGET check
+            # (which had room), was written as an immutable decision, and the run then died on a spent
+            # ALLOWANCE - a different counter with no check on this path - reporting the bare token
+            # `allowance-exhausted` with no sentence and no next action. Measured three times in one
+            # session; the third consumed the answer and left the campaign with no pending pause AND no
+            # round run, which is precisely the wedge the stop-here ordering below exists to prevent.
+            #
+            # The round budget still caps this: fix-and-continue is refused below when the budget is spent,
+            # before any answer is consumed. This makes the offered option deliverable, not unbounded.
+            $roundApprovalRequested = ([bool]$parsedArgs.ApproveRound -or
+                ([string]$parsedArgs.PauseChoice -cin @('1', 'fix-and-continue')))
+
+            # W44 (maintainer ruling, 2026-08-22): --approve-round NO LONGER TREATS BARE INVOCATION AS
+            # APPROVAL. The human's role in this system is authorization, not operation - boundary
+            # verdicts, partial signoff and workshop repair are all typed phrases captured from the
+            # conversation, with the agent operating the machinery afterwards. Round approval alone
+            # demanded the human run a CLI command, and telling a human in a conversation to go run
+            # `specrew review --live --approve-round` failed as UX on day one (the bash-PATH seam).
+            #
+            # The authority is now the CAPTURED HUMAN PHRASE (`approved for review round`), recorded by
+            # the prompt hooks the way boundary verdicts are. An agent invoking this flag with a captured
+            # approval is legitimate and the round runs; an agent invoking it bare is refused. A human
+            # invoking it from their own terminal - outside any agent session - is still self-evidently
+            # authorized: the invocation IS the approving act, performed by the human. The !-prefix case
+            # (the human running it from inside a session) is covered by the capture recognizing the
+            # human's own typed invocation as the approving act.
+            #
+            # GOVERNANCE, not security: an agent holding the filesystem could fabricate the capture file,
+            # exactly as it could fabricate verdict_history. The control makes the honest path the easy
+            # path and turns a quiet liberty into a deliberate, auditable act.
+            # EXTENDED TO THE PAUSE MENU (maintainer, 2026-08-22): answering the pause with "run another
+            # round" IS approving a round - W21 established that for the mint, and the same act needs the
+            # same authority. So the gate covers the WHOLE approval predicate, not just the flag, and the
+            # general property becomes checkable: no code path mints round authority without either a
+            # captured phrase or the human's own invocation. Choices 2 and 3 spend nothing, never enter
+            # this predicate, and are untouched - a human declining to spend must never be asked to
+            # authorize the spend they are declining.
+            $capturedRoundApproval = $null
+            if ($roundApprovalRequested) {
+                $humanAuthorityStorePath = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
+                if ((Test-Path -LiteralPath $humanAuthorityStorePath -PathType Leaf) -and
+                    -not (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { . $humanAuthorityStorePath } catch { $null = $_ }
+                }
+                # Round-23 (DRIFT-199-I001-134): EVERY function this path relies on, not just the
+                # two its first gate calls. A partially deployed or truncated older store keeps the
+                # readable-capture pair and loses the mint stamp, the ownership join, the entitlement
+                # resolver and the consumption - so the reviewer launches, the approval is never
+                # linked and never retired, and a later invocation spends again. A control set that
+                # names less than its own path protects less than its own path.
+                Assert-SpecrewAuthorityMachineryReady -Action 'approve a review round' `
+                    -RequiredFunctions @(
+                        'Get-SpecrewReviewRoundApprovalAuthorization',
+                        'Test-SpecrewInsideAgentSession',
+                        'Set-SpecrewReviewRoundApprovalMintedRef',
+                        'Get-SpecrewDeliveredRoundForMintedRef',
+                        'Complete-SpecrewReviewRoundApprovalAuthorization',
+                        'Resolve-SpecrewRoundEntitlementOutcome',
+                        'Write-SpecrewRoundDeliveryJournal',
+                        'Write-SpecrewUnconsumedDeliveryFact',
+                        'Get-SpecrewUnconsumedDeliveryFact',
+                        'Clear-SpecrewUnconsumedDeliveryFact')
+                # Round-22: unknown context reads as an agent session (see the reset path above).
+                $insideAgentSession = $true
+                try { $insideAgentSession = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSession = $true }
+                # SPECREW-AUTHORITY-CONSUMER: review-round-approval
+                if (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue) {
+                    try { $capturedRoundApproval = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedRoundApproval = $null }
+                }
+                if ($insideAgentSession -and $null -eq $capturedRoundApproval) {
+                    Write-Host 'Approving a review round is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
+                    Write-Host ''
+                    # W54: name the actual cause when the phrase was seen arriving through a picker.
+                    if ((Get-Command -Name 'Get-SpecrewQuestionUiPhraseObservation' -ErrorAction SilentlyContinue) -and
+                        $null -ne (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $resolvedProjectPath)) {
+                        Write-Host 'The conversation shows the phrase arriving from a question UI or picker. Those replies are not captured, by design: only a typed chat turn is authority. Ask the human to type it in the chat.' -ForegroundColor Yellow
+                        Write-Host ''
+                    }
+                    Write-Host 'Ask them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host '  approved for review round' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
+                    Write-Host 'They can also review the artifacts themselves instead of spending a round.'
+                    exit 1
+                }
+            }
+
+            # AN AUTHORIZATION THE HUMAN DID NOT GIVE FOR *THIS* ACT MUST NOT LOOK LIKE ONE THEY DID.
+            #
+            # Measured on both dogfood runs. Each agent passed the reviewer-HOST authorization reference
+            # minted during the design workshop as the campaign GRANT reference:
+            #
+            #   mdlink           workshop-001-md-link-checker        -> slots=1 kind=human
+            #   mdlinkValidator  workshop-001-markdown-link-checker  -> slots=1 kind=human
+            #
+            # The human approved WHICH HOST MAY REVIEW. The ledger then recorded that a human authorized
+            # THIS SPEND against THIS CODE. Any string reaching --authorization-ref became a kind=human
+            # grant and nothing checked what it had been minted for.
+            #
+            # Same rule as the authorization writer, one layer over: --approve-round is the sanctioned
+            # path and needs no declaration, because the human performed the approving act at the moment
+            # of the run. A hand-supplied reference is out-of-band by definition - the human may well
+            # have approved something, but not necessarily THIS round - so it must be declared, exactly
+            # as an agent-invoked boundary authorization must.
+            # VALIDATION BEFORE AUTHORIZATION (maintainer ruling 2026-08-12). When a request is BOTH
+            # malformed and unauthorized, report the MALFORMATION first: it is the thing the human can
+            # fix in the next keystroke, while getting authorization may involve another person, another
+            # session, or a decision they have to think about. Reporting the permission failure first
+            # sends them off to obtain approval and then straight into the validation error they could
+            # have fixed immediately - the same cost as naming the wrong one of three host conditions.
+            #
+            # The usual counter-argument (do not reveal request shape to an unauthorized caller) is a
+            # network-service concern; this is a local CLI whose caller already holds the filesystem.
+            #
+            # So the declaration refusal is SKIPPED when the request will not survive its own validation:
+            # the command below reports the malformation, and the human meets the authorization question
+            # only once the request is well-formed.
+            $requestWellFormed = $true
+            try {
+                $designPrecheck = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $resolvedProjectPath `
+                    -DesignContextFiles @($parsedArgs.DesignContextRefs) -FeatureId ([string]$FeatureId)
+                $requestWellFormed = [bool]$designPrecheck.valid
+            }
+            catch { $requestWellFormed = $true }
+
+            if ($requestWellFormed -and
+                -not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and
+                [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+                Write-Host 'That authorization reference was not created by approving this review round.' -ForegroundColor Yellow
+                Write-Host ''
+                Write-Host 'If you want to approve a round now, use:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
+                Write-Host ''
+                Write-Host 'If you are deliberately supplying your own label - a scripted run, or an approval you recorded elsewhere -'
+                Write-Host 'say what it is, and Specrew will record it as such rather than as a round you approved here:'
+                Write-Host '  specrew review --live --authorization-ref external-approval-2026-08-13 --ack-reason "where this approval came from"' -ForegroundColor Cyan
+                exit 1
+            }
+            # PRECEDENCE: an explicit --authorization-ref wins, then --approve-round, then whatever the
+            # project has on file.
+            #
+            # The config fallback must NOT pre-empt --approve-round, and the first version of T014 let
+            # it: the engine writes the last used reference back into .specrew/reviewer-hosts.json, so
+            # after a round that row holds a SPENT reference. Reusing it mints no new slot, and
+            # --approve-round - an explicit human act, performed deliberately - would have silently done
+            # nothing. Found by preparing to run the next round in this very repo, where the row already
+            # read `beta3-i001-signoff-round-3`.
+            #
+            # A RECORDED VALUE MUST NEVER OUTRANK AN ACT PERFORMED NOW. That is the same shape as the
+            # consent gate: what is on file describes the past, and the human is deciding in the present.
+            # ONE GUARD WAS DOING TWO JOBS, and only one of them was the point (2026-08-17 walk).
+            # Skipping this block under --approve-round correctly stops a SPENT reference from
+            # pre-empting a fresh approval. But this block is ALSO the only place the reviewer HOST is
+            # resolved from .specrew/reviewer-hosts.json, so `--live --approve-round` reached the harness
+            # with no host at all and died as `unselected-harness` - whose consumer text then asserts
+            # "no reviewer has been chosen for this project yet" at a project that had one configured,
+            # authorized, and demonstrably running clean rounds minutes earlier. Seven and a half minutes
+            # of preflight to be told to fix something that was not broken.
+            # Resolve the HOST always; take the REFERENCE from the file only when no approval is being
+            # performed now. The property the guard protects is unchanged.
             if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
                 $configuredReviewer = Resolve-ContinuousCoReviewConfiguredReviewerCandidate -RepoRoot $resolvedProjectPath `
                     -ReviewerConfigPath ([string]$parsedArgs.ReviewerConfigPath) -RequestedHost $campaignHost `
@@ -873,7 +1280,211 @@ if ($Live) {
                     # production-harness-model-override-unsupported, so a project that recorded a
                     # reviewer model - the state `--host X --authorization-ref Y` itself writes - could
                     # not run a campaign review at all. Only an explicit --model request is an override.
-                    $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
+                    #
+                    # The REFERENCE half keeps the original narrow guard: what is on file describes the
+                    # past, and --approve-round is the human deciding in the present, so a recorded (and
+                    # possibly already spent) reference must never outrank it. Only the HOST is read
+                    # unconditionally above; approving a round does not re-ask which reviewer to use.
+                    if (-not $roundApprovalRequested) {
+                        $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
+                    }
+                }
+            }
+
+            # T014: --approve-round MINTS THE REFERENCE. The human supplied the decision; the string is
+            # filing, and filing is the system's job.
+            #
+            # Derived from the campaign and the round position rather than from a clock or a random
+            # value, so it is STABLE for one round: re-running the same approved round reuses the same
+            # one-slot grant instead of minting a second. That is the property --authorization-ref
+            # always had and never explained - here it is a consequence of how the string is built,
+            # which nobody has to be told.
+            #
+            # An explicit --authorization-ref still wins, untouched.
+            $approvalMinted = $false
+            # Round-17 finding (DRIFT-199-I001-127): FAIL CLOSED ON A DELIVERED ROUND THAT WAS NEVER
+            # MARKED PAID. A consumption failure after delivery leaves the capture reusable; without
+            # this gate the next invocation mints a new round-numbered grant and spends a second paid
+            # review on one human approval. Refusing here costs a manual step; not refusing costs a
+            # round the human never authorized.
+            if ($roundApprovalRequested -and (Get-Command -Name 'Get-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue)) {
+                $unconsumedDelivery = $null
+                try { $unconsumedDelivery = Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath } catch { $unconsumedDelivery = $null }
+                if ($null -ne $unconsumedDelivery) {
+                    Write-Host 'A review already ran on this approval, and Specrew could not record that it was used.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host ('That review was {0}, recorded as {1}.' -f [string]$unconsumedDelivery.run_id, [string]$unconsumedDelivery.authorization_ref)
+                    Write-Host 'Starting another one now would spend a second review on the same approval, which the human did not give.'
+                    Write-Host ''
+                    Write-Host ('The unresolved record is at: {0}' -f (Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $resolvedProjectPath))
+                    Write-Host 'Once you have checked that the earlier review was the one you meant, delete that file and run this again.'
+                    exit 1
+                }
+            }
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and $roundApprovalRequested) {
+                # W50: VIABILITY BEFORE SPEND. On the walk this resolution succeeded, the capture was
+                # stamped spent, and the invocation then crashed downstream - the human's approval was
+                # consumed by an invocation that could never run, and the one-capture-one-round refusal
+                # then locked them out. Resolution failures now refuse in consumer language, and the
+                # entitlement is untouched (consumption moved to DELIVERY, below).
+                $approvalIdentity = $null
+                try {
+                    $approvalIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath `
+                        -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                }
+                catch {
+                    Write-Host $_.Exception.Message -ForegroundColor Yellow
+                    if ($null -ne $capturedRoundApproval) {
+                        Write-Host ''
+                        Write-Host 'The human''s typed approval was NOT spent - nothing ran. Once the feature is named, run this again; their approval is still standing.' -ForegroundColor Cyan
+                    }
+                    exit 1
+                }
+                # THE ROUND NUMBER IS ROUNDS ALREADY RUN, NOT APPROVALS ALREADY MINTED.
+                #
+                # The first version counted grants, so approving the same round twice minted a SECOND
+                # approval - destroying the very property this was meant to make automatic. Counting
+                # INVOKED rounds keeps the reference stable until a round actually runs, so re-approving
+                # before running reuses the one already recorded. Caught by the fixture that asserts
+                # approving twice leaves one grant.
+                #
+                # The invoked filter is FR-014's, reused so a round that never reached a reviewer does
+                # not advance the number - the same discriminator the continuation counter uses.
+                $roundsRun = 0
+                $campaignRunResults = @()
+                try {
+                    $campaignRunResults = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
+                            -CampaignId $approvalIdentity.campaign_id)
+                    $roundsRun = @($campaignRunResults |
+                            Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') }).Count
+                }
+                catch { $roundsRun = 0; $campaignRunResults = @() }
+                # Round-18 finding (DRIFT-199-I001-128): THE DOUBLE-SPEND BLOCK IS DERIVED, NOT
+                # MARKED. Round 17 wrote a marker when the consumption stamp failed - and that write
+                # fails for the same reason the stamp did, so once storage recovered nothing stopped
+                # the next mint. The store already published the answer before anything could fail:
+                # a DELIVERED run that started after this capture was observed IS the round it paid
+                # for. Unparseable evidence answers "no block" - a fabricated block would lock a
+                # human out of a round they own, which is worse than the marker it replaces.
+                # Round-19 (DRIFT-199-I001-130): OWNERSHIP IS JOINED, AND THE BLOCK SELF-HEALS.
+                #
+                # The time inference this replaces attributed ANY later completed round to a pending
+                # approval, and its printed recovery could not work: re-typing the phrase produced
+                # the same hash, the writer kept the old capture, and the block fired forever. Now
+                # the capture carries the ref it minted, ownership is a join through the grant, and
+                # a delivered round found for THIS capture RETIRES it - completing the consumption
+                # that failed earlier - so the human's next approval is a clean act rather than a
+                # wedge.
+                if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Get-SpecrewDeliveredRoundForMintedRef' -ErrorAction SilentlyContinue)) {
+                    $mintedRef = if ($capturedRoundApproval.PSObject.Properties['minted_ref']) { [string]$capturedRoundApproval.minted_ref } else { '' }
+                    $alreadyDelivered = $null
+                    if (-not [string]::IsNullOrWhiteSpace($mintedRef)) {
+                        try {
+                            $alreadyDelivered = Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $resolvedProjectPath `
+                                -CampaignId ([string]$approvalIdentity.campaign_id) -AuthorizationRef $mintedRef
+                        }
+                        catch { $alreadyDelivered = $null }
+                    }
+                    if ($null -ne $alreadyDelivered) {
+                        $retired = $null
+                        try { $retired = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $mintedRef }
+                        catch { $retired = $null }
+                        Write-Host 'That approval already paid for a review - Specrew found the completed round it authorized.' -ForegroundColor Yellow
+                        Write-Host ''
+                        Write-Host ('The review was {0}, recorded as {1}.' -f [string]$alreadyDelivered.run_id, $mintedRef)
+                        if ($null -ne $retired -and [bool]$retired.consumed) {
+                            if (Get-Command -Name 'Clear-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
+                                Clear-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath
+                            }
+                            Write-Host 'It is now marked as used, so nothing is left half-recorded.'
+                            Write-Host ''
+                            Write-Host 'If they want ANOTHER round, ask them for it: their typed reply `approved for review round`, as a normal chat message - a reply inside a question UI or picker is not captured. That reply will work.' -ForegroundColor Cyan
+                        }
+                        else {
+                            Write-Host 'Specrew could not mark it as used, so this storage problem is still present.' -ForegroundColor Yellow
+                            Write-Host ('The record is at: {0}' -f (Join-Path $resolvedProjectPath '.specrew/review/round-approval/pending-round-approval.json'))
+                            Write-Host 'Once that file can be written again, run this command and Specrew will finish recording it.'
+                        }
+                        exit 1
+                    }
+                }
+                $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
+                $approvalMinted = $true
+                # Round-19 (DRIFT-199-I001-130): record WHICH grant this capture became, so "has this
+                # approval already bought a round?" is a join rather than a guess from timestamps.
+                # Stamping the mint does not spend it - an undelivered attempt keeps the entitlement.
+                if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Set-SpecrewReviewRoundApprovalMintedRef' -ErrorAction SilentlyContinue)) {
+                    $mintStamp = $null
+                    try { $mintStamp = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef }
+                    catch { $mintStamp = $null }
+                    if ($null -eq $mintStamp -or -not [bool]$mintStamp.stamped) {
+                        # Round-24 finding (DRIFT-199-I001-138): REFUSE BEFORE LAUNCH, do not warn and
+                        # continue. Without a durable minted_ref the capture cannot be JOINED to the
+                        # run it pays for, so if the consumption write also fails - or the process dies
+                        # first - the next invocation mints a fresh round from the same human approval
+                        # and spends it twice. Reporting a broken link and then relying on it is the
+                        # report-don't-control shape this path has now been corrected for three times.
+                        $mintReason = if ($null -ne $mintStamp) { [string]$mintStamp.reason } else { 'no-result' }
+                        Write-Host 'Specrew could not record which round this approval is paying for, so it will not start the review.' -ForegroundColor Yellow
+                        Write-Host ''
+                        Write-Host 'Without that record it cannot tell later whether this approval was already used, and the safe assumption would cost the human a second review they never asked for.'
+                        Write-Host 'Nothing was spent: their approval is untouched and still standing.'
+                        Write-Host ''
+                        Write-Host ('What Specrew saw: {0}' -f $mintReason)
+                        Write-Host ('The record it could not write: {0}' -f (Join-Path $resolvedProjectPath '.specrew/review/round-approval/pending-round-approval.json'))
+                        Write-Host 'Once that file can be written again, run this command and the round starts normally.'
+                        [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_MINT_NOT_RECORDED ' + $mintReason)
+                        exit 1
+                    }
+                }
+                # W50 (supersedes the W44 stamp-at-mint): THE ALLOWANCE METERS ATTEMPTS; THE HUMAN
+                # AUTHORIZES DELIVERIES. The captured phrase is an entitlement to one DELIVERED review,
+                # so it is consumed after the run - and only when the run delivered. The mint still
+                # names the ref the phrase becomes; the stamp waits for the delivery it paid for.
+            }
+
+            # NEITHER GIVEN, AND A ROUND NEEDS ONE: say THAT, and name the command. This is the sentence
+            # whose absence sent the maintainer looking for a value to invent.
+            # ANSWERING A PAUSE IS NOT RUNNING A ROUND. Found by the end-to-end walk on a fresh install,
+            # after every fixture passed: `--pause-choice 2` - stop here - was refused for lack of
+            # APPROVAL, so a human declining to spend was asked to authorize the spend they were
+            # declining. Same for 3, abandon. Only option 1 leads to a round.
+            #
+            # This exemption used to be the WHOLE story for option 1, on the belief that it "falls through
+            # to the approval check on its own". It did not: it fell through and was EXEMPTED here, so it
+            # reached the store with no grant and died on a spent allowance. Option 1 now carries its own
+            # approval (see $roundApprovalRequested above), so this exemption serves only 2 and 3 - the two
+            # answers that spend nothing and must never be asked to authorize a spend.
+            #
+            # This is the ordering half of round 4's "the rendered pause reply command does not enter the
+            # reply handler". I fixed the wiring and left the order, and no fixture could see it: each
+            # entered with an approval already in hand, because that is what a fixture naturally supplies.
+            $answeringPause = -not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseChoice)
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and -not $answeringPause) {
+                Write-Host 'This review round needs the human''s approval before it can run.' -ForegroundColor Yellow
+                Write-Host ''
+                # W54: after a failed capture, diagnose the picker shape when the transcript showed it -
+                # the phrase was SEEN arriving as a tool result and correctly refused, and without this
+                # sentence the agent re-asks through the same question UI (measured: three asks for one
+                # decision on the walk).
+                if ((Get-Command -Name 'Get-SpecrewQuestionUiPhraseObservation' -ErrorAction SilentlyContinue) -and
+                    $null -ne (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $resolvedProjectPath)) {
+                    Write-Host 'The conversation shows the phrase arriving from a question UI or picker. Those replies are not captured, by design: only a typed chat turn is authority. Ask the human to type it in the chat.' -ForegroundColor Yellow
+                    Write-Host ''
+                }
+                Write-Host 'The approval is their typed reply in the conversation, as a normal chat message - a reply inside a question UI or picker is not captured:  approved for review round' -ForegroundColor Cyan
+                Write-Host 'Once they have typed `approved for review round`, run:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host ''
+                Write-Host 'Approving one round runs one review. Nothing is spent until then, and Specrew records the phrase as the'
+                Write-Host 'approval. If you keep your own approval records, supply your own label instead with --authorization-ref <label>.'
+                exit 1
+            }
+            if ($approvalMinted -and -not $Json -and -not $Quiet) {
+                if ($null -ne $capturedRoundApproval) {
+                    Write-Host ('Round approved by the human''s typed phrase ("{0}"). Specrew recorded it as {1}.' -f [string]$capturedRoundApproval.verdict_text, $campaignGrantAuthorizationRef) -ForegroundColor Cyan
+                }
+                else {
+                    Write-Host ('Round approved. Specrew recorded your approval as {0}.' -f $campaignGrantAuthorizationRef) -ForegroundColor Cyan
                 }
             }
             $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 600 }
@@ -887,11 +1498,346 @@ if ($Live) {
                     Write-Host (& $formatProgressCommand -Event $event) -ForegroundColor $color
                 }.GetNewClosure()
             }
-            $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
-                -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
-                -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
-                -DesignContextRefs @($parsedArgs.DesignContextRefs) -ExcludedPathPatterns @($parsedArgs.ExcludedPathPatterns) `
-                -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
+            # FR-003/FR-005: THE HUMAN'S REPLY, on the command they are already standing in.
+            #
+            # Answering happens BEFORE any run, and two of the three answers end the invocation without
+            # spending anything. Only 'fix-and-continue' falls through to a round, which is what makes
+            # one answer authorize exactly one round rather than a mode the campaign stays in.
+            $pauseAnswer = [string]$parsedArgs.PauseChoice
+            if (-not [string]::IsNullOrWhiteSpace($pauseAnswer)) {
+                # CHECKED BEFORE IDENTITY RESOLUTION, or the resolver throws first and the human is told
+                # to run --approve-round when they were ANSWERING a pause. Found by the end-to-end walk:
+                # the text was correct and the next step it named was for a different act.
+                if ([string]::IsNullOrWhiteSpace([string]$FeatureId)) {
+                    Write-Host 'Specrew does not know which feature you are answering for, so it cannot find the round waiting for you.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}   (relaying the human''s typed decision: 1 = run another round, 2 = stop the review here, 3 = abandon this review campaign)' -f $pauseAnswer) -ForegroundColor Cyan
+                    exit 1
+                }
+                $campaignStoreRoot = Join-Path $resolvedProjectPath '.specrew/review/authority'
+                $answerIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                $outstanding = Get-ReviewCampaignPendingPause -StoreRoot $campaignStoreRoot -CampaignId $answerIdentity.campaign_id
+                # A SILENT FAILURE INVITES THE WORST AVAILABLE DIAGNOSIS.
+                #
+                # Measured: an agent ran --pause-choice without --feature, resolved no campaign, found no
+                # pause, and got nothing back. It then checked --help, where the flag was not listed, and
+                # concluded "the CLI is telling you to run a flag its own parser doesn't implement" - and
+                # proposed bypassing the campaign gate as the remedy. A defensible inference from two
+                # signals that both said ABSENT. Three individually-minor defects - an undocumented flag,
+                # an unresolved feature id, and a no-op instead of a refusal - chained into an agent
+                # proposing to route around governance.
+                #
+                # So the two causes are told apart. "I do not know which feature" is a different problem
+                # from "there is nothing waiting", and only one of them is fixed by naming --feature.
+                if ($null -eq $outstanding) {
+                    Write-Host ('No review round is waiting for your answer on {0}, so there is nothing to reply to.' -f $answerIdentity.campaign_id) -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host 'Start one with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
+                    exit 1
+                }
+                # W27: a human who answers a clean round out of habit gets told it was unnecessary, not
+                # an opaque refusal from the disposition writer. Nothing is recorded and nothing is spent,
+                # because the clean result already covers their files and the boundary packet is what
+                # actually awaits them.
+                $outstandingResult = $null
+                try { $outstandingResult = Get-ReviewRunAuthorityFact -StoreRoot $campaignStoreRoot -CampaignId $answerIdentity.campaign_id -RunId ([string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')) -Stage result }
+                catch { $outstandingResult = $null }
+                if ($null -ne $outstandingResult -and [string]$outstandingResult.verdict -ceq 'pass' -and
+                    [string]$outstandingResult.completion -ceq 'complete' -and [string]$outstandingResult.validation -ceq 'valid' -and
+                    [string]$outstandingResult.currentness -ceq 'current' -and [bool]$outstandingResult.can_approve_current) {
+                    # Round-13 finding (DRIFT-199-I001-122): currentness and can_approve_current are
+                    # INGEST-TIME facts - true when the result landed, silent about every source edit
+                    # since. This shortcut speaks in the present tense ("covers your files as they
+                    # are now"), so it is checked against the PRESENT tree: only a target that still
+                    # matches takes the exit. A moved tree falls through to the ordinary pause
+                    # handling, whose superseded-pause logic owns exactly that case - and an
+                    # uncomputable digest falls through too, because a shortcut that cannot prove its
+                    # own sentence does not get to say it.
+                    $cleanShortcutHolds = $false
+                    try {
+                        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+                            $digestHelperPath = Join-Path $reviewEngineRoot 'reviewed-state-digest.ps1'
+                            if (Test-Path -LiteralPath $digestHelperPath -PathType Leaf) { . $digestHelperPath }
+                        }
+                        if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
+                            $nowDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $resolvedProjectPath
+                            $cleanShortcutHolds = ($null -ne $nowDigest -and [bool]$nowDigest.ok -and
+                                [string]$nowDigest.tree_id -ceq [string]$outstandingResult.target_digest)
+                        }
+                    }
+                    catch { $cleanShortcutHolds = $false }
+                    if ($cleanShortcutHolds) {
+                        Write-Host 'That review found nothing, so there was no decision waiting for you and nothing needed answering.' -ForegroundColor Green
+                        Write-Host 'It already covers your files as they are now. What still needs you is the boundary approval, where this result is cited.'
+                        exit 0
+                    }
+                }
+                $choice = switch ($pauseAnswer) {
+                    '1' { 'fix-and-continue' }
+                    '2' { 'stop-here' }
+                    '3' { 'abandon' }
+                    default { $pauseAnswer }
+                }
+                $answeredRunId = [string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')
+
+                # Round-20 finding (DRIFT-199-I001-131): EVERY PAUSE CHOICE CARRIES THE HUMAN.
+                #
+                # Choices 2 and 3 were exempt from the captured-decision gate because they spend no
+                # round - but stopping here passes AuthorizedBy='human' into the landing, writes an
+                # identity-bound human disposition, and can COMPLETE SIGN-OFF. An agent invoking the
+                # flag therefore manufactured the human authorization for the most consequential act
+                # in the lifecycle: the W44 hole, one door down, on the door that matters most.
+                #
+                # Same shape as W44: inside an agent session the typed decision must be captured; a
+                # human at their own terminal is self-evidently authorized by their own invocation.
+                $pauseDecisionAuthorization = $null
+                if ($choice -cin @('stop-here', 'abandon')) {
+                    # Round-21 finding (DRIFT-199-I001-132): LOAD THE STORE ON THIS PATH TOO. The
+                    # round-20 gate was unreachable - HumanAuthorityStore is dot-sourced only when a
+                    # ROUND approval is requested, which choices 2 and 3 never are, so every
+                    # Get-Command guard below failed and the gate protecting sign-off was skipped
+                    # entirely. A control that exists and never executes, in the same file that
+                    # already carries the method rule about exactly that.
+                    $pauseStorePath = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
+                    if ((Test-Path -LiteralPath $pauseStorePath -PathType Leaf) -and
+                        -not (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                        try { . $pauseStorePath } catch { $null = $_ }
+                    }
+                    Assert-SpecrewAuthorityMachineryReady -Action 'record that decision' `
+                        -RequiredFunctions @('Get-SpecrewPauseDecisionAuthorization', 'Complete-SpecrewPauseDecisionAuthorization', 'Test-SpecrewInsideAgentSession')
+                }
+                if ($choice -cin @('stop-here', 'abandon') -and
+                    (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) -and
+                    (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                    # Bound to the run being answered: a decision captured against another round, or
+                    # against no pending pause at all, is not authority here.
+                    # SPECREW-AUTHORITY-CONSUMER: pause-decision
+                    try { $pauseDecisionAuthorization = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -RunId $answeredRunId }
+                    catch { $pauseDecisionAuthorization = $null }
+                    if ((Test-SpecrewInsideAgentSession) -and $null -eq $pauseDecisionAuthorization) {
+                        # Looked up rather than branched: an inline `if ($choice -ceq 'stop-here')`
+                        # here matches the anchor of the ordering pin in campaign-pause-wiring, whose
+                        # non-greedy match then ends on this fragment instead of the real branch and
+                        # reports a regression that does not exist. Found by breaking it (round 21).
+                        $decisionPhrase = @{ 'stop-here' = 'stop the review here'; 'abandon' = 'abandon this review campaign' }[$choice]
+                        $decisionEffect = @{
+                            'stop-here' = 'Stopping here records their acceptance of the remaining findings and completes review sign-off.'
+                            'abandon'   = 'Abandoning ends the campaign; nothing further runs and nothing is signed off.'
+                        }[$choice]
+                        Write-Host 'That decision is the human''s, and no decision from them has been captured.' -ForegroundColor Yellow
+                        Write-Host ''
+                        Write-Host $decisionEffect
+                        Write-Host ''
+                        Write-Host 'Ask them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:' -ForegroundColor Cyan
+                        Write-Host ''
+                        Write-Host ('  {0}' -f $decisionPhrase) -ForegroundColor Cyan
+                        Write-Host ''
+                        Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
+                        exit 1
+                    }
+                }
+
+                # The menu withdrawing option 1 is presentation; this is enforcement. A caller can
+                # always type the flag directly, so fix-and-continue is refused before the immutable
+                # answer is written when the reviewer-invoked round budget is exhausted. A corrupt
+                # authority store fails the same way: no answer is consumed and no reviewer starts.
+                if ($choice -ceq 'fix-and-continue') {
+                    try {
+                        $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $campaignStoreRoot `
+                            -CampaignId $answerIdentity.campaign_id -RepoRoot $resolvedProjectPath
+                    }
+                    catch {
+                        Write-Host 'Specrew could not read its review authority safely, so it did not use your answer or start another reviewer.' -ForegroundColor Yellow
+                        Write-Host ("What went wrong: {0}" -f $_.Exception.Message)
+                        exit 1
+                    }
+                    # SPECREW-AUTHORITY-CONSUMER: review-round-budget
+                    if ([bool]$budgetState.budget_exhausted) {
+                        Write-Host ("The round budget for this review is spent ({0} of {1} rounds used), so another round was not authorized." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
+                        Write-Host 'Your answer was not recorded. Topping up the allowance is the human''s decision: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it: specrew review --remediate allowance-reset' -ForegroundColor Cyan
+                        exit 1
+                    }
+                }
+                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId `
+                    -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+
+                # A REFUSED ATTEMPT MUST NOT CONSUME THE ANSWER.
+                #
+                # The decision fact is IMMUTABLE, and an answered pause is excluded from
+                # Get-ReviewCampaignPendingPause - so recording it before attempting the landing meant a
+                # failed landing left the human holding a spent answer: the command would report no
+                # round waiting, while the recorded choice also refused any further round. Wedged, with
+                # the landing's own message telling them to choose "stop here" again, which could no
+                # longer be submitted.
+                #
+                # The gating precondition ruled in this morning made that reachable rather than
+                # theoretical: it adds refusal arms, and the mismatch arm fires on the pause sitting in
+                # the live store right now.
+                #
+                # So for stop-here the write moves AFTER a successful landing. The other two choices are
+                # terminal in themselves - there is no attempt that can fail - so they record
+                # immediately, as before.
+                if ($choice -ceq 'stop-here') {
+                    $rationale = if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseRationale)) { [string]$parsedArgs.PauseRationale }
+                    else { 'Remaining findings accepted as follow-ups at the review pause.' }
+                    $landingRef = if (-not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) { $campaignGrantAuthorizationRef } else { "pause-stop-here:$answeredRunId" }
+                    $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $resolvedProjectPath -StoreRoot $campaignStoreRoot `
+                        -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId -AuthorizedBy 'human' `
+                        -AuthorizationRef $landingRef -Rationale $rationale
+                    if ([bool]$landing.landed) {
+                        # Recorded only now that it has actually landed. Ordering, not bookkeeping: this
+                        # is the line that decides whether a failure is recoverable.
+                        Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
+                        # Round-20: one typed decision, one landing. Consumed only on the landing that
+                        # used it - a refused landing leaves the human's decision standing, the same
+                        # rule the round entitlement follows.
+                        if ($null -ne $pauseDecisionAuthorization -and (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                            $pauseConsumption = $null
+                            try { $pauseConsumption = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -AuthorizationRef $landingRef }
+                            catch { $pauseConsumption = $null }
+                            if ($null -eq $pauseConsumption -or -not [bool]$pauseConsumption.consumed) {
+                                [Console]::Error.WriteLine('[specrew-review] WARN PAUSE_DECISION_NOT_CONSUMED ' + $(if ($null -ne $pauseConsumption) { [string]$pauseConsumption.reason } else { 'no-result' }))
+                            }
+                        }
+                    }
+                    if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.landed) { 0 } else { 1 }) }
+                    if ([bool]$landing.landed) {
+                        Write-Host 'Your files were checked exactly as they are now, the remaining findings were saved as follow-ups, and review sign-off is complete.' -ForegroundColor Green
+                        exit 0
+                    }
+                    Write-Host ([string]$landing.message) -ForegroundColor Yellow
+                    Write-Host 'Your answer has NOT been used up - once the problem above is resolved you can choose an option again.' -ForegroundColor Cyan
+                    exit 1
+                }
+
+                Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
+
+                if ($choice -ceq 'abandon') {
+                    # Round-21 finding (DRIFT-199-I001-132): this branch used the human's decision and
+                    # walked away without retiring it, leaving the captured phrase unspent and able to
+                    # abandon a LATER campaign with no new human act. One decision, one landing -
+                    # on every branch that lands, not only the one that was written first.
+                    if ($null -ne $pauseDecisionAuthorization -and (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                        $abandonConsumption = $null
+                        try { $abandonConsumption = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -AuthorizationRef "pause-abandon:$answeredRunId" }
+                        catch { $abandonConsumption = $null }
+                        if ($null -eq $abandonConsumption -or -not [bool]$abandonConsumption.consumed) {
+                            [Console]::Error.WriteLine('[specrew-review] WARN PAUSE_DECISION_NOT_CONSUMED ' + $(if ($null -ne $abandonConsumption) { [string]$abandonConsumption.reason } else { 'no-result' }))
+                        }
+                    }
+                    Write-Host 'This review campaign is closed. Nothing further will run.' -ForegroundColor Cyan
+                    exit 0
+                }
+                # fix-and-continue falls through: the answer authorizes the round that follows.
+                # (stop-here returned above, before its decision could be recorded on a failed landing;
+                # `landed`, not `ok` - the per-STEP outcomes carry `ok`, the composition does not.)
+            }
+            # W50: THE ENTITLEMENT LOOP. One invocation, plus at most ONE bounded automatic retry when
+            # a run was invoked but not delivered (infrastructure failure, or a partial produced by a
+            # harness fault). The retry chooses more time (a timeout kill) or a fresh run on the same
+            # host otherwise, and records its choice. Unlimited retry on "failure" is a token-burn hole
+            # an agent could fall into; after the second failure the human gets a plain-language ask -
+            # what failed, what it cost, what is requested - never a re-approval of the same decision.
+            $entitlementAttempt = 0
+            $entitlementOutcome = $null
+            $entitlementRetried = $false
+            while ($true) {
+                $entitlementAttempt++
+                $attemptRunId = if ($entitlementAttempt -eq 1) { [string]$parsedArgs.RunId } else { '' }
+                $attemptTimeout = if ($entitlementRetried -and $entitlementOutcome -and [string]$entitlementOutcome.reason -match 'timed-out|timeout') { [int][Math]::Min(7200, [int]($tos * 1.5)) } else { $tos }
+                $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
+                    -RunId $attemptRunId -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
+                    -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
+                    -DesignContextRefs @($parsedArgs.DesignContextRefs) -ExcludedPathPatterns @($parsedArgs.ExcludedPathPatterns) `
+                    -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $attemptTimeout -ProgressSink $progressSink
+                $entitlementOutcome = if (Get-Command -Name 'Resolve-SpecrewRoundEntitlementOutcome' -ErrorAction SilentlyContinue) {
+                    Resolve-SpecrewRoundEntitlementOutcome -CampaignRun $campaignRun
+                } else { $null }
+                if ($null -eq $entitlementOutcome -or -not $approvalMinted) { break }
+                if ([string]$entitlementOutcome.outcome -ceq 'delivered') {
+                    # DELIVERY, and only delivery, consumes the entitlement.
+                    if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Complete-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
+                        # Round-16 finding (DRIFT-199-I001-126): this branch used to swallow every
+                        # error and read nothing back, so a transient write failure left the capture
+                        # unspent after a DELIVERED review - and the next invocation derived a second
+                        # grant from the same approval. The consumption now reports whether its stamp
+                        # is durable, and a failure is SAID OUT LOUD rather than accepted quietly:
+                        # the review really did run, so the honest state is "delivered, but the
+                        # approval could not be marked spent", which the human must see before
+                        # anything reuses it.
+                        $consumption = $null
+                        try { $consumption = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef }
+                        catch { $consumption = [pscustomobject]@{ consumed = $false; reason = ('threw:' + $_.Exception.Message) } }
+                        if ($null -eq $consumption -or -not [bool]$consumption.consumed) {
+                            $consumptionReason = if ($null -ne $consumption) { [string]$consumption.reason } else { 'no-result' }
+                            if (-not $Quiet) {
+                                Write-Host ''
+                                Write-Host 'The review ran and its result is recorded, but Specrew could NOT mark your approval as used.' -ForegroundColor Yellow
+                                Write-Host 'Until that is fixed, the same approval could start another review, which you did not ask for.' -ForegroundColor Yellow
+                                Write-Host ('What Specrew saw: {0}' -f $consumptionReason)
+                                Write-Host ('The record is at: {0}' -f (Join-Path $resolvedProjectPath '.specrew/review/round-approval/pending-round-approval.json'))
+                                Write-Host 'Say so and it stops there, or check that file before approving anything further.'
+                            }
+                            [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_NOT_CONSUMED ' + $consumptionReason)
+                            # Round-17 finding (DRIFT-199-I001-127): the warning above was round 16's
+                            # fix, and visibility is not a control - the capture stayed unspent, so the
+                            # next invocation minted a fresh grant and started a SECOND paid review
+                            # from one approval. The state is durable now, and the mint gate refuses
+                            # while it stands.
+                            if (Get-Command -Name 'Write-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
+                                # Round-18: this marker is now the SECOND line, not the only one -
+                                # the derived block above survives its failure - but a marker that
+                                # could not be written is still worth saying out loud, because it is
+                                # the same storage failure the stamp just hit.
+                                $markerFact = Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath `
+                                    -RunId ([string]$campaignRun.run_id) -AuthorizationRef $campaignGrantAuthorizationRef `
+                                    -Reason $consumptionReason
+                                if ($null -eq $markerFact) {
+                                    if (-not $Quiet) { Write-Host 'Specrew could not write that note either, so this storage problem is wider than one file. The completed round is still in the records, and that is what blocks a second one.' -ForegroundColor Yellow }
+                                    [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_MARKER_NOT_WRITTEN ' + $consumptionReason)
+                                }
+                            }
+                        }
+                        elseif (Get-Command -Name 'Clear-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
+                            # A landed consumption ends any prior unresolved state for this project.
+                            Clear-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath
+                        }
+                    }
+                    break
+                }
+                if ([string]$entitlementOutcome.outcome -cne 'undelivered') { break }  # not-invoked: nothing consumed, nothing to retry
+                # Spent-without-delivery: the cost is real and stays visible.
+                $entitlementCost = try { [string]$campaignRun.diagnostics.usage.total_tokens } catch { '' }
+                if (Get-Command -Name 'Write-SpecrewRoundDeliveryJournal' -ErrorAction SilentlyContinue) {
+                    Write-SpecrewRoundDeliveryJournal -ProjectRoot $resolvedProjectPath -EventKind 'spent-without-delivery' `
+                        -RunId ([string]$entitlementOutcome.run_id) -Detail ("attempt={0} reason={1} tokens={2}" -f $entitlementAttempt, [string]$entitlementOutcome.reason, $entitlementCost) | Out-Null
+                }
+                if ($entitlementAttempt -ge 2) { break }
+                $entitlementRetried = $true
+                $retryChoice = if ([string]$entitlementOutcome.reason -match 'timed-out|timeout') { 'more-time' } else { 'fresh-run-same-host' }
+                if (Get-Command -Name 'Write-SpecrewRoundDeliveryJournal' -ErrorAction SilentlyContinue) {
+                    Write-SpecrewRoundDeliveryJournal -ProjectRoot $resolvedProjectPath -EventKind 'automatic-retry' `
+                        -RunId ([string]$entitlementOutcome.run_id) -Detail ("choice={0} after={1}" -f $retryChoice, [string]$entitlementOutcome.reason) | Out-Null
+                }
+                if (-not $Json -and -not $Quiet) {
+                    Write-Host ("The review was invoked but not delivered ({0}). Retrying once automatically ({1}). Their approval is NOT spent - it still buys a delivered review - but this attempt DID use one of the review rounds, so the allowance has moved." -f [string]$entitlementOutcome.reason, $retryChoice) -ForegroundColor Yellow
+                }
+                # The retry is a fresh attempt against the SAME standing entitlement: recompute the
+                # round reference so it does not collide with the failed attempt's spent slot.
+                try {
+                    $retryRoundsRun = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
+                            -CampaignId $approvalIdentity.campaign_id |
+                            Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') }).Count
+                    $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($retryRoundsRun + 1)
+                }
+                catch { break }
+            }
+            if ($approvalMinted -and $null -ne $entitlementOutcome -and [string]$entitlementOutcome.outcome -ceq 'undelivered' -and $entitlementAttempt -ge 2 -and -not $Json -and -not $Quiet) {
+                # The plain-language ask, never a re-approval of the same decision.
+                Write-Host ''
+                Write-Host ("Your approved review could not be delivered after a retry. What failed: {0}. The attempts and their token cost are recorded in .specrew/review/round-approval/delivery-journal.jsonl." -f [string]$entitlementOutcome.reason) -ForegroundColor Yellow
+                Write-Host 'Your approval is still standing - it was for a delivered review, and none was delivered. You can: try a different reviewer host (tell your agent which), or withdraw the approval (say so, and nothing further runs).' -ForegroundColor Cyan
+            }
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
                 $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
@@ -901,17 +1847,127 @@ if ($Live) {
                 $border = ('=' * 60)
                 $color = if ($null -ne $campaignRun.result -and [bool]$campaignRun.result.can_approve_current) { 'Green' } else { 'Yellow' }
                 Write-Host $border -ForegroundColor $color
-                $campaignHeading = if (-not [bool]$campaignRun.invoked -and [string]$campaignRun.status -cne 'terminal') { 'SPECREW CO-REVIEW DID NOT RUN' } else { 'SPECREW CAMPAIGN REVIEW' }
+                # "DID NOT RUN" overstates a pause. The state is usually "waiting for your answer", and an
+                # alarming banner over content that says nothing is wrong teaches people to discount the
+                # banner. Reserved for the case where a review genuinely could not start.
+                $campaignHeading = if ([string]$campaignRun.status -ceq 'paused') { 'SPECREW REVIEW - WAITING FOR YOUR ANSWER' }
+                elseif (-not [bool]$campaignRun.invoked -and [string]$campaignRun.status -cne 'terminal') { 'SPECREW CO-REVIEW DID NOT RUN' }
+                else { 'SPECREW CAMPAIGN REVIEW' }
                 Write-Host $campaignHeading -ForegroundColor $color
                 Write-Host $border -ForegroundColor $color
                 Write-Host ("Campaign: {0}" -f $campaignRun.campaign_id)
                 Write-Host ("Run: {0}  Status: {1}  Invoked: {2}" -f $campaignRun.run_id, $campaignRun.status, $campaignRun.invoked)
                 if ($null -ne $campaignRun.result) {
                     Write-Host ("Verdict: {0}  Completion: {1}  Currentness: {2}  Can approve current: {3}" -f $campaignRun.result.verdict, $campaignRun.result.completion, $campaignRun.result.currentness, $campaignRun.result.can_approve_current)
-                    if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) { Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow }
+                    if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) {
+                        Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow
+                        # NO REVIEWER CHOSEN IS NOT A BROKEN TOOL, and it read like one.
+                        #
+                        # Measured on a manual-walk project (its path was lost to a \b-to-backspace defect in the
+                        # comment itself, commit 192d6608, and is not reconstructible): three runs failed with `preflight-failed:harness`,
+                        # harness_id `unselected-harness`, and the project had NO reviewer-hosts.json at
+                        # all - no reviewer had ever been authorized. The agent read the token as an
+                        # ENVIRONMENTAL blocker, decided the co-review was unavailable, and wrote the
+                        # review artifact itself. The word "harness" is machinery for "the reviewer you
+                        # never picked", and it cost that project its entire review.
+                        if ([string]$campaignRun.result.failure_reason -match 'unselected-harness|reviewer-host-required|preflight-failed:harness') {
+                            Write-Host ''
+                            Write-Host 'No reviewer has been chosen for this project yet, so there was nothing to run the review with. This is a setup step, not a broken tool.' -ForegroundColor Cyan
+                            Write-Host 'Pick one you have installed, and approve it once:  specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round   (the typed reply `approved for review round` carries the same approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
+                            Write-Host 'Choose a different one from the tool that wrote the code where you can - a second opinion is the point.'
+                        }
+                    }
+                    # FR-018 (round-1 finding): a consumer losing a review to the budget must be told
+                    # which setting to change ON THE PATH THEY ACTUALLY RAN. The signoff-gate route
+                    # carries this text for the boundary surface; the public CLI needs it too, or the
+                    # timeout stays sealed exactly where the consumer is standing.
+                    # F4 (T067), same argument as the timeout text below and the same reason it lives
+                    # HERE: measured in the T067 timeline, a pre-invocation failure released the slot,
+                    # nothing offered it back, and the human minted a fresh authorization three minutes
+                    # later that they did not need. The engine knew the slot had returned and told
+                    # nobody. This is where the consumer is standing when they decide.
+                    if ([bool](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'slot_restored')) {
+                        $restoredNote = [string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'slot_restored_note')
+                        if (-not [string]::IsNullOrWhiteSpace($restoredNote)) { Write-Host $restoredNote -ForegroundColor Cyan }
+                    }
+                    if ([string]$campaignRun.result.runtime_outcome -ceq 'timed-out') {
+                        $windowText = if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) { [string]$campaignRun.resolved_timeout_seconds } else { [string]$tos }
+                        Write-Host ("The review ran out of time after {0} seconds, so it produced no usable result. Reviews of this size often need a longer window: raise co_review_timeout_seconds in .specrew/config.yml, or pass --timeout-seconds on the next run, then run the review again." -f $windowText) -ForegroundColor Yellow
+                    }
                     foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
                 }
                 else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }
+                # FR-002/FR-003/FR-015: THE DECISION SURFACE, rendered where the human is standing.
+                #
+                # Format-ReviewCampaignPauseSurface has existed since T001 and nothing on the shipped
+                # path ever called it, so every round ended with a generic result dump and no question.
+                # This renders the same surface for BOTH shapes: the pause a round just produced, and
+                # the outstanding pause a later invocation refused to spend past. A consumer must not
+                # have to tell those apart - it is the same unanswered question either way.
+                # The surface is rendered UPSTREAM in both shapes and carried here as lines, never
+                # re-derived. A round that just ended carries pause.surface (built from the full
+                # decision, findings and options in hand); a round walked back into later carries
+                # pause_surface (built from the recorded fact, which knows less). Rendering here from
+                # whichever object happened to arrive is how the two would drift apart.
+                # W27: A CLEAN REVIEW ASKS THE HUMAN NOTHING, BECAUSE NOTHING IS BEING DECIDED.
+                #
+                # The signoff gate already treats a complete, current, approvable `pass` as releasing the
+                # boundary on its own: an unanswered pause stops conferring quiet for that shape, and the
+                # boundary-clean route renders the packet with no human disposition anywhere in the path.
+                # The 1/2/3 menu was therefore the ONLY thing implying a decision was owed - and its own
+                # option 1 read "Fix these" against an empty finding set.
+                #
+                # Two costs came out of that ceremony. It asked the human to retype an answer the surface
+                # had just recommended, and because the answer is stored as an `authorized_by: human`
+                # fact, a question nobody needed to ask became an authority record that could be - and in
+                # the 2026-08-19 walk WAS - produced without the human. Removing the question removes
+                # both. The findings path is untouched: that menu decides something real.
+                $resultReleasesBoundary = $false
+                if ($null -ne $campaignRun.result) {
+                    $resultReleasesBoundary = ([string]$campaignRun.result.verdict -ceq 'pass' -and
+                        [string]$campaignRun.result.completion -ceq 'complete' -and
+                        [string]$campaignRun.result.validation -ceq 'valid' -and
+                        [string]$campaignRun.result.currentness -ceq 'current' -and
+                        [bool]$campaignRun.result.can_approve_current)
+                }
+                if ($resultReleasesBoundary -and -not $Json -and -not $Quiet) {
+                    Write-Host ''
+                    Write-Host 'Nothing was found, and this review covers your files exactly as they are now.' -ForegroundColor Green
+                    Write-Host 'No decision is needed from you here: a clean review completes on its own, and the boundary packet follows with this result cited in it. Your approval is still what advances the boundary.'
+                }
+                $pauseObject = if ($resultReleasesBoundary) { $null } else { Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause' }
+                $pauseLines = @()
+                if ($null -ne $pauseObject) {
+                    $embedded = Get-ReviewAuthorityProperty -Object $pauseObject -Name 'surface'
+                    if ($null -ne $embedded) { $pauseLines = @($embedded) }
+                }
+                if ($pauseLines.Count -eq 0) {
+                    $carried = if ($resultReleasesBoundary) { $null } else { Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_surface' }
+                    if ($null -ne $carried) { $pauseLines = @($carried) }
+                }
+                if ($pauseLines.Count -gt 0) {
+                    Write-Host ''
+                    foreach ($pauseLine in $pauseLines) { Write-Host $pauseLine }
+                    # The RESUMED surface carries its own reply line (it must, so the surface is
+                    # complete wherever it is rendered); the live round's surface does not. Printing
+                    # unconditionally showed it twice on the resumed path - measured on a real stop, not
+                    # in a fixture, because no assertion counts how many times a correct line appears.
+                    $alreadyTold = (($pauseLines -join "`n") -match '--pause-choice')
+                    # The surface states the choices; this states HOW to send one, which is the half a
+                    # numbered list cannot carry on a command line.
+                    $answerRunId = [string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_run_id')
+                    if ([string]::IsNullOrWhiteSpace($answerRunId) -and $null -ne $pauseObject) {
+                        $answerFact = Get-ReviewAuthorityProperty -Object $pauseObject -Name 'fact'
+                        if ($null -ne $answerFact) { $answerRunId = [string](Get-ReviewAuthorityProperty -Object $answerFact -Name 'run_id') }
+                    }
+                    if (-not $alreadyTold) {
+                        # W49: this footer prints in the HUMAN's own terminal, where the command IS how
+                        # they answer - so it may name the flag, but only WITH the typed decisions, so
+                        # the menu language and the transport stay one vocabulary.
+                        Write-Host ''
+                        Write-Host ("Answer from this terminal with:  specrew review --live --pause-choice <1|2|3>   (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign){0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
+                    }
+                }
                 if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {
                     Write-Host ("Resolved timeout: {0} seconds" -f $campaignRun.resolved_timeout_seconds)
                 }
@@ -971,7 +2027,15 @@ if ($Live) {
                     Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
-                        Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <ref>'
+                        Write-Host '    specrew review --live --host <claude|codex|...> --approve-round   (their typed `approved for review round` is the approval this flag carries, given as a normal chat message - a reply inside a question UI or picker is not captured)'
+                    }
+                    elseif ($reason -match 'allowance-exhausted') {
+                        # W50 rider: round accounting spoke three currencies - "1 of 4 rounds" on the
+                        # pause menu, slots:1 in the grant, allowance-exhausted in the refusal. One
+                        # human-visible account: rounds you approved, rounds attempted, what a reset
+                        # gives. The slot vocabulary stays internal.
+                        Write-Host 'Every review round you approved has been used by an attempt. Nothing further runs until the rounds are replenished.' -ForegroundColor Yellow
+                        Write-Host 'A reset restores your rounds: the typed reply `approved for allowance reset` - as a normal chat message; a reply inside a question UI or picker is not captured - is that decision, and your agent then runs: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
                     }
                     elseif ($reason -match 'timeout|budget') {
                         # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned

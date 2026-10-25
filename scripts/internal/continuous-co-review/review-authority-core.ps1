@@ -71,6 +71,45 @@ function Get-ReviewAuthorityProperty {
     return $property.Value
 }
 
+function ConvertTo-ReviewAuthorityTimestamp {
+    <#
+    Authority ordering is by instant, never by the spelling of an ISO-8601 value. `Z` and
+    `+00:00` describe the same zone but do not sort the same as strings. An absent or malformed
+    authority timestamp is corruption, not an invitation to choose a permissive default.
+    #>
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$Value,
+        [string]$FieldName = 'timestamp'
+    )
+
+    # ConvertFrom-Json materializes ISO values as DateTime on current PowerShell releases. Accept
+    # those typed values directly; their original JSON spelling has already passed the closed fact
+    # reader, and converting them back through the current culture would destroy the ISO shape.
+    if ($Value -is [DateTimeOffset]) { return ([DateTimeOffset]$Value).ToUniversalTime() }
+    if ($Value -is [DateTime]) {
+        $dateTime = [DateTime]$Value
+        if ($dateTime.Kind -eq [DateTimeKind]::Unspecified) { throw "review-authority-timestamp-invalid:$FieldName" }
+        return ([DateTimeOffset]$dateTime).ToUniversalTime()
+    }
+
+    $text = [string]$Value
+    $parsed = [DateTimeOffset]::MinValue
+    # Validate the shape before parsing so culture-permissive inputs such as local dates can
+    # never become authority. TryParse (rather than its string[] TryParseExact overload) is used
+    # deliberately: PowerShell 7.5 binds that by-ref overload inconsistently on Windows.
+    if ([string]::IsNullOrWhiteSpace($text) -or
+        $text -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$' -or
+        -not [DateTimeOffset]::TryParse(
+            $text,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$parsed)) {
+        throw "review-authority-timestamp-invalid:$FieldName"
+    }
+    return $parsed.ToUniversalTime()
+}
+
 function Test-ReviewAuthorityIdentifier {
     param(
         [AllowNull()]$Value,
@@ -87,6 +126,382 @@ function Test-ReviewAuthorityIdentifier {
         'disposition' { 'disposition' }
     }
     return ([string]$Value -cmatch ('^{0}-[a-z0-9][a-z0-9-]{{0,63}}$' -f $prefix))
+}
+
+function Resolve-ReviewCampaignPauseDecision {
+    # SPECREW-AUTHORITY-CONTROL: review-round-budget
+    # SPECREW-AUTHORITY-CONTROL: review-result-produced
+    # T001 / FR-001..FR-004. The PURE decision the pause surface renders from: what the round found,
+    # what it has cost, whether anything actually gates, and which options the human may choose.
+    #
+    # Ledger F8 is the reason this exists: without a pause the loop ran 15 fix rounds on one target
+    # with no sanctioned way to stop. Two rules are load-bearing here. MINORS NEVER GATE - they are
+    # carried as recorded follow-ups, so a documentation nit can never hold sign-off hostage. And the
+    # recommendation is derived from SEVERITY ALONE and never selects for the human: the numbered
+    # options are always offered, because a recommendation that auto-continues rebuilds the loop.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyCollection()][object[]]$Findings = @(),
+        [Parameter(Mandatory)][int]$RoundsUsed,
+        [Parameter(Mandatory)][int]$BudgetTotal,
+        [double]$ElapsedMinutes = 0,
+
+        # The terminal RESULT, so an unfinished run can be told from a clean one. Optional and $null by
+        # default: every existing caller keeps its exact behaviour, and only a caller that HAS the result
+        # gains the new surface. Absent, the decision is computed from findings as before.
+        [AllowNull()]$Result = $null
+    )
+
+    $blocking = 0; $major = 0; $minor = 0
+    $demoted = 0; $demotedFromBlocking = 0; $demotedFromMajor = 0
+    $gatingLocations = [Collections.Generic.List[string]]::new()
+    $gatingFindings = [Collections.Generic.List[object]]::new()
+    # A PHANTOM FINDING IS A LIE ON THE ONE SURFACE THAT MUST NOT LIE.
+    #
+    # Measured while wiring this surface to the public command: `@($null)` in PowerShell is an array of
+    # ONE null element, not an empty array. A result whose `findings` property is null or absent -
+    # which is exactly what an incomplete or invalid result looks like, i.e. a round that FAILED -
+    # therefore arrived here as a single unusable element, fell through the severity test to the minor
+    # bucket, and produced `minor_count = 1` with the recommendation "Nothing here blocks you. Stopping
+    # here saves the minor findings as follow-ups." A finding that does not exist, and an instruction to
+    # save it.
+    #
+    # Filtered HERE rather than at the call site on purpose (rule 2 - assert the property, not the
+    # instances): every caller is covered, including ones written later, instead of the one call site
+    # that happened to be looked at. `findings = @()` was always correct and stays correct.
+    #
+    # THE FLATTEN IS NOT DEFENSIVE TIDINESS - it is the fix for the worst defect this iteration found.
+    # Get-ReviewAuthorityProperty returns collections with `Write-Output -NoEnumerate`, so wrapping the
+    # CALL in @() - `@(Get-ReviewAuthorityProperty -Object $Result -Name 'findings')` - yields an array
+    # of ONE element whose type is Object[]: the findings array itself, nested. (Assigning to a variable
+    # first and wrapping THAT behaves differently and correctly, which is what made this invisible.)
+    # The wrapper element has no `severity`, so it fell past the blocking/major test into the minor
+    # bucket, and EVERY round produced blocking=0, major=0, minor=1, demoted=0, gating=FALSE - whatever
+    # the reviewer actually found. A round with two blocking findings rendered as "Nothing found that
+    # needs your attention."
+    #
+    # An element that is itself a collection is definitionally not a finding, so expanding one level is
+    # always right and never masks a real finding.
+    $normalizedFindings = [Collections.Generic.List[object]]::new()
+    foreach ($candidate in @($Findings)) {
+        if ($null -eq $candidate) { continue }
+        if ($candidate -is [System.Collections.IEnumerable] -and $candidate -isnot [string] -and $candidate -isnot [System.Collections.IDictionary]) {
+            foreach ($inner in $candidate) { if ($null -ne $inner) { $normalizedFindings.Add($inner) | Out-Null } }
+            continue
+        }
+        $normalizedFindings.Add($candidate) | Out-Null
+    }
+    foreach ($finding in $normalizedFindings) {
+        $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+        # T005/FR-006 visibility (maintainer ruling 2026-08-10). A demoted finding IS a minor by now,
+        # so it is counted in the minor bucket like any other; this counts the SUBSET of those minors
+        # the reviewer had actually reported as gating. Without it the surface can only say "3 minor
+        # findings", and the human cannot tell that one of them was a security finding the reviewer
+        # meant to stop on. A demotion the human cannot see is a silencing.
+        if ([bool](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted')) {
+            $demoted++
+            switch (([string](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted_from')).Trim().ToLowerInvariant()) {
+                'blocking' { $demotedFromBlocking++ }
+                'major' { $demotedFromMajor++ }
+            }
+        }
+        if ($severity -ceq 'blocking' -or $severity -ceq 'major') {
+            if ($severity -ceq 'blocking') { $blocking++ } else { $major++ }
+            $location = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'location')
+            $gatingLocations.Add($location)
+            $gatingFindings.Add([pscustomobject]@{
+                    severity = $severity
+                    title    = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'title')
+                    location = $location
+                })
+        }
+        else { $minor++ }
+    }
+
+    # AN ABSENT REVIEW MUST NEVER READ AS A CLEAN ONE.
+    #
+    # Measured on a live dogfood run: verdict=incomplete, completion=none, validation=not-produced,
+    # findings=0. The review TIMED OUT and produced nothing. `findings=0` is technically true and
+    # semantically a lie - it means WE DO NOT KNOW, not NOTHING WAS FOUND - and the agent read it as
+    # "no blocking defect" and carried on implementing.
+    #
+    # This is the failure the whole feature exists to prevent, arriving through the one door nobody
+    # guarded: a detector that produced NOTHING being read as a detector that FOUND nothing. The same
+    # shape as a green suite whose evidence was deleted.
+    #
+    # So counts from a run that did not finish are NOT presented as findings counts at all, and the
+    # decision surface says plainly that there is no evidence either way.
+    $resultProduced = $true
+    if ($null -ne $Result) {
+        $resultCompletion = ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'completion')).Trim().ToLowerInvariant()
+        $resultValidation = ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'validation')).Trim().ToLowerInvariant()
+        if (-not [string]::IsNullOrWhiteSpace($resultCompletion) -and $resultCompletion -cne 'complete') { $resultProduced = $false }
+        if (-not [string]::IsNullOrWhiteSpace($resultValidation) -and $resultValidation -cne 'valid') { $resultProduced = $false }
+    }
+    $budgetExhausted = $RoundsUsed -ge $BudgetTotal
+    $continuationAvailable = -not $budgetExhausted
+    $budgetRefusal = if ($budgetExhausted) {
+        ('The round budget for this review is spent ({0} of {1} rounds used), so another round is not on offer. ' -f $RoundsUsed, $BudgetTotal) +
+        'That limit exists because repeated rounds keep costing you time and money long after they stop finding much. ' +
+        # W76: the phrase before the flag, for the reason recorded in Get-SpecrewAuthorityFlagPhraseMap.
+        'If this review genuinely needs more rounds, the human can top the allowance up: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"'
+    }
+    else { $null }
+
+    if (-not $resultProduced) {
+        $options = [Collections.Generic.List[object]]::new()
+        if ($continuationAvailable) {
+            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - the review runs again on your files; this approves one round, and your typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is that approval' })
+        }
+        $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
+        return [pscustomobject][ordered]@{
+            blocking_count         = 0
+            major_count            = 0
+            minor_count            = 0
+            carried_followups      = 0
+            demoted_count          = 0
+            demoted_from_blocking  = 0
+            demoted_from_major     = 0
+            gating                 = $true
+            evidence_state          = 'not-produced'
+            gating_locations       = @()
+            gating_findings        = @()
+            rounds_used            = $RoundsUsed
+            budget_total           = $BudgetTotal
+            budget_exhausted       = $budgetExhausted
+            continuation_available = $continuationAvailable
+            elapsed_minutes        = $ElapsedMinutes
+            result_produced        = $false
+            recommendation         = $(if ($continuationAvailable) {
+                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Ask the human to approve another round - their typed reply - as a normal chat message; a reply inside a question UI or picker is not captured - ``approved for review round`` is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round'
+                } else {
+                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. The round budget is spent; reset it explicitly or abandon this campaign.'
+                })
+            budget_refusal         = $budgetRefusal
+            options                = @($options)
+        }
+    }
+
+    $gating = ($blocking + $major) -gt 0
+
+    # A RECOMMENDATION MUST NOT SAY "NOTHING BLOCKS YOU" WHEN FINDINGS WERE DEMOTED.
+    #
+    # Measured on a live dogfood run: blocking 0, major 0, minor 6, demoted 4 - and the surface said
+    # "Nothing here blocks you. Stopping here saves the minor findings as follow-ups." The reviewer had
+    # reported four of those six as MAJOR, including a containment bypass at the entry point (a directory
+    # symlink passed as the root is followed) and an incomplete scan printing an authoritative clean
+    # summary. Both real, both with real consequences.
+    #
+    # demoted_count was already carried - the visibility ruling landed and the SURFACE names the
+    # demotions. The RECOMMENDATION ignored it, and the recommendation is the sentence a human acts on.
+    # So the two halves of the same screen disagreed, and the one giving advice was the one that was
+    # wrong.
+    #
+    # This does NOT loosen the eligibility test. That test stops gold-plating and is doing its job. The
+    # defect is that a well-founded finding written in the wrong voice is indistinguishable from an
+    # unfounded one - so the human is told to read them, rather than the contract quietly deciding for
+    # them.
+    $demotionAdvice = if ($demoted -gt 0) {
+        ' {0} finding{1} {2} downgraded for not stating a concrete failure scenario - read {3} before you decide.' -f
+            $demoted, $(if ($demoted -eq 1) { '' } else { 's' }), $(if ($demoted -eq 1) { 'was' } else { 'were' }), $(if ($demoted -eq 1) { 'it' } else { 'them' })
+    }
+    else { '' }
+
+    $recommendation = if ($blocking -gt 0) {
+        'Fix the blocking findings before you sign off - they describe behaviour that is wrong or unsafe.' + $demotionAdvice
+    }
+    elseif ($major -gt 0) {
+        'Look at the major findings; fix what matters to you, then stop here.' + $demotionAdvice
+    }
+    elseif ($minor -gt 0) {
+        $(if ($demoted -gt 0) { 'Nothing was reported as blocking.' } else { 'Nothing here blocks you.' }) +
+        ' Stopping here saves the minor findings as follow-ups.' + $demotionAdvice
+    }
+    else {
+        'Nothing was found. Stopping here completes your sign-off.' + $demotionAdvice
+    }
+
+    # Option ids are stable: 1 fix-and-continue, 2 stop-here, 3 abandon. Option 1 disappears when the
+    # budget is spent - the refusal is structural, not a warning the human can talk past.
+    #
+    # The allowance reset is deliberately NOT a numbered option (maintainer ruling 2026-08-10). A
+    # refusal must name its exact next step, so the reset command is stated in prose; but a
+    # sanctioned bypass rendered as a numbered choice becomes one keystroke inside the very flow the
+    # budget exists to interrupt. Exhaustion has to feel different from an ordinary continuation.
+    $options = [Collections.Generic.List[object]]::new()
+    if ($continuationAvailable) {
+        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - fixes go in and one more review runs on your files; this approves one round, and your typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is that approval' })
+    }
+    $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; reply = 'stop the review here'; text = 'stop the review here - remaining findings become follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes; this spends nothing' })
+    $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
+
+    return [pscustomobject][ordered]@{
+        blocking_count         = $blocking
+        major_count            = $major
+        minor_count            = $minor
+        carried_followups      = $minor
+        demoted_count          = $demoted
+        demoted_from_blocking  = $demotedFromBlocking
+        demoted_from_major     = $demotedFromMajor
+        gating                 = $gating
+        evidence_state          = 'produced'
+        gating_locations       = @($gatingLocations | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        gating_findings        = @($gatingFindings)
+        rounds_used            = $RoundsUsed
+        budget_total           = $BudgetTotal
+        budget_exhausted       = $budgetExhausted
+        continuation_available = $continuationAvailable
+        elapsed_minutes        = $ElapsedMinutes
+        result_produced        = $true
+        recommendation         = $recommendation
+        budget_refusal         = $budgetRefusal
+        options                = @($options)
+    }
+}
+
+function Test-ReviewCampaignPendingPauseQuiet {
+    # Maintainer ruling 2026-08-10. A pending pause is recorded AGAINST a tree state, and the human
+    # answers it by changing that tree. So quiet must be checked, never assumed: a pause whose target
+    # no longer matches the current tree is SUPERSEDED - it describes work that has moved on, stops
+    # conferring quiet, and the surface returns to its ordinary route.
+    #
+    # This is the review-stale class in a new place, and the dangerous direction: a stale RESULT only
+    # nags for a fresh review, while a stale PAUSE would SILENCE the surface on a tree it never
+    # described. Absent or unreadable input therefore fails closed (no quiet).
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$PendingPause,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest
+    )
+    if ($null -eq $PendingPause) {
+        return [pscustomobject]@{ confers_quiet = $false; reason = 'no-pending-pause' }
+    }
+    $pauseDigest = [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'target_digest')
+    if ([string]::IsNullOrWhiteSpace($pauseDigest) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
+        return [pscustomobject]@{ confers_quiet = $false; reason = 'pause-target-unresolved' }
+    }
+    if ($pauseDigest -cne $CurrentDigest) {
+        return [pscustomobject]@{ confers_quiet = $false; reason = 'pause-superseded-by-moved-tree' }
+    }
+    return [pscustomobject]@{ confers_quiet = $true; reason = 'pause-pending-on-current-tree' }
+}
+
+function New-ReviewCampaignPendingPauseFact {
+    # The pause recorded as a FACT (design Option B). A derived pause could only be inferred, which
+    # made the quiet-state read heuristic and lost the surface verbatim on resume.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][string]$TargetDigest,
+        [Parameter(Mandatory)]$Decision,
+        [Parameter(Mandatory)][string]$ObservedAt
+    )
+    return [pscustomobject][ordered]@{
+        schema_version   = '1.0'
+        fact_type        = 'pending-pause'
+        campaign_id      = $CampaignId
+        run_id           = $RunId
+        target_digest    = $TargetDigest
+        blocking_count   = [int]$Decision.blocking_count
+        major_count      = [int]$Decision.major_count
+        minor_count      = [int]$Decision.minor_count
+        # Carried into the RECORD, not only onto the surface: otherwise the pause a later reader finds
+        # says "one minor finding" about a round in which the reviewer reported a blocking one.
+        demoted_count    = [int]$Decision.demoted_count
+        evidence_state   = [string]$Decision.evidence_state
+        result_produced  = [bool]$Decision.result_produced
+        rounds_used      = [int]$Decision.rounds_used
+        budget_total     = [int]$Decision.budget_total
+        elapsed_minutes  = [double]$Decision.elapsed_minutes
+        recommendation   = [string]$Decision.recommendation
+        observed_at      = $ObservedAt
+    }
+}
+
+function New-ReviewCampaignBudgetResetFact {
+    # THE CEILING'S WAY OUT, which the ceiling has been advertising and the engine refused.
+    #
+    # `Cost so far ... Round budget: 4 of 4 used` withdrew option 1 and told the consumer, in prose,
+    # `specrew review --remediate allowance-reset`. Under campaign authority that command threw - every
+    # remediation except override-block was rejected - so a consumer who reached the ceiling was told
+    # exactly one way forward, followed it verbatim, and was refused. Permanently wedged, with no route
+    # to another round short of editing configuration or abandoning the campaign. It surfaced only
+    # because the maintainer ruled to run INTO the failure state rather than around it (round 4).
+    #
+    # THE BUDGET IS TOPPED UP BY RECORDING A DECISION, NEVER BY MUTATING A COUNT. Rounds already run are
+    # immutable facts and stay on the record; this fact says where the human chose to start counting
+    # again, and carries WHO chose and WHY. That keeps the ledger's whole property intact - every round
+    # ever run remains visible - while letting the human lift a limit that is theirs to lift.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$AuthorizedBy,
+        [Parameter(Mandatory)][string]$Reason,
+        [Parameter(Mandatory)][string]$ObservedAt
+    )
+    $token = Get-ReviewCampaignStableToken -Value "$CampaignId/$ObservedAt/$Reason" -Length 20
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        fact_type      = 'round-budget-reset'
+        campaign_id    = $CampaignId
+        reset_id       = "reset-$token"
+        authority_kind = 'human'
+        authorized_by  = $AuthorizedBy
+        reason         = $Reason
+        observed_at    = $ObservedAt
+    }
+}
+
+function New-ReviewCampaignPauseDecisionFact {
+    # The human's numbered reply. This fact is the ONLY thing that authorizes another round; an agent
+    # cannot mint one from a prior grant, which is the self-minted-continuation failure ledger obs-6
+    # recorded (one grant stretched across seven rounds).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][ValidateSet('fix-and-continue', 'stop-here', 'abandon')][string]$Choice,
+        [Parameter(Mandatory)][string]$ObservedAt
+    )
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        fact_type      = 'pause-decision'
+        campaign_id    = $CampaignId
+        run_id         = $RunId
+        choice         = $Choice
+        observed_at    = $ObservedAt
+    }
+}
+
+function Test-ReviewCampaignContinuationAuthorized {
+    # FR-003: continuation is always an explicit human choice, and each choice authorizes exactly ONE
+    # round. RoundsSinceDecision is what makes the grant single-run: a decision already spent cannot
+    # be replayed into a second round.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$PendingPause,
+        [AllowEmptyCollection()][object[]]$PauseDecisions = @(),
+        [int]$RoundsSinceDecision = 0,
+        [int]$RoundsUsed = 0,
+        [int]$BudgetTotal = 4
+    )
+    $runId = [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')
+    $answer = @($PauseDecisions | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -ceq $runId }) | Select-Object -First 1
+    if ($null -eq $answer) {
+        return [pscustomobject]@{ authorized = $false; reason = 'pause-decision-pending'; choice = $null }
+    }
+    $choice = [string](Get-ReviewAuthorityProperty -Object $answer -Name 'choice')
+    if ($choice -cne 'fix-and-continue') {
+        return [pscustomobject]@{ authorized = $false; reason = ('choice-does-not-continue:' + $choice); choice = $choice }
+    }
+    if ($BudgetTotal -le 0 -or $RoundsUsed -ge $BudgetTotal) {
+        return [pscustomobject]@{ authorized = $false; reason = 'review-round-budget-exhausted'; choice = $choice }
+    }
+    if ($RoundsSinceDecision -ge 1) {
+        return [pscustomobject]@{ authorized = $false; reason = 'single-run-grant-already-spent'; choice = $choice }
+    }
+    return [pscustomobject]@{ authorized = $true; reason = 'human-authorized-single-round'; choice = $choice }
 }
 
 function Test-ReviewCampaignFeatureIdentity {
@@ -242,11 +657,16 @@ function Test-ReviewAuthorityFinding {
     )
     $limits = Get-ReviewAuthorityCandidateLimits
     $prefix = "findings[$Index]"
+    # The CANDIDATE shape stays closed at five fields on purpose (T005/FR-006). `demoted` and
+    # `demoted_from` are the CONTROLLER's determination about a reviewer's output, so a reviewer must
+    # not be able to supply either one - neither to mark itself demoted nor, far worse, to declare
+    # itself un-demotable and keep a gate it did not earn. They exist only on the terminal shape,
+    # which the ingestor alone writes.
     $allowed = if ($Kind -ceq 'candidate') {
         @('local_id', 'severity', 'title', 'description', 'location')
     }
     else {
-        @('finding_id', 'source_local_id', 'lineage_id', 'severity', 'title', 'description', 'location', 'relevance', 'resolution')
+        @('finding_id', 'source_local_id', 'lineage_id', 'severity', 'title', 'description', 'location', 'relevance', 'resolution', 'demoted', 'demoted_from')
     }
     $nested = [System.Collections.Generic.List[string]]::new()
     if (-not (Test-ReviewAuthorityClosedShape -Object $Finding -Allowed $allowed -Errors $nested)) {
@@ -262,6 +682,12 @@ function Test-ReviewAuthorityFinding {
         Test-ReviewAuthorityIdField -Object $Finding -Name 'lineage_id' -Kind lineage -Errors $nested
         Test-ReviewAuthorityStringField -Object $Finding -Name 'relevance' -Errors $nested -MaxLength 32 -Enum @('current', 'snapshot-moved', 'unknown')
         Test-ReviewAuthorityStringField -Object $Finding -Name 'resolution' -Errors $nested -MaxLength 32 -Enum @('open', 'resolved', 'superseded')
+        # Optional so results published before this contract existed still read back. `demoted_from`
+        # carries the reviewer's ORIGINAL severity and is empty exactly when nothing was demoted, so
+        # the enum admits the empty string rather than pretending an un-demoted finding came from
+        # somewhere.
+        Test-ReviewAuthorityBooleanField -Object $Finding -Name 'demoted' -Errors $nested -Optional
+        Test-ReviewAuthorityStringField -Object $Finding -Name 'demoted_from' -Errors $nested -MaxLength 16 -Enum @('blocking', 'major', '') -Optional -AllowEmpty
     }
     Test-ReviewAuthorityStringField -Object $Finding -Name 'severity' -Errors $nested -MaxLength 16 -Enum @('blocking', 'major', 'minor', 'note')
     Test-ReviewAuthorityStringField -Object $Finding -Name 'title' -Errors $nested -MaxLength $limits.max_title_characters
@@ -276,7 +702,7 @@ function Test-ReviewAuthorityContractObject {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -290,8 +716,8 @@ function Test-ReviewAuthorityContractObject {
         'ReviewCampaign' { @('schema_version', 'campaign_id', 'target_lineage', 'created_at') }
         'ReviewRun' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'state') }
         'ReviewInvocation' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'snapshot_path', 'review_scope', 'prompt_path', 'candidate_result_path', 'candidate_report_path', 'deadline') }
-        'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings') }
-        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms') }
+        'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths') }
+        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths') }
         'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at') }
         'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at') }
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
@@ -299,6 +725,16 @@ function Test-ReviewAuthorityContractObject {
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
         'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at') }
         'ReviewFinalizationFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'reviewed_digest', 'finalization_commit') }
+        'PendingPauseFact' { @(
+            'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'blocking_count',
+            'major_count', 'minor_count', 'demoted_count', 'rounds_used', 'budget_total', 'elapsed_minutes',
+            'evidence_state', 'result_produced', 'recommendation', 'observed_at'
+        ) }
+        'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }
+        # The round budget is topped up by RECORDING a decision, never by mutating a count. Rounds
+        # already run are immutable facts and stay on the record; this fact says where the human chose
+        # to start counting again, and carries who chose and why.
+        'RoundBudgetResetFact' { @('schema_version', 'fact_type', 'campaign_id', 'reset_id', 'authority_kind', 'authorized_by', 'reason', 'observed_at') }
         'RecoveryFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
@@ -342,6 +778,10 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'verdict' -Errors $errors -MaxLength 16 -Enum @('pass', 'findings', 'incomplete')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength $candidateLimits.max_summary_characters
+            # W33. What the review says it examined. OPTIONAL by design: a reviewer that never emits
+            # it behaves exactly as before, so no project already in flight is refused by a field it
+            # has never heard of. The rule lives in the ingest degrade, not in this contract.
+            Test-ReviewAuthorityExaminedPathsField -Object $InputObject -Name 'examined_paths' -Errors $errors
         }
         'ReviewResult' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial', 'none')
@@ -357,6 +797,10 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'started_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'ended_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'duration_ms' -Errors $errors -Minimum 0 -Maximum $script:ReviewAuthorityMaxDurationMilliseconds
+            # W33. Carried into the terminal record so the coverage a verdict rests on survives the
+            # projection. The declared-coverage rule was reachable only because nothing downstream
+            # could see what the reviewer said it had read.
+            Test-ReviewAuthorityExaminedPathsField -Object $InputObject -Name 'examined_paths' -Errors $errors
         }
         'GrantFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('grant')
@@ -410,6 +854,25 @@ function Test-ReviewAuthorityContractObject {
                 if (-not [string]::IsNullOrWhiteSpace($value) -and $value -cnotmatch '^[0-9a-f]{40,64}$') {
                     Add-ReviewAuthorityError -Errors $errors -Message "invalid-git-object-id:$name"
                 }
+            }
+        }
+        'PendingPauseFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 32 -Enum @('pending-pause')
+            foreach ($name in @('blocking_count', 'major_count', 'minor_count', 'demoted_count', 'rounds_used')) {
+                Test-ReviewAuthorityIntegerField -Object $InputObject -Name $name -Errors $errors -Minimum 0 -Maximum ([int]::MaxValue)
+            }
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'budget_total' -Errors $errors -Minimum 1 -Maximum ([int]::MaxValue)
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'recommendation' -Errors $errors -MaxLength 4000
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+            $pauseNames = Get-ReviewAuthorityPropertyNames -Object $InputObject
+            if ($pauseNames -contains 'evidence_state') {
+                Test-ReviewAuthorityStringField -Object $InputObject -Name 'evidence_state' -Errors $errors -MaxLength 16 -Enum @('produced', 'not-produced')
+            }
+            if ($pauseNames -contains 'result_produced') {
+                Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'result_produced' -Errors $errors
+            }
+            if (($pauseNames -contains 'evidence_state') -xor ($pauseNames -contains 'result_produced')) {
+                Add-ReviewAuthorityError -Errors $errors -Message 'incomplete-group:pause-evidence-state'
             }
         }
         'RecoveryFact' {
@@ -570,6 +1033,32 @@ function Test-ReviewAuthorityContractObject {
     elseif (@($errors | Where-Object { $_ -like 'unknown-field:*' -or $_ -like '*.unknown-field:*' }).Count -gt 0) { 'unknown-field' }
     else { 'schema-invalid' }
     return [pscustomobject]@{ valid = ($errors.Count -eq 0); category = $category; errors = @($errors) }
+}
+
+function Test-ReviewAuthorityExaminedPathsField {
+    # W33. An OPTIONAL, bounded list of repo-relative paths the review says it examined. Bounded on
+    # both count and length for the reason every other field here is: this lands in an immutable
+    # store, and an unbounded reviewer-supplied array is an unbounded write.
+    param(
+        [Parameter(Mandatory)]$Object,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors,
+        [int]$MaxCount = 500,
+        [int]$MaxLength = 512
+    )
+    if (-not ($Object.PSObject.Properties.Name -contains $Name)) { return }
+    $value = $Object.$Name
+    if ($null -eq $value) { return }
+    if ($value -is [string] -or -not ($value -is [System.Collections.IEnumerable])) {
+        $Errors.Add("wrong-type:${Name}:array") | Out-Null; return
+    }
+    $items = @($value)
+    if ($items.Count -gt $MaxCount) { $Errors.Add("too-many:${Name}:$MaxCount") | Out-Null; return }
+    for ($i = 0; $i -lt $items.Count; $i++) {
+        $item = $items[$i]
+        if ($null -eq $item -or -not ($item -is [string])) { $Errors.Add("wrong-type:${Name}[$i]:string") | Out-Null; continue }
+        if (([string]$item).Length -gt $MaxLength) { $Errors.Add("too-long:${Name}[$i]:$MaxLength") | Out-Null }
+    }
 }
 
 function Test-ReviewAuthorityContractJson {
@@ -846,12 +1335,12 @@ function Test-ReviewCampaignDuplicateCombination {
         [Parameter(Mandatory)][string]$ContractVersion,
         [object[]]$Runs = @()
     )
-    $matches = @($Runs | Where-Object {
+    $matchedItems = @($Runs | Where-Object {
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'target_digest') -ceq $TargetDigest -and
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'harness_id') -ceq $HarnessId -and
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'schema_version') -ceq $ContractVersion
     })
-    return [pscustomobject]@{ duplicate = ($matches.Count -gt 0); prior_run_ids = @($matches | ForEach-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') }) }
+    return [pscustomobject]@{ duplicate = ($matchedItems.Count -gt 0); prior_run_ids = @($matchedItems | ForEach-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') }) }
 }
 
 # --- T044: one-invocation run, acceptance/currentness, and finding lineage ----------------------

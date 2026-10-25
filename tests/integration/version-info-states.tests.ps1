@@ -193,6 +193,23 @@ squad:
 
     Assert-Null -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath (Join-Path $scratchDir 'does-not-exist.psd1')) -Message "missing manifest returns null"
 
+    $stampedRoot = Join-Path $scratchDir 'stamped-module'
+    $null = New-Item -ItemType Directory -Path $stampedRoot -Force
+    $stampedManifest = Join-Path $stampedRoot 'Specrew.psd1'
+    Set-Content -LiteralPath $stampedManifest -Encoding UTF8 -Value "@{ ModuleVersion = '0.40.0'; PrivateData = @{ PSData = @{ Prerelease = 'beta3' } } }"
+    [System.IO.File]::WriteAllText(
+        (Join-Path $stampedRoot 'build-stamp.json'),
+        '{"schema":"specrew-build-stamp/v1","commit":"deadbeef"}',
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    $stampedInfo = Get-SpecrewVersionInfoFromManifest -ManifestPath $stampedManifest
+    Assert-Equal -Expected 'deadbeef' -Actual $stampedInfo.BuildId -Message 'packaged manifest reads build id from its adjacent stamp'
+    Assert-Equal -Expected '0.40.0-beta3 (deadbeef)' -Actual $stampedInfo.Display -Message 'packaged prerelease display includes its stamped build id'
+
+    $sourceManifest = Join-Path $repoRoot 'Specrew.psd1'
+    $sourceHead = ([string](& git -C $repoRoot rev-parse --short=8 HEAD)).Trim()
+    Assert-Equal -Expected $sourceHead -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath $sourceManifest).BuildId -Message 'source checkout reports its own git HEAD as the build id'
+
     Write-Host ""
     Write-Host "Test 10: SPECREW_MODULE_PATH dev-trial override is honored as the installed version (F-044 parity)"
     # The dev-trial dispatcher (Specrew.psm1) runs the override tree's code, so the version probe must report

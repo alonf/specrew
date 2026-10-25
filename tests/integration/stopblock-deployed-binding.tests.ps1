@@ -8,6 +8,12 @@ $ErrorActionPreference = 'Stop'
 # StopBlockShape, and (b) feeding that exact baked binding to the REAL dispatcher STILL fires the block envelope.
 
 function Assert-True { param([bool]$Condition, [string]$Message) if (-not $Condition) { throw "FAIL: $Message" } ; Write-Host "PASS: $Message" -ForegroundColor Green }
+function Expand-HookCommandText {
+    param([Parameter(Mandatory)][string]$Command)
+    $encoded = [regex]::Match($Command, '-EncodedCommand\s+(\S+)')
+    if (-not $encoded.Success) { return $Command }
+    return [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded.Groups[1].Value.Trim('"', "'")))
+}
 
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
 $deployer = Join-Path $repoRoot 'scripts/internal/deploy-refocus-hooks.ps1'
@@ -28,7 +34,7 @@ try {
     $stopCmd = [string]$cfg.hooks.Stop[0].hooks[0].command
 
     # Extract the baked -HostBinding base64 the deployed hook actually passes the dispatcher.
-    $m = [regex]::Match($stopCmd, '-HostBinding\s+(\S+)')
+    $m = [regex]::Match((Expand-HookCommandText -Command $stopCmd), '-HostBinding\s+(\S+)')
     Assert-True ($m.Success) 'the deployed Stop command bakes a -HostBinding'
     $encoded = $m.Groups[1].Value.Trim('"', "'")
 

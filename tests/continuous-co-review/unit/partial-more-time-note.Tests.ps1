@@ -8,6 +8,12 @@ BeforeAll {
     $env:SPECREW_MODULE_PATH = $script:repoRoot
     . (Join-Path $script:repoRoot 'scripts/internal/continuous-co-review/_load.ps1')
     . (Join-Path $script:repoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+
+    # More-time notes belong to the retained legacy navigator surface. Campaign authority has its own
+    # pause protocol, so select legacy explicitly rather than inheriting the production campaign default.
+    Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+        [pscustomobject]@{ mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true; campaign_authority_enabled = $false; reason = 'authority-mode-legacy' }
+    }
 }
 
 Describe 'navigator "more time" note on a partial reap (T092/R2)' {

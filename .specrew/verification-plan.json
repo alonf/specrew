@@ -1,0 +1,335 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "f199.i003.slice.v1",
+  "commands": [
+    {
+      "command_id": "iteration-003-governance-202",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-File",
+        "extensions/specrew-speckit/scripts/validate-governance.ps1",
+        "-ProjectPath",
+        ".",
+        "-IterationPath",
+        "specs/202-beta4-1-ux-stabilization/iterations/003",
+        "-NoCacheRead",
+        "-NoParallel"
+      ],
+      "timeout_seconds": 180,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Explicit governance validation of the ACTIVE iteration - feature 202 iteration 003 (re-pointed 2026-10-21 before iteration 003's review round: iteration 002 is sealed, iteration 003 DRIFT-001). Before that: iteration 002 (re-pointed 2026-10-17 at iteration 002's before-implement, iteration 002 DRIFT-002: iteration 001 is sealed). Earlier history: RE-POINTED 2026-10-13 for the THIRD time (202 DRIFT-011): the plan still named 199's closed stub iteration 003, which fails on records a sealed stub never had (no task rows, no Completed date, no retro sections), and on a review check that now reads 202's campaign as the active one. The recurrence the 199 entries predicted. Making the command name the active iteration rather than a number remains open (beta4 owned it; now beta5)."
+    },
+    {
+      "command_id": "f202-slice-suites-a",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/crossing-presentation.tests.ps1','tests/unit/turn-record-contract.tests.ps1','tests/unit/cross-host-workshop.tests.ps1','tests/unit/twin-copy-parity.tests.ps1','tests/unit/dials-parity.tests.ps1','tests/unit/design-analysis-gate-refusal.tests.ps1','tests/unit/init-stays-in-project.tests.ps1','tests/unit/turn-draft-intake.tests.ps1','tests/integration/receipt-outcomes-retired.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 600,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 001 suites, split in two on 2026-10-14 (202 DRIFT-026): the single lane measured 309.7 s against its 600 s timeout after T012, T013 and the round-3 cases (1.94x, under the 2.4x floor), so it became two lanes rather than one longer timeout. Lane a: presented-crossing memory and the reply matcher (T006, round 3), the standard turn record (T002), the cross-host workshop walk (T005), twin-copy parity (T002), dials parity (T009), the one-pass design-analysis refusal (T013), init stays in its project folder (B4F-120, B4F-122), per-session draft intake over stdin (T014). Measured 2026-10-14: 124.8 s against 600 s (4.8x). Re-timed cold 2026-10-15 (T015) with init-stays-in-project and turn-draft-intake added: 193.9 s (3.09x). 2026-10-18 (T022): receipt-outcomes-retired added (a real specrew update that deletes the retired journal, and no shipped code naming it)."
+    },
+    {
+      "command_id": "f202-slice-suites-b",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/hook-output-journal.tests.ps1','tests/unit/journal-fault-injection.tests.ps1','tests/unit/receipt-disclosure.tests.ps1','tests/unit/presented-check.tests.ps1','tests/unit/orientation-order.tests.ps1','tests/unit/feature-resolver.tests.ps1','tests/unit/new-feature-reset.tests.ps1','tests/unit/resume-from-disk.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 600,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 001 suites, split in two on 2026-10-14 (202 DRIFT-026): the single lane measured 309.7 s against its 600 s timeout after T012, T013 and the round-3 cases (1.94x, under the 2.4x floor), so it became two lanes rather than one longer timeout. Lane b: the latch-free hook-output journal (T003, round 3), case (e) (T005), disclosed receipt outcomes (T004, round 3), the substance-only Stop (T007, round 3), orientation order (T008), the feature resolver (T010), the new-feature reset (T011), resume from disk (T012). Measured 2026-10-14: 183.9 s against 600 s (3.3x). Re-timed cold 2026-10-15 (T015) with the lock-budget cases: 240.9 s (2.49x), just above the floor. Re-timed cold again after presented-check case 8 (DRIFT-030): 180.9 s (3.32x). The two cold runs differ by 60 s on this machine, so the lane is judged on the slower one: 2.49x. Re-timed cold after the round-4 fixes (DRIFT-031): 198.8 s (3.02x)."
+    },
+    {
+      "command_id": "f202-i002-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; $r = Invoke-Pester -Path tests/unit/message-identity.tests.ps1,tests/unit/approval-form.tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0 -or $r.PassedCount -lt 1) { $fail = 1; Write-Host \"f202 i002 suite FAILED: message-identity/approval-form $($r.FailedCount) failed, $($r.PassedCount) passed\" }; foreach ($s in @('tests/unit/workshop-delegation.tests.ps1','tests/unit/workshop-question-tool.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 i002 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 660,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 002 suites (T016 to T023), added 2026-10-17 with T017. Its own lane because lanes a and b would drop under the 2.4x headroom floor with it. message-identity (T017, FR-027, SC-010): one typed approval through the message hook and N turn ends records once on Claude, Codex and Copilot, a retype still records, the backup path records once, and a Copilot miss is reported, and co-review rounds 1 to 4 replay their sixteen findings, and B4F-137 (a typed approval replaces an unspent turn-end record). workshop-delegation (T020, FR-031): the wide forms cover every remaining lens, the narrow form names the phrase, the mixed lens closes as delegated (12 s). workshop-question-tool (T021, FR-032): no shipped host instruction or skill permits a question tool for workshop questions (2 s). approval-form (T018, FR-029): on Claude nothing inside a paste counts and a phrase on its own line outside every paste does, within the observed paste-size boundary; a quoted menu is refused on every host; other hosts keep the phrase alone and say why; a reset typed for a waiting round authorizes it. host-binding-match (T016, FR-028): every recorded payload against every validated host's deployed hook - another host's payload stands down and writes nothing, an unknown shape is handled and logged once, a duplicate receipt ID is refused (71 s). Measured alone 274 s against 660 s (2.41x), with T018 to T021 added; the timeout went 600 to 660 to keep the 2.4x floor. Split on 2026-10-21: host-binding-match grew to 114 s alone with the probe payloads (T026), so it moved to f202-i002-suites-b with the sub-agent suite (T028); this lane measured about 203 s alone against 660 s (3.2x)."
+    },
+    {
+      "command_id": "f202-i002-suites-b",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/host-binding-match.tests.ps1','tests/unit/subagent-prompt-authority.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 i002 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 340,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 002 suites, lane b, added 2026-10-21 (T026, T028). host-binding-match (T016, T026, FR-028): every recorded payload, the layer-1 probe payloads included (Claude's hooks as Copilot runs them), against every validated host's deployed hook - its own host handles it, another host's payload stands down and writes nothing, no recorded payload leaves an unrecognized-payload record (114 s alone). subagent-prompt-authority (T028, FR-027, B4F-147): a payload carrying a sub-agent field is never typed by the human and records no approval on any channel, through the real provider pinned to a temp project, and the repository's own stores stay unchanged (24 s alone). Measured alone 138 s against 340 s (2.46x)."
+    },
+    {
+      "command_id": "f202-i003-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/closeout-records-on-approval.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f202 i003 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 202 iteration 003 suites, added 2026-10-21 (T031, T032, B4F-146). closeout-records-on-approval: through the real closeout sync and the real approval capture in a temp git project, the closed-iterations index does not list an iteration while its closeout decision is pending (asked once or twice), the approval adds it once and seals the iteration; T032: while the feature-closeout decision is pending the session stays active and the pointer, the session lock and the claim stay, the approval releases all four and rewrites the identity and launch-prompt text, and the validator's closure rule allows the pending decision; the repository's own stores stay unchanged. Measured alone 19 s against 120 s."
+    },
+{
+      "command_id": "f199-class-guards-a",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-Command",
+        "$fail = 0; $results = @('tests/integration/verdict-capture-blocks.tests.ps1','tests/bootstrap/ConversationCapture.Tests.ps1','tests/unit/no-internal-ids-in-emitted-strings.tests.ps1','tests/unit/package-filelist-completeness.tests.ps1','tests/unit/hook-event-coverage.tests.ps1','tests/unit/refusal-names-what-failed.tests.ps1','tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1','tests/unit/authority-capture-never-drops-silently.tests.ps1','tests/unit/every-suite-is-named-by-a-lane.tests.ps1','tests/unit/scaffold-reports-what-it-did.tests.ps1','tests/unit/clarify-refusal-names-the-form.tests.ps1','tests/integration/workshop-resolve-prefers-open-feature.tests.ps1','tests/integration/workshop-intake-completion-survives-agenda.tests.ps1','tests/integration/turn-end-update-transition.tests.ps1','tests/integration/turn-end-session-identity.tests.ps1','tests/integration/timestamp-read.tests.ps1','tests/integration/crew-charter-ownership.tests.ps1') | ForEach-Object -Parallel { $s = $_; & pwsh -NoProfile -NonInteractive -File $s *> $null; [pscustomobject]@{ Suite = $s; ExitCode = $LASTEXITCODE } } -ThrottleLimit 6; foreach ($r in @($results)) { if ($r.ExitCode -ne 0) { $fail = 1; Write-Host \"class-guard FAILED: $($r.Suite)\" } }; if (@($results).Count -ne 17) { $fail = 1; Write-Host \"class-guard FAILED: parallel run returned $(@($results).Count) results, expected 17\" }; exit $fail"
+      ],
+      "timeout_seconds": 270,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "CLASS-GUARD lane: PERMANENT, never selected by what a task happens to touch (maintainer ruling 2026-08-10, DRIFT-199-I001-017). VERDICT-CAPTURE RUNS FIRST and is the reason this lane is not optional: of the four defects existing fixtures caught in one session, three failed toward silencing or nagging, but the over-broad approval rule failed toward FABRICATION - capture inventing an authorization the human never gave. That is the one direction where a miss is unrecoverable, because a false authorization in the ledger is indistinguishable from a real one, so the T032 fabrication fixtures and the 23 not-approve cases must not be guarded only when someone happens to edit capture. The rest guard defect CLASSES structurally across the engine - the one path-identity primitive, the volume-derived case rule, and the machinery-path policy - where the file that breaks them is rarely the file being edited. The path-identity guard DID catch the third instance of its class the moment the call was written; it was simply never run, and a red guard was committed unnoticed. A guard only guards code whose author runs it. PARALLELIZED 2026-10-14 (202 DRIFT-013): the old \"roughly 20 s combined\" had grown to 31 sequential child pwsh processes plus 4 Pester files, measured by the maintainer at exit 0 in 243 s against this lane's 120 s timeout, so the engine killed a passing lane in the frozen copy and the run reported only a sealed failure. The suites now run 6 at a time with the result count pinned to 31, so a swallowed suite cannot read as a pass. Measured cold with only these env_refs: 109.4 s; the 270 s timeout keeps the 2.4x headroom convention. Still cheap enough that omitting it can never be justified by budget. Membership guard added 2026-08-26 (maintainer ruling): it LISTS and COMPARES rather than executing, so it costs seconds and belongs in the fast lane - a suite written into no lane fails here immediately, which is what stops the next one being written into silence. Package-completeness guard added 2026-08-30: the batch added exactly two machinery files and BOTH were absent from Specrew.psd1's FileList, so both were fully tested, fully mirrored, parity-clean - and reached no downstream project at all. The package IS the FileList; this guard COMPUTES the omission set rather than listing files to check, because a hand-enumerated guard over a hand-enumerated manifest repeats the defect one layer up. Per-event hook coverage added 2026-08-30: on Codex CLI, SessionStart and Stop receipts existed, UserPromptSubmit receipts never did, and health reported healthy because it classifies aggregate liveness rather than asking whether every DECLARED event has one. Specrew rendered orientation and packets while recording no typed authorization at all. Both sets were already computable and nothing compared them - the same shape as the FileList omission. Refusal-attribution guard added 2026-08-30: a workshop rejected for an underscore in a binding NAME was told about its VALUE, shown a value that was valid, and given casing advice irrelevant to underscores - the fifth measured instance of a refusal that accurately describes what it checked and misdescribes what went wrong. Silent-drop guard added 2026-08-31: a valid human authorization was matched, rejected for length, and discarded with no message - the capture reads the rationale as everything to end-of-message. A phrase that matched and was then rejected must say so and say what to do; a phrase that never matched stays silent. Positive-exemption guard added 2026-09-05: the workshop's outside-work stop had an exemption for the turn that opens a workshop, and it had never fired once in the 22 days since it was written - it hashed the spec placeholder against the upstream template while the governed wrapper had already replaced that template with a much shorter stub, so it failed on size before reaching a hash. Nothing noticed, because a predicate declining for a real reason and one whose condition CANNOT be met behave identically, and every test around it asserted only that the guard STOPS things. A suite written entirely in the negative agrees with a dead exemption perfectly. So this guard asserts the POSITIVE half - that the exemption fires for the stub the scaffold itself writes - and it renders that stub from the scaffold's own literal rather than a pasted copy, because the defect was the scaffold and the predicate drifting apart while each stayed internally correct. Every future exemption belongs here. Post-agenda intake guard added 2026-09-09: confirming a workshop agenda CLEARS the controller's topic map, and three separate crews read that emptiness as silent data loss - one of them re-ran the lens writer to \"restore\" the intake entry and left the whole feature reading workshop-record-not-selected, so every lens stopped. The outcome depended on which agent was in the room, and discipline is not a control. The guard runs here because it is a defect CLASS with two halves that must not drift apart: a writer that refuses the reopen and a reader that tolerates the key already written into projects in the field. Silent-effect guard added 2026-09-05: the feature scaffold printed BRANCH_NAME and the agent reported the feature scaffolded, while the project sat on master with no such branch - Spec Kit 0.12.9 moved branch creation into an optional git extension that specrew init does not install, so nothing in a project created today makes branches. It went unseen because THIS repository still branches: its .specify copies date from 2026-04-17 and predate the split, so the tree Specrew is developed in is not shaped like the trees it creates. The guard asserts the scaffold now says which of the four things happened, in a sentence, and that the four are distinguishable - a field named after an effect and printed whether or not the effect occurred is not a report. RESTORED AND SPLIT 2026-10-15 (202 T015, DRIFT-029): re-timed cold with only these env_refs, the single lane passed in 164.6 s against 270 s (1.64x, under the 2.4x floor). Its parallel set alone took 132.3 s, so the set itself is split: -a holds verdict capture first, the next 15 suites and crew-charter-ownership (75 s alone, the heaviest), measured 78.6 s (3.44x); -b holds the other 14 suites and the Pester block, measured 62.1 s (4.35x). Every suite of the old lane is in exactly one half."
+    },
+    {
+      "command_id": "f199-class-guards-b",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-Command",
+        "$fail = 0; $results = @('tests/integration/sealed-iteration-writers.tests.ps1','tests/integration/plan-sync-target-iteration.tests.ps1','tests/integration/review-advisory-session-scope.tests.ps1','tests/unit/readiness-verdict-line.tests.ps1','tests/unit/mechanical-checks-applicability.tests.ps1','tests/unit/closeout-gate-git-warnings.tests.ps1','tests/unit/scope-base-ref-env.tests.ps1','tests/unit/lint-gate-autofix-proceeds.tests.ps1','tests/unit/extension-deploy-refocus-digests.tests.ps1','tests/unit/review-output-is-quiet.tests.ps1','tests/unit/coverage-state-active-iteration.tests.ps1','tests/unit/workshop-confirm-not-bound.tests.ps1','tests/integration/version-label-one-resolver.tests.ps1','tests/integration/workshop-agenda-vocabulary.tests.ps1','tests/unit/round-phrase-never-boundary-verdict.tests.ps1') | ForEach-Object -Parallel { $s = $_; & pwsh -NoProfile -NonInteractive -File $s *> $null; [pscustomobject]@{ Suite = $s; ExitCode = $LASTEXITCODE } } -ThrottleLimit 6; foreach ($r in @($results)) { if ($r.ExitCode -ne 0) { $fail = 1; Write-Host \"class-guard FAILED: $($r.Suite)\" } }; if (@($results).Count -ne 15) { $fail = 1; Write-Host \"class-guard FAILED: parallel run returned $(@($results).Count) results, expected 15\" }; $r = Invoke-Pester -Path tests/continuous-co-review/unit/path-identity.Tests.ps1,tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1,tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1,tests/continuous-co-review/unit/reviewed-state-digest-cost.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { $fail = 1 }; exit $fail"
+      ],
+      "timeout_seconds": 270,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "CLASS-GUARD lane: PERMANENT, never selected by what a task happens to touch (maintainer ruling 2026-08-10, DRIFT-199-I001-017). VERDICT-CAPTURE RUNS FIRST and is the reason this lane is not optional: of the four defects existing fixtures caught in one session, three failed toward silencing or nagging, but the over-broad approval rule failed toward FABRICATION - capture inventing an authorization the human never gave. That is the one direction where a miss is unrecoverable, because a false authorization in the ledger is indistinguishable from a real one, so the T032 fabrication fixtures and the 23 not-approve cases must not be guarded only when someone happens to edit capture. The rest guard defect CLASSES structurally across the engine - the one path-identity primitive, the volume-derived case rule, and the machinery-path policy - where the file that breaks them is rarely the file being edited. The path-identity guard DID catch the third instance of its class the moment the call was written; it was simply never run, and a red guard was committed unnoticed. A guard only guards code whose author runs it. PARALLELIZED 2026-10-14 (202 DRIFT-013): the old \"roughly 20 s combined\" had grown to 31 sequential child pwsh processes plus 4 Pester files, measured by the maintainer at exit 0 in 243 s against this lane's 120 s timeout, so the engine killed a passing lane in the frozen copy and the run reported only a sealed failure. The suites now run 6 at a time with the result count pinned to 31, so a swallowed suite cannot read as a pass. Measured cold with only these env_refs: 109.4 s; the 270 s timeout keeps the 2.4x headroom convention. Still cheap enough that omitting it can never be justified by budget. Membership guard added 2026-08-26 (maintainer ruling): it LISTS and COMPARES rather than executing, so it costs seconds and belongs in the fast lane - a suite written into no lane fails here immediately, which is what stops the next one being written into silence. Package-completeness guard added 2026-08-30: the batch added exactly two machinery files and BOTH were absent from Specrew.psd1's FileList, so both were fully tested, fully mirrored, parity-clean - and reached no downstream project at all. The package IS the FileList; this guard COMPUTES the omission set rather than listing files to check, because a hand-enumerated guard over a hand-enumerated manifest repeats the defect one layer up. Per-event hook coverage added 2026-08-30: on Codex CLI, SessionStart and Stop receipts existed, UserPromptSubmit receipts never did, and health reported healthy because it classifies aggregate liveness rather than asking whether every DECLARED event has one. Specrew rendered orientation and packets while recording no typed authorization at all. Both sets were already computable and nothing compared them - the same shape as the FileList omission. Refusal-attribution guard added 2026-08-30: a workshop rejected for an underscore in a binding NAME was told about its VALUE, shown a value that was valid, and given casing advice irrelevant to underscores - the fifth measured instance of a refusal that accurately describes what it checked and misdescribes what went wrong. Silent-drop guard added 2026-08-31: a valid human authorization was matched, rejected for length, and discarded with no message - the capture reads the rationale as everything to end-of-message. A phrase that matched and was then rejected must say so and say what to do; a phrase that never matched stays silent. Positive-exemption guard added 2026-09-05: the workshop's outside-work stop had an exemption for the turn that opens a workshop, and it had never fired once in the 22 days since it was written - it hashed the spec placeholder against the upstream template while the governed wrapper had already replaced that template with a much shorter stub, so it failed on size before reaching a hash. Nothing noticed, because a predicate declining for a real reason and one whose condition CANNOT be met behave identically, and every test around it asserted only that the guard STOPS things. A suite written entirely in the negative agrees with a dead exemption perfectly. So this guard asserts the POSITIVE half - that the exemption fires for the stub the scaffold itself writes - and it renders that stub from the scaffold's own literal rather than a pasted copy, because the defect was the scaffold and the predicate drifting apart while each stayed internally correct. Every future exemption belongs here. Post-agenda intake guard added 2026-09-09: confirming a workshop agenda CLEARS the controller's topic map, and three separate crews read that emptiness as silent data loss - one of them re-ran the lens writer to \"restore\" the intake entry and left the whole feature reading workshop-record-not-selected, so every lens stopped. The outcome depended on which agent was in the room, and discipline is not a control. The guard runs here because it is a defect CLASS with two halves that must not drift apart: a writer that refuses the reopen and a reader that tolerates the key already written into projects in the field. Silent-effect guard added 2026-09-05: the feature scaffold printed BRANCH_NAME and the agent reported the feature scaffolded, while the project sat on master with no such branch - Spec Kit 0.12.9 moved branch creation into an optional git extension that specrew init does not install, so nothing in a project created today makes branches. It went unseen because THIS repository still branches: its .specify copies date from 2026-04-17 and predate the split, so the tree Specrew is developed in is not shaped like the trees it creates. The guard asserts the scaffold now says which of the four things happened, in a sentence, and that the four are distinguishable - a field named after an effect and printed whether or not the effect occurred is not a report. RESTORED AND SPLIT 2026-10-15 (202 T015, DRIFT-029): re-timed cold with only these env_refs, the single lane passed in 164.6 s against 270 s (1.64x, under the 2.4x floor). Its parallel set alone took 132.3 s, so the set itself is split: -a holds verdict capture first, the next 15 suites and crew-charter-ownership (75 s alone, the heaviest), measured 78.6 s (3.44x); -b holds the other 14 suites and the Pester block, measured 62.1 s (4.35x). Every suite of the old lane is in exactly one half. JOINED 2026-10-15 (202, B4F-116): round-phrase-never-boundary-verdict - with the review decision pending, the typed round approval is never captured as a boundary verdict (a fabricated authorization if it were). Lane re-timed cold with it: 71.3 s (3.79x)."
+    },
+    {
+      "command_id": "f199-slice-suites-a",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-Command",
+        "$fail = 0; $results = @('tests/integration/workshop-agenda-confirmation.tests.ps1','tests/integration/cycle-reset-mirror.tests.ps1','tests/integration/workshop-typed-turn-authority.tests.ps1','tests/integration/workshop-material-packet-language.tests.ps1','tests/integration/session-orientation-rendered.tests.ps1','tests/unit/workshop-refusal-contract.tests.ps1','tests/unit/review-approve-round-host-resolution.tests.ps1','tests/unit/review-flag-whitelist-parity.tests.ps1','tests/unit/pause-choice-carries-round-approval.tests.ps1','tests/unit/banner-ids-are-glossed.tests.ps1','tests/unit/session-orientation-obligation.tests.ps1','tests/unit/module-packaging-identity.tests.ps1','tests/unit/maintainer-skill-host-parity.tests.ps1','tests/unit/task-progress-no-demotion.tests.ps1','tests/unit/reviewer-closeout-artifacts-generate.tests.ps1','tests/unit/scaffold-migration-and-pending.tests.ps1','tests/unit/no-automatic-variable-collisions.tests.ps1','tests/unit/deployed-extension-integrity.tests.ps1','tests/unit/scaffold-writes-once.tests.ps1','tests/integration/deployed-extension-marker-on-update.tests.ps1','tests/integration/review-record-survives-its-own-commit.tests.ps1','tests/integration/no-code-without-approval.tests.ps1','tests/integration/closed-iterations-are-history.tests.ps1','tests/unit/round-approval-typed-authority.tests.ps1','tests/unit/coverage-is-a-decision.tests.ps1') | ForEach-Object -Parallel { $s = $_; & pwsh -NoProfile -NonInteractive -File $s *> $null; [pscustomobject]@{ Suite = $s; ExitCode = $LASTEXITCODE } } -ThrottleLimit 6; foreach ($r in @($results)) { if ($r.ExitCode -ne 0) { $fail = 1; Write-Host \"workshop-suite FAILED: $($r.Suite)\" } }; if (@($results).Count -ne 25) { $fail = 1; Write-Host \"workshop-suite FAILED: parallel run returned $(@($results).Count) results, expected 25\" }; exit $fail"
+      ],
+      "timeout_seconds": 480,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "SLICE lane: the suites this slice touches, plus the workshop-authority suites added 2026-08-17. The beta3 workshop fixes (W10-W18) shipped with no lane covering them, so a walk regression could only be caught by someone remembering to run them by hand - the same 'a guard only guards code whose author runs it' shape the class-guard lane exists to prevent. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10). The W29-W32 review-frame suite joined 2026-08-20: those four defects let a review be recorded as clean and independent while its frame held one planning document, so the guard belongs where a slice touching review machinery runs it. W33's declared-coverage suite joined it 2026-08-20: it is the only guard standing between a review that read nothing and a recorded clean pass, and it spans the candidate contract, the ingest degrade and the store's allowed-field list. W34's authorship and derived-independence suites joined 2026-08-20; they span the hook that observes the write, the store derivation, and the validator that recomputes it. The packaging-identity suite joined 2026-08-21: it pins the two mechanisms that turned out not to exist - a supported local install, and a build stamp derived from what is actually in the package. PARALLELIZED 2026-08-24 (DRIFT-199-I001-116): the lane grew past its own budget - 24 sequential child pwsh spawns measured 370s cold in a faithful frozen-tree materialization against a 480s bound, and two review launches died on exactly that timeout. The suites are isolated processes on GUID-scoped temp fixtures, so they now run 6 at a time; the result count is pinned so a swallowed suite cannot read as a pass. Measured cold+env-scrubbed after: 199s, giving the 480s bound 2.4x headroom, inside the project's own measured-headroom convention. Cycle-reset guard added 2026-08-30: the truth gate replayed the GLOBAL last-authorized boundary into a NEW iteration, forward-writing its plan scaffold from planning to complete and wedging every next-iteration cycle. No existing mirror fixture crossed a cycle boundary, so nothing saw it. RESTORED AND SPLIT 2026-10-15 (202 T015, DRIFT-029): re-timed cold with only these env_refs, the single lane passed in 298.8 s against 480 s (1.61x, under the 2.4x floor). -a holds the 25 parallel script suites, measured 181.1 s (2.65x); -b holds the Pester block, measured 112.9 s (4.25x)."
+    },
+    {
+      "command_id": "f199-slice-suites-b",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-Command",
+        "$fail = 0; $r = Invoke-Pester -Path tests/continuous-co-review/unit/clean-review-can-be-signed-off.Tests.ps1,tests/continuous-co-review/unit/review-frame-and-evidence-honesty.Tests.ps1,tests/continuous-co-review/unit/review-examined-coverage.Tests.ps1,tests/continuous-co-review/unit/advisory-names-the-humans-act.Tests.ps1,tests/continuous-co-review/unit/records-only-covers-what-deployment-writes.Tests.ps1,tests/continuous-co-review/unit/baseline-provenance-fact.Tests.ps1,tests/continuous-co-review/unit/refusal-names-a-reachable-action.Tests.ps1,tests/continuous-co-review/unit/review-record-authorship.Tests.ps1,tests/continuous-co-review/unit/review-derived-independence.Tests.ps1,tests/continuous-co-review/unit/records-only-delta-survives-its-own-round.Tests.ps1,tests/continuous-co-review/unit/signoff-override-survives-its-own-preflight.Tests.ps1,tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1,tests/continuous-co-review/unit/campaign-default-run-id-mint.Tests.ps1,tests/continuous-co-review/unit/review-window-codex-default.Tests.ps1,tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1,tests/bootstrap/BannerPrereleaseVersion.Tests.ps1,tests/integration/ci-registry-lane-tooling.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { $fail = 1 }; exit $fail"
+      ],
+      "timeout_seconds": 480,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "SLICE lane: the suites this slice touches, plus the workshop-authority suites added 2026-08-17. The beta3 workshop fixes (W10-W18) shipped with no lane covering them, so a walk regression could only be caught by someone remembering to run them by hand - the same 'a guard only guards code whose author runs it' shape the class-guard lane exists to prevent. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10). The W29-W32 review-frame suite joined 2026-08-20: those four defects let a review be recorded as clean and independent while its frame held one planning document, so the guard belongs where a slice touching review machinery runs it. W33's declared-coverage suite joined it 2026-08-20: it is the only guard standing between a review that read nothing and a recorded clean pass, and it spans the candidate contract, the ingest degrade and the store's allowed-field list. W34's authorship and derived-independence suites joined 2026-08-20; they span the hook that observes the write, the store derivation, and the validator that recomputes it. The packaging-identity suite joined 2026-08-21: it pins the two mechanisms that turned out not to exist - a supported local install, and a build stamp derived from what is actually in the package. PARALLELIZED 2026-08-24 (DRIFT-199-I001-116): the lane grew past its own budget - 24 sequential child pwsh spawns measured 370s cold in a faithful frozen-tree materialization against a 480s bound, and two review launches died on exactly that timeout. The suites are isolated processes on GUID-scoped temp fixtures, so they now run 6 at a time; the result count is pinned so a swallowed suite cannot read as a pass. Measured cold+env-scrubbed after: 199s, giving the 480s bound 2.4x headroom, inside the project's own measured-headroom convention. Cycle-reset guard added 2026-08-30: the truth gate replayed the GLOBAL last-authorized boundary into a NEW iteration, forward-writing its plan scaffold from planning to complete and wedging every next-iteration cycle. No existing mirror fixture crossed a cycle boundary, so nothing saw it. RESTORED AND SPLIT 2026-10-15 (202 T015, DRIFT-029): re-timed cold with only these env_refs, the single lane passed in 298.8 s against 480 s (1.61x, under the 2.4x floor). -a holds the 25 parallel script suites, measured 181.1 s (2.65x); -b holds the Pester block, measured 112.9 s (4.25x)."
+    }
+  ]
+}

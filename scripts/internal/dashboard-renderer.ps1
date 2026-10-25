@@ -364,7 +364,7 @@ function Get-SpecrewBoundaryCommitTimestamp {
         return $null
     }
 
-    $matches = @(
+    $matchedItems = @(
         $BoundaryCommits |
             Where-Object {
                 $_.Boundary -eq $Boundary -and
@@ -373,11 +373,11 @@ function Get-SpecrewBoundaryCommitTimestamp {
             }
     )
 
-    if ($matches.Count -eq 0) {
+    if ($matchedItems.Count -eq 0) {
         return $null
     }
 
-    $ordered = if ($Latest) { $matches | Sort-Object CommittedAt -Descending } else { $matches | Sort-Object CommittedAt }
+    $ordered = if ($Latest) { $matchedItems | Sort-Object CommittedAt -Descending } else { $matchedItems | Sort-Object CommittedAt }
     return $ordered[0].CommittedAt
 }
 
@@ -398,6 +398,17 @@ function Get-SpecrewCalendarDayDuration {
 
 function Get-SpecrewActiveFeatureDirectory {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    # Feature 202 T010 (FR-017): the one resolver decides (in-flight work, then the pointer written for this branch,
+    # then the branch as a hint). Only if it cannot be loaded does the raw pointer below answer.
+    if (Get-Command Resolve-SpecrewActiveFeature -ErrorAction SilentlyContinue) {
+        try {
+            $resolution = Resolve-SpecrewActiveFeature -ProjectRoot $ProjectRoot
+            if ([string]::IsNullOrWhiteSpace([string]$resolution.feature_ref)) { return $null }
+            return [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot (Join-Path 'specs' ([string]$resolution.feature_ref))))
+        }
+        catch { $null = $_ }
+    }
 
     $featureJsonPath = Join-Path $ProjectRoot '.specify\feature.json'
     if (-not (Test-Path -LiteralPath $featureJsonPath -PathType Leaf)) {
@@ -1627,6 +1638,9 @@ function Get-SpecrewDashboardSnapshot {
         $activeFeatureDirectory = Get-SpecrewActiveFeatureDirectory -ProjectRoot $resolvedProjectRoot
         $activeFeatureRef = if ($activeFeatureDirectory) { Split-Path -Leaf $activeFeatureDirectory } else { $null }
     }
+    # Feature 202 T010 (FR-018): the dashboard names the source that chose the feature, the same line orientation shows.
+    $activeFeatureSource = if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { ('Feature {0}, as requested with --feature.' -f $FeatureId) }
+                           else { try { Get-SpecrewActiveFeatureDisclosure -Resolution (Resolve-SpecrewActiveFeature -ProjectRoot $resolvedProjectRoot) } catch { '' } }
     $features = @(Get-SpecrewFeatureRecords -ProjectRoot $resolvedProjectRoot -ActiveFeatureRef $activeFeatureRef)
     $featureLookup = @{}
     foreach ($feature in $features) {
@@ -1641,10 +1655,9 @@ function Get-SpecrewDashboardSnapshot {
         $warnings.Add($renderProfile.fallback_reason) | Out-Null
     }
 
+    # Feature 202 T010 (B4F-105): no lowest-numbered fallback. When nothing resolves, nothing is shown as active - the
+    # fallback is how a project in the middle of feature 201 showed 001 (Shipped) as its active feature.
     $featureRecord = @($features | Where-Object { $_.feature_ref -eq $activeFeatureRef } | Select-Object -First 1)
-    if ($featureRecord.Count -eq 0 -and $features.Count -gt 0) {
-        $featureRecord = @($features | Select-Object -First 1)
-    }
     $featureRecord = if ($featureRecord.Count -gt 0) { $featureRecord[0] } else { $null }
 
     $closedIterations = @(
@@ -1749,6 +1762,7 @@ function Get-SpecrewDashboardSnapshot {
             root   = $resolvedProjectRoot
         }
         active_feature       = $featureRecord
+        active_feature_source = $activeFeatureSource
         active_iteration     = $activeIteration
         active_phase         = $activePhase
         summary_line         = ''
@@ -1851,6 +1865,9 @@ function ConvertTo-SpecrewDashboardLines {
     $lines.Add('') | Out-Null
 
     $lines.Add('ACTIVE WORK') | Out-Null
+    if ($Snapshot.PSObject.Properties['active_feature_source'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.active_feature_source)) {
+        $lines.Add(('Chosen: {0}' -f $Snapshot.active_feature_source)) | Out-Null
+    }
     if ($null -ne $Snapshot.active_feature) {
         $lines.Add(('Feature: {0} {1} | {2} | status {3}' -f $palette.ActiveArrow, (Get-SpecrewFeatureDisplayCode -FeatureRef $Snapshot.active_feature.feature_ref), (Get-SpecrewFeatureReadableTitle -FeatureTitle $Snapshot.active_feature.feature_title -FeatureRef $Snapshot.active_feature.feature_ref), $Snapshot.active_feature.feature_status)) | Out-Null
         if ($null -ne $Snapshot.active_iteration) {

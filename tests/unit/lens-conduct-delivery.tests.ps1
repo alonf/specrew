@@ -98,6 +98,9 @@ Assert-Match -Text $skill -Pattern '(?i)Lens approval is not workshop-question a
 Assert-Match -Text $skill -Pattern '(?i)Agenda confirmation is not lens-question confirmation' 'skill #2212 dogfood: agenda confirmation selects lens/depth only, not lens answers'
 Assert-Match -Text $skill -Pattern '(?is)Do NOT offer or accept a batch shortcut such as "Confirm\s+all as proposed"' 'skill #2212 dogfood: batch "Confirm all as proposed" shortcut is forbidden for lens decisions'
 Assert-Match -Text $skill -Pattern '(?i)One selected lens = one lens turn' 'skill #2212 dogfood: every selected lens needs its own lens-specific turn'
+Assert-Match -Text $skill -Pattern '(?is)product-domain.*must not.*(?:runtime|stack).*output.*(?:timeout|reachability)' 'skill beta3 walk: product-domain cannot harvest technical-lens decisions under one receipt'
+Assert-Match -Text $skill -Pattern '(?is)propose.*product-domain depth.*human.*confirm|human.*confirm.*product-domain depth' 'skill beta3 walk: product-domain depth is proposed by Crew and confirmed or adjusted by the human'
+Assert-Match -Text $skill -Pattern '(?is)do not persist.*product-domain.*before.*typed.*confirm' 'skill beta3 walk: selected product-domain depth is not persisted as model-authored authority'
 Assert-Match -Text $skill -Pattern '(?i)A batch confirmation is not valid provenance' 'skill #2212 dogfood: batch confirmation cannot become human-confirmed provenance'
 Assert-Match -Text $skill -Pattern '(?is)record each affected lens as `human-delegated` \+\s+`explicit-delegation`, not `human-confirmed`' 'skill #2212 dogfood: explicit batch shortcut is delegation, not confirmation'
 Assert-Match -Text $skill -Pattern 'lens-question' 'skill #2212: confirmation_scope value lens-question is documented'
@@ -111,6 +114,11 @@ Assert-Match -Text $skill -Pattern '(?i)preparing the workshop' 'skill A7: the p
 Assert-Match -Text $skill -Pattern '(?i)agenda as an assignment' 'skill A7: the agenda assignment (FR-040)'
 Assert-Match -Text $skill -Pattern '(?i)preparing lens' 'skill A7: the per-lens lazy-load progress cue (FR-040)'
 Write-Pass 'skill A7: confirmation-integrity invariant + count + delegate/skip exception + provenance field + intake UX (presence-locked; SC-027 dogfood is the behavioral gate)'
+
+$productDomain = Get-Content -LiteralPath (Join-Path $lensDir 'product-domain.md') -Raw
+Assert-Match -Text $productDomain -Pattern '(?is)technology.*externally fixed.*constraint' 'product-domain lens: technology is elicited only as an externally fixed constraint'
+Assert-Match -Text $productDomain -Pattern '(?is)must not.*(?:runtime|stack).*output.*(?:timeout|reachability)' 'product-domain lens: solution menus remain owned by their technical lenses'
+Assert-Match -Text $productDomain -Pattern '(?is)propose.*depth.*human.*confirm|human.*confirm.*depth' 'product-domain lens: depth authority is explicit'
 # FR-037 in-band-at-approval tightening (testLenses8 Claude fix): at any approval point the map MUST be rendered
 # in-band in the same message, never referenced by a file path or a bare count; the file is written after, not
 # instead. Copilot + Antigravity already render in-band; this pulls Claude up to the same bar.
@@ -118,14 +126,15 @@ Assert-Match -Text $skill -Pattern '(?i)approves what\s+is on screen' 'skill FR-
 Assert-Match -Text $skill -Pattern '(?i)IN ADDITION TO the\s+in-band render' 'skill FR-037: the workshop file is written AFTER + in addition to the in-band render, never instead'
 # General mechanism rule (testLenses11: the lens AGENDA was confirmed by count without rendering — a list, not
 # a diagram, so the diagram-scoped rule missed it). Anchored on render-before-the-question; covers EVERY confirm
-# point incl. the agenda. Claude now removes the unsafe picker; other hosts retain structured questions.
+# point incl. the agenda. Claude removes the unsafe picker at capability level; every host uses typed turns.
 Assert-Match -Text $skill -Pattern '(?i)render \+ explain, THEN ask' 'skill FR-037 general: render+explain before the confirm menu (mechanism-anchored, not artifact-enumerated)'
 Assert-Match -Text $skill -Pattern '(?i)Be verbose' 'skill FR-037 general: be verbose — explain in prose first + self-explanatory menu wording'
 Assert-Match -Text $skill -Pattern '(?m)^claude-disallowed-tools:\s*AskUserQuestion\s*$' 'skill FR-037 general: canonical Claude deployment policy removes the picker that swallows rendered context'
-Assert-Match -Text $skill -Pattern '(?i)numbered prose list answered by typing' 'skill FR-037 general: Claude uses visible prose choices with a typed answer'
-Assert-Match -Text $skill -Pattern '(?i)Other hosts retain their structured\s+question UX' 'skill FR-037 general: non-Claude hosts retain structured questions'
+Assert-Match -Text $skill -Pattern '(?i)numbered\s+prose\s+list\s+answered\s+by\s+typing' 'skill FR-037 general: every host uses visible prose choices with a typed answer'
+Assert-Match -Text $skill -Pattern '(?i)Ctrl\+O.*no answer' 'skill beta3: picker dismissal cannot become delegation'
+Assert-Match -Text $skill -Pattern '(?i)do not call a\s+structured question/menu tool anywhere in the product-domain phase, agenda confirmation, or lens work' 'skill beta3: every host disables structured workshop questions'
 Assert-Match -Text $skill -Pattern '(?i)agenda \+ depths' 'skill FR-037 general: the lens agenda + depths is an explicit confirm-point (the testLenses11 gap the diagram-scoped rule missed)'
-Write-Pass 'skill FR-037: render+explain before every confirm point; Claude picker removed, typed choices visible, other-host structured UX preserved'
+Write-Pass 'skill FR-037: render+explain before every confirm point; Claude picker removed, typed workshop choices required on every host'
 # 165-retarget (2026-06-07 dogfood — the F-171 workshop on the current Claude model). Two host-neutral
 # conduct additions: (A) the human-facing chat-path orientation (humans hit dense menus they could not
 # follow + had to discover the free-text path themselves); (B) the file:///-links-before-the-menu rule
@@ -147,6 +156,9 @@ Write-Pass 'skill component-map: prescriptive fill-in template (diagram + vocabu
 # crammed the lens list into the menu question instead of rendering the agenda-with-decisions in-band). Same
 # template lever as the component map (prose skimmed -> template holds).
 Assert-Match -Text $skill -Pattern '(?i)Workshop agenda' 'skill agenda: a fill-in agenda template (rendered in-band before the confirm menu, not crammed into the menu question)'
+Assert-Match -Text $skill -Pattern '(?i)One `Skipped:` line is required for \*\*every\*\* technical lens' 'skill agenda: every omitted lens is visible with a reason, never hidden behind the selected count'
+Assert-Match -Text $skill -Pattern '(?i)whether the human wants to confirm or\s+change the selection' 'skill agenda: the selected and skipped set is a human decision before lens 1'
+Assert-Match -Text $skill -Pattern 'confirm-workshop-agenda\.ps1' 'skill agenda: confirmation uses the governed complete-coverage writer rather than hand-editing controller state'
 Assert-Match -Text $skill -Pattern '(?i)the decision this lens will ask' 'skill agenda: the agenda template carries each lens depth + the concrete decision it raises (not just the name)'
 Write-Pass 'skill agenda: prescriptive fill-in agenda template (lenses + depth + per-lens decision, render-before-menu) — the testLenses11 agenda-render fix'
 # A8 / FR-041 (i12 + Beta2 manual test): render-before-menu conduct is defeated on Claude by
@@ -183,6 +195,9 @@ $govPath = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coord
 Assert-True (Test-Path -LiteralPath $govPath) "coordinator-governance template exists ($govPath)"
 $gov = Get-Content -LiteralPath $govPath -Raw
 Assert-Match -Text $gov -Pattern '(?i)every selected lens' 'governance A7: intake not complete until every selected lens is resolved (FR-038 stopping rule)'
+Assert-Match -Text $gov -Pattern '(?i)every omitted technical lens with a feature-specific reason' 'governance agenda: every skipped technical lens is rendered with its reason before lens 1'
+Assert-Match -Text $gov -Pattern '(?i)whether to confirm or change that selection' 'governance agenda: the human confirms or changes the selected and skipped set before lens 1'
+Assert-Match -Text $gov -Pattern '(?i)selected count alone is not an agenda' 'governance agenda: a selected lens count cannot stand in for the reviewable agenda'
 Assert-Match -Text $gov -Pattern '(?i)specific enough' 'governance A7: do not declare intake specific-enough early (the root-cause lever)'
 Assert-Match -Text $gov -Pattern '(?i)background sub-agent|backfill' 'governance A7: do not delegate to a background sub-agent / backfill'
 Assert-Match -Text $gov -Pattern '(?i)confirmation_scope' 'governance #2212: scoped confirmation field is documented'
@@ -192,6 +207,7 @@ Assert-True (Test-Path -LiteralPath $govMirrorPath) "project-local coordinator-g
 $govMirror = Get-Content -LiteralPath $govMirrorPath -Raw
 Assert-Match -Text $govMirror -Pattern '(?i)confirmation_scope' 'governance mirror #2212: scoped confirmation field is documented'
 Assert-Match -Text $govMirror -Pattern '(?i)Lens approval is not workshop-question approval' 'governance mirror #2212: lens/agenda approval cannot stand in for workshop-question approval'
+Assert-Match -Text $govMirror -Pattern '(?i)every omitted technical lens with a feature-specific reason' 'governance mirror agenda: every skipped technical lens is rendered with its reason before lens 1'
 Write-Pass 'governance A7/#2212: stopping-completeness rule plus scoped confirmation is in shipped and project-local coordinator guidance'
 
 # Rule 9a carries the A7 clause (the launch-prompt pointer names A7 + the provenance gate)

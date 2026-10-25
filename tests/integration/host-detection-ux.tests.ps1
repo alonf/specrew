@@ -114,4 +114,22 @@ if ('--force' -notin $cursorArgs) { Write-Fail "Cursor AllowAll=true should add 
 if ($cursorInv.Binary -notmatch 'cursor-agent') { Write-Fail "Cursor Binary should resolve to cursor-agent; got '$($cursorInv.Binary)'" }
 Write-Pass "Cursor launch shape correct: interactive prompt + --workspace + --force (no --print/--trust); Binary=cursor-agent (F-050 iter-002)"
 
+# Test 10 (beta3 walk-5 preflight): current Copilot skills are nested as
+# .github/skills/<skill>/SKILL.md. The detector must inspect the deployed shape rather than retain
+# the retired flat-*.md convention and tell a consumer that a populated catalog is empty.
+$skillFixture = Join-Path ([IO.Path]::GetTempPath()) ('specrew-copilot-skill-detection-' + [guid]::NewGuid().ToString('N'))
+try {
+    $nestedSkill = Join-Path $skillFixture '.github\skills\demo\SKILL.md'
+    $null = New-Item -ItemType Directory -Path (Split-Path -Parent $nestedSkill) -Force
+    [IO.File]::WriteAllText($nestedSkill, "---`nname: demo`n---`n# Demo`n", [Text.UTF8Encoding]::new($false))
+    $skillStatus = Test-HostSkillRoot -HostKind copilot -ProjectPath $skillFixture
+    if (@($skillStatus.SkillFiles).Count -ne 1 -or @($skillStatus.Warnings | Where-Object { $_ -match 'contains no skill files' }).Count -ne 0) {
+        Write-Fail 'Copilot nested SKILL.md catalog was reported empty.'
+    }
+}
+finally {
+    Remove-Item -LiteralPath $skillFixture -Recurse -Force -ErrorAction SilentlyContinue
+}
+Write-Pass 'Copilot nested SKILL.md catalog is detected without a false empty-catalog warning'
+
 Write-Host "`nHost detection UX: all assertions pass" -ForegroundColor Green

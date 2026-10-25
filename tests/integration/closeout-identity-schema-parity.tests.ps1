@@ -76,6 +76,38 @@ if (-not (Test-Path -LiteralPath $promptPath -PathType Leaf)) {
     exit 1
 }
 
+# 202 T032 (B4F-146's class): the closeout scaffold ASKS for the feature closeout, so both files still say the
+# feature is active, and the identity says the closeout is awaiting approval. "No active feature" is written when the
+# human's approval is recorded, below.
+$pendingIdentity = Get-Content -LiteralPath $identityPath -Raw -Encoding UTF8
+foreach ($pattern in @(
+        'focus_area:\s*"Feature closeout awaiting approval"',
+        'session_state_active:\s*true',
+        'session_state_boundary:\s*feature-closeout',
+        'Feature 022: its closeout is waiting for the human''s approval'
+    )) {
+    if ($pendingIdentity -notmatch $pattern) {
+        Write-Fail "While the closeout is pending, the identity file is missing: $pattern"
+        exit 1
+    }
+}
+if ($pendingIdentity -match 'No active feature') {
+    Write-Fail 'While the closeout is pending, the identity file already says "No active feature".'
+    exit 1
+}
+if ((Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8) -notmatch 'session_state_active:\s*true') {
+    Write-Fail 'While the closeout is pending, the launch prompt already says the session is inactive.'
+    exit 1
+}
+Write-Pass 'While the feature closeout is pending, the identity and the prompt say the feature is still active'
+
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+$verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $projectRoot -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+if ($null -eq $verdict -or [string]$verdict.AuthorizedBoundary -ne 'feature-closeout') {
+    Write-Fail 'The feature-closeout approval was not recorded.'
+    exit 1
+}
+
 $identityContent = Get-Content -LiteralPath $identityPath -Raw -Encoding UTF8
 foreach ($pattern in @(
         'focus_area:\s*"No active feature"',

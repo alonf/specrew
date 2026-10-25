@@ -78,8 +78,20 @@ function Get-ContinuousCoReviewMachineryPaths {
     #       skill/rule/agent dirs (.github/skills/specrew-*, .claude/skills/specrew-*, .cursor/rules/specrew-*, ...)
     #       across every host WITHOUT enumerating them. Ordinary user config stays reviewable; the one exception is
     #       `.claude/settings.local.json`, the canonical machine-local/per-session hook config that init untracks and
-    #       ignores. Returns project-relative paths. -RepoRoot enables (b); omit for the core-only list.
+    #       ignores. Returns project-relative paths.
+    #
+    # -RepoRoot is REQUIRED, and a bare call REFUSES rather than guessing (DRIFT-199-I001-016). This
+    # comment previously read "omit for the core-only list", which was false and cost a real defect: a
+    # rootless call cannot run Test-ContinuousCoReviewSpecrewSourceRepo, so it silently took the
+    # DEPLOYED branch below and returned the core list PLUS the three source-repo paths - naming the
+    # co-review engine itself as machinery. The caller that believed the comment classified an engine
+    # change as records-only and let a stale review read as current. There is no honest core-only
+    # answer to give: (a) and (b) both depend on which repository is being described, so the question
+    # is unanswerable without a root and refusing is the only non-guessing reply.
     param([string]$RepoRoot)
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+        throw 'review-machinery-paths-requires-repo-root: the machinery list differs between the Specrew source repo and a deployed project, so it cannot be resolved without -RepoRoot.'
+    }
     $core = @(
         '.specrew', '.specify', '.squad', '.agents', '.antigravitycli', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
@@ -123,10 +135,30 @@ function Get-ContinuousCoReviewMachineryPaths {
         $core += 'scripts/internal/agent-tasks'
         $core += 'scripts/internal/atomic-write.ps1'
     }
-    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $core }
+    # (No rootless early return here any more - the refusal at the top of the function makes an empty
+    # root unreachable, and the branch above has already consumed the root to decide source-vs-deployed.)
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
-    $marked = @(Get-ChildItem -LiteralPath $resolved -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
-        ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
+    $prunedRoots = @(
+        '.scratch', 'node_modules', '.venv', 'venv', '__pycache__', '.tox', '.gradle', '.next',
+        'dist', 'build', 'out', 'target', 'bin', 'obj'
+    )
+    # THE WALK PRUNES AT THE TOP LEVEL INSTEAD OF DISCARDING AFTERWARDS. Measured (PRED-BETA4-018): the
+    # recursive marker search descended into `.scratch` - 37,899 files on the self-host repo - and then
+    # threw every hit under a pruned root away, 4-7 s of a Stop hook's 20 s budget spent on results that
+    # were never used. Pass (1) below only ever matched the FIRST path segment, so skipping exactly those
+    # top-level directories during the walk yields the identical marker set; a pruned name nested deeper
+    # was never pruned before and is not pruned now.
+    $marked = @()
+    foreach ($topLevel in @(Get-ChildItem -LiteralPath $resolved -Force -ErrorAction SilentlyContinue)) {
+        if ($topLevel.PSIsContainer) {
+            if ($prunedRoots -contains $topLevel.Name) { continue }
+            $marked += @(Get-ChildItem -LiteralPath $topLevel.FullName -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
+                ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
+        }
+        elseif ($topLevel.Name -ceq '.specrew-managed') {
+            $marked += @([System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $topLevel.FullName)).Replace('\', '/'))
+        }
+    }
     # Volatile build/scratch roots hold whole project COPIES, so the marker scan found hundreds of
     # deployed dirs inside them and overflowed the RecoveryFact cap (too-many:machinery_paths:512),
     # killing the run before any provider invocation. Their contents are already outside the
@@ -140,10 +172,6 @@ function Get-ContinuousCoReviewMachineryPaths {
     # truncates per-job output, and the truncated tail was mistaken for silence - the job actually
     # ran to completion and failed on a real assertion (DRIFT-198-I009-018). Deleting this pass
     # silently reverted DRIFT-198-I009-009 and -010, so it is restored here.
-    $prunedRoots = @(
-        '.scratch', 'node_modules', '.venv', 'venv', '__pycache__', '.tox', '.gradle', '.next',
-        'dist', 'build', 'out', 'target', 'bin', 'obj'
-    )
     $marked = @($marked | Where-Object { $prunedRoots -notcontains (([string]$_ -split '/')[0]) })
     $marked = @(Remove-ContinuousCoReviewGitIgnoredPath -RepoRoot $resolved -RelativePath $marked)
     # (c) Agent-framework MIRROR subdirs under the AI-host dirs. Specrew/Spec-Kit/host frameworks deploy
@@ -543,7 +571,9 @@ function Test-ContinuousCoReviewContainmentViolations {
     if ([string]::IsNullOrWhiteSpace($ObservedAt)) { $ObservedAt = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp }
     $roots = @($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     $violations = [System.Collections.Generic.List[object]]::new()
-    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $caseRoot = if ($roots.Count -gt 0) { [string]$roots[0] } else { (Get-Location).Path }
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+        (Get-ContinuousCoReviewPathComparer -Path $caseRoot -WhenUndetermined 'distinct'))
     foreach ($s in @($Samples)) {
         if ($null -eq $s) { continue }
         $path = try { [string]$s.path } catch { '' }
@@ -622,13 +652,13 @@ function New-ContinuousCoReviewStrippedWorktree {
         # Test-ContinuousCoReviewPathUnderRoot - same physical resolution AND platform-appropriate case
         # semantics as the strict design-context gate, so a case-distinct path can't slip on POSIX.
         if ([string]::IsNullOrEmpty((Get-ContinuousCoReviewPhysicalPath -Path $candidatePath))) {
-            throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed, FR-008 containment)."
+            throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed containment)."
         }
         foreach ($originPath in @($gitRoot, $resolved)) {
             if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
             if (Test-ContinuousCoReviewPathUnderRoot -Path $candidatePath -Root $originPath) {
                 $originFull = Get-ContinuousCoReviewPhysicalPath -Path $originPath
-                throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
+                throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (containment)."
             }
         }
     }
@@ -680,7 +710,8 @@ function New-ContinuousCoReviewStrippedWorktree {
     # too long", run fe3a695a). Semantics preserved: every collapsed sibling matches its parent
     # glob; an unmarked `specrew-*` dir under the same parent is machinery by naming anyway.
     $literalMachinery = [System.Collections.Generic.List[string]]::new()
-    $globParents = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $globParents = [System.Collections.Generic.HashSet[string]]::new(
+        (Get-ContinuousCoReviewPathComparer -Path $resolved -WhenUndetermined 'distinct'))
     foreach ($m in $machinery) {
         if ($m -eq '.git') { continue }
         if ($m -match '^(?<parent>.+)/(?<leaf>specrew-[^/]+)$') {
@@ -1097,7 +1128,12 @@ issue, records the approving human, and states where the work is carried. NOTE: 
 the mirror record in the drift-log/specs/proposals; the implementer is required to mirror deferrals into a
 worktree-visible artifact. A deferral-covered issue is reported (if at all) as ADVISORY with the decision id
 cited, never blocking. A deferral CLAIM without a verifiable worktree-visible record is itself a blocking
-finding. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is fixed or
+finding - AND WHEN YOU RAISE THAT FINDING, STATE THE FORMAT THAT WOULD SATISFY IT. Naming the
+rule without naming its shape leaves the implementer guessing at exactly the moment they are trying to
+comply. Your finding must name all four required elements: (1) a WORKTREE-VISIBLE artifact - an
+iteration drift-log event, a specs decision artifact, or a proposal work item; (2) which NAMES or
+unmistakably describes the issue; (3) which RECORDS the approving human; and (4) which STATES where the
+work is carried. Then name the next step: mirror the decision into one of those artifacts and cite it. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is fixed or
 deferral-covered - do not copy an escalation forward.
 
 WORKSHOP-DECISION CONFORMANCE: the workshop records + design-analysis are BINDING. Raise a conflict when a change
@@ -1123,6 +1159,25 @@ REVIEW PHASES (apply each, in order):
 NEVER-FALSE-GREEN: an infrastructure failure, invalid JSON, empty stdout, an empty prompt, a missing diff, or
 unreadable context is NEVER "no findings" - report the failure as a finding, not a clean pass. Do not use live
 web search, do not add dependencies, and do not invoke paid/non-default providers or hidden host tools.
+
+YOUR VERDICT IS THE DELIVERABLE, NOT YOUR FINDING COUNT. The question you are answering is whether this artifact
+is SAFE TO PROCEED ON. "Yes, and here is what I verified" is a complete, blessed answer - a justified CLEAN
+VERDICT naming what you verified is a first-class output of this review, not a failure to find something. State
+which phases you exercised and what evidence you actually read or ran; a clean verdict WITHOUT that basis is not
+a verdict, it is a shrug. Everything above tells you to distrust claims and never paper over a failure; none of
+it asks you to manufacture a finding to justify the round.
+
+EVERY FINDING STATES A CONCRETE FAILURE SCENARIO, OR IT IS NOT A FINDING. In each finding's `comment`, include a
+literal clause `Failure scenario: <concrete inputs or state -> the wrong output, crash, or false state that
+results>`. Name what breaks, for whom, and when - not that something is untidy, inconsistent, or could be
+clearer. This is a CONTRACT, not a style note: a finding that arrives without that clause is DEMOTED to a
+non-gating follow-up at ingest. It is still reported and the human still sees it; it simply cannot hold sign-off
+hostage or cost them another round. If you cannot name the failure, you have an observation - report it as a nit
+and say so plainly.
+
+RANK AND CAP. Order your findings by severity, worst first. Report AT MOST 20 findings; if you have more, keep
+the 20 whose failure scenarios matter most and say in the summary how many you dropped. A long tail of low-value
+findings buries the ones that matter and costs the human rounds to work through.
 
 ## Review round
 $roundBlock
@@ -1452,7 +1507,7 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
         if (Test-Path -LiteralPath $helper -PathType Leaf) { try { . $helper } catch { $null = $_ } }
     }
     if (-not (Get-Command -Name 'New-SpecrewProcessContainment' -ErrorAction SilentlyContinue)) {
-        throw 'co-review: the OS-native containment helper (agent-tasks/process-tree.ps1) is unavailable - refusing to spawn an uncontainable reviewer (T091/FR-037; check the module deploy).'
+        throw 'co-review: the OS-native containment helper (agent-tasks/process-tree.ps1) is unavailable - refusing to spawn an uncontainable reviewer; check the module deploy.'
     }
     # Compile the containment runtime BEFORE the spawn: the first-use Add-Type takes seconds, and paying
     # it after Start() opens the pre-assignment escape window (empirically caught - the grandchild forked
@@ -1608,7 +1663,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
             incremental_findings_present = $jsonlPresent
             probable_cause               = if ($jsonlPresent) { 'finalization-or-capture-gap' } else { 'no-output-produced' }
         }
-        [Console]::Error.WriteLine(("[co-review] WARN EMPTY_EXIT0_RESULT reviewer host '{0}' returned exit 0 with EMPTY stdout (probable cause: {1}); retrying once (T108/D-197-I009-015)." -f $HostName, $firstAttempt.probable_cause))
+        [Console]::Error.WriteLine(("[co-review] WARN EMPTY_EXIT0_RESULT reviewer host '{0}' returned exit 0 with EMPTY stdout (probable cause: {1}); retrying once." -f $HostName, $firstAttempt.probable_cause))
         $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
         if ($null -ne $r.telemetry) {
             $r.telemetry | Add-Member -NotePropertyName 'empty_result_retry' -NotePropertyValue ([pscustomobject][ordered]@{

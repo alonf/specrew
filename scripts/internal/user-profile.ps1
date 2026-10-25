@@ -242,7 +242,7 @@ function ConvertTo-NormalizedUserProfile {
         return $null
     }
 
-    $profile = [ordered]@{
+    $profileData = [ordered]@{
         schema                       = '1.0'
         specrew_version_at_creation  = ''
         created_at                   = ''
@@ -267,13 +267,13 @@ function ConvertTo-NormalizedUserProfile {
         $schema = Get-UserProfileValue -InputObject $RawProfile -Key 'schema_version'
     }
     if ($null -ne $schema) {
-        $profile.schema = [string]$schema
+        $profileData.schema = [string]$schema
     }
 
     foreach ($key in @('specrew_version_at_creation', 'created_at', 'user_name')) {
         $value = Get-UserProfileValue -InputObject $RawProfile -Key $key
         if ($null -ne $value) {
-            $profile[$key] = $value
+            $profileData[$key] = $value
         }
     }
 
@@ -282,14 +282,14 @@ function ConvertTo-NormalizedUserProfile {
         $lastUpdated = Get-UserProfileValue -InputObject $RawProfile -Key 'updated_at'
     }
     if ($null -ne $lastUpdated) {
-        $profile.last_updated_at = $lastUpdated
+        $profileData.last_updated_at = $lastUpdated
     }
 
     $rawPreferences = Get-UserProfileValue -InputObject $RawProfile -Key 'preferences'
     if ($null -ne $rawPreferences) {
         $preferredDepth = Get-UserProfileValue -InputObject $rawPreferences -Key 'preferred_intake_depth'
         if (-not [string]::IsNullOrWhiteSpace([string]$preferredDepth)) {
-            $profile.preferences.preferred_intake_depth = [string]$preferredDepth
+            $profileData.preferences.preferred_intake_depth = [string]$preferredDepth
         }
     }
 
@@ -297,7 +297,7 @@ function ConvertTo-NormalizedUserProfile {
     if ($null -ne $rawExpertise) {
         foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
             if (Test-UserProfileKey -InputObject $rawExpertise -Key $field) {
-                $profile.expertise[$field] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawExpertise -Key $field)
+                $profileData.expertise[$field] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawExpertise -Key $field)
             }
         }
     }
@@ -306,20 +306,20 @@ function ConvertTo-NormalizedUserProfile {
     if ($null -ne $rawLegacyDials) {
         foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
             if (Test-UserProfileKey -InputObject $rawLegacyDials -Key $personaId) {
-                $profile.expertise[$script:UserProfileExpertiseMap[$personaId]] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawLegacyDials -Key $personaId)
+                $profileData.expertise[$script:UserProfileExpertiseMap[$personaId]] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawLegacyDials -Key $personaId)
             }
         }
     }
 
     foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
         $field = $script:UserProfileExpertiseMap[$personaId]
-        $profile.expertise_dials[$personaId] = ConvertTo-RuntimeExpertiseDial -Value $profile.expertise[$field]
+        $profileData.expertise_dials[$personaId] = ConvertTo-RuntimeExpertiseDial -Value $profileData.expertise[$field]
     }
 
-    $profile.schema_version = $profile.schema
-    $profile.updated_at = $profile.last_updated_at
+    $profileData.schema_version = $profileData.schema
+    $profileData.updated_at = $profileData.last_updated_at
 
-    return $profile
+    return $profileData
 }
 
 function Get-UserProfilePath {
@@ -544,14 +544,14 @@ function Show-UserProfileSummary {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [hashtable]$Profile
+        [hashtable]$profileData
     )
     
-    if (-not $Profile) {
-        $Profile = Get-UserProfile
+    if (-not $profileData) {
+        $profileData = Get-UserProfile
     }
 
-    if (-not $Profile) {
+    if (-not $profileData) {
         return "No Crew Interaction Profile found yet. Run ``specrew start`` to set how much you want Specrew to ask, explain, recommend, and auto-decide."
     }
 
@@ -564,12 +564,12 @@ function Show-UserProfileSummary {
     foreach ($area in Get-CrewInteractionProfileAreas) {
         $value = $null
         $resolved = $false
-        if ((Test-UserProfileKey -InputObject $Profile -Key 'expertise') -and (Test-UserProfileKey -InputObject $Profile.expertise -Key $area.ExpertiseKey)) {
-            $value = $Profile.expertise[$area.ExpertiseKey]
+        if ((Test-UserProfileKey -InputObject $profileData -Key 'expertise') -and (Test-UserProfileKey -InputObject $profileData.expertise -Key $area.ExpertiseKey)) {
+            $value = $profileData.expertise[$area.ExpertiseKey]
             $resolved = $true
         }
-        elseif ((Test-UserProfileKey -InputObject $Profile -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $Profile.expertise_dials -Key $area.PersonaId)) {
-            $value = $Profile.expertise_dials[$area.PersonaId]
+        elseif ((Test-UserProfileKey -InputObject $profileData -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $profileData.expertise_dials -Key $area.PersonaId)) {
+            $value = $profileData.expertise_dials[$area.PersonaId]
             $resolved = $true
         }
 
@@ -600,13 +600,18 @@ function Get-SpecrewProfileOrientationLine {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [hashtable]$Profile
+        [hashtable]$profileData,
+
+        # Feature 202 T009 (FR-016): the ONE sentence is the same on every host; only how the human corrects it
+        # differs, and that reference is the host adapter's to supply (Get-SpecrewProfileCorrectionReference).
+        [Parameter(Mandatory = $false)]
+        [string]$CorrectionReference = '`/specrew-user-profile edit`'
     )
 
-    if (-not $Profile) {
-        $Profile = Get-UserProfile
+    if (-not $profileData) {
+        $profileData = Get-UserProfile
     }
-    if (-not $Profile) {
+    if (-not $profileData) {
         return $null
     }
 
@@ -618,12 +623,12 @@ function Get-SpecrewProfileOrientationLine {
         # be skipped. Only an area absent from BOTH layers is omitted from the summary.
         $hasKey = $false
         $value = $null
-        if ((Test-UserProfileKey -InputObject $Profile -Key 'expertise') -and (Test-UserProfileKey -InputObject $Profile.expertise -Key $area.ExpertiseKey)) {
-            $value = $Profile.expertise[$area.ExpertiseKey]
+        if ((Test-UserProfileKey -InputObject $profileData -Key 'expertise') -and (Test-UserProfileKey -InputObject $profileData.expertise -Key $area.ExpertiseKey)) {
+            $value = $profileData.expertise[$area.ExpertiseKey]
             $hasKey = $true
         }
-        elseif ((Test-UserProfileKey -InputObject $Profile -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $Profile.expertise_dials -Key $area.PersonaId)) {
-            $value = $Profile.expertise_dials[$area.PersonaId]
+        elseif ((Test-UserProfileKey -InputObject $profileData -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $profileData.expertise_dials -Key $area.PersonaId)) {
+            $value = $profileData.expertise_dials[$area.PersonaId]
             $hasKey = $true
         }
         if (-not $hasKey) {
@@ -644,7 +649,48 @@ function Get-SpecrewProfileOrientationLine {
         return $null
     }
 
-    return "What I know about you: I'll treat you as " + ($parts -join ', ') + " — correct me if that's off (``/specrew-user-profile edit``), and I'll match how much I ask and explain to it."
+    return "What I know about you: I'll treat you as " + ($parts -join ', ') + " — correct me if that's off ($CorrectionReference), and I'll match how much I ask and explain to it."
+}
+
+function Get-SpecrewProfileCorrectionReference {
+    <#
+    .SYNOPSIS
+    Feature 202 T009 (FR-016): the only host-specific part of the adaptation sentence - how the human corrects it.
+
+    .DESCRIPTION
+    A host whose manifest declares a user slash-command surface (HasUserSlashCommandSurface) names the command;
+    one without names the plain request, so no host is told to type a command it does not have. The manifest is
+    looked up beside this script's module tree, then SPECREW_MODULE_PATH, then the newest installed module.
+    #>
+    param([AllowNull()][string]$HostKind)
+
+    $hasSlash = $true
+    if (-not [string]::IsNullOrWhiteSpace($HostKind) -and $HostKind -match '^[A-Za-z0-9_.-]+$') {
+        $relative = "hosts/$HostKind/host.psd1"
+        $manifestPath = $null
+        foreach ($root in @((Join-Path $PSScriptRoot '../..'), $env:SPECREW_MODULE_PATH)) {
+            if ([string]::IsNullOrWhiteSpace($root)) { continue }
+            $candidate = Join-Path $root $relative
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) { $manifestPath = $candidate; break }
+        }
+        if (-not $manifestPath) {
+            try {
+                $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                    Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase $relative) -PathType Leaf } | Select-Object -First 1
+                if ($module) { $manifestPath = Join-Path $module.ModuleBase $relative }
+            }
+            catch { $manifestPath = $null }
+        }
+        if ($manifestPath) {
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                if ($manifest.ContainsKey('HasUserSlashCommandSurface')) { $hasSlash = [bool]$manifest.HasUserSlashCommandSurface }
+            }
+            catch { $hasSlash = $true }
+        }
+    }
+    if ($hasSlash) { return '`/specrew-user-profile edit`' }
+    return 'ask me to update your profile'
 }
 
 function Invoke-FirstRunExpertisePrompt {
@@ -699,8 +745,8 @@ function Invoke-FirstRunExpertisePrompt {
 
         $validInput = $false
         while (-not $validInput) {
-            $input = Read-Host "  Your preference (1-10, auto, or Enter for auto)"
-            $normalizedInput = Normalize-CrewInteractionProfileSetupInput -InputValue $input
+            $userInput = Read-Host "  Your preference (1-10, auto, or Enter for auto)"
+            $normalizedInput = Normalize-CrewInteractionProfileSetupInput -InputValue $userInput
 
             if ($null -ne $normalizedInput) {
                 $dials[$area.PersonaId] = $normalizedInput
@@ -812,16 +858,16 @@ function Edit-UserProfile {
 
     foreach ($area in Get-CrewInteractionProfileAreas) {
         $currentValue = $existing.expertise_dials[$area.PersonaId]
-        $input = Read-Host "  $($area.DisplayLabel) (current: $currentValue)"
+        $userInput = Read-Host "  $($area.DisplayLabel) (current: $currentValue)"
 
-        if ([string]::IsNullOrWhiteSpace($input)) {
+        if ([string]::IsNullOrWhiteSpace($userInput)) {
             $newDials[$area.PersonaId] = $currentValue
         }
-        elseif ($input -eq 'auto') {
+        elseif ($userInput -eq 'auto') {
             $newDials[$area.PersonaId] = 'auto'
         }
-        elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-            $newDials[$area.PersonaId] = [string][int]$input
+        elseif ($userInput -match '^\d+$' -and [int]$userInput -ge 1 -and [int]$userInput -le 10) {
+            $newDials[$area.PersonaId] = [string][int]$userInput
         }
         else {
             Write-Host "    Invalid input, keeping current value" -ForegroundColor Red
@@ -849,18 +895,18 @@ function New-CrewInteractionProfileSessionContext {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [object]$Profile
+        [object]$profileData
     )
 
-    if (-not $Profile) {
-        $Profile = Get-UserProfile
+    if (-not $profileData) {
+        $profileData = Get-UserProfile
     }
 
-    if (-not $Profile) {
+    if (-not $profileData) {
         return $null
     }
 
-    $rawExpertise = Get-UserProfileValue -InputObject $Profile -Key 'expertise'
+    $rawExpertise = Get-UserProfileValue -InputObject $profileData -Key 'expertise'
 
     $decisionAreas = [ordered]@{}
     foreach ($area in Get-CrewInteractionProfileAreas) {
@@ -879,11 +925,11 @@ function New-CrewInteractionProfileSessionContext {
         application          = 'soft collaboration guidance for all agents; hard-applied only in /speckit.specify'
         guidance             = "Higher settings: ask concise expert-level questions and assume the current user decides. Lower or auto settings: explain more, recommend defaults, and surface transparent auto-decisions. These are the current user's collaboration settings, not Specrew's internal persona lenses."
         profile_path         = Get-UserProfilePath
-        schema_version       = (Get-UserProfileValue -InputObject $Profile -Key 'schema_version')
-        created_at           = (Get-UserProfileValue -InputObject $Profile -Key 'created_at')
-        updated_at           = (Get-UserProfileValue -InputObject $Profile -Key 'updated_at')
+        schema_version       = (Get-UserProfileValue -InputObject $profileData -Key 'schema_version')
+        created_at           = (Get-UserProfileValue -InputObject $profileData -Key 'created_at')
+        updated_at           = (Get-UserProfileValue -InputObject $profileData -Key 'updated_at')
         decision_areas       = $decisionAreas
-        expertise_dials      = (Get-UserProfileValue -InputObject $Profile -Key 'expertise_dials')
+        expertise_dials      = (Get-UserProfileValue -InputObject $profileData -Key 'expertise_dials')
     }
 }
 
@@ -896,6 +942,7 @@ if ($null -ne $ExecutionContext.SessionState.Module) {
         'Save-UserProfile',
         'Show-UserProfileSummary',
         'Get-SpecrewProfileOrientationLine',
+        'Get-SpecrewProfileCorrectionReference',
         'Invoke-FirstRunExpertisePrompt',
         'Invoke-SpecrewInitProfileCapture',
         'Reset-UserProfile',

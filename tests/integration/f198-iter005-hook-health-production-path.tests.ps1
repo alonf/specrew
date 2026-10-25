@@ -32,7 +32,10 @@ $hostBinding = $fixture.host_binding
 
 $hookHealthStore = Join-Path $projectRoot '.specrew/runtime/hook-health'
 function Reset-HookHealthStore { if (Test-Path -LiteralPath $hookHealthStore) { Remove-Item -LiteralPath $hookHealthStore -Recurse -Force } }
-function Get-ReceiptFiles { if (-not (Test-Path -LiteralPath $hookHealthStore)) { return @() } return @(Get-ChildItem -LiteralPath $hookHealthStore -Filter '*.json' -File -ErrorAction SilentlyContinue) }
+# Feature 202 (T016, FR-028): the dispatcher also writes, once per payload shape, a record of a payload that matches no
+# known host signature (`unrecognized-payload-*.json`, field names only) into the same folder. That record is not a
+# receipt; a receipt is named for its host (`<host>-<surface>-<event>.json`), which is how every receipt reader selects it.
+function Get-ReceiptFiles { if (-not (Test-Path -LiteralPath $hookHealthStore)) { return @() } return @(Get-ChildItem -LiteralPath $hookHealthStore -Filter '*.json' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike 'unrecognized-payload-*' }) }
 function Get-ReceiptForEvent { param([string]$Event) $f = Join-Path $hookHealthStore ('codex-cli-' + $Event.ToLowerInvariant() + '.json'); if (-not (Test-Path -LiteralPath $f)) { return $null } return (Get-Content -LiteralPath $f -Raw) }
 function Get-ReceiptField { param([string]$Event, [string]$Field) $raw = Get-ReceiptForEvent -Event $Event; if ($null -eq $raw) { return '<no-receipt>' } return [string]($raw | ConvertFrom-Json).$Field }
 

@@ -235,11 +235,15 @@ if (Test-Path -LiteralPath $drainChildPidPath -PathType Leaf) {
     if ($utilitiesSource -notmatch 'Task\]::WaitAll\(' -or $utilitiesSource -notmatch 'native-command-output-drain-timeout') {
         Write-Fail 'closed-input primitive must bound normal output draining and fail loudly when EOF never arrives'
     }
-    if ($squadDeploySource -notmatch 'Invoke-NativeCommandWithClosedInput\s+-FilePath\s+''squad''.*-TimeoutSeconds\s+\$TimeoutSeconds' -or
+    # B4F-122: both Squad calls now pass the command through $SquadCommand (default 'squad') and fence Git discovery;
+    # the closed-input primitive and its explicit bounds are pinned the same way.
+    if ($squadDeploySource -notmatch '\[string\]\$SquadCommand\s*=\s*''squad''' -or
+        $squadDeploySource -notmatch 'Invoke-NativeCommandWithClosedInput\s+-FilePath\s+\$SquadCommand\s.*-TimeoutSeconds\s+\$TimeoutSeconds\s+-GitCeilingDirectory\s+\$ProbeRoot' -or
         $squadDeploySource -notmatch 'catch\s+\[System\.TimeoutException\]\s*\{\s*[^}]*throw') {
         Write-Fail 'Squad capability probe must use its explicit bound and preserve timeout as a fatal failure'
     }
-    if ($initSource -notmatch "Invoke-NativeCommandWithClosedInput\s+-FilePath\s+'squad'.*-TimeoutSeconds\s+120") {
+    if ($initSource -notmatch 'Invoke-SquadInitInProject\s+-ProjectPath\s+\$resolvedProjectPath\s.*-TimeoutSeconds\s+120' -or
+        $squadDeploySource -notmatch 'return\s+Invoke-NativeCommandWithClosedInput\s+-FilePath\s+\$SquadCommand\s.*-TimeoutSeconds\s+\$TimeoutSeconds\s+-GitCeilingDirectory\s+\$ceiling') {
         Write-Fail 'production specrew init Squad invocation must use the closed-input primitive with its explicit bound'
     }
     if (-not $script:Failed) {

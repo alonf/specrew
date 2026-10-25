@@ -43,9 +43,9 @@ function Get-SpecrewDecisionEntries {
 
     if ([string]::IsNullOrWhiteSpace($Content)) { return @() }
 
-    $matches = [regex]::Matches($Content, '(?ms)^##\s+.+?(?=^##\s+|\z)')
+    $matchedItems = [regex]::Matches($Content, '(?ms)^##\s+.+?(?=^##\s+|\z)')
     $entries = New-Object System.Collections.Generic.List[string]
-    foreach ($match in $matches) {
+    foreach ($match in $matchedItems) {
         $text = $match.Value.Trim()
         if (-not [string]::IsNullOrWhiteSpace($text)) {
             $entries.Add($text) | Out-Null

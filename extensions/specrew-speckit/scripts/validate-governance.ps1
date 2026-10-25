@@ -230,6 +230,50 @@ function Get-MarkdownMetadataValue {
     return $null
 }
 
+function Test-DriftLogClassClosure {
+    param(
+        [Parameter(Mandatory = $true)][string]$DriftPath,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors
+    )
+
+    if (-not (Test-Path -LiteralPath $DriftPath -PathType Leaf)) { return }
+
+    $lines = @(Get-MarkdownContent -Path $DriftPath)
+    $schema = [string](Get-MarkdownMetadataValue -Lines $lines -Label 'Schema')
+    if ($schema.Trim().ToLowerInvariant() -ne 'v2') {
+        # Existing v1 logs predate this contract. Newly scaffolded logs are v2.
+        return
+    }
+
+    $eventStarts = New-Object System.Collections.Generic.List[int]
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ([string]$lines[$index] -match '^###[ \t]+DRIFT-') { $eventStarts.Add($index) | Out-Null }
+    }
+
+    for ($eventIndex = 0; $eventIndex -lt $eventStarts.Count; $eventIndex++) {
+        $start = $eventStarts[$eventIndex]
+        $end = if (($eventIndex + 1) -lt $eventStarts.Count) { $eventStarts[$eventIndex + 1] - 1 } else { $lines.Count - 1 }
+        $eventId = ([string]$lines[$start]).TrimStart('#', ' ').Trim()
+        $closure = $null
+        for ($lineIndex = $start + 1; $lineIndex -le $end; $lineIndex++) {
+            if ([string]$lines[$lineIndex] -match '^\s*[-*]\s+\*\*Class closure\*\*:\s*(.*?)\s*$') {
+                $closure = [string]$Matches[1]
+                break
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($closure)) {
+            $Errors.Add("drift-log.md event '$eventId' is missing required Class closure (name the executable recurrence guard, or write 'NONE — <why>')")
+            continue
+        }
+
+        $trimmedClosure = $closure.Trim()
+        if ($trimmedClosure -match '^(?i:NONE)\b' -and $trimmedClosure -notmatch '^(?i:NONE)\s+[—-]\s+\S.+$') {
+            $Errors.Add("drift-log.md event '$eventId' records Class closure as NONE without a reason (expected 'NONE — <why>')")
+        }
+    }
+}
+
 function Get-NormalizedKeyword {
     param([AllowNull()][string]$Value)
 
@@ -811,6 +855,453 @@ function Get-ActiveGapLedgerLines {
     return $activeLines.ToArray()
 }
 
+function Test-ReviewDerivedIndependenceBlock {
+    # W34-A. The independence claim is a function of the store, so it is recomputed rather than read.
+    # Anything may emit the block; a hand-edited one fails here, which is what makes emitting it safe.
+    #
+    # FAIL-OPEN ON ABSENCE: a record without the block is not refused - the same reasoning that gives
+    # W33 and W34-B their fail-open cases, since every record written before this existed has none.
+    param(
+        # A markdown record is mostly blank lines, and a bare [string[]] refuses an array that
+        # contains one - so without this the check throws on every real review.md rather than
+        # reading it. Caught by a fixture whose body had a blank line in it.
+        [AllowEmptyString()][string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
+    if (-not (Get-Command -Name 'Get-SpecrewEmbeddedIndependenceBlock' -ErrorAction SilentlyContinue)) { return }
+    $embedded = Get-SpecrewEmbeddedIndependenceBlock -ReviewLines $ReviewLines
+    if ([string]::IsNullOrWhiteSpace($embedded)) {
+        # ITEM 6 / RAMP. An absent block is not silence and it is not automatically a refusal.
+        #
+        # The exposure this closes is not the boundary - the signoff gate is already fail-closed and its
+        # override phrase is tree-bound and prompt-captured, so an out-of-band review cannot advance
+        # anything. What is exposed is the MAINTAINER'S DECISION: the override asks whether accepting
+        # partial coverage is safe, and the only input to that judgement is prose written by the party
+        # under review. This puts the machine-derived truth on the same page as the claim.
+        #
+        # THE RAMP PROMOTES ITSELF, rather than waiting on a date or a hand-touched list. A record
+        # written after W34-A landed carries an observed authorship fact BY CONSTRUCTION; one written
+        # before does not. So new records meet the full standard immediately and old ones warn, with no
+        # migration step and no false-positive path - the block always renders, including to "No run
+        # qualifies", so there is no legitimate case where authorship is observed and nothing derives.
+        #
+        # Erroring from the start would wedge the gate shut on every project already holding a
+        # review.md, which is the same call made for W33's fail-open cases and for W34-B's
+        # `unattributed`. A warning that can never become an error is decoration; this one becomes one
+        # the moment the project moves forward.
+        $observedAuthorship = 'unattributed'
+        if ((Get-Command -Name 'Get-SpecrewReviewAuthorship' -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($IterationDirectory)) {
+            $recordPath = Join-Path $IterationDirectory 'review.md'
+            if (Test-Path -LiteralPath $recordPath -PathType Leaf) {
+                $relativeRecord = try { ([IO.Path]::GetRelativePath($ProjectRoot, (Resolve-Path -LiteralPath $recordPath).Path)).Replace([char]92, [char]47) } catch { '' }
+                if (-not [string]::IsNullOrWhiteSpace($relativeRecord)) {
+                    $observedAuthorship = [string](Get-SpecrewReviewAuthorship -ProjectRoot $ProjectRoot -ReviewPath $relativeRecord).state
+                }
+            }
+        }
+        $derivedForAbsent = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $ProjectRoot
+        if ($observedAuthorship -cne 'unattributed') {
+            $Errors.Add(("review.md carries no derived independent-review block, and this record was written after the block existed (its authorship was observed: {0}). The block states the machine-checkable part of the independence claim and is recomputed at validation, so it belongs beside whatever the record asserts. Add it:{1}{2}" -f $observedAuthorship, [Environment]::NewLine, $derivedForAbsent))
+        }
+        else {
+            Write-TrustHardeningWarning -Category 'review-independence-block-absent' -Detail (
+                "review.md carries no derived independent-review block, so nothing in this record has been checked against what the review store actually holds. Absent is not clean. This record predates the block; records written from now on are refused without it. The store currently derives:" + [Environment]::NewLine + $derivedForAbsent)
+        }
+        return
+    }
+    $derived = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $ProjectRoot
+    if ([string]$embedded -cne [string]$derived) {
+        $Errors.Add(("review.md carries a derived independent-review block that does not match what this project's review store derives. The block states the machine-checkable part of the independence claim and is recomputed at validation, so it cannot be authored or edited by hand. Replace it with the derived block, or remove it and state plainly what the record's independence rests on. Derived:{0}{1}" -f [Environment]::NewLine, $derived))
+    }
+}
+
+function Test-ClosedIterationSeals {
+    # W51 part 3. Closed iterations are SKIPPED from iteration validation - their recorded state is
+    # history - but history refusing silent edits is exactly why they can be skipped safely. This
+    # walks only the iterations that carry a seal, so pre-seal closeouts stay fail-open, and an
+    # active iteration (no seal yet) is never touched.
+    param(
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+    if (-not (Get-Command -Name 'Test-SpecrewIterationSealIntegrity' -ErrorAction SilentlyContinue)) { return }
+    $specsRoot = Join-Path $ProjectRoot 'specs'
+    if (-not (Test-Path -LiteralPath $specsRoot -PathType Container)) { return }
+    foreach ($seal in @(Get-ChildItem -Path $specsRoot -Filter '.specrew-iteration-seal.json' -Recurse -File -Force -ErrorAction SilentlyContinue)) {
+        $iterationDir = Split-Path -Parent $seal.FullName
+        $state = $null
+        try { $state = Test-SpecrewIterationSealIntegrity -IterationDirectory $iterationDir }
+        catch { continue }
+        if ($null -eq $state -or -not [bool]$state.checked) { continue }
+        $touched = @(@($state.drifted) + @($state.missing) + @($state.added))
+        if ($touched.Count -eq 0) { continue }
+        $shown = @($touched | Select-Object -First 4) -join ', '
+        if ($touched.Count -gt 4) { $shown = "$shown (+$($touched.Count - 4) more)" }
+        $relativeIteration = try { ([IO.Path]::GetRelativePath($ProjectRoot, $iterationDir)).Replace([char]92, [char]47) } catch { $iterationDir }
+        # THE REFUSAL NAMES ITS REMEDY (B4F-023 put this gate in B4F-017's family: a correct, specific refusal
+        # with nowhere to go). Two remedies, by who made the edit: a session's stray write is reverted; the
+        # product's own authorized write - the closeout verdict's advance, a closeout re-render - is re-sealed
+        # with `specrew reseal`, which prints what drifted before and proves nothing is touched after. The
+        # handover journal's `sealed-iteration-resealed` / `sealed-iteration-write-skipped` rows say which it was.
+        $Errors.Add(("Closed iteration {0} was edited after its closeout seal: {1}. A closed iteration's records are preserved history - the state the human's verdict accepted - and a later edit silently rewrites what was approved. If a session made the edit, revert it (git checkout -- <file>) or record what needs to change as a drift entry in the ACTIVE iteration's drift-log.md, where new facts belong. If the product's own closeout machinery made it (.specrew/runtime/handover-journal.jsonl names the writer), re-seal it: specrew reseal --feature {2} --iteration {3}. Deliberately superseding closed history is the human's act, not a session's: until the governed supersede mechanism ships, their explicit instruction recorded in the active drift log is the path." -f $relativeIteration, $shown, $(if ($relativeIteration -match '^specs/([^/]+)/iterations/([^/]+)$') { $Matches[1] } else { '<feature>' }), $(if ($relativeIteration -match '^specs/([^/]+)/iterations/([^/]+)$') { $Matches[2] } else { '<NNN>' }))) | Out-Null
+    }
+}
+
+function Test-DeployedExtensionIntegrity {
+    # W43. Every guarantee this validator makes assumes IT ran as shipped. A downstream agent
+    # hand-patched a deployed scaffold during the 2026-08-21 walk to clear a blocker - its fix was
+    # right and it said so - and nothing would have detected the same edit to this file.
+    #
+    # An ERROR, not a warning: a modified validator is not information to reconcile, it is a reason to
+    # distrust the run. The remedy is named, and it is one the reader can perform.
+    param(
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+    if (-not (Get-Command -Name 'Test-SpecrewDeployedExtensionIntegrity' -ErrorAction SilentlyContinue)) { return }
+    $state = $null
+    try { $state = Test-SpecrewDeployedExtensionIntegrity -ProjectRoot $ProjectRoot }
+    catch { return }
+    if ($null -eq $state -or -not [bool]$state.checked) { return }
+    $drifted = @($state.drifted)
+    $missing = @($state.missing)
+    if (@($drifted).Count -eq 0 -and @($missing).Count -eq 0) { return }
+    $detail = @()
+    if (@($drifted).Count -gt 0) { $detail += ('modified: ' + ((@($drifted) | Select-Object -First 5) -join ', ')) }
+    if (@($missing).Count -gt 0) { $detail += ('missing: ' + ((@($missing) | Select-Object -First 5) -join ', ')) }
+    $Errors.Add(("The deployed Specrew machinery under .specify/extensions/specrew-speckit does not match what was installed ({0}). Everything this validator reports assumes those files run as shipped, so a local edit to them makes this run's result unreliable rather than merely different. Restore them with: specrew update --project-path `"{1}`"  (from PowerShell). If the edit was deliberate and you want to keep it, make it in the Specrew repository and reinstall - a project-local patch is overwritten by the next update and is invisible to everyone else." -f ($detail -join '; '), $ProjectRoot)) | Out-Null
+}
+
+function Test-ScaffoldPendingSiblings {
+    # W41: A GENERATED ARTIFACT DIVERTED TO `.pending` MUST NOT WAIT IN SILENCE.
+    #
+    # When an iteration is already accepted, the reviewer scaffold protects the existing artifact and
+    # writes what it WOULD have produced to `<name>.pending`. That is the right call - overwriting an
+    # artifact under an accepted verdict would silently alter accepted evidence - but the only notice
+    # was a WARN at scaffold time, which scrolls past. Nothing else in the lifecycle ever mentioned the
+    # file again, so a generated version could sit beside an accepted one indefinitely.
+    #
+    # Raised while deciding a related migration question: whether a project that hand-authored these
+    # artifacts to work around a crash would ever receive generated versions. For the five closeout
+    # artifacts it does - they are written by the UPDATING writer, so an unaccepted iteration simply
+    # gets overwritten. The gap was not there; it was here, one door along.
+    #
+    # A WARNING, not an error: a `.pending` sibling is information for a human to reconcile, not a
+    # governance failure. Refusing on it would block closeout on a file the scaffold itself created.
+    param(
+        [string]$IterationDirectory,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) { return }
+    if (-not (Test-Path -LiteralPath $IterationDirectory -PathType Container)) { return }
+    $pending = @(Get-ChildItem -LiteralPath $IterationDirectory -Filter '*.pending' -File -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.Name })
+    if (@($pending).Count -eq 0) { return }
+    Write-TrustHardeningWarning -Category 'scaffold-pending-artifact' -Detail (
+        ("the scaffold produced a generated version of {0} artifact(s) and could not write it, because this iteration is already accepted and overwriting accepted evidence would be silent: {1}. Each is the content the generator would have written. Compare it with the accepted artifact and either fold in what it adds or delete the .pending file - leaving it is the only outcome that decides nothing." -f @($pending).Count, (@($pending) -join ', ')))
+}
+
+function Test-ReviewRecordAuthorship {
+    # W34-B. Report the observed authorship of the review record. It LABELS, it does not launder: a
+    # record written by the implementing session becomes honest about that, not clean.
+    #
+    # A WARNING, not an error, and deliberately so. The observation says who wrote the verdict; it
+    # does not say the verdict is wrong, and refusing every such record would fail closed on the
+    # unreviewable past - the same reasoning that gives W33 its three fail-open cases. Absence reads
+    # as UNATTRIBUTED and is reported as its own state, because an unobserved record is not a clean
+    # one and silence here would make it look like one.
+    param(
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$OverallVerdict,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($IterationDirectory)) { return }
+    if (-not (Get-Command -Name 'Get-SpecrewReviewAuthorship' -ErrorAction SilentlyContinue)) { return }
+    $reviewPath = Join-Path $IterationDirectory 'review.md'
+    if (-not (Test-Path -LiteralPath $reviewPath -PathType Leaf)) { return }
+    $relative = try { ([IO.Path]::GetRelativePath($ProjectRoot, (Resolve-Path -LiteralPath $reviewPath).Path)).Replace([char]92, [char]47) } catch { $null }
+    if ([string]::IsNullOrWhiteSpace($relative)) { return }
+    $authorship = Get-SpecrewReviewAuthorship -ProjectRoot $ProjectRoot -ReviewPath $relative
+    switch ([string]$authorship.state) {
+        'implementing-session' {
+            $who = (@($authorship.implementing_writers) | ForEach-Object { [string]$_.owner } | Select-Object -First 2) -join ', '
+            Write-TrustHardeningWarning -Category 'review-authored-by-implementer' -Detail (
+                "review.md at {0} was written by the session that also wrote source in this project ({1}). The verdicts in it are the implementer's own judgement of the implementer's own work. That is recorded, not refused - cite an independent run for the claims that rest on one." -f $relative, $who)
+        }
+        'unattributed' {
+            Write-TrustHardeningWarning -Category 'review-authorship-unobserved' -Detail (
+                "review.md at {0} carries no observed authorship. Nothing watched it being written - an older record, another host, or a hook that never fired - so who wrote these verdicts is unknown. Unknown is not independent." -f $relative)
+        }
+        default { }
+    }
+}
+
+function Test-ReviewCitedRunEvidence {
+    # W31: A REVIEW RECORD MAY NOT CLAIM MORE THAN ITS CITED EVIDENCE SUPPORTS.
+    #
+    # Measured 2026-08-19 (KeyContextAI). review.md asserted "the independent review ran and passed
+    # against this exact tree" and closed its verification-independence gap, citing a run id. The
+    # authority store said that run examined a single planning document and finished in 57 seconds -
+    # the same duration as a review of planning artifacts with no code in the tree - while the only run
+    # that read the implementation came back `incomplete`/`partial` with 14 findings and was discarded.
+    #
+    # The existing gates check that review.md EXISTS and that its gaps are classified. Nothing checked
+    # whether the run it names is capable of supporting the claim. That is mechanically checkable: the
+    # record cites a run id, the store holds that run's result, and a result that is not complete,
+    # current, valid and passing cannot evidence a clean independent review.
+    #
+    # SCOPED AND FAIL-OPEN BY CONSTRUCTION: it fires only when review.md cites a run id AND that run is
+    # found in this project's store. An uncited record, a pruned store, or an unreadable fact leaves
+    # the check silent - it exists to catch an overstated claim, never to invent one.
+    param(
+        [string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    # W35: EVIDENCE IS DECLARED, NEVER INFERRED FROM PROSE.
+    #
+    # This used to scan the WHOLE record for run ids and require every one of them to be complete,
+    # current, valid and passing. It had no notion of citation context, so it could not tell a run the
+    # record RELIES ON from a run the record NAMES IN ORDER TO RETRACT A CLAIM ABOUT IT.
+    #
+    # Measured 2026-08-20 (KeyContextAI, review-signoff boundary): a record that rests on a clean 250s
+    # run - `pass`/`complete`/`valid`, 31 source paths examined - and preserves a retraction naming the
+    # earlier partial run it wrongly relied on, was REFUSED FOR CONTAINING THAT HISTORY. The only way to
+    # pass was to delete the retraction, so the check's single available remedy was destroying the
+    # honesty it exists to enforce. Second time a text-matching detector has punished compliant output
+    # (W16 was bullet glyphs).
+    #
+    # The fix removes the inference rather than sharpening it, per W27's principle. Prose run ids are
+    # NARRATIVE and carry no weight by construction. Evidence comes from two declared sources, and the
+    # UNION of them is checked - so naming a run explicitly can only add scrutiny, never remove it:
+    #   1. an explicit evidence marker, exact and authored for this purpose;
+    #   2. the derived independent-review block, which is computed from the store and recomputed at
+    #      validation, so it cannot be authored.
+    # A record declaring neither has nothing to check here; W34-A's ramp is what governs the absence of
+    # a block, warning for records that predate it and refusing for records written after.
+    if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
+    $reviewText = ($ReviewLines -join "`n").Replace("`r`n", "`n")
+    # PROVENANCE IS KEPT, not merged away. The first version collapsed both sources into one list of
+    # ids and then told every reader to "remove it from the SPECREW-REVIEW-EVIDENCE marker" - which for
+    # a block-sourced run names an edit that is both impossible (there is no marker) and forbidden (the
+    # block is recomputed and must not be hand-edited). That is the painted-on-door shape W35 had just
+    # fixed one layer up: the only offered action is the one the reader must not take.
+    $declaredSources = [ordered]@{}
+
+    # 1. The explicit marker. An HTML comment so it is invisible in rendered markdown, and a fixed
+    #    shape so reading it needs no judgement:
+    #        <!-- SPECREW-REVIEW-EVIDENCE: run-20260820-150735904-458c5888 -->
+    foreach ($markerMatch in [regex]::Matches($reviewText, '(?i)<!--\s*SPECREW-REVIEW-EVIDENCE\s*:(?<ids>[^>]*?)-->')) {
+        foreach ($idMatch in [regex]::Matches([string]$markerMatch.Groups['ids'].Value, 'run-\d{8}-\d{9}-[0-9a-f]{8}')) {
+            $declaredSources[[string]$idMatch.Value] = 'marker'
+        }
+    }
+
+    # 2. The derived block's run - the authoritative one, and the only run id in the record that no
+    #    author chose.
+    if (Get-Command -Name 'Get-SpecrewEmbeddedIndependenceBlock' -ErrorAction SilentlyContinue) {
+        $blockText = Get-SpecrewEmbeddedIndependenceBlock -ReviewLines $ReviewLines
+        if (-not [string]::IsNullOrWhiteSpace($blockText)) {
+            foreach ($idMatch in [regex]::Matches([string]$blockText, 'run-\d{8}-\d{9}-[0-9a-f]{8}')) {
+                # The block WINS when a run is in both. Removing it from the marker would not remove it
+                # from the block, so telling the reader to edit the marker would still be a door that
+                # opens onto nothing.
+                $declaredSources[[string]$idMatch.Value] = 'derived-block'
+            }
+        }
+    }
+
+    $citedRuns = @($declaredSources.Keys)
+    if (@($citedRuns).Count -eq 0) { return }
+
+    $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return }
+
+    foreach ($runId in $citedRuns) {
+        $resultPaths = @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object { Join-Path $_.FullName ("runs/$runId/result.json") } |
+                Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+        if (@($resultPaths).Count -eq 0) { continue }
+        $result = $null
+        try { $result = Get-Content -LiteralPath $resultPaths[0] -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 }
+        catch { continue }
+        if ($null -eq $result) { continue }
+
+        $weak = [System.Collections.Generic.List[string]]::new()
+        if ([string]$result.completion -ne 'complete') { $weak.Add("completion '$([string]$result.completion)'") | Out-Null }
+        # DRIFT-199-I001-134: StrictMode-safe (see the target_digest precedent below). A result with
+        # no verdict is weak evidence, not a crash.
+        $citedVerdict = if ($result.PSObject.Properties['verdict']) { [string]$result.verdict } else { '' }
+        if ($citedVerdict -notin @('pass', 'findings')) { $weak.Add("verdict '$citedVerdict'") | Out-Null }
+        if ([string]$result.currentness -ne 'current') { $weak.Add("currentness '$([string]$result.currentness)'") | Out-Null }
+        # W38: `currentness` IS A FIELD THE RUN WROTE ABOUT THE TREE THAT EXISTED THEN.
+        #
+        # It was computed at ingest and never re-asked, so a record whose reviewed tree has since
+        # moved still validated clean - which is how this project's own record kept reading as though
+        # a current independent review covered it while three commits of review machinery landed
+        # after the reviewed tree. The signoff GATE catches that at the boundary, but a record that
+        # reads clean in between is exactly the shape W31 and W33 exist to stop: a stored fact,
+        # true when written, quietly no longer true.
+        #
+        # So the tree is recomputed here, the way W34-A recomputes the derived block rather than
+        # reading it. A run's target_digest is the tree it actually froze; if that is not the tree
+        # that exists now, the run does not cover the current files whatever its stored field says.
+        #
+        # FAIL-OPEN: if the digest cannot be computed - no git, a detached state, the helper absent -
+        # nothing is claimed. "I could not tell" must never manufacture staleness, the same posture
+        # every other check in this file takes.
+        # W39: THE FRESHNESS RULE IS SCOPED OUT OF A REVIEW PREFLIGHT.
+        #
+        # W38 + W36 together produced a wedge every consumer reaches by committing after a review:
+        # governance fails on the stale citation, the fix is a fresh round, the round's preflight runs
+        # governance, and it fails. For a block-sourced run the message named only "obtain a run that
+        # completed against the current tree" - the action the failure prevents - and the block cannot
+        # be hand-edited. The escape exists (withdraw the claim in the record's own prose) but nothing
+        # said so, so only someone who had already reasoned it out could take it.
+        #
+        # Broken at the DEPENDENCY, not the rule: staleness still fails ordinary validation and still
+        # stops the signoff gate, where it actually matters. It simply does not gate the one operation
+        # whose entire purpose is to end the staleness.
+        #
+        # SCOPED TO THIS RULE ALONE. Completion, verdict, validation and declared coverage are all
+        # still enforced during preflight - a preflight is not a licence to cite a bad run.
+        #
+        # AND SCOPED TO ONE PROJECT. The marker carries the root of the verification copy whose
+        # preflight is running, because a bare flag disarmed this rule for EVERY project validated
+        # anywhere under that preflight - including the fixture projects the verification suites
+        # build, whose armed-staleness cases then red only inside a live review launch, the most
+        # expensive place to find out (five failed launches). A bare '1' is what a pre-scoping
+        # engine sends; it keeps the old global behavior so pairing this validator with an older
+        # engine cannot resurrect the W38+W36 wedge.
+        $preflightMarker = [string]$env:SPECREW_REVIEW_PREFLIGHT
+        $inReviewPreflight = $false
+        if (-not [string]::IsNullOrWhiteSpace($preflightMarker)) {
+            if ($preflightMarker.Trim() -ceq '1') { $inReviewPreflight = $true }
+            else {
+                try {
+                    $markerFull = [IO.Path]::GetFullPath($preflightMarker.Trim()).TrimEnd('\', '/')
+                    $projectFull = [IO.Path]::GetFullPath([string]$ProjectRoot).TrimEnd('\', '/')
+                    # Case semantics come from the VOLUME via the path-identity primitive, never from
+                    # the OS family - the class-guard lane enforces this structurally. 'distinct' when
+                    # undetermined, and Ordinal when the primitive is unreachable: both err toward NOT
+                    # applying the exemption, which leaves the freshness rule live - the safe side.
+                    if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue)) {
+                        $pathIdentityHelper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/path-identity.ps1'
+                        if (Test-Path -LiteralPath $pathIdentityHelper -PathType Leaf) { . $pathIdentityHelper }
+                    }
+                    if (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) {
+                        $rootComparer = Get-ContinuousCoReviewPathComparer -Path $projectFull -WhenUndetermined 'distinct'
+                        $inReviewPreflight = $rootComparer.Equals($markerFull, $projectFull)
+                    }
+                    else {
+                        $inReviewPreflight = [string]::Equals($markerFull, $projectFull, [StringComparison]::Ordinal)
+                    }
+                }
+                catch { $inReviewPreflight = $false }
+            }
+        }
+        $currentTreeId = ''
+        try {
+            if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+                $digestHelper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1'
+                if (Test-Path -LiteralPath $digestHelper -PathType Leaf) { . $digestHelper }
+            }
+            if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
+                $digestState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot
+                if ($null -ne $digestState -and [bool]$digestState.ok) { $currentTreeId = [string]$digestState.tree_id }
+            }
+        }
+        catch { $currentTreeId = '' }
+        # StrictMode-safe: a stored result without target_digest must not take the validator down.
+        # The existing fixtures in this suite have no such field, and reading it unguarded threw.
+        $citedTreeId = if ($result.PSObject.Properties['target_digest']) { [string]$result.target_digest } else { '' }
+        # DRIFT-007: THE REVIEWED SURFACE, NOT EVERY BYTE.
+        #
+        # Exact tree equality made every run stale at its own recording commit, because the digest
+        # includes `specs/` - so writing the record moved the tree the record is measured against. With
+        # the derived block present the record failed here; with it absent the W34-A absence arm failed
+        # instead. No project could satisfy both, and the fix each check offered was the state the other
+        # refused. It shipped four days before its first contact with a project that committed a result.
+        #
+        # A run now stays current while only records have moved, and goes stale the moment code does.
+        # Same evidence, better question.
+        if (-not $inReviewPreflight -and
+            -not [string]::IsNullOrWhiteSpace($currentTreeId) -and -not [string]::IsNullOrWhiteSpace($citedTreeId) -and
+            $currentTreeId -cne $citedTreeId) {
+            $citedShort = $citedTreeId.Substring(0, [Math]::Min(8, $citedTreeId.Length))
+            $currentShort = $currentTreeId.Substring(0, [Math]::Min(8, $currentTreeId.Length))
+            $drift = $null
+            if (Get-Command -Name 'Get-SpecrewReviewedTreeSourceDrift' -ErrorAction SilentlyContinue) {
+                $drift = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $citedTreeId -CurrentTreeId $currentTreeId
+            }
+            if ($null -eq $drift -or -not [bool]$drift.comparable) {
+                # Not a licence to pass. The tree moved and what moved cannot be established, so the
+                # citation can no longer be checked - which is a weaker claim than staleness and is
+                # reported as exactly that.
+                $weak.Add(("it reviewed tree {0}, the files now are tree {1}, and that reviewed tree is no longer in this repository's object store - so whether any source changed since cannot be established" -f $citedShort, $currentShort)) | Out-Null
+            }
+            elseif (@($drift.source).Count -gt 0) {
+                $movedSource = @($drift.source)
+                $shown = @($movedSource | Select-Object -First 3) -join ', '
+                if (@($movedSource).Count -gt 3) { $shown = "$shown (+$(@($movedSource).Count - 3) more)" }
+                $weak.Add(("it reviewed tree {0} and {1} source file(s) have changed since: {2}" -f $citedShort, @($movedSource).Count, $shown)) | Out-Null
+            }
+        }
+        if ([string]$result.validation -ne 'valid') { $weak.Add("validation '$([string]$result.validation)'") | Out-Null }
+        # W33. The run's own declared coverage, when it recorded one. A run that says it examined
+        # only records or documents cannot evidence a review OF THE CODE, whatever its verdict.
+        # This is the case W31 alone could not see: the KeyContextAI run that became the recorded
+        # independent review was complete, current, valid and passing by every stored fact.
+        if ($result.PSObject.Properties['examined_paths']) {
+            $examined = @(@($result.examined_paths) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            # Round-13 finding (DRIFT-199-I001-122): a PRESENT empty list is declared ZERO coverage.
+            # The ingress refuses new ones since the round-11 fix, but a complete/passing result
+            # persisted before it can carry an empty declaration into this reader - and "I read no
+            # files" cannot evidence a review of the code. Only ABSENCE keeps the legacy fail-open.
+            if (@($examined).Count -eq 0) {
+                $weak.Add('declared it examined no files at all') | Out-Null
+            }
+            if (@($examined).Count -gt 0) {
+                $sourceExamined = @($examined | Where-Object {
+                        $rel = $_.Trim().Replace([char]92, [char]47)
+                        while ($rel.StartsWith('./')) { $rel = $rel.Substring(2) }
+                        -not ($rel -match '(?i)^(specs|docs)/') -and
+                        -not ($rel -match '(?i)^(?:\.specrew|\.squad|\.specify|\.agents|\.cursor|\.copilot|\.claude)/') -and
+                        # Round-16 (DRIFT-199-I001-126): .github workflows and actions are executable
+                        # source; only the governance records and host mirrors under it are records.
+                        -not ($rel -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') -and
+                        -not ($rel -match '(?i)^\.github/[^/]+\.md$') -and
+                        -not ($rel -match '(?i)\.(md|markdown|txt|rst|adoc)$')
+                    })
+                if (@($sourceExamined).Count -eq 0) {
+                    $weak.Add(('examined only records or documents ({0})' -f ((@($examined) | Select-Object -First 3) -join ', '))) | Out-Null
+                }
+            }
+        }
+        if (@($weak).Count -eq 0) { continue }
+
+        # Every remedy named here is one this function honours AND the reader can perform. The old
+        # message ended "or state in review.md what the cited run actually established" - which no code
+        # path implemented - and its replacement then told every reader to edit a marker, including the
+        # readers whose weak run came from the do-not-hand-edit block and who have no marker at all.
+        $declaredFrom = [string]$declaredSources[$runId]
+        $remedy = if ($declaredFrom -ceq 'marker') {
+            'Either obtain a run that completed against the current tree, or - if this run is named as history rather than relied upon - remove it from the SPECREW-REVIEW-EVIDENCE marker.'
+        }
+        else {
+            'This run is named by the DERIVED independent-review block, which is computed from the review store and recomputed at validation, so it cannot be edited out by hand. Two things you can do: obtain a run that completed against the current tree, and the block will then name it; or, if the claim has simply gone stale and you are not ready to re-run, WITHDRAW it - remove the evidence marker and the block from review.md and say plainly in the record that the independence claim is withdrawn pending a fresh round. Editing the record''s own prose is yours to do; the block and the store are not.'
+        }
+        $Errors.Add(("review.md declares review run {0} as the evidence it rests on, but that run cannot support a review claim: {1}. {2} Run ids appearing only in prose are treated as narrative and are not checked, so a retraction can name a failed run freely." -f $runId, ($weak -join ', '), $remedy)) | Out-Null
+    }
+}
 function Test-NoGapClosurePolicy {
     param(
         [string[]]$ReviewLines,
@@ -909,7 +1400,7 @@ function Test-ReviewEvidenceTreeIntegrity {
     }
 
     foreach ($missing in @($treeCheck.MissingProduction)) {
-        $Errors.Add(("review.md (FR-022/Pillar 5) cites production evidence file '{0}' that is present in the working tree but absent from the cited Tree Under Review commit '{1}' for {2}. Either stage + commit the file then re-issue the verdict, or remove it from review.md evidence." -f $missing, $treeCheck.TreeHash, $relativeIteration))
+        $Errors.Add(("review.md cites production evidence file '{0}' that is present in the working tree but absent from the cited Tree Under Review commit '{1}' for {2}. Either stage + commit the file then re-issue the verdict, or remove it from review.md evidence." -f $missing, $treeCheck.TreeHash, $relativeIteration))
     }
 
     foreach ($missingTest in @($treeCheck.MissingTest)) {
@@ -1612,6 +2103,41 @@ function Test-BoundaryStateAdvanceVerdict {
     }
 }
 
+function Test-SourceWithoutImplementAuthorization {
+    <#
+    W47 (2026-08-23): THE NO-CODE-WITHOUT-APPROVAL PROMISE GETS MECHANICAL ENFORCEMENT.
+
+    On the KeyContextAI walk a session committed product source (7 files) while
+    last_authorized_boundary was `tasks`, the hardening gate was blocked, and no before-implement
+    crossing had been minted. Nothing fired: Test-BoundaryStateAdvanceVerdict watches the STATE, and
+    the state never advanced - the session wrote code where it stood. Gate checks fire at sync time,
+    and a session that never runs the sync never meets them.
+
+    So this checks the TREE against the LEDGER: product source (the shared classifier's definition)
+    that changed since the last authorized boundary's own commit, while that boundary is still
+    pre-implement, FAILS - an error, not a warning, because code without the verdict is outside the
+    process whatever its quality. The remedy is named: the crossing's verdict, or reverting the
+    source. Detection is shared with the conformance layer (Get-SpecrewUnauthorizedSourceDrift), so
+    the live session and the at-rest validation refuse on the same fact.
+
+    Committed drift only, here: a human's uncommitted scratch edits are not a governance fact yet,
+    and the conformance layer already speaks to the live session about them.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    if (-not (Get-Command -Name 'Get-SpecrewUnauthorizedSourceDrift' -ErrorAction SilentlyContinue)) { return 0 }
+    $drift = $null
+    try { $drift = Get-SpecrewUnauthorizedSourceDrift -ProjectRoot $ProjectRoot } catch { return 0 }
+    if ($null -eq $drift -or -not [bool]$drift.checked -or -not [bool]$drift.pre_implement) { return 0 }
+    $committed = @($drift.committed_source)
+    if ($committed.Count -eq 0) { return 0 }
+
+    $shown = @($committed | Select-Object -First 5) -join ', '
+    if ($committed.Count -gt 5) { $shown = "$shown (+$($committed.Count - 5) more)" }
+    Write-Host ("FAIL [trust-hardening] source-without-implement-authorization: {0} product source file(s) changed since the '{1}' authorization ({2}), but implementation has not been approved - verdict_history holds no 'approved for before-implement'. Code written without that verdict is outside the process this project follows, whoever wrote it and however good it is. Either obtain the verdict - complete the hardening gate, run the boundary sync, present the packet, and record the human's 'approved for before-implement' - or revert the source changes: {3}" -f $committed.Count, [string]$drift.authorized_boundary, ([string]$drift.anchor_commit).Substring(0, [Math]::Min(8, ([string]$drift.anchor_commit).Length)), $shown) -ForegroundColor Red
+    return 1
+}
+
 function Test-ApprovedFeatureStatusVerdictEvidence {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -1653,10 +2179,8 @@ function Test-ApprovedFeatureStatusVerdictEvidence {
         }
         $hasVerdictHistoryEvidence = @($effectiveVerdictHistory | Where-Object {
                 $null -ne $_ -and
-                $null -ne $_.PSObject.Properties['authorizing_human'] -and
-                -not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value) -and
-                $null -ne $_.PSObject.Properties['verdict_text'] -and
-                ([string]$_.PSObject.Properties['verdict_text'].Value -match '(?i)\bapprov')
+                -not [string]::IsNullOrWhiteSpace((Get-ObjectPropertyString -InputObject $_ -PropertyNames 'authorizing_human')) -and
+                ((Get-ObjectPropertyString -InputObject $_ -PropertyNames 'verdict_text') -match '(?i)\bapprov')
             }).Count -gt 0
     }
 
@@ -1693,6 +2217,19 @@ function Test-SessionStateBoundaryCanonical {
     $closureSet = Get-SpecrewClosureBoundaryTypes
     $failures = New-Object System.Collections.Generic.List[string]
 
+    # 202 T032 (B4F-146's class): a feature stays active while its closeout decision is pending, and becomes inactive
+    # when the human approves it. So "active at a closure boundary" is a contradiction only once that closure is
+    # the last authorized boundary; before that it is the pending decision.
+    $closureAuthorized = $false
+    $startContextForClosure = Join-Path -Path $ProjectRoot -ChildPath '.specrew\start-context.json'
+    if (Test-Path -LiteralPath $startContextForClosure -PathType Leaf) {
+        try {
+            $closureContext = Get-Content -LiteralPath $startContextForClosure -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $closureContext.boundary_enforcement -and [string]$closureContext.boundary_enforcement.last_authorized_boundary -in $closureSet) { $closureAuthorized = $true }
+        }
+        catch { $closureAuthorized = $false }
+    }
+
     # Check 1: .specrew/start-context.json
     $startContextPath = Join-Path -Path $ProjectRoot -ChildPath '.specrew\start-context.json'
     if (Test-Path -LiteralPath $startContextPath -PathType Leaf) {
@@ -1704,7 +2241,7 @@ function Test-SessionStateBoundaryCanonical {
                 if (-not [string]::IsNullOrWhiteSpace($boundary) -and $boundary -notin $canonicalSet) {
                     $null = $failures.Add("$startContextPath`: session_state.boundary_type value '$boundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
                 }
-                if ($active -eq $true -and $boundary -in $closureSet) {
+                if ($active -eq $true -and $boundary -in $closureSet -and $closureAuthorized) {
                     $null = $failures.Add("$startContextPath`: session_state.active=true is contradictory with session_state.boundary_type='$boundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
                 }
             }
@@ -1742,7 +2279,7 @@ function Test-SessionStateBoundaryCanonical {
             if (-not [string]::IsNullOrWhiteSpace($promptBoundary) -and $promptBoundary -notin $canonicalSet) {
                 $null = $failures.Add("$promptPath`: session_state_boundary value '$promptBoundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
             }
-            if ($promptActive -eq 'true' -and $promptBoundary -in $closureSet) {
+            if ($promptActive -eq 'true' -and $promptBoundary -in $closureSet -and $closureAuthorized) {
                 $null = $failures.Add("$promptPath`: session_state_active=true is contradictory with session_state_boundary='$promptBoundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
             }
         }
@@ -1779,7 +2316,7 @@ function Test-SessionStateBoundaryCanonical {
             if (-not [string]::IsNullOrWhiteSpace($nowBoundary) -and $nowBoundary -notin $canonicalSet) {
                 $null = $failures.Add("$nowPath`: session_state_boundary value '$nowBoundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
             }
-            if ($nowActive -eq 'true' -and $nowBoundary -in $closureSet) {
+            if ($nowActive -eq 'true' -and $nowBoundary -in $closureSet -and $closureAuthorized) {
                 $null = $failures.Add("$nowPath`: session_state_active=true is contradictory with session_state_boundary='$nowBoundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
             }
         }
@@ -2404,8 +2941,8 @@ function Test-Phase2HardeningGate {
 
         foreach ($definition in $expectedConcernDefinitions) {
             $concernId = $definition.ConcernId
-            $matches = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
-            if ($matches.Count -ne 1) {
+            $matchedItems = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
+            if ($matchedItems.Count -ne 1) {
                 Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md must contain exactly one canonical concern row for '{0}'" -f $concernId) -RemediationHint 'Keep each canonical concern visible exactly once in the Concern Review table.'
                 continue
             }
@@ -3165,6 +3702,29 @@ function Test-ReviewArtifact {
         $Errors.Add("Complete iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
     }
 
+    # A REVIEW VERDICT IS CROSS-CHECKED AGAINST ITS ACTIVE CAMPAIGN, NOT ONLY AGAINST ITSELF.
+    #
+    # Dogfood measured an accepted artifact after three preflight failures and zero reviewer spends.
+    # The first repair recursively counted every result.json under the entire store. That let a valid
+    # result from another feature make this feature look reviewed. Use the lifecycle-owned feature and
+    # iteration identities instead; once a campaign authority store exists, an absent, unreadable, or
+    # unusable active campaign cannot support "accepted". Projects with no campaign store at all remain
+    # grandfathered here; the pending review-signoff boundary independently fails closed for new work.
+    if ($overallVerdict -eq 'accepted' -and -not (Test-IsNullish $ProjectRoot)) {
+        $campaignStoreRoot = Join-Path $ProjectRoot '.specrew/review/authority'
+        if (Test-Path -LiteralPath $campaignStoreRoot -PathType Container) {
+            $iterationsDirectory = Split-Path -Parent $IterationDirectory
+            $featureDirectory = Split-Path -Parent $iterationsDirectory
+            $featureRef = Split-Path -Leaf $featureDirectory
+            $iterationNumber = Split-Path -Leaf $IterationDirectory
+            $campaignEvidence = Get-SpecrewReviewCampaignEvidenceState -ProjectRoot $ProjectRoot `
+                -FeatureRef $featureRef -IterationNumber $iterationNumber
+            if (-not [bool]$campaignEvidence.Satisfied) {
+                $Errors.Add(("review.md says the review was accepted, but {0}. If the reviewer could not run, that is a blocker to resolve - not a review to record. If these verdicts were written by hand, say so in review.md rather than presenting them as review outcomes." -f [string]$campaignEvidence.Message))
+            }
+        }
+    }
+
     $taskVerdicts = @(Get-MarkdownSectionTable -Lines $reviewLines -Heading 'Task Verdicts')
     if ($taskVerdicts.Count -eq 0) {
         $Errors.Add('review.md must contain a populated Task Verdicts table')
@@ -3217,6 +3777,11 @@ function Test-ReviewArtifact {
     }
 
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
+    Test-ReviewCitedRunEvidence -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
+    Test-ReviewRecordAuthorship -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -Errors $Errors
+    Test-ScaffoldPendingSiblings -IterationDirectory $IterationDirectory -Errors $Errors
+    Test-DeployedExtensionIntegrity -ProjectRoot $ProjectRoot -Errors $Errors
+    Test-ReviewDerivedIndependenceBlock -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Errors $Errors
 
     # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.
     Test-ReviewEvidenceTreeIntegrity -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
@@ -4042,7 +4607,7 @@ function Test-ReviewerRegressionLedgerInvariants {
 
         # FR-007: Validate soft-warning classification
         if ($null -ne $entry.Severity -and $entry.Severity -ne 'soft-warning') {
-            $issues.Add("$($entry.EventId): Severity must always be 'soft-warning' per FR-007, found '$($entry.Severity)'") | Out-Null
+            $issues.Add("$($entry.EventId): Severity must always be 'soft-warning', found '$($entry.Severity)'") | Out-Null
         }
 
         # FR-015: Validate escalation action consistency
@@ -4063,7 +4628,7 @@ function Test-ReviewerRegressionLedgerInvariants {
 
         # FR-008: Validate withdrawal consistency
         if ($entry.EventStatus -eq 'withdrawn' -and [string]::IsNullOrWhiteSpace($entry.WithdrawalReference)) {
-            $issues.Add("$($entry.EventId): Status 'withdrawn' requires 'Withdrawal Reference' per FR-008") | Out-Null
+            $issues.Add("$($entry.EventId): Status 'withdrawn' requires 'Withdrawal Reference'") | Out-Null
         }
     }
 
@@ -4183,7 +4748,7 @@ function Test-ReviewerRegressionDecisionsEntries {
 
         # FR-011: Lockout-cap decisions must be visible
         if ($entry.Type -eq 'lockout-cap' -and [string]::IsNullOrWhiteSpace($entry.DecisionId)) {
-            $issues.Add("Lockout-cap decision entry must have a Decision ID per FR-011") | Out-Null
+            $issues.Add("Lockout-cap decision entry must have a Decision ID") | Out-Null
         }
     }
 
@@ -4491,6 +5056,7 @@ function Test-IterationGovernance {
     $reviewPath = Join-Path -Path $IterationDirectory -ChildPath 'review.md'
     $retroPath = Join-Path -Path $IterationDirectory -ChildPath 'retro.md'
     $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
+    Test-DriftLogClassClosure -DriftPath $driftPath -Errors $errors
     Test-ReviewDiagramsMermaidBlock -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot
     $stateLines = @(if (Test-Path -Path $statePath -PathType Leaf) { Get-MarkdownContent -Path $statePath } else { @() })
     $reviewLines = @(if (Test-Path -Path $reviewPath -PathType Leaf) { Get-MarkdownContent -Path $reviewPath } else { @() })
@@ -5196,25 +5762,35 @@ try {
     # are unaffected — closed iterations naturally aren't in those sets.
     $closedSkippedCount = 0
     if (-not $IncludeClosed -and -not $validatorScoped -and $targets.Count -gt 0) {
+        # W51 part 2 (maintainer ruling): A CLOSED ITERATION'S RECORDED STATE IS HISTORY, NOT A GATE
+        # INPUT FOR THE NEXT ITERATION. The walk's before-implement readiness run blocked iteration
+        # 002's work on iteration 001's deliberately-preserved FAIL, because this filter keyed ONLY on
+        # the index - an iteration whose own state.md says closed but which never made the index was
+        # validated as if live. The index stays the fast path; each unindexed candidate now answers
+        # from its OWN state.md, so closed is closed whether or not the index heard about it.
         $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
-        if ($closedIndex.Count -gt 0) {
-            $filtered = New-Object System.Collections.Generic.List[string]
-            foreach ($tp in $targets) {
-                $normalized = $tp -replace '\\', '/'
-                if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
-                    $feature = $Matches[1]
-                    $iteration = $Matches[2]
-                    if ($closedIndex.ContainsKey("$feature/$iteration")) {
-                        $closedSkippedCount++
-                        continue
-                    }
+        $filtered = New-Object System.Collections.Generic.List[string]
+        foreach ($tp in $targets) {
+            $normalized = $tp -replace '\\', '/'
+            if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
+                $feature = $Matches[1]
+                $iteration = $Matches[2]
+                if ($closedIndex.ContainsKey("$feature/$iteration")) {
+                    $closedSkippedCount++
+                    continue
                 }
-                $null = $filtered.Add($tp)
+                $stateProbe = Join-Path $tp 'state.md'
+                if ((Get-Command -Name 'Get-SpecrewClosedIterationFromStateFile' -ErrorAction SilentlyContinue) -and
+                    ($null -ne (Get-SpecrewClosedIterationFromStateFile -StatePath $stateProbe))) {
+                    $closedSkippedCount++
+                    continue
+                }
             }
-            $targets = @($filtered.ToArray())
-            if ($closedSkippedCount -gt 0) {
-                Write-Host ("[validator-scope] closed-iteration filter: {0} closed iterations skipped (use -IncludeClosed to validate them)" -f $closedSkippedCount)
-            }
+            $null = $filtered.Add($tp)
+        }
+        $targets = @($filtered.ToArray())
+        if ($closedSkippedCount -gt 0) {
+            Write-Host ("[validator-scope] closed-iteration filter: {0} closed iterations skipped (use -IncludeClosed to validate them)" -f $closedSkippedCount)
         }
     }
     Write-Host $scopeBanner
@@ -5224,6 +5800,20 @@ try {
     $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
     $teamValidationErrors = New-Object System.Collections.Generic.List[string]
+    # W51 part 3: sealed history refuses silent edits. Runs BEFORE the team-composition exit for the
+    # same reason as W47: tampering with approved history must not hide behind a config failure.
+    $closedSealErrors = New-Object System.Collections.Generic.List[string]
+    Test-ClosedIterationSeals -ProjectRoot $resolvedProjectPath -Errors $closedSealErrors
+    if ($closedSealErrors.Count -gt 0) {
+        foreach ($sealError in $closedSealErrors) { Write-Host ("FAIL [trust-hardening] closed-iteration-edited: {0}" -f $sealError) -ForegroundColor Red }
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count
+    }
+    # W47: the tree-vs-ledger cross-check - source written where the state STOOD, not where it moved.
+    # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
+    $sourceAuthorizationFailureCount = Test-SourceWithoutImplementAuthorization -ProjectRoot $resolvedProjectPath
+    if ($sourceAuthorizationFailureCount -gt 0) {
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount
+    }
     Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
 
     if ($teamValidationErrors.Count -gt 0) {
@@ -5503,3 +6093,4 @@ catch {
     }
     Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1
 }
+# specrew-self-provenance-ok: DRIFT-198-I009-033,DRIFT-199-I001-122,DRIFT-199-I001-126,F-025,F-028,F-030,F-033,F-040,F-047,F-049,DRIFT-199-I001-134; implementation history is recorded for maintainers and is never emitted as consumer instruction

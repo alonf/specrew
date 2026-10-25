@@ -207,6 +207,43 @@ Describe 'path identity primitive' {
         @($offenders).Count | Should -Be 0 -Because "case semantics come from the volume via the primitive, never from the OS family (offenders: $($offenders -join ', '))"
     }
 
+    It 'STRUCTURAL: OS family never canonicalizes repository path identity' {
+        # Comparing via the shared primitive but then hashing an IsWindows-uppercased path is still a
+        # bypass: the filesystem volume, not the kernel family, owns whether two spellings are one path.
+        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $offenders = [Collections.Generic.List[string]]::new()
+        foreach ($file in Get-ChildItem -LiteralPath $sourceRoot -File -Filter '*.ps1') {
+            if ($file.Name -ceq 'path-identity.ps1') { continue }
+            $lineNumber = 0
+            foreach ($line in Get-Content -LiteralPath $file.FullName) {
+                $lineNumber++
+                if ($line -match 'OperatingSystem\]::IsWindows\(\)' -and $line -match 'To(?:Upper|Lower)Invariant\(') {
+                    $offenders.Add("$($file.Name):$lineNumber") | Out-Null
+                }
+            }
+        }
+        @($offenders).Count | Should -Be 0 -Because "repository identity normalization must use the volume-derived comparison (offenders: $($offenders -join ', '))"
+    }
+
+    It 'STRUCTURAL: path HashSets use the volume comparer, never a hard-coded case fold' {
+        # A hard-coded HashSet comparer is another route around the primitive. Non-path identity sets
+        # may retain OrdinalIgnoreCase only when the line says so explicitly.
+        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $offenders = [Collections.Generic.List[string]]::new()
+        foreach ($file in Get-ChildItem -LiteralPath $sourceRoot -File -Filter '*.ps1') {
+            if ($file.Name -ceq 'path-identity.ps1') { continue }
+            $lineNumber = 0
+            foreach ($line in Get-Content -LiteralPath $file.FullName) {
+                $lineNumber++
+                if ($line -match 'HashSet\[string\].*StringComparer\]::OrdinalIgnoreCase' -and
+                    $line -notmatch 'specrew-identity-not-a-path') {
+                    $offenders.Add("$($file.Name):$lineNumber") | Out-Null
+                }
+            }
+        }
+        @($offenders).Count | Should -Be 0 -Because "path collections must use Get-ContinuousCoReviewPathComparer (offenders: $($offenders -join ', '))"
+    }
+
     It 'STRUCTURAL: path collections are never deduplicated with a case-folding default' {
         # The convergence assessment's item (a) again, in its dedup form. `Sort-Object -Unique` folds
         # case by default, which silently discarded one of two case-distinct machinery directories

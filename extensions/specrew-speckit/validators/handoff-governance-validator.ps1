@@ -665,7 +665,7 @@ function Get-BarePathMatches {
         '(?i)(?<![\w./\\-])(?<path>(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+\.[A-Za-z0-9]+)',
         '(?i)(?<![\w./\\-])(?<path>README\.md)(?![\w./\\-])'
     )
-    $matches = New-Object System.Collections.Generic.List[string]
+    $matchedItems = New-Object System.Collections.Generic.List[string]
 
     foreach ($line in (Get-PathScanLines -Text $Text)) {
         if (Test-IsExemptPathLine -Line $line) {
@@ -688,13 +688,13 @@ function Get-BarePathMatches {
                 }
 
                 if (-not $isExtensionExempt) {
-                    $matches.Add($candidate) | Out-Null
+                    $matchedItems.Add($candidate) | Out-Null
                 }
             }
         }
     }
 
-    return @($matches | Select-Object -Unique)
+    return @($matchedItems | Select-Object -Unique)
 }
 
 $normalizedText = Get-NormalizedText -Text $ResponseText

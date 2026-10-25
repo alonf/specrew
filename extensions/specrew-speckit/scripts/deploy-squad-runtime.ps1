@@ -4,7 +4,12 @@ param(
     [string]$ProjectPath,
 
     [switch]$DryRun,
-    [switch]$PassThru
+    [switch]$PassThru,
+    # PRED-BETA4-034: init passes this when THIS run created .squad - every charter under it is this run's
+    # product (squad init's baseline plus the directives block), so the ownership sidecar is written for all
+    # five. Without it (update/repair on an existing project) a charter is stamped only when created here or
+    # when it still hashes to what a previous sidecar recorded - a user's edit in between keeps its notice.
+    [switch]$ClaimCharterOwnership
 )
 
 Set-StrictMode -Version Latest
@@ -938,12 +943,19 @@ if (Test-Path -LiteralPath $reviewRuntimeMarkerPath -PathType Leaf) {
 Remove-RetiredManagedRuntimeFiles -TargetRoot $continuousReviewRuntimeTarget `
     -PreviousManagedFiles $previousRuntimeManagedFiles -CurrentManagedFiles $currentRuntimeManagedFiles -Actions $actions
 Copy-ManagedDirectory -SourcePath $continuousReviewRuntimeSource -TargetPath $continuousReviewRuntimeTarget -Actions $actions
-$sourceManifestPath = Join-Path $repositoryRoot 'Specrew.psd1'
+# PRED-BETA4-054: the version comes from the ONE resolver (the module this script runs from, SPECREW_MODULE_PATH,
+# or the installed module) - not from two levels above the TARGET extension root, which under a project's
+# deployed copy is `.specify/` and landed the literal 'unknown' in the marker.
 $sourceVersion = 'unknown'
-if (Test-Path -LiteralPath $sourceManifestPath -PathType Leaf) {
-    $sourceManifest = Import-PowerShellDataFile -LiteralPath $sourceManifestPath
-    $sourceVersion = [string]$sourceManifest.ModuleVersion
+try {
+    $labelScript = Join-Path $PSScriptRoot 'version-label.ps1'
+    if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+    if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) {
+        $resolvedLabel = [string](Get-SpecrewModuleVersionInfo).Label
+        if (-not [string]::IsNullOrWhiteSpace($resolvedLabel)) { $sourceVersion = $resolvedLabel }
+    }
 }
+catch { $null = $_ }
 $reviewRuntimeMarker = [ordered]@{
     schema_version = '1.0'
     # Content identity is authoritative. Version is diagnostic and may be
@@ -1077,7 +1089,39 @@ foreach ($baselineRole in $baselineRoles) {
         }
     ) -join ([Environment]::NewLine + [Environment]::NewLine)
 
-    Set-ManagedBlock -TargetPath (Join-Path $agentDirectory 'charter.md') -BlockName 'directives' -ManagedContent $directiveContent -BaseContentIfMissing $charterTemplate -Actions $actions
+    $charterPath = Join-Path $agentDirectory 'charter.md'
+    # PRED-BETA4-034: OWNERSHIP TRAVELS WITH THE CHARTER. This composition (shipped charter + directives block) is
+    # Specrew's, and the host handler at `specrew start` decides ownership by the `.specrew-managed` sidecar's
+    # hash. Without it, five fresh charters were called user-edited on every start. The sidecar is written
+    # when this step CREATES the file, and refreshed when the file still hashes to what Specrew last wrote;
+    # a charter the user edited in between keeps no sidecar, so the notice about it stays true.
+    $charterExisted = Test-Path -LiteralPath $charterPath -PathType Leaf
+    $charterUntouched = $false
+    if ($charterExisted) {
+        $priorSidecar = "{0}.specrew-managed" -f $charterPath
+        $priorHash = ''
+        if (Test-Path -LiteralPath $priorSidecar -PathType Leaf) {
+            foreach ($sidecarLine in @(Get-Content -LiteralPath $priorSidecar -Encoding UTF8)) { if ($sidecarLine -match '^\s*sha256:\s*([0-9a-fA-F]{64})\s*$') { $priorHash = $Matches[1].ToLowerInvariant() } }
+        }
+        $charterUntouched = (-not [string]::IsNullOrWhiteSpace($priorHash) -and $priorHash -ceq ((Get-FileHash -LiteralPath $charterPath -Algorithm SHA256).Hash).ToLowerInvariant())
+    }
+    if ($ClaimCharterOwnership -and $charterExisted -and -not $DryRun) {
+        # PRED-BETA4-036: THE BASE IS THE CANONICAL CHARTER, NOT WHAT `squad init` WROTE. A .squad this run
+        # created holds `squad init`'s own charter bodies (or the fallback scaffold's one-line placeholders) -
+        # never Specrew's canonical `.specrew/team/agents/<role>.md`, which is seeded from this same template.
+        # Left in place, the canonical planner (its boundary-commit cadence, its implementation-rules
+        # conversion) never reached a fresh Copilot project's runtime: before beta4 the start-time handler
+        # preserved the unmarked file; after PRED-BETA4-034 it kept the marked composition. The composition
+        # written here is the shared writer's shape (canonical, blank line, directives block), so the first
+        # start reads it as current and rewrites nothing.
+        [System.IO.File]::WriteAllText($charterPath, $charterTemplate, [System.Text.UTF8Encoding]::new($false))
+    }
+    Set-ManagedBlock -TargetPath $charterPath -BlockName 'directives' -ManagedContent $directiveContent -BaseContentIfMissing $charterTemplate -Actions $actions
+    if (-not $DryRun -and (Test-Path -LiteralPath $charterPath -PathType Leaf) -and (-not $charterExisted -or $charterUntouched -or $ClaimCharterOwnership)) {
+        # The SAME sidecar text hosts/_team-canonical.ps1's Write-SpecrewManagedSidecar writes (asserted by test).
+        $charterHash = ((Get-FileHash -LiteralPath $charterPath -Algorithm SHA256).Hash).ToLowerInvariant()
+        [System.IO.File]::WriteAllText(("{0}.specrew-managed" -f $charterPath), ("Specrew wrote $charterPath from .specrew/team/agents/ and keeps it in sync while it hashes to the value below; an edit is preserved and reported (specrew team own $($baselineRole.AgentDirectory) keeps it yours, specrew team resync $($baselineRole.AgentDirectory) returns it to canonical).`nsha256: {0}`n" -f $charterHash), [System.Text.UTF8Encoding]::new($false))
+    }
 
     # Create history.md for each baseline role
     $historyPath = Join-Path $agentDirectory 'history.md'
@@ -1101,3 +1145,4 @@ if ($PassThru) {
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Squad runtime deployment {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $resolvedProjectPath)) -ForegroundColor Green
 exit 0
+# specrew-self-provenance-ok: DRIFT-198-I009-011,DRIFT-198-I009-027,DRIFT-198-I009-031; implementation history is recorded for maintainers and is never emitted as consumer instruction

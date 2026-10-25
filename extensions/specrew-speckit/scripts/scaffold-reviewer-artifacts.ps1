@@ -37,10 +37,64 @@ function Add-ScaffoldAction {
         })
 }
 
+# DRIFT-006: what THIS RUN wrote is not evidence this run has to protect.
+#
+# Protection exists so a generated template never overwrites a human's accepted artifact. A file this
+# same invocation created moments ago is neither. Recording the pre-existing set once, before the first
+# write, is what makes "existed before this run" answerable at all - by the time the second write asks,
+# `Test-Path` can no longer tell the two apart, which is exactly how seven .pending siblings appeared
+# for seven files the same run had just created.
+$script:SpecrewPreexistingArtifacts = $null
+$script:SpecrewPreexistingScannedDirectories = $null
+
+function Initialize-SpecrewPreexistingArtifacts {
+    param([Parameter(Mandatory = $true)][string]$IterationDirectory)
+
+    $set = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $scanned = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    # The iteration directory holds the five closeout artifacts and the dashboard; the feature directory
+    # above it holds current-architecture.md. Both are written by this script, so both must be recorded -
+    # a directory left unscanned would make every file in it look newly created.
+    $iterationsRoot = Split-Path -Parent $IterationDirectory
+    $featureRoot = if ($iterationsRoot) { Split-Path -Parent $iterationsRoot } else { $null }
+    foreach ($directory in @($IterationDirectory, $featureRoot)) {
+        if ([string]::IsNullOrWhiteSpace($directory)) { continue }
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) { continue }
+        $null = $scanned.Add([System.IO.Path]::GetFullPath($directory))
+        foreach ($file in @(Get-ChildItem -LiteralPath $directory -File -Force -ErrorAction SilentlyContinue)) {
+            $null = $set.Add($file.FullName)
+        }
+    }
+
+    $script:SpecrewPreexistingArtifacts = $set
+    $script:SpecrewPreexistingScannedDirectories = $scanned
+}
+
+function Test-SpecrewFileExistedBeforeThisRun {
+    param([Parameter(Mandatory = $true)][string]$TargetPath)
+
+    # Fail CLOSED wherever the answer is unknown - an uninitialised set, or a target in a directory that
+    # was never scanned. Protecting a file we cannot classify is the safe direction: a stray `.pending`
+    # costs noise, and overwriting a human's accepted evidence costs the evidence.
+    if ($null -eq $script:SpecrewPreexistingArtifacts) { return $true }
+    $full = [System.IO.Path]::GetFullPath($TargetPath)
+    $parent = [System.IO.Path]::GetDirectoryName($full)
+    if ($null -eq $script:SpecrewPreexistingScannedDirectories -or
+        -not $script:SpecrewPreexistingScannedDirectories.Contains($parent)) {
+        return $true
+    }
+    return $script:SpecrewPreexistingArtifacts.Contains($full)
+}
+
 function Test-SpecrewFileHasPopulatedVerdict {
     param([string]$TargetPath)
 
     if (-not (Test-Path -LiteralPath $TargetPath -PathType Leaf)) {
+        return $false
+    }
+
+    if (-not (Test-SpecrewFileExistedBeforeThisRun -TargetPath $TargetPath)) {
         return $false
     }
 
@@ -142,6 +196,18 @@ function Write-ScaffoldFile {
         [System.Collections.ArrayList]$Actions
     )
 
+    $rendered = ConvertTo-LintCleanMarkdown -Content $Content
+
+    # DRIFT-006: nothing to protect and nothing to update when the generated content is already what is
+    # on disk. Diverting an identical file to `.pending` asks the reader to compare two copies of the
+    # same bytes, and every such prompt they dismiss makes the next one - the one that differs - cheaper
+    # to dismiss too.
+    if ((Test-Path -LiteralPath $TargetPath -PathType Leaf) -and
+        ((Get-Content -LiteralPath $TargetPath -Raw -Encoding UTF8) -ceq $rendered)) {
+        Add-ScaffoldAction -Actions $Actions -Action 'unchanged' -Path $TargetPath
+        return
+    }
+
     $finalPath = $TargetPath
     if (Test-SpecrewFileHasPopulatedVerdict -TargetPath $TargetPath) {
         $finalPath = "$TargetPath.pending"
@@ -178,16 +244,16 @@ function Write-MissingScaffoldFile {
         [System.Collections.ArrayList]$Actions
     )
 
-    $finalPath = $TargetPath
-    if (Test-SpecrewFileHasPopulatedVerdict -TargetPath $TargetPath) {
-        $finalPath = "$TargetPath.pending"
-        Write-Host "WARN: Protected existing accepted artifact '$TargetPath'. Emitting template default to sibling '$finalPath' instead." -ForegroundColor Yellow
-    }
-
-    if (Test-Path -LiteralPath $finalPath) {
-        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $finalPath
+    # DRIFT-006: this writer NEVER overwrites, so an existing target is already safe and there is nothing
+    # for protection to protect it from. Asking the verdict question first turned "preserve it, write
+    # nothing" into "write a .pending copy" - a file nobody asked for, describing a decision that had
+    # already been made in the reader's favour. Existence is the whole answer here.
+    if (Test-Path -LiteralPath $TargetPath) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $TargetPath
         return
     }
+
+    $finalPath = $TargetPath
 
     Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $finalPath
     if ($DryRun) {
@@ -444,16 +510,22 @@ function Get-DefaultRequirementRefsForGate {
         [string]$GateId
     )
 
+    # W46: the Requirement column in a downstream quality table used to cite Specrew's own FR ids,
+    # which collide with the consumer's FR namespace - a downstream human maps 'FR-027' onto THEIR
+    # spec. The column now names the quality dimension the gate enforces, in consumer terms.
+    # Maintainer citations for the original mapping: dead-field FR-011/FR-027/FR-030; anti-pattern
+    # FR-011/FR-028/FR-030; test-integrity FR-011/FR-029/FR-030; stack-tooling FR-011; lens-review
+    # FR-011/FR-012; concurrency/resiliency/retry FR-011/FR-012/FR-015.
     switch ($GateId) {
-        'dead-field' { return @('FR-011', 'FR-027', 'FR-030') }
-        'anti-pattern' { return @('FR-011', 'FR-028', 'FR-030') }
-        'test-integrity' { return @('FR-011', 'FR-029', 'FR-030') }
-        'stack-tooling-evidence' { return @('FR-011') }
-        'quality-lens-review' { return @('FR-011', 'FR-012') }
-        'concurrency-correctness-review' { return @('FR-011', 'FR-012', 'FR-015') }
-        'resiliency-semantics-review' { return @('FR-011', 'FR-012', 'FR-015') }
-        'retry-idempotency-review' { return @('FR-011', 'FR-012', 'FR-015') }
-        default { return @('FR-011') }
+        'dead-field' { return @('mechanical quality bar', 'unused-state hygiene') }
+        'anti-pattern' { return @('mechanical quality bar', 'deterministic anti-pattern scan') }
+        'test-integrity' { return @('mechanical quality bar', 'assertion-driven tests') }
+        'stack-tooling-evidence' { return @('stack tooling evidence') }
+        'quality-lens-review' { return @('quality-lens review') }
+        'concurrency-correctness-review' { return @('quality-lens review', 'concurrency correctness') }
+        'resiliency-semantics-review' { return @('quality-lens review', 'resiliency semantics') }
+        'retry-idempotency-review' { return @('quality-lens review', 'retry and idempotency') }
+        default { return @('quality bar') }
     }
 }
 
@@ -1262,25 +1334,35 @@ function Get-SensitiveTouchpoints {
             continue
         }
 
-        $matches = New-Object System.Collections.Generic.List[string]
+        # W42: NOT `$matches`. That is an AUTOMATIC variable, and the `-match` below overwrites it
+        # with a Hashtable - whose Add() takes two arguments - so `.Add($pattern)` threw
+        # "Cannot find an overload for Add and the argument count: 1" and took the whole scaffold
+        # down. It fired only once a pattern actually MATCHED, so a project with no matching files
+        # never saw it, which is why it survived reading, -WhatIf, -DryRun and three fixtures.
+        $matchedPatterns = New-Object System.Collections.Generic.List[string]
         $pathText = ([string]$file.Path).ToLowerInvariant()
         $contentText = ''
         $absolutePath = Join-Path $ProjectRoot $file.Path
         if (Test-Path -LiteralPath $absolutePath -PathType Leaf) {
-            $contentText = (Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8).ToLowerInvariant()
+            # `Get-Content -Raw` returns $null for an EMPTY file, and a `.gitkeep` in the changed set is an
+            # ordinary shape - the router-skill consumer had three. The method call on that null took the whole
+            # scaffold down on every invocation form, -DryRun included (PRED-BETA4-017). An empty file has no
+            # content to match; it contributes nothing and is not an error.
+            $rawContent = Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8
+            $contentText = if ($null -eq $rawContent) { '' } else { ([string]$rawContent).ToLowerInvariant() }
         }
 
         foreach ($pattern in $Patterns) {
             $regex = Convert-WildcardToRegex -Pattern $pattern.ToLowerInvariant()
             if ($pathText -match $regex -or $contentText -match $regex) {
-                if (-not $matches.Contains($pattern)) {
-                    $null = $matches.Add($pattern)
+                if (-not $matchedPatterns.Contains($pattern)) {
+                    $null = $matchedPatterns.Add($pattern)
                 }
             }
         }
 
-        if ($matches.Count -gt 0) {
-            $null = $touchpoints.Add(('{0} (matched: {1})' -f $file.Path, ($matches -join ', ')))
+        if ($matchedPatterns.Count -gt 0) {
+            $null = $touchpoints.Add(('{0} (matched: {1})' -f $file.Path, ($matchedPatterns -join ', ')))
         }
     }
 
@@ -2706,7 +2788,25 @@ $(($triageHints | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 $digestLine
 "@
 
-if (-not $SummaryOnly) {
+# W40: -SummaryOnly SUPPRESSES OUTPUT. IT MUST NOT SKIP THE WORK.
+#
+# This whole block - every reviewer closeout artifact - sat behind `if (-not $SummaryOnly)`, and
+# `scaffold-retro-artifact.ps1` invokes this script WITH -SummaryOnly. So the retro flow printed a
+# digest line naming `reviewer-index.md` and wrote none of the five artifacts, and closeout - the
+# gate that requires them - refused. Every project that reaches closeout hits it.
+#
+# One flag was doing two jobs and one of them was wrong. Output suppression already lives on its
+# own further down (`if (-not $SummaryOnly) { $actions | Format-Table }`), which is what the name
+# means and all it should ever have meant.
+#
+# The guard is kept as a named condition rather than deleted so the block's indentation - and the
+# diff - stay legible; re-flowing seventy lines to remove one `if` is how an unrelated defect gets
+# introduced next to a fix.
+$writeReviewerArtifacts = $true
+# DRIFT-006: record what was on disk BEFORE the first write, so protection can tell a pre-existing
+# artifact from one this run just produced. Must stay immediately above the write block.
+Initialize-SpecrewPreexistingArtifacts -IterationDirectory $resolvedIterationDirectory
+if ($writeReviewerArtifacts) {
     # F-028: Handle -Force flag with interactive confirmation
     if ($Force) {
         # Check if review artifacts exist
@@ -2780,12 +2880,7 @@ Human annotations in these files will be lost. Preserve annotations in review.md
     Write-ScaffoldFile -TargetPath $currentArchitecturePath -Content $currentArchitectureContent -Actions $actions
 }
 
-if ($PassThru) {
-    $actions
-    return
-}
-
-if (-not $SummaryOnly) {
+if (-not $SummaryOnly -and -not $PassThru) {
     $actions | Select-Object Action, Path | Format-Table -AutoSize
 }
 
@@ -2797,4 +2892,16 @@ else {
     Write-ReviewerSummary -Summary $summaryObject
 }
 
+# DRIFT-006: -PassThru returns the actions AND still reports and exits 0.
+#
+# It used to `return` here, above the digest, so a caller that wanted the actions got no summary - which
+# is why scaffold-retro-artifact.ps1 called this script a second time just to print, and that second
+# call became a second writing pass once W40 stopped -SummaryOnly from skipping the work. One call now
+# does both. The summary goes to the host stream, so it never pollutes the captured action objects, and
+# `exit 0` keeps $LASTEXITCODE meaningful for the caller's partial-completion check.
+if ($PassThru) {
+    $actions
+}
+
 exit 0
+# specrew-self-provenance-ok: DRIFT-198-I011-011,F-028,F-040; implementation history is recorded for maintainers and is never emitted as consumer instruction

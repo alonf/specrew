@@ -377,7 +377,7 @@ try {
         $duplicates = @($teamLines | Group-Object | Where-Object { $_.Count -gt 1 })
         
         if ($duplicates.Count -gt 0) {
-            Write-Fail "Duplicate Squad team entries detected (FR-013 regression):"
+            Write-Fail "Duplicate Squad team entries detected (regression):"
             foreach ($dup in $duplicates) {
                 Write-Host "  ❌ $($dup.Name) (appears $($dup.Count) times)" -ForegroundColor Red
             }
@@ -408,7 +408,7 @@ Write-Host "  ✓ Version pin synchronization (Prop 134)" -ForegroundColor Green
 Write-Host "  ✓ Clean project initialization" -ForegroundColor Green
 Write-Host "  ✓ Clean update transition (v0.27.6 → v$candidateVersion)" -ForegroundColor Green
 Write-Host "  ✓ Production toolchain transition (Spec Kit $baselineSpecKitVersion → $targetSpecKitVersion; Squad $baselineSquadVersion → $targetSquadVersion)" -ForegroundColor Green
-Write-Host "  ✓ No duplicate Squad entries (FR-013)" -ForegroundColor Green
+Write-Host "  ✓ No duplicate Squad entries" -ForegroundColor Green
 Write-Host ""
 Write-Host "Candidate is READY for PSGallery publication." -ForegroundColor Green
 

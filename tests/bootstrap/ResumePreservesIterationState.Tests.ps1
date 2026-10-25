@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 
 $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 . "$base/HostEventAdapter.ps1"
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 . "$base/SessionStateAccessor.ps1"
 . "$base/ProjectMetadataAccessor.ps1"
 . "$base/HandoverStore.ps1"
@@ -19,7 +20,7 @@ $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 function Assert-True { param([bool]$Condition, [string]$Message) if (-not $Condition) { throw "FAIL: $Message" } ; Write-Host "PASS: $Message" -ForegroundColor Green }
 function Assert-Equal { param([AllowNull()]$Actual, [AllowNull()]$Expected, [string]$Message) if ($Actual -ne $Expected) { throw "FAIL: $Message (expected '$Expected', got '$Actual')" } ; Write-Host "PASS: $Message" -ForegroundColor Green }
 
-$evt = '{"session_id":"sess-1","source":"startup","hook_event_name":"SessionStart"}'
+$evt = New-SpecrewTestTurnRecord -SessionId 'sess-1'
 $root = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-df006-" + [guid]::NewGuid().ToString('N'))
 $iterDir = Join-Path $root 'specs/feat-x/iterations/001'
 New-Item -ItemType Directory -Path $iterDir -Force | Out-Null
@@ -55,7 +56,7 @@ foreach ($p in $watched) { $before[$p] = (Get-FileHash -LiteralPath $p -Algorith
 
 try {
     # 1. RESUME (welcome-back): the primary DF-006 scenario.
-    $r = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'start-context.json') -BaseBranch 'main'
+    $r = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'start-context.json') -BaseBranch 'main'
     Assert-Equal $r.mode 'welcome-back' 'valid anchor resolves the RESUME (welcome-back) path'
     foreach ($p in $watched) {
         $after = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash
@@ -70,7 +71,7 @@ try {
     Assert-True (-not ($progNow -match 'status:\s*(pending|not-started)')) 'tasks-progress.yml has NO pending/not-started regression'
 
     # 2. FULL (no anchor): the bootstrap must be non-destructive on the cold path too.
-    $r2 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -BaseBranch 'main'
+    $r2 = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -BaseBranch 'main'
     Assert-Equal $r2.mode 'full' 'no anchor resolves the full bootstrap path'
     foreach ($p in $watched) {
         $after = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash

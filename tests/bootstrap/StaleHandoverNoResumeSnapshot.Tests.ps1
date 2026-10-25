@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 . "$base/HostEventAdapter.ps1"
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 . "$base/SessionStateAccessor.ps1"
 . "$base/ProjectMetadataAccessor.ps1"
 . "$base/HandoverStore.ps1"
@@ -36,7 +37,7 @@ function Write-Handover {
     Set-Content -LiteralPath (Join-Path $dir 'session-handover.md') -Value $body -Encoding UTF8
 }
 
-$evt = '{"session_id":"sess-1","source":"startup","hook_event_name":"SessionStart"}'
+$evt = New-SpecrewTestTurnRecord -SessionId 'sess-1'
 $now = '2026-06-12T12:00:00Z'
 $staleAt = '2026-06-01T12:00:00Z'   # 11 days old -> beyond the 24h freshness window
 $freshAt = '2026-06-12T11:00:00Z'   # 1h old -> fresh
@@ -49,7 +50,7 @@ New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat-x') -Force | Out
 try {
     # === STALE handover: must NOT drive a resume snapshot, and the reason MUST be surfaced. ===
     Write-Handover -Root $root -RecordedAt $staleAt
-    $rs = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc $now -BaseBranch 'main'
+    $rs = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc $now -BaseBranch 'main'
 
     Assert-Equal $rs.record.handover_valid $false 'stale handover is classified invalid'
     Assert-True ($null -eq $rs.directive.handover) 'stale handover is NOT surfaced in the directive (handover == null)'
@@ -67,7 +68,7 @@ try {
     # === FRESH control: a VALID handover MUST still drive the resume snapshot (no regression). ===
     Remove-Item -LiteralPath (Join-Path $root '.specrew/handover/session-handover.md.old') -Force -ErrorAction SilentlyContinue
     Write-Handover -Root $root -RecordedAt $freshAt
-    $rf = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc $now -BaseBranch 'main'
+    $rf = Invoke-SpecrewSessionBootstrap -TurnRecord $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc $now -BaseBranch 'main'
 
     Assert-Equal $rf.record.handover_valid $true 'fresh+present+unmerged handover is classified valid'
     Assert-True ($null -ne $rf.directive.handover) 'a VALID handover IS surfaced in the directive'

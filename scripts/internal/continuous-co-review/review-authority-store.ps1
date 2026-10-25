@@ -13,6 +13,13 @@ if (-not (Get-Command -Name 'Test-ReviewAuthorityContractObject' -ErrorAction Si
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'path-identity.ps1')
 }
+# HARD dependency (T006/FR-011). Guarded on the EXACT function this file calls rather than on a
+# sibling name: DRIFT-198-I009-027's shadow survived a guard that probed a DIFFERENT name, and
+# DRIFT-199-I001-014/-017 were both this class - a primitive that is merely RECOMMENDED gets bypassed
+# by a forgotten dot-source and then answers from whatever ambient copy loaded last.
+if (-not (Get-Command -Name 'Get-SpecrewReparseDispositionForItem' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'reparse-tag-policy.ps1')
+}
 
 function ConvertTo-ReviewAuthorityCanonicalValue {
     param([AllowNull()]$Value)
@@ -82,10 +89,18 @@ function Get-ReviewAuthorityStorePath {
     # The store root need not exist yet - CreateDirectory below creates the whole chain on a
     # project's first-ever review, and nothing can be maliciously linked before it exists. Where
     # it DOES exist, a reparse point there is refused before anything beneath it is touched.
+    #
+    # T006/FR-011: DISCRIMINATE, do not blanket-refuse. The old test refused EVERY reparse point,
+    # which also refused a cloud placeholder - and a placeholder redirects nothing, it IS the file
+    # with its content not yet local. That blanket refusal is what made the product unusable on the
+    # default CurrentUser install (DRIFT-199-I001-005: the sanctioned remediation door itself was
+    # unreachable from a OneDrive-backed Documents folder). Links and unrecognised tags still refuse.
     if (Test-Path -LiteralPath $root) {
         $rootItem = Get-Item -LiteralPath $root -Force -ErrorAction Stop
-        if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "review-store-root-link-unsupported:$StoreRoot"
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $rootItem
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
+            throw (Get-SpecrewReparseRefusalMessage -Code 'review-store-root-link-unsupported' -Path $StoreRoot `
+                    -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
     }
 
@@ -100,8 +115,10 @@ function Get-ReviewAuthorityStorePath {
         $current = Join-Path $current $segment
         if (-not (Test-Path -LiteralPath $current)) { continue }
         $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
-        if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "review-store-path-link-unsupported:$RelativePath"
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $item
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
+            throw (Get-SpecrewReparseRefusalMessage -Code 'review-store-path-link-unsupported' -Path $RelativePath `
+                    -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
     }
     return $full
@@ -116,7 +133,7 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -148,6 +165,34 @@ function Write-ReviewAuthorityImmutableFact {
     }
 }
 
+function Test-ReviewAuthorityFactPathContained {
+    # Round-23 finding (DRIFT-199-I001-134): FILE-LEVEL CONTAINMENT, at the same choke point as
+    # directory-level containment.
+    #
+    # Get-ReviewAuthorityStorePath refuses a reparse point at the store root and at every existing
+    # ANCESTOR - but readers then enumerate child JSON files and hand each absolute path to the
+    # reader, and no one classified the FILE. A symlinked grant, reset, result, disposition, pause
+    # or claim file sitting under an ordinary directory was therefore followed, and its external
+    # target accepted once it passed contract validation: the store's stated refusal of redirecting
+    # paths applied to directories only. Fifth appearance of the containment class in this module,
+    # and the first at the leaf.
+    #
+    # DISCRIMINATES, as the ancestor walk does: a cloud placeholder redirects nothing - it IS the
+    # file with its content not yet local - and refusing it is what once made the product unusable
+    # from a OneDrive-backed folder. Links and unrecognised tags refuse; an absent file is not a
+    # redirect and is left to the reader's own not-found handling.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$Path)
+    try {
+        if (-not (Test-Path -LiteralPath $Path)) { return $true }
+        $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $item
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) { return $false }
+    }
+    catch { return $false }
+    return $true
+}
+
 function Read-ReviewAuthorityFactFile {
     [CmdletBinding()]
     param(
@@ -155,10 +200,18 @@ function Read-ReviewAuthorityFactFile {
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
+        [AllowEmptyString()][string]$ExpectedCampaignId = '',
+        [AllowEmptyString()][string]$ExpectedRunId = '',
+        [AllowEmptyString()][string]$ExpectedTargetDigest = '',
         [int]$MaxBytes = 1048576
     )
+    # Round-23: classified BEFORE it is opened, here rather than at each call site, so an
+    # enumeration added later inherits the rule instead of having to remember it.
+    if (-not (Test-ReviewAuthorityFactPathContained -Path $Path)) {
+        throw "review-store-fact-link-unsupported:$Path"
+    }
     $stream = $null
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
         try { $stream = [System.IO.FileStream]::new($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read); break }
@@ -173,7 +226,8 @@ function Read-ReviewAuthorityFactFile {
     try { $fact = $json | ConvertFrom-Json -Depth 30 -ErrorAction Stop }
     catch { throw "review-store-corruption:invalid-json:$Path" }
     if (-not [string]::IsNullOrWhiteSpace($ContractName)) {
-        $validation = Test-ReviewAuthorityContractObject -ContractName $ContractName -InputObject $fact
+        $validation = Test-ReviewAuthorityContractObject -ContractName $ContractName -InputObject $fact `
+            -ExpectedCampaignId $ExpectedCampaignId -ExpectedRunId $ExpectedRunId -ExpectedTargetDigest $ExpectedTargetDigest
         if (-not $validation.valid) { throw ('review-store-corruption:invalid-contract:{0}:{1}' -f $ContractName, ($validation.errors -join ',')) }
     }
     return $fact
@@ -284,6 +338,148 @@ function Write-ReviewRunAuthorityFact {
     return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName ReviewRun -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId
 }
 
+function Write-ReviewCampaignPendingPauseFact {
+    # T001 / Option B. The pause is recorded as an immutable fact beside its run, so the surface can
+    # be re-rendered VERBATIM on resume and the stop governor can read the state instead of guessing.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/runs/$runId/pending-pause.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName PendingPauseFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId
+}
+
+function Write-ReviewCampaignPauseDecisionFact {
+    # The human's numbered reply. Immutable by the same rule as every other authority fact: one reply
+    # per round, and a conflicting second answer is corruption rather than a correction, so a
+    # continuation can never be manufactured by re-answering a pause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/runs/$runId/pause-decision.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName PauseDecisionFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId
+}
+
+function Write-ReviewCampaignBudgetResetFact {
+    # Immutable like every other authority fact. Each reset gets its own path, so a campaign's resets
+    # are a visible history rather than a value that was quietly changed - "how many times did we lift
+    # this limit" stays answerable, which is the question that matters if a campaign runs away.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $resetId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'reset_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/budget-resets/$resetId.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName RoundBudgetResetFact -ExpectedCampaignId $campaignId
+}
+
+function Get-ReviewCampaignLatestBudgetReset {
+    # The newest reset, or $null. Ordered by observed_at like every other selector in this file, and for
+    # the same reason: one ordering, so two readers cannot disagree about which is newest.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/budget-resets'
+    $root = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($root)) { return $null }
+    # EVERY FILE IS VALIDATED AS A CONTRACT FACT BEFORE IT CAN COUNT AS AUTHORITY.
+    #
+    # Round 5, major: this parsed any JSON in the directory and picked by `observed_at` alone, so a
+    # stray or tampered file carrying only a future timestamp would have been selected as the latest
+    # reset and excluded every prior round from the budget - unlimited rounds with no human authority,
+    # no reason, and no valid fact behind it. This directory grants SPEND, so it must be read at the
+    # same standard as every other authority fact rather than at the standard of a config file.
+    $facts = [Collections.Generic.List[object]]::new()
+    foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json')) {
+        $fact = Read-ReviewAuthorityFactFile -Path $file -ContractName RoundBudgetResetFact -ExpectedCampaignId $CampaignId
+        # A human reset is the only kind there is; anything else is not an authority to spend.
+        if ([string](Get-ReviewAuthorityProperty -Object $fact -Name 'authority_kind') -cne 'human') {
+            throw "review-store-corruption:budget-reset-not-human:$file"
+        }
+        $null = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $fact -Name 'observed_at') -FieldName 'round-budget-reset.observed_at'
+        $facts.Add($fact) | Out-Null
+    }
+    if ($facts.Count -eq 0) { return $null }
+    return @($facts | Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'round-budget-reset.observed_at' })[-1]
+}
+
+function Get-ReviewCampaignPauseRecords {
+    # EVERY pause in the campaign, each with its answer if it has one, in ONE chronological order.
+    #
+    # This exists so there is exactly one ordering in the codebase. Both selectors below are a filter
+    # plus "take the last" over this list, so a third ordering cannot quietly appear later - which is
+    # how the two that existed came to disagree in the first place.
+    #
+    # Ordered by parsed instant. `Z` and `+00:00` are both valid authority spellings and lexical
+    # comparison does not preserve time ordering across them. Missing or malformed time is corruption.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
+    $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($runsRoot)) { return @() }
+
+    $records = [Collections.Generic.List[object]]::new()
+    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot)) {
+        $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
+        if (-not [IO.File]::Exists($pausePath)) { continue }
+        $runId = [IO.Path]::GetFileName($runDirectory)
+        $pause = Read-ReviewAuthorityFactFile -Path $pausePath -ContractName PendingPauseFact -ExpectedCampaignId $CampaignId -ExpectedRunId $runId
+        $pauseAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $pause -Name 'observed_at') -FieldName "pending-pause[$runId].observed_at"
+        $decision = $null
+        $decisionPath = [IO.Path]::Combine($runDirectory, 'pause-decision.json')
+        if ([IO.File]::Exists($decisionPath)) {
+            $decision = Read-ReviewAuthorityFactFile -Path $decisionPath -ContractName PauseDecisionFact -ExpectedCampaignId $CampaignId -ExpectedRunId $runId
+            $null = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $decision -Name 'observed_at') -FieldName "pause-decision[$runId].observed_at"
+        }
+        $records.Add([pscustomobject]@{
+                pause       = $pause
+                decision    = $decision
+                answered    = ($null -ne $decision)
+                run_id      = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'run_id')
+                observed_at = $pauseAt
+            }) | Out-Null
+    }
+    return @($records | Sort-Object -Property observed_at)
+}
+
+function Get-ReviewCampaignPendingPause {
+    # The newest pause that has NOT been answered. An answered pause is history, not a pending
+    # decision, so it neither renders nor confers quiet.
+    #
+    # ORDERING FIXED 2026-08-11 (maintainer ruling, signoff-round finding). This enumerated run
+    # directories and sorted them LEXICOGRAPHICALLY BY RUN-ID, then took the last. Run ids need not sort
+    # chronologically - explicit ids are supported, and the T067 store really does hold
+    # `run-review-signoff-10` and `run-review-signoff-9`, which sort BACKWARDS.
+    #
+    # The rendering caller (the stop surface) would merely show the wrong round. The ANSWER path is the
+    # wedge: --pause-choice records the human's reply against the mis-picked run_id, the continuation
+    # guard then reads the genuinely-newest pause, correctly finds it unanswered, and refuses. It fails
+    # CLOSED, so nothing is spent - but the consumer answers, is told it worked, and the next run refuses
+    # with pause-decision-pending again. They can answer forever and nothing moves. A wedged gate is one
+    # of the failures the acceptance bar names, so failing closed is not sufficient here.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $unanswered = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { -not $_.answered })
+    if ($unanswered.Count -eq 0) { return $null }
+    return $unanswered[-1].pause
+}
+
+function Get-ReviewCampaignLatestPause {
+    # The newest pause AND its answer, if it has one.
+    #
+    # Distinct from Get-ReviewCampaignPendingPause on purpose, and the difference is the whole point:
+    # that one returns only UNANSWERED pauses, so asking it whether a continuation is authorized can
+    # only ever answer "pending" - a tautology, not a check. The spend guard needs the answered case
+    # too, because "abandon" and "stop-here" are answers that must REFUSE the next round just as firmly
+    # as no answer at all.
+    #
+    # Both selectors read the SAME ordered list, so they cannot disagree about which pause is newest.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $records = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    if ($records.Count -eq 0) { return $null }
+    return $records[-1]
+}
+
 function Publish-ReviewRunResultFact {
     [CmdletBinding()]
     param(
@@ -297,6 +493,7 @@ function Publish-ReviewRunResultFact {
 }
 
 function Get-ReviewAuthorityCampaignRunResults {
+    # SPECREW-AUTHORITY-CONTROL: authority-store-read-failure
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$StoreRoot,

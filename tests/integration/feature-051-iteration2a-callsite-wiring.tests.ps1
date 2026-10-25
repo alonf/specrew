@@ -153,6 +153,21 @@ if ($closeoutResult.ExitCode -ne 0) {
     Write-Fail ("Feature closeout sync failed:`n{0}" -f ($closeoutResult.Output -join [Environment]::NewLine))
     exit 1
 }
+# 202 T032 (B4F-146's class): the sync ASKS for the feature closeout, so the claim and the lock stay until the human
+# approves it; the approval's capture releases them.
+if ((@(Read-FeatureClaims -ProjectRoot $projectRoot)).Count -eq 0 -or (@(Read-ActiveSessions -ProjectRoot $projectRoot | Where-Object { $_.feature_id -eq '051-multi-session-foundation' })).Count -eq 0) {
+    Write-Fail 'Asking for the feature closeout already released the feature claim or the session lock.'
+    exit 1
+}
+Write-Pass 'Asking for the feature closeout leaves the claim and the session lock in place'
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+$pendingCrossing = (Get-Content -LiteralPath (Join-Path $projectRoot '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20).boundary_enforcement.pending_crossing
+$fromBoundary = if ($null -ne $pendingCrossing -and $pendingCrossing.from_boundary) { [string]$pendingCrossing.from_boundary } else { 'iteration-closeout' }
+$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $projectRoot -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+if ($null -eq $closeoutVerdict -or [string]$closeoutVerdict.AuthorizedBoundary -ne 'feature-closeout') {
+    Write-Fail 'The feature-closeout approval was not recorded.'
+    exit 1
+}
 if ((@(Read-FeatureClaims -ProjectRoot $projectRoot)).Count -ne 0) {
     Write-Fail 'Feature closeout did not remove the merged feature claim.'
     exit 1
@@ -161,7 +176,7 @@ if ((@(Read-ActiveSessions -ProjectRoot $projectRoot | Where-Object { $_.feature
     Write-Fail 'Feature closeout did not remove active session locks for the feature.'
     exit 1
 }
-Write-Pass 'Feature closeout removes merged feature claims and active session locks'
+Write-Pass 'The feature-closeout approval removes merged feature claims and active session locks'
 
 $conflictProjectRoot = Join-Path $scratchRoot 'claim-conflict'
 New-TestProject -ProjectRoot $conflictProjectRoot

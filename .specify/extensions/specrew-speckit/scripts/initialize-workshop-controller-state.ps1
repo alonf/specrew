@@ -60,16 +60,33 @@ if ($specItem.Length -le 0 -or $specItem.Length -gt 1048576) {
 }
 
 $statePath = Join-Path $featureRoot 'lens-applicability.json'
-if (Test-Path -LiteralPath $statePath) {
+$authorityStorePath = Join-Path $resolvedProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+    $authorityStorePath = Join-Path $PSScriptRoot 'workshop-authority-store.ps1'
+}
+if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+    throw 'Workshop state transition contract is unavailable.'
+}
+. $authorityStorePath
+$existingController = if (Test-Path -LiteralPath $statePath -PathType Leaf) { [pscustomobject]@{ agenda_status = 'existing' } } else { $null }
+$initializeTransition = Resolve-SpecrewWorkshopStateTransition -Controller $existingController -Operation 'initialize'
+if (-not $initializeTransition.allowed) {
     throw "Refusing to overwrite existing workshop controller state: '$statePath'."
 }
 
 $state = [ordered]@{
-    schema_version        = '1.0'
+    schema_version        = '1.1'
     workshop_intake       = $true
     confirmation_required = $true
+    agenda_contract       = 'complete-coverage-v1'
+    human_turn_contract   = 'typed-turns-v1'
     agenda_status         = 'pending-confirmation'
     selected              = @()
+    agenda                = [ordered]@{}
+    skipped               = [ordered]@{}
+    agenda_confirmation   = 'pending'
+    agenda_confirmation_scope = 'lens-selection'
+    agenda_turn_receipt   = 'pending'
     workshop              = [ordered]@{}
 }
 $json = ($state | ConvertTo-Json -Depth 6) + [Environment]::NewLine

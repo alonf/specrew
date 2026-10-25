@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "feature": "202-beta4-1-ux-stabilization",
+  "iteration": "003",
+  "sealed_at": "2026-10-24T22:22:00.2670253+00:00",
+  "sealed_files": [
+    {
+      "path": "acceptance-evidence.md",
+      "sha256": "27466a01eaddffd195093605b7d4d3039c1b89be59da81ba06aed0d8fe0e9b11"
+    },
+    {
+      "path": "dashboard.md",
+      "sha256": "1b593b5725ba58d9509f26d0b2de70b357a1907cd19dcbfb9b2f6d5d4167f6e0"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "0544022e07b5081b64fdfee7f811fd80c5727cd02aeaf4cd288b01d38f5ba050"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "72bd266aa6913967c9fe2c050ab1bab4c0c230aa317c7c0bc7c5f73937e9cd94"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "6394c7c708fb22dd783d201888de1d4dddd046dcec2474bed74bba8640e3a19c"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "2205d4e35187f0c5dab54df0283a789e7922d769638c96d399c5284b94bff603"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "f0716b61923e8da92829e82715fa60ec8be9ed255f5d9984fe9b69b9fbf50cf6"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "a89289d763cc7a21df81a668f0d9bc96e5f0b794d5e504799ad4c7d9c61a3808"
+    },
+    {
+      "path": "review-round-2-files.md",
+      "sha256": "999e6d5dabc93c27a5ea407994d2080cdd71c11c0a56878f2dca47b23c8a4b8c"
+    },
+    {
+      "path": "review-round-3-files.md",
+      "sha256": "3b819fc07521c91cdbcbb8b0a9c919e99c27597530a72e1f76c0de766b1a2b4f"
+    },
+    {
+      "path": "review-round-4-files.md",
+      "sha256": "b15f17e3c08484a5f299471ebfe7ff07573edf5808146de2d8a228b35bbb5f07"
+    },
+    {
+      "path": "review.md",
+      "sha256": "7395414456588f9c44f1ba155c88e1d82f14d19f3eca1d8656412edb4adb6526"
+    },
+    {
+      "path": "state.md",
+      "sha256": "07ac2453ae6d861477604b791e669ad1ddb3cad26f9b534cd245d70f08e94062"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}

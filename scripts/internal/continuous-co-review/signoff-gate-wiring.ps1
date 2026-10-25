@@ -118,6 +118,11 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
             throw "continuous-co-review gate loader not found at '$gateLoaderPath'."
         }
         . $gateLoaderPath
+        $humanAuthorityPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'bootstrap/HumanAuthorityStore.ps1'
+        if (-not (Test-Path -LiteralPath $humanAuthorityPath -PathType Leaf)) {
+            throw "human authority store not found at '$humanAuthorityPath'."
+        }
+        . $humanAuthorityPath
     }
     catch {
         throw ("[continuous-co-review-gate] review-signoff cannot be evaluated because the gate infrastructure failed to load: {0}" -f $_.Exception.Message)
@@ -129,6 +134,63 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     # closed and there is no 'main' default to pre-read here. The decision is persisted before either throw/allow
     # so a failed signoff leaves inspectable evidence.
     $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot
+    if ($decision.decision -eq 'block') {
+        $treeId = [string]$decision.current_tree_id
+        $campaignId = if ($decision.PSObject.Properties['campaign_id']) { [string]$decision.campaign_id } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($treeId) -and -not [string]::IsNullOrWhiteSpace($campaignId)) {
+            # SPECREW-AUTHORITY-CONSUMER: partial-review-signoff
+            $capturedOverride = Get-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $ProjectRoot `
+                -ExpectedTargetTreeId $treeId -ExpectedCampaignId $campaignId
+            # W77: THE ACCEPTANCE CARRIES ACROSS THE COMMITS THIS GATE'S OWN PREFLIGHT DEMANDED.
+            #
+            # The lookup above is exact-tree, so an acceptance typed at the landing is orphaned the
+            # moment the sync's preflight requires the lint commits and the owed review.md - the gate
+            # then refuses a movement it caused, and asks the human to authorize the same gap twice.
+            # Carried only across a RECORDS-ONLY delta: no source moved, so the coverage gap the human
+            # accepted is the same gap. A source delta still refuses, correctly.
+            if ($null -eq $capturedOverride -and (Get-Command Get-SpecrewCarriedSignoffOverrideAuthorization -ErrorAction SilentlyContinue)) {
+                $featureRef = if ($decision.PSObject.Properties['feature_id']) { [string]$decision.feature_id } else { '' }
+                try {
+                    $capturedOverride = Get-SpecrewCarriedSignoffOverrideAuthorization -ProjectRoot $ProjectRoot `
+                        -CurrentTreeId $treeId -CampaignId $campaignId -FeatureId $featureRef
+                }
+                catch { $capturedOverride = $null }
+            }
+            if ($null -ne $capturedOverride) {
+                $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -OverrideAuthorization $capturedOverride
+            }
+        }
+    }
+    if ($decision.decision -eq 'block') {
+        $treeId = [string]$decision.current_tree_id
+        $campaignId = if ($decision.PSObject.Properties['campaign_id']) { [string]$decision.campaign_id } else { '' }
+        if ($treeId -cmatch '^[a-f0-9]{40,64}$' -and $campaignId -cmatch '^cmp-[a-z0-9][a-z0-9-]{1,190}$') {
+            $request = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $ProjectRoot -TargetTreeId $treeId `
+                -CampaignId $campaignId -RunId ([string]$decision.matched_run_id)
+            $decision | Add-Member -NotePropertyName override_request -NotePropertyValue $request -Force
+            # THE MESSAGE MUST NAME THE SEQUENCE, NOT ONLY THE PHRASE.
+            #
+            # Measured, 2026-08-30 (DRIFT-199-I002-033/-034): a maintainer typed a valid approval three
+            # times and signoff refused three times. Not once was the phrase wrong. The approval binds to
+            # the reviewed-state digest, and ANY commit under `specs/**` between the request being written
+            # and the retry moves that digest - so writing the very records a signoff needs invalidates the
+            # approval that permits it. The corrected operator sequence needs three clauses, one of which
+            # ("re-run the gate first, to refresh the pending request") no user would guess and this message
+            # did not teach. `latest-result-not-current` named the symptom and left no reachable action.
+            #
+            # The fourth clause is newer and cost a fourth attempt: the capture reads the rationale as
+            # EVERYTHING from the dash to the end of the message and rejects it over 2000 characters, so an
+            # approval followed by any further discussion in the same message is discarded in silence.
+            # Until that is fixed at its source, the message has to say it.
+            $decision.message = [string]$decision.message +
+                ' If you intentionally accept partial coverage for this exact tree, do these three things in order, with NO commits anywhere between them:' +
+                ' (1) run this same command once, which refreshes the pending request against your files as they are right now - an approval binds to a specific state, and a request from before your last commit is already stale;' +
+                ' (2) type, as a normal chat message and as the WHOLE message with nothing after it: approved for partial review signoff - <why accepting it is safe>;' +
+                ' (3) run this same command again immediately.' +
+                ' Writing records - a drift entry, a plan note - between (1) and (3) moves the state your approval was bound to and it will refuse again, which is not a rejection of your reasoning.' +
+                ' Specrew captures that typed reply before the next attempt; command-line identity fields are not authority.'
+        }
+    }
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"

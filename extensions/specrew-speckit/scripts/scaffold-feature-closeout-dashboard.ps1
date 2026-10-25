@@ -83,7 +83,7 @@ function Get-FeatureCloseoutIdentityBody {
     return @(
         '# What We''re Focused On'
         ''
-        ('No active feature. Last completed: {0} at {1}. Next roadmap item: {2} (not yet authorized).' -f $featureLabel, $timestamp, $nextRoadmapItem)
+        ('{0}: its closeout is waiting for the human''s approval (asked at {1}). Next roadmap item: {2} (not yet authorized).' -f $featureLabel, $timestamp, $nextRoadmapItem)
         ''
     ) -join [Environment]::NewLine
 }
@@ -212,7 +212,9 @@ if (-not $DryRun) {
     $identityPath = Get-FeatureCloseoutIdentityPath -ResolvedProjectPath $resolvedProjectPath
     $identityBody = Get-FeatureCloseoutIdentityBody -ResolvedProjectPath $resolvedProjectPath -FeatureRef $featureRef
     Add-ScaffoldAction -Actions $actions -Action 'updated' -Path $identityPath
-    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -IdentityFocusArea 'No active feature' -IdentityActiveIssues '[]' -IdentityBody $identityBody | Out-Null
+    # 202 T032 (B4F-146's class): this asks for the feature closeout, so the identity says it is awaiting approval;
+    # "No active feature" is written when the approval is recorded (Invoke-SpecrewFeatureCloseoutRelease).
+    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -IdentityFocusArea 'Feature closeout awaiting approval' -IdentityActiveIssues '[]' -IdentityBody $identityBody | Out-Null
 }
 
 if ($PassThru) {
@@ -223,3 +225,4 @@ if ($PassThru) {
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Output ("Feature closeout dashboard scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $targetPath))
 exit 0
+# specrew-self-provenance-ok: F-023,F-040; implementation history is recorded for maintainers and is never emitted as consumer instruction

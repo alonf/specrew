@@ -9,20 +9,14 @@ reviewed_at: 2026-06-08
 ---
 ## Specrew refocus — always-true core
 
-Inside Specrew, these rules hold at every stage and on every host:
+The governed subject is the project at `{{project_root}}`; Specrew is the methodology tool, never the project being built.
 
-The governed subject is the project resolved at `{{project_root}}`; Specrew is the methodology tool, never the project being specified or implemented.
-
-1. **Boundaries.** Every boundary needs explicit HUMAN authorization. One approval advances at most ONE boundary; discussion is not approval.
-2. **Spec truth.** The spec is authoritative. Drift between spec, plan, tasks, and code is first-class: record it in drift-log.md with a requirement citation.
-3. **Verdicts.** Recognized verdicts read "approved for <boundary>". Instruction-bearing verdicts carry the human's text. Ask if ambiguous.
-4. **Evidence.** Claims need runtime evidence (test, journal, live behavior), not file existence. Verify the committed tree.
-5. **Boundary commits.** Every artifact write that closes a boundary gets a focused `boundary(<stage>): ...` commit.
-6. **file:/// references.** Every artifact, file, or directory named in human-visible prose uses full bare file:/// URL form.
-7. **Honest state.** state.md, task statuses, and capacity lines reflect disk truth in canonical enums; count-claims must match artifacts.
-8. **Gate preflight.** Before any boundary packet, reconstruct from artifacts, run validator/parity/dirty-state/artifact/stale-phrase/packet/evidence checks, fix or classify failures, rerun, then present. review-signoff gets the full structured review.
-9. **Re-entry packets.** Render the six-section packet (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You) when at a boundary gate, after material work, or after a long/disconnected work turn. Quick discussion with no code, tests, files, commits, or gate stays conversational; length alone does not count. Clarify-stage ambiguity questions are NOT packet stops, and workshop questions keep their normal picker/question path. Never collapse the packet into a picker/menu. Boundary stops include numbered verdict options and the final `SPECREW-VERDICT-BOUNDARY` marker. After `sync-boundary-state.ps1`, `.specrew/runtime/pending-verdict-stop.md` is authoritative for the boundary, approval phrase, and marker; use its exact values and do not infer the marker from the next phase. Use your host's approved interaction path for verdict stops, or render directly when no dedicated surface exists. Within-phase checkpoints have no verdict options/marker.
-
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md
+1. **Boundaries.** Every boundary needs explicit HUMAN authorization. One approval advances at most ONE boundary; discussion is not approval. A captured approval is the instruction: begin the next stage in this turn; do not ask the human to start it. A verdict typed while no crossing is pending authorizes nothing and is not pending authority.
+2. **Spec truth.** The spec is authoritative. Drift between spec, plan, tasks and code is recorded in drift-log.md with a requirement citation.
+3. **Verdicts.** Recognized verdicts read "approved for <boundary>"; instruction-bearing verdicts carry the human's text. Ask if ambiguous.
+4. **Evidence.** Claims need runtime evidence (test, journal, live behavior), not file existence; verify the committed tree.
+5. **Boundary commits.** Every artifact write closing a boundary gets a focused `boundary(<stage>): ...` commit.
+6. **file:/// references.** Every artifact, file or directory named in human-visible prose uses the bare file:/// form.
+7. **Honest state.** state.md, task statuses and capacity lines reflect disk truth in canonical enums; counts match artifacts.
+8. **Gate preflight.** Before any boundary packet, reconstruct from artifacts, run validator/parity/dirty-state/artifact/stale-phrase/packet/evidence checks, fix or classify failures, rerun, then present; review-signoff gets the full structured review.
+9. **Re-entry packets.** At a boundary gate or after material work, render the six sections: What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You. Boundary stops offer the four typed verdicts as sendable lines - never a list, picker or menu - and end with the exact `SPECREW-VERDICT-BOUNDARY` marker; a stop whose stage owes unproduced artifacts offers no options or marker and names what is owed. After the sync, `.specrew/runtime/pending-verdict-stop.md` is authoritative: use its exact values; do not infer the marker from the next phase. Use your host's approved interaction path or render directly. In-phase checkpoints carry no options/marker; quick discussion without material work: omit the packet. Clarify-stage ambiguity questions are NOT packet stops; workshop questions keep their flow.

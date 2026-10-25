@@ -14,7 +14,8 @@
         'Show-SpecrewVersion',
         'Show-SpecrewReview',
         'Invoke-SpecrewTeam',
-        'Show-SpecrewStatus'
+        'Show-SpecrewStatus',
+        'Get-SpecrewReviewCampaignEvidenceState'
     )
     CmdletsToExport = @()
     VariablesToExport = @()
@@ -109,10 +110,15 @@
         'extensions/specrew-speckit/scripts/brownfield-merge.ps1',
         'extensions/specrew-speckit/scripts/capability-detector.ps1',
         'extensions/specrew-speckit/scripts/collision-detect.ps1',
+        'extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1',
+        'extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1',
         'extensions/specrew-speckit/scripts/conformance-turn-delta.ps1',
+        'extensions/specrew-speckit/scripts/create-governed-feature.ps1',
+        'extensions/specrew-speckit/scripts/declare-turn-end.ps1',
         'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1',
         'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1',
         'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1',
+        'extensions/specrew-speckit/scripts/design-decision-store.ps1',
         'extensions/specrew-speckit/scripts/drift-diff.ps1',
         'extensions/specrew-speckit/scripts/initialize-workshop-controller-state.ps1',
         'extensions/specrew-speckit/scripts/intake/helpers/Detect-RepoStack.ps1',
@@ -129,7 +135,10 @@
         'extensions/specrew-speckit/scripts/provider-adapter.ps1',
         'extensions/specrew-speckit/scripts/provider-generic.ps1',
         'extensions/specrew-speckit/scripts/provider-github.ps1',
+        'extensions/specrew-speckit/scripts/readiness-verdict.ps1',
+        'extensions/specrew-speckit/scripts/record-design-decision.ps1',
         'extensions/specrew-speckit/scripts/refocus.ps1',
+        'extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1',
         'extensions/specrew-speckit/scripts/resolve-quality-profile.ps1',
         'extensions/specrew-speckit/scripts/resume-iteration.ps1',
         'extensions/specrew-speckit/scripts/run-hardening-gate.ps1',
@@ -151,10 +160,14 @@
         'extensions/specrew-speckit/scripts/sync-squad-model-overrides.ps1',
         'extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1',
         'extensions/specrew-speckit/scripts/Test-CopilotInstructionsChangeType.ps1',
+        'extensions/specrew-speckit/scripts/timestamp-read.ps1',
+        'extensions/specrew-speckit/scripts/turn-end-store.ps1',
         'extensions/specrew-speckit/scripts/validate-governance.ps1',
         'extensions/specrew-speckit/scripts/validate-versions.ps1',
+        'extensions/specrew-speckit/scripts/version-label.ps1',
         'extensions/specrew-speckit/scripts/work-kind-common.ps1',
         'extensions/specrew-speckit/scripts/work-kind-validator.ps1',
+        'extensions/specrew-speckit/scripts/workshop-authority-store.ps1',
         'extensions/specrew-speckit/squad-templates/agents/implementer/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/planner/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md',
@@ -187,6 +200,8 @@
         'extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/specrew-where/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/traceability-check.md',
+        'extensions/specrew-speckit/squad-templates/skills/turn-end.md',
+        'extensions/specrew-speckit/squad-templates/skills/user-profile.md',
         'extensions/specrew-speckit/templates/design-analysis.template.md',
         'extensions/specrew-speckit/templates/downstream-constitution.md',
         'extensions/specrew-speckit/templates/iteration-config.yml',
@@ -249,13 +264,16 @@
         'scripts/internal/bootstrap/HandoverStore.ps1',
         'scripts/internal/bootstrap/HookJournalAccessor.ps1',
         'scripts/internal/bootstrap/HostEventAdapter.ps1',
+        'scripts/internal/bootstrap/HumanAuthorityStore.ps1',
         'scripts/internal/bootstrap/LauncherIntegration.ps1',
         'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1',
         'scripts/internal/bootstrap/SessionBootstrapManager.ps1',
         'scripts/internal/bootstrap/SessionStateAccessor.ps1',
         'scripts/internal/bootstrap/ValidationEngine.ps1',
         'scripts/internal/code-implementation-lens.ps1',
+        'scripts/internal/constrained-yaml.ps1',
         'scripts/internal/continuous-co-review/_load.ps1',
+        'scripts/internal/continuous-co-review/.specrew-runtime.json',
         'scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1',
         'scripts/internal/continuous-co-review/co-review-lineage-lease.ps1',
         'scripts/internal/continuous-co-review/co-review-service.ps1',
@@ -267,6 +285,7 @@
         'scripts/internal/continuous-co-review/host-support-tier.ps1',
         'scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1',
         'scripts/internal/continuous-co-review/path-identity.ps1',
+        'scripts/internal/continuous-co-review/reparse-tag-policy.ps1',
         'scripts/internal/continuous-co-review/review-antigravity-harness-port.ps1',
         'scripts/internal/continuous-co-review/review-authority-core.ps1',
         'scripts/internal/continuous-co-review/review-authority-cutover.ps1',
@@ -323,16 +342,19 @@
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/feature-claims.ps1',
         'scripts/internal/file-classification.ps1',
+        'scripts/internal/gate-preflight.ps1',
         'scripts/internal/generate-shell-wrappers.ps1',
         'scripts/internal/host-flag-translation.ps1',
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
+        'scripts/internal/install-local-build.ps1',
         'scripts/internal/instruction-deploy.ps1',
         'scripts/internal/instruction-file-merge.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/launch-contract.ps1',
         'scripts/internal/lens-applicability.ps1',
         'scripts/internal/lint-self-leak.ps1',
+        'scripts/internal/module-packaging.ps1',
         'scripts/internal/product-domain-lens.ps1',
         'scripts/internal/refocus-deploy-integration.ps1',
         'scripts/internal/refocus.ps1',
@@ -342,6 +364,7 @@
         'scripts/internal/session-recovery.ps1',
         'scripts/internal/skill-catalog-state.ps1',
         'scripts/internal/specrew-bootstrap-provider.ps1',
+        'scripts/internal/specrew-consumer-language.ps1',
         'scripts/internal/specrew-handover-provider.ps1',
         'scripts/internal/specrew-hook-dispatcher.ps1',
         'scripts/internal/specrew-hook-health.ps1',
@@ -356,12 +379,14 @@
         'scripts/internal/yaml-list.ps1',
         'scripts/psd1-sort.ps1',
         'scripts/specrew-config.ps1',
+        'scripts/specrew-gate-preflight.ps1',
         'scripts/specrew-handover.ps1',
         'scripts/specrew-hooks-doctor.ps1',
         'scripts/specrew-hooks.ps1',
         'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-install-shell-wrappers.ps1',
+        'scripts/specrew-reseal.ps1',
         'scripts/specrew-review.ps1',
         'scripts/specrew-start.ps1',
         'scripts/specrew-team.ps1',
@@ -427,17 +452,22 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the 0.40.0 Beta2 candidate. Prerelease is empty for stable;
+            # Source prerelease state for the 0.40.0 Beta4 candidate (ruled 2026-09-11: the walk's orientation read
+            # beta3 from a branch-built module; the tag stamps the staged manifest, this line is the dev-loop's
+            # word). Prerelease is empty for stable;
             # publish-stable stamps it clear from a stable v0.40.0 tag only after a separate promotion gate.
             # The publish-module.yml workflow stamps the actual published version from the git tag at release
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = 'beta2'
+            Prerelease = 'beta4'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
-            ReleaseNotes = 'Specrew 0.40.0-beta2 hardens the governance core: boundary authorization integrity (a project''s first boundary is recorded before any approval is demanded, and every approval binds to a recorded crossing), verdict capture from the human''s actual typed reply, review-campaign candidate fidelity, design-workshop and host-integration fixes, and cross-platform path identity verified on three real volumes (NTFS, APFS, ext4). Known limitations are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta2 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
+            # Kept in step with Prerelease above. These notes are what a consumer reads on the gallery
+            # page before installing, so a stale label here points them at the wrong release's known
+            # limitations - which is the one thing they are reading it for.
+            ReleaseNotes = 'Specrew 0.40.0-beta4 is the first-run and every-boundary release. A project''s second and later features can open their design workshop (the resolve used to select the previous feature and silently find nothing). A captured approval now tells the coordinator which stage it began and the command that begins it, so a verdict is one human turn, not two; the pre-boundary lint gate repairs blank lines and proceeds instead of halting for a commit of its own fix. Crew charters written by init are Specrew''s canonical charters and stay in sync when the canonical changes; a charter you edit is preserved, reported once, and `specrew team own <role>` or `specrew team resync <role>` ends the notice. An approval typed before its crossing existed, or a pasted transcript with the phrase at its top, is refused with one line saying why. The mechanical checks report not-applicable instead of throwing on a project with nothing to scan; a readiness sub-agent''s BLOCKED is quoted verbatim; the second iteration''s plan sync asks for the second iteration''s plan. Known limitations are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta4 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
         }
     }
 }

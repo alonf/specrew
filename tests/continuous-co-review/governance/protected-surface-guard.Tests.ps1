@@ -41,6 +41,11 @@ Describe 'Proposal 197 protected surface guard' {
         # the change lands on main and the authorization is consumed.
         $script:F197AuthorizedSurfaceExceptions = @(
             'scripts/internal/specrew-hook-dispatcher.ps1'
+            # Feature 199 maintainer-authorized stabilization (2026-08-14): the deep review found that
+            # Antigravity's named-definition hook shape still used the whole-file name search that the
+            # per-event health repair deliberately replaced. Keep the surface protected; authorize only
+            # this file for the scoped structural parity fix recorded in DRIFT-199-I001-041.
+            'scripts/internal/specrew-hook-health.ps1'
             # iter-007 (2026-06-25) maintainer-authorized: Fix 1 routes every Stop-time boundary reader through
             # ONE canonical v1/v2-tolerant reader. The start-context v1->v2 schema migration had stranded four
             # readers on the dead v1 field (session_state.boundary_type) -> the navigator never fired AND the
@@ -54,6 +59,16 @@ Describe 'Proposal 197 protected surface guard' {
             'extensions/specrew-speckit/scripts/shared-governance.ps1'
             '.specify/extensions/specrew-speckit/scripts/refocus.ps1'
             '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1'
+            # Beta4 (2026-09-11) maintainer-authorized, from the stage-demo audit of the installed ef80591d:
+            # "establish which step omits the ownership marker, fix that step, never relabel a genuine user
+            # edit" (PRED-BETA4-034), and the auditor's recheck of 4a7585d8 - "write the fix's own missing
+            # halves: a changed canonical reaches an untouched charter; the notice's remedy clears it"
+            # (PRED-BETA4-036). The ownership test and the Copilot charter handler are where ownership is
+            # decided, so these two protected surfaces carry THOSE changes and stay guarded for every other.
+            # shared-governance.ps1 (already listed above) also carries PRED-BETA4-039: the validator's scope
+            # base takes SPECREW_SCOPE_BASE_REF first, because GitHub refuses a workflow's GITHUB_BASE_REF.
+            'hosts/_team-canonical.ps1'
+            'hosts/copilot/handlers.ps1'
         )
     }
 

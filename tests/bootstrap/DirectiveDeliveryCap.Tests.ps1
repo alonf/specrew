@@ -166,7 +166,7 @@ try {
     Assert-True ($composite.ExitCode -eq 0) '3: synthetic shipped SessionStart composite exits 0'
     Assert-True ($composite.StdOut.Length -gt 0) '3: synthetic shipped SessionStart composite emits host-facing output'
     Assert-True ($composite.StdOut.Length -le $cap) "3: synthetic shipped SessionStart composite is under the 10K host cap after dispatcher policy (got $($composite.StdOut.Length))"
-    Assert-True ($composite.StdOut -match 'MANDATORY FIRST ACTION') '3: bootstrap fragment survives dispatcher cap policy'
+    Assert-True ($composite.StdOut -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') '3: bootstrap fragment survives dispatcher cap policy'
     Assert-True ($composite.StdOut -match 'truncated to fit the session-start delivery cap') '3: bounded bootstrap resume context survives dispatcher cap policy'
     Assert-True (-not ($composite.StdOut -match 'SYNTHETIC-REFOCUS-END')) '3: lower-priority synthetic refocus tail is clipped before it can overrun the cap'
     Assert-True ($composite.StdErr -match 'PAYLOAD_CLIPPED') '3: dispatcher reports the lower-priority cap clipping'
@@ -182,7 +182,16 @@ finally {
 # short stub, so the headroom this reports is honest (the stub flattered the margin by ~235 chars).
 $realVerdictMsg = "AWAITING YOUR VERDICT: 'specify' is committed / in-progress but NOT human-authorized (last authorized: (none recorded yet)). A committed boundary is not an approved one - the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm."
 $pendingVerdict = [pscustomobject]@{ HasPendingVerdict = $true; WorkingBoundary = 'specify'; LastAuthorizedBoundary = $null; Message = $realVerdictMsg }
-$directiveWithVerdict = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion '0.36.0' -Branch '001-layout-corrector'
+# 202 T012 (FR-019): the worst case also carries the from-disk resume lines, at realistic full length.
+$diskResume = [pscustomobject]@{
+    where_line    = "Where we are, read from disk: feature 001-layout-corrector is waiting for the human's decision on 'before-implement' (from 'tasks')."
+    commits_line  = "12 commits since the previous session's notes (newest: docs(001): record the tasks review and the drift entries for iteration 001)."
+    progress_line = 'Tasks: 11 of 15 done; next T012 Resume from disk: the where-we-are lines come from the ledger, the commits...'
+    starting_line = "Starting now: show the human the 'tasks -> before-implement' decision again and wait for their typed reply."
+    notes_age = '3 h'; notes_stale = $false; notes_reasons = @()
+}
+$directiveWithVerdict = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion '0.36.0' -Branch '001-layout-corrector' -DiskResume $diskResume
+Assert-True ($directiveWithVerdict -match 'WHERE WE ARE \(read from disk') '3b: the from-disk resume lines are part of the worst case'
 Assert-True ($directiveWithVerdict -match 'AWAITING YOUR VERDICT \(committed') '3b: the integrity-critical verdict block survives intact (unbounded)'
 $compositeWithVerdict = Invoke-SyntheticSessionStartComposite -BootstrapFragment $directiveWithVerdict -RefocusFragment $syntheticRefocus -SessionId 'directive-cap-verdict'
 try {
@@ -197,13 +206,14 @@ finally {
 }
 
 # --- 4: the load-bearing content survives the bound (banner + resume context + the in-flight resume instruction). ---
-Assert-True ($directive -match 'MANDATORY FIRST ACTION')              '4: the orientation-banner mandate survives (the P2 user-visible deliverable)'
+Assert-True ($directive -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') '4: the session-state orientation survives (the P2 user-visible deliverable)'
 Assert-True ($directive -match 'Resolved for THIS session')           '4: the resolved version/branch line survives'
 Assert-True ($directive -notmatch 'BEGIN SPECREW LAUNCH CONTRACT')    '4: the 45KB contract is NOT inlined in pointer mode'
 Assert-True ($directive -match 'IN-FLIGHT WORK ON DISK')              '4: the in-flight resume scan survives'
 Assert-True ($directive -match 'code-implementation')                 '4: the remaining-lens resume target survives the bound'
 Assert-True ($directive -match 'truncated to fit the session-start delivery cap') '4: the fat handover log was bounded (elision note present)'
-Assert-True ($directive -match 'Validated handover captured')         '4: the handover preamble survives'
+# 202 T012 (FR-019): the preamble now presents the notes as context with their age, not as the position.
+Assert-True ($directive -match 'Context from the previous session')   '4: the handover preamble survives'
 
 # --- 4b: RESUME-FLOOR GUARD (2026-06-15). The cap fix must NEVER be paid by starving resume. The handover inline
 # budget (380) and the reconciliation excerpt cap (300) are the floors that passed real-host dogfood. Recover cap
@@ -234,7 +244,7 @@ foreach ($emptyShape in @{ name = 'untyped @()'; v = @() }, @{ name = 'typed [ob
     try { $d5 = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inflightNoDecisions -PendingVerdict $null -SpecrewVersion '0.36.0' -Branch '001-atm-kids-simulator' }
     catch { Assert-True $false ("5: directive render MUST NOT throw on empty done_decisions [$($emptyShape.name)] - it did: $($_.Exception.Message)") }
     Assert-True ($d5 -and $d5.Length -gt 0)                  "5: directive renders non-empty with empty done_decisions [$($emptyShape.name)] (the real-host crash shape)"
-    Assert-True ($d5 -match 'MANDATORY FIRST ACTION')        "5: the banner survives with empty done_decisions [$($emptyShape.name)]"
+    Assert-True ($d5 -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') "5: the orientation survives with empty done_decisions [$($emptyShape.name)]"
     Assert-True ($d5 -match 'lenses already DONE')           "5: the bare-names fallback renders (no decision recap) [$($emptyShape.name)]"
     Assert-True ($d5 -notmatch 'DECISIONS recorded so far')  "5: the decisions-recap block is absent when there are no decisions [$($emptyShape.name)]"
 }

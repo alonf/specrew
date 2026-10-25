@@ -1,7 +1,7 @@
 [CmdletBinding(DefaultParameterSetName = 'List')]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet('add', 'update', 'remove', 'list')]
+    [ValidateSet('add', 'update', 'remove', 'list', 'own', 'resync')]
     [string]$Command,
 
     [Parameter(Mandatory = $false, Position = 1)]
@@ -13,7 +13,11 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$Charter,
 
+    # `specrew team <verb> ... --project-path <path>` reaches this script verbatim; PowerShell binds `--project-path`
+    # as the parameter name `-project-path`, which only this alias satisfies (PRED-BETA4-036: the two remedies
+    # the crew-runtime notice names advertise the option, so it has to bind).
     [Parameter(Mandatory = $false)]
+    [Alias('project-path')]
     [string]$ProjectPath = '.'
 )
 
@@ -69,6 +73,14 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
     throw "Missing shared governance helper '$sharedGovernancePath'."
 }
 . $sharedGovernancePath
+
+# `own` / `resync` are the two remedies the crew-runtime notice names (PRED-BETA4-036): they act on the Copilot
+# runtime charter `.squad/agents/<role>/charter.md` through the same ownership helpers `specrew start` uses.
+$teamCanonicalPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'hosts\_team-canonical.ps1'
+if (-not (Test-Path -LiteralPath $teamCanonicalPath -PathType Leaf)) {
+    throw "Missing team canonical helper '$teamCanonicalPath'."
+}
+. $teamCanonicalPath
 
 $BASELINE_ROLES = @(
     'spec-steward',
@@ -445,6 +457,54 @@ function Remove-TeamMember {
     }
 }
 
+function Get-CrewRuntimeCharterPath {
+    param([string]$Root, [string]$RoleName)
+    return (Join-Path (Get-AgentDirectory -Root $Root -Name $RoleName) 'charter.md')
+}
+
+function Set-CrewCharterOwned {
+    <#
+    .SYNOPSIS
+    `specrew team own <role>`: keep the charter as the user wrote it and persist that decision (PRED-BETA4-036).
+    The sidecar takes its owned form; specrew start neither rewrites nor reports the charter from then on.
+    #>
+    param([string]$ProjectPath, [string]$RoleName)
+    if (-not (Test-SquadInitialized -Root $ProjectPath)) { return $false }
+    $charterPath = Get-CrewRuntimeCharterPath -Root $ProjectPath -RoleName $RoleName
+    if (-not (Test-Path -LiteralPath $charterPath -PathType Leaf)) {
+        Write-Error-Message "No crew runtime charter at '$charterPath' for '$RoleName'."
+        Write-Error-Message "Run 'specrew start' to write it from canonical, or 'specrew team list' to see the roles."
+        return $false
+    }
+    Write-SpecrewUserOwnedSidecar -Path $charterPath
+    $normalized = Get-NormalizedMemberName -Name $RoleName
+    Write-Success ("Charter '{0}' is yours: preserved as written; specrew start neither rewrites nor reports it." -f $charterPath)
+    Write-Info ("To return it to the canonical charter later: specrew team resync {0}" -f $normalized)
+    return $true
+}
+
+function Reset-CrewCharterFromCanonical {
+    <#
+    .SYNOPSIS
+    `specrew team resync <role>`: return the runtime charter to the canonical `.specrew/team/agents/<role>.md`
+    through the one shared writer (the directives block, when present, survives; the sidecar is re-stamped),
+    so specrew start keeps it in sync from here (PRED-BETA4-036).
+    #>
+    param([string]$ProjectPath, [string]$RoleName)
+    if (-not (Test-SquadInitialized -Root $ProjectPath)) { return $false }
+    $normalized = Get-NormalizedMemberName -Name $RoleName
+    $canonical = Get-SpecrewCanonicalCharterContent -ProjectPath $ProjectPath -RoleName $normalized
+    if ([string]::IsNullOrWhiteSpace($canonical)) {
+        Write-Error-Message ("No canonical charter for '{0}' at .specrew/team/agents/{0}.md and no shipped baseline." -f $normalized)
+        return $false
+    }
+    $charterPath = Get-CrewRuntimeCharterPath -Root $ProjectPath -RoleName $RoleName
+    $block = Get-SpecrewManagedDirectivesBlockText -Path $charterPath
+    Write-SpecrewCharterFromCanonical -Path $charterPath -CanonicalContent $canonical -DirectivesBlock $block
+    Write-Success ("Charter '{0}' returned to the canonical charter (.specrew/team/agents/{1}.md){2}; specrew start keeps it in sync from here." -f $charterPath, $normalized, $(if ($null -ne $block) { ', directives block kept' } else { '' }))
+    return $true
+}
+
 function Get-TeamMembers {
     param([string]$ProjectPath)
     
@@ -547,6 +607,28 @@ switch ($Command) {
     
     'list' {
         $success = Get-TeamMembers -ProjectPath $resolvedProjectPath
+        exit $(if ($success) { 0 } else { 1 })
+    }
+
+    'own' {
+        if (-not $MemberName) {
+            Write-Error-Message "Role name is required for 'own' command."
+            Write-Host "Usage: specrew team own <role>"
+            exit 1
+        }
+
+        $success = Set-CrewCharterOwned -ProjectPath $resolvedProjectPath -RoleName $MemberName
+        exit $(if ($success) { 0 } else { 1 })
+    }
+
+    'resync' {
+        if (-not $MemberName) {
+            Write-Error-Message "Role name is required for 'resync' command."
+            Write-Host "Usage: specrew team resync <role>"
+            exit 1
+        }
+
+        $success = Reset-CrewCharterFromCanonical -ProjectPath $resolvedProjectPath -RoleName $MemberName
         exit $(if ($success) { 0 } else { 1 })
     }
 }

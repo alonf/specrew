@@ -104,8 +104,9 @@ if ($resultA -notmatch 'FAIL Test-SessionStateBoundaryCanonical') {
 }
 Write-Pass "Rule rejects non-canonical 'feature-closed' across all 3 state surfaces"
 
-# Fixture B: canonical 'feature-closeout' + active=true (contradiction)
-[IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\start-context.json'), '{ "schema": "v1", "session_state": { "active": true, "boundary_type": "feature-closeout", "feature_ref": "001-test", "feature_path": "x", "iteration_number": "001", "task_id": null, "auth_commit_hash": null, "recorded_at": "2026-05-22T05:00:00Z" } }', [System.Text.UTF8Encoding]::new($false))
+# Fixture B: canonical 'feature-closeout' + active=true AFTER the feature closeout is approved (contradiction).
+# 202 T032: before the approval the same pair is the pending decision, not a contradiction (fixture B2 below).
+[IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\start-context.json'), '{ "schema": "v1", "session_state": { "active": true, "boundary_type": "feature-closeout", "feature_ref": "001-test", "feature_path": "x", "iteration_number": "001", "task_id": null, "auth_commit_hash": null, "recorded_at": "2026-05-22T05:00:00Z" }, "boundary_enforcement": { "last_authorized_boundary": "feature-closeout" } }', [System.Text.UTF8Encoding]::new($false))
 [IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\last-start-prompt.md'), "---`nsession_state_active: true`nsession_state_boundary: feature-closeout`n---`n", [System.Text.UTF8Encoding]::new($false))
 [IO.File]::WriteAllText((Join-Path $fixtureRoot '.squad\identity\now.md'), "---`nsession_state_active: true`nsession_state_boundary: feature-closeout`n---`n", [System.Text.UTF8Encoding]::new($false))
 
@@ -114,6 +115,15 @@ if ($resultB -notmatch 'contradictory') {
     Write-Fail "Rule did not catch active=true + boundary=feature-closeout contradiction. Output:`n$resultB"
 }
 Write-Pass "Rule catches active=true + boundary=feature-closeout contradiction"
+
+# Fixture B2 (202 T032, B4F-146's class): the feature closeout is ASKED FOR, not yet approved. The feature stays active
+# until the human approves, so active=true at the feature-closeout boundary is the pending decision.
+[IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\start-context.json'), '{ "schema": "v1", "session_state": { "active": true, "boundary_type": "feature-closeout", "feature_ref": "001-test", "feature_path": "x", "iteration_number": "001", "task_id": null, "auth_commit_hash": null, "recorded_at": "2026-05-22T05:00:00Z" }, "boundary_enforcement": { "last_authorized_boundary": "iteration-closeout", "pending_next_boundary": "feature-closeout" } }', [System.Text.UTF8Encoding]::new($false))
+$resultB2 = Invoke-BoundaryRule -ProjectRoot $fixtureRoot
+if ($resultB2 -match 'contradictory') {
+    Write-Fail "Rule flagged the pending feature-closeout decision (active=true before the approval) as a contradiction. Output:`n$resultB2"
+}
+Write-Pass "Rule passes active=true + boundary=feature-closeout while the closeout decision is pending"
 
 # Fixture C: clean canonical post-closeout state (active=false + boundary=feature-closeout)
 [IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\start-context.json'), '{ "schema": "v1", "session_state": { "active": false, "boundary_type": "feature-closeout", "feature_ref": "001-test", "feature_path": "x", "iteration_number": "001", "task_id": null, "auth_commit_hash": null, "recorded_at": "2026-05-22T05:00:00Z" } }', [System.Text.UTF8Encoding]::new($false))

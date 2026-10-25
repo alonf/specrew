@@ -56,8 +56,8 @@ function Detect-RepoStack {
     )
 
     foreach ($stackPattern in $stackPatterns) {
-        $matches = Get-ChildItem -Path $ProjectRoot -Filter $stackPattern.Pattern -File -ErrorAction SilentlyContinue
-        if ($matches) {
+        $matchedItems = Get-ChildItem -Path $ProjectRoot -Filter $stackPattern.Pattern -File -ErrorAction SilentlyContinue
+        if ($matchedItems) {
             Write-Verbose "Detected stack '$($stackPattern.Stack)' from pattern: $($stackPattern.Pattern)"
             return $stackPattern.Stack
         }

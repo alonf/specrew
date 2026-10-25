@@ -1,0 +1,48 @@
+{
+  "scenario": "B4F-096: omitted opening orientation with a visible product-domain question",
+  "kind": "controlled installed-package event replay; not a new live model session",
+  "package": {
+    "module_root": "C:\\Users\\alon\\OneDrive - Zionet LTD\\Documents\\PowerShell\\Modules\\Specrew\\0.40.0",
+    "commit": "8d3f9906",
+    "prerelease": "beta4",
+    "content_file_count": 423,
+    "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247"
+  },
+  "fixture_root": "C:\\Users\\alon\\AppData\\Local\\Temp\\beta41-orientation-repro-9fab5ec7c31e49ae8f2d06d4e9b98d46",
+  "timeline": [
+    {
+      "event": "UserPromptSubmit",
+      "exit_code": 0,
+      "elapsed_ms": 1687,
+      "output": "[specrew-turn] Last tool call; return is for you, author the reply: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Token 020e3c132ea348538a78bcf11afd79dd"
+    },
+    {
+      "event": "declare before first visible assistant message",
+      "exit_code": 0,
+      "elapsed_ms": 1130,
+      "output": "{\r\n  \"record_path\": \"C:\\\\Users\\\\alon\\\\AppData\\\\Local\\\\Temp\\\\beta41-orientation-repro-9fab5ec7c31e49ae8f2d06d4e9b98d46\\\\.specrew\\\\runtime\\\\turn-end\\\\dc71e46e67e18cf0e0ad3bafe626e6245e013fffc9ced18809ce18689255d37b\\\\turn-1.json\",\r\n  \"turn_id\": \"turn-1\",\r\n  \"anchored\": true,\r\n  \"record_written\": true,\r\n  \"identity\": \"matched\",\r\n  \"rendered\": false,\r\n  \"render_reason\": \"agent-authored-message\",\r\n  \"orientation\": false,\r\n  \"packet_valid\": false,\r\n  \"packet_missing\": [],\r\n  \"owed\": [],\r\n  \"text\": \"\"\r\n}"
+    },
+    {
+      "event": "visible assistant question",
+      "text": "Product-domain, light: the established developer wants clear context and fewer unrelated stops. Which defects should this release include?"
+    },
+    {
+      "event": "Stop",
+      "exit_code": 0,
+      "elapsed_ms": 2733,
+      "output": "<<<SPECREW-STOP-BLOCK>>>\r\nSpecrew: this session's orientation was handed to you and the human never saw it; render the opening orientation, including what you believe about them so they can correct it, in your assistant reply.\r\nReading it to orient yourself is not rendering it. Do not summarise it as having happened; show it."
+    }
+  ],
+  "observation": {
+    "first_question_precedes_orientation": true,
+    "stop_requests_orientation": true,
+    "stop_blocks": true
+  },
+  "friction": {
+    "real_human_decisions": 0,
+    "corrective_exchanges_requested": 1,
+    "extra_stops": 1,
+    "after_fix": null,
+    "elapsed_scope": "mechanical event invocation only, not user wall-clock latency"
+  }
+}

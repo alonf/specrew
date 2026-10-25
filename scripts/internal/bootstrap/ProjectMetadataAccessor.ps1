@@ -242,10 +242,40 @@ function Test-SpecrewWorkshopDecisionBindings {
         foreach ($bindingProperty in $bindings.PSObject.Properties) {
             $name = [string]$bindingProperty.Name
             $value = if ($bindingProperty.Value -is [string]) { ([string]$bindingProperty.Value).Trim() } else { '' }
-            if ($name -cnotmatch '^[a-z][a-z0-9.-]{0,63}$' -or $value -cnotmatch '^[a-z0-9][a-z0-9._-]{0,127}$') {
+            # THE TWO PATTERNS DIFFER IN EXACTLY ONE CHARACTER, AND IT IS THE ONE PEOPLE USE.
+            #
+            #   name  ^[a-z][a-z0-9.-]{0,63}$        - dot and hyphen, NO UNDERSCORE
+            #   value ^[a-z0-9][a-z0-9._-]{0,127}$   - dot, hyphen AND UNDERSCORE
+            #
+            # Measured in the field (ConsoleFractal, 2026-08-30): a workshop was rejected for the binding
+            # NAME `decomposition_style`, and the refusal printed the VALUE - which was perfectly valid -
+            # alongside a casing example that has nothing to do with underscores. The agent recovered by
+            # trial rather than by reading the message. A single `-or` cannot say which side failed, so the
+            # refusal downstream had nothing to name and named the wrong thing confidently.
+            #
+            # The asymmetry itself is recorded as a beta4 schema question (DRIFT-199-I002-029): either the
+            # name pattern gains `_` or the difference is documented where an author will meet it. Widening
+            # what the validator ACCEPTS is a contract change and is not made mid-batch; what is fixed here
+            # is that a refusal must name the field that failed and the rule that failed it.
+            $namePattern = '^[a-z][a-z0-9.-]{0,63}$'
+            $valuePattern = '^[a-z0-9][a-z0-9._-]{0,127}$'
+            $nameOk = ($name -cmatch $namePattern)
+            $valueOk = ($value -cmatch $valuePattern)
+            if (-not $nameOk -or -not $valueOk) {
+                $failedField = if (-not $nameOk) { 'name' } else { 'value' }
+                $failedText = if (-not $nameOk) { $name } else { $value }
+                $failedRule = if (-not $nameOk) {
+                    'lowercase letters, digits, dots and hyphens only, starting with a letter - underscores are NOT allowed in a decision name'
+                }
+                else {
+                    'lowercase letters, digits, dots, hyphens and underscores only, starting with a letter or digit'
+                }
                 return [pscustomobject]@{
                     valid = $false; reason = 'workshop-decision-bindings-invalid'
-                    conflict = [pscustomobject]@{ binding = $name; prior_lens = $null; prior_value = $null; lens = $lens; value = $value }
+                    conflict = [pscustomobject]@{
+                        binding = $name; prior_lens = $null; prior_value = $null; lens = $lens; value = $value
+                        failed_field = $failedField; failed_text = $failedText; failed_rule = $failedRule
+                    }
                 }
             }
             if ($seen.Contains($name)) {
@@ -267,6 +297,21 @@ function Test-SpecrewWorkshopDecisionBindings {
     return [pscustomobject]@{ valid = $true; reason = 'workshop-decision-bindings-consistent'; conflict = $null }
 }
 
+function Test-SpecrewWorkshopIntakeLensName {
+    # The intake-lens set has exactly ONE definition - Get-SpecrewWorkshopIntakeLenses in
+    # workshop-authority-store.ps1 - and the comment above that definition records what happened the last time
+    # it was enumerated by hand in several places: the copies drifted and the lens writer refused the FIRST lens
+    # of every workshop. This accessor is loaded by the Stop hook on paths where the extension is not in scope,
+    # so it prefers the shared predicate and keeps its fallback to the literal in exactly one place rather than
+    # adding another hand-written copy of the set.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][AllowEmptyString()][string] $Lens)
+    if (Get-Command Test-SpecrewWorkshopIntakeLens -ErrorAction SilentlyContinue) {
+        return [bool](Test-SpecrewWorkshopIntakeLens -Lens $Lens)
+    }
+    return ($Lens -ceq 'product-domain')
+}
+
 function Get-SpecrewWorkshopLifecycleState {
     # Strict, controller-owned workshop lifecycle truth for Stop classification. Unlike
     # Get-SpecrewWorkshopProgress (a deliberately lenient bootstrap/resume projection), this accessor treats the
@@ -286,6 +331,35 @@ function Get-SpecrewWorkshopLifecycleState {
     $scopeRoot = if ($scope -eq 'iteration') { Join-Path $featureRoot ("iterations/{0}" -f $IterationNumber) } else { $featureRoot }
     $artifactPath = Join-Path $scopeRoot 'lens-applicability.json'
     $workshopRoot = Join-Path $scopeRoot 'workshop'
+    # Intake (`product-domain`) completion is durable in the TWO RECORDS the agenda writer requires, and it is
+    # deliberately NOT durable in the controller: confirm-workshop-agenda.ps1 clears the `workshop` map when it
+    # writes the confirmed agenda, and that empty map is the product's normal post-agenda state
+    # (DRIFT-199-I003-092). Three crews in a row read the emptiness as silent data loss; one of them re-ran the
+    # lens writer to "restore" it and left its controller invalid for every lens (B4F-035, B4F-041). Surfacing
+    # completion here is the display half of that fix - the state an agent prints now says the intake topic is
+    # recorded and names the records, so an empty map is no longer the only thing there is to see.
+    #
+    # It is a SEPARATE field rather than an entry in `completed`: `completed` is the technical-lens list, two
+    # accessor tests pin it by exact count, and `remaining` is unchanged - so no existing reader shifts under
+    # this. The records are FEATURE-scoped even when this accessor is called for an iteration, because the
+    # writer that guarantees them is feature-scoped.
+    $intakeRecordNames = @('workshop/product-domain.md', 'workshop/product-domain.yml')
+    $intakeCompleted = $false
+    $intakeEvidence = $null
+    try {
+        $intakeRecordsPresent = $true
+        foreach ($intakeRecordName in $intakeRecordNames) {
+            $intakeRecordPath = Join-Path $featureRoot $intakeRecordName
+            if (-not (Test-Path -LiteralPath $intakeRecordPath -PathType Leaf)) { $intakeRecordsPresent = $false; break }
+            $intakeRecordItem = Get-Item -LiteralPath $intakeRecordPath -ErrorAction Stop
+            if ($intakeRecordItem.Length -le 0 -or $intakeRecordItem.Length -gt 262144) { $intakeRecordsPresent = $false; break }
+        }
+        if ($intakeRecordsPresent) {
+            $intakeCompleted = $true
+            $intakeEvidence = ($intakeRecordNames -join ', ')
+        }
+    }
+    catch { $intakeCompleted = $false; $intakeEvidence = $null }
 
     function New-WorkshopStateResult {
         param(
@@ -312,6 +386,8 @@ function Get-SpecrewWorkshopLifecycleState {
             current_lens     = $CurrentLens
             agenda_status    = $AgendaStatus
             binding_conflict = $BindingConflict
+            intake_completed = $intakeCompleted
+            intake_evidence  = $intakeEvidence
         }
     }
 
@@ -372,15 +448,99 @@ function Get-SpecrewWorkshopLifecycleState {
         }
         $records = $workshopProperty.Value
 
+        # New beta3 workshops opt into complete agenda coverage. This is intentionally marker-gated so historical
+        # v1/v2 workshop records stay readable, while every freshly initialized feature must account for the whole
+        # technical-lens catalog: selected lenses carry depth + a concrete decision, omitted lenses carry a visible
+        # reason, and the exact selection carries human confirmation before lens 1 can become current.
+        $agendaContract = $null
+        $agendaContractProperty = $applicability.PSObject.Properties['agenda_contract']
+        if ($agendaContractProperty) {
+            if ($agendaContractProperty.Value -isnot [string] -or [string]$agendaContractProperty.Value -cne 'complete-coverage-v1') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-contract-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $agendaContract = [string]$agendaContractProperty.Value
+        }
+        $humanTurnContract = $null
+        $humanTurnContractProperty = $applicability.PSObject.Properties['human_turn_contract']
+        if ($humanTurnContractProperty) {
+            if ($humanTurnContractProperty.Value -isnot [string] -or [string]$humanTurnContractProperty.Value -cne 'typed-turns-v1') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-human-turn-contract-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $humanTurnContract = [string]$humanTurnContractProperty.Value
+            $authorityStorePath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+            if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+                $moduleAuthorityPath = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+                if (Test-Path -LiteralPath $moduleAuthorityPath -PathType Leaf) { $authorityStorePath = $moduleAuthorityPath }
+            }
+            if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+                try { . $authorityStorePath } catch { $null = $_ }
+            }
+            if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-human-turn-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
+        }
+
+        $agenda = $null
+        $skipped = $null
+        $agendaConfirmation = $null
+        $agendaConfirmationScope = $null
+        if ($agendaContract -eq 'complete-coverage-v1') {
+            foreach ($mapName in @('agenda', 'skipped')) {
+                $mapProperty = $applicability.PSObject.Properties[$mapName]
+                if (-not $mapProperty -or $null -eq $mapProperty.Value -or $mapProperty.Value -is [System.Array] -or
+                    $mapProperty.Value -is [string] -or $mapProperty.Value -is [ValueType]) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason ("workshop-{0}-map-invalid" -f $mapName) -Selected $selected -AgendaStatus $agendaStatus
+                }
+                if ($mapName -eq 'agenda') { $agenda = $mapProperty.Value } else { $skipped = $mapProperty.Value }
+            }
+            $agendaConfirmationProperty = $applicability.PSObject.Properties['agenda_confirmation']
+            $agendaConfirmationScopeProperty = $applicability.PSObject.Properties['agenda_confirmation_scope']
+            if (-not $agendaConfirmationProperty -or $agendaConfirmationProperty.Value -isnot [string] -or
+                -not $agendaConfirmationScopeProperty -or $agendaConfirmationScopeProperty.Value -isnot [string]) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-confirmation-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $agendaConfirmation = [string]$agendaConfirmationProperty.Value
+            $agendaConfirmationScope = [string]$agendaConfirmationScopeProperty.Value
+        }
+
         if ($agendaStatus -eq 'pending-confirmation') {
             if ($scope -ne 'feature') {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-iteration-invalid' -Selected $selected -AgendaStatus $agendaStatus
             }
+            if (Get-Command Resolve-SpecrewWorkshopStateTransition -ErrorAction SilentlyContinue) {
+                $readTransition = Resolve-SpecrewWorkshopStateTransition -Controller $applicability -Operation 'read'
+                if (-not $readTransition.allowed) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-transition-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+            elseif ($humanTurnContract -eq 'typed-turns-v1') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-state-transition-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
             if ($selected.Count -ne 0) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-selected-invalid' -Selected $selected -AgendaStatus $agendaStatus
             }
-            if (@($records.PSObject.Properties).Count -ne 0) {
+            # product-domain is a pre-agenda phase whose durable authority remains its two records plus the
+            # typed-turn receipt. Some hosts also project that completed phase into the workshop map before
+            # rendering the technical agenda. Treat that one redundant key as harmless; it is never consumed as
+            # technical-lens authority and the agenda writer removes it when it writes the confirmed state.
+            $preAgendaRecordKeys = @($records.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            $unexpectedPreAgendaRecords = @($preAgendaRecordKeys | Where-Object { $_ -cne 'product-domain' })
+            if ($unexpectedPreAgendaRecords.Count -ne 0) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-records-invalid' -AgendaStatus $agendaStatus
+            }
+            if ($agendaContract -eq 'complete-coverage-v1') {
+                if (@($agenda.PSObject.Properties).Count -ne 0 -or @($skipped.PSObject.Properties).Count -ne 0) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-coverage-invalid' -AgendaStatus $agendaStatus
+                }
+                if ($agendaConfirmation -cne 'pending' -or $agendaConfirmationScope -cne 'lens-selection') {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-confirmation-invalid' -AgendaStatus $agendaStatus
+                }
+                if ($humanTurnContract -eq 'typed-turns-v1') {
+                    $pendingReceiptProperty = $applicability.PSObject.Properties['agenda_turn_receipt']
+                    if (-not $pendingReceiptProperty -or [string]$pendingReceiptProperty.Value -cne 'pending') {
+                        return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-turn-receipt-invalid' -AgendaStatus $agendaStatus
+                    }
+                }
             }
 
             $specPath = Join-Path $featureRoot 'spec.md'
@@ -406,8 +566,97 @@ function Get-SpecrewWorkshopLifecycleState {
             }
         }
 
+        if ($agendaContract -eq 'complete-coverage-v1') {
+            if ($agendaConfirmation -cne 'human-confirmed' -or $agendaConfirmationScope -cne 'lens-selection') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-confirmation-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if ($humanTurnContract -eq 'typed-turns-v1') {
+                $agendaReceiptProperty = $applicability.PSObject.Properties['agenda_turn_receipt']
+                if (-not $agendaReceiptProperty -or $agendaReceiptProperty.Value -isnot [string] -or
+                    -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase 'agenda' -ReceiptId ([string]$agendaReceiptProperty.Value) -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection')) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-turn-receipt-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+
+            $catalogPath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
+            if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-lens-catalog-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $technicalCatalog = @(
+                Get-Content -LiteralPath $catalogPath -Encoding UTF8 -ErrorAction Stop |
+                    ForEach-Object {
+                        if ($_ -cmatch '^\s*-\s+id:\s*([a-z][a-z0-9-]{1,63})\s*$') { $Matches[1] }
+                    } |
+                    Where-Object { $_ -and $_ -cne 'product-domain' }
+            )
+            if ($technicalCatalog.Count -eq 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-lens-catalog-empty' -Selected $selected -AgendaStatus $agendaStatus
+            }
+
+            $agendaNames = @($agenda.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            $skippedNames = @($skipped.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            if ($agendaNames.Count -ne $selected.Count -or @(Compare-Object -ReferenceObject $selected -DifferenceObject $agendaNames -SyncWindow 0).Count -gt 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-selected-mismatch' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            foreach ($lens in $selected) {
+                $agendaEntry = $agenda.PSObject.Properties[$lens].Value
+                if ($agendaEntry -is [System.Array] -or $agendaEntry -is [string] -or $agendaEntry -is [ValueType] -or
+                    -not $agendaEntry.PSObject.Properties['depth'] -or [string]$agendaEntry.depth -cnotin @('full', 'medium', 'light') -or
+                    -not $agendaEntry.PSObject.Properties['decision'] -or [string]::IsNullOrWhiteSpace([string]$agendaEntry.decision)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-selected-entry-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+            foreach ($lens in $skippedNames) {
+                $skippedValue = $skipped.PSObject.Properties[$lens].Value
+                if ($lens -cin $selected -or $skippedValue -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$skippedValue)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-skipped-entry-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+            $coverageNames = @($agendaNames + $skippedNames)
+            if ($coverageNames.Count -ne $technicalCatalog.Count -or
+                @(Compare-Object -ReferenceObject $technicalCatalog -DifferenceObject $coverageNames).Count -gt 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-coverage-incomplete' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if ($humanTurnContract -eq 'typed-turns-v1') {
+                $agendaDigestProperty = $applicability.PSObject.Properties['agenda_digest']
+                if (-not $agendaDigestProperty -or $agendaDigestProperty.Value -isnot [string] -or
+                    [string]$agendaDigestProperty.Value -cnotmatch '^[a-f0-9]{64}$') {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-digest-missing' -Selected $selected -AgendaStatus $agendaStatus
+                }
+                if (-not (Get-Command ConvertTo-SpecrewWorkshopAgendaBinding -ErrorAction SilentlyContinue) -or
+                    -not (Get-Command Get-SpecrewWorkshopAgendaDigest -ErrorAction SilentlyContinue)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-digest-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+                }
+                $agendaMap = [ordered]@{}
+                foreach ($property in $agenda.PSObject.Properties) { $agendaMap[[string]$property.Name] = $property.Value }
+                $skippedMap = [ordered]@{}
+                foreach ($property in $skipped.PSObject.Properties) { $skippedMap[[string]$property.Name] = [string]$property.Value }
+                $binding = ConvertTo-SpecrewWorkshopAgendaBinding -Agenda $agendaMap -Skipped $skippedMap
+                $computedDigest = Get-SpecrewWorkshopAgendaDigest -Binding $binding
+                if ($computedDigest -cne [string]$agendaDigestProperty.Value) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-digest-mismatch' -Selected $selected -AgendaStatus $agendaStatus
+                }
+                $agendaReceiptId = [string]$applicability.PSObject.Properties['agenda_turn_receipt'].Value
+                if (-not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase 'agenda' `
+                        -ReceiptId $agendaReceiptId -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection' -AgendaDigest $computedDigest)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-turn-receipt-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+        }
+
+        # Reader tolerance for the intake key, and it HEALS rather than merely permits. `selected` is the
+        # TECHNICAL agenda; the intake lens was never a member of it. A controller that still carries - or has
+        # been handed back - a `product-domain` entry is therefore not a corrupt controller, but this check read
+        # it as one and invalidated the whole feature, which is exactly how the router-skill project lost every
+        # lens at once (B4F-035). Tolerating the one intake key means those already-corrupted beta3 controllers
+        # read valid again on update, with no repair run to perform.
+        #
+        # The tolerance is exactly one key wide. A TECHNICAL lens outside `selected` is still the corruption this
+        # check exists to catch and still invalidates - that is the scope, and the test asserts it directly.
         foreach ($recordProperty in $records.PSObject.Properties) {
-            if ([string]$recordProperty.Name -cnotin $selected) {
+            $recordName = [string]$recordProperty.Name
+            if (Test-SpecrewWorkshopIntakeLensName -Lens $recordName) { continue }
+            if ($recordName -cnotin $selected) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-not-selected' -Selected $selected -AgendaStatus $agendaStatus
             }
         }
@@ -474,6 +723,26 @@ function Get-SpecrewWorkshopLifecycleState {
             $recordText = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 -ErrorAction Stop
             if ([string]::IsNullOrWhiteSpace($recordText)) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-empty' -Selected $selected -Completed $completed.ToArray()
+            }
+            if ($humanTurnContract -eq 'typed-turns-v1') {
+                $receiptProperty = $entry.PSObject.Properties['human_turn_receipt']
+                if (-not $receiptProperty -or $receiptProperty.Value -isnot [string] -or
+                    -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase 'lens' -Lens $lens -ReceiptId ([string]$receiptProperty.Value) -Confirmation $confirmation -ConfirmationScope ([string]$entry.confirmation_scope))) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-human-turn-receipt-invalid' -Selected $selected -Completed $completed.ToArray()
+                }
+            }
+            if ($lens -eq 'code-implementation') {
+                # The manifest is the machine-consumed half of this lens. Marking the lens complete
+                # before it exists made the controller invalid only at the specify boundary, after two
+                # more workshop questions had already been asked. Keep the invariant local to the lens.
+                $implementationRulesPath = Join-Path $featureRoot 'implementation-rules.yml'
+                if (-not (Test-Path -LiteralPath $implementationRulesPath -PathType Leaf)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-code-implementation-manifest-missing' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray()
+                }
+                $implementationRulesItem = Get-Item -LiteralPath $implementationRulesPath -ErrorAction Stop
+                if ($implementationRulesItem.Length -le 0 -or $implementationRulesItem.Length -gt 262144) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-code-implementation-manifest-invalid' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray()
+                }
             }
             $completed.Add($lens) | Out-Null
         }

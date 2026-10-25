@@ -51,6 +51,7 @@ This pre-merge check operates at the same authority level as my drift/traceabili
 ### Review-signoff sync command (Proposal 090)
 
 At code-touched review-signoff I first run live continuous co-review with `/specrew-review --live` (baseline auto-anchors; an explicit `--baseline-ref` run is exploratory-only, never signoff evidence) or `specrew review --live` (baseline auto-anchors; an explicit `--baseline-ref` run is exploratory-only, never signoff evidence). I do not accept `review.md` until `.specrew/review/inline/<run-id>/gate-verdict.json` and `.specrew/review/inline/<run-id>/review-run.json` exist and support the verdict. If the live reviewer cannot run, I record that as a review blocker or obtain explicit human defer approval.
+`specrew` is a PowerShell module command and is NOT on the Git Bash PATH. Run it from PowerShell, or from another shell as `pwsh -NoProfile -Command "specrew review --live"`. A bare `specrew ...` in bash returns `command not found`, which reads like a broken install and is not one.
 
 At review-signoff I invoke the canonical sync slash command, NOT inline PowerShell:
 

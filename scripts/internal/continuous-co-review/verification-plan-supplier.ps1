@@ -97,12 +97,12 @@ function Test-ContinuousCoReviewVerificationPlanCatalog {
         @{ name = 'quality_profiles'; identity = 'profile_id' },
         @{ name = 'providers'; identity = 'provider_id' }
     )
-    $entryIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $entryIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) # specrew-identity-not-a-path
     foreach ($section in $sections) {
         $sectionResult = Get-ContinuousCoReviewSupplierRows -Catalog $Catalog -Name $section.name
         if (-not $sectionResult.valid) { return [pscustomobject]@{ valid = $false; reason = "supplier catalog '$($section.name)' must be an array" } }
         $rows = @($sectionResult.rows)
-        $identities = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        $identities = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) # specrew-identity-not-a-path
         foreach ($row in $rows) {
             $unknownRow = @(Get-ContinuousCoReviewUnknownProperties -Object $row -Allowed @('entry_id', $section.identity, 'plan'))
             if ($unknownRow.Count -gt 0) {
@@ -227,9 +227,9 @@ function Select-ContinuousCoReviewVerificationPlan {
     }
     $skipped.Add([pscustomobject][ordered]@{ source_kind = 'project-detected'; reason = 'no eligible named detector' })
 
-    $profile = if (Test-ContinuousCoReviewSupplierIdentity $QualityProfileId) { $QualityProfileId.ToLowerInvariant() } else { $null }
+    $profileData = if (Test-ContinuousCoReviewSupplierIdentity $QualityProfileId) { $QualityProfileId.ToLowerInvariant() } else { $null }
     $profileRows = @((Get-ContinuousCoReviewSupplierRows $Catalog 'quality_profiles').rows)
-    $profileRow = if ($null -eq $profile) { $null } else { $profileRows | Where-Object { ([string]$_.profile_id).ToLowerInvariant() -ceq $profile } | Select-Object -First 1 }
+    $profileRow = if ($null -eq $profileData) { $null } else { $profileRows | Where-Object { ([string]$_.profile_id).ToLowerInvariant() -ceq $profileData } | Select-Object -First 1 }
     if ($null -ne $profileRow) {
         $source = [string]$profileRow.profile_id
         $plan = Copy-ContinuousCoReviewSupplierPlan -Plan $profileRow.plan -Kind 'profile-selected' -Source $source -Profile $source

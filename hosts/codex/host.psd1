@@ -18,7 +18,7 @@
     AgentDir                   = '.codex/agents/'
     InstructionsFile           = 'AGENTS.md'
     StructuredQuestionPrimitive = 'request_user_input'
-    StructuredQuestionGuidance  = 'Use the Codex structured user-input/menu primitive for human approval gates when it is available in the current session.'
+    StructuredQuestionGuidance  = 'Use the Codex structured user-input/menu primitive only for clarify questions, when it is available in the current session: never for a workshop question or a boundary verdict.'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'codex'
@@ -43,6 +43,13 @@
         CommandMode    = 'launcher-file'
         MigrateLegacyTopLevelEventMap = $true
         DispatcherRuntime = @{
+            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends, per dispatcher event
+            # ('Default' for the rest). Measured on every recorded fixture (tests/fixtures/hook-payloads/codex): prompt
+            # and Stop carry turn_id; SessionStart carries permission_mode and model, and never scratchpad_dir.
+            PayloadSignature = @{
+                SessionStart = @{ AllOf = @('hook_event_name', 'session_id', 'permission_mode', 'model'); NoneOf = @('scratchpad_dir', 'prompt_id', 'sessionId') }
+                Default      = @{ AllOf = @('hook_event_name', 'session_id', 'turn_id'); NoneOf = @('prompt_id', 'sessionId') }
+            }
             BootstrapDeliveryEvents = @('SessionStart')
             B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
             RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
@@ -56,6 +63,33 @@
             # Firing reliability (Esc-interrupt / headless exec) is a real-host dogfood concern, not a block-capability one.
             StopBlockShape          = 'decision-block'
             BootstrapDeliveryMode   = 'pointer'
+            # Feature 202 T002 (DA-1, option B): this host's INPUT contract is data. The dispatcher's single
+            # normalizer (ConvertTo-SpecrewTurnRecord) reads it; shared code names no host. Field paths may be
+            # dotted (a.b.c). Measured payloads: tests/fixtures/hook-payloads/<host>/ (202 research.md, T001).
+            InputFieldMap           = @{
+                SessionId      = @('session_id')
+                Prompt         = @('prompt')
+                # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's own ID for a typed message, the same on the
+                # prompt event and on that message's transcript entry, so both recording paths key it the same way.
+                MessageId      = @('turn_id')
+                TranscriptPath = @('transcript_path')
+                Source         = @('source')
+                ToolName       = @('tool_name')
+            }
+            # Evaluated in order; the first matching rule decides. A prompt that matches no host-injected rule
+            # is typed-user, and only typed-user can produce a receipt (FR-006). hook-output-journal: the prompt
+            # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
+            # replayed Specrew directive.
+            OriginRules             = @(
+                # Feature 202 iteration 002, T028 (B4F-147): a sub-agent's task text reaches the prompt hook as a prompt. A payload
+                # carrying a sub-agent field was not typed by the human, whatever its text, so it can never be an approval.
+                # No Codex sub-agent payload has been recorded (probe/codex, 0.163.0); the rule holds the same fields as Claude's.
+                @{ Origin = 'host-injected'; Rule = 'payload-field'; Fields = @('agent_id', 'parent_agent_id') },
+                @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
+                @{ Origin = 'typed-user'; Rule = 'prompt-present' }
+            )
         }
         Registrations  = @(
             @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array'; Timeout = 30 },

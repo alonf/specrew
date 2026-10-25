@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'TurnRecordTestSupport.ps1')
 
 # F-171 regression: prove the F-174/F-184 bootstrap/handover/refocus additions
 # are additive. Refocus B1/B2/B3 stay intact and no B4 trigger is introduced.
@@ -33,7 +34,10 @@ Assert-True ($null -eq $cfg.triggers.PSObject.Properties['b4']) 'no b4 trigger (
 
 # --- F-174 additions are additive + correctly scoped ---
 $boot = $cfg.providers | Where-Object { $_.id -eq 'bootstrap' }
-Assert-Equal (@($boot.events).Count) 2 'bootstrap registered for exactly two delivery events'
+# Feature 202 T008 (FR-014): a third event, UserPromptSubmit, supplies the finished orientation with the session's
+# first prompt (Copilot fires that prompt before SessionStart). The dispatcher skips it on later prompts.
+Assert-Equal (@($boot.events).Count) 3 'bootstrap registered for exactly three delivery events'
+Assert-True ($boot.events -contains 'UserPromptSubmit') 'bootstrap handles the first prompt (202 T008: the finished orientation)'
 Assert-True ($boot.events -contains 'SessionStart') 'bootstrap handles SessionStart (B2 on existing hook hosts)'
 Assert-True ($boot.events -contains 'PreInvocation') 'bootstrap handles Antigravity PreInvocation (verified injectSteps path)'
 $ho = $cfg.providers | Where-Object { $_.id -eq 'handover' }
@@ -49,7 +53,7 @@ Assert-True (($antiTriggers -contains 'b2') -and ($antiTriggers -contains 'b3') 
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t019-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path (Join-Path $tmp '.specrew') -Force | Out-Null
 try {
-    $out = & pwsh -NoProfile -File $provider --event-json '{"source":"compact","session_id":"x"}' --project-root $tmp 2>$null
+    $out = & pwsh -NoProfile -File $provider --turn-record (ConvertTo-SpecrewTestTurnRecordArgument -SessionId 'x' -Source 'compact') --project-root $tmp 2>$null
     Assert-True ([string]::IsNullOrWhiteSpace((($out -join '')).Trim())) 'B1: bootstrap provider silent on compact (B1 stays refocus-only)'
 }
 finally {

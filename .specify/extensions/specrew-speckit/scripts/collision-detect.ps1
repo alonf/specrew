@@ -29,8 +29,8 @@ param(
 )
 
 Write-Host "collision-detect.ps1: Placeholder script" -ForegroundColor Yellow
-Write-Host "MVP: Hook and role collision checks (FR-002) - Iteration 1" -ForegroundColor Yellow
-Write-Host "Full detector deferred to Iteration 3 (FR-012)" -ForegroundColor Yellow
+Write-Host "MVP: Hook and role collision checks - Iteration 1" -ForegroundColor Yellow
+Write-Host "Full detector deferred to Iteration 3" -ForegroundColor Yellow
 Write-Host "Target path: $ProjectPath"
 
 # TODO: Implement collision detection

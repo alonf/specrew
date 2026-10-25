@@ -15,7 +15,7 @@ function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -Foreg
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
 
 Write-Host "Test 1: catalog rows carry the decided per-host budgets"
-$expected = @{ copilot = 300; codex = 600; claude = 600; antigravity = 900 }
+$expected = @{ copilot = 300; codex = 900; claude = 600; antigravity = 900 }
 foreach ($hostName in $expected.Keys) {
     $v = Get-ContinuousCoReviewHostDefaultTimeoutSeconds -HostName $hostName
     if ($v -ne $expected[$hostName]) { Write-Fail "$hostName expected $($expected[$hostName]), got '$v'" } else { Write-Pass "$hostName -> $v" }

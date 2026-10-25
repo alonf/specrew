@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/202-beta4-1-ux-stabilization/spec.md",
+  "iterationRef": "specs/202-beta4-1-ux-stabilization/iterations/001",
+  "generatedAt": "2026-10-13T15:11:46Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}

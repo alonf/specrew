@@ -121,7 +121,12 @@ function Test-SpecifyInitPreflight {
         [string]$SpecKitVersion
     )
 
-    $probeDirectory = Join-Path $ProjectPath ('.specrew-specify-probe-{0}' -f [guid]::NewGuid().ToString('N'))
+    # The probe installs a complete Spec Kit tree. Nesting that tree below the consumer project adds
+    # roughly 55 characters before Spec Kit creates its own atomic temp filenames and can make the
+    # preflight fail on Windows even though the real target path fits. The probe tests the installed
+    # CLI/template contract, not the target filesystem, so keep its disposable root short and outside
+    # the consumer project. The real init below still exercises the actual target path.
+    $probeDirectory = Join-Path ([IO.Path]::GetTempPath()) ('specrew-specify-probe-{0}' -f [guid]::NewGuid().ToString('N'))
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
 
     try {
@@ -224,6 +229,23 @@ function Invoke-SpecKitExtensionDeployment {
 
         try {
             Invoke-NativeCommand -FilePath 'specify' -ArgumentList @('extension', 'add', '--dev', $extensionSourceRoot) -WorkingDirectory $ProjectPath
+            # DRIFT-005: this path lands the managed files WITHOUT going through
+            # deploy-speckit-extension.ps1, so it needs its own stamp. The 'preserved' path above
+            # deliberately does not get one: nothing landed there, and minting a marker over content
+            # this run never verified would turn "unknown" into "checked" - the fact would not be
+            # observed, only asserted.
+            if (Get-Command -Name 'Write-SpecrewDeployedExtensionMarker' -ErrorAction SilentlyContinue) {
+                # PRED-BETA4-054: this path used to stamp no version at all, and the marker's default
+                # 'unknown' reached the human's orientation. The one resolver, from the module root.
+                try {
+                    $labelScript = Join-Path $RepoRoot 'extensions/specrew-speckit/scripts/version-label.ps1'
+                    if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+                    $label = if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) { [string](Get-SpecrewModuleVersionInfo -ModuleRoot $RepoRoot).Label } else { '' }
+                    if ([string]::IsNullOrWhiteSpace($label)) { $null = Write-SpecrewDeployedExtensionMarker -ProjectRoot $ProjectPath }
+                    else { $null = Write-SpecrewDeployedExtensionMarker -ProjectRoot $ProjectPath -SpecrewVersion $label }
+                }
+                catch { Write-Host ("[info] could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }
+            }
             return [pscustomobject]@{
                     Action = 'installed-via-cli'
                     Path   = $targetExtensionRoot

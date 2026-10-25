@@ -68,11 +68,32 @@ try {
 
     # Mint the SCOPED crossing with the engine's own writer, bound to the real tree — the shape in
     # which StageEvidenceAbsent is computed from the bound tree (review.md genuinely absent).
+    # UPGRADED 2026-09-02 to a PRODUCT-REACHABLE path (maintainer standard, DRIFT-199-I003-024).
+    # Checked at source: the MINT gate (T014) reads the LIVE DISK; the CAPTURE gate (T090) reads the
+    # crossing's OWN BOUND GIT TREE via ArtifactStateId and deliberately not the live filesystem. The
+    # two sources differ, so an UNCOMMITTED review.md satisfies the mint gate while the bound tree
+    # still lacks it - which is an ordinary project whose author wrote the review and had not
+    # committed it. The suite therefore reaches its evidence-less crossing through the writer, and the
+    # direct-write fallback below is retained only as a safety net rather than as the normal path.
+    $owedOnDisk = Join-Path $iterDir "review.md"
+    Set-Content -LiteralPath $owedOnDisk -Value "# Review: 001`n`n**Overall Verdict**: accepted`n" -Encoding UTF8
     $mint = Join-Path $scratch 'mint.ps1'
     [System.IO.File]::WriteAllText($mint, @"
 `$ErrorActionPreference = 'Stop'
 . '$($repoRoot -replace "'", "''")\extensions\specrew-speckit\scripts\shared-governance.ps1'
 `$scope = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot '$proj' -WorkingBoundary 'review-signoff' -BoundaryCommitHash '$head'
+if (`$null -eq `$scope) {
+    # SAFETY NET, no longer the normal path (upgraded 2026-09-02). The caller now leaves an uncommitted
+    # review.md on disk, so T014's disk-reading mint gate is satisfied and the writer mints normally. If
+    # that ever stops working this arm still constructs the record directly - the shape of a pre-gate or
+    # hand-edited record - so the CAPTURE-side refusal stays tested as defense in depth. Reaching here
+    # means the product-reachable path broke and is worth investigating, not routing around.
+    `$st = Get-SpecrewBoundaryEnforcementState -ProjectRoot '$proj'
+    `$tree = Get-SpecrewGitArtifactStateId -ProjectRoot '$proj' -BoundaryCommitHash '$head'
+    `$scope = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'before-implement' -WorkingBoundary 'review-signoff' -BoundaryCommitHash '$head' -ArtifactStateId `$tree -RecordedAt '2026-08-29T00:00:00Z' -ExistingScope `$null
+    `$upd = [ordered]@{ enabled = [bool]`$st.State['enabled']; last_authorized_boundary = `$st.State['last_authorized_boundary']; pending_next_boundary = [string]`$scope['to_boundary']; pending_crossing = `$scope; verdict_history = @(`$st.State['verdict_history']); correction_history = @(); bypass_history = @(`$st.State['bypass_history']) }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot '$proj' -BoundaryEnforcement `$upd -Context `$st.Context | Out-Null
+}
 'MINT ' + `$(if (`$null -eq `$scope) { 'none' } else { [string]`$scope['from_boundary'] + '->' + [string]`$scope['to_boundary'] })
 `$pv = Get-SpecrewPendingVerdictState -ProjectRoot '$proj'
 'PRESTATE pending=' + [bool]`$pv.HasPendingVerdict + ' evidence_absent=' + [bool]`$pv.StageEvidenceAbsent
@@ -122,6 +143,13 @@ try {
     New-Item -ItemType Directory -Path $rootIter -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $rootFeature 'spec.md') -Value "# Spec`n`nBody." -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $rootIter 'review.md') -Value "# Review`n`nBody." -Encoding UTF8
+    $campaignRun = Join-Path $rootProj '.specrew\review\authority\campaigns\cmp-050-host-neutral-gate-i001\runs\run-valid-control'
+    New-Item -ItemType Directory -Path $campaignRun -Force | Out-Null
+    [System.IO.File]::WriteAllText(
+        (Join-Path $campaignRun 'result.json'),
+        '{"schema_version":"1.0","campaign_id":"cmp-050-host-neutral-gate-i001","run_id":"run-valid-control","completion":"complete","validation":"valid","verdict":"clean"}',
+        [System.Text.UTF8Encoding]::new($false)
+    )
     $null = & git -C $rootProj init --quiet
     $null = & git -C $rootProj config core.autocrlf false
     $null = & git -C $rootProj add -A

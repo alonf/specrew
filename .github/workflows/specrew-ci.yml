@@ -6,7 +6,7 @@ env:
 
 on:
   push:
-    branches: [ main, 001-specrew-product ]
+    branches: [ '**' ]
   pull_request:
     branches: [ main, 001-specrew-product ]
 
@@ -166,12 +166,27 @@ jobs:
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -ChangedOnly
 
+      - name: Show the push base the governance step will scope to
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          SPECREW_SCOPE_BASE_REF: ${{ github.event.before }}
+        run: |
+          # B4F-079: GitHub refuses to let a workflow overwrite GITHUB_BASE_REF, so the push base travels in a
+          # Specrew-owned variable. This step prints what the validator will scope to, for the record.
+          Write-Host ("SPECREW_SCOPE_BASE_REF: {0}" -f $env:SPECREW_SCOPE_BASE_REF)
+          . ./extensions/specrew-speckit/scripts/shared-governance.ps1
+          Write-Host ("scope base resolves to: [{0}]" -f (Get-SpecrewLocalScopeBaseRef -ProjectRoot .))
+
       - name: Validate iteration governance (push)
         if: github.event_name != 'pull_request'
         timeout-minutes: 25
         shell: pwsh
         env:
-          GITHUB_BASE_REF: ${{ github.event.before }}
+          # B4F-079: `GITHUB_BASE_REF: ${{ github.event.before }}` was inert here (GitHub owns GITHUB_*), so
+          # every push validation scoped to origin/main. The Specrew-owned name carries the base.
+          SPECREW_SCOPE_BASE_REF: ${{ github.event.before }}
+          SPECREW_VALIDATOR_VERBOSE: '1'
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -ChangedOnly
 
       - name: Integration - legacy state readers
@@ -182,7 +197,9 @@ jobs:
     name: Deterministic gate
     runs-on: ubuntu-latest
     needs: lint
-    timeout-minutes: 20
+    # The explicit F-198 registry alone measured 19.22 minutes on the beta3 release tree.
+    # This job also installs three toolchains and runs the remaining deterministic integration gates.
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -217,8 +234,12 @@ jobs:
         # run with a per-test timeout and clear failure output. These paired tests must not merge as
         # manual-only; this lane is their CI enforcement.
         shell: pwsh
-        timeout-minutes: 15
+        timeout-minutes: 30
         run: pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
+
+      - name: Tier-2 production harness contract dry run (zero provider spend)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/manual/review-production-harness-dry-run.ps1
 
       - name: Integration - bootstrap to iteration
         shell: pwsh

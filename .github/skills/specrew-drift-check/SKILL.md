@@ -58,7 +58,7 @@ Detect specification drift by comparing delivered output against the cited requi
    - `human-decision`
 6. Produce a drift-log-ready result:
    - PASS: provide explicit evidence summary and say no drift event is required
-   - DRIFT: emit contract-aligned event data and a Markdown snippet that can be copied into `drift-log.md`
+   - DRIFT: emit contract-aligned event data and a Markdown snippet that can be copied into `drift-log.md`, including `Class closure` (or `NONE — <why>`)
    - if `drift_log_path` points at a zero-drift placeholder log, note that the summary text must be updated when the first event is added
 
 ## Outputs
@@ -79,6 +79,7 @@ Detect specification drift by comparing delivered output against the cited requi
 | drift_events[].resolution | enum: spec-updated, implementation-reverted, deferred, human-decision | Chosen resolution path |
 | drift_events[].resolution_detail | string | What should happen next to resolve the drift |
 | drift_events[].log_snippet | string | Markdown-ready snippet aligned to the drift-log contract |
+| drift_events[].class_closure | string | Mechanism that makes recurrence impossible/loud, or `NONE — <why>` |
 | drift_log_update_note | string | Guidance for updating `drift-log.md` summary text when needed |
 
 ## Side Effects

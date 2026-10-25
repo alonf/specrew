@@ -9,6 +9,12 @@ Set-StrictMode -Version Latest
 # cutover (the tracked must-happen final step), so the two paths do not ossify.
 
 . (Join-Path $PSScriptRoot 'co-review-service.ps1')   # brings the legacy navigator (reap/stage/dedup) + the service (fire/identity)
+# HARD dependency: the ONE path-identity primitive, loaded at FILE SCOPE. The implementation-presence
+# predicate below asks it for the volume's case rule, and a Get-Command-guarded CALL that substitutes
+# a different comparison would be the same defect as an $IsWindows shortcut - it answers, it answers
+# wrongly, and nothing reports it. Guarded on a name unique to this module so a same-named duplicate
+# cannot satisfy the check (DRIFT-198-I009-027).
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Test-ReviewCampaignBoundaryRequiresIteration {
     # Feature-level intake legitimately has an active lifecycle cursor before any iteration exists.
@@ -146,11 +152,39 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
         return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-feature' }
     }
 
+    # Resolve lifecycle applicability BEFORE interpreting an iteration hint. A phase wrapper can carry a
+    # stale/spurious session_state.iteration_number during specify/clarify even though no iteration exists.
+    # Nothing is reviewable at those stages, so that hint must not manufacture a campaign-authority error.
+    # Unknown cursors still fail closed, and before-implement onward remains live.
+    $effectiveCursor = $sessionBoundaryCursor
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
+    $cursorNorm = $null
+    $cursorIsQuietPreImplement = $false
+    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
+        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
+        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
+            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($cursorNorm) -and $cursorNorm -ne 'implement') {
+            $boundaryOrder = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+            if (Get-Command -Name 'Get-SpecrewBoundaryOrder' -ErrorAction SilentlyContinue) {
+                try { $boundaryOrder = @(Get-SpecrewBoundaryOrder) } catch { $null = $_ }
+            }
+            $cursorIdx = [Array]::IndexOf($boundaryOrder, $cursorNorm)
+            $liveIdx = [Array]::IndexOf($boundaryOrder, 'before-implement')
+            $cursorIsQuietPreImplement = ($cursorIdx -ge 0 -and $liveIdx -ge 0 -and $cursorIdx -lt $liveIdx)
+        }
+    }
+
     $iterationsRoot = Join-Path $featureRoot 'iterations'
     $iterations = @(if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
             Get-ChildItem -LiteralPath $iterationsRoot -Directory | Where-Object { $_.Name -match '^\d{3,}$' }
         })
     if ($iterations.Count -eq 0) {
+        if ($activeIterationSignal -and $cursorIsQuietPreImplement) {
+            return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
+        }
         if ($activeIterationSignal) { return [pscustomobject]@{ applicable = $true; reason = 'active-iteration-unresolved' } }
         return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-iteration' }
     }
@@ -172,27 +206,128 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
     # window's edge (the v2 missing-iteration fail-closed case pins this). Unresolved or
     # non-canonical cursors stay applicable so the packet gate fails closed with the
     # authoritative reason (this function's standing philosophy).
-    $effectiveCursor = $sessionBoundaryCursor
-    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
-    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
-    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
-        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
-        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
-            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
-        }
-        if (-not [string]::IsNullOrWhiteSpace($cursorNorm) -and $cursorNorm -ne 'implement') {
-            $boundaryOrder = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
-            if (Get-Command -Name 'Get-SpecrewBoundaryOrder' -ErrorAction SilentlyContinue) {
-                try { $boundaryOrder = @(Get-SpecrewBoundaryOrder) } catch { $null = $_ }
-            }
-            $cursorIdx = [Array]::IndexOf($boundaryOrder, $cursorNorm)
-            $liveIdx = [Array]::IndexOf($boundaryOrder, 'before-implement')
-            if ($cursorIdx -ge 0 -and $liveIdx -ge 0 -and $cursorIdx -lt $liveIdx) {
-                return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
-            }
-        }
+    if ($cursorIsQuietPreImplement) {
+        return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
+    }
+
+    # DRIFT-199-I001-006 (FR-007/FR-008; T003 landing early under the maintainer's 2026-08-10
+    # in-scope ruling). The cursor rule above states the premise for going live: "there is
+    # implementation to review". At the before-implement edge that premise can be FALSE - the
+    # cursor has advanced but the coverage delta still holds only planning records. The consumer
+    # then meets a review-required block for the PLANNING digest that no disposition can decline,
+    # because every --remediate choice binds to a run id and no run exists. Align activation with
+    # the premise the rule already states: quiet while nothing reviewable has been implemented.
+    # This REMOVES NO GATE - the surface goes live the moment implementation appears, and every
+    # unresolvable input fails CLOSED (applicable), so a broken anchor can never quiet the block.
+    $implementation = Test-ReviewCampaignCoverageDeltaHasImplementation -RepoRoot $RepoRoot
+    if (-not $implementation.has_implementation) {
+        return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:no-implementation-yet ({0})' -f $implementation.reason) }
     }
     return [pscustomobject]@{ applicable = $true; reason = 'campaign-applicable' }
+}
+
+function Test-ReviewCampaignCoverageDeltaHasImplementation {
+    # Does the coverage delta (merge-base anchor -> HEAD, plus the working tree) contain anything
+    # a reviewer would review as IMPLEMENTATION? Non-implementation is exactly two classes: the
+    # methodology machinery (the ONE FR-012 resolver, so this can never drift from the digest and
+    # worktree strips) and the lifecycle records tree `specs/`. Everything else - source, tests,
+    # docs, CI - counts as implementation.
+    #
+    # FAIL CLOSED in every uncertain case: an unresolvable trunk/anchor, an unavailable machinery
+    # resolver, or a failing git call all return has_implementation = $true, which keeps the
+    # campaign surface LIVE. The quiet answer is only ever returned from a fully resolved delta.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $mk = { param($has, $reason) [pscustomobject]@{ has_implementation = [bool]$has; reason = [string]$reason } }
+
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $reviewerModule = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $reviewerModule -PathType Leaf) { try { . $reviewerModule } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        return & $mk $true 'machinery-resolver-unavailable'
+    }
+
+    $anchor = $null
+    try { $anchor = Get-ContinuousCoReviewMergeBaseAnchor -RepoRoot $RepoRoot -TrunkName '' } catch { $anchor = $null }
+    if ([string]::IsNullOrWhiteSpace($anchor)) { return & $mk $true 'coverage-anchor-unresolved' }
+
+    $changed = New-Object System.Collections.Generic.List[string]
+    $committed = @(& git -C $RepoRoot diff --name-only ($anchor + '..HEAD') 2>$null)
+    if ($LASTEXITCODE -ne 0) { return & $mk $true 'coverage-delta-unreadable' }
+    foreach ($path in $committed) { if (-not [string]::IsNullOrWhiteSpace($path)) { $changed.Add([string]$path) } }
+
+    # The working tree counts too: uncommitted implementation must keep the surface live.
+    $porcelain = @(& git -C $RepoRoot status --porcelain 2>$null)
+    if ($LASTEXITCODE -ne 0) { return & $mk $true 'working-tree-unreadable' }
+    foreach ($entry in $porcelain) {
+        if ([string]::IsNullOrWhiteSpace($entry) -or $entry.Length -le 3) { continue }
+        $path = $entry.Substring(3).Trim().Trim('"')
+        # Rename entries read `old -> new`; the destination is the reviewable path.
+        $arrow = $path.IndexOf(' -> ', [StringComparison]::Ordinal)
+        if ($arrow -ge 0) { $path = $path.Substring($arrow + 4).Trim().Trim('"') }
+        if (-not [string]::IsNullOrWhiteSpace($path)) { $changed.Add($path) }
+    }
+
+    $machinery = @()
+    try {
+        foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $RepoRoot)) {
+            if ([string]::IsNullOrWhiteSpace($m)) { continue }
+            $machinery += (([string]$m -replace '\\', '/').Trim('/'))
+        }
+    }
+    catch { return & $mk $true 'machinery-resolver-failed' }
+    # The lifecycle records tree is not machinery (a reviewer DOES read it) but it is not
+    # implementation either - it is the planning digest this alignment exists to stop demanding.
+    $recordsRoots = @($machinery) + @('specs')
+
+    # Round-1 review finding (major), and the beta2 certify-round-3 path-identity class recurring:
+    # a hardcoded case rule here is silently unsafe. On a case-SENSITIVE volume `Specs/` is a
+    # DIFFERENT directory from `specs/` - genuinely reviewable content - and folding the case
+    # classified it as records-only, which quiets the campaign surface and skips the review
+    # entirely. The case rule belongs to the ONE volume-derived source (path-identity.ps1); this
+    # predicate asks it rather than deciding for itself. -WhenUndetermined 'distinct' keeps the
+    # fail-closed direction: an undetermined volume treats the spellings as different, so the
+    # surface stays LIVE rather than going quiet on an assumption.
+    $pathComparison = Get-ContinuousCoReviewPathComparison -Path $RepoRoot -WhenUndetermined 'distinct'
+
+    foreach ($raw in $changed) {
+        $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $isRecords = $false
+        foreach ($root in $recordsRoots) {
+            if ([string]::IsNullOrWhiteSpace($root)) { continue }
+            if ($path.Equals($root, $pathComparison) -or
+                $path.StartsWith(($root + '/'), $pathComparison)) {
+                $isRecords = $true
+                break
+            }
+        }
+        if (-not $isRecords) { return & $mk $true ('implementation-present:' + $path) }
+    }
+
+    return & $mk $false 'coverage-delta-is-records-only'
+}
+
+function Get-ReviewCampaignRecordedPendingCrossing {
+    # Controller truth: the crossing the lifecycle is currently waiting on, read from
+    # .specrew/start-context.json. Returns $null when there is none, when the file is unreadable, or
+    # when the record does not name a destination - all three are "no crossing to defer to", and the
+    # campaign block keeps its unconditional no-marker clause. Fail-closed direction: only a crossing
+    # that genuinely exists may relax that clause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $startContextPath = Join-Path $RepoRoot '.specrew/start-context.json'
+    if (-not (Test-Path -LiteralPath $startContextPath -PathType Leaf)) { return $null }
+    try { $startContext = Get-Content -LiteralPath $startContextPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return $null }
+    if ($null -eq $startContext) { return $null }
+    $enforcement = $startContext.PSObject.Properties['boundary_enforcement']
+    if ($null -eq $enforcement -or $null -eq $enforcement.Value) { return $null }
+    $crossing = $enforcement.Value.PSObject.Properties['pending_crossing']
+    if ($null -eq $crossing -or $null -eq $crossing.Value) { return $null }
+    return $crossing.Value
 }
 
 function Invoke-ContinuousCoReviewWorktreeNavigator {
@@ -224,20 +359,78 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             $decision.reason = [string]$scope.reason
             return $decision
         }
-        try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved }
+        # R1: the Stop-hook advisory read may use the digest cache; the signoff gate's read of the same function never does.
+        try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved -AllowCache }
         catch {
             $decision.reason = 'campaign-packet-gate-failed'
             $decision.stop_block = "Campaign review authority could not be read safely: $($_.Exception.Message)`n(Campaign review block, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)"
             return $decision
         }
         $decision.reason = [string]$packet.reason
+        # The route travels on the decision so the provider can tell a pause the human owes from a file
+        # attribution it may quiet for a session that wrote nothing (fix 2 item (c)).
+        $decision | Add-Member -NotePropertyName route -NotePropertyValue ([string]$packet.route) -Force
         if ([bool]$packet.render_boundary_packet) {
-            $decision.inject_notes = @(("[co-review] campaign run {0} authorizes the exact current digest; the lifecycle boundary packet may now be rendered." -f $packet.run_id))
+            $decision.inject_notes = @(("[co-review] Review {0} covers your files exactly as they are now." -f $packet.run_id))
         }
         elseif ([string]$packet.route -eq 'review-running') {
-            $decision.inject_notes = @(("[co-review] campaign run {0} is still reviewing the current digest; no decision is required." -f $packet.run_id))
+            $decision.inject_notes = @(("[co-review] Review {0} is still checking your files as they are now; nothing is needed from you yet." -f $packet.run_id))
         }
-        else { $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet }
+        else {
+            # T003 / FR-007: hand the block the recorded crossing so it can scope itself instead of
+            # blanket-suppressing a marker the lifecycle may genuinely owe. Reading controller truth
+            # must never be able to break the stop, so an unreadable record yields $null and the block
+            # falls back to its original unconditional clause.
+            $pendingCrossing = $null
+            try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved }
+            catch { $pendingCrossing = $null }
+            # AN UNANSWERED PAUSE BLOCKS THE STOP UNTIL ITS SURFACE HAS BEEN RENDERED.
+            #
+            # The route already blocked the Stop - what it carried was a one-line summary ("This review
+            # is waiting for your decision"), while the decision surface FR-002 exists to produce sat in
+            # the store, written and shown to nobody. Measured on both dogfood runs: each agent read the
+            # findings itself, decided, and proceeded; the human saw a count and a conclusion.
+            #
+            # Same shape as the projection that dropped the pause and the generated file that was not the
+            # rendered one - the mechanism worked and the seam to the human did not. So the block IS the
+            # surface: findings with locations, the numbered options, and how to send one. An agent
+            # cannot now read a review's findings and carry on while the human sees only a summary,
+            # because the Stop does not clear until this text has been put in front of them.
+            if ([string]$packet.route -ceq 'pause-pending') {
+                $pauseSurfaceLines = @()
+                try {
+                    if (-not (Get-Command -Name 'Format-ReviewCampaignOutstandingPause' -ErrorAction SilentlyContinue)) {
+                        . (Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1')
+                    }
+                    $pauseStore = Join-Path $resolved '.specrew/review/authority'
+                    $outstandingPause = Get-ReviewCampaignPendingPause -StoreRoot $pauseStore -CampaignId ([string]$packet.campaign_id)
+                    if ($null -ne $outstandingPause) {
+                        $pauseFindings = $null
+                        try {
+                            $pauseResult = Get-ReviewRunAuthorityFact -StoreRoot $pauseStore -CampaignId ([string]$packet.campaign_id) `
+                                -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingPause -Name 'run_id')) -Stage result
+                            if ($null -ne $pauseResult) { $pauseFindings = Get-ReviewAuthorityProperty -Object $pauseResult -Name 'findings' }
+                        }
+                        catch { $pauseFindings = $null }
+                        $pauseProject = Split-Path -Leaf $resolved
+                        $pauseSurfaceLines = @(Format-ReviewCampaignOutstandingPause -ProjectName $pauseProject -Fact $outstandingPause -Findings $pauseFindings)
+                    }
+                }
+                catch { $pauseSurfaceLines = @() }
+                if (@($pauseSurfaceLines).Count -gt 0) {
+                    $decision.stop_block = (@($pauseSurfaceLines) -join [Environment]::NewLine)
+                    $decision | Add-Member -NotePropertyName agent_directives `
+                        -NotePropertyValue 'A review round is waiting for the human''s answer. Render the block above verbatim and STOP. Do NOT read the findings and decide on their behalf - the decision is theirs, and answering it is a command they run.' -Force
+                    return $decision
+                }
+            }
+            $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet -PendingCrossing $pendingCrossing
+            # T010 (emission-point rule): the agent's directives travel BESIDE the human's block, never
+            # inside it. MOVED, not deleted - the agent is a different reader, not a lesser one, and it
+            # still has to be told whether a verdict marker applies.
+            $decision | Add-Member -NotePropertyName agent_directives `
+                -NotePropertyValue (Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $packet -PendingCrossing $pendingCrossing) -Force
+        }
         return $decision
     }
 

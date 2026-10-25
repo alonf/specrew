@@ -412,12 +412,11 @@ if (-not (Assert-Match -Text $preserveText -Pattern 'T014:\s*\r?\n\s+title:.*\r?
     exit 1
 }
 
-# Feature-closeout SDLC handoff steps (push branch / create PR / address PR review / merge) are
-# authored in the coordinator governance template (Step 5-8 of the feature-closeout SDLC ownership
-# split), not hard-coded in scripts/specrew-start.ps1. The generated start guidance composes them
-# from this template, so the template is the authoritative source to assert against.
+# Feature-closeout delivery is resolved from the project's recorded release model. The coordinator
+# template must consume that resolved block and must not impose PR-flow steps on local-only or
+# push-only consumers.
 $closeoutGuidanceText = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md') -Raw -Encoding UTF8
-foreach ($phrase in @('push the feature branch', 'create the PR', 'address automated PR review', 'merge with a merge commit after approval')) {
+foreach ($phrase in @('Resolved Feature-Closeout Delivery', 'AGENT NEXT ACTION:', 'HUMAN ACTION NEEDED:', 'execute only its applicable steps', 'never invent a forge')) {
     if (-not (Assert-Match -Text $closeoutGuidanceText -Pattern ([regex]::Escape($phrase)) -Message "Feature-closeout handoff guidance is missing '$phrase' in the coordinator governance template.")) {
         exit 1
     }

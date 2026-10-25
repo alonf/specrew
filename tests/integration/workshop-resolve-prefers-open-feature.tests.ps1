@@ -1,0 +1,319 @@
+# Regression test for B4F-007: the workshop resolve must select the feature whose INTAKE controller is
+# open, not the feature the start context happens to name.
+#
+# The defect: .specrew/start-context.json carries the LIFECYCLE's feature, which after any completed
+# feature is the PREVIOUS one - stale by construction from feature creation until the first boundary sync.
+# The resolve selected from it, looked up a completed workshop (or an iteration absent under the new
+# feature), and returned nothing active. Measured consequence: every SECOND and later feature in a project
+# could not register a workshop question, so no receipt could mint and no lens could close. A project's
+# FIRST feature worked, because there was no predecessor to name - which is why this survived months.
+#
+# WHY THIS TEST DRIVES THE RESOLVE INSTEAD OF WRITING workshop-question.json:
+# every existing fixture for this area hand-writes .specrew/handover/workshop-question.json
+# (conformance-detection, workshop-agenda-confirmation, workshop-material-packet-language,
+# workshop-typed-turn-authority). That is exactly why no test noticed: they fabricate the artifact whose
+# PRODUCTION is broken. This one never writes it, and asserts on what the resolve returns.
+#
+# WHY THERE IS A POSITIVE CONTROL IN THIS FILE:
+# a test that sets up the stale ref and asserts "not active" passes just as happily when it never reached
+# the function at all - and would join the fixtures that could not notice. Case 1 asserts that an OPEN
+# feature resolves ACTIVE in the same run. If Case 1 fails, every other verdict here is void.
+
+$ErrorActionPreference = 'Stop'
+$script:Failures = 0
+
+function Assert-True {
+    param([bool]$Condition, [string]$Message)
+    if ($Condition) { Write-Host ("  PASS: {0}" -f $Message) }
+    else { Write-Host ("  FAIL: {0}" -f $Message); $script:Failures++ }
+}
+
+$repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$providerPath = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'
+$accessorPath = Join-Path $repoRoot 'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1'
+
+Write-Host 'workshop-resolve-prefers-open-feature'
+Write-Host '  --- preconditions (printed, not assumed) ---'
+Assert-True (Test-Path -LiteralPath $providerPath -PathType Leaf) 'provider source is present'
+Assert-True (Test-Path -LiteralPath $accessorPath -PathType Leaf) 'metadata accessor is present'
+if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE: sources missing'; exit 1 }
+
+# Extract the subject by AST rather than dot-sourcing the provider: the provider has a top-level argument
+# parser and would RUN. Same technique, and same reason, as guard-exemptions-still-fire (DRIFT-199-I003-062).
+$tokens = $null; $errors = $null
+$providerAst = [System.Management.Automation.Language.Parser]::ParseFile($providerPath, [ref]$tokens, [ref]$errors)
+Assert-True ($errors.Count -eq 0) 'provider source parses without error'
+$fnAst = $providerAst.FindAll({
+        param($n)
+        $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $n.Name -eq 'Resolve-SpecrewWorkshopQuestionPause'
+    }, $true) | Select-Object -First 1
+Assert-True ($null -ne $fnAst) 'Resolve-SpecrewWorkshopQuestionPause is defined in the provider'
+if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE: subject not extractable'; exit 1 }
+
+. $accessorPath
+. ([scriptblock]::Create($fnAst.Extent.Text))
+Assert-True ([bool](Get-Command Resolve-SpecrewWorkshopQuestionPause -ErrorAction SilentlyContinue)) 'subject function is loaded'
+Assert-True ([bool](Get-Command Get-SpecrewWorkshopLifecycleState -ErrorAction SilentlyContinue)) 'lifecycle accessor is loaded'
+if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE: subject not loaded'; exit 1 }
+
+# --- fixture: one COMPLETED feature and one OPEN intake feature, in one project ---
+$fixture = Join-Path ([IO.Path]::GetTempPath()) ('specrew-b4f007-' + [guid]::NewGuid().ToString('N'))
+$doneRef = '100-completed-feature'
+$openRef = '101-open-feature'
+try {
+    $bootstrapDir = Join-Path $repoRoot 'scripts/internal/bootstrap'
+    New-Item -ItemType Directory -Path (Join-Path $fixture ('specs/' + $doneRef)) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $fixture ('specs/' + $openRef)) -Force | Out-Null
+
+    # The completed feature: an AUTHORED spec (no sentinel) and a confirmed, fully-recorded controller.
+    Set-Content -LiteralPath (Join-Path $fixture ("specs/$doneRef/spec.md")) -Encoding UTF8 -Value @(
+        '# Feature Specification: 100-completed-feature'
+        ''
+        'Authored. This feature is past intake.'
+    )
+    $doneController = [ordered]@{
+        schema_version        = '1.1'
+        workshop_intake       = $true
+        confirmation_required = $true
+        agenda_contract       = 'complete-coverage-v1'
+        human_turn_contract   = 'typed-turns-v1'
+        agenda_status         = 'confirmed'
+        selected              = @('architecture-core')
+        agenda                = @{ 'architecture-core' = @{ depth = 'light' } }
+        skipped               = @{}
+        agenda_confirmation   = 'human-confirmed'
+        agenda_confirmation_scope = 'lens-selection'
+        agenda_turn_receipt   = 'receipt-done'
+        workshop              = [ordered]@{
+            'architecture-core' = [ordered]@{
+                agenda = @('q1'); decision = 'decided'; depth = 'light'; moved_on = $true
+                confirmation = 'human-confirmed'; confirmation_scope = 'lens-question'
+                human_turn_receipt = 'receipt-done'
+            }
+        }
+    }
+    $doneController | ConvertTo-Json -Depth 12 |
+        Set-Content -LiteralPath (Join-Path $fixture ("specs/$doneRef/lens-applicability.json")) -Encoding UTF8
+
+    # The open feature: the governed not-yet-authored stub and the pre-agenda controller, exactly as
+    # create-governed-feature.ps1 leaves them.
+    Set-Content -LiteralPath (Join-Path $fixture ("specs/$openRef/spec.md")) -Encoding UTF8 -Value @(
+        '<!-- specrew:spec-not-yet-authored -->'
+        '# Feature Specification: 101-open-feature'
+        ''
+        '**Status**: not yet authored'
+    )
+    $openController = [ordered]@{
+        schema_version        = '1.1'
+        workshop_intake       = $true
+        confirmation_required = $true
+        agenda_contract       = 'complete-coverage-v1'
+        human_turn_contract   = 'typed-turns-v1'
+        agenda_status         = 'pending-confirmation'
+        selected              = @()
+        agenda                = @{}
+        skipped               = @{}
+        agenda_confirmation   = 'pending'
+        agenda_confirmation_scope = 'lens-selection'
+        agenda_turn_receipt   = 'pending'
+        workshop              = @{}
+    }
+    $openController | ConvertTo-Json -Depth 12 |
+        Set-Content -LiteralPath (Join-Path $fixture ("specs/$openRef/lens-applicability.json")) -Encoding UTF8
+
+    $ask = 'Which of these should the first release optimise for?'
+
+    Write-Host '  --- CASE 1: POSITIVE CONTROL - the open feature must resolve ACTIVE ---'
+    $c1 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $openRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef)
+    Assert-True ($null -ne $c1 -and [bool]$c1.valid) 'CONTROL: an open intake workshop resolves valid'
+    Assert-True ($null -ne $c1 -and [string]$c1.feature_ref -eq $openRef) 'CONTROL: it resolves to the open feature'
+
+    # A CONTROL MUST NAME THE PATH THAT RESOLVED IT (B4F-028). This case passes -ActiveFeatureRef $openRef,
+    # so the START-CONTEXT path can satisfy it without the candidate logic being reached at all. Under a
+    # rejected predicate that disabled the candidate path entirely, this case stayed GREEN while Cases 2, 7
+    # and 8 went red - a passing control covering a dead fix. Re-running it with NO candidates offered
+    # proves which path carried it, so the control can never again certify a path it did not take.
+    $c1path = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $openRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @()
+    Assert-True ($null -ne $c1path -and [bool]$c1path.valid) 'CONTROL NAMES ITS PATH: it resolves with NO candidates offered, so the START-CONTEXT path carried it - this case does NOT cover the candidate path'
+    $controlHeld = ($null -ne $c1 -and [bool]$c1.valid)
+    if (-not $controlHeld) {
+        Write-Host '  INCONCLUSIVE: the positive control did not hold, so every verdict below is void.'
+        exit 1
+    }
+
+    Write-Host '  --- CASE 2: THE REGRESSION - a STALE ref naming the completed feature ---'
+    # This is the shape that shipped: the start context still names the previous, completed feature, and
+    # even carries its iteration number, while the workshop is open on a different feature.
+    $c2 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef)
+    # And THIS case is the candidate-path control: the start-context pair is non-active, so nothing but the
+    # candidate logic can produce a valid result. Case 1 proves the resolve works; only this proves the fix.
+    Assert-True ($null -ne $c2 -and [bool]$c2.valid) 'CANDIDATE-PATH CONTROL: a stale ref no longer blocks the open workshop'
+    Assert-True ($null -ne $c2 -and [string]$c2.feature_ref -eq $openRef) 'it resolves to the OPEN feature, not the stale one'
+    Assert-True ($null -ne $c2 -and [string]$c2.scope -eq 'feature') 'and at FEATURE scope, not the stale iteration scope'
+
+    Write-Host '  --- CASE 3: the resolve VALIDATES its candidate rather than trusting it ---'
+    # A candidate whose workshop is complete must not be activated just because it was offered.
+    $c3 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($doneRef)
+    Assert-True ($null -ne $c3 -and -not [bool]$c3.valid) 'a COMPLETED feature offered as a candidate is not activated'
+
+    Write-Host '  --- CASE 4: NEGATIVE CONTROL - the test can still fail ---'
+    # With no candidate the pre-fix behaviour is preserved exactly: a stale ref resolves nothing valid.
+    # If this ever passes as valid, the fix has started inventing workshops rather than finding them.
+    $c4 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @()
+    Assert-True ($null -ne $c4 -and -not [bool]$c4.valid) 'with no open workshop offered, nothing is resolved'
+
+    Write-Host '  --- CASE 5: a candidate name that is NOT an active workshop does not create ambiguity ---'
+    # RE-POINTED after independent-review finding F001. This case asserted "two open workshops are ambiguous",
+    # but its second candidate ('102-another-open') has no directory, no controller and no workshop - so it
+    # never tested two open workshops, it tested two candidate STRINGS. The label overclaimed what the
+    # fixture measured. Genuine two-active ambiguity is CASE 9, with two real fixtures. What this case
+    # actually covers is worth keeping and is now what it says: a stale or phantom name must not block a live
+    # workshop, because a name with no workshop cannot compete for a human's reply.
+    # Two open intake workshops cannot tell us which one this turn belongs to. Falling back is correct;
+    # picking one would manufacture a binding the human never made.
+    $c5 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef, '102-another-open')
+    Assert-True ($null -ne $c5 -and [bool]$c5.valid) 'a phantom candidate does not block the one real open workshop'
+    Assert-True ($null -ne $c5 -and [string]$c5.feature_ref -eq $openRef) 'and it resolves to the feature that actually has an active workshop'
+
+    # --- fixture 2: a SECOND feature whose own workshop is genuinely ACTIVE ---
+    # It is built in the shape CASE 1 already proved active, so no authority receipt is fabricated. An
+    # active CONFIRMED agenda requires a receipt that validates against the real hook-owned store, and
+    # writing one here would be the same fixture defect this file exists to avoid - the precondition
+    # assertion below is what caught that on the first attempt.
+    $otherRef = '102-other-active-feature'
+    New-Item -ItemType Directory -Path (Join-Path $fixture ('specs/' + $otherRef)) -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $fixture ("specs/$otherRef/spec.md")) -Encoding UTF8 -Value @(
+        '<!-- specrew:spec-not-yet-authored -->'
+        '# Feature Specification: 102-other-active-feature'
+        ''
+        '**Status**: not yet authored'
+    )
+    $openController | ConvertTo-Json -Depth 12 |
+        Set-Content -LiteralPath (Join-Path $fixture ("specs/$otherRef/lens-applicability.json")) -Encoding UTF8
+
+    Write-Host '  --- CASE 7: a candidate must NOT displace the start context''s OWN active workshop ---'
+    # PRECONDITION: the second workshop must itself be active, or this case asserts nothing.
+    $otherState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $fixture -FeatureRef $otherRef
+    Assert-True ($null -ne $otherState -and [string]$otherState.status -eq 'active') 'PRECONDITION: the second workshop is genuinely active'
+
+    # The start context names a feature whose workshop IS active, and a DIFFERENT feature is offered as the
+    # intake candidate. Nothing can tell which one the human is answering. Binding a typed reply to the
+    # wrong question is worse than resolving nothing, so this must fall through rather than pick - the same
+    # refusal the fix already makes between two candidates, applied between the candidate and the start
+    # context. The candidate list is an input to this function, so the contract must hold for whatever it
+    # is given, not only for lists production happens to produce.
+    $c7 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $otherRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef)
+    Assert-True ($null -ne $c7 -and -not [bool]$c7.valid) 'two active workshops on different features are ambiguous, not picked'
+    Assert-True ($null -ne $c7 -and [string]$c7.feature_ref -ne $openRef) 'the intake candidate does NOT displace the active workshop the start context names'
+    Assert-True ($null -ne $c7 -and [string]$c7.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names why, rather than looking like an ordinary miss'
+
+    Write-Host '  --- CASE 8: the ambiguity guard must not weaken the fix ---'
+    # The stale case from CASE 2 has a NON-active start-context path, so there is no ambiguity and the
+    # candidate must still win. If this regresses, the guard has undone the thing it is guarding.
+    $c8 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef)
+    Assert-True ($null -ne $c8 -and [bool]$c8.valid) 'a non-active start-context path still yields to the candidate'
+    Assert-True ($null -ne $c8 -and [string]$c8.feature_ref -eq $openRef) 'and still resolves the open feature'
+
+    Write-Host '  --- CASE 9: MORE candidates must not make the resolve LESS cautious ---'
+    # Independent-review finding F001 (codex, gpt-6-astra). Case 5 supplies two candidates but an INACTIVE
+    # context; Case 7 supplies an active context but only ONE candidate. Neither covers two candidates AND an
+    # active context - which is what production discovery actually collects here, since both fixtures carry a
+    # stub spec and a controller. Dropping to null on ambiguity made candidateActive false, so the guard could
+    # not fire and the context was returned as valid: adding a SECOND open workshop made the resolve less
+    # cautious than one. The caller then persists that feature with the last assistant question, which is the
+    # exact harm the guard exists to prevent.
+    $c9 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $otherRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef, $otherRef)
+    Assert-True ($null -ne $c9 -and -not [bool]$c9.valid) 'two ACTIVE candidates with an ACTIVE context are ambiguous, not silently resolved'
+    Assert-True ($null -ne $c9 -and [string]$c9.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names ambiguity rather than looking like an ordinary miss'
+
+    Write-Host '  --- CASE 10: two ACTIVE candidates with an INACTIVE context must still refuse ---'
+    # Added because the mutation proof for CASE 9 SURVIVED: once every candidate is validated, case 9 is
+    # already caught by the candidate-vs-context guard, so it did not discriminate the multi-candidate
+    # refusal at all. This is the case that does. With an inactive start context, candidateActive is true and
+    # contextActive is false, so without the count refusal the resolve takes the FIRST active candidate and
+    # silently picks between two open workshops - the same wrong-question binding, arrived at by the other
+    # branch. A guard with no case that fails when it is removed is a guard nobody is testing.
+    $c10 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef, $otherRef)
+    Assert-True ($null -ne $c10 -and -not [bool]$c10.valid) 'two active candidates are not silently reduced to the first one'
+    Assert-True ($null -ne $c10 -and [string]$c10.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names ambiguity'
+
+    Write-Host '  --- CASE 11: ANCHORLESS MULTI-FEATURE - no start-context feature, one open intake among two specs ---'
+    # Second-pass finding 2 (B4F-051). The resolve returned `workshop-state-unproven` on an EMPTY anchor
+    # before its own candidate loop ever ran, so a project with no start-context feature and two specs -
+    # one completed, one open - could not register a question at all. Beta4's release note says the resolve
+    # selects the feature whose intake controller is open; this fixture falsified that as written. An
+    # anchorless project is the FIRST thing a new consumer is, so this is the registration defect met one
+    # step earlier than fix 1 looked.
+    $c11 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef '' -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($doneRef, $openRef)
+    Assert-True ($null -ne $c11 -and [bool]$c11.valid) 'with NO anchor and two specs, the sole open intake resolves valid'
+    Assert-True ($null -ne $c11 -and [string]$c11.feature_ref -eq $openRef) 'and it resolves to the OPEN feature, not the completed one'
+    # THE CONTROL NAMES ITS PATH. With no anchor the start-context path has nothing to say, so the ONLY way
+    # this can resolve is through the candidate loop - and the result says so itself, rather than the test
+    # inferring it from what was passed in.
+    Assert-True ($null -ne $c11 -and [string]$c11.resolved_via -eq 'candidate') 'CONTROL NAMES ITS PATH: resolved_via is CANDIDATE - the start-context path could not have supplied this'
+
+    # Its negative: no anchor AND no candidates is still unproven - the early return is narrowed, not removed.
+    $c11n = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef '' -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @()
+    Assert-True ($null -ne $c11n -and -not [bool]$c11n.valid) 'no anchor and no candidates is still unproven'
+    Assert-True ($null -ne $c11n -and [string]$c11n.reason -eq 'workshop-state-unproven') 'with the original reason - nothing to resolve from'
+
+    # And the anchored control now names ITS path too, closing the loop Case 1 opened.
+    Assert-True ($null -ne $c1path -and [string]$c1path.resolved_via -eq 'start-context') 'Case 1 with no candidates resolved via START-CONTEXT, which the result now states rather than the test inferring'
+
+    Write-Host '  --- CASE 6: the call site actually supplies candidates (both call sites) ---'
+    # The parameter is useless if nothing passes it, and the provider calls the resolve TWICE. A fix
+    # applied to the first call site only would be silently half-applied - the two-writers family.
+    $callLines = @([IO.File]::ReadAllLines($providerPath) |
+            Where-Object { $_ -like '*Resolve-SpecrewWorkshopQuestionPause -ProjectRoot*' })
+    $withParam = @($callLines | Where-Object { $_ -like '*-WorkshopFeatureCandidates*' })
+    Assert-True ($callLines.Count -ge 1) 'the provider calls the resolve at least once'
+    Assert-True ($callLines.Count -eq $withParam.Count) 'EVERY call site passes -WorkshopFeatureCandidates'
+}
+finally {
+    if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Write-Host ''
+if ($script:Failures -gt 0) {
+    Write-Host ("FAILED: {0} assertion(s)" -f $script:Failures)
+    exit 1
+}
+Write-Host 'OK: workshop-resolve-prefers-open-feature'
+exit 0

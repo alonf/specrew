@@ -86,10 +86,17 @@ Describe 'T091 inline reviewer spawn - OS-native containment (one process manage
 
     It 'the divergent inline $proc.Kill fallback is DELETED (one kill mechanism)' {
         # N1 acceptance is a DELETION - assert it stays deleted. The only sanctioned kill surfaces in
-        # the reviewer engine are the shared containment helpers (process-tree.ps1).
-        $src = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
-        $src | Should -Not -Match '\.Kill\(' -Because 'N1 deleted the divergent inline kill; the containment helper is the ONE kill'
-        $src | Should -Match 'Stop-SpecrewProcessContainment' -Because 'the shared OS-native containment is the kill mechanism'
+        # the reviewer-spawn function are the shared containment helpers (process-tree.ps1). Other functions
+        # in this file supervise bounded verification commands and legitimately own their own child process.
+        $path = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1'
+        $tokens = $null; $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors)
+        @($errors).Count | Should -Be 0
+        $fn = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-ContinuousCoReviewAgentInWorktree' }, $true))
+        $fn.Count | Should -Be 1
+        $src = $fn[0].Extent.Text
+        $src | Should -Not -Match '\.Kill\(' -Because 'N1 deleted the divergent reviewer-spawn kill; shared containment is the ONE kill in this function'
+        $src | Should -Match 'Stop-SpecrewProcessContainment' -Because 'the shared OS-native containment is the reviewer-spawn kill mechanism'
     }
 
     It 'the reaper kills a dead detached-entry''s reviewer tree via status.json telemetry' {

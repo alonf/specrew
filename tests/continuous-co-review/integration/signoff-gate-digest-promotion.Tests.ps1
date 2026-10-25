@@ -10,6 +10,12 @@ BeforeAll {
     . (Join-Path $script:ccr 'continuous-co-review-navigator.ps1')
     . (Join-Path $script:ccr 'co-review-service.ps1')
 
+    # This is a legacy promotion compatibility test. Production now defaults to campaign authority;
+    # select legacy authority explicitly so the test reaches the producer/gate seam it names.
+    Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+        [pscustomobject]@{ mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true; campaign_authority_enabled = $false; reason = 'authority-mode-legacy' }
+    }
+
     function New-GateFx {
         # A feature branch off main with one commit. -Divergent ALSO tracks a .specrew file (the self-host case),
         # which the digest STRIPS but the HEAD-tree keeps -> the two identities diverge.

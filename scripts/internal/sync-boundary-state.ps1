@@ -7,6 +7,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$gatePreflightHelperPath = Join-Path $PSScriptRoot 'gate-preflight.ps1'
+if (-not (Test-Path -LiteralPath $gatePreflightHelperPath -PathType Leaf)) {
+    throw "Missing gate preflight helper '$gatePreflightHelperPath'."
+}
+. $gatePreflightHelperPath
+
 $sessionManagementHelperPath = Join-Path $PSScriptRoot 'session-management.ps1'
 if (-not (Test-Path -LiteralPath $sessionManagementHelperPath -PathType Leaf)) {
     throw "Missing session-management helper '$sessionManagementHelperPath'."
@@ -238,36 +244,6 @@ function Get-SpecrewCurrentBranchName {
     return $null
 }
 
-function Test-SpecrewFeatureMergedToMain {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [AllowNull()][string]$FeatureRef
-    )
-
-    # Strict merge detection (Feature 141 FR-024) — see the matching helper in
-    # session-recovery.ps1. Match the FULL feature ref slug as an exact substring,
-    # never the bare numeric id, so unrelated merge bodies that merely mention a
-    # proposal number ("Proposal 120 + 141") cannot false-positive a feature.
-    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
-    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
-        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-    }
-
-    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --fixed-strings --grep="$FeatureRef" 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-    }
-
-    if ($logOutput.Count -gt 0) {
-        return [pscustomobject]@{
-            IsMerged = $true
-            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $FeatureRef, ($logOutput[0].ToString().Trim()))
-        }
-    }
-
-    return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-}
-
 function Sync-SpecrewFeatureClaimForBoundary {
     param(
         [Parameter(Mandatory = $true)]
@@ -298,10 +274,8 @@ function Sync-SpecrewFeatureClaimForBoundary {
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
-        $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
-        if ($mergeCheck.IsMerged) {
-            Remove-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef
-        }
+        # 202 T032 (B4F-146's class): the claim is removed when the human APPROVES the feature closeout
+        # (Invoke-SpecrewFeatureCloseoutRelease, from Add-SpecrewBoundaryAuthorization), never when it is asked for.
         return
     }
 
@@ -371,16 +345,58 @@ function New-SpecrewSessionState {
     $resolvedFeatureRef = Resolve-SpecrewFeatureRef -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
     $featurePath = Resolve-SpecrewFeatureDirectory -ProjectRoot $ProjectRoot -FeatureRef $resolvedFeatureRef
     $recordedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+
+    # AN EMPTY ITERATION NUMBER MUST NEVER PERSIST AS IF IT WERE A VALUE (maintainer ruling 2026-08-12).
+    #
+    # This recorded whatever the agent typed, INCLUDING NOTHING - no derivation, no check against disk -
+    # and two boundaries then advanced against state that could not support the third. The plan gate
+    # fails closed correctly, two stages too late. Measured across three dogfood runs from the SAME
+    # machinery:
+    #
+    #   Claude   ran sync WITH -IterationNumber 001        -> registered, plan authorized
+    #   Codex    scaffolded iterations/001, synced WITHOUT -> directory on disk, controller blank
+    #   Copilot  never reached the sanctioned sync         -> neither
+    #
+    # Three harnesses, three outcomes, one contract: the differing results are evidence that the CONTRACT
+    # is underspecified, not that the agents differ. So the controller derives it rather than trusting
+    # what it was handed, and REFUSES when it cannot - fail closed HERE, not two gates later.
+    #
+    # "sync needs -IterationNumber" was already a known trap in the maintainer's own records. It has now
+    # cost a dogfood run, which is the argument for fixing it in the controller rather than documenting
+    # it a second time: a trap that must be remembered is not a contract.
+    $effectiveIteration = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+    if ([string]::IsNullOrWhiteSpace($effectiveIteration)) {
+        $derived = Resolve-SpecrewIterationStateTruthDirectory -FeaturePath $featurePath -IterationNumber $null
+        if ($null -ne $derived) { $effectiveIteration = Normalize-SpecrewIterationNumber -IterationNumber $derived.Name }
+    }
+    # CLARIFY IS EXEMPT, because it runs BEFORE the plan boundary creates iterations/001/ - the same reason
+    # specify is. Measured on a consumer project (B4F-039): a brand-new feature's clarify sync refused with a
+    # message telling the crew to create the iteration first, which only a LATER boundary does. The refusal's
+    # own remedy could not clear its own condition: remedy-wrong-for-state, the B4F-030 family. It shipped
+    # since aa25909b because the suite covering this script both passes -IterationNumber and seeds
+    # iterations/001, so the pre-plan state was never exercised here until the fixture below was added.
+    if ([string]::IsNullOrWhiteSpace($effectiveIteration) -and $BoundaryType -notin @('before-specify', 'specify', 'clarify', 'feature-closeout')) {
+        # The -f is bound to the WHOLE message. It used to bind to the last string of the `+` chain only, so
+        # `{0}` rendered verbatim and the one concrete thing the message had to offer - where it looked - was
+        # the one thing it did not say.
+        $iterationsRoot = Join-Path $featurePath 'iterations'
+        throw (("Specrew cannot record this boundary because it does not know which iteration it belongs to. " +
+            "No iteration was given and none was found under {0}. " +
+            "Create the iteration first (the plan boundary scaffolds `iterations/001/`), or pass -IterationNumber with the one you mean.") -f $iterationsRoot)
+    }
+
     return [pscustomobject]@{
         boundary_type    = $BoundaryType
         feature_ref      = $resolvedFeatureRef
         feature_number   = Get-SpecrewFeatureNumber -FeatureRef $resolvedFeatureRef
         feature_path     = $featurePath
-        iteration_number = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+        iteration_number = $effectiveIteration
         task_id          = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId.Trim() }
         auth_commit_hash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) { $null } else { $AuthCommitHash.Trim() }
         recorded_at      = $recordedAt
-        active           = if ($BoundaryType -eq 'feature-closeout') { 'false' } else { 'true' }
+        # 202 T032: active at every arrival, feature-closeout included. The feature stops being active when the
+        # human approves its closeout; the approval's capture writes `false`.
+        active           = 'true'
     }
 }
 
@@ -388,15 +404,8 @@ function Get-SpecrewPromptBody {
     param([pscustomobject]$SessionState)
 
     if ($SessionState.active -eq 'false') {
-        return @"
-# Specrew Session State
-
-- No active feature.
-- Last feature: $(if ($SessionState.feature_ref) { $SessionState.feature_ref } else { '(none)' })
-- Last boundary: $($SessionState.boundary_type)
-- Recorded at: $($SessionState.recorded_at)
-- Authorization commit: $(if ($SessionState.auth_commit_hash) { $SessionState.auth_commit_hash } else { '(none)' })
-"@
+        # The same text the feature-closeout approval's capture writes (202 T032).
+        return (Get-SpecrewInactivePromptBody -FeatureRef $SessionState.feature_ref -Boundary $SessionState.boundary_type -RecordedAt $SessionState.recorded_at -AuthCommitHash $SessionState.auth_commit_hash)
     }
 
     return @"
@@ -619,7 +628,8 @@ function Sync-SpecrewPendingVerdictStopArtifact {
 
     $boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)
     $approvalPhrase = ('approved for {0}' -f $toMarkerBoundary)
-    $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+    # FR-024 (T014): the marker carries the crossing identity when the pending state has one.
+    $marker = if ([string]::IsNullOrWhiteSpace([string]$pendingState.CrossingId)) { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary) } else { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} @ {1} -->' -f $boundary, [string]$pendingState.CrossingId) }
     $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pendingState.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pendingState.LastAuthorizedBoundary }
     $featureRef = if ([string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) { '(none)' } else { [string]$SessionState.feature_ref }
     $boundaryCommit = if ([string]::IsNullOrWhiteSpace([string]$pendingState.BoundaryCommitHash)) { '(none)' } else { [string]$pendingState.BoundaryCommitHash }
@@ -657,6 +667,25 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
     $lines.Add('') | Out-Null
     $lines.Add('After rendering the packet, stop. Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture writes authorization only after the human replies.') | Out-Null
+    $lines.Add('') | Out-Null
+    # W45 (2026-08-22): the spurious re-ask. On a host whose capture lands only at Stop, the controller
+    # cannot show the verdict DURING the turn that is processing it. A session that verified mid-turn
+    # saw "unauthorized", asked again, and the capture landed at that very turn's Stop - one wasted
+    # approval cycle and a confused human, at every boundary. The artifact the session reads mid-turn
+    # is the right place to say what an in-flight verdict looks like and what to do with it.
+    # W52 part 2: the standing coverage line - the human sees coverage drift at every stop they
+    # already read, and the number climbing is its own alarm. Rendered into the packet verbatim.
+    if (Get-Command -Name 'Get-SpecrewReviewCoverageLine' -ErrorAction SilentlyContinue) {
+        try {
+            $coverageLine = [string](Get-SpecrewReviewCoverageLine -ProjectRoot $paths.ProjectRoot)
+            if (-not [string]::IsNullOrWhiteSpace($coverageLine)) {
+                $lines.Add(('Coverage line (include it verbatim in the packet''s Why I Stopped): {0}' -f $coverageLine)) | Out-Null
+                $lines.Add('') | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
+    $lines.Add('AUTHORITY IN FLIGHT: if the human''s immediately-preceding turn is the bare approval phrase above, that verdict IS given - the hooks may not have recorded it yet, because on some hosts capture lands only at end-of-turn. Do not ask again. Proceed on it, and verify the recorded authorization at the START of your next turn rather than blocking mid-turn. If it is still unrecorded THEN, ask once - and only then.') | Out-Null
 
     Write-FileAtomically -Path $artifactPath -Content (($lines -join [Environment]::NewLine) + [Environment]::NewLine)
 
@@ -846,11 +875,51 @@ function Invoke-SpecrewIterationStateTruthGate {
         [string]$IterationNumber
     )
 
-    if ($BoundaryType -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
+    # FR-030 (T021): the truth gate runs at EVERY iteration-scoped boundary, not only the last four - a copy
+    # that drifted at plan is a copy the human reads at plan. First the copies are brought FORWARD from the
+    # store (never backward, never past a lead of exactly the pending crossing), then every enumerated
+    # mirror is compared.
+    if ($BoundaryType -notin @('plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
         return
+    }
+    if ($BoundaryType -ne 'feature-closeout' -and (Get-Command -Name 'Sync-SpecrewCrossingMirrors' -ErrorAction SilentlyContinue)) {
+        try {
+            $mirrorState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+            $mirrorLast = if ($null -ne $mirrorState -and $null -ne $mirrorState.EffectiveState) { [string]$mirrorState.EffectiveState['last_authorized_boundary'] } else { $null }
+            # NEVER REPLAY A BOUNDARY LATER THAN THE ONE BEING SYNCED. (Round-3 blocking finding
+            # `cycle-reset-mirror-wedge`, DRIFT-199-I002-030.)
+            #
+            # `last_authorized_boundary` is GLOBAL - the store keeps no iteration alongside it, and
+            # verdict_history entries carry none either. So on the first `plan` sync of a NEW iteration the
+            # last authorization is the PREVIOUS iteration's `iteration-closeout`, and replaying it wrote the
+            # new plan scaffold forward from `planning` to `complete`. Measured:
+            #     BEFORE planning -> first plan sync -> complete -> later plan authorization -> STILL complete
+            # The mirrors are forward-only by design, so nothing moves it back, and the next `tasks` sync
+            # rejects a plan mirror reading `complete` where `planning` is required. Every next-iteration
+            # cycle wedged, deterministically - against an acceptance bar that names a wedged gate.
+            #
+            # The cap is the fix, and the DIRECTION of the error is why it is safe. Under-mirroring is
+            # recoverable: the mirror simply has not advanced yet, and the next sync at that boundary
+            # advances it. Over-mirroring is NOT, because forward-only means the copy can never come back.
+            # Where the two risks are asymmetric, the guard belongs on the irreversible side.
+            $mirrorOrder = @(Get-SpecrewCanonicalBoundaryTypes)
+            $mirrorLastIndex = [Array]::IndexOf($mirrorOrder, $mirrorLast)
+            $mirrorHereIndex = [Array]::IndexOf($mirrorOrder, [string]$BoundaryType)
+            if ($mirrorLastIndex -ge 0 -and $mirrorHereIndex -ge 0 -and $mirrorLastIndex -gt $mirrorHereIndex) {
+                Write-Verbose ("[crossing-mirrors] the store's last authorization ({0}) is later than the boundary being synced ({1}); capping the replay at '{1}' rather than writing this iteration's copies forward past their own state." -f $mirrorLast, $BoundaryType)
+                $mirrorLast = [string]$BoundaryType
+            }
+            if (-not [string]::IsNullOrWhiteSpace($mirrorLast)) {
+                $null = Sync-SpecrewCrossingMirrors -ProjectRoot $ProjectRoot -AuthorizedBoundary $mirrorLast -FeatureRef $FeatureRef -IterationNumber $IterationNumber -Reason ('sync:' + $BoundaryType)
+            }
+        }
+        catch { Write-Warning ('[crossing-mirrors] the copies could not be re-mirrored from the store before the truth gate: {0}' -f $_.Exception.Message) }
     }
 
     $issues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -RequireStateFile:($BoundaryType -eq 'review-signoff'))
+    if ($BoundaryType -ne 'feature-closeout' -and (Get-Command -Name 'Get-SpecrewCrossingMirrorIssues' -ErrorAction SilentlyContinue)) {
+        $issues = @($issues) + @(Get-SpecrewCrossingMirrorIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -BoundaryCeiling $BoundaryType)
+    }
     if ($issues.Count -eq 0) {
         return
     }
@@ -976,6 +1045,9 @@ function Update-SpecrewStartContext {
         task_id          = $SessionState.task_id
         auth_commit_hash = $SessionState.auth_commit_hash
         recorded_at      = $SessionState.recorded_at
+        # Feature 202 T010 (DA-5): the branch this session state was written on. "The branch is not the feature" -
+        # 199 ran on branch 201 - so it is recorded beside the feature, never used in place of it.
+        branch           = $(try { Get-SpecrewCurrentBranch -ProjectRoot (Split-Path -Parent (Split-Path -Parent $Path)) } catch { '' })
     }
 
     Write-FileAtomically -Path $Path -Content (([pscustomobject]$context | ConvertTo-Json -Depth 12) + [Environment]::NewLine)
@@ -1060,6 +1132,164 @@ function Add-SpecrewBoundarySyncWarningLedgerEntry {
     Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Boundary sync warning: {0}' -f $BoundaryType) -Lines $lines | Out-Null
 }
 
+function Get-SpecrewGitFileTextAtCommit {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$CommitHash,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $gitObject = '{0}:{1}' -f $CommitHash.Trim(), $RelativePath.Replace([char]92, [char]47)
+    $output = @(& git -C $ProjectRoot show --no-textconv $gitObject 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    return ($output -join "`n")
+}
+
+function Get-SpecrewConstraintValue {
+    param(
+        [AllowNull()][string]$Content,
+        [Parameter(Mandatory = $true)][ValidateSet('capacity_per_iteration', 'review_baseline_ref')][string]$Field
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Content)) {
+        return $null
+    }
+
+    $pattern = if ($Field -eq 'capacity_per_iteration') {
+        '(?m)^\s*capacity_per_iteration\s*:\s*(?<value>[^#\r\n]+?)\s*(?:#.*)?$'
+    }
+    else {
+        '(?m)^\s*\*\*Baseline Ref\*\*\s*:\s*(?<value>[^\r\n]+?)\s*$'
+    }
+    $match = [regex]::Match($Content, $pattern)
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return $match.Groups['value'].Value.Trim().Trim('"', "'")
+}
+
+function Get-SpecrewConstraintChanges {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$PreviousCommitHash,
+        [Parameter(Mandatory = $true)][string]$CurrentCommitHash
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PreviousCommitHash) -or
+        [string]::IsNullOrWhiteSpace($CurrentCommitHash) -or
+        $PreviousCommitHash.Trim() -eq $CurrentCommitHash.Trim()) {
+        return @()
+    }
+
+    $descriptors = New-Object System.Collections.Generic.List[object]
+    $descriptors.Add([pscustomobject]@{
+        Field = 'capacity_per_iteration'
+        ArtifactPath = '.specrew/iteration-config.yml'
+    }) | Out-Null
+    if (-not [string]::IsNullOrWhiteSpace($FeatureRef) -and -not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+        $descriptors.Add([pscustomobject]@{
+            Field = 'review_baseline_ref'
+            ArtifactPath = ('specs/{0}/iterations/{1}/state.md' -f $FeatureRef.Trim(), $IterationNumber.Trim())
+        }) | Out-Null
+    }
+
+    $changes = New-Object System.Collections.Generic.List[object]
+    foreach ($descriptor in $descriptors) {
+        $previousContent = Get-SpecrewGitFileTextAtCommit -ProjectRoot $ProjectRoot -CommitHash $PreviousCommitHash -RelativePath $descriptor.ArtifactPath
+        $currentContent = Get-SpecrewGitFileTextAtCommit -ProjectRoot $ProjectRoot -CommitHash $CurrentCommitHash -RelativePath $descriptor.ArtifactPath
+        $previousValue = Get-SpecrewConstraintValue -Content $previousContent -Field $descriptor.Field
+        $currentValue = Get-SpecrewConstraintValue -Content $currentContent -Field $descriptor.Field
+
+        # Creation is scaffold setup, not an edit. Only a value that existed at both governed
+        # snapshots can represent the silent constraint mutation this record is intended to expose.
+        if ([string]::IsNullOrWhiteSpace($previousValue) -or
+            [string]::IsNullOrWhiteSpace($currentValue) -or
+            $previousValue -eq $currentValue) {
+            continue
+        }
+
+        $keyMaterial = '{0}|{1}|{2}|{3}|{4}' -f $descriptor.Field, $PreviousCommitHash.Trim().ToLowerInvariant(), $CurrentCommitHash.Trim().ToLowerInvariant(), $previousValue, $currentValue
+        $changes.Add([pscustomobject]@{
+            ChangeKey = 'constraint-' + (Get-SpecrewBoundarySha256 -Text $keyMaterial).Substring(0, 20)
+            Field = $descriptor.Field
+            ArtifactPath = $descriptor.ArtifactPath
+            PreviousValue = $previousValue
+            CurrentValue = $currentValue
+            PreviousCommitHash = $PreviousCommitHash.Trim().ToLowerInvariant()
+            CurrentCommitHash = $CurrentCommitHash.Trim().ToLowerInvariant()
+        }) | Out-Null
+    }
+
+    return $changes.ToArray()
+}
+
+function Publish-SpecrewConstraintChangeRecords {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$BoundaryType,
+        [AllowEmptyCollection()][Parameter(Mandatory = $true)][object[]]$Changes,
+        [AllowNull()][string]$NowUtc
+    )
+
+    if ($Changes.Count -eq 0) {
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($NowUtc)) {
+        $NowUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+
+    $decisionsPath = Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot
+    $ledgerContent = if (Test-Path -LiteralPath $decisionsPath -PathType Leaf) {
+        Get-Content -LiteralPath $decisionsPath -Raw -Encoding UTF8
+    }
+    else { '' }
+    $eventsPath = Get-SpecrewLifecycleEventsPath -ProjectRoot $ProjectRoot
+    $eventContent = if (Test-Path -LiteralPath $eventsPath -PathType Leaf) {
+        Get-Content -LiteralPath $eventsPath -Raw -Encoding UTF8
+    }
+    else { '' }
+
+    foreach ($change in $Changes) {
+        $ledgerMarker = '**Change Key**: {0}' -f $change.ChangeKey
+        if (-not $ledgerContent.Contains($ledgerMarker)) {
+            $lines = @(
+                ('- **Change Key**: {0}' -f $change.ChangeKey)
+                ('- **Boundary Attempt**: {0}' -f $BoundaryType)
+                ('- **Artifact**: {0}' -f $change.ArtifactPath)
+                ('- **Previous Value**: {0}' -f $change.PreviousValue)
+                ('- **Current Value**: {0}' -f $change.CurrentValue)
+                ('- **Previous Auth Commit**: {0}' -f $change.PreviousCommitHash)
+                ('- **Current Auth Commit**: {0}' -f $change.CurrentCommitHash)
+                '- **Authority**: This record makes the edit visible; it does not authorize the change.'
+            )
+            Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Constraint change detected: {0}' -f $change.Field) -Lines $lines | Out-Null
+            $ledgerContent += "`n$ledgerMarker"
+            Write-Host ("Specrew constraint change detected: {0} changed from '{1}' to '{2}'. The edit is recorded but not authorized by this record." -f $change.Field, $change.PreviousValue, $change.CurrentValue) -ForegroundColor Yellow
+        }
+
+        if (-not $eventContent.Contains([string]$change.ChangeKey)) {
+            Add-SpecrewLifecycleEvent -ProjectRoot $ProjectRoot -EventType 'constraint-change' -NowUtc $NowUtc -Payload @{
+                change_key = $change.ChangeKey
+                boundary_type = $BoundaryType
+                field = $change.Field
+                artifact_path = $change.ArtifactPath
+                previous_value = $change.PreviousValue
+                current_value = $change.CurrentValue
+                previous_auth_commit = $change.PreviousCommitHash
+                current_auth_commit = $change.CurrentCommitHash
+                authority = 'visibility-only-not-authorization'
+            }
+            $eventContent += [string]$change.ChangeKey
+        }
+    }
+}
+
 function Get-LatestSpecrewBoundarySyncState {
     param(
         [Parameter(Mandatory = $true)]
@@ -1117,10 +1347,16 @@ function Get-LatestSpecrewBoundarySyncState {
 
 function Invoke-PreBoundaryMarkdownLintGate {
     # Proposal 088: runs `markdownlint-cli --fix` on changed .md files BEFORE
-    # boundary-sync writes any state. If auto-fixes were applied, throws with a
-    # directive to commit the fixes and re-run sync. If unfixable violations
-    # remain, throws with file:line messages. If markdownlint-cli is unavailable,
-    # emits a warning and proceeds.
+    # boundary-sync writes any state. If unfixable violations remain, throws with
+    # file:line messages. If markdownlint-cli is unavailable, emits a warning and
+    # proceeds.
+    #
+    # B4F-083 / PRED-BETA4-043: a SUCCESSFUL auto-fix no longer halts. It used to throw with a four-step
+    # manual git sequence ("git push" included) and refuse the sync until the human committed the product's
+    # own repair - measured on the 9154f72b walk as the one unexpected repair prompt, a commit picker at the
+    # specify preflight over MD022/MD032 blank lines in three agent-written lens records. The files are
+    # already repaired on disk when the gate runs; the boundary commit that follows the sync carries them.
+    # The gate now says what it fixed and proceeds.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectPath
@@ -1144,37 +1380,24 @@ function Invoke-PreBoundaryMarkdownLintGate {
         return
     }
 
-    # Surface both auto-fix and unfixable findings in a single halt message
-    # (per Copilot review feedback) so the Crew sees the full picture and can
-    # address both classes of issue before re-running, rather than discovering
-    # the unfixable ones in a second pass after committing the auto-fixes.
-    if ($result.AutoFixedFiles.Count -gt 0 -or $result.UnfixableViolations.Count -gt 0) {
+    # Auto-fixed files: said, on stderr (where the sync's other gate notices go), and the sync proceeds; the
+    # boundary commit that follows carries the repaired files (B4F-083).
+    if ($result.AutoFixedFiles.Count -gt 0) {
+        $fixedList = ($result.AutoFixedFiles | ForEach-Object { "  - $_" }) -join "`n"
+        [Console]::Error.WriteLine(("[markdownlint-gate] auto-fixed markdownlint violations in {0} file(s); the boundary commit carries the repaired files:`n{1}" -f $result.AutoFixedFiles.Count, $fixedList))
+    }
+
+    # Unfixable violations are semantic and still halt: the human, or the agent, edits the named lines.
+    if ($result.UnfixableViolations.Count -gt 0) {
         $messageLines = New-Object System.Collections.Generic.List[string]
-        if ($result.AutoFixedFiles.Count -gt 0) {
-            $fileList = ($result.AutoFixedFiles | ForEach-Object { "  - $_" }) -join "`n"
-            $null = $messageLines.Add(("[markdownlint-gate] Auto-fixed markdownlint violations in {0} file(s):" -f $result.AutoFixedFiles.Count))
-            $null = $messageLines.Add($fileList)
-            $null = $messageLines.Add('')
-            $null = $messageLines.Add('Please:')
-            $null = $messageLines.Add('  1. Review the diff: git diff')
-            $null = $messageLines.Add('  2. Stage the fixes: git add <files>')
-            $null = $messageLines.Add("  3. Commit: git commit -m 'chore(lint): auto-fix markdownlint violations'")
-            $null = $messageLines.Add('  4. Push: git push')
-            $null = $messageLines.Add('')
-        }
-
-        if ($result.UnfixableViolations.Count -gt 0) {
-            $violationList = ($result.UnfixableViolations | ForEach-Object { "  - $_" }) -join "`n"
-            $null = $messageLines.Add(("[markdownlint-gate] Unfixable markdownlint violations remain in {0} location(s):" -f $result.UnfixableViolations.Count))
-            $null = $messageLines.Add($violationList)
-            $null = $messageLines.Add('')
-            $null = $messageLines.Add('These violations are semantic (e.g., MD013 line-length, MD024 duplicate-heading)')
-            $null = $messageLines.Add('and require manual editing. Edit those file:line locations.')
-            $null = $messageLines.Add('')
-        }
-
-        $null = $messageLines.Add('Boundary-sync HALTED until the lint findings are resolved and committed. Re-run boundary-sync after committing the fixes.')
-
+        $violationList = ($result.UnfixableViolations | ForEach-Object { "  - $_" }) -join "`n"
+        $null = $messageLines.Add(("[markdownlint-gate] Unfixable markdownlint violations remain in {0} location(s):" -f $result.UnfixableViolations.Count))
+        $null = $messageLines.Add($violationList)
+        $null = $messageLines.Add('')
+        $null = $messageLines.Add('These violations are semantic (e.g., MD013 line-length, MD024 duplicate-heading)')
+        $null = $messageLines.Add('and require manual editing. Edit those file:line locations, then re-run boundary-sync.')
+        $null = $messageLines.Add('')
+        $null = $messageLines.Add('Boundary-sync HALTED until the unfixable lint findings are resolved.')
         throw ($messageLines -join "`n")
     }
 }
@@ -1266,7 +1489,13 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
     )
 
     $relevantUncommitted = New-Object System.Collections.Generic.List[string]
-    foreach ($line in $statusOutput) {
+    foreach ($rawLine in $statusOutput) {
+        # `2>&1` puts git's STDERR into this array as ErrorRecords - "warning: could not open directory ...",
+        # "warning: in the working copy of ... LF will be replaced by CRLF". Under StrictMode `.Length` on
+        # one of those threw and the feature-closeout sync died (found running the nine-boundary harness
+        # against a package from a deep path). A warning is not a status line: skipped, never parsed.
+        if ($rawLine -is [System.Management.Automation.ErrorRecord]) { continue }
+        $line = [string]$rawLine
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         # Status line format: 'XY path' where XY is the 2-char status code.
         # Strip the leading 3 chars (status + space) to get the path.
@@ -1449,7 +1678,9 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$IdentityBody,
 
         [AllowNull()]
-        [string]$HandoffText
+        [string]$HandoffText,
+
+        [switch]$PreflightOnly
     )
 
     $aliasMap = @{
@@ -1549,6 +1780,34 @@ function Invoke-SpecrewBoundaryStateSync {
             -IterationNumber $effectiveIterationNumber | Out-Null
     }
 
+    # Beta3 class closure for the "reviewer cannot catch the packet's own structural defect" class:
+    # the zero-spend checks run before the ratchet, provider work, or any state write. PreflightOnly is
+    # the workshop's pre-writer probe and intentionally does not demand a clean/committed artifact tree.
+    $repositoryGovernancePath = Join-Path $paths.ProjectRoot '.specrew/repository-governance.yml'
+    if (-not $PreflightOnly.IsPresent -and (Test-Path -LiteralPath $repositoryGovernancePath -PathType Leaf)) {
+        Invoke-SpecrewGatePreflight `
+            -ProjectRoot $paths.ProjectRoot `
+            -BoundaryType $BoundaryType `
+            -FeatureRef $effectiveFeatureRef `
+            -IterationNumber $effectiveIterationNumber `
+            -FailOnError | Out-Null
+    }
+
+    # Beta3 stabilization: let the workshop run the exact boundary validation BEFORE it invokes
+    # the spec writer or creates a boundary commit. This deliberately returns before the ratchet,
+    # lifecycle truth gates, constraint ledger, and every state-file write. A successful preflight
+    # proves only that the current artifacts are structurally ready to enter the boundary command;
+    # it never records or authorizes a crossing.
+    if ($PreflightOnly) {
+        return [pscustomobject]@{
+            success          = $true
+            preflight_only   = $true
+            boundary_type    = $BoundaryType
+            feature_ref      = $effectiveFeatureRef
+            iteration_number = $effectiveIterationNumber
+        }
+    }
+
     # F-198 FR-002: the boundary ratchet. The first unapproved crossing still records (F-174 -
     # no human was present to ask on a non-stopping host), but a SECOND advance while an earlier
     # human-judgment crossing is unapproved refuses loudly here - deterministic, host-neutral,
@@ -1563,6 +1822,27 @@ function Invoke-SpecrewBoundaryStateSync {
         -FeatureRef $effectiveFeatureRef `
         -IterationNumber $effectiveIterationNumber
 
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
+    $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
+    try {
+        if ($null -ne $latestBoundary -and -not [string]::IsNullOrWhiteSpace([string]$latestBoundary.auth_commit_hash)) {
+            $constraintChanges = @(Get-SpecrewConstraintChanges `
+                -ProjectRoot $paths.ProjectRoot `
+                -FeatureRef $effectiveFeatureRef `
+                -IterationNumber $effectiveIterationNumber `
+                -PreviousCommitHash ([string]$latestBoundary.auth_commit_hash) `
+                -CurrentCommitHash $effectiveAuthCommitHash)
+            Publish-SpecrewConstraintChangeRecords `
+                -ProjectRoot $paths.ProjectRoot `
+                -BoundaryType $BoundaryType `
+                -Changes $constraintChanges `
+                -NowUtc ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
+        }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not record constraint edits: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
     # T073 / FR-025 / SC-019 / SC-020: opt-in continuous-co-review signoff gate. A no-op for
     # every boundary except review-signoff and a no-op unless co_review_gate_enforcement is
     # enabled; when ON it refuses signoff (throws) on un-reviewed/stale/uncovered state. $BoundaryType
@@ -1572,7 +1852,6 @@ function Invoke-SpecrewBoundaryStateSync {
         -ProjectRoot $paths.ProjectRoot `
         -BoundaryType $BoundaryType | Out-Null
 
-    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $expectedBoundaryType = if ($null -eq $latestBoundary) {
         $boundaryOrder[0]
@@ -1590,8 +1869,6 @@ function Invoke-SpecrewBoundaryStateSync {
     if (-not [string]::IsNullOrWhiteSpace($expectedBoundaryType) -and $expectedBoundaryType -ne $BoundaryType) {
         Add-SpecrewBoundarySyncWarningLedgerEntry -ProjectRoot $paths.ProjectRoot -BoundaryType $BoundaryType -LatestBoundary $latestBoundary -Message ("Expected next boundary '{0}' but received '{1}'." -f $expectedBoundaryType, $BoundaryType)
     }
-
-    $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
 
     $sessionState = New-SpecrewSessionState `
         -BoundaryType $BoundaryType `
@@ -1670,6 +1947,11 @@ function Invoke-SpecrewBoundaryStateSync {
     # (the human re-confirms once) over inventing, inferring, or carrying forward an unproven one.
 
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
+    # Feature 202 T010 (FR-017): a sync is a feature writer, so it stamps the pointer with this feature and branch.
+    # feature-closeout clears it further down, so a closed feature never stays the pointer's answer.
+    if ($BoundaryType -ne 'feature-closeout' -and -not [string]::IsNullOrWhiteSpace([string]$sessionState.feature_ref) -and [string]$sessionState.feature_ref -ne '(none)') {
+        $null = Set-SpecrewActiveFeaturePointer -ProjectRoot $paths.ProjectRoot -FeatureRef ([string]$sessionState.feature_ref)
+    }
     $pendingVerdictStop = $null
     try {
         Set-SpecrewPendingBoundaryCrossingScope `
@@ -1770,16 +2052,11 @@ function Invoke-SpecrewBoundaryStateSync {
         Write-Warning ("Boundary sync '{0}' could not record handoff evidence: {1}" -f $BoundaryType, $_.Exception.Message)
     }
 
-    # Proposal 085: append to the closed-iteration index at iteration-closeout
-    # boundary (idempotent on re-sync). Validator full-repo path uses this to
-    # skip closed iterations unless -IncludeClosed is set.
+    # THE CLOSED-ITERATION INDEX ENTRY IS NOT WRITTEN HERE ANY MORE (202 T031, B4F-146). This sync runs when the
+    # crew ASKS for the closeout; an entry written now listed the iteration as closed while the human's decision
+    # was pending, and kept it closed had the answer been no. Like the seal (B4F-063, below), the entry is written
+    # by the approval's capture, in Add-SpecrewBoundaryAuthorization.
     if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($effectiveIterationNumber)) {
-        try {
-            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $effectiveIterationNumber
-        }
-        catch {
-            Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
-        }
 
         # Proposal 046 (inline-ship per F-040 dogfooding 2026-05-23): auto-render the iteration
         # dashboard snapshot to specs/<feature>/iterations/<NNN>/dashboard.md so the historical
@@ -1793,14 +2070,22 @@ function Invoke-SpecrewBoundaryStateSync {
         catch {
             Write-Warning ("Boundary sync 'iteration-closeout' could not auto-render iteration dashboard: {0}" -f $_.Exception.Message)
         }
+
+        # THE SEAL IS NOT WRITTEN HERE ANY MORE (fix 5, B4F-063). This sync runs at the boundary's ARRIVAL - the
+        # crew asking for the closeout verdict - and a seal written now froze `Iteration Status: retro` into
+        # the iteration; the human's verdict then established `complete`, the capture's advance wrote it, and
+        # the arrival-time seal flagged the verdict's own write as tampering, and a later session's resume
+        # tripped it again - both measured on a consumer project. FR-031/T022
+        # had already moved the seal after the dashboard render for the same class of reason - the seal must
+        # be the LAST write - and the last write of closeout is the verdict's advance, which lives in
+        # Add-SpecrewBoundaryAuthorization. The seal is written there, as that capture's last act, and never
+        # at arrival. The dashboard render above stays where it is: it precedes the verdict.
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
-        if (-not [string]::IsNullOrWhiteSpace($effectiveFeatureRef)) {
-            Remove-SessionLock -ProjectRoot $paths.ProjectRoot -FeatureId $effectiveFeatureRef
-        }
-
-        Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
+        # 202 T032 (B4F-146's class): the session lock and the active-feature pointer are NOT released here any more.
+        # This sync asks for the feature closeout; releasing them now told every reader the feature was closed while
+        # the decision was pending. Add-SpecrewBoundaryAuthorization releases them when the approval is recorded.
 
         # Proposal 046 feature-level companion: auto-render specs/<feature>/closeout-dashboard.md
         # so the feature-wide rollup exists at feature-closeout without manual invocation.

@@ -74,4 +74,145 @@ try {
 }
 finally { Remove-Item -LiteralPath $tailFix -Force -ErrorAction SilentlyContinue }
 
+# --- T004 / FR-010: a leading recognized approval phrase WINS over any instruction wording that
+#     follows. Every case below is an iteration-011 reproduction: the classifier scanned the WHOLE
+#     utterance for send-back / discuss words, so ordinary instructions after a clear approval flipped
+#     the verdict to a non-approval and the crossing recorded un-authorized. The human then had to
+#     re-approve using words that avoided a vocabulary they were never told about. ---
+$approveWithInstructions = @(
+    @{ text = 'approved for before-implement — then discuss prompt 2 with me'; why = 'trailing "discuss prompt 2" is an instruction, not a request to deliberate' }
+    @{ text = 'approved for tasks, and send back the draft doc when you are done';  why = 'trailing "send back" refers to a document, not to the verdict' }
+    @{ text = 'approved for plan. changes needed in the README are noted for later'; why = 'an affirmative change clause AFTER the approval is instruction wording' }
+    @{ text = 'approved for review-signoff with instructions: reject any finding without a failure scenario'; why = '"reject" describes what to do with findings, not the boundary' }
+    @{ text = 'approved for implement. should I also update the changelog?';        why = 'a trailing QUESTION is a follow-up, not an interrogative approval' }
+    # Round-13 finding (DRIFT-199-I001-122): the round-12 question test scanned to the first sentence
+    # punctuation, straight PAST the spaced-dash instruction delimiter - so a trailing question after
+    # a dash-delimited approval erased the approval. The question test now stops at the SAME
+    # instruction delimiters the boundary extraction uses: the clause is declarative, the question is
+    # a follow-up.
+    @{ text = 'approved for tasks — can you also update the changelog?';            why = 'the spaced dash already ended the approval clause; the question after it is a follow-up' }
+    @{ text = 'approved, and could you rerun the lanes after?';                     why = 'the comma ended the approval clause; the question after it is an instruction' }
+)
+foreach ($c in $approveWithInstructions) {
+    $v = Test-SpecrewHumanVerdictToken -Text $c.text
+    Assert-True ($v.IsApproval) "FR-010 leading approval wins: $($c.why)"
+    Assert-True ($v.Action -eq 'approve') "FR-010 action is approve: $($c.text)"
+}
+
+# --- T004 / FR-010: boundary-name words used as PLAIN ENGLISH in the instructions must never flip the
+#     classification. NamedBoundaries is a cross-check against the packet marker, so a stray "plan" or
+#     "review" in a sentence of instructions used to contradict the marker and make a clear verdict
+#     ambiguous - which the caller records as un-authorized. Only the boundary named BY the approval
+#     phrase itself counts. ---
+$named = Test-SpecrewHumanVerdictToken -Text 'approved for tasks — the plan looks good and the review list is fine, so implement it'
+Assert-True ($named.IsApproval) 'FR-010 plain-English boundary words: still an approval'
+Assert-True (@($named.NamedBoundaries).Count -eq 1) "FR-010 plain-English boundary words: exactly one boundary named (got $(@($named.NamedBoundaries) -join ','))"
+Assert-True (@($named.NamedBoundaries)[0] -eq 'tasks') 'FR-010 plain-English boundary words: the approval phrase names the boundary, not the prose'
+
+$bare = Test-SpecrewHumanVerdictToken -Text 'approved — the review notes look right'
+Assert-True ($bare.IsApproval) 'FR-010 bare approval with prose: still an approval'
+Assert-True (@($bare.NamedBoundaries).Count -eq 0) 'FR-010 bare approval with prose: names no boundary, so the marker decides alone'
+
+# --- T004 / FR-010 SAFETY: the conservative floor is UNCHANGED. Capture must never invent an approval
+#     the human did not give, so each of these stays a non-approval. Recorded as the paired sibling of
+#     the cases above: leading-phrase-wins is a rule about what FOLLOWS a clear approval, never a
+#     relaxation of what counts as one. ---
+$nonApprovals = @(
+    @{ text = 'send back — the plan needs work';                       approval = $false; action = 'send-back' }
+    @{ text = 'changes needed before this can go ahead';               approval = $false; action = 'send-back' }
+    @{ text = 'discuss prompt 2';                                      approval = $false; action = 'discuss' }
+    @{ text = 'do not approve this yet';                               approval = $false; action = 'none' }
+    @{ text = 'approve?';                                              approval = $false; action = 'none' }
+    @{ text = 'should I approve this or not?';                         approval = $false; action = 'none' }
+    # Round-11 finding (DRIFT-199-I001-118): the question mark ended the approval CLAUSE, not the
+    # utterance, so the ends-with-? guard missed it and the generic fallback converted the human's
+    # explicit uncertainty into authorization. The interrogative rule binds to the sentence the
+    # approval verb sits in, wherever the utterance goes afterwards.
+    @{ text = 'Approve? I am still deciding.';                         approval = $false; action = 'none' }
+    @{ text = 'approved? probably, but let me sleep on it';            approval = $false; action = 'none' }
+    # Round-12 finding (DRIFT-199-I001-120): the round-11 fix bound the interrogative rule only to
+    # the FALLBACK branch, and a boundary name after the verb satisfied the recognized closed set
+    # first - so a boundary-qualified question still authorized. The first-sentence question test
+    # binds before EITHER approval return.
+    @{ text = 'Approve plan? I am still deciding.';                    approval = $false; action = 'none' }
+    @{ text = 'approved for tasks? or should we hold';                 approval = $false; action = 'none' }
+    @{ text = 'reply with approved for tasks when you are ready';      approval = $false; action = 'none' }
+    @{ text = '1';                                                     approval = $false; action = 'none' }
+    @{ text = 'yes';                                                   approval = $false; action = 'none' }
+)
+foreach ($c in $nonApprovals) {
+    $v = Test-SpecrewHumanVerdictToken -Text $c.text
+    Assert-True ($v.IsApproval -eq $c.approval) "FR-010 safety floor: '$($c.text)' is not an approval"
+    Assert-True ($v.Action -eq $c.action) "FR-010 safety floor: '$($c.text)' -> $($c.action) (got $($v.Action))"
+}
+
+# --- T004 / FR-010: the captured TEXT keeps the instructions, so what the human authorized and what
+#     they asked for are one record rather than an approval with its conditions dropped. ---
+$capturedDirect = Get-SpecrewCapturedVerdictText -HumanText 'approved for before-implement — then discuss prompt 2 with me' -ToBoundary 'before-implement'
+Assert-True ($capturedDirect.StartsWith('approved for before-implement')) 'FR-010 captured text: canonical prefix preserved for the writer'
+Assert-True ($capturedDirect.Contains('discuss prompt 2')) 'FR-010 captured text: the instructions survive byte-for-byte'
+
+# --- T004 / FR-010: marker-FORWARD capture. The first VERDICT-BEARING human turn after the packet
+#     wins, and non-verdict turns in between are scanned PAST rather than taken as the answer.
+#
+#     The shape that motivated it is the commonest one there is: packet rendered -> human asks a
+#     clarifying question -> agent answers -> human approves. Taking the first human turn whatever it
+#     said classified the QUESTION as the verdict ('none'), abandoned the marker, and never read the
+#     approval two turns later - so a verdict sitting in the transcript recorded as un-authorized.
+#
+#     The two safety properties are asserted alongside it, because both are directions this could
+#     have failed in: a send-back or discuss request IS verdict-bearing and can never be scanned past
+#     to reach an approval behind it, and the window ENDS at the next packet so one crossing's
+#     approval is never attributed to another. ---
+function New-CaptureTurn { param([string]$Role, [string]$Text) '{"role":"' + $Role + '","message":{"content":[{"type":"text","text":' + ($Text | ConvertTo-Json) + '}]}}' }
+function Get-CaptureVerdictFor {
+    param([string[]]$Lines)
+    $p = Join-Path ([IO.Path]::GetTempPath()) ("capfwd-" + [guid]::NewGuid().ToString('N') + '.jsonl')
+    Set-Content -LiteralPath $p -Value $Lines -Encoding UTF8
+    try { return Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $p }
+    finally { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
+}
+$packetOne = 'Packet body. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->'
+
+$fwd = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'what about the antigravity case?')
+    (New-CaptureTurn assistant 'It is covered by T006.')
+    (New-CaptureTurn user 'approved for before-implement')
+)
+Assert-True ([bool]$fwd.Found) 'FR-010 marker-forward: an approval AFTER a clarifying question is captured'
+Assert-True ($fwd.ToBoundary -eq 'before-implement') 'FR-010 marker-forward: captured against the marker''s own crossing'
+
+$blocked = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'send back - the plan needs a security section')
+    (New-CaptureTurn assistant 'Understood.')
+    (New-CaptureTurn user 'approved for before-implement')
+)
+Assert-True (-not [bool]$blocked.Found) 'FR-010 marker-forward SAFETY: a send-back is never scanned past to reach an approval behind it'
+
+$discussed = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'discuss prompt 2')
+    (New-CaptureTurn assistant 'Here is prompt 2.')
+    (New-CaptureTurn user 'approved for before-implement')
+)
+Assert-True (-not [bool]$discussed.Found) 'FR-010 marker-forward SAFETY: a discuss request is never scanned past either'
+
+$bounded = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'what about the antigravity case?')
+    (New-CaptureTurn assistant 'Second packet. <!-- SPECREW-VERDICT-BOUNDARY: before-implement -> review-signoff -->')
+    (New-CaptureTurn user 'approved for review-signoff')
+)
+Assert-True ($bounded.ToBoundary -eq 'review-signoff') 'FR-010 marker-forward SAFETY: the window ends at the next packet, so no approval is attributed across crossings'
+
+$awaiting = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'what about the antigravity case?')
+    (New-CaptureTurn assistant 'It is covered by T006.')
+    (New-CaptureTurn user 'and the OneDrive one?')
+)
+Assert-True (-not [bool]$awaiting.Found) 'FR-010 marker-forward: a window of only non-verdict turns stays awaiting, never captured'
+
 Write-Host "`n=== ConversationCapture.Tests.ps1: all assertions passed ===" -ForegroundColor Green

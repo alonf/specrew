@@ -156,10 +156,38 @@ function Get-SpecrewVersionInfoFromManifest {
         }
     }
 
+    # THE BUILD MUST BE IDENTIFIABLE, not just the version.
+    #
+    # Every commit on a prerelease branch reports the same string, so a stale install and a fresh one are
+    # indistinguishable. Measured cost: the maintainer could not tell whether a reinstall had taken, and
+    # had to probe for a flag they happened to know was recent. For a beta programme that is not
+    # diagnostics polish - a tester's bug report is unactionable without it, because nobody can tell
+    # which code they were running.
+    #
+    # Read identity beside the manifest being inspected: a package carries build-stamp.json, while a
+    # developer checkout can fall back to its own git HEAD. The helper also parses arbitrary manifests
+    # during compatibility checks and tests; those must not inherit the build id of this script's repo.
+    $buildId = ''
+    try {
+        $moduleRoot = Split-Path -Parent ([System.IO.Path]::GetFullPath($ManifestPath))
+        $stampPath = Join-Path $moduleRoot 'build-stamp.json'
+        if (Test-Path -LiteralPath $stampPath -PathType Leaf) {
+            $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
+            $buildId = [string]$stamp.commit
+        }
+        elseif (Test-Path -LiteralPath (Join-Path $moduleRoot '.git')) {
+            $head = (& git -C $moduleRoot rev-parse --short HEAD 2>$null)
+            if ($LASTEXITCODE -eq 0) { $buildId = ([string]$head).Trim() }
+        }
+    }
+    catch { $buildId = '' }
+
     $display = if (-not [string]::IsNullOrWhiteSpace($prerelease)) { "$baseVersion-$prerelease" } else { $baseVersion }
+    if (-not [string]::IsNullOrWhiteSpace($buildId)) { $display = "$display ($buildId)" }
     return [pscustomobject]@{
         Version    = $baseVersion
         Prerelease = $prerelease
+        BuildId    = $buildId
         Display    = $display
     }
 }

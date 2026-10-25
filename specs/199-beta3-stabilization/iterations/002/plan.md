@@ -1,0 +1,447 @@
+# Iteration Plan: 002
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: complete
+**Capacity**: 19.0/20 story_points
+**Started**: 2026-08-29
+**Completed**:
+
+<!--
+  Validator schema (canonical, enforced by validate-governance.ps1):
+  - Iteration Status MUST be one of:
+      planning | executing | reviewing | retro | complete | abandoned
+    (Common mistakes the validator REJECTS: `approved`, `in-progress`, `done`, `ready`.)
+  - Capacity format MUST be `<consumed>/<cap> <effort_unit>` with NO trailing prose on that line.
+    Append explanatory notes in the Notes section at the bottom instead.
+  - Task Status (in the Tasks table) MUST be one of:
+      planned | in-progress | done | needs-rework | deferred | blocked
+    (Note `in-progress` uses a hyphen, not an underscore. `done` not `completed`.)
+-->
+
+## Scope Summary
+
+| Requirement | Summary | Stories |
+| ----------- | ------- | ------- |
+| FR-024 | A crossing is not minted until the stage it leaves has its owed artifacts (live filesystem, every minting mechanism); no packet renders verdict options or the marker for an empty stage; one withhold discipline in every copy | US8 |
+| FR-025 | `pushed-head` is the delivery check at closeouts (release model + enforcement mode); `verdict-commit-durable` is the durability check at every boundary; each named, each with its own message | US8 |
+| FR-026 | Both constrained YAML readers report zero recognized constructs as unparseable; the message names the representation, keeps the answers, names the re-write | US8 |
+| FR-027 | One governed lens-checkpoint writer (`confirm-workshop-lens`) closes a lens from its receipt, runs the existing validators, writes `moved_on`; `confirm-lens` in the transition table | US8 |
+| FR-028 | The acknowledgment line at an open lens; the repair refusal through the refusal contract; no recognizer changes | US8 |
+| FR-029 | Feature creation writes a not-yet-authored `spec.md` stub; the specify gate refuses while it stands | US8 |
+| FR-030 | The crossing writer writes every enumerated mirror of `last_authorized_boundary`; the sync re-mirrors; the truth gate compares each; a mirror ahead of the store is refused | US8 |
+| FR-031 | The closeout seal is the sync's last write; a test proves it hashes the rendered dashboard | US8 |
+| FR-032 | A pending crossing is owed by the session that recorded it; the Stop-hook demand fires only there; other sessions get one informational line | US8 |
+| FR-033 | Method: mutation per fix asserting observable state; refusal standard on every touched message; mirrors byte-identical per commit; review and rework tracked separately; one covering round over the delta since `1b50ae60` | US8 |
+| FR-010 | (existing) A verdict-shaped turn the capture does not record produces one line naming what was received and what would capture; the leading-quote-bar fixture | US3 |
+
+## Tasks
+
+<!--
+  The `Actual` column records LANDING EFFORT AT THE ESTIMATE and is not a measurement: effort is not
+  time-tracked in this project, and writing the estimate into it twice does not make it data
+  (DRIFT-199-I002-012, found by the maintainer across two iterations). The iteration's real cost is
+  carried by the three countable measures in the Notes - review rounds consumed, rework commits, and
+  calendar days from round delivery to signoff - which is also what the tripwire is written against.
+  Do not treat a sum of this column as evidence of anything except that the tasks landed.
+-->
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T014 | Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures | FR-024 | US8 | 3.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/unit/**, tests/integration/** | done | Implementer | 3.0 |  |
+| T015 | Withhold discipline: packet re-mint guard; gate-stop skill (3 copies), Rule 53, refocus/general.md (2), lifecycle-discipline.md; owned test flips | FR-024 | US8 | 2.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, .claude/skills/specrew-gate-stop/SKILL.md, extensions/specrew-speckit/squad-templates/skills/gate-stop.md, .specify/extensions/specrew-speckit/squad-templates/skills/gate-stop.md, scripts/internal/launch-contract.ps1, extensions/specrew-speckit/refocus/general.md, .specify/extensions/specrew-speckit/refocus/general.md, docs/methodology/lifecycle-discipline.md, tests/integration/** | done | Implementer | 2.0 |  |
+| T016 | Split `pushed-head`: delivery at closeouts reading enforcement_mode; new `verdict-commit-durable`; messages; the field case and this repository as fixtures | FR-025 | US8 | 1.5 | Implementer | scripts/internal/gate-preflight.ps1, tests/unit/gate-preflight.Tests.ps1 | done | Implementer | 1.5 |  |
+| T017 | Zero-construct detection in both constrained readers; representation-naming parse message; JSON fixtures | FR-026 | US8 | 1.0 | Implementer | scripts/internal/product-domain-lens.ps1, scripts/internal/code-implementation-lens.ps1, tests/unit/product-domain-lens.tests.ps1, tests/unit/code-implementation-lens.tests.ps1 | done | Implementer | 1.0 |  |
+| T018 | `confirm-workshop-lens` writer; `confirm-lens` operation (56 pinned cells); validators wired at the checkpoint; skill step 7 invokes it | FR-027 | US8 | 3.0 | Implementer | extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1, .specify/extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1, extensions/specrew-speckit/scripts/workshop-authority-store.ps1, .specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1, .claude/skills/specrew-design-workshop/SKILL.md, tests/integration/workshop-*.tests.ps1 | done | Implementer | 3.0 |  |
+| T019 | Acknowledgment line in the skill and lens texts; repair refusal through the refusal contract; text-presence and AST tests | FR-028 | US8 | 0.75 | Implementer | .claude/skills/specrew-design-workshop/SKILL.md, extensions/specrew-speckit/knowledge/design-lenses/*.md, extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1, .specify/extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1, tests/unit/workshop-refusal-contract.tests.ps1 | done | Implementer | 0.75 |  |
+| T020 | Not-yet-authored `spec.md` stub at feature creation; specify-gate sentinel refusal | FR-029 | US8 | 1.0 | Implementer | extensions/specrew-speckit/scripts/create-governed-feature.ps1, .specify/extensions/specrew-speckit/scripts/create-governed-feature.ps1, scripts/internal/design-analysis-gate.ps1, tests/integration/governed-feature-*.tests.ps1 | done | Implementer | 1.0 |  |
+| T021 | Crossing-mirror writer for every enumerated mirror; sync re-mirror; truth gate over each; DRIFT-199-I001-152 reproduced then green; the task ledger writer speaks `done` (DRIFT-199-I002-009) | FR-030 | US8 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, scripts/internal/task-progress.ps1, tests/unit/**, tests/integration/** | done | Implementer | 2.0 |  |
+| T022 | Seal as the closeout sync's last write; test that it hashes the rendered dashboard | FR-031 | US8 | 0.5 | Implementer | scripts/internal/sync-boundary-state.ps1, tests/integration/** | done | Implementer | 0.5 |  |
+| T023 | Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity | FR-032 | US8 | 2.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/integration/conformance-*.tests.ps1 | done | Implementer | 2.5 |  |
+| T024 | Capture disclosure at prompt-entry: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message; every prompt-entry outcome journaled; fixtures: leading quote bar, leading prose | FR-010 | US3 | 1.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | done | Implementer | 1.0 |  |
+| T025 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft; the coverage line names the campaign its figure belongs to and says when the current iteration has no campaign yet (DRIFT-199-I002-006, honest labelling only) | FR-033 | US8 | 0.75 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | done | Spec Steward | 0.75 |  |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+
+## Concurrency Rationale
+
+- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
+- Technology and scope signals: PowerShell engine work across two mirrored script trees and three
+  skill copies; every task touches at least one mirrored path.
+- Task dependency graph: T014 and T015 share `HandoverStore.ps1` and `shared-governance.ps1` with
+  T021 and T023 (the crossing family) - serial, in the order T014, T021, T023, T015. T018 and T019
+  share the design-workshop skill - serial. T016, T017, T020, T022 and T024 are independent of the
+  crossing family and of each other.
+- Workstream separability: two workstreams are separable - the crossing family (T014, T021, T023,
+  T015, T024) and the workshop family (T018, T019, T017, T020); T016 and T022 sit in either.
+- Shared-surface conflict risk: elevated on `shared-governance.ps1` (four tasks) and
+  `HandoverStore.ps1` (four tasks); keep those tasks serial and re-stamp mirrors per commit.
+- Prior reviewer ownership/hotspot evidence: Latest reviewer hotspots: .specify/extensions/specrew-speckit/.specrew-extension-runtime.json (659 changed lines); .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 (257 changed lines); .specify/extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1 (286 changed lines); .specify/extensions/specrew-speckit/scripts/shared-governance.ps1 (1510 changed lines); .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 (727 changed lines); .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 (625 changed lines); .specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1 (533 changed lines); .specrew/release-gate-suites.txt (354 changed lines); extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 (257 changed lines); extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1 (286 changed lines); extensions/specrew-speckit/scripts/shared-governance.ps1 (1510 changed lines); extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 (727 changed lines); extensions/specrew-speckit/scripts/validate-governance.ps1 (625 changed lines); extensions/specrew-speckit/scripts/workshop-authority-store.ps1 (533 changed lines); scripts/internal/bootstrap/ConversationCaptureAccessor.ps1 (278 changed lines); scripts/internal/bootstrap/HumanAuthorityStore.ps1 (1825 changed lines); scripts/internal/continuous-co-review/.specrew-runtime.json (252 changed lines); scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1 (472 changed lines); scripts/internal/continuous-co-review/review-authority-core.ps1 (501 changed lines); scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1 (971 changed lines); scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1 (685 changed lines); scripts/internal/module-packaging.ps1 (356 changed lines); scripts/internal/sync-boundary-state.ps1 (285 changed lines); scripts/specrew-review.ps1 (1089 changed lines); specs/199-beta3-stabilization/iterations/001/design-analysis.md (1113 changed lines); specs/199-beta3-stabilization/iterations/001/drift-log.md (8196 changed lines); tests/continuous-co-review/unit/advisory-names-the-humans-act.Tests.ps1 (359 changed lines); tests/continuous-co-review/unit/campaign-pause-core.Tests.ps1 (505 changed lines); tests/continuous-co-review/unit/campaign-pause-wiring.Tests.ps1 (838 changed lines); tests/continuous-co-review/unit/campaign-stop-authority.Tests.ps1 (440 changed lines); tests/continuous-co-review/unit/consumer-language.Tests.ps1 (385 changed lines); tests/continuous-co-review/unit/reparse-tag-policy.Tests.ps1 (394 changed lines); tests/continuous-co-review/unit/review-derived-independence.Tests.ps1 (417 changed lines); tests/continuous-co-review/unit/review-frame-and-evidence-honesty.Tests.ps1 (569 changed lines); tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1 (313 changed lines); tests/integration/no-code-without-approval.tests.ps1 (257 changed lines); tests/integration/review-record-survives-its-own-commit.tests.ps1 (307 changed lines); tests/integration/workshop-agenda-confirmation.tests.ps1 (313 changed lines); tests/unit/round-approval-typed-authority.tests.ps1 (2578 changed lines)
+- Recommendation: one Implementer, serial within each family; no same-specialty expansion.
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| ----- | ---------------- | ----- |
+| Planning | 1.5 | Spec amendment, design-analysis, this plan (spent 2026-08-29) |
+| Discovery/Spikes | 0.5 | Rebind-versus-re-mint and owner-identity reads, done at source before the design |
+| Implementation | 19.0 | Sum of T014-T025 |
+| Review | 3.0 | Direct estimate (one covering round over ~40 paths); parity-floor CHECK 9.25 beside it; tripwire at 6.0 |
+| Rework | 2.5 | Direct estimate (~2.3 wedges per round at 001's rate); parity-floor CHECK 9.25 beside it; tripwire at 5.0 |
+
+## Traceability Summary
+
+- Requirement scope: FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032,
+  FR-033, plus the existing FR-010 (its capture-disclosure defect, DRIFT-199-I002-004).
+- User stories represented: US8 (the two field walks), US3 (the maintainer's verdicts always
+  capture).
+- Success criteria: SC-011 (T014, T015), SC-012 (T016), SC-013 (T017, T018), SC-014 (T018, T019),
+  SC-015 (T020), SC-016 (T021), SC-017 (T022), SC-018 (T025 and the covering round), SC-019
+  (T023), SC-020 (T024).
+- Both-directions traceability is recorded in tasks.md at the tasks boundary.
+
+## Notes
+
+- Task numbering is feature-global (iteration 001 used T001-T013), so this iteration's tasks are
+  T014-T025 in plan.md, tasks.md and tasks-progress.yml alike.
+- Execution order: the crossing family first, since it is where authority is forged - T014
+  (mint gate), T021 (mirrors), T023 (owner), T015 (withhold discipline and its test flips), T024
+  (capture disclosure); then T016 and T022 (gate-preflight and the seal, both one-file changes);
+  then the workshop family - T017, T018, T019, T020; T025 last, as the sweep over everything.
+- Planned task effort: 19.0 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded); T014 and
+  T023 grew by 0.5 SP each when the marker-identity binding was folded in by ruling, T025 by
+  0.25 SP when DRIFT-199-I002-006 was folded in as honest labelling (plan verdict, 2026-08-29),
+  and T024 by 0.25 SP when the prompt-entry disclosure and journaling were folded in
+  (DRIFT-199-I002-008, before-implement verdict).
+- Review and rework, per the maintainer's ruling at the design decision (2026-08-29): the DIRECT
+  estimate is what is planned - 3.0 SP review (one covering round over roughly 40 source paths: the
+  14-file delta since `1b50ae60` plus this batch's two mirrored script trees, three skill copies
+  and their tests) and 2.5 SP rework (one round at 001's measured rate of ~2.3 repair wedges per
+  round). The parity floor - review plus rework equal to implementation, 18.5 SP, or 9.25 each - is
+  named beside it as a CHECK, not planned as a number: planning the floor converts a check into a
+  number and manufactures the overcommit. The direct estimate is 0.30 of implementation; 001's plan
+  carried 0.27 and spent roughly eight times its implementation calendar, which is why the check
+  stands.
+- TRIPWIRE, RE-INSTRUMENTED 2026-08-29 (DRIFT-199-I002-012). The first version read "if review or
+  rework ACTUALS exceed the direct estimate by 2x" - and the maintainer verified before authorizing the
+  covering round that the Actual column is the estimate copied across, in this iteration and in 001, so
+  that wire could never trip. It now reads against three measures the session that would trip it does
+  not write, and each has an explicit threshold:
+    1. **Review rounds consumed** (the campaign store's own `rounds_used`): more than 2 rounds for this
+       iteration's covering review.
+    2. **Rework commits** (`git log` on this branch after the first round is delivered, subjects
+       beginning `fix(beta3):` rather than `docs`/`chore`/`boundary`): more than 6.
+    3. **Calendar days between round delivery and signoff**: more than 3.
+  Any one of them crossing stops execution. The stop is a VISIBLE stop seen by the maintainer - never a
+  silent log line - and its default consequence is an amendment recorded at the review stage; it
+  escalates to a new plan boundary only when the response changes what gets built (a task dropped, a
+  task added, an approved design decision revisited). Maintainer instruction at the plan verdict: the
+  estimate being wrong was not 001's failure - nobody stopping to ask whether to continue was; a cost
+  overrun the human cannot act on differently does not deserve a boundary, a change in what will be
+  built does.
+  Review and rework actuals are recorded separately, per round and per wedge as they happen
+  (drift log and review record), never batch-stamped at landing, so the next retro can say which
+  figure was right - the thing 001 could not do.
+- The `Iteration Status` vocabulary is settled in the contract and accepted at the plan verdict
+  (2026-08-29): it is derived, not a mirror; a consistency relation is its truth check; `plan.md`
+  Status is the mapped copy; both existing enums stay, no migration. Re-presented at tasks as
+  instructed.
+- One iteration, not a split (maintainer ruling 2026-08-29), conditional on the campaign
+  allowance. Measured 2026-08-29 through `Get-SpecrewReviewCoverageState`: the allowance is per
+  campaign; iteration 001's campaign (`cmp-199-beta3-stabilization-i001`) has used 3 of 4 rounds,
+  which is the "1 of 4 remaining" the packets showed, and 001 is closed. Iteration 002's covering
+  round runs under its own campaign with the per-campaign allowance (4 rounds), so one iteration
+  with one covering round is supported with three rounds of headroom for tripwire-driven rework;
+  a split would have needed two campaigns, also within allowance - the ruling stands on its own
+  merits, not on scarcity.
+- Owned test flips (planned, not discovered), CORRECTED at T015 (DRIFT-199-I002-010):
+  `gate-stop-skill.tests.ps1` gains the withhold assertions and passes; `multi-host-launch-path`
+  passes unchanged (the host guidance renders the four responses, which the withhold branch does not
+  remove); the workshop transition table grows from 48 to 56 pinned cells at T018. The predicted
+  `fr068-verdict-demand-reproduction` HALF 2 inversion does NOT belong to this batch: it
+  characterises the dispatcher concatenating two providers' fragments with no precedence, which is a
+  different instance of the composition class and is beta4's with the walk harness.
+- Owned at T014 (landed 2026-08-29): `pending-verdict-stop-artifact` had encoded the TB-1 defect as an
+  expectation - its closeout case asserted `iteration-closeout -> plan` pending over a fixture with no
+  next iteration; the fixture now carries `iterations/002/plan.md` so the crossing mints legitimately,
+  and the refuse side is pinned in `crossing-mint-gate`. `pretag-slice4-capture-containment` could no
+  longer obtain an evidence-less crossing from the writer (the gate refuses it), so its fixture writes
+  the record directly - the shape of a pre-gate or hand-edited record - keeping the capture-side
+  refusal tested as defense in depth.
+- WHICH CODE 002's OWN BOUNDARIES EXECUTE - measured 2026-08-29 at the tasks verdict, before T014,
+  on the maintainer's question. It is the FIRST branch: **this iteration runs on the code it is
+  editing.** Three measurements: (1) `$env:SPECREW_MODULE_PATH` is unset, so the shim's Path 0 does
+  not apply; (2) the shim's Path 1 (walk up from its own location for a directory holding both
+  `.specrew/config.yml` and `scripts/internal/sync-boundary-state.ps1`) resolves to
+  `C:\Dev\specrew-beta3-stabilization` - the repo root - so every boundary sync executes this
+  repo's `scripts/internal/sync-boundary-state.ps1`; (3) the installed module (0.40.0, under the
+  user's PowerShell Modules) exists but is never reached, because Path 1 wins before Path 2.
+  The hooks resolve the same way by a different route: they run the in-repo deployed mirror
+  `.specify/extensions/specrew-speckit/scripts/*`, and the handover provider there finds no
+  `bootstrap/` beside itself, so it dot-sources `<root>/scripts/internal/bootstrap` - the live
+  `HandoverStore.ps1` and `ConversationCaptureAccessor.ps1` that T014, T023 and T024 edit.
+  CONSEQUENCE, and it is the outage side of method rule 12: a wrong fix in T014, T015, T021 or
+  T024 can stop this iteration from recording its own boundaries, mid-flight, with the crossing
+  family landing first by design.
+- RECOVERY PATH, named before T014 starts (each step verified against the mechanisms, not assumed):
+  1. Nothing is resident. Every hook and every sync spawns a fresh `pwsh` that dot-sources from
+     disk, so `git checkout <last-good-sha> -- <file>` restores the previous behavior on the very
+     next turn; there is no daemon, cache or session state to clear.
+  2. Probe before trusting. After each crossing-family edit, run the sync with `-PreflightOnly`,
+     which returns before the ratchet and before every state write - a boundary-path smoke test
+     that cannot record or authorize anything. PreflightOnly never exercises the mint path, and
+     T014's mutation proves only the REFUSE side; the PERMIT side would otherwise stay unproven
+     until review-signoff, twelve tasks away (maintainer, before-implement verdict 2026-08-29).
+     So T014's commit also mints for real against a throwaway fixture repository and asserts that
+     a stage whose artifacts are present still opens its crossing - a mechanical check in the
+     commit, not a report, and stronger than either.
+  3. Authority cannot be lost, only delayed. `verdict_history` is append-only and idempotent on
+     (destination, verdict text), and the pending crossing is re-minted from the commit at sync
+     time - so a capture missed while a fix is broken is recovered by reverting, re-syncing, and
+     re-rendering the packet for the same crossing; no verdict is destroyed and no crossing is
+     skipped.
+  4. If capture itself is the broken part, the sync path still records the arrival and the human's
+     phrase is re-typed after the revert - the same recovery the withdrawal path already uses.
+  5. Land the crossing family in the planned order (T014, T021, T023, T015, T024) as separate
+     commits, each with its mutation green, so step 1 always has a last-good SHA one commit back.
+- MIRROR TIMING, a corollary of the above: files under `scripts/internal/` are live for this
+  iteration the moment they are committed; files under `extensions/specrew-speckit/` reach the
+  hooks only through their `.specify/extensions/` deployed copy, which is why this feature's
+  history carries `re-stamp the mirrors after the W## deploy` commits. T015, T018, T019, T023 and
+  T025 all touch mirrored files: each lands both copies in its own commit (the mirror discipline
+  below), or its fix is inert for 002's own boundaries while passing its tests.
+- HOW BETA3 GETS VALIDATED (maintainer rulings at the tasks and before-implement verdicts,
+  2026-08-29): land 002, update the installed module, then resume the HelloWinUIReactive project
+  from exactly where TB-3 blocked it. The module update is FEATURE-CLOSEOUT's release leg, not
+  002's closeout: delivery is done when the thing that validates it has run, and the walk is that
+  validation. So 002 closes on twelve tasks landed with their mutations and one covering round;
+  then the module updates; then the walk resumes; and feature-closeout carries both the update and
+  the walk as its release evidence. Closing 002 on a delivery whose validation has not happened
+  would put the same claim on the record that 001 had to withdraw. That walk verifies the
+  fixes on a real greenfield project and doubles as the fresh-eyes signal, which cannot be measured
+  from inside this repository. It is the release-validation step for the tag, not an optional
+  extra: 002's own boundaries exercise the crossing family but never the greenfield paths (T016's
+  no-origin posture, T020's fresh feature creation, T017/T018's first workshop).
+- COUNTABLE MEASURES for this iteration (DRIFT-199-I002-012's replacement for the copied Actual column;
+  each read from a source this session does not write):
+  - **Implementation calendar**: first task commit 2026-08-29 19:48, last 2026-08-29 21:38 - twelve tasks
+    inside one working session, which is the only implementation figure worth stating.
+  - **Review rounds consumed**: **1 of 4** in campaign `cmp-199-beta3-stabilization-i002`.
+    - *Attempt 1, 2026-08-29, run `run-20260829-202021847-c98fb407` - NOT COUNTED.* The pre-review
+      verification plan failed on three commands, so the reviewer was never invoked, the reservation was
+      RELEASED rather than consumed, and the maintainer's authorization stayed available. This is the
+      invoked-only spend rule (FR-014) behaving exactly as designed on its first unplanned exercise, and it
+      is recorded here because a rule that has never been exercised is a claim, not a control. Of the three
+      failures, one was a real defect in this batch and was fixed (DRIFT-199-I002-013, an internal
+      requirement id in a shipped script); one was a wrong finding of mine that was withdrawn
+      (DRIFT-199-I002-014); one was real and resolved without touching a seal (DRIFT-199-I002-015).
+    - *Attempt 2, 2026-08-29, run `run-20260829-214056323-db3b4944` - DELIVERED, and this is the round
+      that counts.* Reviewer host `codex` (independent of the code writer, `claude`); 909s; containment
+      verified; completion complete; currentness current. **Verdict `findings`: 3 findings, every one of
+      them graded `major` by the reviewer and every one of them demoted to `minor` by the summariser.**
+      `can_approve_current: false`. All three were verified against the code before being reported, and all
+      three are real defects in THIS iteration's own new code (FR-027, FR-032, FR-024). Recorded as
+      DRIFT-199-I002-016.
+    - *Round 2, 2026-08-30, run `run-20260830-003634780-04d58169` - DELIVERED.* Reviewer `codex`; 981s;
+      containment verified; completion complete; currentness current; verdict `findings`;
+      `can_approve_current: false`. **3 findings: 2 graded `major` by the reviewer and demoted to `minor`,
+      1 graded `minor`.** All three confirmed against the code. One is a defect in this session's own fix
+      (the fail-soft trace covers the outer swallow, not the inner one), which **fires the convergence
+      tripwire**: returned to the maintainer unfixed, no third round spent. Recorded as DRIFT-199-I002-022.
+      Positive evidence in the same round: it wrote its own `pending-pause.json` organically, which is the
+      first non-mutation proof that the `$FeatureId` fix works.
+    - Tripwire status: **rounds threshold (more than 2) is now AT its limit at 2 of 4 used**; the
+      convergence rule - not the round count - is what stops here. Rework commits since round 1 delivered:
+      counted at signoff. Calendar days round-1 delivery to signoff: counted at signoff.
+  - **SEQUENCE CHANGE, maintainer ruling 2026-08-30: the module update and the WinUI walk move from
+    feature-closeout's release leg to BEFORE review-signoff.** When round 2 delivers clean, the module is
+    updated from the current tree and the HelloWinUIReactive walk is resumed - and only then is
+    review-signoff presented.
+    - **Why**: four fixes have *only* mutation evidence, and iteration 002's own boundaries never exercise
+      them, because 002 is neither greenfield nor origin-less. T016's no-origin posture, T017 and T018's
+      first workshop, and T020's fresh feature creation are all greenfield paths that this iteration cannot
+      reach from inside itself.
+    - **Review-signoff is where evidence is judged.** Signing off on four fixes whose sole evidence is that
+      their own tests pass, and then discovering at feature-closeout that they fail in a real project, is
+      the wrong order - *and it is the exact failure this batch was convened to fix.*
+    - **It costs nothing structural**: the module update does not require 002 to be closed, it just installs
+      the current tree. If the walk shows the greenfield fixes do not hold, the repair folds into 002 rather
+      than opening an iteration 003.
+    - This is the same reasoning as FR-033's rule that mutation proving shows a control is wired to its own
+      test and never that it is wired to the system - applied to a whole class of fixes rather than to one.
+  - **LEAD THE 002 RETRO WITH THIS** (maintainer instruction, 2026-08-30: *"the strongest single measurement
+    of the fortnight, and it is about the instrument that gates the tag"*).
+
+    **Round 3's reviewer graded a finding BLOCKING. The record stored it as `minor`. The campaign's durable
+    counts read `blocking_count: 0`.** The finding was a deterministic wedge of every second iteration -
+    against an acceptance bar whose own words are *"without hitting an endless review loop, A WEDGED GATE,
+    or a sentence they cannot understand."*
+
+    > **Reading the summary alone, that round was clean and the wedge shipped.**
+
+    This is the measurement that settles B-3's reclassification (DRIFT-199-I002-016) from a summariser
+    defect to a RECORD defect. A presentation-layer demotion mis-displays; this one wrote the demoted grade
+    into the campaign's persistent state, where every consumer that counts rather than reads inherits it -
+    budget reasoning, gating decisions, retro figures, and any later claim about what this batch's review
+    found. Three rounds produced one blocking and seven major gradings; the durable record shows zero of
+    each.
+
+    **Put this at the FRONT of the retro, not in its findings list** (maintainer instruction, 2026-08-30:
+    *"that is the whole beta4 UX argument in one sentence"*). The retro should draw the consequence rather
+    than only the count: **the instrument that gates the tag
+    was, for this whole campaign, incapable of surfacing the one severity that would have stopped it** - and
+    the only reason it did not ship is that a human instructed the crew to read raw findings instead of the
+    summary. That instruction was a workaround, and it worked, and it does not scale past a maintainer who
+    knows to give it.
+  - **REVIEW-SIGNOFF VERDICT RULINGS, 2026-08-31**, recorded where the retro and the tag decision will
+    both find them:
+    - **Prompt 1 — B-3 stays beta4, and beta3's release notes carry the limitation in one sentence.**
+      *"Severity summaries understate; read raw findings. That documented workaround is what saved this
+      campaign and testers deserve it in writing."* Landed in
+      `docs/release-notes-v0.40.0-beta3.md` under Known issues, naming the stored counts, the
+      `demoted_from` field that preserves the reviewer's grade, and the path to the raw result. **A
+      workaround written down is not a control** (this batch's own rule) - but an undocumented one is
+      worse, and the honest position is that the record defect ships with its mitigation stated.
+    - **Prompt 2 — DRIFT-199-I002-038 is beta4, as ARBITRATION** between the two Status readers rather
+      than loosening either. The window has a working resolution meanwhile: follow the authority record.
+    - **Prompt 3 — `verdict-commit-durable` stays a REFUSAL and does not become an automatic push.**
+      *"Pushing is outward-facing and machinery does not take outward-facing acts on its own initiative;
+      the refusal named its remedy and it worked first try."* A config dial for projects with an
+      established push practice is a beta4 question. This is the refusal standard reaching its natural
+      limit: a refusal that names a reachable action has done its whole job, and doing the action for the
+      human would exceed it.
+  - **CARRY INTO THE 002 RETRO — THE PATTERN THIS ITERATION SHOULD BE REMEMBERED FOR** (maintainer
+    instruction, 2026-08-30, recorded in the crew's own words):
+
+    > **An operator habit that needs three clauses and still fails is evidence for the carry extension, not
+    > against it. The workaround was scoped to the instance I had seen rather than to the mechanism.**
+
+    That is the fourth instance of one pattern, and the maintainer named the other three:
+    - **W77's carry** solved the records-delta problem for the acceptance kind in front of it, and the
+      partial-signoff override reproduced it (DRIFT-199-I002-033).
+    - **T018's first fix** unblocked new workshops from `pending-empty` and stranded every project that had
+      already confirmed its agenda (DRIFT-199-I002-027).
+    - **The line-ending ruling** was scoped to this checkout, when the general statement was about any
+      consumer whose config differs (DRIFT-199-I002-014).
+    - **The operator workaround** was scoped to the failure I had watched - "commit records afterwards" -
+      when the mechanism was "any state change between the request and the retry", which needed a third
+      clause I had not seen, and then failed anyway for a fourth reason nobody had seen
+      (DRIFT-199-I002-034).
+
+    **The companion sentence the week earned** (maintainer, 2026-08-31): **writing a rule down does not
+    make you apply it — the only detector that has worked is running the subject.** Every rule this
+    iteration produced was violated after it was written, by the person who wrote it: the guard-scope
+    principle, then a guard that reimplemented its subject; the fail-soft trace rule, then a trace applied
+    to one swallow of two; the instance-not-class pattern, then a workaround scoped to the instance. In
+    each case what caught it was not the rule and not a review - it was running the thing: the engine's own
+    integrity check, a fresh project on the accused host, a mutation that produced zero failures, a real
+    cycle replay.
+
+    **The shape**: a fix is written against the instance that produced the evidence, and the evidence is
+    always one instance. Every one of these was correct about what it repaired. Every one left the
+    mechanism intact, so the next instance arrived wearing different clothes and was not recognised until it
+    had cost something. **The countermeasure is not more care; it is asking, before writing the fix, what
+    else has the shape of the thing being fixed** - which is the same question the guard-scope principle
+    asks about tests and the asymmetry rule asks about error directions. This iteration produced all three
+    of those rules and still committed the error four times, which is the honest note the retro should end
+    on.
+  - **CARRY INTO THE 002 RETRO — the joint failure mode** (maintainer instruction, 2026-08-30: *"the
+    direction observation belongs in the retro rather than the drift log... it is the most transferable
+    thing this iteration learned"*). Recorded here rather than in a retro artifact because the retro
+    boundary has not been reached and scaffolding one early would pre-empt it.
+
+    **A THIRD INSTANCE, and the second where the wrong reasoning was the maintainer's** (their instruction,
+    2026-08-30, that it be recorded rather than only the crew's retraction):
+
+    > *"I wrote 'if those files carry a timestamp or run id, it never terminates' one paragraph after
+    > establishing that `.specrew/**` is excluded from the digest — my own conditional contradicted my own
+    > finding, in the same message."*
+
+    The crew adopted the conditional, measured it, and found it false: the gate's timestamped writes are
+    invisible to the digest, so the loop terminates. **The pattern is now three for three** - a wrong cause
+    from either direction, caught by running the subject rather than reasoning about it, never by review and
+    never by seniority.
+
+    **Both roles produced a wrong cause, in opposite directions, and both were caught the same way.**
+    - DRIFT-199-I002-014: the crew produced a wrong finding, argued it convincingly, and the maintainer
+      ruled on it. Had the ruling been executed as written, a correct control would have been edited to do
+      what it already did.
+    - DRIFT-199-I002-025: the maintainer produced a wrong cause from a real symptom, and the crew began
+      building a guard on it — and reported reading the symptom back as *"independent reproduction"*, which
+      confirmed the observation and not the diagnosis.
+
+    **Neither was caught by review, by a suite, or by seniority. Both were caught by RUNNING THE SUBJECT
+    rather than reasoning about it** — the engine's own integrity check in the first case, a fresh project
+    on the accused host in the second. That is the transferable lesson, and it is a lesson about the
+    authority structure rather than about either party: **a finding that reaches a boundary becomes an
+    instruction, so the cost of a wrong cause is paid by whoever implements it, not whoever formed it.**
+    The countermeasure is cheap and was available both times: before acting on a diagnosis about a
+    component, invoke the component.
+
+    The retro should also record the asymmetry that makes this worth institutionalising: a wrong finding
+    from either direction is caught by the same one-command check, but only one direction currently has a
+    convention for it (the crew verifies before reporting). Nothing asks the same of a ruling.
+  - **PRE-TAG ORDER, FIXED BY THE MAINTAINER 2026-08-30 — the last step is not optional and is not
+    ceremony.** Recorded here rather than left between the boundary work and the tag, which is exactly
+    where it would have been lost:
+
+    > close the review -> **review-signoff** -> **retro** -> **iteration-closeout** -> **scaffold a
+    > throwaway 003 and run its plan sync** -> **the tag call**
+
+    - **Why the 003 step exists.** Finding 1's field proof arrives when 003 opens. *"If the tag happens
+      straight after 002 closes, 003 never opens, and beta3 ships a fix for a deterministic
+      second-iteration wedge that has never been observed working in a genuine cycle - the precise defect
+      it was written to prevent."*
+    - **What it is**: scaffold a throwaway iteration 003 and run its plan sync. **No work needs to happen
+      in it.** Open it and observe one thing - whether the plan mirror stays `planning` or jumps to
+      `complete`.
+    - **What it costs and what it buys**: ten minutes, and it moves finding 1 from replay-proved to
+      field-proved *before* the tag rather than after it. *"Everything before that last step is decided;
+      that step is the difference between shipping the fix and shipping evidence for it."*
+  - **CONVERGENCE RULE, maintainer ruling 2026-08-29 - and it exists because the obvious reading of
+    "one covering round on the tree that ships" regresses to W77.** Every round's fixes move the tree
+    that round covered, so taken literally, coverage is never reachable and rounds recur forever.
+    Therefore:
+    1. **Round 2 is the LAST round** unless it finds something that is not a fix for its own findings.
+    2. **Clean -> covered.** If round 2 comes back clean, the tree is covered and the batch goes to
+       signoff. No third round is spent on the records that round 2's own execution produces.
+    3. **New defects in the two fixes -> STOP, do not iterate.** That is not a cue for a third round;
+       it is a signal to ask whether this batch is converging at all, and it returns to the maintainer
+       before any third round is spent.
+  - **The base rate this rule is priced against, stated by the maintainer rather than inferred**: twelve
+    tasks produced three regressions; fixing those three exposed three more test defects (a suite pinning
+    the writer's invented name, a fixture leaving the far side's check switched off, a case asserting the
+    text but not how it left). The two new fixes are not trivial - a scope-derivation change at a seam, a
+    flag newly consumed in a shared tail, and a loop-guard release touching cap accounting - they were made
+    by the agent whose earlier work produced the defects, and validated against suites that same agent
+    repaired. The repaired suites prove the fixes satisfy their tests, which is precisely what the last
+    round demonstrated is not the same as working. Round 2 is therefore bought as independent evidence,
+    not as reassurance.
+  - **Rework commits after round delivery**: counted from git history at signoff.
+  - **Calendar days from round delivery to signoff**: counted at signoff.
+- T025 SWEEP RESULT (2026-08-29): mirrors byte-identical across all ten script/skill/refocus pairs and all
+  fifteen lens-catalog files; eleven mutations run, each turning its own suite red and restoring green
+  (mint gate, mirrors, owner, withhold, capture disclosure, durability, seal order, readers, lens writer,
+  acknowledgment clause, spec-stub guard); the refusal-standard pass over the fifteen messages this batch
+  added or changed found two worth improving (the mint refusal now names the step that produces the owed
+  work; the repair refusal now names the feature it is about) and one duplicated-code defect that a green
+  suite could not see (DRIFT-199-I002-011).
+- Mirror discipline: every task's commit lands every byte-identical copy it touches
+  (`extensions/` and `.specify/extensions/`; three skill copies); the deployed-extension-integrity
+  suite is the check.
+- Wave B (data-model.md, quickstart.md, contracts/, review-diagrams.md) is reconciled to the new
+  writers and checks before the tasks boundary: the `confirm-workshop-lens` contract, the
+  `verdict-commit-durable` check, `pending_crossing.owner`, the seal ordering.
+- Authored into the `scaffold-iteration-plan.ps1` scaffold (its section shape, effort model and
+  reviewer-hotspot evidence are the scaffold's). A first invocation from a POSIX shell passed the
+  ten requirement ids as one comma-joined string and the scaffold failed on `.Count`; invoked with
+  a PowerShell array it ran cleanly. Friction observation for the record, not a defect in scope.

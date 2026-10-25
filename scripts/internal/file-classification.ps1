@@ -75,7 +75,7 @@ function Get-FileClassification {
     $rules.Add([pscustomobject]@{ pattern = '.specrew/config.yml'; category = 'shared'; reason = 'Project configuration; committed and identical across developers.' })
     $rules.Add([pscustomobject]@{ pattern = '.squad/team.md'; category = 'shared'; reason = 'Crew roster; shared project truth.' })
     $rules.Add([pscustomobject]@{ pattern = '.squad/decisions.md'; category = 'append-only-shared'; reason = 'Decision ledger; append-only, mechanically mergeable.' })
-    $rules.Add([pscustomobject]@{ pattern = '.specrew/session-start.log'; category = 'append-only-shared'; reason = 'JSON Lines event log; atomic append per FR-018.' })
+    $rules.Add([pscustomobject]@{ pattern = '.specrew/session-start.log'; category = 'append-only-shared'; reason = 'JSON Lines event log; appended atomically.' })
     $rules.Add([pscustomobject]@{ pattern = 'specs/*/iterations/*/dashboard.md'; category = 'regenerable'; reason = 'Rendered from iteration state; regenerable from shared sources.' })
 
     return $rules

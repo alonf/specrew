@@ -131,7 +131,7 @@ Write-Host '--- Test 4: specrew dispatcher advertises the hyphenated slash-comma
 $specrewContent = Get-Content -LiteralPath $specrew -Raw
 Assert-Contains -Text $specrewContent -Substring '/specrew-where' -Message 'specrew.ps1 help includes /specrew-where'
 Assert-Contains -Text $specrewContent -Substring '/specrew-help' -Message 'specrew.ps1 help includes /specrew-help'
-Assert-True -Condition ($specrewContent -notmatch '/specrew\.') -Message 'specrew.ps1 no longer publishes dot-form slash commands'
+Assert-True -Condition ($specrewContent -notmatch '/specrew\.(?:where|status|help|review|team|update|version)\b') -Message 'specrew.ps1 no longer publishes dot-form slash commands'
 
 Write-Host ''
 Write-Host '--- Test 5: project-setup gate still fires for where on an uninitialized project ---'

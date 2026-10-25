@@ -167,3 +167,4 @@ elseif ($rulesValid) {
 
 if ($PassThru) { $result }
 exit 0
+# specrew-self-provenance-ok: DRIFT-198-I009-040; implementation history is recorded for maintainers and is never emitted as consumer instruction

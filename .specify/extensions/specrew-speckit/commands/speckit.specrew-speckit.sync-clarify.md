@@ -8,8 +8,7 @@ description: "Persist session-state metadata after /speckit.clarify"
 
 After `/speckit.clarify` updates the active spec, record the boundary arrival FIRST — the sync
 mints the pending crossing and writes `.specrew/runtime/pending-verdict-stop.md`, the controller
-truth the verdict stop renders from (DRIFT-198-I011-012: gating before the sync left the stop with
-no artifact, the marker-invention precondition):
+truth the verdict stop renders from. This arrival-first order prevents a stop with no artifact:
 
 ```powershell
 $featureJson = Get-Content -LiteralPath .\.specify\feature.json -Raw -Encoding UTF8 | ConvertFrom-Json

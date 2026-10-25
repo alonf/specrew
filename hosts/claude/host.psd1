@@ -18,7 +18,7 @@
     AgentDir                   = '.claude/agents/'
     InstructionsFile           = 'CLAUDE.md'
     StructuredQuestionPrimitive = 'AskUserQuestion'
-    StructuredQuestionGuidance  = 'Use Claude Code AskUserQuestion for human approval gates when it is available in the current session.'
+    StructuredQuestionGuidance  = 'Use Claude Code AskUserQuestion only for clarify questions, when it is available in the current session: never for a workshop question or a boundary verdict.'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'claude'
@@ -48,10 +48,23 @@
         OptOutMarkerFile    = '.specrew/runtime/refocus-hooks-optout'
         DispatcherPath      = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
         ConfigShape         = 'event-map'
-        CommandMode         = 'project-placeholder'
+        # Copilot also reads repo-local Claude settings. Guard the project-root lookup so the
+        # Claude hook is a silent no-op when another host has not supplied CLAUDE_PROJECT_DIR.
+        CommandMode         = 'guarded-project-encoded'
         ProjectDirPlaceholder = '${CLAUDE_PROJECT_DIR}'
         ProjectRootEnvironmentVariables = @('CLAUDE_PROJECT_DIR')
         DispatcherRuntime   = @{
+            # Feature 202 iteration 002, T016 (FR-028, DA-1): the payload fields ONLY this host sends, per dispatcher event
+            # ('Default' for the rest). A hook stands down only when a payload positively matches ANOTHER host's signature.
+            # Measured on every recorded fixture (tests/fixtures/hook-payloads/claude): prompt and Stop carry prompt_id;
+            # SessionStart carries no permission_mode, which Codex's does. No Claude payload carries a timestamp, which
+            # every payload Copilot sends Claude's hooks does (B4F-144, probe/copilot-claude-hooks), so the two rules
+            # Copilot's shape would otherwise also match exclude it.
+            PayloadSignature    = @{
+                SessionStart = @{ AllOf = @('hook_event_name', 'session_id'); NoneOf = @('permission_mode', 'sessionId', 'timestamp') }
+                PostToolUse  = @{ AllOf = @('hook_event_name', 'session_id', 'tool_name'); NoneOf = @('turn_id', 'sessionId', 'timestamp') }
+                Default      = @{ AllOf = @('hook_event_name', 'session_id', 'prompt_id'); NoneOf = @('turn_id', 'sessionId') }
+            }
             BootstrapDeliveryEvents = @('SessionStart')
             B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
             RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
@@ -62,6 +75,33 @@
             # supports {"decision":"block","reason":...} + a built-in stop_hook_active / 8-block loop cap.
             StopBlockShape          = 'decision-block'
             BootstrapDeliveryMode   = 'pointer'
+            # Feature 202 T002 (DA-1, option B): this host's INPUT contract is data. The dispatcher's single
+            # normalizer (ConvertTo-SpecrewTurnRecord) reads it; shared code names no host. Field paths may be
+            # dotted (a.b.c). Measured payloads: tests/fixtures/hook-payloads/<host>/ (202 research.md, T001).
+            InputFieldMap           = @{
+                SessionId      = @('session_id')
+                Prompt         = @('prompt')
+                # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's own ID for a typed message, the same on the
+                # prompt event and on that message's transcript entry, so both recording paths key it the same way.
+                MessageId      = @('prompt_id')
+                TranscriptPath = @('transcript_path')
+                Source         = @('source')
+                ToolName       = @('tool_name')
+            }
+            # Evaluated in order; the first matching rule decides. A prompt that matches no host-injected rule
+            # is typed-user, and only typed-user can produce a receipt (FR-006). hook-output-journal: the prompt
+            # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a
+            # replayed Specrew directive.
+            OriginRules             = @(
+                # Feature 202 iteration 002, T028 (B4F-147): a sub-agent's task text reaches the prompt hook as a prompt. A payload
+                # carrying a sub-agent field was not typed by the human, whatever its text, so it can never be an approval.
+                # Claude marks a sub-agent's payloads agent_id (probe/claude, 2.1.303).
+                @{ Origin = 'host-injected'; Rule = 'payload-field'; Fields = @('agent_id', 'parent_agent_id') },
+                @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
+                @{ Origin = 'typed-user'; Rule = 'prompt-present' }
+            )
         }
         Registrations       = @(
             @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array' },

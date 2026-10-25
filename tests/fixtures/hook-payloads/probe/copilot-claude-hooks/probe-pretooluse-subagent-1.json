@@ -1,0 +1,1 @@
+{"hook_event_name":"PreToolUse","session_id":"837a04bd-6a64-4ad7-8ce7-5e62e533f469","timestamp":"2026-10-24T01:49:26.619Z","cwd":"C:\\scratch\\rewalk-202b\\copilot","agent_id":"837a04bd-6a64-4ad7-8ce7-5e62e533f469","agent_type":"speckit.specify","parent_agent_id":"12458cdf-064f-446b-af8d-b06812c42b68","tool_name":"skill","tool_input":{"skill":"speckit-specify"}}

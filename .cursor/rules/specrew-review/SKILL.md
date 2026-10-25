@@ -39,13 +39,15 @@ This skill is part of the `/specrew-*` command surface. It coexists with `/speck
                  [--iteration <NNN>] [--quiet] [--json] [--open]
 /specrew-review --live [--baseline-ref <git-ref>] [--project-path <path>]   # baseline auto-anchors for signoff; an explicit --baseline-ref run is exploratory-only
                  [--checkpoint-id <id>] [--run-id <id>] [--host <host>]
-                 [--model <model>] [--authorization-ref <ref>]
+                 [--model <model>] [--effort <effort>] [--authorization-ref <ref>]
+                 [--code-writer-host <host>]
                  [--design-context-ref <path>] [--allowed-path <path>]
                  [--forbidden-path <path>] [--exclude-path <path>]
                  [--reviewer-config <path>] [--schema-root <path>]
                  [--run-root <path>] [--timeout-seconds <N>]
                  [--fallback-policy <none|one-authorized-availability-fallback>]
                  [--preserve-debug]
+/specrew-review --reconcile-run <run-id> [--project-path <path>]
 ```
 
 Backed by: `specrew review` / `scripts/specrew-review.ps1`
@@ -67,7 +69,9 @@ Backed by: `specrew review` / `scripts/specrew-review.ps1`
 | `--run-id` | string | No | Explicit run id for evidence under `.specrew/review/inline/<run-id>/` |
 | `--host` | string | No | Reviewer host to request (`claude`, `codex`, `copilot`, `cursor-agent`, or `antigravity`) |
 | `--model` | string | No | Reviewer model override; non-default models require `--authorization-ref` |
+| `--effort` | string | No | Optional host-specific reviewer reasoning/effort label persisted in evidence |
 | `--authorization-ref` | string | No | Human authorization reference for host/model selection |
+| `--code-writer-host` | string | No | Implementation host (`claude`, `codex`, etc.) used to prefer an independent peer reviewer |
 | `--design-context-ref` | string | No | Design or lifecycle artifact to include in the review request context |
 | `--allowed-path` | string | No | Add a mutable path allowlist entry for this live review run |
 | `--forbidden-path` | string | No | Add a protected path entry for this live review run |
@@ -78,6 +82,7 @@ Backed by: `specrew review` / `scripts/specrew-review.ps1`
 | `--timeout-seconds` | number | No | Live reviewer host timeout |
 | `--fallback-policy` | string | No | Host fallback policy (`none` or `one-authorized-availability-fallback`) |
 | `--preserve-debug` | flag | No | Preserve debug artifacts from the live review run |
+| `--reconcile-run` | string | No | Resume one interrupted campaign run without invoking or retrying a provider |
 
 ## Outputs
 

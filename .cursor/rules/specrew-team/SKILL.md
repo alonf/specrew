@@ -36,7 +36,13 @@ This skill is part of the `/specrew-*` command surface and does not collide with
 /specrew-team add <member-name> --role <role> --charter <text> [--project-path <path>]
 /specrew-team update <member-name> [--role <role>] [--charter <text>] [--project-path <path>]
 /specrew-team remove <member-name> [--project-path <path>]
+/specrew-team own <role> [--project-path <path>]
+/specrew-team resync <role> [--project-path <path>]
 ```
+
+`own` keeps an edited crew charter (`.squad/agents/<role>/charter.md`) as the user's - preserved, no longer
+reported at `specrew start`; `resync` returns it to the canonical `.specrew/team/agents/<role>.md` (the
+directives block survives). These are the two remedies the start-time "Preserving your charter" notice names.
 
 Backed by: `specrew team` / `scripts/specrew-team.ps1`
 

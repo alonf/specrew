@@ -329,10 +329,9 @@ Options:
   -ResumeFeature | --resume-feature <path|auto>
                                            Resume an existing feature directory, or use "auto"
   -Agent | --agent <name>                  Crew runtime agent label (default: Squad — required by Copilot host's --agent flag; non-Squad hosts ignore this since they don't have a host-side --agent surface)
-  -HostKind | --host <copilot|claude|codex>
-                                           Select the agent host runtime (default: copilot). 'antigravity' and
-                                           'auto' are reserved but rejected with deferred-guidance pointing to
-                                           Proposal 069 follow-up / Proposal 104 respectively.
+  -HostKind | --host <copilot|claude|codex|cursor|antigravity>
+                                           Select the agent host runtime (default: copilot). 'auto' remains
+                                           reserved and is rejected with Proposal 104 deferred guidance.
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
   -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
@@ -610,6 +609,23 @@ function Test-BootstrapSurface {
     )
 
     return Test-Path -LiteralPath (Join-Path $Root $RelativePath)
+}
+
+function Resolve-SpecrewStartAutoFeaturePath {
+    # Co-review round 4 (202, FR-018 / SC-006): a plain `specrew start` (no feature named) resumes the feature the shared
+    # resolver names - the one status and the first-prompt orientation name. It used to read .specify/feature.json
+    # directly, without the pointer's branch, so after a branch switch the resume could describe the old feature while
+    # status and orientation named the new one. No feature, or two competing ones, resolves to none here.
+    param([Parameter(Mandatory)][string]$Root)
+    try {
+        $active = Resolve-SpecrewActiveFeature -ProjectRoot $Root
+        $ref = [string]$active.feature_ref
+        if ([string]::IsNullOrWhiteSpace($ref) -or [string]$active.resolved_by -in @('none', 'ambiguous')) { return $null }
+        $path = Join-Path $Root (Join-Path 'specs' $ref)
+        if (Test-Path -LiteralPath $path -PathType Container) { return $path }
+    }
+    catch { $null = $_ }
+    return $null
 }
 
 function Resolve-FeatureDirectory {
@@ -2272,7 +2288,7 @@ function Write-DelegatedRoutingLedgerEntries {
         $status = if ([string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) { 'honored' } else { 'fell-back' }
         $fallbackReason = if ([string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) { '(none)' } else { $roleEntry.Value.fallback_reason }
 
-        Add-StructuredDecisionsLedgerEntry -ProjectRoot $ResolvedProjectPath -Title ("Routing evidence: {0}" -f $roleEntry.Value.role) -Type 'routing-evidence' -AffectedRequirement 'FR-043' -NextAction 'none' -Rationale ("Delegated lifecycle routing was applied for role '{0}'." -f $roleEntry.Value.role) -DetailLines @(
+        Add-StructuredDecisionsLedgerEntry -ProjectRoot $ResolvedProjectPath -Title ("Routing evidence: {0}" -f $roleEntry.Value.role) -Type 'routing-evidence' -AffectedRequirement 'delegated-lifecycle routing policy' -NextAction 'none' -Rationale ("Delegated lifecycle routing was applied for role '{0}'." -f $roleEntry.Value.role) -DetailLines @(
             ('- **Routing Evidence**: {0} | requested={1} | actual={2} | model={3} | status={4} | fallback={5}' -f $roleEntry.Value.role, $roleEntry.Value.requested_agent, $roleEntry.Value.effective_agent, $modelId, $status, $fallbackReason)
         ) | Out-Null
     }
@@ -3259,12 +3275,8 @@ elseif ($skipAutoResumeResolution) {
     $resolvedFeaturePath = $null
 }
 elseif (-not $FeatureRequest -and -not $ResumeFeature) {
-    try {
-        $resolvedFeaturePath = Resolve-FeatureDirectory -Root $resolvedProjectPath -ResumeFeature 'auto'
-    }
-    catch {
-        $resolvedFeaturePath = $null
-    }
+    # Co-review round 4 (202, FR-018): the shared resolver, as status and orientation use it.
+    $resolvedFeaturePath = Resolve-SpecrewStartAutoFeaturePath -Root $resolvedProjectPath
 }
 else {
     try {
@@ -3367,7 +3379,7 @@ $promptContent = Invoke-SpecrewCoordinatorPromptSurgery `
     -LifecycleMode $mode `
     -FeatureRef $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_ref)) { [string]$validatedSessionState.feature_ref } elseif ($resolvedFeaturePath) { Split-Path -Leaf $resolvedFeaturePath } else { $null }) `
     -BoundaryType $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.boundary_type)) { [string]$validatedSessionState.boundary_type } else { $null }) `
-    -ExpertiseLine (Get-SpecrewProfileOrientationLine)
+    -ExpertiseLine (Get-SpecrewProfileOrientationLine -CorrectionReference (Get-SpecrewProfileCorrectionReference -HostKind $selectedHost))  # 202 T009 (FR-016)
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -3427,7 +3439,7 @@ if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
 if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
     try {
         $crewResult = Invoke-CrewBootstrap -ProjectPath $resolvedProjectPath -HostKind $selectedHost
-        $writeCount = @($crewResult.Actions | Where-Object { $_.Action -eq 'written' }).Count
+        $writeCount = @($crewResult.Actions | Where-Object { $_.Action -in @('written', 'updated') }).Count
         if ($writeCount -gt 0) {
             Write-Info ("Crew runtime synced: {0} agent file(s) written to {1}." -f $writeCount, $crewResult.CrewRuntimePath)
         }
@@ -3442,7 +3454,7 @@ if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
 
 Write-Success "Prepared Specrew start context."
 if ($selectedHost -ne 'copilot') {
-    Write-Info ("Selected host: {0} (non-Squad runtime; coordinator prompt rewritten per FR-011/FR-012)" -f $selectedHost)
+    Write-Info ("Selected host: {0} (non-Squad runtime; coordinator prompt rewritten for this host)" -f $selectedHost)
 }
 $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.PromptPath
 $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.ContextPath

@@ -61,7 +61,7 @@ function Invoke-SessionStartDispatcherScenario {
 
 $bootstrapStub = @'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }
-[Console]::Out.Write("[specrew-bootstrap] BOOTSTRAP-CANARY`nMANDATORY FIRST ACTION`n" + ('B' * 1500))
+[Console]::Out.Write("[specrew-bootstrap] BOOTSTRAP-CANARY`nSESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH`n" + ('B' * 1500))
 exit 0
 '@
 
@@ -80,7 +80,7 @@ try {
     Assert-True ($cap.StdOut.Length -gt 0) 'over-cap SessionStart still emits host-facing output'
     Assert-True ($cap.StdOut.Length -le 10000) ("over-cap SessionStart output is bounded under the host cap (got {0})" -f $cap.StdOut.Length)
     Assert-True ($cap.StdOut.Contains('[specrew-bootstrap] BOOTSTRAP-CANARY')) 'bootstrap fragment survives cap handling intact'
-    Assert-True ($cap.StdOut.Contains('MANDATORY FIRST ACTION')) 'bootstrap banner instruction survives cap handling'
+    Assert-True ($cap.StdOut.Contains('SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH')) 'bootstrap session-state instruction survives cap handling'
     $bootstrapIndex = $cap.StdOut.IndexOf('[specrew-bootstrap] BOOTSTRAP-CANARY')
     $refocusIndex = $cap.StdOut.IndexOf('[specrew-refocus] REF-START')
     Assert-True ($bootstrapIndex -ge 0 -and $refocusIndex -gt $bootstrapIndex) 'bootstrap is composed ahead of lower-priority refocus'

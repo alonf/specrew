@@ -511,6 +511,19 @@ function Update-IterationStateFromTaskProgress {
     if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
         return $null
     }
+    # AN UNAUTHORIZED WRITER SKIPS A SEALED ITERATION AND JOURNALS THE SKIP (fix 5, B4F-063). This derives
+    # an iteration status from task progress - a value the validator's own enum does not even carry
+    # (`ready-for-review`) - and a session RESUME reached it through a GET verb, twenty minutes after the
+    # closeout verdict had sealed the iteration. The resumed session then oriented from its own rewrite
+    # and asked the human for a verdict the ledger already held (PRED-BETA4-007, confirmed on a consumer).
+    # Task progress is evidence, not authority; a sealed iteration's records are the verdict's, and this
+    # writer is not the verdict.
+    if ((Get-Command -Name 'Test-SpecrewIterationSealed' -ErrorAction SilentlyContinue) -and (Test-SpecrewIterationSealed -IterationDirectory (Split-Path -Parent $statePath))) {
+        if (Get-Command -Name 'Add-SpecrewSealJournalEvent' -ErrorAction SilentlyContinue) {
+            Add-SpecrewSealJournalEvent -ProjectRoot $ProjectRoot -Event 'sealed-iteration-write-skipped' -Writer 'task-progress:Update-IterationStateFromTaskProgress' -IterationDirectory (Split-Path -Parent $statePath) -Detail 'state.md is sealed; the derived iteration status was not written'
+        }
+        return $null
+    }
 
     $completeTasks = [System.Collections.Generic.List[object]]::new()
     $inProgressTasks = [System.Collections.Generic.List[object]]::new()
@@ -641,9 +654,27 @@ function Sync-IterationTaskProgress {
     )
 
     $effectiveFeatureRef = Resolve-TaskProgressFeatureRef -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -ResolvedFeaturePath $ResolvedFeaturePath
-    $catalog = @(Get-IterationTaskCatalog -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath)
     $path = Get-IterationTaskProgressPath -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     $existing = Get-TaskProgressState -Path $path
+    # AN UNAUTHORIZED WRITER SKIPS A SEALED ITERATION AND JOURNALS THE SKIP (fix 5, B4F-063). The sync is
+    # what a session resume reaches through Get-TaskProgressSummary - a GET verb - and it rewrote a sealed
+    # iteration's tasks-progress.yml and, through the state writer below, its state.md. On a sealed
+    # iteration the existing records ARE the summary: they are returned as they stand, nothing is derived
+    # and nothing is written. The skip is journaled so the next reader can tell "declined to write" from
+    # "never ran".
+    if ((Get-Command -Name 'Test-SpecrewIterationSealed' -ErrorAction SilentlyContinue) -and (Test-SpecrewIterationSealed -IterationDirectory (Split-Path -Parent $path))) {
+        if (Get-Command -Name 'Add-SpecrewSealJournalEvent' -ErrorAction SilentlyContinue) {
+            Add-SpecrewSealJournalEvent -ProjectRoot $ProjectRoot -Event 'sealed-iteration-write-skipped' -Writer 'task-progress:Sync-IterationTaskProgress' -IterationDirectory (Split-Path -Parent $path) -Detail 'tasks-progress.yml and state.md are sealed; the existing records were returned unchanged'
+        }
+        return [pscustomobject]@{
+            Path       = $path
+            FeatureRef = $effectiveFeatureRef
+            Iteration  = $IterationNumber
+            Tasks      = $existing.Tasks
+            Sealed     = $true
+        }
+    }
+    $catalog = @(Get-IterationTaskCatalog -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath)
     $derivedHints = Get-TaskProgressDerivedStatusHints -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     foreach ($divergence in @($derivedHints.Divergences)) {
         Write-Warning ("[task-progress-reconciliation] {0}" -f $divergence)
@@ -654,12 +685,20 @@ function Sync-IterationTaskProgress {
     foreach ($taskRow in $catalog) {
         $derivedStatus = if ($derivedHints.Statuses.Contains($taskRow.Task)) { [string]$derivedHints.Statuses[$taskRow.Task] } else { $null }
         if ($existing.Tasks.Contains($taskRow.Task)) {
-            # Preserve live non-pending state (in-progress, blocked, needs-rework, deferred) unless
-            # tasks.md derivation promotes the task to 'done'. Without this guard, every sync would
-            # downgrade actively worked tasks to 'pending' (the derived status for unchecked rows),
-            # silently erasing coordination state.
+            # Preserve live non-pending state unless tasks.md derivation promotes the task to 'done'.
+            # Without this guard, every sync would downgrade actively worked tasks to 'pending' (the
+            # derived status for unchecked rows), silently erasing coordination state.
+            #
+            # 'done' JOINED THAT LIST 2026-08-21. It was missing, and the deferral note above said the
+            # iteration-001 re-sync was still exposed - which then happened for real: a KeyContextAI
+            # re-sync reset all 18 completed tasks to 'pending' and left state.md contradicting itself,
+            # because the hand-driven flow leaves tasks.md unchecked even after the work is finished.
+            #
+            # A DERIVED HINT MAY PROMOTE, NEVER DEMOTE. The checkbox file is a hint; the ledger is the
+            # live record. Deliberately un-completing a task goes through Set-TaskStatus, not through
+            # unticking a box.
             $liveExistingStatus = [string]$existing.Tasks[$taskRow.Task].status
-            $preserveLiveExisting = ($liveExistingStatus -in @('in-progress', 'blocked', 'needs-rework', 'deferred')) -and ($derivedStatus -ne 'done')
+            $preserveLiveExisting = ($liveExistingStatus -in @('in-progress', 'blocked', 'needs-rework', 'deferred', 'done')) -and ($derivedStatus -ne 'done')
             $entry = [ordered]@{
                 title          = $taskRow.Title
                 status         = if ($preserveLiveExisting) { $liveExistingStatus } elseif (-not [string]::IsNullOrWhiteSpace($derivedStatus)) { $derivedStatus } elseif ([string]::IsNullOrWhiteSpace($liveExistingStatus)) { 'pending' } else { $liveExistingStatus }
@@ -715,10 +754,15 @@ function Set-TaskStatus {
         [AllowNull()][string]$FeatureRef,
         [Parameter(Mandatory = $true)][string]$IterationNumber,
         [Parameter(Mandatory = $true)][string]$TaskId,
-        [Parameter(Mandatory = $true)][ValidateSet('pending', 'in-progress', 'complete', 'blocked')][string]$Status,
+        [Parameter(Mandatory = $true)][ValidateSet('pending', 'in-progress', 'complete', 'done', 'blocked')][string]$Status,
         [AllowNull()][string]$Reason,
         [AllowNull()][string]$ResolvedFeaturePath
     )
+
+    # DRIFT-199-I002-009 (T021): this writer used to persist 'complete' while every consumer - the boundary
+    # preflight's task-state check, the validator's task enum, iteration 001's own ledger - speaks 'done'.
+    # The ledger now holds the one word its readers accept; 'complete' stays an accepted input alias.
+    if ($Status -eq 'complete') { $Status = 'done' }
 
     $state = Sync-IterationTaskProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     if (-not $state.Tasks.Contains($TaskId)) {
@@ -744,7 +788,7 @@ function Set-TaskStatus {
             $entry.completed_at = $null
             $entry.blocked_reason = $null
         }
-        'complete' {
+        'done' {
             if ([string]::IsNullOrWhiteSpace([string]$entry.started_at)) {
                 $entry.started_at = $timestamp
             }

@@ -13,6 +13,16 @@ BeforeAll {
     $env:SPECREW_MODULE_PATH = $script:RepoRoot
     . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
+    # This suite proves the retained legacy navigator contract. Beta3 correctly defaults production
+    # projects to campaign authority, so make the compatibility mode explicit instead of allowing the
+    # ambient authority selector to suppress the legacy path under test.
+    Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+        [pscustomobject]@{ mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true; campaign_authority_enabled = $false; reason = 'authority-mode-legacy' }
+    }
+    Mock -CommandName Get-ContinuousCoReviewReviewedStateDigest -MockWith {
+        [pscustomobject]@{ ok = $true; tree_id = 'x' }
+    }
+
     function script:New-TempGovRepo {
         $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('t106-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $repo '.specrew/review/pending') -Force | Out-Null

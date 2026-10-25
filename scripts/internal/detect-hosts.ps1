@@ -232,11 +232,12 @@ function Test-HostSkillRoot {
         }
     }
     else {
-        # Copilot convention is *.md flat in .github/skills/; others (Claude/Codex/Antigravity)
-        # use SKILL.md nested. Could be manifest-declared but heuristic-by-skill-root works today;
-        # capture via manifest field SkillFilePattern in a follow-up if more hosts diverge.
+        # Copilot accepted a flat *.md catalog historically and now deploys the same nested
+        # <skill>/SKILL.md shape as the other hosts. Retain both readable consumer shapes; checking
+        # only the old flat form makes a populated current install report itself empty.
         if (([string]$manifest.Kind) -eq 'copilot') {
-            $skillFiles = Get-ChildItem -Path $skillRoot -Filter '*.md' -ErrorAction SilentlyContinue
+            $skillFiles = @(Get-ChildItem -Path $skillRoot -File -Recurse -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -ceq 'SKILL.md' -or $_.DirectoryName -ieq $skillRoot })
         }
         else {
             $skillFiles = Get-ChildItem -Path $skillRoot -Filter 'SKILL.md' -Recurse -ErrorAction SilentlyContinue

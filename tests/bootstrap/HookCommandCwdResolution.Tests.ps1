@@ -94,21 +94,22 @@ exit 0
     Set-Content -LiteralPath $eventNoCwd -Value (@{ session_id = 'cwdtest'; source = 'startup' } | ConvertTo-Json -Compress) -Encoding UTF8 -NoNewline
 
     # ============================================================================================
-    # PART A — claude: ${CLAUDE_PROJECT_DIR} placeholder (project-level, portable) + dispatcher self-location
+    # PART A — claude: project-root environment binding (project-level, portable) + dispatcher self-location
     # ============================================================================================
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $deploy -ProjectPath $proj -HostKind claude -UserHomeOverride $userHome | Out-Null
     $settingsPath = Join-Path $proj '.claude/settings.local.json'
     Assert-True (Test-Path -LiteralPath $settingsPath) 'claude: deploy generated .claude/settings.local.json'
     $settings = Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $cmd = [string]$settings.hooks.SessionStart[0].hooks[0].command
-    Assert-True ($cmd -match '\$\{CLAUDE_PROJECT_DIR\}/') 'claude: command uses the ${CLAUDE_PROJECT_DIR} BRACE placeholder (portable across clone/worktree)'
-    Assert-True (-not ($cmd -match '\$CLAUDE_PROJECT_DIR[^}]')) 'claude: command does NOT use the bare $CLAUDE_PROJECT_DIR form (which fails on Windows)'
+    $encodedMatch = [regex]::Match($cmd, '-EncodedCommand\s+(\S+)')
+    Assert-True ($encodedMatch.Success) 'claude: command carries one encoded bootstrap command'
+    $decodedCommand = [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encodedMatch.Groups[1].Value.Trim('"', "'")))
+    Assert-True ($decodedCommand -match "GetEnvironmentVariable\('CLAUDE_PROJECT_DIR'\)") 'claude: encoded command reads the host project-root environment variable'
+    Assert-True ($decodedCommand -match 'Join-Path\s+\$projectRoot\s+''\.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher\.ps1''') 'claude: encoded command resolves the dispatcher beneath the live project root'
+    Assert-True (-not $decodedCommand.Contains($proj)) 'claude: encoded command contains no machine-specific project path (portable across clone/worktree)'
 
-    $m = [regex]::Match($cmd, '-File\s+"([^"]+)"')
-    Assert-True ($m.Success) 'claude: command has a -File "<path>" arg'
-    # Simulate the host-side substitution Claude performs before spawn, then run the deployed dispatcher.
-    $resolved = $m.Groups[1].Value.Replace('${CLAUDE_PROJECT_DIR}', $proj)
-    Assert-True ([System.IO.Path]::IsPathRooted($resolved)) "claude: after simulated substitution the -File path is ABSOLUTE: $resolved"
+    $resolved = Join-Path $proj '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    Assert-True ([System.IO.Path]::IsPathRooted($resolved)) "claude: environment-bound dispatcher path is ABSOLUTE: $resolved"
     Remove-Item -LiteralPath $sentinel -Force -ErrorAction SilentlyContinue
     $rc = Invoke-Hook -File $resolved -Event 'SessionStart' -HostKind 'claude' -Cwd $nonRepo -EventFile $eventNoCwd -Tag 'claude'
     Assert-True ($rc -eq 0) 'claude: dispatcher exits 0 from a non-project cwd (fail-open holds)'

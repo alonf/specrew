@@ -73,44 +73,38 @@ if ($hostResult -notmatch 'HOST_OK active=') {
 }
 Write-Pass 'Test-HostProvidesAutomatedPrReview returns hashtable with Active key'
 
-# Test 7: Soft warning is non-blocking — invoke validator on an iteration that
-# is missing pr-review-resolution.md AND mentions PR/Copilot in state.md. Verify
-# the validator (a) emits the soft warning AND (b) exits 0 (non-blocking).
-# Per Copilot review PR #728: actually exercise validate-governance.ps1 end-to-end.
+# Test 7: Soft warning is non-blocking. The historical F-038 iteration now fails a newer, unrelated
+# campaign-evidence gate, so an absolute exit-0 assertion would make this fixture stale every time a
+# new hard validator lands. Exercise the current validator end-to-end to prove the warning fires,
+# then prove structurally that its block cannot mutate the already-computed hard-failure result or
+# call an exit/throw surface.
 $nonBlockTest = @"
-`$scratch = '$repoRoot' + '\.scratch\pr-nonblock-e2e'
-if (Test-Path -LiteralPath `$scratch) { Remove-Item -Recurse -Force -LiteralPath `$scratch }
-`$null = New-Item -ItemType Directory -Path `$scratch -Force
-# Build a passing-validation iteration that mentions PR in state.md but lacks
-# the resolution artifact. Validator should PASS the iteration AND emit the
-# soft warning (host detection in scratch dir will return Active=false because
-# the scratch dir has no git remote, so the warning won't actually fire — but
-# we can still assert the structural property: validator exits 0 even with
-# missing artifact; the soft warning is purely informational.)
 `$out = & pwsh -NoProfile -NoLogo -File '$validatorScript' -ProjectPath '$repoRoot' -IterationPath '$repoRoot\specs\038-pr-review-integration\iterations\001' -NoParallel -NoCacheRead 2>&1 | Out-String
 `$exitCode = `$LASTEXITCODE
-# F-038's own iteration mentions PR/Copilot in its state.md AND is missing
-# pr-review-resolution.md (artifact intentionally not authored in this iteration
-# scope per spec.md). Host detection in $repoRoot finds GitHub Copilot.
-# Expected: warning emitted AND exit 0.
-if (`$exitCode -eq 0 -and `$out -match '\[pr-review-soft-warning\]') {
-    Write-Host 'NONBLOCK_E2E_OK'
-} elseif (`$exitCode -eq 0) {
-    Write-Host "NONBLOCK_NO_WARNING exit=`$exitCode (validator passed but no warning — likely host detection returned Active=false)"
+if (`$out -match '\[pr-review-soft-warning\]') {
+    Write-Host "NONBLOCK_WARNING_REACHED exit=`$exitCode"
 } else {
-    Write-Host "NONBLOCK_FAIL exit=`$exitCode"
+    Write-Host "NONBLOCK_WARNING_MISSING exit=`$exitCode"
 }
-Remove-Item -Recurse -Force -LiteralPath `$scratch -ErrorAction SilentlyContinue
 "@
 $nonBlockResult = pwsh -NoProfile -Command $nonBlockTest 2>&1 | Out-String
-# Accept either NONBLOCK_E2E_OK (warning fired) or NONBLOCK_NO_WARNING
-# (host detection returned Active=false — runner doesn't have gh CLI or repo
-# isn't recognized as GitHub). Both prove non-blocking semantics; the variance
-# is environmental.
-if ($nonBlockResult -notmatch 'NONBLOCK_(E2E_OK|NO_WARNING)') {
-    Write-Fail "Validator non-blocking E2E check failed. Result:`n$nonBlockResult"
+if ($nonBlockResult -notmatch 'NONBLOCK_WARNING_REACHED') {
+    Write-Fail "Validator soft-warning E2E reachability check failed. Result:`n$nonBlockResult"
 }
-Write-Pass 'Validator non-blocking E2E: exit code 0 with missing artifact on iteration that mentions PR/Copilot (soft warning is informational only)'
+Write-Pass 'Validator E2E reaches the PR-review soft warning on the current historical fixture'
+
+$softBlockMatch = [regex]::Match(
+    $validatorContent,
+    '(?s)# Proposal 089: PR review integration soft-warning\..*?\r?\n\s*if \(\$hasFailures\) \{'
+)
+if (-not $softBlockMatch.Success) { Write-Fail 'Could not isolate the PR-review soft-warning block from the hard-failure exit' }
+$softBlock = $softBlockMatch.Value
+if ($softBlock -match '(?m)^\s*\$hasFailures\s*=' -or
+    $softBlock -match '\bWrite-ValidatorSummaryAndExit\b' -or
+    $softBlock -match '(?m)^\s*(throw|exit)\b') {
+    Write-Fail 'PR-review soft-warning block can alter or terminate the hard validator result'
+}
+Write-Pass 'PR-review warning block is downstream of hard-result computation and has no result mutation or exit path'
 
 Write-Host ''
 Write-Host 'PR review integration: all assertions pass'

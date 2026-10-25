@@ -277,6 +277,32 @@ function Invoke-Validator {
     }
 }
 
+function Write-CampaignResult {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$CampaignId,
+        [Parameter(Mandatory = $true)][string]$RunId,
+        [Parameter(Mandatory = $true)][string]$Completion,
+        [Parameter(Mandatory = $true)][string]$Validation
+    )
+
+    $runRoot = Join-Path $ProjectRoot ".specrew/review/authority/campaigns/$CampaignId/runs/$RunId"
+    $null = New-Item -ItemType Directory -Path $runRoot -Force
+    $fact = [ordered]@{
+        schema_version = '1.0'
+        campaign_id = $CampaignId
+        run_id = $RunId
+        target_digest = 'fixture-digest'
+        completion = $Completion
+        validation = $Validation
+    }
+    [System.IO.File]::WriteAllText(
+        (Join-Path $runRoot 'result.json'),
+        ($fact | ConvertTo-Json -Compress),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $validateScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
 $reviewerScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1'
@@ -343,6 +369,29 @@ try {
         Write-Pass 'Empty-iteration scenario stayed clear of false positives.'
     }
 
+    # Dogfood regression: the old validator counted every result.json below the authority root.
+    # A valid result from a different feature could therefore make this feature's hand-authored
+    # accepted review look reviewed. The active campaign has an explicit unusable result here; the
+    # unrelated valid result must not be borrowed.
+    $campaignScopeProject = Join-Path $scratchRoot 'campaign-scope'
+    $campaignScopeIteration = New-BaseProject -ProjectRoot $campaignScopeProject
+    Set-IterationArtifacts -IterationDirectory $campaignScopeIteration -Status 'reviewing' `
+        -TaskRows '| T001 | No implementation required | FR-EMPTY | US-0 | 0 | Planner | deferred | squad | 0 | pass |' `
+        -LastCompletedTask '(none)' -TasksRemaining '(none)'
+    Write-CampaignResult -ProjectRoot $campaignScopeProject -CampaignId 'cmp-001-review-evidence-integrity-i001' `
+        -RunId 'run-invalid-active' -Completion 'none' -Validation 'not-produced'
+    Write-CampaignResult -ProjectRoot $campaignScopeProject -CampaignId 'cmp-999-unrelated-i001' `
+        -RunId 'run-valid-unrelated' -Completion 'complete' -Validation 'valid'
+
+    $campaignScopeResult = Invoke-Validator -ValidateScript $validateScript -ProjectRoot $campaignScopeProject -IterationDirectory $campaignScopeIteration
+    if ($campaignScopeResult.ExitCode -eq 0 -or $campaignScopeResult.Output -notmatch 'active review campaign has 1 result\(s\), but none completed with validation=valid') {
+        Write-Fail ("Validator borrowed an unrelated campaign result instead of refusing this feature's unreviewed accepted artifact:`n{0}" -f $campaignScopeResult.Output)
+        $allPassed = $false
+    }
+    else {
+        Write-Pass 'Accepted review is cross-checked only against its active feature/iteration campaign.'
+    }
+
     $cleanProject = Join-Path $scratchRoot 'clean-diff'
     $cleanIteration = New-BaseProject -ProjectRoot $cleanProject
     [System.IO.File]::WriteAllText((Join-Path $cleanProject 'src\app.js'), @'
@@ -395,17 +444,27 @@ export function lateCommitMarker() {
 
         $rerunOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $reviewerScript -IterationDirectory $rerunIteration -Force -Confirm:$false 2>&1)
         $secondCodeMap = if (Test-Path -LiteralPath $codeMapPath -PathType Leaf) { Get-Content -LiteralPath $codeMapPath -Raw -Encoding UTF8 } else { '' }
+        $pendingCodeMapPath = "$codeMapPath.pending"
+        $pendingCodeMap = if (Test-Path -LiteralPath $pendingCodeMapPath -PathType Leaf) { Get-Content -LiteralPath $pendingCodeMapPath -Raw -Encoding UTF8 } else { '' }
 
         if ($LASTEXITCODE -ne 0) {
             Write-Fail 'Forced scaffolder rerun failed for late-commit scenario.'
             $allPassed = $false
         }
-        elseif ([string]::IsNullOrWhiteSpace($firstCodeMap) -or [string]::IsNullOrWhiteSpace($secondCodeMap) -or $firstCodeMap -eq $secondCodeMap) {
-            Write-Fail 'Forced scaffolder rerun did not refresh the generated review artifacts after the late commit.'
+        elseif ([string]::IsNullOrWhiteSpace($firstCodeMap) -or [string]::IsNullOrWhiteSpace($secondCodeMap) -or $firstCodeMap -ne $secondCodeMap) {
+            Write-Fail 'Forced scaffolder rerun rewrote already-accepted review evidence instead of preserving its reviewed snapshot.'
+            $allPassed = $false
+        }
+        elseif ([string]::IsNullOrWhiteSpace($pendingCodeMap) -or $pendingCodeMap -eq $firstCodeMap -or $pendingCodeMap -notmatch [regex]::Escape('src/late.js')) {
+            Write-Fail ("Forced scaffolder rerun did not write current late-commit evidence to code-map.md.pending.`n{0}" -f ($rerunOutput -join [Environment]::NewLine))
+            $allPassed = $false
+        }
+        elseif (($rerunOutput -join [Environment]::NewLine) -notmatch 'Protected existing accepted artifact') {
+            Write-Fail 'Forced scaffolder rerun preserved accepted evidence but did not explain where the refreshed evidence was written.'
             $allPassed = $false
         }
         else {
-            Write-Pass 'Late-commit rerun scenario refreshed generated artifacts with -Force -Confirm:$false.'
+            Write-Pass 'Late-commit rerun preserved accepted evidence and surfaced the refreshed tree in code-map.md.pending.'
         }
     }
 }

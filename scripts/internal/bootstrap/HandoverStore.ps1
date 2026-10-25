@@ -472,6 +472,200 @@ function Get-SpecrewRollingHandover {
     return $parsed
 }
 
+function Get-SpecrewHandoverAgeText {
+    # "12 min", "3 h", "2 days" - how long ago the previous session's notes were written. $null when unknown.
+    param([AllowNull()][string]$RecordedAt, [Parameter(Mandatory)][string]$NowUtc)
+    try {
+        $minutes = ([DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture) - [DateTimeOffset]::Parse($RecordedAt, [Globalization.CultureInfo]::InvariantCulture)).TotalMinutes
+    }
+    catch { return $null }
+    if ($minutes -lt 0) { return $null }
+    if ($minutes -lt 60) { return ('{0} min' -f [int][Math]::Floor($minutes)) }
+    if ($minutes -lt 48 * 60) { return ('{0} h' -f [int][Math]::Round($minutes / 60)) }
+    return ('{0} days' -f [int][Math]::Round($minutes / 1440))
+}
+
+function Get-SpecrewIterationLedgerProgress {
+    # Co-review round 4 (202, FR-019): progress of a later iteration, from its own ledger
+    # (specs/<feature>/iterations/<NNN>/tasks-progress.yml), in ledger order. The first task that is not done - in
+    # progress, blocked or pending - is the next one. $null when the ledger is absent or unreadable; never guessed.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$FeatureRef, [Parameter(Mandatory)][int]$Iteration)
+    $iterationsDir = Join-Path $ProjectRoot (Join-Path 'specs' (Join-Path $FeatureRef 'iterations'))
+    $ledger = $null
+    foreach ($name in @(('{0:000}' -f $Iteration), [string]$Iteration)) {
+        $candidate = Join-Path (Join-Path $iterationsDir $name) 'tasks-progress.yml'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $ledger = $candidate; break }
+    }
+    if ($null -eq $ledger) { return $null }
+    $tasks = New-Object System.Collections.Generic.List[object]
+    $current = $null
+    foreach ($line in [IO.File]::ReadAllLines($ledger, [Text.Encoding]::UTF8)) {
+        $id = [regex]::Match($line, '^\s{2}(?<id>T\d{3,}):\s*$')
+        if ($id.Success) { $current = [pscustomobject]@{ id = $id.Groups['id'].Value; title = ''; status = '' }; $tasks.Add($current) | Out-Null; continue }
+        if ($null -eq $current) { continue }
+        $field = [regex]::Match($line, '^\s{4}(?<k>title|status):\s*"?(?<v>.*?)"?\s*$')
+        if ($field.Success) { $current.($field.Groups['k'].Value) = $field.Groups['v'].Value }
+    }
+    if ($tasks.Count -eq 0) { return $null }
+    $done = @($tasks | Where-Object { $_.status -eq 'done' }).Count
+    $open = @($tasks | Where-Object { $_.status -ne 'done' } | Select-Object -First 1)
+    $next = $null
+    if ($open.Count -gt 0) {
+        $title = ([string]$open[0].title).Trim().TrimEnd('.')
+        if ($title.Length -gt 70) { $title = $title.Substring(0, 70).TrimEnd() + '...' }
+        $next = [pscustomobject]@{ id = [string]$open[0].id; title = $title }
+    }
+    return [pscustomobject]@{ done = $done; total = $tasks.Count; next = $next }
+}
+
+function Get-SpecrewTaskListProgress {
+    # Task progress from the feature's task list (specs/<feature>/tasks.md) - read only, no tracking file written.
+    # $null when there is no task list.
+    #
+    # Co-review round 4 (202, FR-019): the root task list is ITERATION 1's (task-progress.ps1 says the same, and that
+    # later iterations must not derive status from it - it is often left unchecked). For iteration 2 or later the
+    # progress comes from that iteration's own ledger, or is left out.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$FeatureRef, [AllowNull()][string]$IterationNumber)
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $null }
+    $iteration = 0
+    if (-not [string]::IsNullOrWhiteSpace($IterationNumber) -and [int]::TryParse($IterationNumber.Trim(), [ref]$iteration) -and $iteration -ge 2) {
+        return (Get-SpecrewIterationLedgerProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Iteration $iteration)
+    }
+    $path = Join-Path $ProjectRoot (Join-Path 'specs' (Join-Path $FeatureRef 'tasks.md'))
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $done = 0; $total = 0; $next = $null
+    foreach ($line in [IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8)) {
+        $m = [regex]::Match($line, '^\s*-\s+\[(?<mark>[ xX])\]\s+(?<id>T\d{3,})\b(?<rest>.*)$')
+        if (-not $m.Success) { continue }
+        $total++
+        if ($m.Groups['mark'].Value -ne ' ') { $done++; continue }
+        if ($null -eq $next) {
+            $rest = $m.Groups['rest'].Value
+            $bold = [regex]::Match($rest, '\*\*(?<t>[^*]+)\*\*')
+            $title = if ($bold.Success) { $bold.Groups['t'].Value } else { ($rest -replace '\[[^\]]*\]', '') }
+            $title = $title.Trim().TrimEnd('.')
+            if ($title.Length -gt 70) { $title = $title.Substring(0, 70).TrimEnd() + '...' }
+            $next = [pscustomobject]@{ id = $m.Groups['id'].Value; title = $title }
+        }
+    }
+    if ($total -eq 0) { return $null }
+    return [pscustomobject]@{ done = $done; total = $total; next = $next }
+}
+
+function Get-SpecrewResumeFromDisk {
+    # Feature 202 T012 (FR-019; B4F-089): where a resumed session stands, read from DISK ONLY - the pending decision
+    # (the ledger), the commits since the previous session's notes (from_commit..HEAD), and task progress - and the
+    # standing of those notes. The notes are context, never the position: B4F-089's two resumes repeated a narrative
+    # ("at iteration-closeout ... starting now: validating and committing") while the disk held the closeout commit,
+    # the next iteration's plan and the plan decision pending.
+    #
+    # The notes are STALE - flagged, and not repeated - when they were written at another boundary than the disk's
+    # (a sync moves the session's boundary to its target, so current notes carry the disk's boundary), when the ledger
+    # recorded a decision after them, or when they name another feature. Fail-soft: any part that cannot be read is
+    # left out, never guessed.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()]$Handover,
+        [Parameter(Mandatory)][string]$NowUtc,
+        # The caller's session boundary, when it holds one (a launch writes its contract before start-context.json does).
+        [AllowNull()][string]$WorkingBoundary
+    )
+    $ctx = $null
+    try { $ctx = Get-Content -LiteralPath (Join-Path $ProjectRoot '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop } catch { $ctx = $null }
+    $prop = { param($o, [string]$n) if ($null -ne $o -and $o -is [pscustomobject] -and $o.PSObject.Properties[$n]) { $o.$n } else { $null } }
+    $enforcement = & $prop $ctx 'boundary_enforcement'
+    $session = & $prop $ctx 'session_state'
+    $lastAuthorized = [string](& $prop $enforcement 'last_authorized_boundary')
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) { $FeatureRef = [string](& $prop $session 'feature_ref') }
+
+    $pending = $null
+    if (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue) {
+        try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
+    }
+    $hasPending = ($null -ne $pending -and [bool]$pending.HasPendingVerdict -and -not [string]::IsNullOrWhiteSpace([string]$pending.PendingToMarkerBoundary))
+    $featureText = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { 'the current feature' } else { "feature $FeatureRef" }
+    $diskBoundary = $null
+    if ($hasPending) {
+        $from = [string]$pending.PendingFromMarkerBoundary; $to = [string]$pending.PendingToMarkerBoundary
+        $diskBoundary = $to
+        $where = ("Where we are, read from disk: {0} is waiting for the human's decision on '{1}' (from '{2}')." -f $featureText, $to, $from)
+        $starting = ("Starting now: show the human the '{0} -> {1}' decision again and wait for their typed reply." -f $from, $to)
+    }
+    else {
+        $diskBoundary = $WorkingBoundary
+        if ([string]::IsNullOrWhiteSpace($diskBoundary)) { $diskBoundary = [string](& $prop $session 'boundary_type') }
+        if ([string]::IsNullOrWhiteSpace($diskBoundary)) { $diskBoundary = $lastAuthorized }
+        # Nothing pending: the boundary the disk is at (the session's, which the ledger's last approval equals once one
+        # is recorded). Not "no step approved yet" - a launch writes its contract a moment before it records the ledger.
+        $where = if ([string]::IsNullOrWhiteSpace($diskBoundary)) { ("Where we are, read from disk: {0}; no decision is waiting." -f $featureText) }
+                 else { ("Where we are, read from disk: {0} is at '{1}'; no decision is waiting." -f $featureText, $diskBoundary) }
+        $starting = $null
+    }
+
+    $progress = $null
+    $iterationNumber = [string](& $prop $session 'iteration_number')
+    try { $progress = Get-SpecrewTaskListProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $iterationNumber } catch { $progress = $null }
+    $progressLine = if ($null -ne $progress) { ("Tasks: {0} of {1} done{2}." -f $progress.done, $progress.total, $(if ($null -ne $progress.next) { ("; next {0} {1}" -f $progress.next.id, $progress.next.title) } else { '' })) } else { $null }
+    if ($null -eq $starting) {
+        $starting = if ($null -ne $progress -and $null -ne $progress.next) { ("Starting now: {0} {1}, the next open task." -f $progress.next.id, $progress.next.title) }
+                    else { 'Starting now: the next lifecycle step from the position above.' }
+    }
+
+    $commitsLine = $null; $age = $null; $reasons = New-Object System.Collections.Generic.List[string]
+    if ($null -ne $Handover) {
+        $age = Get-SpecrewHandoverAgeText -RecordedAt ([string]$Handover.recorded_at) -NowUtc $NowUtc
+        $fromCommit = [string](& $prop $Handover 'from_commit')
+        if (-not [string]::IsNullOrWhiteSpace($fromCommit)) {
+            try {
+                $log = @(& git -C $ProjectRoot log --format=%s ("{0}..HEAD" -f $fromCommit) 2>$null | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                if ($LASTEXITCODE -eq 0 -and $log.Count -gt 0) {
+                    $commitsLine = ("{0} commit{1} since the previous session's notes (newest: {2})." -f $log.Count, $(if ($log.Count -eq 1) { '' } else { 's' }), $log[0])
+                }
+            }
+            catch { $commitsLine = $null }
+        }
+        $notesFeature = [string](& $prop $Handover 'active_feature')
+        if (-not [string]::IsNullOrWhiteSpace($notesFeature) -and -not [string]::IsNullOrWhiteSpace($FeatureRef) -and $notesFeature -ne $FeatureRef) {
+            $reasons.Add(("they are about feature {0}, not {1}" -f $notesFeature, $FeatureRef)) | Out-Null
+        }
+        $notesBoundary = [string](& $prop $Handover 'active_boundary')
+        $canon = { param($b) if ([string]::IsNullOrWhiteSpace([string]$b)) { '' } elseif (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue) { [string](Normalize-SpecrewCanonicalBoundaryType -Boundary $b) } else { ([string]$b).ToLowerInvariant() } }
+        if (-not [string]::IsNullOrWhiteSpace($notesBoundary) -and -not [string]::IsNullOrWhiteSpace($diskBoundary) -and (& $canon $notesBoundary) -ne (& $canon $diskBoundary)) {
+            $reasons.Add(("they were written at '{0}', and the disk is at '{1}'" -f $notesBoundary, $diskBoundary)) | Out-Null
+        }
+        try {
+            $notesAt = [DateTimeOffset]::Parse([string]$Handover.recorded_at, [Globalization.CultureInfo]::InvariantCulture)
+            $latestDecision = $null
+            foreach ($entry in @(& $prop $enforcement 'verdict_history')) {
+                $at = & $prop $entry 'recorded_at'
+                if ($null -eq $at) { continue }
+                try { $t = [DateTimeOffset]$at } catch { continue }
+                if ($null -eq $latestDecision -or $t -gt $latestDecision) { $latestDecision = $t }
+            }
+            if ($null -ne $latestDecision -and $latestDecision -gt $notesAt) { $reasons.Add('a decision was recorded after them') | Out-Null }
+        }
+        catch { $null = $_ }
+    }
+    return [pscustomobject]@{
+        where_line     = $where
+        commits_line   = $commitsLine
+        progress_line  = $progressLine
+        starting_line  = $starting
+        notes_age      = $age
+        notes_stale    = ($reasons.Count -gt 0)
+        notes_reasons  = $reasons.ToArray()
+    }
+}
+
+function Format-SpecrewResumeNotesFlag {
+    # The one line a stale set of notes gets instead of being repeated (FR-019).
+    param([Parameter(Mandatory)]$Resume, [string]$Pointer = 'file:///.specrew/handover/session-handover.md')
+    $ageText = if ([string]::IsNullOrWhiteSpace([string]$Resume.notes_age)) { '' } else { (", recorded {0} ago," -f $Resume.notes_age) }
+    return ("[!] The previous session's notes{0} are older than the disk: {1}. They are not repeated here; the where-we-are lines are the position. The notes stay at {2}." -f $ageText, (@($Resume.notes_reasons) -join '; '), $Pointer)
+}
+
 function Get-SpecrewRuntimeHostFromEnv {
     # F-174 iter-10 (T004): best-effort detection of which AI host is running THIS process, from its env
     # signals. The design-workshop refresh runs the handover provider WITHOUT --host-kind (it is invoked by
@@ -525,6 +719,29 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
             return
         }
 
+        # FR-024 (iteration 002, T015): the SAME guard the sync-side writer has carried since FR-068
+        # (sync-boundary-state.ps1, 'the stage owes evidence it has not produced'). This writer runs
+        # immediately after a capture and re-mints the artifact for the NEXT crossing; without the guard it
+        # hands over an approval phrase and a verdict marker for a stage that has produced nothing, which is
+        # exactly what the sync refuses to write. The asymmetry was the defect: suppressing the demand in the
+        # provider while still supplying the marker through this file is a partial correction under a
+        # complete-sounding claim. A POSITIVE evidence-absent reading withholds; unverifiable does not.
+        $stageEvidenceAbsentForArtifact = ($pending.PSObject.Properties.Name -contains 'StageEvidenceAbsent') -and [bool]$pending.StageEvidenceAbsent -and
+            -not (($pending.PSObject.Properties.Name -contains 'StageEvidenceUnverifiable') -and [bool]$pending.StageEvidenceUnverifiable)
+        if ($stageEvidenceAbsentForArtifact) {
+            if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+                Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+            }
+            try {
+                $whJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                $whDir = Split-Path -Parent $whJournal
+                if ($whDir -and -not (Test-Path -LiteralPath $whDir)) { New-Item -ItemType Directory -Path $whDir -Force | Out-Null }
+                (([pscustomobject]@{ event = 'pending-verdict-artifact-withheld-stage-evidence-absent'; recorded_at = $NowUtc; to = [string]$pending.PendingToMarkerBoundary; missing = @($pending.StageEvidenceMissing) }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $whJournal -Encoding UTF8
+            }
+            catch { $null = $_ }
+            return
+        }
+
         $fromMarkerBoundary = [string]$pending.PendingFromMarkerBoundary
         $toMarkerBoundary = [string]$pending.PendingToMarkerBoundary
         if ([string]::IsNullOrWhiteSpace($fromMarkerBoundary) -or [string]::IsNullOrWhiteSpace($toMarkerBoundary)) {
@@ -562,7 +779,8 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
 
         $boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)
         $approvalPhrase = ('approved for {0}' -f $toMarkerBoundary)
-        $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+        # FR-024 (T014): the marker carries the crossing identity when the pending state has one.
+        $marker = if ([string]::IsNullOrWhiteSpace([string]$pending.CrossingId)) { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary) } else { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} @ {1} -->' -f $boundary, [string]$pending.CrossingId) }
         $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pending.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pending.LastAuthorizedBoundary }
 
         $lines = @(
@@ -600,6 +818,178 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
     }
 }
 
+function Get-SpecrewVerdictCaptureDisclosure {
+    # FR-010 (iteration 002, T024; DRIFT-199-I002-004, -008): when a crossing is pending and the human's
+    # turn CARRIES the approval phrase but the classifier did not accept it, say so - at PROMPT-ENTRY,
+    # where the phrase first appears, not in a recap two retries later.
+    #
+    # Measured twice on 2026-08-29, both the maintainer's own text, both costing a retry: a leading
+    # terminal quote bar, and four paragraphs of prose before the phrase. In both the leading text, not the
+    # phrase, decided the classification, and nothing said so until the agent happened to check.
+    #
+    # DELIBERATELY NARROW: it fires only when the exact phrase for the PENDING crossing is present in the
+    # text and the classifier still refused. Ordinary conversation - including a turn that merely mentions a
+    # boundary - produces nothing. The recognizer is untouched; this only makes its silence audible.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$HumanText,
+        [AllowNull()][string]$NowUtc,
+        [AllowNull()][string]$Source
+    )
+    if ([string]::IsNullOrWhiteSpace($HumanText)) { return $null }
+    if (-not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $null }
+    if (-not (Get-Command Test-SpecrewHumanVerdictToken -ErrorAction SilentlyContinue)) { return $null }
+    $pending = $null
+    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { return $null }
+    if ($null -eq $pending) { return $null }
+    $text = [string]$HumanText
+    # B4F-043, THIRD CONSUMER INSTANCE (PRED-BETA4-026): a verdict-shaped reply with NO crossing pending, or
+    # naming a boundary OTHER than the pending crossing's, used to vanish here - `return $null` on both. The
+    # audible standard one file over (the partial-signoff override: "a phrase that matched and was then
+    # rejected is a human trying to authorize something, and their attempt must never vanish") applies to
+    # the boundary family exactly as it reads. One line back: what is pending, or that nothing is.
+    if (-not [bool]$pending.HasPendingVerdict) {
+        $shape = $null
+        try { $shape = Test-SpecrewHumanVerdictToken -Text $text } catch { $shape = $null }
+        if ($null -eq $shape -or -not [bool]$shape.IsApproval) { return $null }
+        $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        if ($named.Count -eq 0) { return $null }
+        $lastAuth = [string]$pending.LastAuthorizedBoundary
+        $lastAuthText = if ([string]::IsNullOrWhiteSpace($lastAuth)) { 'no boundary has been authorized yet' } else { ("the last authorized boundary is '{0}'" -f $lastAuth) }
+        $message = ("Specrew: your reply reads as a verdict for '{0}', but NO crossing is pending right now, so nothing was recorded - {1}, and the crossing to '{0}' has not been reached (it is recorded when the crew runs that boundary's sync and presents the packet). Nothing you wrote is lost and no approval was changed. When the '{0}' crossing is presented, send the phrase again: approved for {0}" -f [string]$named[0], $lastAuthText)
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'no-pending-crossing' -From $lastAuth -To ([string]$named[0]) -LeadingText '' -NowUtc $NowUtc -Source $Source
+        return $message
+    }
+    $to = [string]$pending.PendingToMarkerBoundary
+    $from = [string]$pending.PendingFromMarkerBoundary
+    if ([string]::IsNullOrWhiteSpace($to)) { return $null }
+    $phrase = ('approved for {0}' -f $to)
+    $idx = $text.IndexOf($phrase, [StringComparison]::OrdinalIgnoreCase)
+    if ($idx -lt 0) {
+        # The pending crossing's phrase is absent. If the reply is still a verdict naming SOME boundary, it
+        # is a verdict for the wrong crossing - said, not swallowed.
+        $shape = $null
+        try { $shape = Test-SpecrewHumanVerdictToken -Text $text } catch { $shape = $null }
+        if ($null -eq $shape -or -not [bool]$shape.IsApproval) { return $null }
+        $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and [string]$_ -cne $to })
+        if ($named.Count -eq 0) { return $null }
+        $message = ("Specrew: your reply reads as a verdict for '{0}', but the crossing pending right now is '{1} -> {2}', so nothing was recorded. Nothing you wrote is lost and no approval was changed. To authorize the pending crossing, send: {3}" -f [string]$named[0], $from, $to, $phrase)
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'other-boundary-named' -From $from -To $to -LeadingText ([string]$named[0]) -NowUtc $NowUtc -Source $Source
+        return $message
+    }
+    $verdict = $null
+    try { $verdict = Test-SpecrewHumanVerdictToken -Text $text } catch { return $null }
+    if ($null -eq $verdict -or [bool]$verdict.IsApproval) { return $null }
+    $lead = $text.Substring(0, [Math]::Min($idx, $text.Length))
+    $leadTrimmed = ($lead -replace '\s+', ' ').Trim()
+    $leadShown = if ($leadTrimmed.Length -le 48) { $leadTrimmed } else { ($leadTrimmed.Substring(0, 45) + '...') }
+    $because = if ([string]::IsNullOrWhiteSpace($leadShown)) {
+        'the phrase is not the first thing in the message'
+    }
+    else {
+        ("'{0}' comes before the phrase" -f $leadShown)
+    }
+    $message = if ([string]$verdict.Action -ceq 'refused-multi-line') {
+        ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. Its first line is the phrase, but the message continues past it, and a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash; a pasted transcript or a block of notes under the phrase is not a verdict. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message that is exactly one line: '{2}' or '{2} - <your instructions>'." -f $from, $to, $phrase)
+    }
+    else {
+        ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. It reads as '{2}' because {3}, and the classification is decided by what comes FIRST in the message - not by the first of the verdict lines. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message whose FIRST characters are: {4}" -f $from, $to, [string]$verdict.Action, $because, $phrase)
+    }
+    Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action ([string]$verdict.Action) -From $from -To $to -LeadingText $leadShown -NowUtc $NowUtc -Source $Source
+    return $message
+}
+
+function Get-SpecrewVerdictCapturedDirective {
+    # B4F-086 / PRED-BETA4-042: the line the coordinator reads the moment a verdict is CAPTURED. Measured on the
+    # 9154f72b walk: after `approved for specify` the coordinator asked "What would you like next - run
+    # /speckit.clarify, skip straight to plan, or something else?"; after `approved for clarify`, "Next stage is
+    # plan ... that's your call whenever you're ready." Two human turns per boundary, because nothing at capture
+    # told the coordinator that the approval WAS the instruction - rule 14A's "advance, then halt and ask again"
+    # was all it had. This names the stage the approval began and the command that begins it, in the launch
+    # contract's own names; the host's Replace coordinator rules (Codex: sync-* -> pwsh form) render it as the
+    # contract renders on that host. The two closeout crossings, whose next stage branches, name both exits and
+    # never ask. Returns $null for an unknown boundary so an unexpected shape says nothing rather than something
+    # wrong.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$AuthorizedBoundary,
+        [AllowNull()][string]$HostKind
+    )
+    $to = ([string]$AuthorizedBoundary).Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($to)) { return $null }
+    $stages = @{
+        'specify'            = @('clarify', '/speckit.clarify, then /speckit.specrew-speckit.sync-clarify')
+        'clarify'            = @('plan', '/speckit.specrew-speckit.before-plan, then /speckit.plan, then /speckit.specrew-speckit.sync-plan')
+        'plan'               = @('tasks', '/speckit.tasks, then /speckit.specrew-speckit.sync-tasks')
+        'tasks'              = @('before-implement preparation', '/speckit.specrew-speckit.after-tasks, then /speckit.specrew-speckit.before-implement - the packet, then the stop for the human''s verdict')
+        'before-implement'   = @('implementation', '/speckit.implement')
+        'review-signoff'     = @('retro', 'the retrospective, closed by /speckit.specrew-speckit.sync-retro')
+        'retro'              = @('iteration-closeout', '/speckit.specrew-speckit.sync-iteration-closeout')
+    }
+    $line = $null
+    if ($stages.ContainsKey($to)) {
+        $stage = [string]$stages[$to][0]
+        $command = [string]$stages[$to][1]
+        $line = ("Verdict captured: approved for {0}. The {1} stage begins in this turn: {2}. Do not ask the human to start it; the approval was the instruction." -f $to, $stage, $command)
+    }
+    elseif ($to -eq 'iteration-closeout') {
+        $line = "Verdict captured: approved for iteration-closeout. Two exits follow and the record decides: work remaining in the plan begins the next iteration's plan stage (/speckit.specrew-speckit.before-plan); a delivered feature begins feature closeout (/speckit.specrew-speckit.sync-feature-closeout). Begin the one the record supports in this turn; do not ask the human which."
+    }
+    elseif ($to -eq 'feature-closeout') {
+        $line = "Verdict captured: approved for feature-closeout. The feature is closed; nothing is pending. The next feature begins with the design workshop when the human brings one - do not ask them to start a stage."
+    }
+    if ($null -eq $line) { return $null }
+    # Render as the launch contract renders on this host (FR-014: Codex has no slash surface for the sync
+    # commands). The host's coordinator rules are the one source (hosts/<kind>/coordinator-rules.psd1); the
+    # hook context has not loaded the surgery module or the registry, so the file is read directly. Only
+    # Replace rules apply to a single line; Strip rules are for whole directives.
+    if (-not [string]::IsNullOrWhiteSpace($HostKind)) {
+        try {
+            $rules = @()
+            if (Get-Command Get-SpecrewHostCoordinatorRules -ErrorAction SilentlyContinue) {
+                $rules = @(Get-SpecrewHostCoordinatorRules -HostKind $HostKind)
+            }
+            else {
+                $moduleRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))   # bootstrap -> internal -> scripts -> module root
+                $rulesPath = Join-Path (Join-Path (Join-Path $moduleRoot 'hosts') ([string]$HostKind).ToLowerInvariant()) 'coordinator-rules.psd1'
+                if (Test-Path -LiteralPath $rulesPath -PathType Leaf) {
+                    $data = Import-PowerShellDataFile -LiteralPath $rulesPath
+                    if ($data.ContainsKey('Rules')) { $rules = @($data.Rules) }
+                }
+            }
+            foreach ($rule in $rules) {
+                if ([string]$rule.Kind -eq 'Replace' -and -not [string]::IsNullOrWhiteSpace([string]$rule.Pattern)) {
+                    $line = [regex]::Replace($line, [string]$rule.Pattern, [string]$rule.Replacement)
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    return $line
+}
+
+function Write-SpecrewVerdictDisclosureJournal {
+    # One row per disclosure, whichever branch produced it; fail-silent bookkeeping.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$Action,
+        [AllowNull()][string]$From,
+        [AllowNull()][string]$To,
+        [AllowNull()][string]$LeadingText,
+        [AllowNull()][string]$NowUtc,
+        [AllowNull()][string]$Source
+    )
+    try {
+        $journal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+        $dir = Split-Path -Parent $journal
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
+        (([pscustomobject]@{ event = 'verdict-not-captured-disclosed'; recorded_at = $when; from = $From; to = $To; action = [string]$Action; leading_text = [string]$LeadingText; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+    }
+    catch { $null = $_ }
+}
+
 function Invoke-SpecrewBoundaryVerdictCapture {
     # THE verdict-authority write path, shared by Stop and prompt-entry hooks. Stop is still the backstop, but
     # UserPromptSubmit/PreInvocation captures immediately after the human types the verdict so a weak host cannot
@@ -613,11 +1003,34 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         [Parameter()][AllowNull()][string] $LastUserMessage,
         [Parameter()][AllowNull()][string] $LastAuthorizedBoundary,
         [Parameter()][string] $Source = 'stop',
-        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o'))
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
+        # Co-review round 6 (iteration 002): where the dispatcher says the prompt came from; empty at Stop.
+        [Parameter()][AllowNull()][string] $TurnOrigin = $null,
+        # Co-review round 8 (iteration 002, FR-029): the host, so a boundary approval takes the approval form there.
+        [Parameter()][AllowNull()][string] $HostKind = $null
     )
 
     $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
-    if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { $result.reason = 'no-transcript'; return $result }
+    # Co-review round 6 (iteration 002): a prompt the dispatcher did not find typed by the human - a replay of the hook's own
+    # output, or a message whose records it could not read - authorizes no boundary, as it records no other approval.
+    if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation') -and
+        -not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user') {
+        $result.reason = 'not-typed-by-human'
+        return $result
+    }
+    # W45 (2026-08-22): a prompt-entry event with no transcript is no longer a dead end. On hosts whose
+    # prompt event carries no transcript path (Copilot), capture used to land only at Stop - AFTER the
+    # turn that was processing the verdict - so a mid-turn controller read told the session the crossing
+    # was unauthorized while the human's approval sat one hook away, and the session re-asked. The
+    # prompt text itself is the evidence (the W44 round-approval shape); the boundary tie comes from the
+    # deterministic pending state. A transcript-bearing call never takes this branch, so every
+    # transcript-path conservatism - including refusing to scan past a send-back - is untouched.
+    $promptEntrySources = @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')
+    $promptOnlyEligible = ([string]::IsNullOrWhiteSpace($TranscriptPath) -and
+        ($Source -in $promptEntrySources) -and
+        -not [string]::IsNullOrWhiteSpace($LastUserMessage) -and
+        (Get-Command Get-SpecrewPromptEntryBoundaryVerdict -ErrorAction SilentlyContinue))
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath) -and -not $promptOnlyEligible) { $result.reason = 'no-transcript'; return $result }
     if (-not ((Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
             (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
             (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) -and
@@ -628,7 +1041,12 @@ function Invoke-SpecrewBoundaryVerdictCapture {
     }
 
     try {
-        $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+        $captured = if ([string]::IsNullOrWhiteSpace($TranscriptPath)) {
+            Get-SpecrewPromptEntryBoundaryVerdict -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind
+        }
+        else {
+            Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind
+        }
         if (-not $captured.Found) { $result.reason = $captured.Reason; return $result }
 
         $result.captured = $true
@@ -679,7 +1097,49 @@ function Invoke-SpecrewBoundaryVerdictCapture {
                 $result.reason = 'stage-evidence-absent-refused'
                 return $result
             }
-            $evidenceSource = if ([string]$captured.Reason -eq 'captured-pending-artifact-fallback') { 'hook-captured-from-transcript-pending-artifact' } else { 'hook-captured-from-transcript' }
+            # FR-024 (T014): a marker that names a crossing identity must name THE pending one. Two
+            # identities share the label `<from> -> <to>` when a crossing is re-minted against a new
+            # commit; a stale marker must not authorize its successor.
+            #
+            # A bare marker (no identity) STILL CAPTURES. This comment previously said that held "until
+            # T015 makes every renderer emit the identity"; T015 shipped without doing so, and the claim
+            # went stale while the code stayed the same. Stating it accurately instead: the gap is OPEN
+            # and DEFERRED, not scheduled-and-handled. It is a partial improvement rather than a
+            # regression - a bare marker behaves exactly as it did before this batch, and the
+            # superseded-identity case above is genuinely refused now. It closes when every packet
+            # renderer emits `@ <crossing-id>`; the writer (Get-SpecrewVerdictMarkerText) already does,
+            # but .claude/skills/specrew-gate-stop/SKILL.md and its host mirrors still instruct the bare
+            # form. When they no longer do, refuse a bare marker whenever the pending state carries a
+            # CrossingId. Pinned with its closure condition at tests/unit/crossing-mint-gate.tests.ps1
+            # (case 4c); recorded as DRIFT-199-I002-016.
+            $capturedMarkerId = if ($captured.PSObject.Properties.Name -contains 'MarkerCrossingId') { [string]$captured.MarkerCrossingId } else { '' }
+            $pendingCrossingId = ''
+            if (-not [string]::IsNullOrWhiteSpace($capturedMarkerId) -and (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
+                try {
+                    $pvId = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+                    if ($null -ne $pvId -and ($pvId.PSObject.Properties.Name -contains 'CrossingId')) { $pendingCrossingId = [string]$pvId.CrossingId }
+                }
+                catch { $pendingCrossingId = '' }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($capturedMarkerId) -and -not [string]::IsNullOrWhiteSpace($pendingCrossingId) -and ($capturedMarkerId -ne $pendingCrossingId.ToLowerInvariant())) {
+                [Console]::Error.WriteLine(("[specrew-handover] WARN VERDICT_REFUSED_MARKER_IDENTITY_MISMATCH captured '{0}' for '{1}->{2}' against marker identity '{3}', but the pending crossing is '{4}'; NOT authorizing. The packet was rendered for a crossing that has since been re-minted - re-render the packet from the current pending-verdict artifact and ask the human again." -f [string]$captured.VerdictText, $actualFrom, $actualTo, $capturedMarkerId, $pendingCrossingId))
+                try {
+                    $idJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                    $idDir = Split-Path -Parent $idJournal
+                    if ($idDir -and -not (Test-Path -LiteralPath $idDir)) { New-Item -ItemType Directory -Path $idDir -Force | Out-Null }
+                    (([pscustomobject]@{ event = 'verdict-refused-marker-identity-mismatch'; recorded_at = $NowUtc; verdict_text = [string]$captured.VerdictText; from = $actualFrom; to = $actualTo; marker_crossing_id = $capturedMarkerId; pending_crossing_id = $pendingCrossingId; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $idJournal -Encoding UTF8
+                }
+                catch { $null = $_ }
+                $result.reason = 'marker-identity-mismatch'
+                return $result
+            }
+            $evidenceSource = switch ([string]$captured.Reason) {
+                'captured-pending-artifact-fallback' { 'hook-captured-from-transcript-pending-artifact' }
+                # W45: the live prompt is the evidence - the same channel and the same label the other
+                # prompt-entry authority writers use, so the ledger says exactly which surface saw it.
+                'captured-prompt-entry' { 'hook-captured-user-prompt' }
+                default { 'hook-captured-from-transcript' }
+            }
             # F-198 FR-005: an authorization for a boundary BEHIND the working crossing is a
             # reconciliation of already-done work - record it distinctly as retroactive.
             $authorizationKind = if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToBoundary)) -ne (Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.WorkingBoundary))) { 'retroactive' } else { 'standard' }
@@ -690,6 +1150,8 @@ function Invoke-SpecrewBoundaryVerdictCapture {
             Sync-SpecrewPendingVerdictArtifactAfterAuthorization -ProjectRoot $ProjectRoot -NowUtc $NowUtc
             $result.authorized = $true
             $result.reason = 'authorized'
+            # B4F-086: the caller says which stage this began; it needs the boundary the verdict paid.
+            $result | Add-Member -NotePropertyName 'authorized_boundary' -NotePropertyValue ([string]$pendingCrossing.PendingToBoundary) -Force
             return $result
         }
         elseif ($toIdx -gt $authIdx) {
@@ -715,6 +1177,269 @@ function Invoke-SpecrewBoundaryVerdictCapture {
     }
 }
 
+function Invoke-SpecrewTypedAuthorityCapture {
+    # ONE TABLE, BOTH CAPTURE BRANCHES. Round-24 finding (DRIFT-199-I001-138) reported the pause
+    # decisions missing from the Stop transcript backstop. The cause was older and larger than the
+    # report: prompt-entry and the Stop backstop each carried their OWN hand-copied list of authority
+    # writers, and the lists had silently drifted - seven writers on one side, three on the other. So
+    # on a host whose prompt event carries no text (claude, which is the entire reason the backstop
+    # exists) a typed `stop the review here` never landed and every later --pause-choice 2 refused
+    # forever; a typed WITHDRAWAL never landed either, which fails OPEN and leaves an approval the
+    # human retracted still spendable. A rule kept at the call sites instead of at the one place every
+    # caller passes through - the same shape as the path comparer and the fact-file classifier before it -
+    # so it now lives here.
+    #
+    # ORDER IS LOAD-BEARING: the withdrawal is offered the turn BEFORE the approval it revokes, so one
+    # turn cannot both withdraw and re-approve. The recognizers are disjoint; the order makes that
+    # explicit rather than lucky.
+    #
+    # Offering the turn to every writer grants nothing: each applies its own recognizer, at most one
+    # can match, and a turn that matches none writes nothing. Fully fail-open - a writer that throws
+    # must never break the end of a human's turn.
+    #
+    # SPECREW-AUTHORITY-CONSUMER: approval-withdrawal
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyString()][AllowNull()][string]$Response,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$NowUtc,
+        [AllowEmptyString()][AllowNull()][string]$TurnPosition,
+        [AllowEmptyString()][AllowNull()][string]$TurnArrival,
+        # Feature 202 iteration 002, T017 (FR-027): the host's own ID for this message, when it gives one. Both
+        # paths pass the same value for the same message, so the identity below is one key, not one per path.
+        [AllowEmptyString()][AllowNull()][string]$MessageId,
+        # Co-review round 1 (iteration 002): the session the message belongs to, recorded on the reservation.
+        [AllowEmptyString()][AllowNull()][string]$SessionId,
+        # Co-review round 6 (iteration 002): where the dispatcher says the message came from (typed-user | host-injected |
+        # unknown). Empty from a path that reads no origin (the turn end), which keeps its own checks.
+        [AllowEmptyString()][AllowNull()][string]$TurnOrigin
+    )
+    if ([string]::IsNullOrWhiteSpace($Response)) { return }
+    # Co-review round 6 (iteration 002): ONLY A MESSAGE THE HUMAN TYPED RECORDS AN APPROVAL. The dispatcher labels a replay
+    # of the hook's own output 'host-injected', and a message whose records it could not read 'unknown', and the workshop
+    # receipt refused both while every writer here still ran - so 'approved for review round' arriving as a replay was a
+    # spendable round. Neither reaches a writer that records authority. The withdrawal still runs, for the reason it runs
+    # on a quoted menu: it removes authority, and refusing it would leave an approval the human retracted spendable. An
+    # unknown origin may be the human's own typing, so it is reported and said in this turn, with the phrase to retype.
+    $originRefused = (-not [string]::IsNullOrWhiteSpace($TurnOrigin) -and $TurnOrigin -cne 'typed-user')
+    # Feature 202 iteration 002, T018 (FR-029, DA-3): the writers decide on the approval form. On a host that marks pastes
+    # that is the human's own authority line outside every paste; a quoted menu, and every message on a host that marks
+    # no pastes, reaches them unchanged, and the one-line rule refuses it. Both recording paths reduce the same message
+    # the same way, so its identity below is still one key.
+    $receivedResponse = [string]$Response
+    # Co-review round 5 (iteration 002): A QUOTED MENU MINTS NOTHING, whichever writer would take it. The one-line rule
+    # lives in each recognizer, and the partial sign-off's reason runs to the end of the message, so a menu that began
+    # with 'approved for partial review signoff - ...' was saved as an override while the disclosure said nothing was
+    # approved. Only the withdrawal still runs: it removes authority, and refusing it fails open.
+    # Co-review round 7: EVERY REASON THE FORM GIVES TO REFUSE binds every writer the same way. A qualified message (a
+    # condition typed beside the approval line) was left to the writers' one-line rule, and the partial sign-off writer has
+    # none, so 'approved for partial review signoff - <reason>' above 'provided the security checks pass' was saved as an
+    # override. A message in a host envelope is the same case.
+    # Co-review round 3 (iteration 003): A FORM THAT CANNOT BE READ REFUSES. The catch kept the raw message and refused
+    # nothing, and a missing form function skipped the check, so a condition typed beside the partial sign-off reached its
+    # writer again. Unlike the boundary readers, these writers have no refusal of their own to fall back on. The
+    # withdrawal still runs on the raw message.
+    $formRefused = $true
+    if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
+        $form = $null
+        try { $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind } catch { $form = $null }
+        if ($null -ne $form) {
+            if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { return }
+            $Response = [string]$form.Text
+            $formRefused = ([string]$form.Reason -cin @('quoted-menu', 'qualified', 'machinery-envelope'))
+        }
+    }
+    # W69 (maintainer ruling, 2026-08-26): A TURN MINTS AT MOST ONCE, EVER.
+    #
+    # The Stop backstop re-offers the most recent human turn at the end of EVERY assistant turn. Once a
+    # capture was spent, the writer's unspent-and-same-hash return no longer applied and it fell
+    # through to a fresh unspent write - so one typed phrase became an unlimited supply of authority,
+    # with a ledger that looked correct because a human really had typed it, once.
+    #
+    # THE CHECK RUNS HERE, BEFORE THE WRITER LOOP, and is not conditioned on any slot's spent state -
+    # that conditioning is what the defect was. A turn already exhausted reaches no writer at all, so
+    # every writer below inherits the rule and one added later cannot miss it.
+    $turnId = ''
+    if (Get-Command Get-SpecrewTypedTurnIdentity -ErrorAction SilentlyContinue) {
+        try {
+            $turnId = [string](Get-SpecrewTypedTurnIdentity -Response $Response -HostKind $HostKind `
+                    -SourceEvent $SourceEvent -TurnPosition $TurnPosition -TurnArrival $TurnArrival -MessageId $MessageId)
+        }
+        catch { $turnId = '' }
+    }
+    # Co-review round 1 (iteration 002): the content hash is of the TRIMMED text. The turn end reads the message back
+    # from the transcript trimmed, so a prompt with a trailing space hashed raw here never matched it, and a message
+    # the hook did record was reported to the human as not recorded.
+    $contentHash = ''
+    if (Get-Command Get-SpecrewHumanAuthorityHash -ErrorAction SilentlyContinue) {
+        try { $contentHash = [string](Get-SpecrewHumanAuthorityHash -Text (([string]$Response).Trim())) } catch { $contentHash = '' }
+    }
+    $identityKind = if ([string]::IsNullOrWhiteSpace($MessageId)) { '' } else { 'message-id' }
+    if (-not [string]::IsNullOrWhiteSpace($turnId) -and (Get-Command Test-SpecrewTypedTurnExhausted -ErrorAction SilentlyContinue)) {
+        $exhausted = $true
+        try {
+            $exhausted = [bool](Test-SpecrewTypedTurnExhausted -ProjectRoot $ProjectRoot -TurnId $turnId `
+                    -ContentHash $contentHash -HostKind $HostKind -SourceEvent $SourceEvent)
+        }
+        catch { $exhausted = $true }
+        if ($exhausted) { return }
+    }
+    # Co-review round 1 (iteration 002): a message recorded before the message-ID key existed is history under the old
+    # key, and the turn end's first pass after an update must not record it again. Fails closed, like the check above.
+    if (-not [string]::IsNullOrWhiteSpace($MessageId) -and (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) -and
+        (Get-Command Test-SpecrewLegacyTurnRecorded -ErrorAction SilentlyContinue)) {
+        $legacy = $true
+        try {
+            $legacyTurnId = [string](Get-SpecrewTypedTurnIdentity -Response $Response -HostKind $HostKind `
+                    -SourceEvent $SourceEvent -TurnPosition $TurnPosition -TurnArrival $TurnArrival)
+            # Co-review round 4: an old record matched on time alone vouches for this message only if it recorded the
+            # same kind of act, so the check is told which writer records this phrase.
+            $expectedWriter = ''
+            if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) {
+                $legacyShape = Get-SpecrewTypedAuthorityShape -Text $Response
+                if ($null -ne $legacyShape) {
+                    $expectedWriter = switch ([string]$legacyShape.Kind) {
+                        'approval-withdrawal' { 'Write-SpecrewApprovalWithdrawal' }
+                        'review-round-approval' { 'Write-SpecrewReviewRoundApprovalAuthorization' }
+                        'pause-decision' { 'Write-SpecrewPauseDecisionAuthorization' }
+                        'allowance-reset' { 'Write-SpecrewAllowanceResetAuthorization' }
+                        'coverage-deferral' { 'Write-SpecrewCoverageDeferralAuthorization' }
+                        'partial-review-signoff' { 'Write-SpecrewReviewSignoffOverrideAuthorization' }
+                        'workshop-repair' { 'Write-SpecrewWorkshopRepairAuthorization' }
+                        default { '' }
+                    }
+                }
+            }
+            $legacy = [bool](Test-SpecrewLegacyTurnRecorded -ProjectRoot $ProjectRoot -LegacyTurnId $legacyTurnId `
+                    -ContentHash $contentHash -HostKind $HostKind -SinceUtc $TurnArrival -ExpectedWriter $expectedWriter)
+        }
+        catch { $legacy = $true }
+        if ($legacy) { return }
+    }
+    # W70 / round-27 finding, reported BLOCKING: RESERVE BEFORE MINTING, SO A LIMIT THAT CANNOT BE
+    # RECORDED IS A LIMIT THAT REFUSES.
+    #
+    # The registration used to run AFTER the writers, piped to Out-Null with its exceptions swallowed -
+    # the report-don't-control shape this session has corrected four times, reintroduced in my own fix
+    # for it. If the ledger could not be appended the approval existed and the turn was never marked,
+    # so the next Stop re-offered it and the one-turn rule silently stopped applying. A limit that
+    # quietly stops limiting is worse than none, because the ledger still looks like one.
+    #
+    # Reserving first makes the failure unmissable by construction: no ledger line, no mint. The cost
+    # is a reservation line for turns that mint nothing, which is a bounded, auditable price for a
+    # control that cannot be switched off by a full disk.
+    if (-not [string]::IsNullOrWhiteSpace($turnId)) {
+        if (-not (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) { return }
+        $reserved = $false
+        try {
+            $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId `
+                    -HostKind $HostKind -SourceEvent $SourceEvent -MintedWriters '' -ContentHash $contentHash `
+                    -SessionId $SessionId -Identity $identityKind -NowUtc $NowUtc)
+        }
+        catch { $reserved = $false }
+        if (-not $reserved) { return }
+    }
+    $mintedBy = [System.Collections.Generic.List[string]]::new()
+    $writerFailed = $false
+    foreach ($writerName in @(
+            'Write-SpecrewApprovalWithdrawal'
+            'Write-SpecrewReviewRoundApprovalAuthorization'
+            'Write-SpecrewPauseDecisionAuthorization'
+            'Write-SpecrewAllowanceResetAuthorization'
+            'Write-SpecrewCoverageDeferralAuthorization'
+            'Write-SpecrewReviewSignoffOverrideAuthorization'
+            'Write-SpecrewWorkshopRepairAuthorization')) {
+        if (($formRefused -or $originRefused) -and $writerName -cne 'Write-SpecrewApprovalWithdrawal') { continue }
+        $writer = Get-Command $writerName -ErrorAction SilentlyContinue
+        if ($null -eq $writer) { continue }
+        try {
+            $splat = @{ ProjectRoot = $ProjectRoot; Response = $Response; HostKind = $HostKind; SourceEvent = $SourceEvent }
+            # Not every writer takes the caller's clock; the ones that do must use it rather than
+            # stamping their own, so one turn's facts share one instant.
+            if ($writer.Parameters.ContainsKey('NowUtc') -and -not [string]::IsNullOrWhiteSpace($NowUtc)) { $splat['NowUtc'] = $NowUtc }
+            # The RESULT IS READ now, not discarded. Discarding it is what let a withdrawal whose
+            # delete failed report nothing and be believed (W68); here it is what tells us the turn
+            # actually minted something and must be marked exhausted.
+            $written = & $writer @splat
+            if ($null -ne $written) { [void]$mintedBy.Add($writerName) }
+        }
+        catch { $writerFailed = $true }
+    }
+    if ($originRefused -and $TurnOrigin -ceq 'unknown' -and $mintedBy.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) -and (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
+        try {
+            $unconfirmedShape = Get-SpecrewTypedAuthorityShape -Text $Response
+            if ($null -ne $unconfirmedShape -and [string]$unconfirmedShape.Kind -cne 'approval-withdrawal') {
+                Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $unconfirmedShape -EntryKey $turnId -HostKind $HostKind `
+                    -SessionId $SessionId -Reason 'origin-unconfirmed' -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
+    # Co-review round 2 (iteration 002): RECEIVED IS NOT SAVED. The reservation above proves the hook saw the message, and
+    # the turn end on a single-path host reads it that way. When a writer threw and nothing was stored, the act is reported
+    # here, by the path that knows it failed, and said at the next message - never left as a reservation that reads as
+    # recorded.
+    if ($writerFailed -and $mintedBy.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) -and (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
+        try {
+            $failedShape = Get-SpecrewTypedAuthorityShape -Text $Response
+            if ($null -ne $failedShape) {
+                Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $failedShape -EntryKey $turnId -HostKind $HostKind `
+                    -SessionId $SessionId -Reason 'not-saved' -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
+    # PRED-BETA4-022 (B4F-065): a turn that minted NOTHING because its first line was an authority phrase
+    # and the message went on - a pasted transcript, a block of notes - is disclosed here, once for the
+    # turn, whichever writer refused it. Silent refusal is what let a 136-line paste pass unremarked
+    # until it was minted; a refusal that speaks names the one-line retype.
+    if ($mintedBy.Count -eq 0 -and (Get-Command Get-SpecrewAuthorityMultiLineRefusal -ErrorAction SilentlyContinue) -and
+        (Get-Command Write-SpecrewAuthorityMultiLineDrop -ErrorAction SilentlyContinue)) {
+        try {
+            $refusal = Get-SpecrewAuthorityMultiLineRefusal -Text $receivedResponse -HostKind $HostKind
+            if ($null -ne $refusal) {
+                Write-SpecrewAuthorityMultiLineDrop -ProjectRoot $ProjectRoot -Refusal $refusal -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
+    # W71: OBSERVE the second channel, do not block it. If another channel already minted this content
+    # on this host, that is the bounded residual the ruling accepts - at most two mints from one typed
+    # act - and it is recorded so its rate can be measured rather than assumed.
+    #
+    # Co-review round 1 (iteration 002): not under a message-ID key. One message has one key there, so another
+    # channel's mint of the same text is a different message, and the observation would record a double mint
+    # that did not happen (it did, on the maintainer's round-1 approval, against a phrase typed days earlier).
+    if ($mintedBy.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($contentHash) -and [string]::IsNullOrWhiteSpace($MessageId) -and
+        (Get-Command Get-SpecrewCrossChannelMint -ErrorAction SilentlyContinue)) {
+        try {
+            $prior = Get-SpecrewCrossChannelMint -ProjectRoot $ProjectRoot -ContentHash $contentHash `
+                -HostKind $HostKind -SourceEvent $SourceEvent
+            if ($null -ne $prior -and (Get-Command Write-SpecrewCrossChannelMintObservation -ErrorAction SilentlyContinue)) {
+                Write-SpecrewCrossChannelMintObservation -ProjectRoot $ProjectRoot -TurnId $turnId `
+                    -ContentHash $contentHash -HostKind $HostKind -SourceEvent $SourceEvent `
+                    -PriorTurnId ([string]$prior.turn_id) -PriorSourceEvent ([string]$prior.source_event) `
+                    -MintedWriters ($mintedBy -join ',') -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
+    # Phase two: record WHAT minted, which is what the observation above reads.
+    if ($mintedBy.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) {
+        try {
+            Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind `
+                -SourceEvent $SourceEvent -MintedWriters ($mintedBy -join ',') -ContentHash $contentHash `
+                -SessionId $SessionId -Identity $identityKind -NowUtc $NowUtc | Out-Null
+        }
+        catch { $null = $_ }
+    }
+}
+
 function Update-SpecrewRollingHandover {
     # F-174 iter-9.1: THE single handover-save orchestration. Every trigger source - the Stop hook, the
     # PostToolUse hook, and the design-workshop skill - calls THIS; none re-implement the save. It resolves
@@ -734,7 +1459,13 @@ function Update-SpecrewRollingHandover {
         [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
         [Parameter()][AllowNull()][string] $TranscriptPath = $null,   # F-174 iter-10 (T002): host transcript_path for conversation capture
         [Parameter()][AllowNull()][string] $LastAssistantMessage = $null,
-        [Parameter()][AllowNull()][string] $LastUserMessage = $null
+        [Parameter()][AllowNull()][string] $LastUserMessage = $null,
+        [Parameter()][AllowNull()][string] $TurnOrigin = $null,       # Feature 202 (FR-006): typed-user | host-injected | unknown, from the dispatcher
+        [Parameter()][AllowNull()][string] $SessionId = $null,        # Feature 202 (co-review round 2): binds the recovery question to the session asked
+        # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's ID for the prompt's message (prompt events only),
+        # and whether the host binding declares one at all: 'declared', 'none', or empty from a caller that predates it.
+        [Parameter()][AllowNull()][string] $MessageId = $null,
+        [Parameter()][AllowNull()][string] $MessageIdentity = $null
     )
 
     $getProp = {
@@ -811,10 +1542,118 @@ function Update-SpecrewRollingHandover {
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
 
     if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) {
-        Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
+        # W66 / round-24 finding (DRIFT-199-I001-138): the six hand-written writer blocks that used to
+        # stand here are one call now, because the Stop backstop's copy of the same list had drifted
+        # from this one and nobody could see it from either side.
+        # A prompt event IS one arrival, so the event's own clock is its arrival and there is no
+        # position to speak of. A second submit of the same text is a second event with a later clock,
+        # which is a second act - correctly.
+        Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+            -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc `
+            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId -TurnOrigin $TurnOrigin
+        # T017 (DA-2 condition 2): an approval an earlier turn end found not recorded on this host is said here,
+        # once, in the turn the human reads.
+        $notRecordedDisclosure = $null
+        if (Get-Command Get-SpecrewAuthorityNotRecordedDisclosure -ErrorAction SilentlyContinue) {
+            try { $notRecordedDisclosure = Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $ProjectRoot -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc } catch { $notRecordedDisclosure = $null }
+        }
+        # The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
+        # evidence rather than authority, and it belongs only to the branch the human types into.
+        $workshopDisclosure = $null
+        # Feature 202 T004 (FR-009): an open reply-recording recovery question is answered first. A typed yes that
+        # approves the recovery is used for that and nothing else - it is never also a workshop answer.
+        $recoveryDisclosure = $null
+        $recoveryAnswered = $false
+        if (Get-Command Invoke-SpecrewReplyRecordingRecoveryIfApproved -ErrorAction SilentlyContinue) {
+            try { $recoveryDisclosure = Invoke-SpecrewReplyRecordingRecoveryIfApproved -ProjectRoot $ProjectRoot -Response $LastUserMessage -NowUtc $NowUtc -TurnOrigin $TurnOrigin -SessionId $SessionId } catch { $recoveryDisclosure = $null }
+            $recoveryAnswered = -not [string]::IsNullOrWhiteSpace([string]$recoveryDisclosure)
+        }
+        if (-not $recoveryAnswered -and (Get-Command Get-SpecrewReplyRecordingRecoveryAsk -ErrorAction SilentlyContinue)) {
+            try { $recoveryDisclosure = Get-SpecrewReplyRecordingRecoveryAsk -ProjectRoot $ProjectRoot -NowUtc $NowUtc -SessionId $SessionId } catch { $recoveryDisclosure = $null }
+        }
+        if (-not $recoveryAnswered -and (Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            $receiptArgs = @{ ProjectRoot = $ProjectRoot; Response = $LastUserMessage; HostKind = $fromHost; SourceEvent = $Source; TurnOrigin = $TurnOrigin; SessionId = $SessionId }
+            # T020 (FR-031): every receipt one message produces is bound to that message's ID.
+            if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt).Parameters.ContainsKey('MessageId')) { $receiptArgs['MessageId'] = $MessageId }
+            $receipt = Write-SpecrewWorkshopAuthorityReceipt @receiptArgs
+            # T020 (FR-031, DA-4): a delegation says what it covered - every remaining lens, or only this one while others
+            # are still open, with the phrase that covers them.
+            if ($null -ne $receipt -and (Get-Command Get-SpecrewWorkshopDelegationLine -ErrorAction SilentlyContinue)) {
+                try { $workshopDisclosure = Get-SpecrewWorkshopDelegationLine } catch { $workshopDisclosure = $null }
+            }
+            # PRED-BETA4-053: a confirmation the receipt could not bind is said here, in the turn, with the
+            # remedy - not discovered later when the persist throws.
+            if ($null -eq $receipt -and (Get-Command Get-SpecrewWorkshopReceiptDisclosure -ErrorAction SilentlyContinue)) {
+                try { $workshopDisclosure = Get-SpecrewWorkshopReceiptDisclosure -ProjectRoot $ProjectRoot -Response $LastUserMessage } catch { $workshopDisclosure = $null }
+            }
+            # Feature 202 T004 (FR-007, FR-010): every other refused or degraded workshop reply is said in this turn
+            # too, naming its actual cause and that the reply was not used. Ordinary conversation (no open workshop
+            # question) yields no outcome worth saying, so it stays silent.
+            if ($null -eq $receipt -and [string]::IsNullOrWhiteSpace([string]$workshopDisclosure) -and
+                (Get-Command Get-SpecrewWorkshopReceiptOutcomeDisclosure -ErrorAction SilentlyContinue)) {
+                try { $workshopDisclosure = Get-SpecrewWorkshopReceiptOutcomeDisclosure -Outcome (Get-SpecrewWorkshopLastReceiptOutcome) } catch { $workshopDisclosure = $null }
+            }
+            # FR-007: while reply recording is degraded, the affected turn says so and whether the reply was used. The
+            # recovery question, when it is asked this turn, already says it, so the two are never both shown.
+            if ([string]::IsNullOrWhiteSpace([string]$recoveryDisclosure) -and
+                (Get-Command Get-SpecrewReplyRecordingDegradedDisclosure -ErrorAction SilentlyContinue)) {
+                $degradedLine = $null
+                try { $degradedLine = Get-SpecrewReplyRecordingDegradedDisclosure -ProjectRoot $ProjectRoot -Outcome (Get-SpecrewWorkshopLastReceiptOutcome) } catch { $degradedLine = $null }
+                if (-not [string]::IsNullOrWhiteSpace([string]$degradedLine)) {
+                    $workshopDisclosure = @(@([string]$workshopDisclosure, [string]$degradedLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join "`n"
+                }
+            }
+        }
+        $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc | Out-Null
-        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary }
+            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost
+        # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
+        # where the phrase first appears, and the alternative is the human learning it from a recap two
+        # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).
+        $disclosure = $null
+        if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
+            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source
+        }
+        elseif ((Get-Command Get-SpecrewVerdictCapturedDirective -ErrorAction SilentlyContinue)) {
+            # B4F-086 / PRED-BETA4-042: a CAPTURED verdict says so in the turn and names the stage it began. The
+            # boundary just paid is the ledger's newest authorization; the outcome object carries none.
+            try {
+                $justAuthorized = if ($captureOutcome.PSObject.Properties['authorized_boundary']) { [string]$captureOutcome.authorized_boundary } else { '' }
+                if ([string]::IsNullOrWhiteSpace($justAuthorized) -and (Get-Command Get-SpecrewBoundaryEnforcementState -ErrorAction SilentlyContinue)) {
+                    $enf = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+                    if ($null -ne $enf -and $null -ne $enf.EffectiveState) { $justAuthorized = [string]([pscustomobject]$enf.EffectiveState).last_authorized_boundary }
+                }
+                if (-not [string]::IsNullOrWhiteSpace($justAuthorized)) {
+                    $disclosure = Get-SpecrewVerdictCapturedDirective -AuthorizedBoundary $justAuthorized -HostKind $fromHost
+                }
+            }
+            catch { $null = $_ }
+        }
+        # PRED-BETA4-022: a typed authority (round approval, pause, reset, deferral) refused for continuing
+        # past its line is said HERE too, in the turn, where the human reads - the drop journal and the
+        # stderr line are the record, this is the disclosure.
+        if ((Get-Command Get-SpecrewAuthorityMultiLineRefusal -ErrorAction SilentlyContinue) -and
+            (Get-Command Get-SpecrewAuthorityMultiLineDisclosure -ErrorAction SilentlyContinue)) {
+            try {
+                $typedRefusal = Get-SpecrewAuthorityMultiLineRefusal -Text $LastUserMessage -HostKind $fromHost
+                if ($null -ne $typedRefusal) {
+                    $typedDisclosure = Get-SpecrewAuthorityMultiLineDisclosure -Refusal $typedRefusal
+                    $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $typedDisclosure } else { ([string]$disclosure + "`n" + $typedDisclosure) }
+                }
+            }
+            catch { $null = $_ }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$workshopDisclosure)) {
+            $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $workshopDisclosure } else { ([string]$disclosure + "`n" + $workshopDisclosure) }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$recoveryDisclosure)) {
+            $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $recoveryDisclosure } else { ([string]$disclosure + "`n" + $recoveryDisclosure) }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$notRecordedDisclosure)) {
+            $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $notRecordedDisclosure } else { ([string]$disclosure + "`n" + $notRecordedDisclosure) }
+        }
+        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure }
     }
 
     # T003: the workshop phase, surfaced ONLY while in-flight (the pre-specify intake window); quiet otherwise.
@@ -1004,7 +1843,132 @@ function Update-SpecrewRollingHandover {
     # and NEVER blocks the stop.
     if ($isEndOfTurn) {
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
-            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc | Out-Null
+            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc -HostKind $fromHost | Out-Null
+        # W44 Stop backstop for round approval: on hosts where prompt-entry does not deliver the prompt
+        # text (observed on claude - verdict capture lands at Stop), read the MOST RECENT genuine human
+        # turn from the transcript and offer it to the same writer. One turn only, verified human, every
+        # recognizer guard still applied - never agent text, never an older utterance resurrected.
+        if ((Get-Command Write-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) -and
+            (Get-Command Get-SpecrewTranscriptParsedTurns -ErrorAction SilentlyContinue) -and
+            (Get-Command Format-SpecrewConversationTurnText -ErrorAction SilentlyContinue) -and
+            (Get-Command Test-SpecrewTurnIsHumanVerdictEvidence -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
+            try {
+                # W54 OBSERVATION (never authority): a phrase arriving inside a tool RESULT is the
+                # question-UI shape - the turn parser drops tool_result parts by design, so capture
+                # rightly refuses it, but silently, and the agent then re-asks through the same tool.
+                # Record what was seen, so the review CLI's refusal can name the actual cause. The
+                # raw-line detector is deliberately narrow: the record must carry a tool-RESULT
+                # marker (never tool_use - the question naming the phrase as an option is not a
+                # reply), and the phrase must sit in a SHORT quoted JSON string - a picker reply is
+                # the chosen option text, while CLI output echoing an advisory is one long string
+                # whose quotes are nowhere near the phrase. False negatives are acceptable; a false
+                # positive would misdiagnose a human who simply has not replied yet. Runs BEFORE the
+                # mint loop, so a genuine typed capture in the same pass clears it.
+                if (Get-Command Write-SpecrewQuestionUiPhraseObservation -ErrorAction SilentlyContinue) {
+                    $w54Kinds = @(
+                        @{ Phrase = 'approved for review round'; Kind = 'review-round-approval' }
+                        @{ Phrase = 'approved for allowance reset'; Kind = 'allowance-reset' }
+                        @{ Phrase = 'continue without coverage until the review phase'; Kind = 'coverage-deferral' }
+                    )
+                    foreach ($rawLine in @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath)) {
+                        if ($rawLine -notmatch '(?i)(tool_result|function_call_output|tool\.result|toolresult|tool_output)') { continue }
+                        $obsKind = $null
+                        foreach ($k in $w54Kinds) {
+                            if ($rawLine -match ('"(?:[^"\\]|\\.){0,200}?' + [regex]::Escape([string]$k.Phrase) + '(?:[^"\\]|\\.){0,200}?"')) { $obsKind = [string]$k.Kind; break }
+                        }
+                        if ($null -ne $obsKind) {
+                            Write-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot -PhraseKind $obsKind `
+                                -HostKind $fromHost -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
+                            break
+                        }
+                    }
+                }
+                $roundApprovalTurns = New-Object System.Collections.Generic.List[object]
+                foreach ($ratRaw in @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath)) {
+                    $ratTurn = Format-SpecrewConversationTurnText -Turn $ratRaw -Raw
+                    if ($null -ne $ratTurn) { $roundApprovalTurns.Add($ratTurn) | Out-Null }
+                }
+                for ($rat = $roundApprovalTurns.Count - 1; $rat -ge 0; $rat--) {
+                    if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $roundApprovalTurns[$rat])) { continue }
+                    # Feature 202 iteration 002, T017 (FR-027, DA-2). The host binding decides what this path may do:
+                    #   declared - the host gives each message its own ID (Claude promptId, Codex turn_id). The turn
+                    #              end records under THAT key, the same key the message hook used, so the first path
+                    #              to see the message wins and every later turn end is a no-op. A typed entry with no
+                    #              ID is not recorded here: a second, different key is exactly the B4F-127 shape.
+                    #   none     - the host gives the prompt no ID (Copilot), so the message hook is the only path.
+                    #              The turn end records nothing; an approval-shaped message the hook did not see is
+                    #              reported, once, and said at the next message.
+                    #   empty    - a caller from before T017: the position-based identity, as before.
+                    # A declared host's typed entry that carries no ID is handled as 'none': this path cannot record it.
+                    #
+                    # Co-review round 1 (iteration 002): A WITHDRAWAL IS STILL RECORDED HERE. It removes authority, so
+                    # recording it a second time costs nothing, while losing it leaves an approval the human revoked
+                    # spendable. When the message hook did not see one, this path records it under the position key,
+                    # which the exhausted-turn check holds to once.
+                    $ratMessageId = ''
+                    if ($roundApprovalTurns[$rat].PSObject.Properties['message_id']) { $ratMessageId = [string]$roundApprovalTurns[$rat].message_id }
+                    $identityMode = ([string]$MessageIdentity).Trim().ToLowerInvariant()
+                    if ($identityMode -eq 'none' -or ($identityMode -eq 'declared' -and [string]::IsNullOrWhiteSpace($ratMessageId))) {
+                        try {
+                            $ratText = [string]$roundApprovalTurns[$rat].text
+                            $shape = if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { Get-SpecrewTypedAuthorityShape -Text $ratText } else { $null }
+                            if ($null -ne $shape -and (Get-Command Test-SpecrewPromptChannelSawContent -ErrorAction SilentlyContinue)) {
+                                $ratHash = Get-SpecrewHumanAuthorityHash -Text $ratText.Trim()
+                                $ratWhen = if ($roundApprovalTurns[$rat].PSObject.Properties['timestamp']) { [string]$roundApprovalTurns[$rat].timestamp } else { '' }
+                                # Every human message in the window with this text, and the earliest one's arrival: the
+                                # message hook must have seen each of them in this session, not just one like it.
+                                # Co-review round 2: and each is paired with a reservation near its own arrival.
+                                $sameText = 0; $earliest = $ratWhen
+                                $sameTimes = [System.Collections.Generic.List[string]]::new()
+                                for ($st = 0; $st -le $rat; $st++) {
+                                    $sameTurn = $roundApprovalTurns[$st]
+                                    if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $sameTurn)) { continue }
+                                    if ((Get-SpecrewHumanAuthorityHash -Text ([string]$sameTurn.text).Trim()) -cne $ratHash) { continue }
+                                    $sameText++
+                                    $sameWhen = if ($sameTurn.PSObject.Properties['timestamp']) { [string]$sameTurn.timestamp } else { '' }
+                                    if ($sameText -eq 1 -and -not [string]::IsNullOrWhiteSpace($sameWhen)) { $earliest = $sameWhen }
+                                    if (-not [string]::IsNullOrWhiteSpace($sameWhen)) { $sameTimes.Add($sameWhen) | Out-Null }
+                                }
+                                $pairTimes = if ($sameTimes.Count -eq $sameText -and $sameText -gt 0) { [string[]]$sameTimes.ToArray() } else { $null }
+                                if (-not (Test-SpecrewPromptChannelSawContent -ProjectRoot $ProjectRoot -ContentHash $ratHash -HostKind $fromHost `
+                                            -SinceUtc $earliest -SessionId $SessionId -ExpectedCount $sameText -MessageTimesUtc $pairTimes)) {
+                                    $ratKey = if ($roundApprovalTurns[$rat].PSObject.Properties['entry_id'] -and -not [string]::IsNullOrWhiteSpace([string]$roundApprovalTurns[$rat].entry_id)) { [string]$roundApprovalTurns[$rat].entry_id } else { ($ratHash + '|' + $ratWhen) }
+                                    if ([string]$shape.Kind -ceq 'approval-withdrawal') {
+                                        # Co-review round 3 (iteration 002): keyed by the transcript ENTRY, not by its index. The
+                                        # turn end reads a sliding 500-line window, so an index moves as the conversation grows,
+                                        # and each new index was a new key that ran the withdrawal again - against an approval
+                                        # another session had recorded since.
+                                        Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $ratText -HostKind $fromHost `
+                                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc -TurnPosition ('entry:' + $ratKey) -TurnArrival $ratWhen -SessionId $SessionId
+                                    }
+                                    else {
+                                        Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey $ratKey -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc | Out-Null
+                                    }
+                                }
+                            }
+                        }
+                        catch { $null = $_ }
+                        break
+                    }
+                    # THE SAME TABLE the prompt-entry branch calls. It used to be a copy of it, three
+                    # writers short - see Invoke-SpecrewTypedAuthorityCapture for what that cost.
+                    # POSITION AND ARRIVAL COME FROM THE TURN, NOT FROM THIS PASS. $NowUtc is the clock
+                    # of the Stop event, which is different every time the same turn is re-offered - so
+                    # using it here would make each re-offer look like a new act, which is the whole
+                    # defect. The transcript is append-only, so a turn's index is stable, and a retype
+                    # lands at a later index.
+                    $ratArrival = ''
+                    if ($roundApprovalTurns[$rat].PSObject.Properties['timestamp']) { $ratArrival = [string]$roundApprovalTurns[$rat].timestamp }
+                    Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
+                        -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
+                        -SourceEvent 'stop-transcript' -NowUtc $NowUtc `
+                        -TurnPosition ([string]$rat) -TurnArrival $ratArrival -MessageId $ratMessageId -SessionId $SessionId
+                    break
+                }
+            }
+            catch { $null = $_ }
+        }
     }
 
     # M2 (iter-10): hollow = the git delta GENUINELY produced nothing (git unavailable / the fail-safe empty

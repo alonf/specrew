@@ -146,6 +146,14 @@ function ConvertFrom-SpecrewProductDomainScalar {
     return $t
 }
 
+# FR-026 (T017): the shared constrained-YAML parse vocabulary. Loaded guarded so a consumer that already
+# dot-sourced it (or the other lens) does not redefine it, and so a direct load of this file alone still
+# has the refusal wording available.
+if (-not (Get-Command -Name 'Get-SpecrewConstrainedYamlParseFailureMessage' -ErrorAction SilentlyContinue)) {
+    $script:SpecrewConstrainedYamlPath = Join-Path $PSScriptRoot 'constrained-yaml.ps1'
+    if (Test-Path -LiteralPath $script:SpecrewConstrainedYamlPath -PathType Leaf) { . $script:SpecrewConstrainedYamlPath }
+}
+
 function ConvertFrom-SpecrewProductDomainYaml {
     # Matched reader for the constrained YAML emitted above. Returns an ordered hashtable, or
     # $null on a structurally unreadable document (graceful -- the caller fails closed).
@@ -154,6 +162,11 @@ function ConvertFrom-SpecrewProductDomainYaml {
 
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
     $lines = $Text -split '\r?\n'
+    # FR-026 (T017): a non-empty document that matches NONE of this reader's constructs is unparseable, not
+    # an empty record. Returning the initialized-but-empty record made the field backstops the primary error
+    # surface - they are a robustness net for a MISSING schema, and they described missing provenance for a
+    # file whose provenance was present and correct.
+    $recognizedLines = 0
     $rec = [ordered]@{ areas = [ordered]@{}; statements = @(); skipped = @(); follow_up_research = @() }
     $statements = [System.Collections.Generic.List[object]]::new()
     $skipped = [System.Collections.Generic.List[object]]::new()
@@ -167,11 +180,12 @@ function ConvertFrom-SpecrewProductDomainYaml {
         if ($line -match '^(?<k>[a-z_]+):\s*(?<v>.*)$') {
             $k = $Matches['k']; $v = $Matches['v']
             switch ($k) {
-                'areas' { $section = 'areas'; continue }
-                'statements' { $section = 'statements'; continue }
-                'skipped' { $section = 'skipped'; continue }
-                'follow_up_research' { $section = 'research'; continue }
+                'areas' { $recognizedLines++; $section = 'areas'; continue }
+                'statements' { $recognizedLines++; $section = 'statements'; continue }
+                'skipped' { $recognizedLines++; $section = 'skipped'; continue }
+                'follow_up_research' { $recognizedLines++; $section = 'research'; continue }
                 default {
+                    $recognizedLines++
                     $section = 'top'
                     $rec[$k] = ConvertFrom-SpecrewProductDomainScalar -Raw $v
                     continue
@@ -180,18 +194,21 @@ function ConvertFrom-SpecrewProductDomainYaml {
         }
         # areas: 2-space indented map entries
         if ($section -eq 'areas' -and $line -match '^\s{2}(?<k>[a-z_]+):\s*(?<v>.*)$') {
+            $recognizedLines++
             $rec['areas'][$Matches['k']] = ConvertFrom-SpecrewProductDomainScalar -Raw $Matches['v']
             continue
         }
         # statements / skipped: list items "  - key: value" then "    key: value"
         if ($section -eq 'statements' -or $section -eq 'skipped') {
             if ($line -match '^\s{2}-\s+(?<k>[a-z_]+):\s*(?<v>.*)$') {
+                $recognizedLines++
                 $cur = [ordered]@{}
                 $cur[$Matches['k']] = ConvertFrom-SpecrewProductDomainScalar -Raw $Matches['v']
                 if ($section -eq 'statements') { $statements.Add($cur) | Out-Null } else { $skipped.Add($cur) | Out-Null }
                 continue
             }
             if ($null -ne $cur -and $line -match '^\s{4}(?<k>[a-z_]+):\s*(?<v>.*)$') {
+                $recognizedLines++
                 $cur[$Matches['k']] = ConvertFrom-SpecrewProductDomainScalar -Raw $Matches['v']
                 continue
             }
@@ -199,11 +216,13 @@ function ConvertFrom-SpecrewProductDomainYaml {
         # follow_up_research: "  - scalar"
         if ($section -eq 'research' -and $line -match '^\s{2}-\s+(?<v>.*)$') {
             $val = ConvertFrom-SpecrewProductDomainScalar -Raw $Matches['v']
+            $recognizedLines++
             if ($null -ne $val) { $research.Add([string]$val) | Out-Null }
             continue
         }
     }
 
+    if ($recognizedLines -eq 0) { return $null }
     $rec['statements'] = $statements.ToArray()
     $rec['skipped'] = $skipped.ToArray()
     $rec['follow_up_research'] = $research.ToArray()
@@ -305,7 +324,10 @@ function Test-SpecrewProductDomainRecord {
     $text = ''
     try { $text = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 } catch { $errors.Add('product-domain.yml is unreadable.') | Out-Null; return $errors.ToArray() }
     $rec = ConvertFrom-SpecrewProductDomainYaml -Text $text
-    if ($null -eq $rec) { $errors.Add('product-domain.yml could not be parsed.') | Out-Null; return $errors.ToArray() }
+    if ($null -eq $rec) {
+        $errors.Add((Get-SpecrewConstrainedYamlParseFailureMessage -FileName 'product-domain.yml' -Text $text -SchemaName 'product-domain.schema.json')) | Out-Null
+        return $errors.ToArray()
+    }
 
     # Schema validation via the JSON projection (SC-008), when a schema is available.
     $json = $null

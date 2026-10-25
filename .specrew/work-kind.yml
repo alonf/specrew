@@ -1,8 +1,29 @@
 # .specrew/work-kind.yml — Specrew's OWN work-kind declaration (dogfood, FR-013/SC-007).
 #
-# Feature 183 (this branch) is product/runtime stability work delivered through the full Specrew lifecycle.
-# It uses bug-bash conduct for the individual fixes while retaining software-feature release discipline.
+# THIS FILE IS PROJECT-LEVEL, NOT PER-FEATURE, and it is a statement about what Specrew IS — not about
+# what the current work item happens to be doing. `work-kind-runtime` T212's SC-014 block reads it as one
+# member of a self-consistency invariant, beside provider github, release_truth_branch main, branch
+# protection and admin enforcement: Specrew's own capture must match its actual posture.
+#
+# REVERTED 2026-09-09 from `bug-bash` back to `software-feature`, on the maintainer's ruling.
+# Beta4 (feature 201-first-run-experience) genuinely IS a defect sweep and its CONDUCT is bug-bash — its
+# bug list and root causes were complete before the feature existed. But work-kind is declared at PROJECT
+# scope, and Specrew the product is a software product. Setting the project's declaration to bug-bash to
+# describe one feature's conduct made this dogfood file FALSE, and T212 caught it correctly. Repairing the
+# test instead would have been editing a guard to accept the falsehood it exists to flag.
+#
+# THAT SEQUENCE PROVES docs/beta4-findings.md B4F-006 RATHER THAN ILLUSTRATING IT. The finding was that the
+# work-kind selection is invisible and defaults to the heaviest contract. The stronger form, demonstrated
+# here: the only lever is project-scoped, so expressing a feature-level truth through it forces the PROJECT
+# to misdescribe itself. There was no correct value to write — `software-feature` is wrong for beta4's
+# conduct and `bug-bash` is wrong for Specrew's posture, and the mechanism offers nowhere else to say it.
+# Per-feature work-kind is the beta5 item, and this file is the evidence for it.
+#
+# HOW BETA4 PROCEEDS INSTEAD: feature 201 closes the way iteration 003 did — as the reactive defect sweep
+# it honestly is, under the software-feature contract, with a RECORDED DEVIATION that its conduct was
+# bug-bash. No eight-lens workshop is run for a bug fix. The deviation exists only because the mechanism
+# cannot express per-feature work-kind.
 
 work_kind: software-feature
 schema_version: "1.0"
-notes: "Feature 183 — Stability & Quality Bundle (product/runtime behavior delivered through the full Specrew lifecycle with bug-bash conduct for the individual fixes). Runtime hooks, dispatcher/provider behavior, closeout sync, tests, and release surfaces ship a release, so this is a software-feature, not docs-only."
+notes: "Specrew is a software product delivered through the full Specrew lifecycle; runtime hooks, dispatcher/provider behavior, closeout sync, tests and release surfaces ship a release, so this is a software-feature, not docs-only or bug-bash. Individual defect sweeps (feature 183's fixes, feature 201/beta4's registration fix) use bug-bash CONDUCT within that contract and record the deviation per feature — see docs/beta4-findings.md B4F-006 and B4F-020 for why the project-level declaration cannot carry that distinction."

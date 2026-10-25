@@ -20,6 +20,22 @@ Describe 'worktree reviewer machinery path policy' {
         $paths | Should -Not -Contain '.claude/settings.json' -Because 'ordinary Claude project settings remain reviewable source'
     }
 
+    It 'REFUSES a rootless call instead of guessing which repository is being described' {
+        # DRIFT-199-I001-016. The parameter used to be optional, documented as "omit for the core-only
+        # list" - and that was false. A rootless call cannot run Test-ContinuousCoReviewSpecrewSourceRepo,
+        # so it fell through to the DEPLOYED branch and returned the core list PLUS
+        # scripts/internal/continuous-co-review - naming the co-review engine itself as machinery. The
+        # caller that believed the comment classified an engine change as records-only and let a stale
+        # review read as current.
+        #
+        # There is no honest core-only answer to return, because the two cases above it disagree about
+        # exactly those three paths. So the trap is removed at the FUNCTION rather than at each caller:
+        # the next caller cannot repeat this by omitting an argument.
+        { Get-ContinuousCoReviewMachineryPaths } | Should -Throw -ExpectedMessage '*review-machinery-paths-requires-repo-root*'
+        { Get-ContinuousCoReviewMachineryPaths -RepoRoot '' } | Should -Throw -ExpectedMessage '*review-machinery-paths-requires-repo-root*'
+        { Get-ContinuousCoReviewMachineryPaths -RepoRoot '   ' } | Should -Throw -ExpectedMessage '*review-machinery-paths-requires-repo-root*'
+    }
+
     It 'does strip the continuous-co-review runtime for downstream projects' {
         $repo = Join-Path $TestDrive 'downstream-project'
         New-Item -ItemType Directory -Path (Join-Path $repo 'scripts/internal/continuous-co-review') -Force | Out-Null
@@ -62,7 +78,14 @@ Describe 'worktree reviewer machinery path policy' {
         # DRIFT-198-I009-001 - writing hundreds of paths to git's stdin while it writes matches back
         # blocks both ends once a buffer fills. So the probe stays, and stays argument-shaped.
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
-        $machineryBlock = $source.Substring($source.IndexOf('function Get-ContinuousCoReviewMachineryPaths'), 6000)
+        # Sliced to the NEXT top-level function, not to a magic character count. A fixed 6000-char
+        # window silently truncated this block the moment the function gained a comment, and the
+        # assertions below then failed for a reason that had nothing to do with what they guard -
+        # a structural test that reports the wrong defect is worse than none.
+        $start = $source.IndexOf('function Get-ContinuousCoReviewMachineryPaths')
+        $start | Should -BeGreaterThan -1 -Because 'the function this test guards must exist'
+        $next = $source.IndexOf("`nfunction ", $start + 1)
+        $machineryBlock = if ($next -gt $start) { $source.Substring($start, $next - $start) } else { $source.Substring($start) }
         $machineryBlock | Should -Match 'git -C \$RepoRoot check-ignore -- @chunk' -Because 'ignored paths are asked for by argument'
         $machineryBlock | Should -Not -Match 'check-ignore --stdin' -Because 'piping the list to git deadlocks once its stdout buffer fills'
         $machineryBlock | Should -Match '\$prunedRoots' -Because 'the cheap name prune runs first so the subprocess sees a bounded list'

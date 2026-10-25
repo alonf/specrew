@@ -47,9 +47,9 @@ if ($showHelp) {
     Write-Host 'Usage: specrew hooks doctor [--project-path <path>] [--host <claude|codex|copilot> ...]'
     Write-Host ''
     Write-Host 'Surfaces, in one report:'
-    Write-Host '  - host+surface support tiers (FR-050)'
-    Write-Host '  - hook-health receipt evidence (FR-053) - a deployed hook config is NOT proof it fired'
-    Write-Host '  - the Codex untrusted-headless governance preflight (FR-051)'
+    Write-Host '  - host+surface support tiers'
+    Write-Host '  - hook-health receipt evidence - a deployed hook config is NOT proof it fired'
+    Write-Host '  - the Codex untrusted-headless governance preflight'
     Write-Host ''
     Write-Host 'Read-only and fail-open; missing / stale / drifted evidence renders unverified/degraded, never healthy.'
     exit 0

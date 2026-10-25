@@ -26,6 +26,40 @@
 
 Set-StrictMode -Version Latest
 
+function Get-SpecrewConditionalConjunctionPattern {
+    # W73 / round-30 finding, graded BLOCKING: THE WORDS A PERSON ACTUALLY HEDGES WITH.
+    #
+    # The set (later|after|once|when|unless|if) lived inline in FIVE places across three files, and
+    # exactly one of them - the post-delimiter branch below - also knew provided|assuming|contingent|
+    # subject to. So `approved for review round, provided the tests pass` reached none of the branches
+    # that would have caught it and was returned as an unconditional approval: the human said "if", the
+    # ledger said "yes", and an agent could spend a round, cross a boundary, stop a campaign or reset
+    # the allowance before the stated condition held.
+    #
+    # One pattern, one place. Adding a word here reaches every recognizer at once, which is the whole
+    # reason it is a function and not a string repeated where each author happened to need it.
+    return '(?:later|after|once|when|unless|if|provided|providing|assuming|contingent|subject\s+to|as\s+long\s+as|so\s+long\s+as|pending)'
+}
+
+function Test-SpecrewConditionalDeferralClause {
+    # Does this clause carry a condition? -AnchoredAtStart for a delimited tail, where only the OPENING
+    # of the clause can qualify the phrase; unanchored for a same-clause tail, which the callers have
+    # already scoped to the approval LINE - so an instruction block on later lines is untouched and the
+    # W56 shape (approval, then instructions) still mints.
+    #
+    # CONSERVATIVE FLOOR, and the reason is recorded at the round-approval site: this guards SPEND
+    # authority, so a false negative costs the human one plain retype while a false positive spends a
+    # round they conditioned. The floor is the documented posture, not an accident of this fix.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][AllowNull()][string]$Text,
+        [switch]$AnchoredAtStart
+    )
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $pattern = Get-SpecrewConditionalConjunctionPattern
+    if ($AnchoredAtStart) { return [bool]($Text -match ('^\s*' + $pattern + '\b')) }
+    return [bool]($Text -match ('\b' + $pattern + '\b'))
+}
 function Get-SpecrewConversationProp {
     # StrictMode-safe property read: the value if present on the object, else $null.
     param([AllowNull()]$Object, [Parameter(Mandatory)][string]$Name)
@@ -62,7 +96,11 @@ function Test-SpecrewConversationMetaFlag {
     [OutputType([bool])]
     param([Parameter()][AllowNull()]$Object)
     if ($null -eq $Object) { return $false }
-    foreach ($name in @('isMeta', 'is_meta')) {
+    # Feature 202 iteration 002, T017 (DA-2): a compaction summary is written as type=user with no isMeta, under the
+    # /compact entry's promptId. It is the host's text, never the human's, and it routinely quotes approval lines.
+    # Today the one-line rule keeps it from minting; T018 lets a phrase on its own line count, so this flag is what
+    # keeps a summary out of authority from here on.
+    foreach ($name in @('isMeta', 'is_meta', 'isCompactSummary', 'is_compact_summary')) {
         $value = Get-SpecrewConversationProp $Object $name
         if ($value -is [bool] -and [bool]$value) { return $true }
         if ([string]$value -match '(?i)^\s*(?:true|1)\s*$') { return $true }
@@ -145,17 +183,150 @@ function Test-SpecrewHumanVerdictToken {
 
     $r = [pscustomobject]@{ Action = 'none'; IsApproval = $false; IsSendBack = $false; IsDiscuss = $false; NamedBoundaries = @(); ApprovalOption = $null }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
-    $t = ($Text -replace '\s+', ' ').Trim()
+    # W75 / round-31 finding, FR-010: LINE BREAKS SURVIVE, because they end the approval clause.
+    #
+    # Collapsing them made `approved for tasks` + newline + `Run the cleanup when the review finishes.`
+    # one clause, so `when` read as a condition ON the approval and a valid boundary verdict was
+    # erased - the lifecycle then waits until the human discovers they must retype it. FR-010 says a
+    # leading recognized approval wins over following instruction wording, and the sibling
+    # round-approval recognizer has always scoped itself to the approval LINE for exactly this reason.
+    # Method rule 10's case, fourth instance: the fix existed, one reader had it, this one did not.
+    #
+    # Horizontal whitespace still collapses; only the line structure is kept.
+    $t = ($Text -replace '[^\S\r\n]+', ' ').Trim()
     $lower = $t.ToLowerInvariant()
+
+    $boundaryAlternation = '(?:specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|iteration|closeout|feature-closeout|feature)'
 
     # Extract any boundary the human NAMED ("X -> Y", "X → Y", "approve for <b>", "approve <b>"). Used by the
     # caller only as a cross-check AGAINST the packet marker: a named boundary that contradicts the marker makes
     # the verdict ambiguous (-> un-authorized). The marker, not this, is the primary tie.
     $named = New-Object System.Collections.Generic.List[string]
-    foreach ($m in [regex]::Matches($lower, '\b(specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|iteration|closeout|feature-closeout|feature)\b')) {
+    foreach ($m in [regex]::Matches($lower, ('\b' + $boundaryAlternation + '\b'))) {
         if ($named -notcontains $m.Value) { $named.Add($m.Value) | Out-Null }
     }
     $r.NamedBoundaries = $named.ToArray()
+
+    # T004 / FR-010 - A LEADING RECOGNIZED APPROVAL PHRASE WINS OVER ANY INSTRUCTION WORDING THAT FOLLOWS,
+    # so this is tested BEFORE the send-back / discuss / question clauses below.
+    #
+    # Those clauses scan the WHOLE utterance, which is right when there is no clear approval to anchor on and
+    # wrong the moment there is: "approved for before-implement - then discuss prompt 2 with me" classified as
+    # DISCUSS, "approved for tasks, and send back the draft doc" as SEND-BACK. Each recorded the crossing
+    # un-authorized, and the human then had to re-approve while avoiding a vocabulary nobody had told them
+    # about - the iteration-011 reproductions this ordering exists to close.
+    #
+    # This is a rule about what FOLLOWS a clear approval, NEVER a relaxation of what counts as one. The
+    # anchoring below is unchanged and remains the mention/quote/teaching firewall ("reply with approved...",
+    # quoted examples, bare numbers, bare "yes" all still fall through), and two guards still apply - but to
+    # the APPROVAL CLAUSE rather than to the trailing instructions:
+    #   - an interrogative approval clause ("approve?") is deliberation, not authorization (FR-026 / SC-013),
+    #     while a trailing question after a declarative approval is an ordinary follow-up;
+    #   - a DEFERRED approval clause ("approve once the tests pass") is still not an approval.
+    # "RECOGNIZED APPROVAL PHRASE" is narrower than "a sentence starting with the word approve", and the
+    # difference is the whole safety margin. What may follow the approval verb is a CLOSED set: nothing, a
+    # clause delimiter, `for <boundary>` / `<boundary>`, or `with instructions` / `as-is`. An arbitrary object
+    # after the verb - "Approve the idea, but send back the diagram" - is NOT the phrase the packet asks for;
+    # it approves some THING while disposing of the verdict differently, so it falls through to the
+    # whole-utterance clauses and lands on send-back exactly as before. `?` is deliberately absent from the
+    # delimiters, so "approve?" is still deliberation rather than authorization.
+    $approvalAnchor = '^\s*(?:(?:option\s*)?([12])\s*[.):\-–—]\s*)?(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
+    $leadingApproval = [regex]::Match($lower, $approvalAnchor)
+    $lineParts = [regex]::new('\r\n|\n|\r').Split($t, 2)
+    if ($leadingApproval.Success -and $lineParts.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$lineParts[1])) {
+        # A VERDICT IS ONE LINE (PRED-BETA4-022). The leading clause of this message is an approval and the
+        # message continues past its first line into content - a pasted transcript, a block of prose,
+        # anything. The clause was never the whole act. Refused by reason, so the capture can disclose it
+        # and the human retypes one line; never minted on the strength of its first line.
+        $r.Action = 'refused-multi-line'
+        return $r
+    }
+    if ($leadingApproval.Success) {
+        $afterApproval = $lower.Substring($leadingApproval.Length)
+        # Round-12 finding (DRIFT-199-I001-120): the interrogative rule binds BEFORE EITHER approval
+        # return, not only in the fallback. "Approve plan? I am still deciding." satisfied the
+        # recognized closed set through the boundary name and returned approval without ever meeting
+        # the round-11 guard below.
+        #
+        # Round-13 finding (DRIFT-199-I001-122): and the test is scoped to the APPROVAL CLAUSE by the
+        # SAME instruction-delimiter split the boundary extraction uses below - the round-12 version
+        # scanned to the first sentence punctuation, straight past a spaced dash, so "approved for
+        # tasks — can you also update the changelog?" read as interrogative and a valid approval was
+        # erased. The clause is what can be a question; what follows a delimiter is instruction
+        # wording, and a question there is an ordinary follow-up ("approved for implement. should I
+        # also update the changelog?" was already safe via the period for the same reason).
+        $interrogativeApprovalClause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s|\r?\n', 2))[0].Contains('?')
+        $isRecognizedPhrase = (-not $interrogativeApprovalClause) -and (
+            [string]::IsNullOrWhiteSpace($afterApproval) -or
+            $afterApproval -match '^\s*[,.;:]' -or
+            $afterApproval -match '^\s+[-–—]\s' -or
+            $afterApproval -match ('^\s+(?:for\s+)?' + $boundaryAlternation + '\b') -or
+            $afterApproval -match '^\s+(?:with\s+instructions?\b|as[-\s]is\b)'
+        )
+
+        # The APPROVAL CLAUSE is everything up to the first instruction delimiter. Boundary names are read from
+        # it and from nowhere else: scanning the whole utterance let ordinary prose - "approved for tasks - the
+        # plan looks good and the review list is fine" - name three boundaries, contradict the packet marker,
+        # and turn a clear verdict ambiguous, which the caller records as un-authorized. A hyphen counts as a
+        # delimiter only when SPACED, or `before-implement` and `review-signoff` would be cut in half; `->` is
+        # not one either, so "approve plan -> tasks" still names the crossing's BOTH ends.
+        $clause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s|\r?\n', 2))[0]
+
+        # A deferral inside the CLAUSE still defers ("approve once the tests pass") - the conservative floor is
+        # unchanged. After a delimiter the same word is ordinary instruction wording and no longer blocks.
+        # Round-20 finding (DRIFT-199-I001-131): if belongs to the deferral set here too. The SPEND
+        # recognizers were taught the full set in round 14; this recognizer - the one that authorizes
+        # BOUNDARY CROSSINGS, the highest-stakes authority in the system - kept the five-word list, so
+        # "approved for tasks if the tests pass" crossed immediately on a condition the human attached.
+        # Method rule 6's own demand, missed in the file that mattered most.
+        $deferred = Test-SpecrewConditionalDeferralClause -Text $clause
+        # Round-20 (DRIFT-199-I001-131), the second half: a condition can sit just PAST the
+        # delimiter - "approved for plan, if you have time" - where the clause scan cannot see it,
+        # while an instruction that merely CONTAINS a deferral word - "approved for tasks, and send
+        # back the draft doc when you are done" - must still approve. The distinguishing feature is
+        # grammatical, not positional: a conditional CONJUNCTION opening the trailing clause governs
+        # the approval, whereas a deferral word buried inside an instruction does not.
+        $tailParts = [regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2)
+        if (@($tailParts).Count -gt 1) {
+            # Round-21 finding (DRIFT-199-I001-132): MODIFIERS DO NOT DISARM A CONDITION. The
+            # round-20 check matched a conditional only at the very START of the trailing clause, so
+            # the commonest English forms - "only if", "but only if", "and only after" - passed with
+            # a clean pre-delimiter clause. Leading modifiers are stripped before the test; the
+            # conjunction still has to OPEN what remains, which is what keeps an instruction that
+            # merely contains a deferral word ("and send back the draft doc when you are done") an
+            # approval.
+            $trailingClause = ([string]$tailParts[1]).TrimStart()
+            while ($trailingClause -match '^(?:but|only|just|and|then|also|please|strictly)\s+') {
+                $trailingClause = ($trailingClause -replace '^(?:but|only|just|and|then|also|please|strictly)\s+', '').TrimStart()
+            }
+            if (Test-SpecrewConditionalDeferralClause -Text $trailingClause -AnchoredAtStart) {
+                $deferred = $true
+            }
+        }
+
+        if ($isRecognizedPhrase -and -not $deferred) {
+            $clauseBoundaries = New-Object System.Collections.Generic.List[string]
+            foreach ($m in [regex]::Matches($clause, ('\b' + $boundaryAlternation + '\b'))) {
+                if ($clauseBoundaries -notcontains $m.Value) { $clauseBoundaries.Add($m.Value) | Out-Null }
+            }
+            # Assigned through if/else STATEMENTS, never `$(... else { @() })`: a subexpression enumerates an
+            # empty array to NOTHING, so that form assigns $null and a caller counting @($null) sees ONE
+            # element - a phantom named boundary that would contradict the marker and make a clean verdict
+            # ambiguous. The bug this comment describes was caught by its own fixture, not by review.
+            if ($clauseBoundaries.Count -gt 0) { $r.NamedBoundaries = $clauseBoundaries.ToArray() }
+            else { $r.NamedBoundaries = @() }
+
+            if ($leadingApproval.Groups[1].Success) { $r.ApprovalOption = [int]$leadingApproval.Groups[1].Value }
+            $r.IsApproval = $true; $r.Action = 'approve'; return $r
+        }
+        # Round-20 (DRIFT-199-I001-131): a RECOGNIZED phrase whose clause is DEFERRED returns here
+        # rather than falling through to the generic fallback below. That fallback's own deferral
+        # window reaches only 16 characters past the verb, so a longer boundary name - "approved for
+        # before-implement if the lanes are green" - pushed the condition out of range and the
+        # utterance was approved after this branch had already judged it conditional. The
+        # conservative floor belongs to whichever branch recognized the phrase.
+        if ($deferred) { return $r }
+    }
 
     # Send-back / reject FIRST: a turn that says "send back" (even alongside praise) is NOT an approval.
     # F-174 iter-11 (review-signoff P7-1): the "changes needed/required/requested" clause must NOT fire on a
@@ -171,7 +342,7 @@ function Test-SpecrewHumanVerdictToken {
     }
     # Negated / deferred approval -> NOT an approval (defends "do not approve", "not yet", "hold off ... approve").
     if ($lower -match "\b(do\s*not|don'?t|never|not\s+yet|hold\s+off|wait|stop)\b[^.!?]{0,24}\bapprov") { return $r }
-    if ($lower -match "\bapprov\w*\b[^.!?]{0,16}\b(later|after|once|when|unless)\b") { return $r }
+    if ($lower -match ("\bapprov\w*\b[^.!?]{0,16}\b" + (Get-SpecrewConditionalConjunctionPattern) + "\b")) { return $r }
     # F-174 iter-11 (review-signoff P3-1, INTEGRITY): a verdict approval is imperative/declarative, NEVER a
     # question. An approve-bearing INTERROGATIVE ("approve?", "is this ready to approve?", "can you explain
     # before I approve?", "should I approve this or not?") is deliberation, not authorization - reject it so the
@@ -186,6 +357,17 @@ function Test-SpecrewHumanVerdictToken {
         '^\s*(?:(?:option\s*)?([12])\s*[.):\-\u2013\u2014]\s*)?(?:(?:yes|confirmed)\s*[,;:\-\u2013\u2014]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
     )
     if ($approvalUtterance.Success) {
+        # Round-11 finding (DRIFT-199-I001-118): the interrogative rule binds to the CLAUSE the
+        # approval verb sits in, not just to the utterance's last character. "Approve? I am still
+        # deciding." sailed past the ends-with-? guard above - the question mark closed the approval
+        # clause, not the utterance - and this fallback then converted the human's explicit
+        # uncertainty into authorization. Round-13 (DRIFT-199-I001-122) scoped the test to the same
+        # instruction-delimiter split the recognized branch uses: the round-12 form scanned to the
+        # first sentence punctuation, straight past a spaced dash or comma, so a trailing question
+        # after a delimited approval ("approved, and could you rerun the lanes after?") erased the
+        # approval. What can be a question is the clause; after a delimiter it is a follow-up.
+        $afterAnchor = $lower.Substring($approvalUtterance.Length)
+        if (([regex]::Split($afterAnchor, '[,.;:]|\s[-–—]\s', 2))[0].Contains('?')) { return $r }
         if ($approvalUtterance.Groups[1].Success) { $r.ApprovalOption = [int]$approvalUtterance.Groups[1].Value }
         $r.IsApproval = $true; $r.Action = 'approve'; return $r
     }
@@ -373,6 +555,102 @@ function Get-SpecrewPendingVerdictFallbackCapture {
     return (Find-SpecrewPendingVerdictFallbackCandidate -Turns $Turns -Pending $pending)
 }
 
+function Resolve-SpecrewBoundaryVerdictText {
+    # Co-review round 8 (iteration 002, FR-029): a boundary approval takes the form every other typed approval takes. On a
+    # host that marks pastes, the human's own text is what lies outside every paste, so 'approved for before-implement' on
+    # its own line above or below a paste is the approval, as it is for a review round. When the approval form names a
+    # reason to refuse (a quoted menu, a qualified message, a host envelope), or cannot be read, the message is left as it
+    # came, and the verdict reader's own rules refuse it as before. Hosts that mark no pastes get the message unchanged.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
+    if ([string]::IsNullOrWhiteSpace($Text) -or [string]::IsNullOrWhiteSpace($HostKind) -or
+        -not (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue)) { return [string]$Text }
+    $form = $null
+    try { $form = Resolve-SpecrewApprovalForm -Text $Text -HostKind $HostKind } catch { $form = $null }
+    if ($null -eq $form -or -not [string]::IsNullOrWhiteSpace([string]$form.Reason)) { return [string]$Text }
+    return [string]$form.Text
+}
+
+function Get-SpecrewPromptEntryBoundaryVerdict {
+    # W45 (2026-08-22): CAPTURE THE VERDICT BEFORE THE TURN STARTS, EVEN WITH NO TRANSCRIPT.
+    #
+    # Verdict capture required a transcript, and on hosts whose prompt event carries no transcript path
+    # (Copilot's userPromptSubmitted) the prompt-entry call bailed 'no-transcript' - so capture landed
+    # only at Stop, AFTER the turn that was processing the verdict. Observed cost on Copilot: the human
+    # typed the phrase, the session read start-context mid-turn, saw the crossing unauthorized, and
+    # asked AGAIN - one wasted approval cycle and a confused human, at every boundary.
+    #
+    # This is the W44 round-approval shape applied to verdicts: the prompt event's own text is the
+    # evidence. The prompt IS the human's typed turn, delivered by the host at the moment they typed it
+    # - the same trust the partial-signoff, workshop-repair and round-approval writers already extend to
+    # exactly this channel. The boundary tie comes from the DETERMINISTIC pending-crossing state on
+    # disk, not from a transcript packet marker.
+    #
+    # THIS IS NOT THE DISABLED PENDING-ARTIFACT FALLBACK (DEC-198-GOV-003). That fallback paired STALE
+    # TRANSCRIPT turns with the pending artifact during the agent's own stop cycle - the two
+    # fabrications it produced both fired ~37s after a packet render, on machinery turns. Here the text
+    # is the live prompt: it cannot be stale, cannot be the agent's, and cannot be a re-read of an
+    # earlier turn, because the host hands it over exactly once, when the human submits it. Every
+    # conservatism the tokenizer enforces still applies, and a transcript-bearing host never reaches
+    # this path at all.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][string]$ProjectRoot,
+        [Parameter()][AllowNull()][string]$LastUserMessage,
+        [Parameter()][AllowNull()][string]$HostKind
+    )
+
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-prompt' }
+    if ([string]::IsNullOrWhiteSpace($LastUserMessage)) { return $result }
+    $text = ([string]$LastUserMessage).Trim()
+    $text = $text -replace '(?is)^\s*<USER_REQUEST>\s*', '' -replace '(?is)\s*</USER_REQUEST>\s*$', ''
+    $text = $text.Trim()
+    if (Test-SpecrewConversationMachineryEnvelope -Text $text) { $result.Reason = 'machinery-envelope'; return $result }
+    $text = Resolve-SpecrewBoundaryVerdictText -Text $text -HostKind $HostKind
+
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
+        $result.Reason = 'no-pending-state'
+        return $result
+    }
+    $pending = $null
+    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
+    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { $result.Reason = 'no-pending-state'; return $result }
+    $pendingFromMarker = [string]$pending.PendingFromMarkerBoundary
+    $pendingToMarker = [string]$pending.PendingToMarkerBoundary
+    if ([string]::IsNullOrWhiteSpace($pendingFromMarker) -or [string]::IsNullOrWhiteSpace($pendingToMarker)) {
+        $result.Reason = 'pending-state-incomplete'
+        return $result
+    }
+
+    $verdict = Test-SpecrewHumanVerdictToken -Text $text
+    if (-not $verdict.IsApproval) {
+        # The conservative floor is unchanged: send-back, discuss, negation, deferral, question and
+        # ambiguity all fall to NOT-approval, and the crossing stays un-authorized until re-asked.
+        $result.Reason = ("not-approval:{0}" -f $verdict.Action)
+        return $result
+    }
+
+    # Contradiction cross-check against the ONE pending crossing - the same rule the marker path
+    # applies. A human who named a different boundary makes the tie ambiguous -> un-authorized.
+    $named = @($verdict.NamedBoundaries)
+    if ($named.Count -gt 0) {
+        $pendingSet = @($pendingFromMarker, $pendingToMarker, [string]$pending.PendingFromBoundary, [string]$pending.PendingToBoundary) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
+        if (@($named | Where-Object { $pendingSet -contains $_ }).Count -eq 0) {
+            $result.Reason = 'named-boundary-contradicts-pending'
+            return $result
+        }
+    }
+
+    $result.Found = $true
+    $result.FromBoundary = $pendingFromMarker
+    $result.ToBoundary = $pendingToMarker
+    $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $text -ToBoundary $pendingToMarker
+    $result.HumanText = $text
+    $result.Reason = 'captured-prompt-entry'
+    return $result
+}
+
 function Get-SpecrewCapturedBoundaryVerdict {
     # F-174 iteration 011 (T004, FR-026): read the host transcript for the human's verdict on a rendered boundary
     # VERDICT packet. The verdict is tied to a boundary ONLY via the packet's stable machine marker
@@ -387,9 +665,10 @@ function Get-SpecrewCapturedBoundaryVerdict {
         [Parameter()][AllowNull()][string]$TranscriptPath,
         [Parameter()][AllowNull()][string]$ProjectRoot,
         [Parameter()][AllowNull()][string]$LastUserMessage,
-        [int]$MaxTailLines = 500
+        [int]$MaxTailLines = 500,
+        [Parameter()][AllowNull()][string]$HostKind
     )
-    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript' }
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
     # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
@@ -415,7 +694,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
     if ($turns.Count -eq 0) { $result.Reason = 'no-turns'; return $result }
 
     # The packet marker: case-insensitive, tolerate '->' / unicode arrow / 'to' and flexible spacing.
-    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    # FR-024 (T014): the marker may carry the crossing identity (`<from> -> <to> @ crossing-<hex>`); the
+    # capture reads it so a marker rendered against one crossing cannot capture against a successor.
+    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)(?:\s*@\s*(crossing-[0-9a-f]{8,}))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
     # Newest marker/response pair with a CLEAR approval wins. A newer marker with no response yet is just awaiting
     # the next user turn and must not mask an earlier approved marker that the hook has not had a chance to record.
@@ -442,10 +723,31 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $mFrom = $mm.Groups[1].Value.ToLowerInvariant()
         $mTo = $mm.Groups[2].Value.ToLowerInvariant()
 
-        # The FIRST human turn AFTER that packet (the response to it; before it = the request, not the verdict).
+        # T004 / FR-010: the first VERDICT-BEARING human turn after that packet wins, and non-verdict turns in
+        # between are scanned PAST rather than treated as the answer.
+        #
+        # Taking the first human turn whatever it said was wrong for the commonest real shape there is: packet
+        # rendered -> human asks a clarifying question -> agent answers -> human approves. The question
+        # classified as 'none', the capture abandoned this marker, and a genuine approval two turns later was
+        # never read. The human's verdict was in the transcript and the ledger recorded the crossing
+        # un-authorized.
+        #
+        # SKIPPING IS ONLY FOR TURNS THAT CARRY NO VERDICT AT ALL. A send-back or a discuss request IS
+        # verdict-bearing, so it wins the window and blocks exactly as before - this can never scan PAST a
+        # refusal to find an approval behind it.
+        #
+        # The window is bounded by the NEXT packet: once another marker is rendered, later turns are answering
+        # that packet, not this one. Without the bound a forward scan could attribute a newer packet's approval
+        # to an older crossing, which is the fabrication direction.
         $humanText = $null
         for ($j = $i + 1; $j -lt $turns.Count; $j++) {
-            if (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j]) { $humanText = [string]$turns[$j].text; break }
+            if ([string]$turns[$j].role -eq 'assistant' -and $markerRx.IsMatch([string]$turns[$j].text)) { break }
+            if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j])) { continue }
+            $candidateText = Resolve-SpecrewBoundaryVerdictText -Text ([string]$turns[$j].text) -HostKind $HostKind
+            $candidate = Test-SpecrewHumanVerdictToken -Text $candidateText
+            if (-not $candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss) { continue }
+            $humanText = $candidateText
+            break
         }
         if ([string]::IsNullOrWhiteSpace($humanText)) { $sawAwaiting = $true; continue }
 
@@ -482,6 +784,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $result.Found = $true
         $result.FromBoundary = $mFrom
         $result.ToBoundary = $mTo
+        $result.MarkerCrossingId = if ($mm.Groups[3].Success) { $mm.Groups[3].Value.ToLowerInvariant() } else { $null }
         $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $humanText -ToBoundary $mTo
         $result.HumanText = $humanText
         $result.Reason = 'captured'
@@ -524,7 +827,9 @@ function Get-SpecrewCapturedBoundaryPacket {
     try { $shared = @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
 
     # Same marker grammar as the verdict reader: case-insensitive, '->' / unicode arrow / 'to', flexible spacing.
-    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    # FR-024 (T014): the marker may carry the crossing identity (`<from> -> <to> @ crossing-<hex>`); the
+    # capture reads it so a marker rendered against one crossing cannot capture against a successor.
+    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)(?:\s*@\s*(crossing-[0-9a-f]{8,}))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
     # The LAST assistant turn carrying a marker (the most recently rendered packet), read VERBATIM (-Raw).
     $found = $null
@@ -667,7 +972,16 @@ function Format-SpecrewConversationTurnText {
     $text = if ($Raw) { $text.Trim() } else { ($text -replace '\s+', ' ').Trim() }
     if ($role -eq 'user' -and $text -match '^\s*<hook_prompt\b[\s\S]*</hook_prompt>\s*$') { return $null }
     if ([string]::IsNullOrWhiteSpace($text)) { return $null }
-    return [pscustomobject]@{ role = $role; text = $text; verdict_evidence = $verdictEvidence }
+    # Feature 202 iteration 002, T017 (FR-027): the message's identity travels with its text, so the turn-end
+    # path keys an approval exactly as the message hook did.
+    return [pscustomobject]@{
+        role             = $role
+        text             = $text
+        verdict_evidence = $verdictEvidence
+        message_id       = [string](Get-SpecrewConversationProp $Turn 'message_id')
+        entry_id         = [string](Get-SpecrewConversationProp $Turn 'entry_id')
+        timestamp        = [string](Get-SpecrewConversationProp $Turn 'timestamp')
+    }
 }
 
 function Get-SpecrewTranscriptParsedTurns {
@@ -701,14 +1015,40 @@ function Get-SpecrewTranscriptParsedTurns {
     # Cache MISS - the one true parse for this key.
     $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines)
     $turns = New-Object System.Collections.Generic.List[object]
+    # Feature 202 iteration 002, T017 (FR-027, DA-2): each turn carries the host's own message identity, read from
+    # the transcript entry itself. Claude: the entry's `promptId` - the same value the message hook receives as
+    # `prompt_id` - and never the entry's own `uuid`, which is a different value. Codex: the `turn_id` of the
+    # `turn_context` line that opens the turn. Copilot's entry ID is kept only as a de-duplication key for a
+    # report; it is not a message identity, because Copilot's message hook never receives it.
+    $codexTurnId = ''
     foreach ($l in $lines) {
         if ([string]::IsNullOrWhiteSpace($l)) { continue }
         $o = $null
         try { $o = $l | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { $o = $null }
         $script:SpecrewTranscriptParseCount = [int]$script:SpecrewTranscriptParseCount + 1   # parse-once witness (one count per ConvertFrom-Json)
         if ($null -eq $o) { continue }
+        if ([string](Get-SpecrewConversationProp $o 'type') -eq 'turn_context') {
+            $tcPayload = Get-SpecrewConversationProp $o 'payload'
+            $codexTurnId = if ($null -ne $tcPayload) { [string](Get-SpecrewConversationProp $tcPayload 'turn_id') } else { '' }
+            continue
+        }
         $rp = Get-SpecrewConversationTurnRolePartsFromObject -Object $o
-        if ($null -ne $rp) { $turns.Add($rp) | Out-Null }
+        if ($null -ne $rp) {
+            $messageId = [string](Get-SpecrewConversationProp $o 'promptId')
+            if ([string]::IsNullOrWhiteSpace($messageId) -and [string](Get-SpecrewConversationProp $o 'type') -eq 'response_item') { $messageId = $codexTurnId }
+            $entryId = ''
+            $copilotData = Get-SpecrewConversationProp $o 'data'
+            if ($null -ne $copilotData) { $entryId = [string](Get-SpecrewConversationProp $copilotData 'messageId') }
+            if ([string]::IsNullOrWhiteSpace($entryId)) { $entryId = [string](Get-SpecrewConversationProp $o 'uuid') }
+            if ([string]::IsNullOrWhiteSpace($entryId)) { $entryId = [string](Get-SpecrewConversationProp $o 'id') }
+            $rp | Add-Member -NotePropertyName message_id -NotePropertyValue $messageId -Force
+            $rp | Add-Member -NotePropertyName entry_id -NotePropertyValue $entryId -Force
+            # ConvertFrom-Json turns an ISO timestamp into a local DateTime; keep it as UTC ISO text.
+            $entryTime = Get-SpecrewConversationProp $o 'timestamp'
+            $entryTimeText = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } else { [string]$entryTime }
+            $rp | Add-Member -NotePropertyName timestamp -NotePropertyValue $entryTimeText -Force
+            $turns.Add($rp) | Out-Null
+        }
     }
     $arr = @($turns.ToArray())
     $script:SpecrewTranscriptParseMemo = [pscustomobject]@{ Key = $key; Turns = $arr }

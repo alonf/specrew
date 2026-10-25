@@ -17,15 +17,17 @@ $ci = Get-Content -LiteralPath (Join-Path $repoRoot 'templates/coordinator-instr
 
 # The raw, un-governed engine is STILL forbidden.
 if ($ci -notmatch 'specify\.exe workflow') { Write-Fail 'coordinator instruction must still name the forbidden raw specify.exe workflow' }
-# The governed scaffold script is explicitly blessed (so the guard / auto-mode classifier does not block it).
-if ($ci -notmatch 'create-new-feature\.ps1') { Write-Fail 'coordinator instruction must bless the governed scaffold script (create-new-feature.ps1) so the guard does not block it (FR-013)' }
+# The governed scaffold wrapper is explicitly blessed; it couples the feature scaffold to the empty workshop controller.
+if ($ci -notmatch 'create-governed-feature\.ps1') { Write-Fail 'coordinator instruction must bless create-governed-feature.ps1 so feature creation cannot omit workshop controller state (FR-013)' }
+if ($ci -match '\.specify/scripts/powershell/create-new-feature\.ps1') { Write-Fail 'coordinator instruction must not route agents around the governed feature wrapper' }
 # The two are explicitly distinguished.
 if ($ci -notmatch 'are NOT that') { Write-Fail 'coordinator instruction must explicitly state the governed scripts/commands are NOT the raw automation (FR-013)' }
-# The Specrew-coordinator / Spec-Kit-SDD division is stated.
-if ($ci -notmatch 'Specrew governs the lifecycle gates') { Write-Fail 'coordinator instruction must state the Specrew-coordinator / Spec-Kit-SDD division' }
+# The Specrew workshop / Spec-Kit writer division is stated without assigning the agent a persona.
+if ($ci -notmatch 'speckit-specify.*spec-writer') { Write-Fail 'project rules must state the Specrew workshop / Spec-Kit writer division' }
+if ($ci -match '(?im)^\s*You are the Specrew') { Write-Fail 'project rules must not reintroduce the coordinator persona assignment' }
 # It points at the per-host entry-point reality (commands where exposed, else the governed scripts).
-if ($ci -notmatch 'where your host exposes them') { Write-Fail 'coordinator instruction must name the per-host entry-point reality (commands where exposed, else governed scripts)' }
-Write-Pass 'FR-013 guard precision: coordinator instruction blesses the governed scripts/commands, forbids only the raw specify.exe workflow, states the coordinator/SDD division, and names the per-host entry point'
+if ($ci -notmatch 'where the host exposes them') { Write-Fail 'coordinator instruction must name the per-host entry-point reality (commands where exposed, else governed scripts)' }
+Write-Pass 'FR-013 guard precision: coordinator instruction blesses the coupled governed feature wrapper, forbids only the raw specify.exe workflow, states the coordinator/SDD division, and names the per-host entry point'
 
 Write-Host ''
 Write-Host 'Coordinator instruction guard precision (feature 185 FR-013): all assertions pass'

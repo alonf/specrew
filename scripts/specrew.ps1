@@ -64,6 +64,7 @@ Usage:
   specrew hooks <command> [args]   Inspect / install / repair Specrew host hooks
   specrew handover <command> [args] Author the cross-session handover body (agent-callable)
   specrew version [options]        Show version and slash-command compatibility state
+  specrew reseal --feature <f> --iteration <NNN>  Re-seal a closed iteration the closeout machinery moved
 
 Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
@@ -72,10 +73,11 @@ Commands:
   where    Show the velocity dashboard
   status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
-  team     Manage team members (add, update, remove, list)
+  team     Manage team members (add, update, remove, list, own, resync)
   hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host], doctor)
   handover Author the rolling cross-session handover body (author [--from <file>])
   version  Show the installed Specrew version and slash-command compatibility
+  reseal   Re-seal a closed iteration whose records the product's own closeout machinery moved after the seal
   install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
   help     Show this help message
 
@@ -84,9 +86,10 @@ Examples:
   specrew start
   specrew start "Build a REST API for user management"
   specrew review --project-path .
-  specrew review --live --baseline-ref origin/main --host claude --authorization-ref manual-review
+  specrew review --live --baseline-ref origin/main --host claude --approve-round
   specrew where
   specrew status --compact
+  specrew reseal --feature 001-layout-autocorrect --iteration 002
   specrew update
   specrew update --info
   specrew update --all
@@ -100,6 +103,8 @@ Examples:
   specrew team add security-analyst --role "Security Analyst" --charter "Review security"
   specrew team update security-analyst --charter "Updated charter"
   specrew team remove security-analyst
+  specrew team own reviewer        Keep your edited crew charter as yours (no more sync notices)
+  specrew team resync reviewer     Return a crew charter to the canonical .specrew/team/agents/<role>.md
 
 For detailed command help:
   specrew init --help
@@ -276,7 +281,8 @@ function Assert-TeamArguments {
                 $index++
             }
         }
-        'remove' {
+        { $_ -in @('remove', 'own', 'resync') } {
+            # `own` and `resync` take the shape `remove` does: one role name, optionally --project-path.
             if ($index -lt $normalizedArguments.Count -and -not $normalizedArguments[$index].StartsWith('-')) {
                 $index++
             }
@@ -361,10 +367,21 @@ function Assert-WhitelistedArguments {
             # Downstream field bug 2026-07-09 (tesr197local): the whitelist predated the flags, so every
             # sanctioned remediation/ack command was rejected as "Unsupported argument" and the agent
             # concluded the mechanisms were unimplemented. Whitelist test covers the quartet.
-            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--trunk', '--checkpoint-id', '--run-id', '--reconcile-run', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope', '--fix-evidence-ref') -MaxPositionals 1
+            # SAME DEFECT AGAIN, 2026-08-12: --approve-round, --pause-choice and --pause-rationale were
+            # added to specrew-review.ps1 and not here, so `specrew review --live --approve-round` - the
+            # command the product's own messages tell people to run - exited "Unsupported argument".
+            # The note above describes the identical failure from 2026-07-09, and its countermeasure was
+            # a test covering "the quartet": a guard over a hand-enumerated list, which cannot see a
+            # fifth flag. tests/unit/review-flag-whitelist-parity.tests.ps1 now DERIVES the expected set
+            # from specrew-review.ps1's own parameter aliases, so the next flag is covered by the
+            # invariant instead of by whoever remembers this line.
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--approve-round', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--trunk', '--checkpoint-id', '--run-id', '--reconcile-run', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope', '--fix-evidence-ref', '--pause-choice', '--pause-rationale') -MaxPositionals 1
         }
         'version' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')
+        }
+        'reseal' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h', '--json') -ValueOptions @('--project-path', '--feature', '--iteration')
         }
         'team' {
             Assert-TeamArguments -ArgumentList $ArgumentList
@@ -543,6 +560,8 @@ switch ($Command) {
             Write-Host "  list"
             Write-Host "  update <member-name> [--role <role>] [--charter <charter-text>]"
             Write-Host "  remove <member-name>"
+            Write-Host "  own <role>       keep the edited crew charter as yours; specrew start stops reporting it"
+            Write-Host "  resync <role>    return the crew charter to canonical .specrew/team/agents/<role>.md"
             Write-Host ""
             Write-Host "Examples:" -ForegroundColor Cyan
             Write-Host "  specrew team list"
@@ -640,6 +659,21 @@ switch ($Command) {
         }
 
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $versionScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'reseal' {
+        # Fix 5 (B4F-063): the trust-hardening gate's named remedy for a closed iteration the product's own
+        # closeout machinery moved after its seal. One iteration, named; precondition and postcondition printed.
+        Assert-WhitelistedArguments -CommandName 'reseal' -ArgumentList $Arguments
+
+        $resealScript = Join-Path $scriptRoot 'specrew-reseal.ps1'
+        if (-not (Test-Path -LiteralPath $resealScript)) {
+            Write-Host "ERROR: specrew-reseal.ps1 not found at $resealScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & $resealScript -CliArgs $Arguments
         exit $LASTEXITCODE
     }
 

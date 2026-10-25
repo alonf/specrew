@@ -1,0 +1,5810 @@
+# Beta4 findings, before feature 201 has an iteration drift log
+
+**Why this file exists.** Iteration 199/003 is sealed, so nothing can be appended there. Feature 201 has no
+iteration yet - `iterations/NNN/` is scaffolded at the plan boundary. These entries move into 201's drift
+log when it exists. Companion to `docs/beta4-scope.md` and `docs/beta4-predictions.md`.
+
+---
+
+## B4F-001 - CORRECTS DRIFT-199-I003-094's MECHANISM: the fix target moves from the projection to the resolve, and the conclusion survives unchanged
+
+**Reviewer-confirmed, 2026-09-09.** The recorded chain was *"line 627 reads
+`.specrew/handover/workshop-question.json`; 1117 sets `workshopIntermediate` from it; 1479 makes
+`workshopQuestionWins` require it."* It was built from grep line numbers without reading the functions
+containing them.
+
+- **Line 627 is inside `Update-SpecrewWorkshopQuestionHandover` (line 623) - the WRITER.** It writes the
+  file atomically when the decision is valid and **DELETES** it when the decision is null or invalid.
+- **That function's own comment states the opposite of the chain**: *"A small local projection makes an
+  interrupted workshop resumable without becoming authority. Classification never reads this file; the
+  exact, strict feature/iteration applicability artifact decides."*
+- **Line 1116 sets `$workshopIntermediate` from a live re-resolve**, not from disk:
+  `$workshopQuestion = Resolve-SpecrewWorkshopQuestionPause ...`, with the comment *"Re-resolve only to
+  enrich the non-authoritative handover projection with the visible question."*
+- **The one production reader is `workshop-authority-store.ps1:435`** (`Write-SpecrewWorkshopAuthorityReceipt`),
+  which returns `$null` when the file is absent - so a typed reply cannot be bound to a question.
+
+**THE CONCLUSION SURVIVES INTACT**: both symptoms follow from the resolve returning nothing valid. One
+cause, two symptoms, exactly as -094 said.
+
+**WHAT CHANGES IS THE FIX TARGET.** -094's countermeasure - *opening a lens writes the pending question* -
+**writes the projection while leaving the resolve broken.** Under it the receipt would mint against a
+question the classifier does not agree is open, and the packet symptom would persist. **The fix belongs at
+`Resolve-SpecrewWorkshopQuestionPause`.**
+
+**Every other reference to the file in this repository is a TEST that hand-writes it** -
+`conformance-detection`, `workshop-agenda-confirmation`, `workshop-material-packet-language`,
+`workshop-typed-turn-authority`. That is DRIFT-199-I003-052's provenance shift: the fixtures fabricate the
+artifact, so **no test exercises the path that produces it**. A fix at the resolve has no existing test that
+would notice it working.
+
+---
+
+## B4F-002 - THE WRITER FOUND: a session RESUME rewrote a sealed, closed iteration's state to a false value, 97 minutes after the seal - and the seal did not prevent it
+
+**The specimen was preserved and NOT repaired, on the reviewer's instruction.** The false value is still in
+the working tree; the patch and file copies are in the session scratchpad. Repairing first would have
+destroyed the reproduction.
+
+### The chain, read end to end rather than inferred
+
+```
+coordinator-resume.ps1:165   Get-TaskProgressSummary        <- a GET verb
+  task-progress.ps1:815        function Get-TaskProgressSummary
+  task-progress.ps1:827          if (Test-Path $planPath) { Sync-IterationTaskProgress ... }   <- the write
+  task-progress.ps1:635            function Sync-IterationTaskProgress
+  task-progress.ps1:501              Update-IterationStateFromTaskProgress   -> state.md
+  task-progress.ps1:451              Set-TaskProgressManagedSummary          -> the generated block
+```
+
+`scripts/specrew-start.ps1:62` dot-sources the same helper.
+
+### The trigger: opening a session. Nothing else.
+
+No user action, no command, no boundary, no verdict. The bootstrap record immediately preceding the write
+reads `mode = 'welcome-back'`, `source = 'resume'`, `concurrent_session = True`.
+
+### The timing, measured from file metadata rather than from any account
+
+| event | UTC |
+| --- | --- |
+| `.specrew-iteration-seal.json` written | **21:20:27.903** |
+| bootstrap journal (`source = resume`) | **22:57:57.823** |
+| `tasks-progress.yml` rewritten | **22:57:57.928** |
+| `state.md` rewritten | **22:57:57.967** |
+
+**97 minutes after the seal. 105 milliseconds after the bootstrap.**
+
+### What it wrote
+
+`**Iteration Status**: complete` became `**Iteration Status**: not-started`, with a generated block reading
+*"Execution has not started yet."* - on the iteration that shipped `v0.40.0-beta3`.
+
+### AND THE VALUE IS CORRECT BY THE WRITER'S OWN RULE, which is the uncomfortable part
+
+`Update-IterationStateFromTaskProgress` derives the status from the task table. 003's `tasks:` key is empty,
+and an empty table derives `not-started` (`task-progress.ps1:571`, `:610`). **The writer is not
+malfunctioning.** It is doing exactly its job on an iteration that should never have been its subject. This
+is the maintainer's own settled vocabulary from the iteration-closeout ruling - `Iteration Status` is
+derived from task progress with its own writer and its own enum, and **only the closeout value is
+boundary-driven** - meeting an iteration whose closeout value the derivation does not know about.
+
+### A `Get-` verb with a write side effect
+
+`Get-TaskProgressSummary` writes. On the resume path a read-named call mutates spec records. Recorded as its
+own defect because it is what makes the write invisible at the call site: `coordinator-resume.ps1:165` reads
+as a query.
+
+### THE LARGER FINDING: THE SEAL DID NOT HOLD
+
+**Measured**: `task-progress.ps1` contains **zero** occurrences of `seal`, `closed-iteration` or any
+equivalent, and neither caller has one. Nothing in the chain asks whether the iteration is closed.
+
+**The seal is a hash record, not a lock.** It can detect drift after the fact; nothing consults it before
+writing. **A seal whose name implies immutability and whose behaviour permits rewriting is the guard-scope
+pattern applied to the artifact this project uses to prove an iteration is settled** - the escape from the
+control is simply that no writer was ever taught to ask.
+
+**It belongs beside DRIFT-199-I003-090, and the two compose:**
+
+- **DRIFT-090's class** is what makes the false value *dangerous*. `Iteration Status` is scope-determining:
+  `complete` filters the iteration out of validation (measured in DRIFT-199-I003-089), and `not-started`
+  puts a closed iteration back **into** validation carrying an empty task table.
+- **This entry is what let it be *written*.** The field's blindness is one defect; the seal's silence is a
+  second, and neither implies the other.
+
+**AND IT IS STRICTLY WORSE THAN DRIFT-199-I003-002.** That entry established that the seal can never capture
+the *final* mirror state, because authorization writes after it - a bounded staleness window closing when
+the verdict lands. **This is an unbounded write window that reopens on every session resume, forever.**
+
+### Blast radius: not specific to 003
+
+The only condition on the write is `Test-Path $planPath`. **Every closed, sealed iteration has a `plan.md`**,
+so every one of them is rewritable by a session resume that resolves it as the active iteration. 003 is
+where it was caught, not where it is possible.
+
+### PRED-BETA4-002, stated now so the reproduction is not argued afterwards
+
+**While `start-context.json` still names feature 199 / iteration 003, the next session resume in this
+worktree will rewrite `state.md` again** and move its mtime, with no user action. If it does not, the
+trigger is narrower than the resume path and the diagnosis above is incomplete at the caller rather than at
+the writer.
+
+### Countermeasure shape - NOT taken, stop-and-report
+
+1. **The sync refuses when the iteration is closed or sealed** - `closed-iterations.yml` and the seal file
+   both already exist and are never consulted. The same two-artifacts-never-compared shape as every other
+   enforcement rule this fortnight produced.
+2. **`Get-TaskProgressSummary` stops writing, or is renamed to say that it does.**
+
+Both touch `scripts/internal/task-progress.ps1`, which is packaged. **Nothing was changed.**
+
+---
+
+## B4F-003 - THE ORIENTATION ASSERTS ITS TEXT IS THE DEPLOYED TEXT, AND HERE IT IS THE PACKAGED TEMPLATE'S - with a retraction of how this was first reported
+
+**The finding is real and its source is named.** The clause *"they are invoked, never read - their behaviour
+is described here, so a surprising result is reported, not investigated in their source"* is
+DRIFT-199-I003-064's fix. It lives in `templates/coordinator-instructions.md` - **packaged** (one FileList
+entry) and **4052 bytes**, the exact size DRIFT-199-I003-064 records for its trimmed final wording.
+
+**Whitespace-normalised measurement across both sides:**
+
+| file | carries the clause |
+| --- | --- |
+| `templates/coordinator-instructions.md` (packaged template) | **yes** |
+| `CLAUDE.md` (this repository's deployed instructions) | no |
+| `AGENTS.md` | no |
+| `.github/copilot-instructions.md` | no |
+| `.specify/.../squad-templates/coordinator/specrew-governance.md` | no |
+
+**So the SessionStart hook renders the packaged template and labels it *"the same text deployed in AGENTS.md
+/ CLAUDE.md"*, and in this repository those differ.** DRIFT-199-I003-064 says why, and says it was
+deliberate: *"CHANGED IN THE PACKAGED TEMPLATE, not in this project's copy, so it reaches new projects."*
+The change was right; **the label the hook puts on it is what is false**, and it is false on the first
+surface a session ever renders.
+
+**That makes it cheaper than an anomaly.** It is bidirectional drift (DRIFT-199-I003-076) with a named
+source and a known cause, so the fix is a choice between two one-line moves: re-deploy this repository's
+instruction files from the template, or stop the hook asserting equality it does not check.
+
+### RETRACTION, recorded with the same weight as the finding
+
+**This was first reported as *"the clause appears zero times anywhere in the tree"*. That was wrong.** The
+clause is present in the packaged template, **line-wrapped** across lines 35-36 as `**they are invoked,` /
+`never read**`. A single-line `grep` for `"invoked, never read"` cannot match it.
+
+**This is DRIFT-199-I003-054's rule, committed by the session that had read it that morning**: *a grep
+proves absence only over the pattern it searched; absence of a match is evidence about the pattern, not
+about the repository.* It is the same defect as the `.specrew-extension-runtime.json` filename that matched
+neither alternative of its search - and it produced the same shape of error, a confident absence claim over
+a set that was never the repository.
+
+**What would have caught it**: normalising whitespace before matching, which is the second half of
+DRIFT-199-I003-036's rule - *build the needle from the haystack's own convention* - applied to a prose file
+where the convention is a hard wrap at 100 columns.
+
+---
+
+## B4F-004 - PRED-BETA4-001 RESOLVED: the file is ABSENT, and the journal cannot say why
+
+**Stated at `072239e2`; resolved at the Stop hook of the turn that rendered feature 201's first workshop
+question.**
+
+- **`.specrew/handover/workshop-question.json`: ABSENT.** The prediction held.
+- **`.specrew/runtime/workshop-authority.jsonl`: still does not exist.** No receipt could have been minted.
+
+**The Stop record for that turn, read from `conformance-journal.jsonl`:**
+
+```
+event            = 'stop-block-cap-announce'
+recorded_at      = '2026-09-08T23:41:44.9550878Z'
+block_kind       = 'material'
+workshop_scope   = None
+workshop_feature = None
+workshop_iteration = None
+workshop_lens    = None
+intake           = False
+dx_lat_len       = 3538
+dx_packet_present = False
+```
+
+**The resolve returned nothing - all four workshop fields are null - and the material block fired**, which
+is both symptoms of B4F-001 reproduced on demand, in this tree, on a question I rendered deliberately.
+
+**BY THE MEANINGS FIXED IN ADVANCE, THIS IS THE FOURTH BRANCH: *absent, no reason recorded anywhere*.** The
+journal carries the classification (`block_kind = material`) and four nulls, and **never says which of the
+three candidate causes fired** - feature applicability, iteration applicability, or question detection. My
+three other pre-committed branches are **indistinguishable from the instrument the product provides.**
+
+**That is a sharper result than any of them would have been**, and it is DRIFT-199-I003-045 restated exactly
+where it costs most: *the journal names the classification, never the decision.* **Beta4's first item cannot
+be fixed before it can be diagnosed** - a fix at the resolve has no instrument that would show it working,
+and no existing test exercises the path (B4F-001).
+
+**THE SHARPEST OPEN THREAD, named rather than guessed at**: `dx_lat_len = 3538`. The message that turn was
+materially longer than 3538 characters, so the captured last-assistant text may be truncated - which would
+move the cause toward question detection by a capture mechanism rather than by the resolve's own
+preconditions. **Not established, and deliberately not inferred**: establishing it needs the transcript
+compared against the captured length, which is one measurement and belongs to whoever takes this item.
+
+**Bootstrap journal records carry no timestamp field at all**, so the record that immediately preceded
+B4F-002's write could only be dated by file mtime. Recorded here beside the other diagnosability gap because
+it is the same defect in a second journal.
+
+---
+
+## B4F-005 - MECHANISM ESTABLISHED: the punctuation heuristic is real and is NOT what blocked this; the resolve never looked at feature 201 at all
+
+**Tested rather than implemented, on instruction.** The reviewer's hypothesis was that question detection
+depends on a line ending in `?`. **Both halves were checked, and they separate.**
+
+### The heuristic is real, and this session would fail it every time
+
+`specrew-conformance-provider.ps1:564`, confirmed verbatim:
+
+```powershell
+$questionLines = @($LastAssistantText -split "`r?`n" | Where-Object { $_.TrimEnd().EndsWith('?') } | Select-Object -Last 1)
+```
+
+**Measured over this session's transcript - all 34 assistant text messages: ZERO have a line ending in
+`?`.** That includes message `[17]` (8430 characters, 71 lines), the last assistant text before the failing
+Stop, which *contains* a question mark but never at a line end. The prediction the heuristic makes about
+this agent's prose is correct: it would find nothing, every time.
+
+### BUT IT DOES NOT GATE VALIDITY, and that is the half that kills it as the cause
+
+Read the control flow rather than the line. Two lines below the filter:
+
+```
+566  $result.valid = $true                # unconditional
+581  $result.question = $question         # null is fine
+582  $result.message_hash = Get-SpecrewFireIdentity -Parts @(..., $LastAssistantText)
+```
+
+**A message with no `?`-terminated line still returns `valid = $true`, still causes the projection to be
+written, and still carries a bindable `message_hash`.** The heuristic degrades the *readable* `question`
+field in a projection whose own comment says it is not authority. **It cannot be what stopped registration**,
+because had line 564 been reached at all, `workshop-question.json` would exist.
+
+### The actual mechanism, traced through the guard chain
+
+`$ActiveFeatureRef` and `$ActiveIterationNumber` come from the start context, which names
+**`199-beta3-stabilization` / `003`** - the CLOSED feature.
+
+| line | what happens |
+| --- | --- |
+| 531 | `$ActiveIterationNumber` is `003`, non-empty, so `$scope = 'iteration'`, `$iteration = '003'` |
+| 545 | `Get-SpecrewWorkshopLifecycleState -FeatureRef 199-beta3-stabilization -IterationNumber 003` |
+| - | **`specs/199-beta3-stabilization/iterations/003/lens-applicability.json` DOES NOT EXIST** (verified) |
+| 550 | `$state` is null, so scope / feature_ref / iteration_number are left **null** and the function returns |
+
+**Feature 201 was never consulted.** The resolve did not fail to recognise the workshop question - **it never
+looked at the workshop that was open.** This matches the journal exactly: all four `workshop_*` fields null,
+which is the one outcome the punctuation path cannot produce.
+
+**PRED-BETA4-001's predicted mechanism is therefore PROVEN**, having been recorded as unproven in B4F-004.
+The stale start context is the cause. The journal could not confirm it; the control flow does.
+
+### The truncation is real, separate, and did not cause this
+
+`dx_lat_len = 3538` against message `[17]`'s actual **8430** characters. **The capture truncates.** But the
+full 8430-character message has zero `?`-terminated lines too, so truncation changes nothing here. Confirmed
+as its own defect, queued behind this one exactly as instructed.
+
+### THREE SPECIFICATIONS, THREE MISSES, AND THEY SHARE ONE SHAPE
+
+| reading | what it named | why it was wrong |
+| --- | --- | --- |
+| DRIFT-199-I003-094 | line 627 "reads" the file | 627 is a path assignment inside the WRITER |
+| B4F-001's correction | the live re-resolve is the gate | correct, but the gate is upstream of it |
+| this one | line 564's filter decides detection | the filter feeds a field; `valid` is set unconditionally two lines later |
+
+**Every one was right about the line and wrong about whether the line decides anything.** The rule this
+earns, and it is cheap: **when a line is named as a cause, trace to the `return` that carries it.** A filter,
+an assignment and a guard look identical in a grep hit.
+
+### WHAT THE EVIDENCE SUPPORTS ABOUT THE FIX - stated as scope, not taken
+
+The resolve must consult **the feature whose workshop is open**, not the one the start context happens to
+name. And that reframes the blast radius:
+
+**THE DECISIVE OPEN QUESTION, NOT ESTABLISHED**: the start context is stale **by construction** between
+feature creation and the first boundary sync - a new feature's workshop always runs while the context still
+names its predecessor. If that is what fires, **the block hits the second and every later feature in any
+project**, not just this tree, and Casio and `beta3-tagwalk` worked only because they were *first* features
+with no predecessor to name. **That is a much larger scope than "this tree is unusual" and it shapes the fix
+rather than merely following it**, so it is in scope under the standing rule. It needs one test: a second
+governed feature in a scratch project, with the first one closed.
+
+---
+
+## B4F-006 - THE WORK KIND IS COMPLETE MACHINERY THAT NOBODY IS OFFERED: a silent resolution whose default is the heaviest contract
+
+**`bug-bash-lifecycle.md` ships.** So do `docs-only-lifecycle.md`, `devops-lifecycle.md` and
+`software-feature-lifecycle.md`, beside `work-kinds.yml`, `work-kinds.schema.json`, `work-kind-common.ps1`,
+`work-kind-validator.ps1`, a deployed `templates/work-kind/`, a CI workflow and four test suites. **The
+capability is finished. It was simply never selected.**
+
+### What bug-bash actually asks for
+
+| required evidence | beta4's status |
+| --- | --- |
+| bug list, each with a reproduction or failing signal | **already written** - six items in `docs/beta4-scope.md` |
+| root cause per bug | **already written** - the drift log's measured causes |
+| fix evidence | owed |
+| regression tests | owed |
+| closeout note | owed |
+
+Flow: `bug-list + root-cause -> fix -> regression-tests -> review -> closeout -> merge`.
+
+**There is no workshop, no spec, no design lenses, no plan/tasks ceremony in it.** The drift log *is* the
+bug list, and it was complete before feature 201 was created.
+
+### The declaration is inherited, and it names a feature from two features ago
+
+`.specrew/work-kind.yml` reads `work_kind: software-feature`, and its own note begins *"Feature 183 (this
+branch)"*. It is a **project-level** file, so 199 inherited it and 201 inherited it, and nothing at feature
+creation asked. Its note even records the tension it was written under: *"uses bug-bash conduct for the
+individual fixes while retaining software-feature release discipline."*
+
+### It explains iteration 003 retroactively
+
+003 fought a dashboard it could not produce, a task row it never had, a Task Verdicts table with no
+reviewer, and a campaign that never ran. **The honest closure was right; the finding is one level up.** 003
+was reactive stabilization measured against a planned-feature contract, and **bug-bash may have fitted it
+without a single deviation.** Two work items in a row have now paid full feature ceremony for work that had
+a lighter contract sitting unused in the same directory.
+
+### THE FINDING IS THE SELECTION, NOT THE CAPABILITY
+
+**A work kind resolves silently, its default is the heaviest contract, and nothing at feature creation asks
+which applies.** That is not a missing capability - it is **a shipped one nobody is offered**, which is
+squarely beta4's own first-run theme: a stranger meets the heaviest ceremony the product has, for work that
+may warrant the lightest, and is never shown that a choice existed.
+
+**Deferred under the standing rule** unless declaring it removes the workshop dependency in front of the
+registration fix - which it does, and which is why it was read now rather than later.
+
+**DECLARED 2026-09-09.** `.specrew/work-kind.yml` now reads `work_kind: bug-bash`, and the resolver confirms
+`Kind: bug-bash -> templates/lifecycle/bug-bash-lifecycle.md`, `Exists: True`. The project-level consequence
+is written into the file itself, above the value, so the next reader meets a decision rather than an
+inheritance: **this makes the project a bug-bash project until someone changes it back, and beta5 must
+revisit it if beta5 carries features rather than defects.**
+
+---
+
+## B4F-007 - ANSWERED: the block does NOT require a missing controller. Any stale ref produces it, so every second-and-later feature in every project is affected
+
+**The scope question from B4F-005, tested rather than reasoned.**
+
+### Method, with the setup stated because the setup is what decides the answer
+
+`Get-SpecrewWorkshopLifecycleState` was loaded from `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`
+in a subprocess. **The file was first parsed by AST and confirmed to contain ZERO top-level non-function
+statements**, so loading it cannot execute anything - the load-time-behaviour precaution DRIFT-199-I003-062
+established. Preconditions were printed, not assumed. File mtimes were captured before and after, because a
+`Get-` verb already wrote once today (B4F-002) and the verb is not evidence.
+
+### Result
+
+| case | controller on disk | status | reason |
+| --- | --- | --- | --- |
+| **f201 feature-scope, workshop OPEN - POSITIVE CONTROL** | present | **`active`** | `workshop-pre-agenda-active` |
+| f199 / i002, workshop COMPLETE | **present** | **`invalid`** | `workshop-workshop-intake-invalid` |
+| f199 / i001, workshop COMPLETE | **present** | **`invalid`** | `workshop-workshop-intake-invalid` |
+| f199 / i003, the never-planned stub | absent | `absent` | `workshop-applicability-absent` |
+
+`files_mutated_by_test = 0`.
+
+**THE POSITIVE CONTROL IS WHY THE NEGATIVES MEAN ANYTHING.** Without it, four non-active results are
+indistinguishable from a harness that never reached its subject - the defect DRIFT-199-I003-039 catalogues
+three instances of in one session. 201 returning `active` with `current_lens = 'product-domain'` proves the
+function runs and reads a live controller.
+
+### The answer
+
+Provider line 550 tests `$null -eq $state -or [string]$state.status -ne 'active'`. **All three stale-ref
+cases fail that test.** The missing controller changes only the `reason` string; it is not what causes the
+block.
+
+**So the trigger is the stale ref itself, and iteration 003's stub is not required.** A start context naming
+any previous feature whose workshop is complete produces the same block. **Every second-and-later feature in
+every project is affected**, and Casio and `beta3-tagwalk` worked because they were first features with no
+predecessor to name. **The fix is a scope correction with the general blast radius, not a narrow one keyed
+to this tree's anomaly.**
+
+### A CORRECTION TO B4F-005, and it is mine - the fourth reading in this chain
+
+B4F-005 traced the observed failure to line 550's return. **That cannot be right.** For 003 the state is
+non-null (`status = 'absent'`), so line 552's `if ($null -ne $state)` would set `scope`, `feature_ref` and
+`iteration_number` - **yet the journal recorded all four as null.** The all-null signature matches the
+EARLIER return at line 532, `workshop-active-iteration-missing` - **the reason PRED-BETA4-001 originally
+named and then rejected.**
+
+**What survives is stronger than what it replaces**: the stale ref is the cause, now proven by direct test
+against a positive control rather than by reading control flow. **Which of the two returns it takes does not
+change the fix**, since both are downstream of pointing the resolve at the wrong feature. But the record
+must not claim a path it has not established.
+
+**Fifth instance of the shape B4F-005 itself named** - right about the line, wrong about whether that line
+is what decides - committed by the entry that named it, one turn later. The rule survives its author, which
+is the only test of a rule that matters here.
+
+---
+
+## B4F-008 - THE ORIENTATION GUARD'S DISCHARGE IS PER-TURN, so a compliant session renders the banner on every turn
+
+**Three firings, measured across this session.**
+
+| turn | orientation rendered | stop |
+| --- | --- | --- |
+| 1 | yes, in full, opening the reply | blocked at a later stop |
+| 4 | yes, forced by the guard | went through |
+| 5 | no | **blocked** |
+
+**The guard reads the CURRENT turn's last assistant message and has no memory that the orientation was ever
+shown.** Its only discharge is re-rendering, so the condition returns on every turn that does not repeat the
+banner - and a session that complies renders the full orientation every single turn.
+
+**That is DRIFT-199-I003-074's shape exactly**: *a report that renders no packet can never satisfy the packet
+test that discharges it.* Here the discharge is a thing the design intends to happen once. For a new user it
+is the banner on every turn, which is the repetition that reads as broken - and it is the same surface
+DRIFT-199-I003-080 is already in beta4 scope for.
+
+**Not investigated further and not fixed.** Recorded per the standing rule. **Beta5**, beside the capture
+truncation, the post-seal writer and the orientation-text drift.
+
+---
+
+## B4F-009 - THE FIX: the workshop resolve selects the feature whose intake controller is open
+
+**Beta4's one shipped change.** Bug-bash evidence, in the order its contract asks for it.
+
+### Bug
+
+A workshop question could not be registered, so no receipt could mint and no lens could close. Reproduced on
+demand in this tree (B4F-004) and measured to affect **every second-and-later feature in any project**
+(B4F-007).
+
+### Root cause
+
+`Resolve-SpecrewWorkshopQuestionPause` selected the workshop from `.specrew/start-context.json`'s
+`session_state`, which names the **lifecycle's** feature. After any completed feature that is the
+**previous** one, and it is stale by construction from feature creation until the first boundary sync. The
+resolve then looked up a completed workshop - or an iteration absent under the new feature - and returned
+nothing active, silently.
+
+### Fix
+
+`specrew-conformance-provider.ps1`, plus its `.specify/` mirror, byte-identical.
+
+- The call site computes `$workshopIntakeCandidates`: features whose `spec.md` still carries
+  `<!-- specrew:spec-not-yet-authored -->` **and** which have a feature-level `lens-applicability.json`.
+  It reuses the `$specs` enumeration already taken, so it adds no directory walk.
+- The resolve prefers a **unique** candidate whose controller reports `active`, at feature scope, over the
+  start-context pair.
+
+**Three properties make it safe, and each is asserted by the test rather than argued. Property 1 is stated
+here AS IT HOLDS AFTER REVIEW, not as it was first claimed - see B4F-010, where the first version of it was
+false and the review caught it:**
+
+1. **It never displaces an active workshop.** When both the candidate path and the start-context path
+   resolve active on *different* features, the resolve refuses with `workshop-resolve-ambiguous` rather than
+   choosing. Exactly one active path may win.
+2. **It cannot capture design-analysis.** That workshop is iteration-scoped and its spec IS authored, so it
+   can never be an intake candidate.
+3. **It does not guess.** More than one open intake workshop is ambiguous and falls through to the previous
+   behaviour rather than picking one - which would manufacture a binding no human made.
+
+**Both call sites patched.** The provider calls the resolve **twice**, and the first anchor matched only
+one. Caught by checking rather than by trusting the anchor; a half-applied fix here would have been silent,
+which is the two-writers family (DRIFT-199-I003-048). Case 6 of the test now pins it.
+
+### Regression test
+
+`tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, registered in the **`f199-class-guards`**
+lane (`every-suite-is-named-by-a-lane` went red on the unregistered file and named the remedy; green after,
+56 -> 57 suites).
+
+**It drives the resolve and never writes `workshop-question.json`** - because every existing fixture in this
+area hand-writes that file, which is precisely why none of them could notice a defect in its production
+(B4F-001).
+
+**It carries its own positive control (Case 1)**, on the reviewer's instruction: a test that sets up the
+stale ref and asserts a negative passes just as happily when it never reached the function, and would join
+the fixtures that could not notice. Case 1 asserts an open feature resolves **active** in the same run, and
+the file exits INCONCLUSIVE rather than reporting a verdict if that control does not hold.
+
+Six cases: positive control; the regression; candidate validation; a negative control that must stay
+non-valid; ambiguity refused; and every call site passing the parameter.
+
+### Mutation proof
+
+Target **GREEN first** (DRIFT-199-I003-047), then the candidate adoption disabled at exactly one site:
+
+```
+baseline_exit           = 0
+mutation_sites          = 1
+mutant_exit             = 1   -> only CASE 2's three assertions red; the positive control still passed
+restored_byte_identical = True
+mirror_identical        = True
+post_restore_exit       = 0
+```
+
+**Only the regression case discriminated**, which is what distinguishes a proof from a test that fails for
+any reason.
+
+### Reported, not acted on
+
+**SETTLED - and the first report of it was wrong.** It was reported as *"names 124 of 127 integration
+suites"*. That number was a count of `tests/integration/` **regex hits inside the manifest text**, not a
+count of files - the count-scope defect (DRIFT-199-I003-047) in the very entry that refused to act without
+knowing the rule. **The real figure is 11 integration suites unnamed, not 3.**
+
+Measured properly, the rule is clean and the refusal to add was right for a better reason than caution:
+
+| coverage | suites |
+| --- | --- |
+| named by a per-round LANE only | 50 |
+| named by the RELEASE GATE only | 338 |
+| named by both | 7 |
+| **named by NEITHER** | **0** |
+
+**The two registries are complements over all 395 suites on disk, not overlapping lists.** A suite belongs
+to one or the other; the 7 in both are permanent class guards. The new test is registered in a lane, so it
+is fully covered, and adding it to the gate would put it in a 7-file overlap with no reason to be there.
+**No change needed.**
+
+---
+
+## B4F-010 - REVIEW FINDING ON 905c5601: safety property 1 was false, and the fix could displace the workshop a human was actually answering
+
+**Found by the reviewer against the code, reproduced here with a control before it was accepted, and fixed
+in the same session. Recorded because a claimed safety property that does not hold is worse than an
+unclaimed one - it stops the next reader checking.**
+
+### What was claimed, and why it was wrong
+
+905c5601 claimed: *"It cannot suppress a working workshop. It only ever turns a non-active result into an
+active one."* **Not true as written.** When the candidate resolved active, `$ActiveFeatureRef` was replaced
+and `$intakeCandidate` stayed non-empty, so the block guarded by `IsNullOrWhiteSpace($intakeCandidate)` was
+skipped entirely: scope stayed `feature` and **the start-context path was never attempted at all.**
+
+**Property 2 did not cover this, and that is the instructive part.** The risk was never that a
+design-analysis workshop becomes an intake candidate - it cannot. The risk is that a *different* candidate
+**displaces** it.
+
+### The consequence is worse than the block it replaced
+
+Feature A is mid-workshop and the human is answering its lens. Someone scaffolds feature B. B is the unique
+intake candidate and its pre-agenda controller reads active, so the resolve registers **B's** question.
+**The human's typed reply then mints a receipt against B's question.** A's checkpoint finds no receipt; B
+carries one it never earned.
+
+**That is a human reply bound to a question they never saw** - precisely what property 3 already refuses
+between two candidates, happening instead between a candidate and the start context. Narrow, and not worse
+than the unconditional failure it replaced - **but narrow was this defect's description too**, and it fires
+in multi-feature projects, which is where the product is meant to earn its keep.
+
+### Reproduced before it was accepted, and the first attempt to reproduce it FAILED HONESTLY
+
+Case 7 was written first and its **precondition assertion caught a fixture defect rather than reporting a
+verdict**: a completed lens entry needs its own `workshop/<lens>.md` record and a `human_turn_receipt` that
+validates against the real hook-owned authority store, so the design-analysis fixture was `invalid`, not
+`active`. Three assertions "failed" against a control that had never reached its subject - DRIFT-199-I003-039
+exactly, caught by the rule this file was built with.
+
+**Fabricating an agenda receipt to force the fixture active was available and was refused** - that is the
+fixture-fabrication defect (DRIFT-199-I003-052) this test exists to avoid. The fixture was rebuilt in the
+shape Case 1 already proves active, and only then did Case 7 fail for the right reason.
+
+### The fix, and why neither obvious ordering is safe alone
+
+**Resolving the start-context path first and falling back to the candidate has the mirror failure**: a
+previous feature whose iteration workshop was left active after closeout would win over a new feature's
+intake - the original defect with its precedence flipped. **Neither order is safe on its own.**
+
+So both paths are resolved and then compared, and **exactly one active path may win**:
+
+- candidate active, start-context not - the candidate wins (the original fix, preserved);
+- start-context active, candidate not - the start context wins (unchanged behaviour);
+- **both active on different features - refuse with `workshop-resolve-ambiguous`**, because nothing can tell
+  which question the human is answering;
+- both naming the same feature - no conflict.
+
+**Property 1 now holds by construction rather than by claim**, which is the whole point of the change.
+
+### Evidence
+
+Two cases added (7 and 8), and the mutation proof re-run against **both** sites with the target green first:
+
+```
+baseline_exit           = 0
+M1 candidate never adopted   -> exit 1, CASE 2 + CASE 8 red
+M2 ambiguity refusal removed -> exit 1, CASE 7 red
+restored_byte_identical = True
+mirror_identical        = True
+post_restore_exit       = 0
+```
+
+**Disjoint failure sets**: each site is independently guarded, so removing either is caught by a different
+case. Case 8 exists specifically to prove the new guard did not weaken the original fix.
+
+---
+
+## B4F-011 - THE FIX SURFACED A DEFECT THE BLOCK WAS HIDING: five `human-confirmed` receipts for a question nobody was asked
+
+**Found immediately after the fix landed, by checking a claim rather than asserting it - and the claim being
+checked was one I had just written into the record.**
+
+### The measurement
+
+`.specrew/runtime/workshop-authority.jsonl` did not exist in this tree at any point before the fix. It now
+holds **five receipts**, minted 00:26:46Z to 00:44:12Z, every one of them:
+
+```
+feature_ref        = '201-first-run-experience'
+phase              = 'product-domain'
+lens               = 'product-domain'
+confirmation       = 'human-confirmed'
+confirmation_scope = 'lens-question'
+source_event       = 'UserPromptSubmit'
+```
+
+**The product-domain question was never asked in any of those turns.** The workshop is deliberately held.
+Every one of those typed turns was a code review of the fix.
+
+### The mechanism, and it is NOT caused by the fix
+
+`Write-SpecrewWorkshopAuthorityReceipt` binds a typed turn to whatever `workshop-question.json` currently
+names. The projection is rewritten at every Stop while a workshop is open, and its `message_hash` is
+computed from the **last assistant message** - whatever that message happened to be. Nothing anywhere asks
+whether the human was answering a question. `human-confirmed` / `lens-question` are what a lens-phase
+receipt is labelled, not a finding about the reply.
+
+**So this is pre-existing and it is documented** - the design-workshop skill states it plainly: *"the SC-026
+gate ... cannot see transcript truthfulness; that integrity is on you."* What is new is only that it is now
+**visible in this tree**, because the block had prevented any projection from existing at all.
+
+**That is the finding worth keeping: fixing the block did not create this, it REVEALED it.** A defect that
+suppresses a whole subsystem also suppresses every defect downstream of it, and the downstream ones arrive
+together the moment it is repaired. The same will be true for anything else that was waiting behind the
+registration block.
+
+### The live hazard, stated so nobody trips on it
+
+**Those five receipt ids are on disk, they validate, and citing any of them would close `product-domain`
+with a fabricated agreement.** The lens has had no question asked and no answer given. When 201's workshop
+resumes, the question must be asked and answered, and the receipt cited must be the one bound to that
+exchange. **None of the five may be used.**
+
+### Disposition
+
+**BETA5, with the refusal-standard items** - it is the integrity gap the skill already names, and the
+standing rule holds. Recorded now because the evidence is on disk today and because the next person to open
+this workshop will find five receipts that look like agreement.
+
+---
+
+## B4F-012 - REVIEW CLOSE-OUT: two items recorded, neither blocking
+
+### 1. A coverage gap the fixture change created, named rather than smoothed
+
+Case 7 proves the ambiguity refusal **between two intake workshops at feature scope**. The concern that
+produced it was an **iteration-scoped design-analysis** workshop being displaced.
+
+**The code path is the same** - both paths resolve, both active, different features, refuse - so the
+design-analysis case *is* covered by the guard. **It is not covered by a test.** An honest design-analysis
+fixture needs a closed lens with a `workshop/<lens>.md` record and a `human_turn_receipt` that validates
+against the real hook-owned store, and fabricating one was refused (DRIFT-199-I003-052).
+
+**The consequence is worth stating as a general fact rather than an excuse: some states can only be reached
+through the product, not staged around it.** A test suite that insists on staging everything will either
+fabricate its preconditions or silently skip those states, and this project has already paid for the first.
+
+**Assigned**: the second-feature walk, which is already on the list, gains a specific assertion - drive a
+scratch project to design-analysis, scaffold a second feature, and confirm the resolve **refuses rather than
+binds**.
+
+**And the thing to keep**: Case 7's precondition assertion caught the dead fixture *before* the verdicts
+under it were read. Without it, three green assertions would have proved nothing and looked like a pass.
+
+### 2. The refusal does not reach the human
+
+When both paths are active the resolve returns `workshop-resolve-ambiguous`. **That reason lands in the
+journal.** `workshopIntermediate` goes false, and the human gets an ordinary material-work packet with **no
+indication that two workshops are open, or which two.**
+
+Existing class, not new, and it belongs with the **refusal-standard** items rather than inside this fix: a
+refusal must name what failed and what the reader can do. **BETA5.** Recorded here in one line so the next
+person who hits it finds the reason without reading a journal.
+
+### 3. The registry rule, recorded so nobody re-derives it
+
+**The per-round lanes and the release gate are COMPLEMENTS, not overlapping lists**: over all 395 suites on
+disk - 50 lane-only, 338 gate-only, 7 in both, and **zero covered by neither**. A suite belongs to one or
+the other; the 7 in both are permanent class guards. **A lane-registered suite needs no gate entry.**
+
+---
+
+## B4F-013 - THE RULE: a block upstream hides every defect downstream of it, and they surface together when it is lifted
+
+**Promoted from an observation in B4F-011 to a stated rule, because it predicts rather than explains.**
+
+> **A defect that suppresses a subsystem also suppresses every defect downstream of it. Lifting the block
+> does not reveal them one at a time - it reveals all of them at once, and they arrive looking like
+> regressions caused by the fix.**
+
+**The instance that produced it.** The registration block meant no workshop question was ever projected in
+this tree, so no receipt could ever mint. B4F-011's over-eager confirmation was therefore *unobservable* -
+not absent, unobservable. It appeared within minutes of the fix, and the natural reading of its arrival was
+that the fix caused it. **It did not.** The mechanism is untouched by the fix and predates it.
+
+**Why this is worth a rule rather than a note**: the arrival pattern is indistinguishable from a regression,
+so the default reaction to it is wrong. Anything found immediately after a block is lifted needs its
+provenance established - *was this reachable before?* - before it is attributed to the change.
+
+### It predicts, and here is the standing prediction it makes
+
+**Expect more of B4F-011's kind during the router-skill crew's eight-lens re-close.** That is the **first
+time the downstream path runs on real work** rather than on this tree's review traffic. Registration,
+receipt minting, lens checkpoints and confirmations have never been exercised end to end on a genuine
+workshop under this machinery.
+
+**What that means operationally**: findings from that re-close are *new visibility*, not new breakage, until
+shown otherwise - and they should be recorded before they are worked around. The brief handed to that crew
+is `docs/beta4-router-skill-crew-brief.md`.
+
+### Siblings
+
+Same family as the census (DRIFT-199-I003-030/-035): provisioning the runner so the product could bootstrap
+made the count go **up**, because the gate began measuring more of the tree. **The gate did not weaken - it
+started working**, and more measurement found more findings. This entry is that shape one level up, in
+product behaviour rather than in a gate.
+
+---
+
+## B4F-014 - WHAT A RECEIPT PROVES, restated: a turn, not an assent
+
+**The definition, to be used wherever the record previously implied more.**
+
+> **A receipt proves that a typed human turn occurred while a question was projected. It does not prove the
+> reply answered that question.** `confirmation: human-confirmed` with `confirmation_scope: lens-question`
+> is **evidence of a turn, not of assent**, and the record carries nothing that can tell the two apart.
+
+**Five receipts minted from code-review messages validate identically to five minted from real answers.**
+That is measured, not argued - it is B4F-011.
+
+### Where the record is corrected by this
+
+- **B4F-001** said the file's absence means *"a typed reply cannot be bound to a question."* True as
+  written, and it must not be read in reverse: its presence does not mean a reply **answered** one.
+- **B4F-009** described the chain as `resolve -> projection -> receipt -> lens closes`. Correct as a
+  mechanism, **and it is not a chain of proof.** Only the first two links are machine-verified. The last
+  link - that the human's turn was an answer - rests on the agent having actually asked the question and
+  reported honestly, which the design-workshop conduct already places on the agent and no gate can check.
+- **PRED-BETA4-003's resolution** said *"a receipt can now mint where it could not before."* True, and
+  narrower than it sounds: what became possible is the **binding**, not the **agreement**.
+
+**The practical consequence, stated once**: a lens may be recorded `human-confirmed` only for a question
+actually surfaced and actually answered. The receipt id is the *evidence trail* for that claim, never the
+claim itself.
+
+---
+
+## B4F-015 - THE DEFECT IS AT THE READER, NOT THE WRITER: an honest evidence record promoted to authority downstream
+
+**The reader-side statement of B4F-011/B4F-014's class, and it sharpens them rather than repeating them.**
+
+### The mint site is honest, and says so in its own words
+
+`scripts/internal/bootstrap/HandoverStore.ps1:1101`, verified at source:
+
+```powershell
+# The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
+# evidence rather than authority, and it belongs only to the branch the human types into.
+if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
+    -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+```
+
+**The only condition is that the message is not whitespace.** No content inspection, and **no
+redirect-shaped reply escapes it** - a correction, a question and an agreement all mint identically.
+
+**But the writer is not the defect.** Its comment states precisely what it is doing: *a phrase was seen,
+which is **evidence rather than authority***. It never claims assent. **It is honest about its own tier.**
+
+### The defect is that a lower-tier fact is read as a higher-tier one
+
+**The checkpoint treats a PRESENT receipt as the close.** So evidence is promoted to authority *downstream*
+of an honest write, and nothing between the two records the promotion.
+
+**That is the same shape as the boundary record trusting its own `auth_commit_hash`** (DRIFT-199-I003-097,
+under DRIFT-199-I003-090's class): the fabrication risk does not live where the fact is written, it lives
+**where a lower-tier fact is consumed as a higher-tier one.** In both cases the writer is doing its job and
+the reader is asking the wrong question of the answer it gets.
+
+### Why this matters for the disagreement case specifically
+
+The confirm case was already covered by "type `move on` and nothing else". **The redirect case was left as a
+trap**: a maintainer who disagrees with a presented lens and types the correction into the open workshop
+mints a receipt, and a presence-reading checkpoint records the lens as closed **against the objection it
+just received.** The natural human action produces the opposite of its intent, silently.
+
+`docs/beta4-router-skill-crew-brief.md` now carries both halves, including an explicit redirect path -
+because a rule that only names the safe action leaves the unsafe one as the default.
+
+### It strengthens the beta5 fix, and names its two halves
+
+1. **The receipt must carry what it is evidence OF** - the question it was bound to, and that it records a
+   turn rather than an assent. Today the tier is stated in a source comment and nowhere in the record.
+2. **The checkpoint must require assent, not mere presence.** A receipt whose reply was not an answer must
+   not be citable as a close.
+
+**BETA5**, with B4F-011, B4F-014 and the refusal-standard items. The standing rule holds; nothing here is
+fixed in beta4, and the disclosure in `docs/release-notes-v0.40.0-beta4.md` is what beta4 ships instead.
+
+---
+
+## B4F-016 - I REPORTED A NEAR-MISS THAT DID NOT HAPPEN, and the same message shows the product getting it RIGHT in one store and WRONG in another
+
+**A withdrawal and a much sharper finding, from one typed turn.**
+
+### The withdrawal
+
+I reported that `approved for review round` produced **silence** - that it was verdict-shaped, matched
+nothing, and that the human was told nothing - and I filed it as a live DRIFT-199-I003-095 near-miss.
+
+**That was wrong.** The phrase matched exactly and was captured:
+
+```
+.specrew/review/round-approval/pending-round-approval.json
+  fact_type       = review-round-approval
+  approval_kind   = typed-phrase
+  verdict_text    = "approved for review round"
+  evidence_source = hook-captured-user-prompt
+  observed_at     = 2026-09-09T01:06:31.1730233Z
+  spent_at        = null
+```
+
+**I checked `start-context.json`'s boundary state and concluded absence from it.** Review-round approval is
+not a boundary crossing and does not live there. **An absence claim proves absence only over the store you
+looked in** - DRIFT-199-I003-054's rule with `git ls-files` swapped for a JSON file, made while reporting on
+that very class. Fifth or sixth instance depending how you count; the count is the point.
+
+**And the question I asked was already answered.** I put two readings of "review round" to the maintainer as
+materially different work. The machinery had resolved it: `approved for review round` is the product's own
+documented approval phrase, and the action is `specrew review --live --approve-round`. **The human typed
+exactly what the product asks for and I treated it as ambiguous** - friction I introduced, on the surface
+beta4 exists to fix.
+
+### The finding that replaces it, and it is better
+
+**One typed message hit two capture paths, and they behaved differently:**
+
+| store | what it required | outcome |
+| --- | --- | --- |
+| `.specrew/review/round-approval/` | an **exact phrase match** (`approval_kind: typed-phrase`) | **correct** - a real approval, recorded as one, unspent |
+| `.specrew/runtime/workshop-authority.jsonl` | **any non-whitespace message** | **spurious** - receipt 13, `human-confirmed` / `lens-question`, for a product-domain question never asked |
+
+**Same message. Same instant** - 01:06:31.17Z and 01:06:31.66Z, half a second apart. One store asked what
+the human said; the other asked only that they said something.
+
+### Why this sharpens the beta5 fix rather than restating it
+
+B4F-015 said the checkpoint must require assent rather than presence, which is correct and abstract. **This
+gives it a working reference implementation inside the same product**: the round-approval capture already
+does the discriminating thing - it binds a **phrase** to a **fact_type**, records `approval_kind`, and
+carries `spent_at` so the fact can be consumed once and only once.
+
+**The workshop receipt has none of those.** No phrase requirement, no statement of what the turn was
+evidence of, no spend marker - so it can be minted by anything and cited any number of times.
+
+**So beta5's fix is no longer a design question.** Make the workshop receipt carry what the round-approval
+fact already carries: what was required, what was seen, and whether it has been spent. **The pattern does
+not need inventing; it needs copying from the file next door.**
+
+**BETA5**, with B4F-011, B4F-014 and B4F-015.
+
+---
+
+## B4F-017 - THE REVIEW ENGINE REFUSES THE EXACT CHANGE BETA4 SHIPS, and its named remedy would destroy it
+
+**Hit while spending the approved review round.** `specrew review --live --approve-round` refused:
+
+```
+review-engine-project-runtime-drifted:
+  marker=df8a01650e9665d4d806741b06c22e6a8c12ce493036f98a4c51b577ba7f06d4
+  actual=b56b0f25e7263763e74f5dc7c9a0580f31c15ac908ecedd6c35b54ce29273ec5
+  run 'specrew update --project-path "C:\Dev\specrew-beta3-stabilization"'
+```
+
+**The detection is correct.** The deployed machinery under `.specify/extensions/specrew-speckit` no longer
+matches the recorded install marker - **because beta4's fix edited it**, which is the whole point of the
+change.
+
+### THE NAMED REMEDY IS FORBIDDEN, and this is the fifth instance of that family
+
+`specrew update` would **overwrite the deployed provider with the installed beta3 bits** - silently
+destroying the fix the detector just detected.
+
+**This is DRIFT-199-I003-016's family, and its exact fourth instance repeated**: *a detector naming the
+remedy that destroys its own finding.* DRIFT-199-I003-014 recorded the identical trap during the beta3
+respin, in the same file, for the same reason: *"The remedy the message names is FORBIDDEN: it says run
+`specrew update --project-path ...`, which would overwrite the fix with the 4f4dce52 bits."*
+
+**And what saved it both times was a standing rule, not the control.** In beta3 it was the no-rebuild hold;
+here it is that this crew had already read that entry. DRIFT-199-I003-016's own warning applies unchanged:
+**a control that only works because an unrelated rule happened to be active is not a control.** The message
+is locally sensible, authoritative, and now blocks a required lifecycle stage - which is precisely the
+condition under which advice gets followed.
+
+### The sanctioned unblock is a RE-STAMP, not an update
+
+DRIFT-199-I003-053 settled this during the respin: regenerate the marker through the product's own writer
+`Write-SpecrewDeployedExtensionMarker`, with the precondition printed before the write, the postcondition
+after, and the diff bounded to the authorized files. **Hand-editing the hashes would be exactly the
+fabrication DRIFT-199-I003-052 condemns.**
+
+The marker is **not packaged** - absent from `Specrew.psd1`'s FileList and from `extensions/` - so it is
+per-project deployment state that every install regenerates. **Nothing ships differently either way.**
+
+### Why it is worth its own entry rather than a line in the fix
+
+**Any beta4-shaped change hits this.** The release edits deployed machinery by design, so every crew that
+fixes a deployed script will meet this refusal, be told to run the one command that undoes their work, and
+have nothing in the message to warn them. **The refusal should compare direction** - a project AHEAD of its
+module must never be told to update as though it were BEHIND - which is the fix DRIFT-199-I003-016 already
+named and which is still owed.
+
+**Recorded, not fixed.** The standing rule holds: beta4 ships the registration fix and nothing else.
+
+---
+
+## B4F-018 - THE SPINE FINDING: a claim measured over a narrower set than the claim covers
+
+**This sits ABOVE every other entry in this file, and above most of iteration 003's drift log. Those are
+instances. This is the class, and it is a method rather than a bug.**
+
+> **A claim is stated over one set and measured over a narrower one. The measurement is correct. The claim
+> is wrong. Nothing in the output distinguishes the two, because the check reports on what it examined and
+> the reader hears what was asserted.**
+
+### Why it is the spine and not one more entry
+
+**It has appeared on every surface this project has**, which is what makes it a method rather than a defect
+with a location:
+
+| surface | instance |
+| --- | --- |
+| **production code** | the authority-marker guard catching malformed markers only where the malformation does not collide with a real identifier (DRIFT-199-I003-042); self-leak-lint and mirror-parity holding different scopes over the same content (-034) |
+| **tests** | a needle built in LF against a CRLF haystack, so `IndexOf` returned -1 and the test reported its own defect as the script's (DRIFT-199-I003-036); `crossing-owner` red at both commits with nobody comparing WHICH assertions (-051) |
+| **the release gate** | the census reporting the product's own dependency refusal as a tree defect, because it ran where the product cannot bootstrap (DRIFT-199-I003-030); "lanes green" read as "tree green" for days (-022) |
+| **human rulings** | the remembered "beta2's census succeeded" premise, stated in passing and built upon, with the run list one command away (DRIFT-199-I003-030) |
+| **verification controls** | three controls in one session that produced confident answers about nothing (DRIFT-199-I003-039); a mutation proof whose target was already red (-049) |
+| **records about the class** | the entry written to record two escape-corruption instances reproduced both of them (DRIFT-199-I003-018) |
+
+**And five more in this session alone, all mine:**
+
+1. **The whitespace grep** - `"invoked, never read"` claimed absent tree-wide; it was present, line-wrapped
+   across two lines, so a single-line pattern could not match it. (B4F-003)
+2. **The registry regex-hit count** - "124 of 127 integration suites" was a count of `tests/integration/`
+   matches inside the manifest text, not of files. The real figure was 11 unnamed. (B4F-009)
+3. **The traced route** - B4F-005 attributed the failure to line 550's return, but for that state the
+   object is non-null and line 552 would have populated the fields the journal recorded as null. (B4F-007)
+4. **The boundary-store absence claim** - `approved for review round` reported as producing silence, because
+   the boundary store was checked and round-approval does not live there. (B4F-016)
+5. **The bounding control** - a re-stamp check that compared only `managed_files` and reported "BOUNDED AS
+   EXPECTED" while `specrew_version` degraded from `0.40.0` to `unknown` outside the set it examined.
+
+**Instance 5 is the one that settles it**: the defect appeared inside the control written specifically to
+bound a claim, in the same session that had recorded the class four times.
+
+### THE COUNTERMEASURE IS NOT ANOTHER GUARD, and that is the load-bearing part
+
+**A guard is a checker, and a checker has a scope.** Adding one to catch scope errors reproduces the
+problem one level up - which is exactly what DRIFT-199-I003-042 found (a guard whose coverage is decided by
+what the bad input happens to say) and what -034 found (two guards whose scopes compose only by accident).
+**Every attempt to answer this class with a control has become a new instance of it.**
+
+The two things that have actually worked, every time, across the whole arc:
+
+1. **STATE THE SET.** A count, an absence, a "bounded as expected", a "nothing failed" is not a claim until
+   it names what it counted over. *"Zero matches"* is meaningless; *"zero matches for this pattern over
+   these files"* can be checked and can be wrong.
+2. **VERIFY FROM THE ARTIFACT, NOT THE CHECKER.** Every instance above was caught by reading the thing
+   itself - the git diff, the run list, the directory listing, the failing-assertion sets, the file's own
+   bytes - and **none was caught by the check that was supposed to cover it.** A checker's green means
+   "nothing I examined is wrong", and the reader hears "nothing is wrong".
+
+### What this reorganises
+
+Iteration 003's drift log reads as ninety-nine findings. **It is closer to one finding with ninety-nine
+instances**, plus a smaller set about authorization. That is not a criticism of the record - the instances
+had to be found individually and each cost something real - but the next reader should meet the class
+first, because it predicts where to look and no individual instance does.
+
+**Beta5 owes this a place in the methodology, not a guard in the harness.**
+
+---
+
+## B4F-019 - CENSUS 34297054157 CLASSIFIED: the sweep ran, it was not a timeout, and PRED-BETA4-004's third part FAILED
+
+### First, before any classification: did the sweep execute?
+
+**Yes.** Read from the run artifact rather than from red/green:
+
+- the step `Execute every named test file on disk` **ran and failed** - it is not skipped;
+- `Upload census failure diagnostics` **succeeded**, and the artifact carries **five per-file entries** with
+  `path`, `kind`, `status`, `exit_code`, `duration_seconds` and `output`.
+
+**So this is a sweep that ran and found failures, not a provisioning death wearing a failure's clothes** -
+the distinction beta3 paid for twice (DRIFT-199-I003-026's corrupt-zip transient, and DRIFT-199-I003-030's
+census that had never once completed a sweep).
+
+**And the diagnostics artifact is DRIFT-199-I003-022's beta4 item (b), shipped.** That entry recorded the
+census writing its diagnostics to ephemeral runner storage and never uploading them, leaving "23 filenames
+and no reason for any of them". This run produced per-file output including assertion text. **The item is
+closed by evidence rather than by claim.**
+
+**Not a timeout.** The run completed with `conclusion: failure`, so the fifth outcome does not apply.
+
+### The classification
+
+| # | file | attributable to THIS branch? | evidence |
+| --- | --- | --- | --- |
+| 1 | `pr-review-integration` | **UNDETERMINED** | `NONBLOCK_WARNING_MISSING exit=1`; the test runs the validator E2E and captures only the result token, so the validator's own reason is not in the artifact |
+| 2 | `validate-governance-changed-only` | **YES** | the exact three assertions DRIFT-199-I003-053 pinned to W43 deployed-marker drift - caused by editing deployed machinery, which is what beta4's fix does |
+| 3 | `no-internal-ids-in-emitted-strings` | **NO** | offender is `shared-governance.ps1:2174 [DRIFT-198]` - a file this branch never touched |
+| 4 | `self-leak-lint` | **NO** | Test 9's born-clean guard against **171 pre-existing annotated hits** - the exact count DRIFT-199-I003-028 measured. **Zero unannotated**, and none of the provider hits are mine |
+| 5 | `work-kind-runtime` | **YES** | `FAIL: T212 (SC-014): Specrew declares software-feature (feature 182)` |
+
+**I checked whether my own comments leaked**, because the provider sits inside the linted deployed surface
+and my comments cite `B4F-007`: `[unannotated]` count is **0**, `B4F` appears **0** times in the lint output,
+and my comments carry no DRIFT ids. **I introduced no self-leak.**
+
+### PRED-BETA4-004, resolved against what was fixed in advance
+
+- **Part 1 - my new suite passes in CI: HELD.** `workshop-resolve-prefers-open-feature` is not in the
+  failing set.
+- **Part 2 - no failure names the provider, `conformance-detection`, or a workshop suite: HELD.**
+- **Part 3 - any failure is in a file this branch did not touch: FAILED.** Two of five are this branch's.
+
+**Recording the failure plainly matters more than the two that held.** The prediction's whole value is that
+its third part was falsifiable, and it was falsified.
+
+### FINDING: the work-kind test pins the VALUE, so the capability is unusable by the project that ships it
+
+`work-kind-runtime` T212 asserts **`Specrew declares software-feature`**. Declaring `bug-bash` - the
+capability's own documented purpose, on the maintainer's ruling - **turns a test red by construction.**
+
+**That is DRIFT-199-I003-084's class**, *assert the property, not the rendering*, and it sharpens
+**B4F-006** considerably: the work-kind selection is not merely invisible and defaulted to the heaviest
+contract - **it is pinned by a test.** A project cannot change its own work kind without editing a suite,
+which is a strong reason nobody ever did.
+
+**The property the test means to hold** is that Specrew dogfoods a valid declaration that resolves to a
+shipped lifecycle contract - and the neighbouring assertion already checks exactly that
+(`PASS: T212 (SC-014): Specrew dogfoods a .specrew/work-kind.yml`). **The value assertion adds nothing the
+property assertion does not, and costs the capability.**
+
+**NOT FIXED.** Two live options and the choice is the maintainer's: revert the declaration to
+`software-feature`, or repair the assertion to check the property. **Recorded, stopped, reported.**
+
+### The discriminator for the next dispatch, fixed in advance
+
+The re-stamp (`36a782cb`) landed **after** the dispatched commit `f712345e`, so failures 1 and 2 were both
+measured against the drifted marker. **PRED-BETA4-005: on a re-dispatch with the re-stamp in the tree,
+`validate-governance-changed-only` goes green, and `pr-review-integration` goes green if and only if its
+cause was the same W43 error.** If `pr-review-integration` still fails, its cause is independent and this
+entry's UNDETERMINED becomes a separate finding rather than a suspicion.
+
+---
+
+## B4F-020 - THE WORK-KIND REVERT, and a correction of B4F-019 that is the spine finding in my own reading
+
+### The correction first, because B4F-019 is wrong
+
+B4F-019 said `work-kind-runtime` T212 **"pins the VALUE `software-feature`"**, that the assertion **"adds
+nothing the property assertion does not"**, and offered repairing the test as a live option. **All three are
+wrong, and the maintainer caught it by reading the source.**
+
+Line 57 sits inside a block headed
+`# --- SC-014 dogfood self-consistency: Specrew's own capture matches its actual posture (structural) ---`,
+beside:
+
+```
+work-kind.yml exists · declares software-feature · repository-governance.yml exists
+provider: github · release_truth_branch: main · protected/no-force-push/no-deletions · apply_to_admins: true
+```
+
+**One invariant, not a value pin.** Specrew IS a software product, so `software-feature` is its true
+posture. Declaring `bug-bash` at project scope made the dogfood file **false**, and **the test caught it
+correctly**. Repairing it would have been **editing a guard to accept the falsehood it exists to flag** -
+B4F-018's exact class, and the most expensive possible instance of it.
+
+**AND THE ERROR IS B4F-018'S OWN SHAPE, in my reading rather than my measuring.** I read the failing
+assertion line in isolation instead of the block containing it. **That is now the third instance of this
+exact error in this arc:**
+
+| reading | what I read | what contained it |
+| --- | --- | --- |
+| DRIFT-199-I003-094 | line 627 as a reader | the WRITER function it sits inside |
+| B4F-005 | line 564's filter as a validity gate | the unconditional `valid = $true` two lines below |
+| **B4F-019** | **line 57 as a value pin** | **the SC-014 self-consistency block it belongs to** |
+
+B4F-005 stated the rule as *when a line is named as a cause, trace to the `return` that carries it.* **It
+generalises, and the general form is what B4F-018 already says**: a line read outside the construct that
+contains it is a claim measured over a narrower set than it covers. **State predictions and rulings against
+the source, not the summary** - here the summary said "pins software-feature" and the source said "asserts
+self-consistency", and they lead to opposite fixes.
+
+### The revert
+
+`.specrew/work-kind.yml` is back to `work_kind: software-feature`. **T212 is green again with no test
+touched** - verified, all SC-014 assertions pass.
+
+### THIS PROVES B4F-006 RATHER THAN ILLUSTRATING IT
+
+B4F-006 recorded that the work-kind selection is invisible and defaults to the heaviest contract. **The
+stronger form, demonstrated rather than argued:**
+
+> **work-kind is declared at PROJECT scope, and beta4's bug-bash character is a FEATURE-level truth. So
+> expressing it through the only available lever forced the PROJECT to misdescribe itself.**
+
+**There was no correct value to write.** `software-feature` is wrong for beta4's conduct; `bug-bash` is
+wrong for Specrew's posture; and the mechanism offers nowhere else to say it. That is not a defaulting
+problem - it is a **missing scope**, and per-feature work-kind is the beta5 item with this as its evidence.
+
+### How beta4 proceeds instead
+
+**Feature 201 closes the way iteration 003 did**: as the reactive defect sweep it honestly is, **under the
+`software-feature` contract, with a recorded deviation that its conduct was bug-bash.** No eight-lens
+workshop is run for a bug fix. The deviation exists only because the mechanism cannot express per-feature
+work-kind - it is a disclosure, not an irregularity to be tidied away.
+
+---
+
+## B4F-021 - THE CENSUS IS DETERMINISTIC, and the three remaining failures are therefore IN SCOPE
+
+**The largest available finding did not materialise, and establishing that took reading the JOB results
+rather than the run conclusions - B4F-018 applied to the gate's own output.**
+
+Two runs on the identical SHA `11f47c4b`, an hour apart, with **opposite run conclusions**:
+
+| run | event | prepublish | **full-test-census** | publish-module | run conclusion |
+| --- | --- | --- | --- | --- | --- |
+| `34104867264` | workflow_dispatch | success | **success** | success | success |
+| `34110313527` | push | success | **success** | **failure** | **failure** |
+
+**`full-test-census` succeeded in BOTH.** The entire run-level difference is `publish-module`, and within
+it exactly one failing step: **`Create GitHub Release with module zip attached`**. `Stamp and publish`
+**succeeded** - the module reached the gallery; only the GitHub Release object failed.
+
+**So:**
+
+1. **The census is NOT non-deterministic.** "A green census gates the tag" is intact. Had the run colours
+   been trusted, the conclusion would have been the opposite and it would have stopped the tag.
+2. **The census was GREEN at `11f47c4b`.** Therefore the three non-beta4 failures -
+   `no-internal-ids-in-emitted-strings`, `self-leak-lint`, `pr-review-integration` - are **genuinely new
+   since that commit**, introduced by work landed after it, and **they block the tag whoever caused them.**
+3. **All three test files are unchanged since `11f47c4b`** (measured: zero diffs). **The code moved, not the
+   tests.**
+
+**One inference tried and withdrawn before it reached a conclusion**: that the clarify-refusal fix
+introduced the `no-internal-ids` offender. The `AcceptedForms` block IS new (0 at `11f47c4b`, 4 today), but
+**the offending `Provenance` line carrying `DRIFT-198-I011-006` is NOT** - it is present at both commits and
+was introduced by `70b4fef3`. **The cause is still open**, and it is being established by running the three
+rather than reasoned about.
+
+---
+
+## B4F-022 - THE MERGE-BACK DETACHED A POSITIONAL EXEMPTION: one cause established, two still open
+
+**All three reproduce locally (exit 1 each), so none is CI-only.**
+
+### `no-internal-ids-in-emitted-strings` - CAUSE ESTABLISHED, and the fix is one line
+
+The guard scans string literals in shipped `.ps1` files for internal ids, and exempts a hit when a comment
+carrying `specrew-internal-id-ok:` sits **on the same line or the line directly above**:
+
+```powershell
+if ($commentLines.Contains($line) -or $commentLines.Contains($line - 1)) { continue }
+```
+
+**At `11f47c4b` the exemption was adjacent, and the test was green:**
+
+```
+2161   # specrew-internal-id-ok: maintainer-facing rule-table provenance data
+2162   ); MarkerMatch = 'any'; Provenance = '... after DRIFT-198-I011-006' }      <- line-1 exempt
+```
+
+**Today the clarify-refusal fix has split that one-liner and inserted twelve lines between them:**
+
+```
+2161   # specrew-internal-id-ok: maintainer-facing rule-table provenance data
+2162   ); MarkerMatch = 'any'
+2163+  # AcceptedForms is CONSUMER-FACING ... (10 comment lines)
+2172   )
+2174   Provenance = '... after DRIFT-198-I011-006' }                              <- 13 lines away
+```
+
+**Nothing about the exemption or the string changed. The distance between them did.** The annotation is
+still there, still correct, still describing a maintainer-facing field - and it no longer reaches its
+subject.
+
+**This is DRIFT-199-I003-060's class arriving by a new route.** That entry found an exemption that could
+never fire because its baseline had changed. **This one fired correctly for months and was detached by an
+insertion between it and the thing it exempts** - so the failure mode is not a stale predicate but a
+**positional binding broken by unrelated editing**, and no reviewer of the clarify fix would have seen it:
+the diff reads as adding a consumer-facing message.
+
+**The cause is `e3ccc53f`**, the clarify-refusal fix, arriving through the merge-back - the change
+DRIFT-199-I003-091 recorded as never having shipped in beta3 and as carrying to beta4. **It carried this
+with it.**
+
+**The fix is to move the annotation to the line directly above `Provenance`** - a comment-only change to a
+packaged file. **NOT TAKEN: packaged file, stop-and-report.**
+
+**And the durable form worth naming**: a positional exemption is a hand-maintained adjacency. The guard
+could bind the annotation to the *string* rather than to a *line number*, which is the same lesson as
+asserting the property rather than the rendering.
+
+### `self-leak-lint` - OPEN
+
+Test 9's born-clean guard fails on **171 annotated hits, zero unannotated** - the exact count
+DRIFT-199-I003-028 measured. **I introduced none of them.** But 171 sanctioned hits would also have been
+present at `11f47c4b`, where the census was green, so **something about the count or the guard changed and
+I have not established which.** The discriminating measurement is the annotated-hit count at `11f47c4b`
+against today's; it has not been taken, and no cause is being asserted without it.
+
+### `pr-review-integration` - OPEN
+
+`NONBLOCK_WARNING_MISSING exit=1`. The test runs the validator end-to-end and captures only the result
+token, so the validator's own reason is absent from both the CI artifact and the local log. **Its earlier
+suspected link to the W43 marker drift is now doubtful** - the marker is re-stamped and `drifted=0`, yet the
+failure still reproduces locally. **Cause open.**
+
+**Two of three open is the honest state**, and it is recorded as such rather than rounded into the one that
+is solved.
+
+---
+
+## B4F-023 - THE SEAL GATE REFUSED EVERY VALIDATOR RUN IN THE PROJECT, and closeout sealed before writing its own records
+
+**The finding of the day, established by the maintainer running the artifact rather than reading its head.
+`pr-review-integration` was never a pr-review defect at all.**
+
+### What was actually happening
+
+Every condition Test 7's soft warning needs is TRUE on this tree - `Active=True Host=github`,
+`OptIn.Enabled=True`, `038/001 state.md` matching, `pr-review-resolution.md` absent - and
+`validate-governance.ps1` is unchanged since the green tag. **The warning is never reached, because the run
+terminates before it.** Test 7's command, whole output, three lines:
+
+```
+[validator-scope] explicit-targets (1 iterations)
+FAIL [trust-hardening] closed-iteration-edited: Closed iteration
+     specs/199-beta3-stabilization/iterations/003 was edited after its closeout seal:
+     drift-log.md, review.md, tasks-progress.yml, state.md.
+[validator-timing] mode=scoped elapsed_ms=723
+```
+
+**The W51 seal gate is project-wide.** It runs on every validator invocation regardless of
+`-IterationPath` and exits on the spot - so a broken seal on one iteration **refuses every validator run in
+the project**, and every test that drives the validator fails for a reason that has nothing to do with what
+it tests.
+
+**That is B4F-013's rule exactly**: *a block upstream hides every defect downstream of it.* Here it hid
+whether the pr-review soft warning works at all.
+
+### TWO PRODUCT DEFECTS, both beta5
+
+**(a) Closeout writes the seal BEFORE its own last records.** 003 was sealed `2026-09-08T21:20:27Z` over
+dashboard, drift-log, plan, retro, review, state and tasks-progress. Then **`8a7e9f2e` edited `review.md`
+AFTER writing the seal, inside the same commit** - the closeout breaking its own seal, in one atomic change.
+`71895b38` and `a32434f4` then wrote the DRIFT-097 and prediction records into `drift-log.md` and
+`state.md`. **The seal must be the final write of closeout**, and `8a7e9f2e` proves it against itself.
+
+**Why the tag was green**: 003 was not yet sealed when it ran.
+
+**(b) B4F-002 UPGRADED - it is worse than recorded.** The post-seal writer does not merely write a false
+value. It flipped 003's `Iteration Status` from `complete` to `not-started`, rewrote `tasks-progress.yml`,
+**and thereby put the whole project into a state where the seal gate refuses every validator run.** A
+session resume - no user action, no command - can disable validation project-wide.
+
+### THE GATE OFFERS NO REMEDY, which puts it in B4F-017's family
+
+The refusal names the condition and **offers no remedy at all**. The only remedy that exists - a re-seal
+through the product's writer - **is not mentioned, because the product treats the condition as impossible.**
+Sealed means immutable, and the gate does not consult Post-Ship Amendments. So a human meeting this has a
+correct, specific, actionable-sounding failure and **nowhere to go**.
+
+That is the same family as B4F-017's `specrew update`, one step worse: there the named remedy was
+destructive; here there is no named remedy at all.
+
+### PRED-BETA4-007, stated before the fresh-project walk runs it
+
+**On a fresh project: close an iteration, resume the session, run the validator - it goes RED on
+`closed-iteration-edited`, for files the product itself rewrote.**
+
+If it holds, it is a **beta4 release-note known issue** with the one-line workaround
+(`git checkout` the iteration's `state.md` and `tasks-progress.yml`), and **whether it becomes a beta4 fix
+is the maintainer's call after the walk, not before.**
+
+### What was done here
+
+003's two writer-dirtied files were restored with `git checkout` (never staged - they re-dirty on every
+resume), and **003 was re-sealed on the maintainer's authorization**, bounded: `touched=3` before
+(review.md, drift-log.md, state.md), `touched=0` after, and the only changed path in 003 is
+`.specrew-iteration-seal.json`. **Nothing touches 003 after that point** - any edit inside it breaks the
+seal again, which is why this record lives here and not in 003.
+
+---
+
+## B4F-024 - I READ THE HEAD OF THE OUTPUT AND CALLED IT THE VERDICT
+
+**B4F-018's instance in my reading, the fourth this arc, and it changed a classification.**
+
+I reported `self-leak-lint` as failing on "171 annotated hits, zero unannotated" and classified its cause as
+**NOT MINE and unexplained**. **"Zero unannotated" was the FIRST line of the lint's output.** The verdict was
+further down:
+
+```
+RED: 1 unannotated Specrew-self fact(s): shared-governance.ps1:2169
+     matched 'DRIFT-199-I002-029' class self-provenance-id
+```
+
+**One unannotated hit, in the AcceptedForms comment block from the same `e3ccc53f` insertion** - the comment
+that read *"the same standard the batch settled at DRIFT-199-I002-029"*. The annotated 171 were never the
+failure; the suite's own PASS line says so: *"real repo deploy surface green (annotated debt recorded with
+reasons)"*.
+
+**The fix is the lint's own doctrine**: deployed teaching states the rule and never cites the internal
+record. Reworded to *"the same standard already settled for refusals - name the thing that actually
+failed"*.
+
+**The shape, again**: a claim measured over a narrower slice than it covers - here the first screen of an
+output rather than the output. **Running the artifact and reading the verdict is what found it**, which is
+the countermeasure B4F-018 names, applied by the maintainer to my report.
+
+---
+
+## B4F-025 - FEATURE 201 HAS NO SPEC, AND ITS CLOSEOUT WILL DEMAND ONE
+
+**Measured: feature 201 is the only live workshop candidate in this repository** - it carries both
+`lens-applicability.json` and a `spec.md` still holding the `specrew:spec-not-yet-authored` sentinel.
+
+Under the `software-feature` contract - correctly restored per B4F-020 - **201's closeout will demand a
+specification it honestly does not have**, because beta4 is a defect sweep whose bug list and root causes
+were complete before the feature existed.
+
+**A workshop is NOT run to satisfy that.** Running eight lenses to manufacture a spec for a fix that is
+already written, reviewed and mutation-proved would be producing the artifact to satisfy the gate rather
+than the work - the failure this project exists to prevent.
+
+**201 closes the way 003 did**: on the maintainer's explicit override, with the deviation stated in the
+record - that its conduct was bug-bash, that no spec was authored, and that the mechanism could not express
+either because work-kind is project-scoped (B4F-006, B4F-020). **The deviation record must say this
+explicitly rather than leaving a reader to infer it from an empty spec.**
+
+---
+
+## B4F-026 - `validate-governance-changed-only`: NOT beta4's, cause identified, and the dispatch is its discriminator
+
+**Four of the five previously-red suites are green** - `pr-review-integration`, `no-internal-ids`,
+`self-leak-lint`, `work-kind-runtime`. **`pr-review-integration` going green confirms B4F-023 end to end**:
+its soft warning was unreachable only because the project-wide seal gate terminated every validator run.
+
+### The remaining red, read from the output rather than filtered
+
+```
+[validator] -ChangedOnly fallback to full validation: base-ref-undetectable (base (unresolved))
+[validator] (1/1) validating specs\013-validator-hardening\iterations\002
+FAIL ... /013-validator-hardening/iterations/002
+  category=missing-artifact | message=Missing required artifact: state.md
+[validator-timing] mode=unscoped elapsed_ms=48017 iterations_validated=1 trigger_source=local
+```
+
+**The chain**: the fixture's git base ref does not resolve, so `-ChangedOnly` **falls back to unscoped**;
+unscoped validation then reaches iterations whose `state.md` the fixture **deliberately strips**
+(`Remove-UntouchedStateArtifact`), and fails on the missing artifact. Every failing assertion in the local
+set follows from that one fallback - including the scope-banner and `mode=scoped` timing assertions, which
+are simply describing the unscoped run they got.
+
+**My first read of this was wrong twice over** and both errors are B4F-018's: I reported the touched
+iteration as *skipped* when it was validated and failing, having grepped for `closed-iteration filter`
+instead of reading the output; and I compared exit codes rather than assertion sets.
+
+### NOT CAUSED BY BETA4'S DIFF - proved, not asserted
+
+The only beta4 change to this code path is the comment move and reword in `shared-governance.ps1`.
+**Inertness proof, with the precondition asserted first** (a proof that compares a file to itself proves
+nothing - DRIFT-199-I003-055):
+
+```
+versions_differ  = True
+before           = 49965 executable tokens
+after            = 49965 executable tokens
+differing_tokens = 0     -> identical, position for position
+```
+
+**A comment-only claim is a byte-level claim and it has been measured**, not reviewed by eye.
+
+### The assertion SETS differ from CI's, so the causes are not assumed to be the same
+
+| | failing assertions |
+| --- | --- |
+| CI at `f712345e` | explicit-changed-only, auto-scoped-feature-branch, missing-origin-head |
+| local, now | those plus should-still-validate-touched, should-skip-untouched, scoped-timing |
+
+**DRIFT-199-I003-051: red-at-both is an unexamined coincidence of exit codes until the sets are compared.**
+CI's cause at `f712345e` was consistent with W43 marker drift, which is now cleared (`drifted=0`). **The
+local cause is base-ref resolution in the fixture, which is a property of the machine's git state as much as
+of the tree** - and DRIFT-199-I003-083's rule cuts both ways: a local result is evidence about the local
+environment.
+
+### Classification, and what settles it
+
+**Not beta4's.** Whether it is a real tree failure or local-environment-only is **not established**, and the
+instrument that settles it is the **dispatched run** - which is the next step regardless, and which
+DRIFT-199-I003-083 already requires as the last green before a tag.
+
+**If it is red on the dispatch, it is a fourth pre-existing blocker beta4 did not cause**, and whether it
+holds the tag is the maintainer's decision rather than something to absorb into "fix it and move on".
+
+---
+
+## B4F-027 - THE REVIEW ROUND CANNOT RUN: a second runtime marker, drifted since before the last green census, whose only named remedy destroys beta4
+
+**The round was approved, unspent, and could not be spent. The blocker is pre-existing and is not beta4's.**
+
+### The refusal, unchanged after two re-stamps
+
+```
+review-engine-project-runtime-drifted:
+  marker=df8a01650e9665d4d806741b06c22e6a8c12ce493036f98a4c51b577ba7f06d4
+  actual=b56b0f25e7263763e74f5dc7c9a0580f31c15ac908ecedd6c35b54ce29273ec5
+  run 'specrew update --project-path "..."'
+```
+
+**Byte-identical to the first refusal** - the same `marker=` and the same `actual=` - after two successful
+re-stamps of the extension marker that both ended `drifted=0`. **That is the tell: the review engine does
+not read the marker that was re-stamped.**
+
+### There are TWO runtime markers over deployed content, with two checkers
+
+| marker | scope | checker | basis |
+| --- | --- | --- | --- |
+| `.specify/.../.specrew-extension-runtime.json` | 164 managed files | `Test-SpecrewDeployedExtensionIntegrity` | per-file |
+| `scripts/internal/continuous-co-review/.specrew-runtime.json` | 61 files | `review-engine-resolution.ps1:253` | one **logical** bundle SHA |
+
+`review-engine-resolution.ps1:215` resolves `$projectRuntime = <project>/scripts/internal/continuous-co-review`,
+and the stored `runtime_bundle_sha256` is `df8a0165...` - **the refusal's `marker=` exactly.**
+
+**Re-stamping one does nothing for the other.** That is DRIFT-199-I003-034's class - two guards, different
+scopes, overlapping content, composing only by accident - with a third instance and a live cost: it blocks a
+required lifecycle stage.
+
+### PRE-EXISTING, and the proof does not depend on the hash basis
+
+| fact | value |
+| --- | --- |
+| co-review runtime files changed between `11f47c4b` and HEAD | **0** |
+| stored `runtime_bundle_sha256` at `11f47c4b` | `df8a0165...` |
+| stored `runtime_bundle_sha256` today | `df8a0165...` - identical |
+
+**Neither side moved.** The drift is byte-for-byte the same as it was at the last GREEN census, so it
+**predates beta4 entirely** and cannot have been caused by it. It never blocked the census because **the
+census does not invoke the review engine** - only `specrew review` does.
+
+**A NUMBER I WITHDRAW BEFORE PUBLISHING IT.** In flight I measured "44 of 61 files drifted" by comparing raw
+per-file SHA-256 against the marker's entries. The writer's own comment says the bundle hash is a **logical**
+hash that *"normalizes managed-text encoding and line endings"* - **a different basis**, so that figure
+measured the wrong thing and is not reported as a finding. B4F-018 again, caught before it reached a
+conclusion this time. **The pre-existing verdict above stands on its own evidence: nothing on either side
+changed.**
+
+### The remedy problem, which is B4F-017 at its worst
+
+- **`specrew update` is FORBIDDEN** - it would overwrite the deployed provider with installed beta3 bits and
+  **destroy beta4's fix**. It is the only remedy the message names.
+- **The sanctioned extension re-stamp does not reach this marker.**
+- **The writer is not a callable standalone.** It lives inline in `deploy-squad-runtime.ps1:956`, computing
+  from locals (`$continuousReviewRuntimeSource`, `$currentRuntimeManagedFiles`) inside the deploy routine -
+  so there is no `Write-...Marker` to invoke the way `Write-SpecrewDeployedExtensionMarker` was.
+- **A targeted re-stamp has precedent**: `6e0ffb4b`, *"chore(beta3): re-stamp the project runtime before
+  review-signoff"*, changed exactly 4 lines of this file. **How it was produced is not established**, and
+  guessing at it would be writing a governance digest by inference.
+
+**STOPPED AND REPORTED.** This needs the maintainer's ruling: it writes a governance artifact, the product's
+own remedy is destructive, and the drift is not beta4's to absorb.
+
+---
+
+## B4F-028 - PREDICATE (A) TESTED AND REJECTED, and the control meant to decide it does not cover the path
+
+**Implemented, run, reverted. The decision rule would have shipped a dead fix on a green control.**
+
+### What (A) did
+
+(A) qualified an intake candidate only when its controller shows an underway workshop - `agenda_status`
+confirmed, a real `agenda_turn_receipt`, a non-empty selection, or a recorded lens. Applied to source and
+mirror, parse clean, mirror identical. Result on the eight-case suite:
+
+| case | under (A) |
+| --- | --- |
+| **1 - POSITIVE CONTROL** | **PASS** |
+| 2 - the regression the fix exists for | **FAIL** (3 assertions) |
+| 7 - ambiguity refusal | **FAIL** (2) |
+| 8 - the guard must not weaken the fix | **FAIL** (2) |
+
+**Seven assertions red. The fix is dead under (A)** - a stale ref no longer yields to the open workshop,
+which is the entire defect B4F-007 measured.
+
+### AND CASE 1 PASSED ANYWAY, which is the finding
+
+**Case 1 resolves through the START-CONTEXT path, not the candidate path.** It passes
+`-ActiveFeatureRef $openRef`, so the context path finds the open workshop and returns valid before the
+candidate logic matters. **Under (A) it stays green while the thing it was chosen to certify is broken.**
+
+**So "run Case 1 first; pass, ship (A)" would have shipped a dead fix on a green control.** That is
+B4F-018's shape in the TEST DESIGN rather than in a measurement: a control exercising a narrower path than
+the claim it certifies. The other cases caught it only because they were run anyway.
+
+**The correction to the suite is cheap and owed**: Case 1's assertions should state which path resolved
+them, so a control cannot silently certify a path it never took.
+
+### The deeper result: durable state cannot distinguish the two cases
+
+| | untouched stub (201) | genuine second feature, FIRST question |
+| --- | --- | --- |
+| `agenda_status` | pending-confirmation | pending-confirmation |
+| `agenda_confirmation` | pending | pending |
+| `agenda_turn_receipt` | `pending` | `pending` |
+| `selected` / `workshop` | 0 / empty | 0 / empty |
+
+**Byte-identical.** The only difference is whether a question was posed in the turn.
+
+**That also defeats "underway or presented" when `presented` must be durable**: on the first question's
+turn there is no durable record of it yet, because the projection that would record it is the thing being
+gated.
+
+**Why (B)-narrowed was rejected, recorded as instructed**: it puts the projection - and therefore the
+receipt the resolve needs to advance - behind line 564's question-mark heuristic. A missed detection would
+silently re-block a live workshop, and that is the one failure beta4 cannot ship.
+
+**So no predicate over durable state both excludes an untouched stub and admits a genuine first question.**
+Recorded as an open beta5 design question rather than resolved by guess.
+
+### It does not block beta4, because the ruling's own item 3 ends it independently
+
+Authoring 201's specification removes the not-yet-authored marker, so **201 stops qualifying as a candidate
+regardless of the predicate**. Measured: intake candidates in this repository **1 -> 0**. The receipts and
+the every-turn advisory end here with no provider change at all.
+
+**A trap found on the way**: the first draft of that specification KEPT 201 a candidate, because it named
+the marker token in prose and the scan matches it anywhere in the file. Reworded to describe the marker
+without spelling it. Same shape as DRIFT-199-I003-018 - the record about a defect reproducing it.
+
+### Restore rehearsal - the snapshot is a restore path, not a hope
+
+Restored the gallery snapshot into a scratch module root and imported it in a clean process: **411 files,
+import succeeded, version 0.40.0, stamp commit `11f47c4b`, 16 commands exported.** The pre-beta4 gallery
+build is recoverable, and has now been recovered once.
+
+### RESOLUTION - beta5's candidate fix, and it supersedes "open design question" above
+
+**The predicate is not discoverable from durable state because nothing durable records the act of posing.
+So the act declares itself.**
+
+> **The workshop skill DECLARES the posed question durably at the moment it poses it, and the candidate scan
+> requires that declaration. Declared, not detected.**
+
+- **It removes the punctuation dependency entirely.** Detection asks a heuristic to infer what happened;
+  declaration records it. Line 564's `?` heuristic stops being load-bearing for anything.
+- **It separates the two states that are currently byte-identical**: an untouched stub has no declaration; a
+  genuine second feature's first question has one, written by the skill in the same turn it asks.
+- **It is the same pattern as the turn-end intent** recorded alongside it - the agent states what it did
+  rather than leaving a hook to infer it from output shape. Two findings, one mechanism.
+
+**BETA5, as a candidate resolution rather than an open question.** Beta4 ships the fix as-is; the stub
+condition is disclosed in the release notes and pre-flighted in the crew brief instead.
+
+---
+
+## B4F-030 - THE REVIEW CAMPAIGN REQUIRES AN ITERATION THAT A BUG-BASH FEATURE LEGITIMATELY NEVER HAS
+
+**B4F-025's prediction landing, and a third instance of the remedy-wrong-for-state family.**
+
+### What happened
+
+The round is no longer blocked by runtime drift - the build-then-update cleared that. It now refuses with:
+
+```
+review-campaign-active-iteration-unresolved
+
+The human's typed approval was NOT spent - nothing ran. Once the feature is named,
+run this again; their approval is still standing.
+```
+
+**Two halves, and they deserve opposite verdicts.**
+
+### The good half, recorded because this log skews to failures
+
+**That refusal is the standard working.** It names the condition, states plainly that **the human's typed
+approval was NOT spent**, confirms the approval still stands, and gives one concrete action. Nobody has to
+wonder whether a round was burned. **Compare B4F-017's `specrew update`, whose named remedy would have
+destroyed the fix.** This one protects the human's authority and says so.
+
+### The bad half: the named remedy does not clear the condition
+
+**I took the named action - `--feature 201-first-run-experience` - and the refusal is byte-identical.**
+
+The real condition is not an unnamed feature. It is that **feature 201 has no `iterations/` directory at
+all**: it never reached the plan boundary, by the maintainer's explicit ruling that a defect sweep does not
+run planning ceremony. `specs/201-first-run-experience/` contains exactly `lens-applicability.json` and
+`spec.md`.
+
+**Third instance of remedy-wrong-for-state** (DRIFT-199-I003-016's family, after `specrew update` twice):
+the message describes a state the reader is not in, and following it changes nothing.
+
+### And this is B4F-025's prediction landing
+
+B4F-025 recorded that 201's closeout would demand a specification it honestly does not have. **The review
+stage demands an iteration on the same grounds** - the `software-feature` contract expects planning
+artifacts that bug-bash conduct deliberately never produced, and work-kind is project-scoped so the
+distinction could not be declared (B4F-006, B4F-020).
+
+### Three ways forward, and the first carries a real hazard
+
+1. **Scaffold `iterations/001` for 201.** It is the artifact the campaign wants. **But DRIFT-199-I003-086
+   measured iteration scaffolding ADVANCING boundary state as a side effect** - `boundary_type: plan`
+   written 32 seconds after the scaffold, with no verdict. That is DRIFT-199-I003-097's defect triggered
+   deliberately, and it is not something to do unasked. (Feature scaffolding does not do this - B4F-020
+   measured that separately.)
+2. **Skip the governed round, record the deviation.** The fix already had a full adversarial review that
+   found a real defect - property 1 was false, the ambiguity guard exists because of it - and that review
+   is recorded across B4F-010 and its commits. The deviation would say: reviewed, not campaign-recorded.
+3. **Run the round against a different scope** that resolves an iteration - none is honest here, since
+   199/003 is sealed and closed and this work is not its.
+
+**STOPPED AND REPORTED. The approval is still unspent and still standing.**
+
+---
+
+## B4F-031 - OPTION (4) EXECUTED TO THE REVIEWER, WHICH NEVER RAN: a CLI/model mismatch, not an empty review
+
+**Everything up to the reviewer worked. The reviewer itself returned a 400 and produced nothing.**
+
+### What was built, and it is reusable
+
+Export at `C:\Temp\beta4-codex-review-20260909-142846`, outside the project:
+
+| artifact | bytes |
+| --- | --- |
+| `diff.patch` - `b62ba968..HEAD` restricted to the fix's files | 31,989 |
+| `files/` - full HEAD content of all three touched files (2086 + 8230 + 254 lines) | 618,901 |
+| `REVIEW-PROMPT.md` - **the engine's own template**, rendered | 4,634 |
+
+**The prompt is the engine's, not an improvisation.** It was rendered from
+`scripts/internal/continuous-co-review/reviewer-candidate-prompt.md` through the engine's own
+`Test-ReviewFilePrimaryPromptTemplate`, which returned **`template_contract_valid = True`** - so it carries
+the eleven contract rules the harness enforces, including raw-JSON-only, single-reviewer-session (no
+delegation), risk-based completion, and the finding budgets. **Zero unsubstituted placeholders.** Output
+would have had the shape the engine harvests.
+
+### What the reviewer did
+
+**Nothing.** `candidate-result.json` was never created, and the log is not an empty stream - it carries an
+explicit refusal:
+
+```
+ERROR: {"type":"error","status":400,"error":{"type":"invalid_request_error",
+"message":"The 'gpt-6-astra' model requires a newer version of Codex.
+Please upgrade to the latest app or CLI and try again."}}
+```
+
+`codex-cli 0.151.0`; `~/.codex/config.toml` pins `model = "gpt-6-astra"`.
+
+**This is reported as "the reviewer never ran", NOT as "the file was empty".** An empty findings file would
+mean a review happened and found nothing; this is a review that did not happen. Conflating them is exactly
+the mislabel the codex-delivers-via-file lesson exists to prevent, and the distinction survives here because
+the log was read rather than the exit code.
+
+**Two things were deliberately NOT done**, because each decides something that is not mine to decide:
+
+- **Overriding the model** (`-c model=...`). Which model reviewed the code is evidence about the review, and
+  substituting one the maintainer did not choose would put a different reviewer's identity into the record.
+- **Upgrading the Codex CLI.** An install action on the machine the maintainer presents from, two days
+  before the conference.
+
+### A SEPARATE FINDING: a scratch directory is not hook-free for codex
+
+The log shows `hook: SessionStart` and `hook: UserPromptSubmit` firing **in the scratch directory**.
+`specrew update` deployed codex hooks **user-level** to `C:\Users\alon\.codex\hooks.json` (13:05 today),
+not per-project - as its own output said at the time: *"codex hooks deployed to C:\Users\alon\.codex\hooks.json"*.
+
+**So the standing probe-hygiene rule - never probe an agentic CLI in a governed cwd, use scratch directories - does not fully hold for codex.** The hooks follow the user, not the working directory. Harmless here (a
+scratch directory has no governed state to mutate), but the rule's premise is weaker than it reads and the
+next person relying on it should know. **Beta5, with the deployment-surface items.**
+
+---
+
+## B4F-032 - A PROJECT INSTALL WRITES USER-LEVEL FILES AND DOES NOT SAY SO - the hook is a strict no-op, the undisclosed global write is the finding
+
+**Not filed as harmless. The no-op was measured; the disclosure gap is what remains.**
+
+### The hook IS a strict no-op outside a Specrew project - measured, not assumed
+
+Ran the deployed launcher directly for all three events, from a scratch directory that is not a Specrew
+project, watching both that directory and `~/.specrew`:
+
+```
+SessionStart       exit=0  stdout_bytes=0
+UserPromptSubmit   exit=0  stdout_bytes=0
+Stop               exit=0  stdout_bytes=0
+
+files_created  = 0
+files_modified = 0
+STRICT_NO_OP   = True
+```
+
+**So a codex session in an unrelated directory is not silently governed, and probing there does not mutate
+state.** That half of the standing rule survives, and it now rests on a measurement rather than on
+assumption.
+
+### The finding: `--project-path` performs USER-LEVEL writes and discloses them as project output
+
+`specrew update --project-path .` wrote **three files outside the project**, reported in the same flat list
+as the project's own deployments:
+
+| host | hook target | scope |
+| --- | --- | --- |
+| claude | `<project>/.claude/settings.local.json` | **project** |
+| antigravity | `<project>/.agents/hooks.json` | **project** |
+| cursor | `~/.cursor/hooks.json` | **USER** |
+| codex | `~/.codex/hooks.json` | **USER** |
+| copilot | `~/.copilot/hooks/specrew-refocus.json` | **USER** |
+
+**A command whose only path parameter names a project changed three files that outlive it and affect every
+other project on the machine.** The output lines are truthful and give the paths; nothing marks them as
+global, and nothing asks. A reader scanning a long deploy log reads them as more project deployment.
+
+**The requirement**: the install must **disclose the global write as global** - name it as a machine-level
+change, separately from project deployment, before or as it happens.
+
+### The probe-hygiene premise, corrected - and the correction is not the one proposed
+
+The standing rule was *never probe an agentic CLI in a governed cwd; use scratch directories*. The proposed
+correction was that scratch directories are hook-free **"for Claude and Copilot only"**.
+
+**Measured from the update's own output, that is wrong about Copilot.** Copilot's hooks are USER-level
+(`~/.copilot/hooks/specrew-refocus.json`). The hosts whose hooks are confined to the project are **Claude
+and Antigravity**:
+
+> **Scratch directories are hook-free for CLAUDE and ANTIGRAVITY only. Cursor, codex and copilot install
+> hooks at user level, so they fire in every directory on the machine.**
+
+**They still fire harmlessly** - `STRICT_NO_OP = True` above - but "no hooks run" and "hooks run and do
+nothing" are different claims, and only the second is true for those three.
+
+**BETA5**, with the deployment-surface items: disclose the global write, and keep the no-op measured rather
+than assumed, since it is the only thing making the user-level deployment acceptable.
+
+---
+
+## B4F-033 - CENSUS 34346555521 CLASSIFIED: every part of PRED-BETA4-006 held, and the two remaining failures are unchanged files that were green twice
+
+### First, before classification: the sweep executed
+
+`Execute every named test file on disk` **ran and failed** - not skipped - and
+`Upload census failure diagnostics` **succeeded**, carrying two per-file entries with assertion text. **A
+sweep that ran and found things, not a provisioning death wearing a failure's clothes.** Not a timeout: the
+run completed with `conclusion: failure`.
+
+### PRED-BETA4-006, resolved against what was fixed in advance
+
+| part | outcome |
+| --- | --- |
+| 1. the sweep executes | **HELD** |
+| 2. the five prior failures are green, `validate-governance-changed-only` included | **HELD - all five green** |
+| 3. any failure is in untouched code | **HELD** |
+| 4. a timeout is named a timeout | n/a - completed in failure |
+
+**Five failures down to two, and the two are not this branch's.**
+
+### ITEM 4's PREDICTION RESOLVES, and it resolves against my doubt
+
+`validate-governance-changed-only` is **GREEN**. By the meaning fixed in advance: **W43 held, and the marker
+re-stamp plus the update cleared it.** DRIFT-199-I003-053's original attribution was correct, and B4F-026's
+suspicion - that the local base-ref cause matched CI's three assertions better than W43 did - **is
+withdrawn.** The local failure was about the local environment, exactly as DRIFT-199-I003-083 cuts both ways.
+
+### The two remaining failures, measured
+
+| file | changed since `b62ba968` | changed since `11f47c4b` (last green census) | in the previous run's failures |
+| --- | --- | --- | --- |
+| `tests/bootstrap/DispatcherLargeStdout.Tests.ps1` | **0** | **0** | no - it was green |
+| `tests/integration/squad-init-closed-stdin.tests.ps1` | **0** | **0** | no - it was green |
+
+**Both files are byte-unchanged since the last green census, were green in that census, were green in the
+previous run, and fail now.** Their assertions are timing and process-lifetime claims:
+
+- *"large-stdout: returned fast - no pipe deadlock (**17.9s**, well under the **20s** timeout)"* - a pass
+  message reported as a failure, at **90% of its budget**;
+- *"timeout did not prove that the complete fake Squad descendant process tree was terminated"*.
+
+### THE FINDING: the census is deterministic for content and NOT for timing
+
+**B4F-021 established the census was deterministic** - two runs on `11f47c4b` with identical job results.
+**That stands, and this refines it rather than contradicting it**: those runs agreed because nothing
+timing-sensitive tripped. Here, **unchanged files that passed twice now fail**, so the gate's verdict on a
+fixed tree is not a function of the tree alone.
+
+**That matters for the release rule.** "Tag only on the SHA a green dispatch ran on" assumes green is a
+property of the SHA. **With timing-sensitive tests in an all-or-nothing gate, green is partly a property of
+the run** - so a red census no longer distinguishes "this tree is broken" from "this runner was slow", and
+re-running until green quietly converts a gate into a lottery nobody named.
+
+**This is the diagnosability family again** (DRIFT-199-I003-037/-038): a gate whose failures cannot be acted
+on trains people to stop reading it.
+
+**BETA5**: either give the timing assertions budgets that survive a loaded runner, or move them off the
+all-or-nothing gate as environment-bound - the category DRIFT-199-I003-025 already defined and refused to
+let become an exclusion list.
+
+---
+
+## B4F-034 - THE REVIEW DEVIATION, taken as option (3), and this run's beta5 items
+
+### The review deviation
+
+**Beta4's fix is shipped REVIEWED BUT NOT CAMPAIGN-RECORDED**, on the maintainer's ruling, and the deviation
+is stated here rather than left implied.
+
+- **A real adversarial review happened.** It found that safety property 1 was false and that the fix could
+  displace a workshop a human was actually answering. That defect was reproduced against a control, fixed
+  two-directionally, and mutation-proved at both guarded sites with disjoint failure sets. The record is
+  B4F-010 and its commits.
+- **The governed campaign could not run.** Three attempts, three distinct refusals, each traced:
+  `review-engine-project-runtime-drifted` twice (B4F-017, B4F-027 - a second runtime marker the extension
+  re-stamp never reached, cleared by build-then-update), then
+  `review-campaign-active-iteration-unresolved` (B4F-030 - the campaign needs an iteration that bug-bash
+  conduct legitimately never produces).
+- **The out-of-engine reviewer never ran** (B4F-031): the export and the engine's own contract-valid prompt
+  were built, and codex returned a 400 because its CLI is older than its pinned model. **That is
+  reviewer-never-ran, not an empty review.**
+- **The maintainer's typed approval was never spent and is still standing.** Every refusal said so
+  explicitly, which is the refusal standard working.
+- **The export is kept** at `C:\Temp\beta4-codex-review-20260909-142846` - diff, full file contents, and the
+  rendered prompt - so the review is one command away whenever a model is named. **A finding from it is a
+  fix with its own commit, named before any re-dispatch, never folded in silently.**
+
+### Beta5 items from this run
+
+**(a) Timing assertions inside an all-or-nothing gate make green partly a property of the RUN.** They should
+report the measured value and gate on a **margin against a calibrated baseline**, or live in a report-only
+lane. As it stands, a red census cannot separate *this tree is broken* from *this runner was slow*.
+
+**(b) `squad-init-closed-stdin.tests.ps1:209` must separate "observed alive" from "could not observe."**
+
+```powershell
+if ([int]$result.timeout_child_pid -le 0 -or [bool]$result.timeout_child_alive) {
+    Write-Fail 'timeout did not prove that the complete fake Squad descendant process tree was terminated'
+}
+```
+
+**Two conditions, one message** - an absent measurement and a surviving process are indistinguishable in the
+output. One is a missing observation, the other is a real leak, and they need different messages because
+they need different responses.
+
+**A sibling worth fixing with it**: `DispatcherLargeStdout.Tests.ps1:71` **gates on 15 seconds and its
+message names 20**, so a genuine budget failure reads as a comfortable pass. **An assertion's message must
+name the threshold the assertion enforces.**
+
+**(c) The single fixed-meaning re-dispatch is the sanctioned discriminator, and a second re-run of a red
+census is refused.** One re-run whose meaning is fixed in advance distinguishes runner-bound from real. A
+second converts the gate into a lottery, on the release the gate exists to protect.
+
+### A deviation in executing the re-dispatch, recorded rather than left to surface at tag time
+
+The ruling was to re-dispatch **on `22772117`**. The run went out on **`d4a89ab7`**, because the
+PRED-BETA4-008 commit was pushed before dispatching and `workflow_dispatch --ref <branch>` takes the branch
+head. **Measured**: the delta is three commits, two files, **both under `docs/`, zero census subject files** - so the run measures identical code and its verdict is valid evidence about the same tree. **The tag SHA is
+the maintainer's to settle**, and it is surfaced now rather than discovered at the tag.
+
+---
+
+## B4F-035 - STEP 1 AND 2 DONE, AND THE CREW HANDOVER IS BLOCKED BY A CONTROLLER BETA4 DOES NOT TOUCH
+
+### Step 1: installed == tagged
+
+Built and installed from the tag SHA with a guaranteed return to the branch:
+
+```
+packaged 414 files from d4a89ab7
+byte verification: all 414 packaged files match
+stamp verified against installed contents
+stamp_commit = d4a89ab7   content = bbe308f8...   INSTALLED_EQUALS_TAGGED = True
+branch restored, dirty_after = 0
+```
+
+The crew and the walk will now run on the build that gets published, not on `356e3295` - the accumulated-
+proofs-on-intermediate-builds error DRIFT-199-I003-008 recorded and had to withdraw.
+
+### Step 2: the router-skill project is updated, and the pre-flight found a blocker
+
+`specrew update` moved **61 files** there onto the tag build. Then the pre-flight ran, and it found two
+things - **one of them a defect in the brief I wrote.**
+
+**(a) MY PRE-FLIGHT WAS SCOPED TO THE WRONG STAGE.** It scanned for features whose spec still carries the
+unauthored marker - an **intake** check. **The router-skill crew is resuming TECHNICAL LENSES**, past
+intake with an authored spec, so the check returned **0** and my own guidance for 0 said *"the feature you
+mean to work has no open intake. Check you are in the right project"* - which would have sent the crew
+chasing a non-problem.
+
+**B4F-018's shape in an artifact I authored**: the claim was *the crew can start*; the check measured *an
+intake workshop is open*. **Replaced with a check that asks the machinery** -
+`Get-SpecrewWorkshopLifecycleState` per feature, exactly one must report `active` - which is the same
+question the resolve itself asks.
+
+**(b) THE ROUTER-SKILL CONTROLLER IS INVALID**, and the corrected pre-flight is what surfaced it:
+
+```
+001-agentic-architecture-skills    status=invalid   reason=workshop-record-not-selected
+```
+
+**Verified at source.** `ProjectMetadataAccessor.ps1:602` invalidates a controller when any workshop record
+names a lens absent from `selected`:
+
+```powershell
+foreach ($recordProperty in $records.PSObject.Properties) {
+    if ([string]$recordProperty.Name -cnotin $selected) { ... 'workshop-record-not-selected' ... }
+```
+
+**Measured**: `workshop` = `['product-domain']`; `selected` = the eight technical lenses;
+**`product-domain` is in the record map and not in the selection.** And the technical agenda **deliberately
+excludes** `product-domain` (DRIFT-199-I003-079), so the two cannot both be right.
+
+### THIS IS THE THIRD FINDING ON THAT RESTORE, AND THE DECISIVE ONE
+
+DRIFT-199-I003-092 examined the `product-domain` restore and concluded the clearing was cosmetic and the
+correct response was to do nothing - the Casio walk left it alone and closed five lenses.
+DRIFT-199-I003-093 corrected its mechanism (journaling stopped; the receipt was not consumed).
+
+**Neither established what the restore actually left behind: a structurally INVALID controller.** The entry
+that put `product-domain` into the workshop map is what the accessor now rejects. **-092's advice was right
+and the repair had already happened.**
+
+### Consequences, stated plainly
+
+- **Beta4's fix does not clear this.** The workshop is not blocked by question registration; the controller
+  is rejected before any of that matters.
+- **The crew handover cannot proceed** until the controller is valid.
+- **There is no sanctioned repair for this state.** Hand-editing `lens-applicability.json` is forbidden by
+  the workshop conduct, and `repair-workshop-controller-state.ps1` covers pre-agenda state only and declines
+  past it (DRIFT-199-I003-093). **Same shape as B4F-030 and B4F-017: a real condition with no reachable
+  remedy.**
+- **It is not beta4's to absorb.** Recorded, brief updated with it as a named known blocker, and reported.
+
+---
+
+## B4F-036 - THE ROUTER-SKILL CONTROLLER REPAIRED, and two beta5 items with priority
+
+### The repair, bounded and verified
+
+Authorized by the maintainer's typed instruction, executed with precondition and postcondition printed:
+
+```
+before : invalid / workshop-record-not-selected
+         workshop = [product-domain]; selected = the eight technical lenses; agenda_status = confirmed
+after  : ACTIVE / workshop-active / current_lens = architecture-core, remaining = 8
+
+other controller properties changed : 0
+workshop evidence files changed     : 0   (9 lens records + product-domain.yml + implementation-rules.yml + spec.md)
+runtime stores touched              : 0   (receipt store and conformance journal, by hash AND mtime)
+REPAIR_VERIFIED = True
+```
+
+Written the product's own way - **atomic temp-and-move, UTF-8 without BOM**, the
+`Write-SpecrewLensAtomicUtf8NoBom` pattern from `confirm-workshop-lens.ps1:56`. Never `Set-Content`, never
+a hand-edited digest. Committed in the router-skill project as `e1181f0` with the authorization quoted
+verbatim. **Pre-flight now passes: exactly one active workshop.**
+
+**Recorded as a documented gap, not a preference**, and both halves were verified at source before the
+ruling stood:
+
+| writer | refusal |
+| --- | --- |
+| `confirm-workshop-agenda.ps1:112` | refuses unless `agenda_status` is `pending-confirmation`; this one was `confirmed` |
+| `repair-workshop-controller-state.ps1:105-106` | `throw 'workshop-repair-only-pending-state-supported'` |
+
+**No sanctioned path reaches a post-agenda controller.** That is why the repair was done by hand under
+explicit typed authorization rather than by a writer, and why it is written down that way.
+
+**And the nine lens decision records were on disk the whole time**, untouched. Only the controller's
+*projection* of them was wrong - which is what made a bounded repair the right size of act.
+
+### BETA5, priority
+
+**(a) `repair-workshop-controller-state.ps1` must cover post-agenda states**, at minimum
+`workshop-record-not-selected`, **under the existing proposal + typed-authorization mechanism** it already
+has. The mechanism is right; only its reachable state set is too narrow. Today a project in this state has a
+real condition, a correct detector, and **no reachable remedy** - the shape B4F-017, B4F-030 and this entry
+now share three times over.
+
+**(b) THE WRITER WROTE A RECORD THE READER REJECTS.** The lens writer produced a `product-domain` entry in
+the workshop map; the accessor (`ProjectMetadataAccessor.ps1:602`) rejects any record naming a lens absent
+from `selected`; and the technical agenda **excludes `product-domain` by construction**
+(`confirm-workshop-agenda.ps1:148`, DRIFT-199-I003-079). **Two components disagree about what a valid
+controller is, and neither is wrong on its own terms.**
+
+**One of the two must change, and it must be decided rather than left:**
+
+- the **writer** enforces the reader's invariant and refuses to record a lens that is not selected; **or**
+- the **reader** tolerates intake-lens records, since `product-domain` is legitimately outside the technical
+  agenda.
+
+**Leaving both as they are is the third option and it is the one that produced this.** It is the
+records-versus-controller split (DRIFT-199-I003-010) reaching the point where it stops a workshop rather
+than merely disagreeing.
+
+---
+
+## B4F-037 - THE CODEX HARVEST: one major finding, classified FIX, reproduced and repaired
+
+**Amends B4F-031.** That entry recorded the reviewer never running. **It ran on retry after the Codex CLI was
+updated** - `codex-cli 0.153.4`, **model `gpt-6-astra`**, the model actually used. **B4F-031's first-attempt
+record stands exactly as written**; this is the sequel, not a correction of it.
+
+**Two further attempts were needed, and all three causes were mine, not codex's:**
+
+1. **A stale deadline.** `__DEADLINE__` was rendered at 14:28 as *now + 20 minutes*; the retry ran at 15:56.
+   Codex declined: *"The host clock is already past the supplied deadline"*, and reported **no source files
+   read, no findings established** - a correct refusal.
+2. **No git metadata** in the export directory.
+3. **A read-only sandbox**, so the result file could not have been written even had it reviewed.
+
+Fixed all three - fresh deadline, `git init` on the export, `--sandbox workspace-write` - and the review ran:
+**55,868 tokens, `verdict=findings`, 4 examined paths**, all four of the supplied files.
+
+**This is three attempts, and it is not "retry until it works": each failed for a different, identified,
+fixed cause.** The first two produced no review and were reported as such.
+
+### FINDING F001 - severity major - classified FIX
+
+> *Multiple intake candidates bypass the ambiguity guard when the context is active.*
+
+**Reproduced against a live control before it was accepted** (CASE 9), then repaired. Full text and the
+repair are in commit `b3387794`. In short: collapsing to null whenever more than one candidate was offered
+left `candidateActive` false, so the guard **could not fire**, and an active start context was returned as
+valid - **a second open workshop made the resolve less cautious than one**, and the caller persists that
+feature with the last assistant question.
+
+**Codex located it precisely** - the branch, the guard line, the two cases that miss it and why, and the
+concrete fixture pair that exposes it. It is the second real defect an independent review has found in this
+fix, after property 1 (B4F-010).
+
+### THE MUTATION PROOF SURVIVED, AND THAT WAS THE MOST USEFUL RESULT
+
+Removing the new multi-candidate refusal **did not turn the suite red**. Once every candidate is validated,
+CASE 9 is already caught by the *existing* candidate-vs-context guard - so the case written for the new
+refusal **never discriminated it**.
+
+**CASE 10 exists because of that**: two active candidates with an **inactive** context, where without the
+refusal the resolve takes the first active candidate and silently picks between two open workshops. Both
+mutations now kill it.
+
+**A guard with no case that fails when it is removed is a guard nobody is testing** (DRIFT-199-I003-060) -
+and here the proof caught it in the same session it was written, rather than 22 days later.
+
+### AND CASE 5 WAS RE-POINTED - flagged, not done quietly
+
+Case 5 asserted *"two open workshops are ambiguous"*, but its second candidate `'102-another-open'` **has no
+directory, no controller and no workshop**. It never tested two open workshops; it tested two candidate
+**strings**. **The label overclaimed what the fixture measured** - B4F-018's shape, in a control I wrote.
+
+It now asserts what it actually covers: **a phantom name must not block a live workshop**. Genuine
+two-active ambiguity is CASE 9. **Coverage increases and no assertion was weakened to accommodate the fix** -
+but an existing green assertion changed, so it is named here for the maintainer to overrule.
+
+**Classification summary**: 1 finding, **1 fix**, 0 record, 0 dispute.
+
+---
+
+## B4F-038 - `/specrew-user-profile` IS ADVERTISED BY THREE SURFACES AND SHIPPED BY NONE - and this session reproduced the defect on every turn
+
+**Walk finding, first minute. Verified here before recording.**
+
+### Measured
+
+| fact | value |
+| --- | --- |
+| tracked in this repo | **yes** - `.claude/skills/specrew-user-profile/` |
+| occurrences in `Specrew.psd1` FileList | **0** |
+| present in the deployable skill set (`squad-templates/skills/`, 16 entries) | **no** |
+| any `user-profile` item under `extensions/` | **one**, and it is `directives/user-profile-awareness.md` - a directive, not the skill |
+| deployed in three consumer-shaped projects (maintainer's count) | **0 of 37 skills** |
+
+**Advertised by three surfaces**, all verified: `scripts/specrew-init.ps1` (the completion message),
+`specrew-bootstrap-provider.ps1` (the session banner) and
+`squad-templates/coordinator/specrew-governance.md` (the launch contract).
+
+**So it is dogfood-only.** It works here, which is exactly why nobody noticed - **the tree Specrew is
+developed in is not shaped like the trees it creates** (DRIFT-199-I003-068), and this is that finding on the
+product's first-minute surface.
+
+### THE ALTERNATIVE, and it needs no command
+
+The profile is **user-level**, at `~/.specrew/user-profile.yml`. **The four dials are real and correctly
+named** - verified on disk:
+
+```yaml
+expertise:
+  software_architecture: 10
+  ui_ux: 6
+  product_management: 7
+  ai_research_project_management: 6
+```
+
+Each is `1`-`10` or `null`, persists across every project for that user, and editing the file is sufficient.
+**Nothing about the settings is broken; only the advertised route to them.**
+
+### AND THIS SESSION REPRODUCED IT ON EVERY TURN
+
+**The orientation banner rendered in this session has told the maintainer to run `/specrew-user-profile
+edit` on every single turn.** In this repository that command exists. **In a consumer project it does not.**
+
+The banner takes that instruction from the same source that misleads users, so **the agent reproduces the
+defect verbatim, with the product's own authority behind it** - and a user who follows it gets nothing, from
+the one surface designed to invite correction. That is what makes this a first-run item rather than a
+documentation nit: it is in the paragraph whose entire purpose is to let a human correct what the system
+believes about them.
+
+**The dials the banner reported were accurate** - `10 / 6 / 7 / 6` maps to expert / mid / mid / mid. **The
+content was right and the remedy was unavailable**, which is the harder failure to notice.
+
+### Disposition
+
+- **Beta4**: known issue in the release notes, in plain words, with the file path and the four dials so the
+  reader can act without the command.
+- **Beta5**: **ship the skill.** And `preferences.preferred_intake_depth` is written by the helper
+  (`user-profile.ps1:258/292/532`) and defaulted in `Read-IntakeYaml.ps1:266`, but **nothing reads it to
+  change behaviour** - a setting the product offers, stores, and ignores. Same family as
+  DRIFT-199-I003-060's dead exemption: written, honoured by nothing.
+
+---
+
+## B4F-039 - TWO CONSUMER-PROJECT OBSERVATIONS, live on `d4a89ab7`. Neither blocks.
+
+Both from the router-skill session, on the tag-candidate build.
+
+### (1) A full six-section packet after every clarify answer - the three-gates finding, in the field
+
+The crew rendered the complete re-entry packet after **each** clarify answer, with
+**`Why I Stopped: mid-clarify, not a boundary`**.
+
+**The packet names its own redundancy in its second heading.** That is DRIFT-199-I003-071/-072's exact
+shape - there the packet's *What Needs Your Review* read *"Nothing new to review"*, and the ruling was that
+**interrupting a conversation to report internal state the human cannot act on is a design error, not a
+rough edge.** Here the packet does not merely lack a reason; **it states that it has none.**
+
+**And the standing rule already says so.** The always-true refocus core carries it verbatim:
+*"Clarify-stage ambiguity questions are NOT packet stops."* So this is not an unspecified case - **the rule
+exists, is deployed, is loaded into the agent's context every session, and did not hold.** That is the
+instruction-layer family again (DRIFT-199-I003-041/-047): *a rule that depends on recollection will not be
+applied*, now measured on the clarify surface rather than in a control.
+
+**Cost, in the units that matter here**: one clarify pass is several questions, so a human answering three
+clarify questions receives three full six-section packets, each announcing it is not a boundary. **The
+first-run cost of that is the same one beta4's theme exists for.**
+
+### (2) "Two live sessions", owner unknown - presence counted as liveness
+
+The specify sync reported **two live sessions** and recorded the crossing owner as **unknown**.
+
+**Verified on disk** in the router-skill project's `.specrew/runtime/conformance-sessions/`:
+
+| session directory | `captured_at` | recorded `head` |
+| --- | --- | --- |
+| `8c283057...` | 2026-09-09 19:51 | current |
+| `33b42de4...` | 2026-09-09 15:13 | `e1181f0b` - the controller-repair commit |
+| `41644c60...` | **2026-09-08 19:37Z** | `01519e32` - **long superseded** |
+
+**`turn-baseline.json` carries `schema_version`, `capture_event`, `captured_at`, `head`, `key`,
+`dirty_user_file_count`, `entries` - and NO liveness field.** No `alive`, no `last_seen`, no `pid`, no
+`heartbeat`, no `expires_at`. **The count of directories on disk IS the count of live sessions**, so a
+session record from roughly twenty-one hours earlier, pinned to a commit that no longer exists in the
+working head, is counted as live.
+
+**That is presence read as liveness** - the same shape as a template's presence mistaken for its content
+(DRIFT-199-I003-086/-089): an artifact's existence taken as evidence of a state it does not assert.
+
+**AND IT IS FR-032's FIRST FIELD FIRING.** DRIFT-199-I003-050 recorded that FR-032 - the crossing-owner /
+concurrent-session path - shipped with **no passing automated test and no field proof**, because a
+single-session walk structurally cannot stage two concurrent sessions. **This is that field evidence
+arriving, and it is a false positive**: the "second session" is a stale directory, not a concurrent human.
+The owner-unknown disclosure then behaved exactly as designed - it failed open and said so, which is the
+half that worked.
+
+**Beta5 shape**: a session record needs a liveness signal - a heartbeat, an expiry, or a process check - and
+the counter must consult it. Until then, "two live sessions" means "two session directories exist", and the
+two are not the same claim.
+
+---
+
+## BETA5 ITEM 1 - ABOVE EVERYTHING ELSE DEFERRED
+
+**DO NOT START UNTIL BETA4 IS TAGGED.** Recorded now because it is the maintainer's top UX complaint and
+because the measurement is cheap today and expensive to reconstruct later.
+
+## B5-001 - THE STOP-INTENT CLASSIFIER WAS BUILT ON THE HOOK SIDE AND NEVER DELIVERED TO THE AGENT
+
+**FR-045a's classifier is wired, tested, and reads two markers. Nothing ever teaches the agent to emit
+either one.**
+
+### Measured
+
+`SPECREW-STOP-INTENT` appears in **exactly four files** in the whole repository:
+
+| file | role |
+| --- | --- |
+| `scripts/internal/continuous-co-review/stop-intent-contract.ps1` | **the classifier** - defines both markers at lines 37-38 |
+| `tests/continuous-co-review/unit/stop-intent-contract.Tests.ps1` | unit test |
+| `tests/integration/conformance-stop-intent-wiring.tests.ps1` | wiring test |
+| `specs/198-beta2-hardening/spec.md` | the spec that defined it |
+
+| instruction surface | files teaching the markers |
+| --- | --- |
+| `refocus/` | **0** |
+| `squad-templates/directives/` | **0** |
+| `knowledge/` | **0** |
+| skills | **0** |
+| commands | **0** |
+
+**Built, tested, specified - and never taught to the only party that can produce the input.**
+
+### The consequence is deterministic, not probabilistic
+
+`stop-intent-contract.ps1:112` is the fail-safe:
+
+```
+return 'real' ... 'no current-turn continue marker with authorization, no async in flight,
+                   and no other trigger; normal real-stop enforcement applies'
+```
+
+**Absent a marker, EVERY stop classifies as `real` and owes a packet.** Rule 9's *"after material work"*
+clause then makes the agent render one. **So every material turn, in every session, forever, takes the
+fail-safe path** - and the stop-that-is-not-a-stop, which exists in code, has never once been reachable.
+
+**FIELD EVIDENCE WAS ALREADY IN HAND.** This session's own conformance journal, read at its first Stop,
+carries that exact reason string verbatim. The classifier has been announcing the cause of the complaint in
+its own diagnostic output the entire time.
+
+### The class
+
+**Same family as the inert controls this arc has recorded, and the purest instance yet.**
+DRIFT-199-I003-060's exemption *could never* fire - its condition was unreachable. **This one CAN fire;
+nothing ever asks it to.** A contract with a reader, a test, and no writer - which is why every test passes
+and the behaviour never appears.
+
+---
+
+## The beta5-preview scope, sized
+
+### (1) Instruction layer
+
+- **Rule 9 rewritten** from *"after material work"* to **"boundary gate or decision owed"**.
+- **In-flight ends are one line plus the intermediate marker.**
+- **In-phase continuation carries the continue marker.**
+- **Orientation once per session, never inside a packet.**
+- **One test asserting the directive teaches the markers** - so the writer can never go missing again while
+  the reader stays green.
+
+### (2) Hook advisories, gated on the three conditions
+
+- **Actual work by THIS session** - which requires fixing the **cross-session material-owner
+  misattribution**.
+- **Elapsed time since the last advisory.**
+- **Content unchanged means silence.**
+
+### (3) The review-required advisory
+
+Gated on **this-session material**.
+
+### Acceptance - counted, on the beta4-mdlink walk
+
+- **packets per turn**
+- **banners per session**
+- **advisories on a read-only session**
+
+Counted rather than judged, on a real walk rather than in this tree.
+
+---
+
+## B4F-040 - DRIFT-199-I003-012 REACHED A CONSUMER, and the fixture masked it twice
+
+**The clarify boundary requires an iteration that a LATER boundary creates.** Recorded during the beta3
+respin as DRIFT-199-I003-012, where the fix was *"one list entry, written, not applied - HELD FOR A
+RULING"*. **The ruling never came, beta3 shipped, and the router-skill project hit it at clarify on
+`d4a89ab7`.** That is the cost of a held fix, measured rather than argued.
+
+### Verified here
+
+`scripts/internal/sync-boundary-state.ps1:404`:
+
+```powershell
+if ([string]::IsNullOrWhiteSpace($effectiveIteration) -and
+    $BoundaryType -notin @('before-specify', 'specify', 'feature-closeout')) {
+```
+
+**`clarify` is absent from the exemption list**, and clarify runs before any iteration exists.
+
+**Shipped since `aa25909b` (2026-08-12)** - confirmed by `git log -S` on the list itself. **That postdates
+the `v0.40.0-beta2` tag of 2026-08-08, so beta3 is affected and beta2 is not.**
+
+### FOUR NEW FACTS BEYOND -012
+
+**1. The governed command omits the parameter the script requires.** The sanctioned `sync-clarify` path
+does not pass `-IterationNumber`, so **following the governed route cannot satisfy the gate** - the only way
+through is the parameter the command does not offer.
+
+**2. THE FIXTURE MASKED IT TWICE.** Measured: **27 sync-related test invocations pass
+`-IterationNumber '001'`**, *and* the fixtures **seed `iterations/001`**. Both the parameter and the
+directory. **So the pre-plan state - no iteration on disk, no parameter supplied - was never exercised by
+anything**, and the suite is green on a state the product cannot actually reach.
+
+**B4F-018 in a fixture**: the tests measured a narrower world than the claim "clarify works" covers, and the
+narrowing was in the setup, which is the part nobody prints.
+
+**3. THE REFUSAL'S `{0}` IS UNFORMATTED**, and it is a bug this project has already fixed once:
+
+```powershell
+throw ("… it belongs to. " +
+    "No iteration was given and none was found under {0}. " +
+    "Create the iteration first … -IterationNumber with the one you mean." -f (Join-Path $featurePath 'iterations'))
+```
+
+**`-f` binds to the LAST string literal of the `+` chain, not to the concatenated whole.** The `{0}` sits in
+the *middle* fragment, so it renders verbatim and the path never appears - while `-f` substitutes into a
+fragment that has no placeholder.
+
+**DRIFT-199-I003-063 found this exact bug** in the scaffold's four messages and added a guard asserting no
+placeholder survives in any line. **That guard is scoped to `scaffold-reports-what-it-did`, so it does not
+reach this file.** The instance was fixed; the class was not - **a guard scoped narrower than the defect it
+was written for**, which is B4F-018 once more, one level above the fixture.
+
+**4. The refusal contradicts itself, as -012 recorded**: it tells the reader to *"create the iteration first
+(the plan boundary scaffolds `iterations/001/`)"* - and **plan comes after clarify**. A boundary demanding
+an artifact only a later boundary produces.
+
+### Disposition
+
+- **Beta4**: known issue in the release notes with the workaround (`-IterationNumber 001`) and a note that
+  the literal `{0}` is cosmetic.
+- **Beta5, or with (C) if the tag reopens**: exempt `clarify` at `:404` **or** put the parameter in the
+  command; **add a no-iteration fixture case** so the pre-plan state is exercised at all; **fix the format
+  string** - and consider whether the -063 guard should cover every refusal rather than one scaffold.
+
+---
+
+## B4F-041 - THIRD INSTANCE OF THE POST-AGENDA REPAIR TRAP, and the writer-side guard is NOT a table change
+
+**Reads above B4F-036's beta5 item (b) - this is the concrete case that item is about.**
+
+### The instance
+
+Fresh walk, `beta4-mdlink` on `d4a89ab7`, feature 1 at agenda confirmation. The crew watched the
+`product-domain` `moved_on` entry **vanish from the workshop map when the agenda was confirmed**, read it as
+silent data loss, found `repair-workshop-controller-state.ps1` refuses post-agenda state, and **proposed
+re-running `confirm-workshop-lens.ps1` for `product-domain`** - the exact unsanctioned repair that left the
+router-skill controller `workshop-record-not-selected` (B4F-035).
+
+**Measured before answering**: `status=active`, `valid=True`, `agenda=confirmed`,
+`next=architecture-core`, `selected=[architecture-core, code-implementation]`, `workshop keys=[]`,
+`product-domain.md`/`.yml` intact. **The clearing is the product's normal post-agenda state**
+(DRIFT-199-I003-092).
+
+**Third instance.** Casio left it alone and closed five lenses; router-skill re-ran the writer and corrupted
+its controller; this crew proposed the same and was talked out of it. **The outcome depended on the agent's
+discipline, and discipline is not a control.**
+
+### THE GUARD CANNOT LIVE IN THE TRANSITION TABLE, and the table says why in its own words
+
+```powershell
+'confirm-intake-lens' { $stateClass -in @('pending-empty', 'pending-product-projection', 'confirmed-complete') }
+```
+
+The comment above that cell is explicit:
+
+> **`confirmed-complete` IS IN THIS SET BECAUSE OF A STRANDED PROJECT, not for symmetry.** … The
+> pending-only fix unblocked NEW workshops and left every already-advanced project exactly as stuck -
+> shipping it would have stranded the projects it was written to save.
+
+**So closing that cell re-strands exactly what DRIFT-199-I003-020 field-proved a recovery for.** A blanket
+post-agenda refusal is the wrong fix and would undo hard-won ground.
+
+**And here is why the trap exists at all**: the two states are **identical at the table's resolution**.
+
+| | stranded (recovery needed) | healthy (clearing is normal) |
+| --- | --- | --- |
+| `agenda_status` | confirmed | confirmed |
+| `workshop` map | **empty** | **empty** |
+| state class | `confirmed-complete` | `confirmed-complete` |
+
+**The table cannot tell them apart, so the guard cannot be a table row.**
+
+### The discriminator that does exist
+
+**A `product-domain` receipt in the authority store.** In the stranded case the intake lens was *never
+closed* - no receipt was ever minted. In the healthy case it *was* closed, a receipt exists, and the entry
+was then cleared by agenda confirmation as designed.
+
+### Estimate
+
+**Location**: `extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1`, after the transition check
+passes, gated on `$isIntakeLens` and a confirmed agenda. **No transition-table change.**
+
+**Shape**: look up a `product-domain` receipt; if one exists, refuse through the existing
+`New-SpecrewLensCheckpointRefusal` with a summary saying **the topic is already recorded and the empty
+workshop list is the normal state after the agenda is confirmed**, and an action naming the legal next move
+(close the next technical lens). If no receipt exists, allow - that is the stranded case.
+
+**Diff**: roughly **15-25 lines** in one file plus the byte-identical `.specify/` mirror. The refusal helper,
+the receipt reader and the intake-lens predicate all already exist and are already imported.
+
+**Tests**:
+
+1. **healthy post-agenda** - receipt present, `workshop` empty → **refuses**, and the message states the
+   clearing is normal.
+2. **stranded post-agenda** - no receipt, `workshop` empty → **still allowed**, so DRIFT-199-I003-020's
+   recovery is preserved. *This is the case that must not regress.*
+3. **pre-agenda** (`pending-empty`) → unchanged.
+4. **mutation**: remove the receipt check → case 1 goes red **and only case 1**.
+
+**The maintainer decides whether it rides with (C).** Recorded with the estimate rather than implemented.
+
+---
+
+## BETA4 REOPENS
+
+**`d4a89ab7` stays as the candidate that FAILED the fresh walk. Nothing is tagged.**
+
+## Why, in one sentence that is not about a bug count
+
+**On the main workshop path, the product invited a corrupting repair - and the outcome depended on the
+agent's discipline, which is not a control.**
+
+Three encounters, three different outcomes, same state: Casio left the clearing alone and closed five
+lenses; the router-skill crew re-ran the lens writer and corrupted its controller into
+`workshop-record-not-selected`; the `beta4-mdlink` crew proposed the same repair and was talked out of it
+(B4F-041). **The variable each time was the judgement of whoever was sitting there.**
+
+A release whose correctness depends on an agent noticing that a normal state is normal has not shipped a
+control. It has shipped a hazard with a good track record.
+
+## PRED-BETA4-009 - stated now, before the fix set, for the re-walk
+
+**A fresh project completes feature 1 through `approved for specify` and reaches feature 2's first question
+with:**
+
+| counted | required |
+| --- | --- |
+| repair proposals | **0** |
+| packets at non-boundaries | **0** |
+| orientations per session | **1** |
+| advisories on a read-only session | **0** |
+| feature 2's first typed reply registers | **yes** |
+
+**Counted on a RECREATED `C:\Dev\walks\beta4-mdlink`, not judged.** Each number is a count a human can take
+while walking, in the units the work is actually for - the same instrument that produced *nine stops by the
+specify boundary* and later *zero governance stops not about the work*.
+
+**Feature 2's first question is the load-bearing one**: a first feature has no predecessor to name, so only
+the second exercises the defect beta4 exists to fix.
+
+## The fixture is preserved, because the state is not reproducible on demand
+
+`tests/fixtures/beta4-agenda-clearing/001-mdlink-checker/`, copied from the failed walk **before the project
+is recreated**:
+
+```
+agenda_status       = confirmed
+agenda_confirmation = human-confirmed
+selected            = [architecture-core, code-implementation]
+workshop keys       = []            <- the clearing the crew read as data loss
+agenda keys         = [architecture-core, code-implementation]
+workshop/product-domain.md, .yml    <- intact, which is the whole point
+```
+
+**This is the exact post-confirmation state the trap fires on**, produced by the product itself on a real
+walk rather than posed by a fixture - the strongest evidence tier this project has
+(DRIFT-199-I003-020's principle: the precondition was written by the defect, in the field, before anyone
+knew it would be needed).
+
+---
+
+## B4F-042 - THE SANCTIONED RECOVERY AND THE CORRUPTING REPAIR ARE THE SAME OPERATION
+
+**Found while executing fix 1, by an existing green test going red.** This is the largest finding of the
+reopen and it reverses a conclusion this project has been carrying since 2026-09-01.
+
+**SCOPE OF THE CLAIM, corrected 2026-09-09 after the maintainer refused the first wording.** The finding was
+first written as if the specimen's history had been measured. It had not: what was measured was a
+*reconstruction* under beta3's writer and reader. The mechanism below is proven that way and stands on its
+own. The specimen evidence came afterwards, is reported separately in **THE SPECIMEN, RECONCILED**, and is
+kept apart from the mechanism on purpose - the first version blurred them, and that is the error being
+corrected.
+
+### The mechanism, proven by reconstruction
+
+**How the write happens, at both revisions that matter**: `confirm-workshop-lens.ps1` sets
+`$workshopMap[$Lens] = $entry` **unconditionally** - `be573254` (2026-08-30, the writer ConsoleFractal ran)
+line 274, HEAD line 341. There is no intake branch. The same loop copies the existing map whole
+(`foreach ($property in @($workshop.PSObject.Properties))`), which is why a later technical close preserves
+whatever is already there rather than dropping it.
+
+**How the reader treats it**: `workshop-record-not-selected` was introduced in `ff86a1e6` (2026-07-22) and
+has rejected a `workshop` key outside `selected` ever since - verified with `git log -S` over the accessor,
+which returns that commit and no earlier one.
+
+**So: closing `product-domain` from a confirmed agenda writes a key the reader has rejected for seven
+weeks.** That is the whole mechanism, and it needs no specimen.
+
+### What happened
+
+The fix-1 guard made `tests/integration/workshop-lens-checkpoint.tests.ps1` **Case 7c** fail. Case 7c is
+DRIFT-199-I003-020's ground: *"a project that confirmed its agenda without ever closing the intake lens can
+still recover."* It was written from a real deadlocked project, and the recovery it pins was **field-proved
+on the original stranded specimen** on four separate checks.
+
+Rather than adjust it, I reconstructed what the recovery **leaves behind** and read it:
+
+```
+post-recovery workshop keys    = [product-domain]
+product-domain records on disk = 2
+
+pre-fix reader (beta3 as shipped)  -> invalid | False | workshop-record-not-selected
+post-fix reader (tolerance)        -> active  | True  | workshop-active
+```
+
+**The sanctioned recovery produces `workshop-record-not-selected`.** That is the same reason the router-skill
+project was found under after a crew "restored" the cleared entry (B4F-035). **The recovery that was
+field-proved and the repair that bricked a controller are the same operation.** Only their reputations
+differed.
+
+### THE SPECIMEN, RECONCILED - and it was the other copy
+
+**The maintainer's correction was right about what had been shown, and their reading of the archive was of
+the copy the 2026-09-01 proof did not run on.** DRIFT-199-I003-020 is explicit on this point, because the
+distinction is the whole reason it was held for:
+
+> **`C:\Temp\ConsoleFractal`** - the ORIGINAL stranded specimen, **not** the `-stranded-backup` copy that
+> carried the earlier `confirm-lens` evidence.
+
+Both copies survive at `C:\Dev\SpecrewSpecArchive\_temp-trials\`. Read (the archive was **not** written to -
+each was copied to a temp root and the `4f4dce52` lens catalog restored there, because the archive was
+stripped of `.specify/` and the accessor otherwise stops at `workshop-lens-catalog-missing` before reaching
+the check at issue; that catalog's lens-id set is identical to HEAD's):
+
+| | `ConsoleFractal` (the 09-01 copy) | `ConsoleFractal-stranded-backup` |
+| --- | --- | --- |
+| `workshop` keys | **`[product-domain]`** | the six technical lenses |
+| keys not in `selected` | **`[product-domain]`** | none |
+| beta3's reader | **`invalid` / `workshop-record-not-selected`** | `complete` / valid |
+| reader with the fix | `active` / valid | `complete` / valid |
+
+**The backup is exactly as the maintainer described it** - six technical lenses, no `product-domain` key -
+and that is what the technical-close path produces. It is the touched copy. **The original carries the
+state.**
+
+**WHAT IS STILL NOT PROVEN, and the wording keeps it that way**: the *date* of that controller write. Both
+archived controllers carry an mtime of 2026-09-08 23:38, which is when the archive was made, so no timestamp
+attributes the key to 09-01. What attributes it is that the only writer of a `product-domain` workshop key
+is `confirm-workshop-lens.ps1 -Lens product-domain`, and DRIFT-199-I003-020 records that operation running
+on this copy. **The specimen carries the output; the record says the operation ran there. That is the claim,
+and it is not a measured history.**
+
+### Why four field checks missed it
+
+DRIFT-199-I003-020 checked four things: the receipt was consumed, the agenda was untouched, the record
+validated at the checkpoint, and it ran on the original specimen. Each is a real check. **None of them
+asked the reader.** The entry was written, the artifacts were well-formed - and the accessor that every Stop
+classification consults called the result invalid. *A write that validates at the writer is not a write the
+reader accepts*, and this batch now has two instances of that gap.
+
+### An unrelated thing the specimen shows, recorded because it was in front of me
+
+The 09-01 copy's receipt store holds **four `architecture-core` lens receipts** (2026-08-31, 21:06 to
+21:20) and its map holds **no `architecture-core` key**. Four typed human turns were minted and none of them
+closed anything. The cause is on disk and needs no theory: `specs/001-console-fractal/workshop/` in that
+copy contains only `product-domain.md` and `.yml`, so every attempt was refused for a missing lens record.
+**Four receipts spent against a refusal the human had no way to see.** Related to DRIFT-199-I003-021's
+compaction re-ask observation but not the same thing - that one was a re-ask, this is four turns bound to a
+refusal. Carried to beta5 with the receipt-vs-assent items; not acted on here.
+
+### And the two states are not distinguishable
+
+Case 7c's own comment says the stranded state is reachable *because* `confirm-workshop-agenda.ps1` requires
+the product-domain **records on disk** rather than the controller entry. So the stranded project **has the
+records** - and a receipt. A healthy post-agenda project has both as well, because confirming an agenda
+clears the map by design.
+
+| | stranded | healthy |
+| --- | --- | --- |
+| `agenda_status` | confirmed | confirmed |
+| `workshop` map | empty | empty |
+| `product-domain.md` / `.yml` | **present** | **present** |
+| `product-domain` receipt | **present** | **present** |
+
+**Both discriminators I proposed are present in both states**: the receipt (my B4F-041 estimate) and the
+records (PRED-BETA4-010's premise). There is no on-disk discriminator, and there does not need to be - what
+un-deadlocks a stranded project is the **reader tolerating the intake key**, not the write.
+
+### A GREEN ASSERTION WAS CHANGED, and it is the most sensitive one in the batch
+
+**Case 7c now asserts the opposite of what it asserted**: the reopen is refused, the entry is not written,
+the controller is byte-unchanged. The case, its fixture and its comment are kept - the comment now records
+what the recovery actually produced and why the case was reversed, so nobody restores it from the old
+reasoning. **Flagged here rather than left in a diff.**
+
+### The retire-or-no-op decision, made on evidence
+
+The maintainer asked: `confirm-intake-lens`'s `confirmed-complete` cell has no caller left - retire it or
+make it a no-op with a message.
+
+**Decision: the cell stays; `confirm-workshop-lens.ps1` refuses downstream of it.** Removing it moves the
+refusal into the transition table, whose intake text says *"Ask for the workshop plan to be repaired"* - and
+`repair-workshop-controller-state.ps1:105` refuses every agenda that is not `pending-confirmation`, so that
+remedy clears nothing. That is the remedy-wrong-for-state family (B4F-030) shipped deliberately. **A
+permission nothing can use, behind a refusal that tells the truth, beats a refusal that sends the reader
+somewhere that cannot help.** The table comment now says this, so the cell is not deleted later as dead.
+
+### A mutation caught a green assertion of mine that proved nothing
+
+M1 (guard removed) left Case 5's two loudest assertions - *"refuses rather than writing"* and *"THE
+CONTROLLER IS BYTE-UNCHANGED"* - **green**. Without a `product-domain` receipt the writer refuses one check
+later anyway, so those assertions never depended on the guard. The fixture now takes `-WithIntakeReceipt`
+for that case, and under M1 both go red. **The field project had that receipt**; the fixture that omitted it
+was testing a state the defect does not occur in.
+
+### Carried to beta5
+
+- **The skill is a second controller writer with no guarantees.** `design-workshop.md` (379, 394) instructs
+  the agent to hand-write `agenda_status: confirmed`. Every invariant `confirm-workshop-agenda.ps1` enforces
+  is optional on that path. The residual branch of the new guard exists only because of it.
+- **`confirm-workshop-lens.ps1` writes a controller shape the accessor can reject.** The writer validates its
+  own artifacts and never asks the reader whether the result is readable. One assertion at the end of the
+  write - read the controller back through `Get-SpecrewWorkshopLifecycleState` - would have caught both this
+  and B4F-035 at the moment of the write.
+
+---
+
+## B4F-043 - A RECOGNIZED VERDICT WITH NOTHING PENDING IS DROPPED IN SILENCE, and the standard for this already exists
+
+**Router-skill session at design-analysis, `d4a89ab7`.** A human types a phrase the capture recognizes, no
+crossing is pending, and nothing is said. The human has no way to tell an accepted approval from a
+discarded one.
+
+**The standard is already written, in the same tree, for a different phrase family.**
+`HumanAuthorityStore.ps1` handles the partial-review-signoff override exactly as this finding asks:
+
+> `YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but no partial-coverage approval is currently
+> outstanding for this project, so there was nothing for it to authorize. Nothing is wrong with your
+> decision.`
+
+and its comment states the rule in general terms: *"A phrase that did NOT match stays silent: that is
+ordinary conversation. A phrase that DID match and was then rejected is a human trying to authorize
+something, and their attempt must never vanish."*
+
+**So this is not a new standard to invent - it is an existing one that reached one phrase family and not
+the boundary family.** The capture must answer audibly, naming the crossing that IS pending or saying
+plainly that none is.
+
+---
+
+## B4F-044 - THE ITERATION SCAFFOLD CONSULTS NO AUTHORIZATION, and DRIFT-199-I003-086 is what that costs
+
+**Measured at source**: `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1` contains **zero**
+references to authorization state - no `last_authorized_boundary`, no `Get-SpecrewPendingVerdictState`, no
+`boundary_enforcement`. It scaffolds and it sets boundary state, and nothing asks whether the crossing it
+implies was ever approved.
+
+**DRIFT-199-I003-086 is the recorded instance**: iteration 003's own scaffold set `boundary_type: plan`
+at 15:40:40 with no plan authored and no crossing authorized - in this project, by this project's own
+tooling.
+
+**In the router-skill session the scaffold advanced no state.** That is the finding's honest shape: the
+outcome was fine and **nothing checked**. A control that happens not to fire is not a control.
+
+---
+
+## B4F-045 - THE DESIGN DECISION HAS NO CAPTURE AT ALL - fix 2 item (f)
+
+**The gap, stated as three facts that are each checkable:**
+
+1. **`approved for plan with Option N` is defined nowhere.** It is not in the launch contract, not in the
+   skills, not in the capture.
+2. **The boundary grammar cannot carry it.** The approval anchor
+   (`ConversationCaptureAccessor.ps1:229`) admits an option only as a LEADING prefix and **caps it at
+   `[12]`** - so a three-option design decision cannot be expressed at all, and the trailing
+   `with option N` form falls inside the boundary remainder rather than being read as a choice.
+3. **So the crew recorded the choice as prose in `design-analysis.md`** - the one place nothing validates.
+
+**And the skill forbids the shortcut that would have avoided it.** `design-workshop.md:337` -
+*"Co-design - do NOT hand down finished options"* - requires the options to be co-built with the human.
+The methodology demands a real choice at design-analysis and the machinery offers nowhere to put it, so
+the choice lands in prose and the gate cannot see it.
+
+**Building as fix 2 item (f)**: `record-design-decision.ps1` writing a declared artifact the gate
+validates, under **its own phrase family** so it can never be confused with a boundary verdict. Distinct
+by construction rather than by convention: a decision phrase that does not begin with the approval verb
+cannot match the boundary anchor, and the test asserts that in both directions.
+
+---
+
+## B4F-046 - THE HANDOFF-EVIDENCE CHECK AND THE SYNC ORDER DISAGREE (beta5, seal-ordering family)
+
+The validator expects the handoff packet **before** the boundary commit; the sync writes it **after**
+(`sync-boundary-state.ps1:1756` validates the handoff text, `:2072` records the evidence). Same family as
+the seal-ordering items: a check and a writer that each behave correctly and disagree about when.
+
+**Deferred to beta5 at the maintainer's direction.** Recorded here so the family has all its members in
+one place.
+
+---
+
+## B4F-048 - THE INDEPENDENT REVIEW DID NOT COMPLETE, and what it found before it died
+
+**Numbering note**: commit `181d4b57` cites this entry as B4F-047. It was renumbered when the maintainer assigned B4F-047 to the vacuous-control finding below, which is the more significant of the two. The commit message is left as written rather than rewritten; this line is the cross-reference.
+
+**Model that actually ran: `gpt-6-astra`** (provider openai), codex-cli 0.153.4 in both shells - the 400 that
+blocked the earlier attempt is gone. Range `b62ba968..b99b448b`, 46 commits, 47 files exported in full.
+
+**IT DID NOT FINISH.** `candidate-result.json` was **never written**; the run ended on
+`You've hit your usage limit ... try again at 3:57 AM` after 98,355 tokens. **Reported as not written, not
+as a clean review.** Areas (b) fail-open on new provider paths, (d) the three retirements, and (e) the eight
+converted cases were **not reached**.
+
+**But it ran real probes before it stopped** - it wrote and executed its own `review-probes.ps1` against the
+committed code rather than reading it. Those outputs are facts and are harvested here from the log.
+
+### PROBE 1 - two sessions in one project: A's declaration lands in B's directory. CONFIRMED.
+
+```json
+{"probe":"A declares after B overwrites project marker","A_record_exists":false,"B_record_exists":true}
+```
+
+Session A declares; the record appears under **B's** path. Cause: `declare-turn-end.ps1` takes its identity
+from `.specrew/runtime/session-marker.json`, which is **project-wide** and stamped by whichever session
+started last - while the hook uses the `--session-id` its host passed it. **A is refused for a declaration it
+made, and B is credited with one it did not.**
+
+### PROBE 2 - the in-flight bound can be laundered by one intervening kind. CONFIRMED.
+
+```
+turn-1 in-flight      run=1     turn-2 conversational run=0
+turn-3 in-flight      run=1     turn-4 conversational run=0
+turn-5 in-flight      run=1     ...  turn-9 in-flight run=1
+```
+
+**The run resets to 1 every time and the bound never trips.** An agent that says "still waiting" and
+"nothing to report" alternately can wait forever on the same item. This is exactly the laundering the
+maintainer asked about, and the answer is yes.
+
+### PROBE 3 - a failed counter increment leaves a stale declaration accepted. CONFIRMED.
+
+```json
+{"probe":"counter write failure","result":-1,"turn":"turn-1","old_record_accepted":true}
+```
+
+When `Step-SpecrewTurnCounter` cannot write, it returns `-1`, the turn id does not advance, and the previous
+turn's declaration satisfies every later stop. It is silent: the provider swallows the failure.
+
+### PROBE 4 - the clean path holds.
+
+```json
+{"probe":"resume after declaration but before Stop","turn":"turn-1","existing_kind":"boundary"}
+{"probe":"exhaustion on a clean wait","declared_run":4,"exhausted":true,"next_turn":"turn-4"}
+```
+
+A crash between the declaration and the Stop increment leaves the declaration intact and still matching; the
+bound trips at 4 on an unbroken run and the refusal names the repeated item. **These two are the design
+working as intended, and are recorded because a register that lists only failures misdescribes the same
+work.**
+
+### CLASSIFICATION
+
+| # | finding | class | why |
+| --- | --- | --- | --- |
+| 1 | in-flight laundering | **FIX** | it defeats the bound completely; the bound is the only control on the one kind no artifact can verify |
+| 2 | cross-session declaration | **FIX** | the handshake is what PRED-BETA4-011 part 1 named as the abort condition; it holds for one session and breaks for two |
+| 3 | silent counter-write failure | **FIX** | a permanent, undiagnosable bypass, and the provider's own convention for this is fail-open **with a WARN** |
+
+**The review must be re-run after 03:57 for (b), (d) and (e)**, which are the areas it never reached - and
+(d), the deletions, is the class it was most needed for.
+
+---
+
+## B4F-047 - THE REVIEW GATE IS VACUOUS EVERYWHERE IT COULD HAVE HELPED, and unsatisfiable where it fires
+
+**The maintainer's finding, recorded at their direction as the sharpest vacuous-control instance in this
+arc.** Three parts, each verified at source.
+
+### (1) The gate is a no-op at every boundary but one, and the file says so itself
+
+`scripts/internal/continuous-co-review/signoff-gate-wiring.ps1`, line 17, in its own header:
+
+> `Invoke-ContinuousCoReviewSignoffGateIfEnabled` … **is a no-op for every boundary except
+> `review-signoff`.**
+
+So specify, clarify, plan, tasks, before-implement and implement all pass with **nothing asking whether any
+of it was reviewed**. Unbounded production work lands in a governed project and the review evidence gate
+never speaks until a boundary most features reach last, if at all.
+
+**This is not a bug in the wiring - it is the wiring working as designed, and the design is the finding.** A
+control placed where it cannot act is indistinguishable, from inside, from a control that is satisfied.
+
+### (2) And feature 201 cannot reach that boundary anyway - the loop closes
+
+- The gate routes to **`review-required` / `no-authoritative-campaign-result`**
+  (`review-signoff-evidence-gate.ps1:864`), whose message tells the agent to get a round approved and run
+  the campaign.
+- The campaign cannot be created: `review-campaign-orchestrator.ps1:1342` throws
+  **`review-campaign-active-iteration-unresolved`** unless an iteration identity resolves.
+- **Feature 201 has no `iterations/` directory at all**, by the maintainer's own ruling that a defect sweep
+  does not run planning ceremony (B4F-030).
+
+**So the gate is silent now and unsatisfiable later.** Every boundary before review-signoff asks nothing;
+review-signoff asks for something the feature's own work kind guarantees it cannot produce. Neither half
+fails loudly.
+
+### (3) The Stop-side advisory blocked a read-only reviewer session repeatedly today
+
+While the **working** session's cap store records only `material` and `boundary-evidence-absent` subjects -
+so the advisory that interrupted the reviewer was attributed to neither.
+
+**The honest limit on this evidence, stated rather than glossed**: absence is proven only over that one cap
+store. That is enough to establish the DIRECTION - a read-only session was interrupted by an advisory the
+working session's own record does not account for - and it is cross-session attribution, which is exactly
+what fix 2 item (c) makes impossible by scoping attribution to the declaring session.
+
+### DISPOSITION
+
+- **(3) is beta4**, through fix 2 item (c) as already scoped: attribution becomes the declaring session, and
+  a read-only second session in the same project receives no advisory. Its test is in the fix-2 tail.
+- **(1) and (2) are beta5**, filed with **per-feature work-kind**, which they are entangled with rather than
+  merely adjacent to: **review is a required stage of the `bug-bash` contract, and the engine has no path to
+  it for a feature without iterations.** Fixing the gate's placement without fixing work-kind scope would
+  move a vacuous control to a boundary that still cannot satisfy it.
+- **The release notes disclose** that beta4's own repair was reviewed by codex **out of engine**, not by a
+  governed campaign, and why - because the engine has no path to review this feature, which is finding (2)
+  applied to this very release.
+
+---
+
+## B4F-049 - B4F-018's ATTRIBUTION COROLLARY: three defects, one root - inferring WHO from shared project state
+
+**Recorded at the maintainer's direction.** B4F-018 was the spine finding - a claim measured over a narrower
+set than it covers. This is its attribution counterpart, and it has three members already found in this arc:
+
+| defect | what it inferred | from what shared state | how it failed |
+| --- | --- | --- | --- |
+| material-owner attribution | which session did the work | a baseline **diff** over the project tree | a read-only session was charged with another session's dirty files |
+| workshop typed-turn receipts | that the human answered **this** question | **any** typed message in the conversation | five `human-confirmed` receipts minted for a question never asked |
+| turn-end identity | whose turn is being declared | the **project-wide** `session-marker.json` | session A declared, the record landed under B; A refused, B credited |
+
+**One root: each asked shared project state a question only a specific party could answer.** A tree diff
+does not know who edited; a message does not know which question it answers; a project-wide marker does not
+know which session is speaking. Every one of them was a reasonable inference and every one produced a
+confident wrong answer, because **an inference has no way to report that it was guessing**.
+
+**The corollary, which is the reusable part**: *have the party that knows declare it.* Not a better
+inference - a different shape.
+
+- Material owner -> retired; attribution is now the declaring session.
+- Turn-end identity -> the hook issues a per-turn token into its own session directory; the script echoes
+  it; the Stop accepts only its own token. **A project-scoped file cannot answer a session-scoped question**,
+  so the read was deleted rather than hardened.
+- Workshop receipts -> **still open**, and it is the third member: a receipt still mints against any typed
+  message rather than against a declared question. Fix 2 item (d) is that declaration, and B4F-012's class -
+  four receipts spent against refusals on the archived specimen - is the same defect seen from the other end.
+
+**The test for whether a future control belongs to this family**: if it answers "who" or "which" by reading
+state that more than one party writes, it is inferring, and it will be confidently wrong at least once.
+
+### A SECOND, SMALLER ROOT, recorded because it has now bitten twice in one batch
+
+`ConvertFrom-Json` silently coerces an ISO-8601 string into a `[datetime]`.
+
+1. The design-decision record failed its own read-back verify: a `recorded_at` the script had just written
+   came back as a `[datetime]` and failed a `[string]` type check.
+2. The turn-token ordering compared two tokens as EQUAL because re-parsing the coerced value lost the
+   sub-second part - so the newest-wins sort was arbitrary, and the losing session could not recover.
+
+**Both were caught by a verify step rather than by a test**, which is the argument for verify steps. The
+durable fix in each case was to stop depending on a type surviving JSON: check presence rather than type,
+and order by a number that cannot be coerced into something else.
+
+---
+
+## B4F-051 - THE SECOND PASS, ITS SEVEN FINDINGS, AND A DISPUTED REVIEWER IDENTITY
+
+**Numbering note**: commit `b8936d67` cites this entry as B4F-050. It was renumbered when the maintainer
+assigned B4F-050 to the work-kind finding below. This is the SECOND such collision (B4F-047/048 was the
+first), and the cause is that two parties allocate from one sequence. A fix is proposed at the end of
+B4F-050 rather than left to happen a third time.
+
+**The scoped second pass completed** where the first did not: `candidate-result.json` written (14,449
+bytes), verdict `findings`, areas `b`/`d`/`e` exactly as scoped, 20 paths examined, **7 findings, every one
+at `confidence: certain`**, each with a probe it ran against the real code. It also **withheld** a
+session-token mismatch it encountered, because identity was out of scope - a reviewer that respects a scope
+boundary it could have quietly crossed.
+
+### MODEL PROVENANCE IS DISPUTED, NOT CHOSEN
+
+**The reviewer's identity is the evidence this release leans on**, so the disagreement is recorded rather
+than resolved by picking one:
+
+| source | claim |
+| --- | --- |
+| the run log (`codex-stdout-run5.log`, and run4 before it) | **`gpt-6-astra`** |
+| the result file's own `model` field | **`gpt-6`** |
+
+**Two claims that disagree, and neither was verified against the serving side.** A release note that leans
+on this must say so.
+
+A third value, `gpt-5.1-codex-max`, was briefly recorded here and is **struck**: it was the maintainer's, it
+has no source in the export - `gpt-5` appears zero times in the result file and in either run log - and the
+maintainer has said plainly that it was produced rather than read. It is kept in this sentence only so the
+strike is visible; it is not a claim.
+
+### THE SEVEN FINDINGS, ALL CLASSIFIED FIX
+
+| # | area | severity | finding |
+| --- | --- | --- | --- |
+| 4 | d | medium | **the STOP-INTENT parse is live and bypasses the declaration contract** |
+| 5 | d | medium | **material-owner attribution is live and still misattributes across sessions** |
+| 3 | d | medium | the BOUNDARY recovery directive still demands the prose packet and never names the script |
+| 2 | b | medium | the candidate resolver returns before its own loop when there is no anchor |
+| 7 | e | medium | Case 5b is RED, not merely inert |
+| 6 | e | medium | Case 19 is inert - restoring its marker would not change its assertion |
+| 1 | b | low | a boundary assessment that cannot read the transcript is silent - no journal row, no warning |
+
+**None is a record-and-defer and none is disputable**: each names a concrete failure with the code that
+proves it. The order of repair is the maintainer's: **the two retirements first**, because a converted test
+proves nothing about a contract that can be skipped.
+
+---
+
+## B4F-050 - `bug-bash` IS A MARKDOWN CHECKLIST: the contract has no enforcement behind it
+
+**BETA5, above the per-feature work-kind item and entangled with it.** The maintainer's finding, verified at
+source and found to be stronger than stated.
+
+### THE MEASUREMENT
+
+`bug-bash` appears in **exactly one product script** - `work-kind-validator.ps1` (and its `.specify/`
+mirror). **Zero** occurrences in `validate-governance.ps1`, `sync-boundary-state.ps1`,
+`shared-governance.ps1` and `create-governed-feature.ps1`.
+
+**And the one place it does appear enforces nothing.** The validator's own header:
+
+> *"Defaults to ADVISORY (warns, never blocks). **Fail-open everywhere**: malformed/missing input degrades
+> to a WARN, never a crash or a spurious block."*
+
+Its single `bug-bash` branch (line 171) groups the kind **with** `software-feature` rather than giving it
+distinct behaviour, inside a check its own comment calls *best-effort, fail-open*. So the strongest
+statement is not that enforcement is thin - it is that **there is none, in a component that never blocks
+even when it fires**.
+
+**The contract is therefore a markdown checklist, and every gate is built for `software-feature`.**
+
+### THE CONSEQUENCES, ALL OBSERVED IN THIS ARC
+
+| consequence | where it was seen |
+| --- | --- |
+| its five evidence items have **no checker** | this finding |
+| feature creation scaffolds an intake controller the work kind never resolves, which then asserts an open workshop on **every Stop** | B4F-025 |
+| review is named a **required stage** and is unreachable, because campaigns key to an iteration bug-bash never creates | B4F-030, B4F-047 |
+| the declaration is **project-scoped**, so it cannot describe one feature without making the project false | B4F-006, B4F-020 |
+
+**The conclusion, in the maintainer's words**: *choosing `bug-bash` today is opting OUT of enforcement, not
+into a different enforcement, and nothing can tell a disciplined bug-bash from none.* That last clause is
+the vacuous-control test applied to a whole work kind - which puts this finding in the same family as
+B4F-047 rather than beside it.
+
+### THE CANDIDATE RESOLUTION - cheaper than a parallel enforcement path
+
+**The iteration is a CONTAINER, not a ceremony.** Campaigns key to it, the validator scopes to it, closeout
+seals it, the clarify sync needs it. Bug-bash dropped the *plan ritual* and, with it, the *artifact* the
+machinery is keyed to - and those are two different things that were discarded together.
+
+**So: let `bug-bash` scaffold a minimal iteration with no plan ceremony.** One artifact, no ritual, and
+every existing gate keeps working because the thing it keys to exists.
+
+**This requires B4F-044 fixed first**: scaffolding currently advances boundary state while consulting no
+authorization at all, so making the scaffold do more before that is fixed would widen a control that does
+not check anything.
+
+**Evaluate against the alternative before choosing**: teaching every gate a second vocabulary. That is the
+larger change, it multiplies the number of places a work kind can be misread, and each new gate would then
+have to learn two contracts instead of one.
+
+### NUMBERING, RULED - and the dual-prefix proposal is struck
+
+B4F-047/048 and B4F-050/051 both collided. The proposal that followed - a separate `B4F-Cnnn` stream for
+crew findings - is **withdrawn on the maintainer's ruling**, for two reasons that are both better than the
+proposal:
+
+- **The one who holds the document allocates.** The maintainer describes a finding; the crew gives it its
+  number; the maintainer cites numbers back and never assigns one. A number the maintainer proposed was an
+  inference of the next value from a stale read of shared state - **B4F-049's corollary applied to
+  identifiers**, and the same mistake as the three it names.
+- **A second scheme would encode who found a thing into an identifier not meant to carry it.** Provenance
+  belongs in the entry, not in its name.
+
+The two stale commit citations (`181d4b57` -> B4F-048, `b8936d67` -> B4F-051) stay as written, with the
+cross-references in the entries they point at.
+
+---
+
+## B4F-052 - THE CONFIRMATORY PASS: the repairs confirmed, and three more, one of them mine
+
+**Scoped as ruled**: identity, the retirements as completed, the converted cases, and explicitly the
+session-token mismatch the second pass withheld. `candidate-result.json` written, verdict `findings`,
+21 paths examined, 3 findings all `certain`. Provenance as before and still disputed: the run log says
+`gpt-6-astra`, the result field says `gpt-6`, neither verified against the serving side.
+
+### CONFIRMED - what it set out to check
+
+- **The withheld mismatch is repaired.** The reviewer confirmed the runtime-root token is now found on a
+  host that passes no session id, that the losing session recovers when its next turn starts last, and
+  that a fresh token rejects a pre-crash declaration.
+- **The owner-attribution retirement is complete**, tree-wide including the mirrors, and **the retained
+  `continue` directive is unreachable** - leaving it one release was safe.
+- **All 87 detection checks pass and the converted cases have meaningful subjects**, restored Case 19
+  included. The crew's prose-scoring mutation redding exactly Cases 2 and 2c is *"the expected set for an
+  additive prose-acceptance mutation"* - the reviewer's words.
+
+### THREE FINDINGS, CLASSIFIED
+
+| # | area | severity | finding | class |
+| --- | --- | --- | --- | --- |
+| 2 | retirements | medium | **an in-flight declaration released a PENDING-BOUNDARY stop** | **FIX** - done |
+| 3 | identity | low | the render cooldown re-parsed a JSON-coerced timestamp as local time | **FIX** - done |
+| 1 | identity | medium | with two sessions, the newest-token semantics can credit B for A's declaration | **FIX** - needs a ruling |
+
+**Finding 2 is a bypass I introduced, and it is the important one.** The retired STOP-INTENT lane was
+entered only for a MATERIAL stop; the replacement I wrote assigned `intermediate` for *any* unexhausted
+in-flight declaration, and the shared `$blockWarranted` then suppressed *every* refusal - including a
+pending boundary. Reproduced by the reviewer: `-Kind in-flight -Pending 'verification job'` at a pending
+`clarify -> plan`, provider exits 0 with empty output. **Background work could suppress the packet the
+human's verdict depends on.** Retiring the parser was complete; the replacement had widened the exemption
+past the lane's scope. Fixed by restoring the `material`-only guard; Case 2d is the reviewer's probe and
+goes red under the guard's removal and under nothing else.
+
+**Finding 3 is the THIRD instance of one root** - `ConvertFrom-Json` coercing an ISO timestamp - after the
+design-decision read-back and the token ordering. Casting the coerced `[datetime]` back to a string drops
+the UTC designator and the fraction; re-parsing it reads local time. Measured on this machine's zone: a
+render 0.5 s old looked ~3 hours old, and the 45-second in-flight cooldown was bypassed. Same durable fix as
+the other two: the cooldown reads a number, `rendered_ms`.
+
+**Finding 1 is real and the ruling's own collision semantics leave it open.** With two sessions, the script
+resolves to the NEWEST token, so A's declaration lands under B when B started last. A's Stop finds no record
+and refuses with the *generic* message - the mismatch predicate needs a record to compare, and A has none, so
+the collision is not named for A. **B's Stop finds a record carrying B's own token and credits it**, though B
+never declared. "Credits neither" is therefore not achieved: B is credited. A's recovery on its next turn is
+confirmed but does not undo B's credit.
+
+The script cannot know which session invoked it; that is the limit the ruling accepted. Three ways to close
+the gap, each with a cost the maintainer should weigh rather than the crew:
+
+1. **The hook hands the token to the agent at turn start** (in its turn-start output) and the script takes
+   `-Token`. Unambiguous - the party that knows tells the party that acts - but it depends on the agent
+   passing a value, and the newest-token discovery remains as the fallback when it does not.
+2. **The script refuses to declare when more than one live token exists**, naming the collision. Fails
+   closed at the writer and credits neither, but two long-running sessions could block each other until one
+   turn ends, since a token stays live until its session's next turn start.
+3. **Accept newest-wins**, as now, and document that a second session can be credited for the first's
+   declaration. Rejected by the ruling as written, so listed only for completeness.
+
+## B4F-053 - THE TURN TOKEN WAS ISSUED ONCE PER SESSION, because the provider was never registered for the turn start
+
+**Found by reading the record before building finding 1's closure**, not by a test: the tests drive the
+conformance provider directly with `-Event UserPromptSubmit`, and that path works. The dispatcher selects
+providers by the registry row's `events`, and the conformance row in `refocus-scopes.json` has read
+`["Stop", "agentStop", "stop", "SessionStart", "PostToolUse"]` since `f8df5f8a` (198). No `UserPromptSubmit`,
+no `PreInvocation`. The provider's turn-start lane - the T070 live baseline capture AND the fix-2 token
+issue - therefore ran at `SessionStart` only.
+
+**Evidence from this project's own runtime**, four sessions with a token on disk: every `turn-token.json`
+carries `turn_id: turn-1`, and the `turn-baseline.json` beside each says `capture_event: SessionStart`. The
+handover provider, which IS registered for `UserPromptSubmit`, has journal rows with
+`"source":"UserPromptSubmit"` - so the event reaches the dispatcher; it is the conformance row that does not
+subscribe. Case PH-prompt in `conformance-detection.tests.ps1` asserts that "Claude's real UserPromptSubmit
+provider path refreshes the live baseline" and is green, because it calls the provider, not the dispatcher.
+It is a vacuous control of B4F-047's kind: it proves the lane, and the lane was unreachable.
+
+**What it cost before this**: the token was a per-SESSION identity, not per-turn. For the two-session
+collision that is still an identity, so the mismatch check was not wrong; but the per-turn claim in the
+store's comments was false in production, and the T070 baseline was captured at session start rather than at
+each prompt, so the material-work delta compared against the session's opening state for every turn - the
+`exact-turn` attribution mode could only ever be reached in a test.
+
+**Why it is fixed now rather than filed**: finding 1's ruled closure defines liveness by consumption - the
+hook deletes the token at Stop. Without per-turn re-issuance, consumption would leave every turn after the
+first with no token, and the declaration would degrade to absence forever. The registry row gains
+`UserPromptSubmit` and `PreInvocation`; the dispatcher test that reaches the lane THROUGH the dispatcher is
+the control PH-prompt should have been.
+
+**Cost added**: one more provider launch per prompt on every host. Measured in PRED-BETA4-014 part 6.
+
+**Landed, and what it costs now that it runs**: the row gains `UserPromptSubmit` and `PreInvocation`; the
+token is issued once per turn, handed to the agent in one 200-character line, and consumed by the Stop that
+ends the turn. Identity Case 5 reaches the line through the DEPLOYED dispatcher, which is the control
+PH-prompt was not. The per-prompt cost, measured in PRED-BETA4-014 part 6: 815-1120 ms as run, of which
+the token lane is 35 ms; the rest is a `pwsh` launch, the provider's parse, and the T070 git snapshot that
+this finding shows was never taken at prompt in production. **Two per-prompt provider launches now run on
+every host** (handover, then conformance). The lever is structural - a light dedicated turn-start provider,
+or concurrent provider launches in the dispatcher - and is the maintainer's call, named here for beta5.
+
+**Residual, ruled semantics**: a token-issuing session that crashes leaves a token; while another session
+is live the leftover makes every token-less declaration a named refusal (the ruled cost). When no other
+token is live, the leftover is the one live token and a token-less declaration lands under the dead
+session - orphaned, refused at the declarer's own Stop, never credited. A host whose turn-start hook did not
+run (absence) sharing a project with such a leftover hits that every turn and is never told the leftover's
+path. Nothing ages a token out, by ruling; the identity suite pins the behaviour so a change is a decision.
+
+## B4F-052 finding 1, closed as ruled
+
+Closure 1 with closure 2 as the fallback for the ambiguous case only; closure 3 (newest-wins) is gone from
+the store, asserted on the text. The hook hands the token to the agent at turn start (`[specrew-turn]`, one
+line), `declare-turn-end.ps1 -Token` writes under the session holding it, an unknown token fails closed
+naming the value, no token with exactly one live is accepted, no token with more than one is refused naming
+both sessions and the parameter, no tokens is absence. Liveness is consumption: the hook deletes its token
+at the Stop that ends the turn and keeps it across a block. Every directive that names the script carries
+`-Token`. The reviewer's two-session probe runs under all four branches, plus the stale-token shape, in
+`turn-end-session-identity.tests.ps1`; the end-to-end token-across-a-block shape on the real boundary
+fixture is `conformance-detection.tests.ps1` Case 2e. PRED-BETA4-014 holds the verdicts, including the two
+clauses that missed.
+
+## B4F-054 - A CAMPAIGN FED BY ITS OWN FIXES: the stale-review advisory cannot tell a product change from a verification edit (beta5)
+
+**Reported by the maintainer from the router-skill campaign `cmp-001-agentic-architecture-skills-i001`**:
+three rounds, 7 findings then 5, each round reviewing the previous round's fixes, each fix adding
+verification surface - a test, a fixture, an evidence file. The stale-review advisory re-armed on every moved
+tree with no distinction between a product change and a fixture edit, so the campaign was fed by its own
+fixes until the human stopped it.
+
+**The mechanism, read from the engine**: staleness is a digest comparison.
+`Get-ContinuousCoReviewReviewedStateDigest` (reviewed-state-digest.ps1) hashes every non-machinery path in
+the tree - machinery is stripped by the one resolver the worktree strip also uses, and *everything else is
+in*, `tests/` and fixtures included. The navigator's `review-stale` route ("your last review no longer covers
+these files") fires when the working-tree digest no longer matches the reviewed one. A round's fixes are
+answered by tests and fixtures; those move the digest exactly as a product edit does; the next Stop reads the
+moved tree as unreviewed; a new round opens on the tree the previous round's fixes produced. The loop has no
+terminating case as long as every round's response includes verification surface - which a good response
+always does.
+
+**What it should distinguish**: the *product surface* (what the reviewer's findings are about) from the
+*verification surface* (what closes a finding). A round whose only movement since the reviewed digest is
+verification surface - tests, fixtures, evidence, records - answering that round's findings should be able
+to CLOSE the round, not re-arm it. This is B4F-047's neighbour: that finding says the review gate is vacuous
+where it could help and unsatisfiable where it fires; this one says that once it does fire, it cannot stop.
+Candidate shapes, not decided here: a second digest over the product surface only, with staleness judged on
+that one and the verification surface recorded as covered by the round it answers; or a per-round "response
+set" the navigator subtracts before comparing. Either way the rule is the same: **a fix's verification is
+part of the fix, not a new subject for review.**
+
+**Beta5, review-machinery family, beside B4F-047 and B4F-046.**
+
+## B4F-055 - THE DEMOTION RULE OVERRULED THE REVIEWER ON FORM: two findings rated major, demoted for lacking a literal clause, judged the substantive ones (beta5)
+
+**Reported by the maintainer from the same campaign**: the severity classifier demoted two findings codex
+rated `major` to `minor` for lacking a concrete failure scenario, and the crew judged those two the
+substantive ones of the round.
+
+**What the rule is, read from the engine**: `Resolve-ReviewFindingGatingEligibility`
+(review-result-ingestor.ps1, T005 / FR-006, maintainer ruling 2026-08-10 "demote, never discard"). A
+`blocking` or `major` finding whose description does not satisfy `Test-ReviewFindingStatesFailureScenario`
+lands below the gating floor as `minor`, with the original severity kept in `demoted_from` and a note
+prepended to the description. The test is **deliberately the literal clause**: a `Failure scenario:` header
+followed by at least twelve characters - "not a heuristic read of the prose", by its own comment, because "a
+contract is explicit by construction; the generosity lives in the CONSEQUENCE".
+
+**What it protects**: the human's rounds. An observation with no failure scenario can be reported but
+cannot cost the human a round - the gold-plating economics, attacked where they bite. And it makes the
+reviewer-prompt contract bind rather than decorate: a prompt is a request; the rejection is what makes it a
+contract. Both are right, and the fail direction ("demote, never discard") is the right one for a rule that
+will misfire.
+
+**What it cost here**: the rule tests for a HEADER, and a reviewer that argued the failure in prose without
+writing the header was overruled on form. The two findings the crew judged substantive were demoted below
+the floor by a string match; the five that passed the match gated the round. That inverts the rule's
+purpose in the one case it was written to serve - the reviewer that found something real - and it is not a
+misfire the human can see at the moment it matters, because the demoted findings are carried as ordinary
+minors in the follow-up list.
+
+**Should the classifier overrule the reviewer?** Not on form alone. Three shapes, for the maintainer:
+
+1. **A demotion is a question back to the reviewer, not a verdict.** A gating finding without the clause is
+   returned to the reviewer once - "state the failure scenario or accept minor" - before it is graded. The
+   contract stays literal and binding; the reviewer, who knows whether there is a scenario, answers. One
+   extra exchange per unclaused finding, bounded.
+2. **A demotion is visible at the gate, not only in the follow-up list.** The round's human-facing surface
+   names every demoted finding with its reviewer severity beside the gating ones, so the human can promote
+   one with a typed reply. Cheapest; keeps the rule; moves the judgement to the human who pays for rounds.
+3. **Widen the detector.** Accept a scenario expressed as `when ... then ...` or `->` prose. The rule's own
+   comment rejects this, and rightly: a heuristic read of prose is a detector guessing at intent, which is
+   the class fix 2 just retired on the conformance side.
+
+The crew's reading: (1) keeps every property the rule was written for and fixes the one it lacks; (2) is
+the floor if (1) is too costly; (3) is not taken. **Beta5, review-machinery family, with B4F-054.**
+
+**Evidence, feature 202, 2026-10-14 (maintainer):** across co-review rounds 1 and 2 of 202's iteration 001
+(`run-20261013-234651770-ac649a7e`, `run-20261014-102731596-597f9ec9`, codex), the engine demoted 12 of the 13
+findings to minor for lacking the failure-scenario clause; the 13th was reported minor and never demoted
+(corrected 2026-10-16 from the result files; this paragraph first said "all 13"). The crew checked every one against the code, and
+all 13 were real defects (202 DRIFT-014 and DRIFT-015). They include a cross-session authority defect: another
+session's typed "yes" could approve a reply-recording recovery it was never asked about. Each round's
+summary told the maintainer that nothing needed their attention. The demotion did not filter noise here; it
+filtered all of the signal.
+
+**Round 3, 2026-10-14 (`run-20261014-173122349-f5d4f978`, codex):** 4 findings, all reported major, all
+demoted to minor, all real, so 17 of 17 across three rounds. Each was checked against the code and
+reproduced by a failing test before its fix (202 DRIFT-024):
+
+1. A question that quotes the approval phrase was read as a missed approval: the packet repainted, and the
+   agent was told to say the approval had not registered.
+2. Markdown review links passed the packet check but were invisible to the reply check and to the reviewed-file
+   memory.
+3. One `{}` line in the hook-output journal made every later workshop reply fail. This is the permanent
+   refusal FR-003 removes.
+4. A degraded episode that first began at the dispatcher's final append went out undisclosed.
+
+The round's summary read "Nothing found that needs your attention."
+
+**Interim rule for 202 (maintainer, until this finding is fixed):** in rounds 3 and 4, every demoted finding is
+checked against the code and listed in the round's checkpoint as real or not, with the reason, before any
+sign-off (202 DRIFT-018).
+
+**Round 4 (2026-10-15, `run-20261015-110313119-da115ef4`, codex):** 5 findings, all reported major and, for the first time in 202, none demoted. Each was checked against the code and all 5 are real (22 of 22 across the four rounds): `specrew start` resumed a different feature than status and orientation after a branch switch; resume progress read iteration 1's root task list for every iteration; the Stop-block path did not disclose a degraded or withheld turn; an orientation stamped during a withheld fire suppressed the orientation for the rest of the session; a recovery question left open by an ended session could never be answered. All five are fixed behind failing tests (202 DRIFT-031). The round spent the review's last round (4 of 4).
+
+**Round 5 (2026-10-16, `run-20261016-002823641-f5fc77f3`, codex, after the maintainer's allowance reset; the last round by their rule):** 6 findings, 4 reported major and demoted to minor for "no concrete failure scenario" even though each names one (a probe reproduced two of them end to end), and 2 reported minor. The summary again read "Nothing found that needs your attention." All 6 are real (28 of 28 across five rounds): two features at the same boundary and tree shared one crossing identity, so a reply to one feature's packet could authorize the other; a conditional yes approved the reply-recording recovery; a declined recovery question stayed armed for a later unrelated yes; a recovery question recorded during a withheld turn survived; the recording disclosure could report another session's outcome; an approval phrase inside a code example read as a missed approval. All six are fixed behind failing tests (202 DRIFT-032). Across rounds 3 to 5, 8 of the 15 findings were demoted, and all 8 were real.
+
+**Round 6 (2026-10-16, `run-20261016-031317319-8c4537dd`, codex; run because round 5's result moved mid-run, B4F-126):** 4 findings, 3 reported major and demoted for "no concrete failure scenario" (a probe reproduced one end to end), 1 reported minor, and the summary again read "Nothing found that needs your attention." All 4 are real (32 of 32 across six rounds): a partial health line latched the hook-output journal; verdict options written as bullets were invisible to the Stop's meaning check; a review link with parentheses in its path was truncated; two links differing only by case were merged. All four are fixed behind failing tests (202 DRIFT-032). Across the six rounds, 23 of 32 findings were demoted (8, 4, 4, 0, 4 and 3, from the result files; first recorded as 24), and all 23 were real.
+
+**The maintainer's "no round 6" rule was overridden by mechanics, not by decision (2026-10-16, 202 DRIFT-033):** round 5's stop was refused because a crew commit landed while the round ran and moved its snapshot (B4F-126), so a sixth round was the only way to get a result that could carry a sign-off. Round 6's own stop was then refused too: its four fixes were committed after it, and a stop cannot accept that gap. Sign-off closed only through `approved for partial review signoff - <reason>`, the maintainer's advance acceptance in the engine's form. Each of the 6 rounds' summaries said nothing needed the maintainer's attention, over 32 real findings. Crew rule from here: no commit while a round runs.
+
+**Iteration 002 round 1 (2026-10-17, `run-20261017-093636207-bf1e4cc7`, codex):** 6 findings, 5 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 1 reported minor, and the summary again read "Nothing found that needs your attention." All 6 are real (38 of 38 across seven rounds of feature 202): among them, an update re-recorded a spent approval (B4F-127 for upgrading projects), and a withdrawal missed on Copilot left a revoked approval spendable (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 2 (2026-10-17, `run-20261017-134352532-0fb503db`, codex):** 4 findings, all reported blocking or major and all demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 4 are real (42 of 42 across eight rounds of feature 202): among them, an approval whose save failed read as recorded, and a not-recorded line was marked said before its output was delivered (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 3 (2026-10-17, `run-20261017-152855473-5b668458`, codex):** 3 findings, all reported major and all demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 3 are real (45 of 45 across nine rounds of feature 202): among them, a recovered withdrawal re-ran against another session's later approval (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 4 (2026-10-17, `run-20261017-181522696-4d1fe121`, codex):** 3 findings, all reported major and all demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 3 are real (48 of 48 across ten rounds of feature 202): among them, an approximate legacy match let an earlier ordinary reply suppress a withdrawal (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 5 (2026-10-18, `run-20261018-075433218-7cbe648b`, codex):** 5 findings, 4 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 1 reported minor; the summary again read "Nothing found that needs your attention." All 5 are real (53 of 53 across eleven rounds of feature 202): among them, a quoted menu was saved as a partial sign-off override, and a host envelope around a round phrase recorded a human approval (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 6 (2026-10-18, `run-20261018-114927550-9d62a483`, codex):** 6 findings, 4 reported blocking or major and demoted for "no concrete failure scenario" (each states one), 2 reported minor; the summary again read "Nothing found that needs your attention." All 6 are real (59 of 59 across twelve rounds of feature 202): among them, a round approval above a condition typed on the next line was recorded, and a message the host added still reached every approval writer (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 7 (2026-10-18, `run-20261018-125258950-98a6a63d`, codex):** 3 findings, all reported major and demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." All 3 are real (62 of 62 across thirteen rounds of feature 202): among them, a partial sign-off above a condition typed on the next line was saved as an override, one step past round 6's fix for the same case (202 iteration 002 DRIFT-003).
+
+**Iteration 002 round 8 (2026-10-18, `run-20261018-163747348-5da84de1`, codex):** 2 findings, both reported blocking or major and demoted for "no concrete failure scenario" (each states one); the summary again read "Nothing found that needs your attention." Both are real (64 of 64 across fourteen rounds of feature 202): the round-7 partial sign-off fix held on Claude only, and a boundary approval typed beside a paste was refused on Claude although FR-029 accepts it (202 iteration 002 DRIFT-003).
+
+## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
+
+**Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
+have seen the tree - combined with every finding producing a fix means a campaign terminates only on a
+zero-finding round or a partial sign-off. Given B4F-054 (every fix moves the tree the rule compares against),
+a zero-finding round on the CURRENT tree is the rare case; the ordinary end of a campaign that was answered
+well is a partial sign-off over a delta the latest round did not see.
+
+**So partial sign-off is the designed close.** Its packet today asks the human to compose the reason - to
+say, in their own words, why signing off over an unreviewed delta is acceptable. That is the wrong party
+composing: the engine knows the delta (the paths that moved since the reviewed digest) and knows what
+covers it (the tests and fixtures added in answer to the round's findings, the runs that executed them). The
+packet should ENUMERATE the uncovered delta and the verification covering each part of it, and ask the
+human to confirm or contest that coverage - the same shape as every other packet in this product: the
+machine states the facts, the human decides.
+
+**Beta5, review-machinery family, with B4F-054 and B4F-055.** The three are one item seen from three
+sides: the review cannot stop (054), it grades the wrong thing on the way (055), and its stopping ceremony
+puts the composition on the human (056). A design that fixes the first may dissolve the third.
+
+## B4F-057 - THE STOP LANE WAS KILLED BEFORE THE COUNTER ON EVERY MATERIAL STOP HERE: the review digest cost 18-37 s of a 20 s budget
+
+**The reviewer's live measurement, explained.** Four unconsumed `turn-token.json` files, no
+`turn-counter.json`, the same token re-injected turn after turn, every declaration overwriting `turn-1.json`.
+The maintainer asked which it was: consumption not deployed, or the Stop path not reached. **Measured: the
+code is deployed (`Remove-SpecrewTurnToken` in the `.specify` copy) and the path is not reached.** Through
+the deployed dispatcher, on an idle machine, `Stop` for a session with an orientation receipt:
+`PROVIDER_FAILED provider 'conformance' timed out; skipped` at the 20 s budget, after `last-fire.json` (1.7 s)
+and before the counter step, the token consumption, the journal row; the navigator then
+`PROVIDER_BUDGET ... skipped`. Direct, the same Stop took 28.0 s.
+
+**Where the time went, marker by marker**: 21.3 s between the orientation lane's guard and `$blockKind`,
+of which `Get-SpecrewReviewCoverageState` 20.4 s, of which `Get-ContinuousCoReviewReviewedStateDigest`
+19.1 s: `git add -A` on the seeded temp index 135 ms; `Get-ContinuousCoReviewMachineryPaths` 4.3-9.3 s (a
+recursive marker walk that descended into `.scratch` - 37,899 files - and discarded every hit there
+afterwards); **the per-path denial loop 14.0 s** over 5,792 tracked paths, `Test-ContinuousCoReviewDigestPathDenied`
+once per path at ~2.4 ms a call. The coverage state - and so the digest - runs at every MATERIAL stop in
+any project with a delivered review campaign AND the self-host engine beside it. Consumers do not carry
+`scripts/internal/continuous-co-review/`, so their coverage state has no digest and their Stop lane is
+cheap: this is the dogfood repo's cost, on the repo where every fix is proven.
+
+**Three changes, each identity-preserving, each proved on the same tree** (PRED-BETA4-018):
+
+1. The denial loop hands a path to the predicate only when its first segment can match a literal
+   machinery path or a `<prefix>/**` pattern; any other wildcard pattern forces the full scan. Same
+   predicate, same result - the tree id is byte-identical - 14 s to ~1 s.
+2. The marker walk prunes the volatile roots at the top level instead of discarding afterwards; the
+   machinery set is identical (`Compare-Object` empty), 9.3 s to 1.2 s.
+3. The digest is cached by worktree CONTENT state - HEAD, the porcelain listing, and each listed file's
+   size and mtime - under `.specrew/runtime`, which the identity already excludes and `.gitignore` already
+   hides. Miss 9.5 s, hit 212 ms, `-NoCache` identical; a modified tracked file, an added untracked file each
+   change the id; a write into the runtime dir does not. Nothing here can make the digest wrong, only slower.
+
+**After the three**: through the dispatcher the conformance provider completes (counter 7 -> 8, token
+consumed) and it is now the NAVIGATOR that times out at the remaining budget - it takes 9-18 s of its own
+on this repo (engine load, registry, checkpoint diff), the same class one provider later. Handover 5 s,
+conformance ~4 s, navigator ~9 s: 18 s against a 20 s budget shared by all three, and under any load the
+last one dies. The 20 s was chosen for Codex's 30 s ceiling and is not raised here. **Named for the
+maintainer, with the navigator's own 9 s as the next measurement.**
+
+**What this changes about the record**: every Stop-lane assertion in this repo since the census at
+`d4a89ab7` ran against a provider that was being killed mid-lane in production while passing its tests -
+the tests drive the provider directly with no budget. The class is B4F-047's again: a control that cannot
+fail where the product does. The identity suite's Case 5 goes through the dispatcher for the turn-START
+lane; nothing yet goes through it for Stop under the real budget. Beta5: a dispatcher-path Stop test with
+the production budget on a tree of this size.
+
+## B4F-058 - THE SIGN-OFF'S OWN RECORDS INVALIDATE ITS COVERAGE, so the human accepts twice (beta5)
+
+**From the router-skill review-signoff at `d4a89ab7`**: committing `review.md` and `quality-evidence.md`
+moved the tree past the partial-signoff binding, and the human had to accept the same partial sign-off
+twice. The mechanism is B4F-054's digest over every non-machinery path, applied to the records the
+sign-off itself writes. **Coverage must bind to the SOURCE surface, excluding the records the sign-off
+writes** - the same surface split B4F-054 asks for, applied at the binding rather than at the advisory. One
+fix serves both; recorded separately because the symptom is a human cost at the boundary, not an advisory
+loop. Beta5, review-machinery family.
+
+## B4F-059 - TWO GATES DISAGREE ON TASK-STATE VOCABULARY (beta5, decided: one vocabulary)
+
+**From the router-skill review-signoff**: the boundary sync accepts only `pending | in-progress | done` in
+`tasks-progress.yml`, while the state's Task Outcomes table uses `blocked`. A task that is blocked is a
+real state a human needs to see, and a vocabulary the sync refuses is a state the ledger cannot carry.
+**One vocabulary, decided**: the sync's enum is the authority, and `blocked` joins it - with a required
+reason - rather than the state table dropping it, because "blocked, and why" is exactly the fact a
+re-entry packet exists to surface. The template, the validator and the sync change together. Beta5.
+
+## B4F-060 - `run-mechanical-checks.ps1` FAILS WHEN THERE IS NOTHING TO SCAN (beta5, the refusal standard again)
+
+**From the router-skill review-signoff**: on a stack with no discoverable PowerShell sources the script
+exits 1. "Nothing to scan" is a NOT-APPLICABLE result with a reason, not a failure - the refusal standard:
+say what was looked for, where, and that none was found, and exit 0 with the not-applicable recorded in
+the evidence, so a sign-off over a non-PowerShell stack does not carry a red it has to explain away. Beta5.
+
+## B4F-061 - SIX TYPED AUTHORIZATIONS FOR ONE BOUNDARY: campaign decisions are gated like crossings (beta5, measured on the re-walk)
+
+**From the router-skill review-signoff**: `approved for review round`, `run another round`, `stop the
+review here` (refused), `partial signoff`, `partial signoff` again after the sign-off's own records moved
+the tree (B4F-058), `approved for review-signoff`. Three were decisions; three were mechanism. Campaign
+decisions - round approvals, pause choices, partial acceptances - are gated like crossings, under a
+boundary that is itself a crossing, so one boundary costs one verdict plus N.
+
+**Options to evaluate, as the maintainer put them, with the crew's first read:**
+
+1. **Campaign decisions internal to the review stage, one verdict at its end**, the packet enumerating
+   rounds run, findings fixed, and the uncovered delta. Cleanest count; it moves the per-round decision
+   from a typed authorization to a stage-internal choice, which is right only if a round's cost (budget,
+   time) is something the human agreed to once at the stage's start.
+2. **`run another round` and `approved for review round` as one phrase.** Removes one mechanism
+   authorization per round with no design change; cheap and should ride regardless of (1).
+3. **Partial acceptance bound to the source-surface digest** so the sign-off's own records cannot
+   invalidate it - B4F-058, and it removes one of the six outright.
+4. **`stop` after a round with findings presents the partial acceptance directly, delta enumerated, one
+   typed reply**, instead of refuse-then-ask - B4F-056's packet, arriving at the moment the human asked
+   to stop rather than after a refusal.
+
+**The measure is fixed now**: typed authorizations per boundary, counted on the re-walk. Six is the
+baseline; (2)+(3)+(4) alone read as three; (1) as one plus whatever the stage asks at its start. Beta5,
+review-machinery family - with B4F-054, -055, -056, -058 this is one design item seen from five sides.
+
+## B4F-018, adopted downstream: a consumer promoted "proven without exercising its subject" to a standing reviewer focus
+
+**From the router-skill retro on `d4a89ab7`, for the release notes and the talk's evidence**: iteration 001
+estimated 22 SP, actual 29 (+32%), and every point of the variance sits in three validation tasks, each added
+by a review round that found a check passing without exercising its subject. The retro made that phrase a
+standing reviewer focus for the project. B4F-018's rule, taken up by a consumer on its own numbers rather
+than handed down - which is the strongest evidence a methodology finding can have. The five governed-script
+surprises the retro files are all already in this record; `0be4a6e6` (the reviewer scaffold on an empty
+changed file, PRED-BETA4-017) closes one; B4F-058, -059, -060 and the sign-off count in B4F-061 are the
+rest, beta5.
+
+## B4F-002, field-confirmed on a consumer, with two things it did not say yet
+
+**Router-skill project, `d4a89ab7`, iteration 001 at RETRO**: a resumed session's hook rewrote `state.md`
+and `tasks-progress.yml` - `Iteration Status` set to `ready-for-review`, a value outside the canonical enum
+and wrong for the stage. The crew restored both with `git checkout` per the maintainer's standing
+instruction and re-mirrored the phase by hand. The writer is the chain B4F-002 read end to end
+(`coordinator-resume.ps1` -> `Get-TaskProgressSummary` -> `Sync-IterationTaskProgress` ->
+`Update-IterationStateFromTaskProgress`), and the consumer's specimen adds two facts to it:
+
+1. **The writer derives a status the validator's own enum rejects.** `ready-for-review` is not a canonical
+   iteration status; the state writer and the state validator disagree on the vocabulary, which is
+   B4F-059's shape one file over. A writer that can emit a value its reader refuses will be refused at the
+   next gate for a value the human never chose.
+2. **It fires on an OPEN iteration at a stage past review, not only on a sealed one.** B4F-002's specimen
+   was a closed, sealed iteration; the consumer's was open and at retro. The seal was never the boundary of
+   the defect - the GET-verb write is - so the fix is the writer, not the seal, and the beta5 item reads that
+   way: a resume derives nothing into an iteration's records past the stage the records belong to.
+
+## B4F-062 - THE VELOCITY DASHBOARD REPORTS PLANNED POINTS AS DELIVERED (beta5)
+
+**From the same retro**: the velocity dashboard reports 22 SP delivered for iteration 001, while the
+retro's calibrated actual is 29. The dashboard's number is scope closed - the planned points of the tasks
+marked done - not effort spent; it is not calibration data and is labelled as if it were. Either the
+dashboard reads the retro's calibrated actual once it exists, or its column is named for what it counts.
+Beta5, beside B4F-018's field adoption: the +32% that the consumer found is invisible on the surface that
+claims to show it.
+
+## B4F-063 - THE SEAL IS NOT THE LAST WRITE OF CLOSEOUT: one ordering defect, three witnesses (beta5)
+
+**Third witness, router-skill project at iteration-closeout**: the verdict capture advanced iteration 001's
+`plan.md` and `state.md` to `complete` AFTER the closeout seal had pinned their hashes; the validator
+flagged the closed iteration as edited; the crew restored both with `git checkout` to the sealed content.
+
+**One item, three witnesses, as ruled** - not three items:
+
+| witness | writer | recorded at |
+| --- | --- | --- |
+| the dashboard render | `closeout-dashboard` re-render after the seal | B4F-023 |
+| the resume writer | `coordinator-resume.ps1` -> `Sync-IterationTaskProgress` (a GET verb that writes) | B4F-002, field-confirmed above |
+| the verdict capture's advance | the closeout verdict's capture advancing plan/state to `complete` | this entry |
+
+The defect is the ORDER: closeout seals, then three different producers write into the sealed records, and
+the validator - correctly - refuses the tree the product itself produced. Every witness costs the human a
+`git checkout` to the sealed content and a hand re-mirror of the phase.
+
+**Beta5's fix is one of two, decided there**: seal AFTER the advance (the seal is the last write of
+closeout, by construction - every producer that closeout runs writes first, the seal pins what they wrote),
+or exempt the advance (the seal pins content the verdict capture is allowed to move, with the exemption
+named in the seal). The first is the simpler invariant and the one the validator already assumes; the
+second keeps a write after the seal, which is the shape that produced three witnesses. The maintainer's
+standing instruction - restore the sealed content with `git checkout` - remains the field recovery until
+then.
+
+## PRED-BETA4-007, CONFIRMED END TO END ON A CONSUMER - AND WORSE THAN STATED: the resume writer produces a packet for a boundary already crossed
+
+**Router-skill project, Copilot CLI.** After iteration-closeout sealed 001 and the verdict was captured
+(ledger: 15:46:11, no pending crossing), a fresh session resumed; its hook rewrote the sealed iteration's
+`state.md` (Iteration Status `retro` -> `ready-for-review`) and `tasks-progress.yml`; **the session then
+oriented from its own rewrite and asked for the iteration-closeout verdict a second time.**
+
+PRED-BETA4-007 predicted a red validator on files the product rewrote. What the consumer shows is the
+other half: the resume writer does not only redden the validator, **it corrupts the human-facing state the
+next session orients from**, and the session's opening packet asks the human for a verdict the ledger
+already holds. The human is asked to decide something they decided; a second typed verdict would land
+against no pending crossing (B4F-043's silence) or against a crossing the writer invented.
+
+**Disposition, ruled by the maintainer**: this is **beta4's known issue, stated plainly in the release
+notes**, with the two-file `git checkout` as the recovery; and it is **the first item for beta4.1, with
+(C)**. The writer is B4F-002's chain and B4F-063's second witness; the fix is the writer, and the
+resumed session must orient from the ledger, never from a status a GET verb derived.
+
+## B4F-063, FIXED IN BETA4 - fix 5 reversed on measured cost
+
+**The ruling**: beta4 does not ship with the seal defect. The measured cost that reversed it: after
+closeout, the next session's resume rewrote the sealed iteration (`task-progress.ps1` wrote
+`ready-for-review` at 15:58Z; the capture's advance had written `complete` twenty minutes earlier) and the
+session oriented from its own rewrite and asked for a verdict the ledger shows captured. Three post-seal
+writers, one illness, on the feature named first-run-experience.
+
+**The scope, corrected on what was MEASURED** (router-skill): the seal was written at closeout ARRIVAL
+(`sync-boundary-state.ps1:2110`) and froze `Iteration Status: retro` into iteration 001 while the human's
+verdict then established `complete`; the capture's advance wrote `complete` after the seal; the resume
+writer wrote `ready-for-review` after the seal. A seal that freezes a pre-verdict value is wrong regardless
+of what happens next, so the root is the ordering: **seal at AUTHORIZATION, as the verdict capture's last
+act after its own advance, and never at arrival.** (An earlier relay said the second iteration could not
+start without touching sealed history; that was the crew's inference, not a measurement - the plan sync
+run with `-IterationNumber 002` explicit touched nothing in 001 - and the sentence is struck.)
+
+**The fix, scoped for beta4** (PRED-BETA4-020):
+
+| writer | what it does now |
+| --- | --- |
+| the closeout sync (`sync-boundary-state.ps1`, arrival) | renders the dashboard and the closed-index entry; **seals nothing** |
+| the closeout verdict capture (`Add-SpecrewBoundaryAuthorization`, authorization) | advances state.md and plan.md to `complete` through `Sync-SpecrewCrossingMirrors`, then `Invoke-SpecrewCloseoutSeal` as its LAST act; the seal's `source` = `iteration-closeout-authorization`; journal `iteration-sealed-at-authorization`; if the seal cannot be written the verdict stands and a WARN names `specrew reseal` |
+| `Sync-IterationTaskProgress` (the resume path) | returns the existing records unchanged on a sealed iteration; journal `sealed-iteration-write-skipped` |
+| `Update-IterationStateFromTaskProgress` | returns without writing on a sealed iteration; journal `sealed-iteration-write-skipped` |
+
+Plus `specrew reseal --feature <f> --iteration <NNN>`: precondition printed (drifted / missing / added
+since the seal, who sealed and when), one write through `Write-SpecrewIterationSeal` with `source =
+specrew-reseal`, postcondition printed and enforced (`touched=0` or exit 1); refuses an unsealed iteration
+(closeout seals for the first time) and an open one, naming what it looked for. The trust-hardening
+refusal names it, with the feature and iteration filled in, beside the `git checkout` for a session's stray
+edit.
+
+**Tests** (`tests/integration/sealed-iteration-writers.tests.ps1`, class-guard lane, 33 assertions):
+closeout arrival (no seal) -> the verdict through the real `Add-SpecrewBoundaryAuthorization` -> `complete`
+written, THEN sealed, intact, journaled (Case 1); -> the next iteration's plan sync (the mirrors capped at
+`plan` for 001 and for 002, and the resume's `Get-TaskProgressSummary` with the start-context iteration still
+001, as on the consumer) -> 001's seal intact, 002 at plan (Case 1b - the re-walk's next step); resume on a sealed
+iteration writes nothing, state.md keeps the verdict's `complete`, the skip journaled (Case 2); a
+beta3-shaped drift (sealed at arrival, then state.md/retro.md moved and dashboard.md re-rendered) refused
+naming `specrew reseal`, cleared by it, the gate passing after (Case 3); the verb's refusals (Case 4); the
+order asserted on both producers' text (Case 5). **Mutations, as measured**: `-MutateSealAtArrival` (the
+old ordering: sealed at arrival, nothing at authorization) reds Case 1's seal assertions and Case 1b - the
+verdict's own `complete` flagged as tampering at the next iteration's plan sync; `-MutateNoSkip` (a
+site mutation of task-progress.ps1's two guards) reds Case 1b through the resume path, Case 2's four, and
+one Case 3 precondition string - state.md and tasks-progress.yml rewritten exactly as the consumer saw.
+
+**Field proof**: `specrew reseal` on `C:\Dev\SpecrewProjects\KeyContextAI` `001-layout-autocorrect`
+iteration 002 - the trust gate refused `retro.md, state.md, dashboard.md` before; precondition
+`sealed 2026-08-27 21:17:16 UTC by 'iteration-closeout'; drifted=state.md,retro.md added=dashboard.md`;
+postcondition `touched=0`; the gate reports 0 errors after and the full validator prints no
+`closed-iteration-edited`.
+
+**Residual, named**: a block from one Stop provider (the navigator) does not stop another (conformance)
+from consuming the token and stepping the counter in the same Stop - each provider sees only its own
+block; observed live in this session. `Set-TaskStatus` (a deliberate action, not a resume) still writes a
+sealed iteration's tasks-progress.yml; it is not one of the three witnesses and is left to the gate. And a
+closeout verdict recorded through a path with no iteration identity (`Sync-SpecrewCrossingMirrors` not
+attempted) seals nothing, which is the same as before.
+
+**PRED-BETA4-009, extended by the ruling**: the re-walk closes feature 1's iteration, resumes a fresh
+session, and starts iteration 002 through its plan sync, with ZERO seal flags and ZERO verdict re-asks. No
+walk has ever taken that step, and two of the three writers fire on it.
+
+## B4F-064 - THE CLOSING ENTRY FOR THE REOPEN: a correct refusal with no forward move is a defect of the same weight as a false pass
+
+**The principle, recorded as ruled**: a correct refusal that offers no forward move the user can take
+without understanding the internals is a defect of the same weight as a false pass. Every refusal in this
+arc that cost the maintainer an hour was one of these.
+
+The witnesses, from this record alone: the seal gate that refused every validator run in a project and
+named no remedy because the product treated the condition as impossible (B4F-023, B4F-063 - three of the
+product's own writers produced it); `review-engine-project-runtime-drifted` whose only named remedy
+destroys the tree it runs in (B4F-017, B4F-027, and the approved round in PRED-BETA4-019 that could not be
+spent); the clarify refusal that told the crew to create an iteration only a later boundary produces
+(B4F-039); the workshop refusal that sent three crews to the repair that corrupted their controller
+(B4F-035, B4F-041, B4F-042); the trust gate refusing the verdict's own `complete` (B4F-063's root); and
+the stale-review advisory that could not stop asking (B4F-054). Each was RIGHT about the condition. Each
+left a human with a specific, actionable-sounding message and nowhere to go, and the hour went into
+reading the internals the message assumed.
+
+**What it changes for beta5**: a refusal is not done when its condition is named. It is done when it names
+the one move that clears it in the vocabulary of the surface it appears on - `specrew reseal`, `git
+checkout -- <file>`, "approved for clarify" - or says plainly that no such move exists and whose act it
+is. The class guard for it is the refusal standard (B4F-009 family) applied to every refusal the product
+can print, not to the ones someone remembered.
+
+## B4F-065 - CROSS-PROJECT VERDICT CAPTURE FROM A PASTED TRANSCRIPT: the capture bound a message by its first line, regardless of what followed (fixed in beta4)
+
+**Read from this repository's own record**: `.specrew/review/round-approval/pending-round-approval.json`
+holds a live (`spent_at: null`) review-round approval whose `verdict_text` is 9169 characters in 136 lines:
+`approved for review round`, then `Thought for 1s`, then a Copilot shell transcript from the router-skill
+project - the maintainer's session there, pasted into the reviewer session here with the typed phrase
+still at its top. It is the maintainer's authorization for ANOTHER project, minted in this one, and it is
+not spent (the statement in this session that it had been was wrong; the approved round refused on
+B4F-027's marker before spending anything).
+
+**The mechanism**: W56 (DRIFT-199-I001-125) made every authority recognizer decide on the phrase's own
+LINE so that an approval followed by an instruction block would not be refused as prose, and W75
+(2026-08-27) did the same on the boundary-verdict path so a following line could not turn a verdict into
+a condition on it. Both were right about what they protected, and both therefore accepted a message
+whose first line is the phrase and whose remaining 135 lines are anything at all. Nothing looked past
+line one.
+
+**Two sub-findings, from `captures.jsonl`**: (1) the same message was captured TWICE, at 18:28:54Z from
+`UserPromptSubmit` and at 18:31:32Z from `Stop` - one typed act, two channels, two mints, which is the
+bounded residual W71 accepted and which the cross-channel dedupe exists to observe; (2) the two copies
+took different encoding paths - the prompt-entry copy carries `IΓÇÖll` (the UTF-8 bytes of a right single
+quote read back as a code page, on the `--last-user-message` argv route) and the Stop copy carries `I’ll`
+(the transcript-file route) - so their content hashes differ and the dedupe could not see they were one
+message. The encoding sub-finding is beta5's: it is an argv-transcoding defect on the prompt-entry
+channel, and a hash that differs on encoding is a dedupe that misses exactly the repeated paste.
+
+**The rule, ruled (2026-09-10)**: a verdict is the phrase plus at most the documented same-line
+instruction form; a message that continues into multi-line content is REFUSED, not minted. Fixed in
+beta4 as PRED-BETA4-022, a bounded change to the capture predicate with a test:
+
+| surface | before | now |
+| --- | --- | --- |
+| `Test-SpecrewReviewRoundApprovalPhrase`, `Test-SpecrewPauseDecisionPhrase`, `Test-SpecrewAllowanceResetPhrase`, `Test-SpecrewCoverageDeferralPhrase` (the shared-governance copy) | decided on line one | line one decides WHETHER it is the phrase; a non-blank continuation refuses with `Reason = multi-line-refused` |
+| `Test-SpecrewHumanVerdictToken` (boundary verdicts) | a leading approval won over anything below it | a leading approval followed by non-blank content returns `Action = refused-multi-line` |
+| `Test-SpecrewApprovalWithdrawalPhrase` | unchanged | **deliberately exempt**: it REMOVES authority; refusing a multi-line withdrawal would fail open (the recognizer's own doctrine) |
+| `Invoke-SpecrewTypedAuthorityCapture` (the one table both hooks call) | a refused turn was silent | a turn that minted nothing because its first line was a phrase and it went on is journaled ONCE in `.specrew/runtime/authority-capture-drops.jsonl` (`authority-phrase-matched-but-rejected`, `reason: multi-line`, `line_count`, `fix`) - the ledger the partial-signoff override already uses for "matched, then rejected" - and a `[specrew-authority] YOUR ... WAS NOT RECORDED` line goes to stderr |
+| the prompt-entry provider (`specrew-handover-provider.ps1`) | disclosed only boundary-verdict misses | says the typed-authority refusal IN THE TURN too, with the one-line retype: `'approved for review round' or 'approved for review round - <your instructions>'` |
+| `Get-SpecrewVerdictCaptureDisclosure` | one sentence, "decided by what comes FIRST" | branches for `refused-multi-line`: the first line was right, the continuation is the problem, retype one line |
+
+**What this reverses, and what it keeps.** W56's accepted shape (phrase, blank line, instruction block)
+and W75's following-line case are now refused - the tests that pinned them are retargeted on the case,
+with the ruling and the date. What W56 and W75 protected is kept by a different means: they removed a
+SILENT refusal that forced a second bare message; the refusal now carries a reason, is journaled, and is
+said in the turn with the retype. The instruction goes on the phrase's line after a dash, which is the
+form the docs have always given.
+
+**Found by the test, not by the build**: the first cut of the continuation guard used the static
+`[regex]::Split($text, $pattern, 2)`, whose third argument is a `RegexOptions`, not a count - so "the rest
+of the message" was line two alone, and a phrase followed by a BLANK line and a block read as "nothing
+follows". The recorded specimen was refused (its line two is `Thought for 1s`); W56's own blank-line case,
+reversed, was the discriminator that caught it. The instance `Split($text, 2)` takes the count. The
+pre-existing W56 code has the same call and is unaffected only because it reads element zero.
+
+**Measured under the mutation, for the record**: with the round-approval guard removed the recorded shape
+mints a 136-line `verdict_text` (the record, reproduced). With the BOUNDARY-path guard removed the same
+shape with `approved for before-implement` at its top classifies as an approval but does NOT authorize:
+`Add-SpecrewBoundaryAuthorization` refuses it with `VERDICT_CAPTURE_FAILED ... did not parse into an
+authorized boundary verdict` - a downstream parser that was already there. So on the boundary path the
+defect before this fix was silence (a WARN on stderr, no disclosure, because the disclosure fires only when
+the classifier refused), not a mint; on the typed-authority path it was the mint. The fix makes both
+refuse by reason and say so.
+
+**The pending fact in THIS repository is left as it is** - unspent, recorded. The product's only void path
+is the human's own typed withdrawal (`Write-SpecrewApprovalWithdrawal` recognizes `withdraw the review
+round approval` and its verbs), and the ruling is never to hand-edit it.
+
+**Tests**: `tests/unit/round-approval-typed-authority.tests.ps1` (Describe `PRED-BETA4-022 / B4F-065`, six
+cases: the recorded shape refused by reason; every minting sibling refuses and the withdrawal does not;
+the boundary-verdict recognizer refuses by reason; the writer at both source events writes nothing and
+the table discloses once; the prompt-entry provider says it in the turn; the one-line forms still mint
+and a clean turn writes no drop row; and a MUTATION CONTROL that runs the same specimen against a copy of
+the store with the guard removed and asserts it MINTS a 136-line `verdict_text` - the record, reproduced
+on demand); W56 and W75 retargeted; `tests/unit/capture-disclosure.tests.ps1` Cases 6-7 (the boundary
+path's disclosure, and the typed-authority disclosure beside it, both through the provider).
+
+## B4F-066 - ONE INVOCATION, TWO DERIVATIONS OF THE TARGET ITERATION: the plan sync recorded 002 and asked for 003 (fix 6, fixed in beta4)
+
+**Verbatim from the router-skill project**: `sync-boundary-state.ps1 -BoundaryType plan -IterationNumber 002`
+reported `boundary_record_status: established` for 002 and, in the same invocation, WARNed
+`CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT - 'plan' owes plan.md for iteration 003 (expected under
+...iterations\003) and it does not exist`. The crossing for 002 was never opened, so the human's
+`approved for plan` had nothing to bind to. PRED-BETA4-009's closeout-to-second-iteration extension has its
+second witness here (B4F-063 was the first).
+
+**Where the second derivation lived**: the sync writes the session cursor at its `$effectiveIterationNumber`
+(002) and then calls `Set-SpecrewPendingBoundaryCrossingScope`, which reads the cursor back and hands it to
+the gated constructor `New-SpecrewPendingCrossingScope` -> `Test-SpecrewBoundaryOwedArtifactsOnDisk`. That
+check carried its own rule - "iteration-closeout -> plan opens the NEXT iteration", `+1` - written for the
+closeout AUTHORIZATION's rebind, where the cursor still names the closed iteration (001) and the crossing
+it opens is for 002. Two callers handed the check "the cursor"; it could not tell which; it guessed, and
+guessed right for one of them.
+
+**Universal, not the pre-scaffold**: fixture (a) - 001 closed by its verdict, 002 scaffolded through
+`scaffold-iteration-plan.ps1` in the product's own order, then the plan sync for 002 - asked for 003 before
+the fix, exactly as the router-skill project did. Nothing about who scaffolded 002 or when enters the
+arithmetic. Fixture (b) - the router-skill shape, 002 scaffolded BEFORE the closeout verdict - showed a
+second consequence: the authorization's rebind had MINTED the closeout -> plan crossing (002/plan.md
+existed), and the plan sync's refusal on 003 returned `$null` from the constructor and OVERWROTE
+`pending_crossing` with it. The sync destroyed the crossing the verdict had opened.
+
+**The fix**: `Test-SpecrewBoundaryOwedArtifactsOnDisk` derives nothing - the iteration handed in is the
+iteration the entered stage owes. `New-SpecrewPendingCrossingScope`, the one constructor every minting
+path goes through, resolves the target ONCE from a fact the record carries: for iteration-closeout -> plan
+the target is cursor + 1 only while the crossing's WORKING boundary is still iteration-closeout (the
+rebind at authorization; a closeout re-sync); once the plan sync has moved the cursor - working boundary
+plan - the cursor is the target. The sync derives nothing of its own; the value it recorded is the value
+the check reads.
+
+**The first cut was wrong, and a standing suite said so**: it keyed the +1 on the CROSSING's working boundary,
+which `-OpenNextCrossingWhenBoundaryAuthorized` rewrites to plan on a closeout sync's successor auto-open -
+where the cursor is still the closed iteration. `crossing-mint-gate` Case 1 (the FR-024 gate's own suite) went
+red: the ladder minted against 001/plan.md. The rule keys on the CALLER's working boundary; 21/21 there after.
+
+**Found on the way, fixed alongside (B4F-067)**: `scaffold-iteration-plan.ps1` could not scaffold the second
+iteration of a feature whose spec carries exactly ONE canonical FR - `$scopeList = if (...) { @(...) }`
+unrolls a one-element array on the way out of the if-expression, and `.Count` on the bare string threw
+under StrictMode. Fixture (a) hit it first ("The property 'Count' cannot be found on this object"). The
+wrap now sits outside the expression; the fixture's one-FR spec is the test.
+
+**Tests**: `tests/integration/plan-sync-target-iteration.tests.ps1` (class-guard lane; 25 assertions): both
+fixtures through the REAL sync wrapper resolving through `SPECREW_MODULE_PATH`; the rebind's own path
+asserted on both shapes (refuses naming 002 with plan.md absent; mints with it present); the check handed
+002 looks at 002 and handed 003 looks at 003. RED-FIRST on the unfixed tree: 10 red, both fixtures on 003,
+(b) with the crossing nulled. `-MutateIndependentDerivation` (the +1 restored inside the check, in a temp
+copy of the module tree that this process and the sync wrapper both resolve through): 13 red - both
+fixtures on 003, and the rebind too, because the constructor's derivation and the restored one compound to
+003 at authorization; that compounding is the proof that the derivation now lives in one place.
+
+## B4F-068 - FIX 2 ITEM (c) WAS BUILT FOR ONE PROVIDER AND CLAIMED FOR TWO: the review advisory had no session in it (fixed in beta4)
+
+**Read from the record before answering the question**: B4F-047 (3) scoped item (c) as "attribution becomes
+the declaring session, and a read-only second session in the same project receives no advisory. Its test
+is in the fix-2 tail." What was built under that heading is `conformance-detection` Case PH-ms: the
+CONFORMANCE provider (order 40) no longer bills a session that declared conversational for another
+session's surface. The advisory the reviewer session then received seventeen consecutive times - `Specrew
+review - these files have not been reviewed yet` - is the CO-REVIEW NAVIGATOR's campaign stop block (order
+50): `Build-ReviewCampaignNavigatorStopBlock` on every route but review-current, review-running and
+pause-pending, fired on every Stop in the project while the tree's digest was unreviewed. Its provider took
+`--host-kind` and `--transcript-path` and never `--session-id`. **The field was right. No fixture
+contradicted it, because none existed for this provider.** The claim in B4F-047 ("(3) is beta4, through fix
+2 item (c) as already scoped") was true of the half that was built and silent about the half that was not.
+
+**The handshake, no inference**: the conformance provider judges this session's declaration at Stop and
+steps its counter afterwards; it now leaves the judgment beside the counter first - `turn-material.json`
+in the session's own state root: `{ turn_id, declaration_kind (conversational|in-flight|boundary|absent),
+material, judged_at }`, written on a block too. The navigator provider receives the `--session-id` the
+dispatcher already passes to every provider, resolves the same state root through the same
+`Get-SpecrewTurnEndPaths`, and asks one question (`Test-SpecrewTurnMaterialVerdictQuiet`): quiet for a
+session that declared conversational, or declared nothing and was judged not material; today's block for
+in-flight, boundary, absent-with-material, no judgment at all, a judgment that is not this Stop's (turn id
+neither current nor current-1, or older than 120 s - the one clock in it, failing toward the advisory),
+and a `pause-pending` route (an unanswered pause is the human's decision owed, not a file attribution; the
+decision now carries its `route` so the provider can tell). The journal row says why:
+`quiet: review advisory withheld from this session: session declared conversational`.
+
+**Tests**: `tests/integration/review-advisory-session-scope.tests.ps1` (class-guard lane, 24 assertions) -
+the field shape end to end through the REAL conformance provider and a provider copy resolving a STUB
+navigator that always returns the review-required block: the reviewer session declares conversational and
+receives nothing; the working session declares in-flight and receives the block; the reviewer still
+receives nothing afterwards, same project, same tree. Then every path that must still block: no judgment,
+absent-with-material, boundary, pause-pending (even for the conversational session), a wrong turn id, a
+ten-minute-old judgment, no session id. `turn-end-session-identity` Cases 3 and 3b assert the judgment
+itself. `-MutateUnscoped` (the provider's gate replaced by `if ($false)`): 5 red - the reviewer session's
+three, and the two quiet controls in the block-still-fires part, which are the same gate.
+
+**Field test owed**: the reviewer session's next Stop on the module built from this SHA, after an accepted
+conversational declaration. Eighteen would mean the fixture contradicts the field and the tree is not final.
+
+## B4F-069 - `specrew start --no-launch` HUNG FOR TWELVE MINUTES IN A FIXTURE PROJECT (open, consumer-facing)
+
+`tests/integration/project-path-resolution-regression.ps1`, run locally as part of a consumer sweep on
+2026-09-10: its first entry point - `scripts/specrew-start.ps1 -NoLaunch`, invoked with `.NET CurrentDirectory`
+deliberately pointed away from the PowerShell location, in the fixture project the script builds under
+`.scratch/project-path-resolution-regression/fixture-project` - produced no output for 761 s and was killed
+(processes 21732/94532; no child processes; the entry point's stdout empty). The same file is green on
+both censuses (`34502784677`, `34518281283`) on windows-latest, so the hang is environment-conditioned,
+and this machine's environment is the one a consumer has: an installed Specrew module, OneDrive-redirected
+Documents, a governed project elsewhere on disk. A `start` that can wait twelve minutes with nothing on
+screen is a consumer-facing defect whatever triggers it. Not chased in this session: it is recorded as
+open, with the fixture and the process shape, not as noise. Reproduce with the file above; if it hangs,
+attach a debugger to the `specrew-start.ps1` child and read what it is waiting on.
+
+## B4F-070 - B4F-043, THIRD CONSUMER INSTANCE IN ONE DAY: a verdict typed with no crossing pending vanished (fixed in beta4)
+
+Router-skill project, Copilot CLI 1.0.83, the before-implement crossing: `approved for before-implement`
+typed before the crossing existed was lost silently, and the hook's own later text confirmed the approval
+was still owed. Three retypes in one day. The audible standard already existed for the partial-signoff
+family in `HumanAuthorityStore.ps1` - "a phrase that matched and was then rejected is a human trying to
+authorize something, and their attempt must never vanish" - and the boundary family's disclosure
+(`Get-SpecrewVerdictCaptureDisclosure`) returned `$null` on exactly the two shapes that reached the
+consumer: no crossing pending, and a verdict naming a boundary other than the pending crossing's.
+
+**Fixed as ruled, in that one function** (PRED-BETA4-026, `eaf98a4f`): a verdict-shaped reply with no
+crossing pending gets one line back - "NO crossing is pending right now ... the last authorized boundary
+is 'tasks' ... send the phrase again when the crossing is presented"; a verdict naming another boundary
+gets the pending crossing and the phrase that authorizes it. Journaled (`verdict-not-captured-disclosed`,
+`no-pending-crossing` / `other-boundary-named`); ordinary conversation and send-backs stay silent.
+`capture-disclosure` Cases 8-9; mutation 8 red. The fixture's no-pending shape is the consumer's: the
+cursor still AT the last authorized boundary, the next sync not yet run.
+
+## B4F-071 - THE READINESS SUB-AGENT SAID BLOCKED; THE CREW'S PACKET SAID PASS (fixed in beta4 for the line; the control is beta5's)
+
+**Read from the Copilot session record** (`~/.copilot/session-state/fec32f1b…/events.jsonl`, the
+router-skill project, 2026-09-10 21:48-21:53Z), because the relay and the record differ on one point:
+
+- 21:48:47Z the crew spawned `agent_type: speckit.specrew-speckit-before-implement` (a hyphen where the
+  name has a dot) and Copilot refused it: `Unknown agent_type ... Valid types are: ... speckit.specrew-speckit.before-implement ...`.
+  The crew retried with the right name four seconds later.
+- 21:48:51-21:51:47Z the sub-agent ran to completion: 32 tool calls, 176 s, `success: true`, a 2934-char
+  result whose first line is **"Overall verdict: BLOCKED for implementation, despite the iteration artifacts
+  themselves validating successfully. The blocking condition is lifecycle authorization: the persisted
+  boundary state is currently authorized through `tasks`, and no `tasks -> before-implement` authorization
+  exists."** Every artifact check in its table reads PASS. The control existed and fired.
+- 21:52:28Z the crew's packet: "Ran the readiness check (before-implement agent): **PASS**", the overall
+  verdict dropped, then "Per Specrew's authority-in-flight rule, that verdict counts against this
+  newly-minted crossing - I'm proceeding on it now", and T201 announced.
+- The relayed "Unknown tool name in the tool allowlist: create / edit" is **not in the persisted record** -
+  not in this session's events, not in any session under `~/.copilot`, and no agent definition in the
+  router-skill project, this repository or `~/.copilot/agents` carries a `tools:` list naming `create` or
+  `edit` (the one `tools:` list anywhere is `speckit.taskstoissues`'s MCP tool). `create` and `edit` ARE
+  tool names Copilot 1.0.83 accepted in that session (the crew used `edit` 12 times and `create` once). So
+  the sub-agent was not half-armed: its output is complete readiness evidence, and it said BLOCKED. If the
+  allowlist text was on screen, it was a TUI surface this record does not keep; there is nothing in
+  `.github/agents/*.md` to correct from it, and the host-support probe has no allowlist to add until the
+  surface that printed it is named.
+
+**What is fixed in beta4** (the addendum's (a)): the overall verdict is a line a script prints from the
+ledger, not a sentence an agent writes. `readiness-verdict.ps1` (new, in the package FileList and the
+deployed extension) prints exactly one line - `Overall verdict: READY ...` or `Overall verdict: BLOCKED for
+implementation - '<boundary>' is not authorized: the ledger's last authorized boundary is '<b>'; <pending>.
+The human's typed 'approved for <boundary>' against the presented crossing is what clears this; nothing
+else does.` - and exits 0. The governed before-implement command runs it FIRST and makes its output the
+first line of the report, verbatim ("artifact checks that all pass do not make the overall verdict
+READY"); the coordinator template quotes it verbatim as the first line of the packet's What I Just Did and
+never summarizes passing artifacts as the verdict. Measured on the two consumers' live ledgers: the
+router-skill project (now authorized through before-implement) READY; KeyContextAI (tasks, crossing
+pending) BLOCKED naming the crossing. `tests/unit/readiness-verdict-line.tests.ps1` (17; mutation `-ge` ->
+`-gt` reds Case 2). This repository's own `.github/agents/…before-implement.agent.md` is an older deployed
+copy and is left to `specrew update`, as every consumer's is.
+
+**What is beta5's** (the addendum's (b), B4F-072 (b)): the control that cannot be summarized away reads
+the ledger, not the report.
+
+## B4F-072 - "PER SPECREW'S AUTHORITY-IN-FLIGHT RULE": no such rule exists, and the only control was the maintainer reading the packet
+
+The crew, holding no before-implement verdict in the ledger, declared that a verdict typed before the
+crossing existed "counts against this newly-minted crossing" and announced it would start T201. Nothing in
+the product says that; the pending-verdict stop's note about hook-recording lag after a mint was read as a
+licence to proceed before one. The only thing that stopped product source being written on an unauthorized
+boundary was the maintainer reading the packet - and B4F-071 shows the packet had already dropped the
+sub-agent's BLOCKED. Discipline is not a control.
+
+**(a) fixed in beta4** (`205ee340`): refocus core rule 1 gains the sentence - "A verdict typed while no
+crossing is pending authorizes nothing; an agent may not treat it as pending authority." - in both copies
+of `general.md`, inside SC-003's 600-token core budget (the intro and rules 6 and 9 lost filler words; every
+phrase the suites pin survives; 600/600).
+
+**(b) beta5, FIRST ITEM**: the Stop hook REFUSES - not merely packets - a turn whose material delta touches
+product source outside `specs/`, `.specrew/` and `.squad/` while the ledger's last authorized boundary for
+the active iteration precedes before-implement. Fail closed; name the boundary owed. It reads the ledger and
+the turn delta, neither of which an agent's summary can rewrite. Until it exists, the before-implement
+boundary is guarded by agent discipline alone.
+
+**Field note, fix 6**: held at three consecutive boundaries on the router-skill project - plan, tasks,
+before-implement - each sync minting its crossing with the deployed extension still at `d4a89ab7`.
+
+## B4F-073 - THE INDEPENDENT REVIEW OF `ebb7597f`: two defects behind green suites, in beta4's own additions (both fixed in beta4)
+
+**The review** (`~/AppData/Local/Temp/specrew-beta4-review-ebb7597f.md`, GPT-6 Astra, out of engine, the
+maintainer's, against `v0.40.0-beta3..ebb7597f`). Its verdict line, cited here as B4F-018's independent
+statement: *"Two new reproducible correctness findings require disposition. Most examined repairs have sound
+mechanisms and passing targeted checks. These findings concern beta4 additions, rather than a request to
+reopen the beta5 backlog."* The method - adversarial probes that reproduce a defect behind a green suite,
+fixture retained, ids quoted - is the one this record keeps arriving at (B4F-018, B4F-048, B4F-051, B4F-052,
+PRED-BETA4-011 part 5), and it found what eleven green targeted suites did not.
+
+**R1, critical (fixed, PRED-BETA4-028).** The digest cache I added for B4F-057 keyed on HEAD, the exclusions,
+the porcelain listing and each listed file's length and mtime, and `Get-ContinuousCoReviewSignoffGateDecision`
+consumed it. Repro A: `core.filemode=false`, a staged file, `git update-index --chmod=+x` - porcelain, bytes,
+size and mtime unchanged, index mode changed, tree changed; cached `f9f936d2`, direct `6cb24561`. Repro B:
+same-length content with the mtime restored; cached `96698855`, direct `67bdaa92`. **Class: a metadata key is
+not tree equality; an authority check never trusts a cache.** Measured before deciding: the pruned walk did
+most of B4F-057's work - the direct computation is 2.2-2.8 s on the self-host repo now, the cache saves ~2 s.
+So: the digest is DIRECT by default; `-AllowCache` opts in and only the advisory Stop-hook path passes it (the
+navigator's packet decision and older-tree note, the checkpoint identity, the conformance provider's
+coverage line); the signoff gate, the campaign orchestrator, the evidence recorder, the verification-plan
+runner, the review CLI, the validator and every other reader compute the identity. The index mode of every
+listed entry is in the key regardless (`git ls-files -s` over the listed paths), so Repro A cannot fool the
+advisory path either; Repro B is what a metadata key cannot see, stated in the suite as the limit and the
+reason no authority reads it. The reviewer's two fixtures, replayed against the fix: direct and advisory
+agree, `6cb24561` and `67bdaa92`. Tests: `reviewed-state-digest-cost.Tests.ps1` gains Repro A, Repro B and a
+class guard that enumerates the advisory sites and reds on any other `-AllowCache`; mutations: `-AllowCache`
+restored at the gate reds the guard, the mode dropped from the key reds Repro A.
+
+**R2, moderate (fixed, PRED-BETA4-029).** `readiness-verdict.ps1` compared ordinal lifecycle positions, so
+iteration 001's `iteration-closeout` read as 002's implementation approval - "READY" with the last
+authorization `iteration-closeout` and `iteration-closeout -> plan` pending. Fix 6's class, no cycle
+identity, in a script I wrote after fix 6. Readiness now derives from the verdicts of the current
+iteration's cycle - the ledger's rows after the last `iteration-closeout` - so a closed previous iteration
+authorizes nothing for the next, and the line says "the last authorization is the previous iteration's
+closeout; this iteration has no authorization yet". The reviewer's fixture (`psti-f21f6adb4b`) replayed:
+BLOCKED naming exactly that. Tests: the product-order probe on `plan-sync-target-iteration` fixture (a)
+(closeout 001 -> scaffold 002 -> plan sync 002 -> readiness: BLOCKED) and three cycle cases in
+`readiness-verdict-line` (a closed cycle then nothing: BLOCKED; a second cycle through before-implement:
+READY; a second cycle at tasks: BLOCKED naming it); the ordinal comparison restored reds the cycle cases in
+both suites and nothing else.
+
+**Record consistency, as the review noted**: the release notes filed the clarify exemption and the `{0}`
+format as beta5's; they are fix 3 (PRED-BETA4-012) at `sync-boundary-state.ps1`; the notes now say so.
+
+**B4F-073, R2 follow-up (fixed, PRED-BETA4-031)**: the cycle loop I wrote for R2 read raw `verdict_history` -
+which keeps approvals a scoped correction invalidated, on purpose - while `last_authorized_boundary` came
+from the effective projection. The follow-up review reproduced it through the real correction API:
+effective authority `tasks`, effective approvals none, readiness READY. One line: the cycle is derived from
+`EffectiveState['verdict_history']`, the projection every other reader consumes. The reproduction is a suite
+case with its control; the raw read restored reds it. Class closure the reviewer asked for: readiness never
+recovers an invalidated approval from immutable raw history, because it never reads raw history.
+
+## B4F-074 - THE STAGE-DEMO AUDIT OF THE INSTALLED `ef80591d`: what it ruled into beta4, what stays beta5, and the walk that justifies green
+
+**The audit** (`C:/Dev/walks/beta4-stage-audit-20260911-01/demo-readiness.md`, with `results.jsonl` and every
+probe's logs alongside) is authoritative for release acceptance. Its verdict: *"Not yet cleared for a
+fluent, full-lifecycle live demo."* Read whole. Its item 4 (readiness recovering an invalidated approval) is
+closed by `a1696673` in the `632bdcd0` module. Two of its items were ruled into beta4, both reproduced on the
+installed package first:
+
+**(1) B4F-060, closed (PRED-BETA4-033).** `run-mechanical-checks.ps1` on a project with nothing to scan threw
+`Cannot bind argument to parameter 'SourceFiles' because it is an empty array` (the audit's
+`mechanical-empty-source` probe, exit 1, no JSON). The three finding functions allow empty collections now;
+applicability is per gate and per input set - source (dead-field, anti-pattern) and tests (test-integrity)
+separately - and the evidence row says which: `not-applicable` naming the roots and extensions searched
+when the plan does not require the gate, **`failed`** naming the plan's requirement and what was searched
+when the plan's Required Quality Gates table requires the gate and there is nothing to check (the
+plan-required-but-missing-implementation case, kept distinct from a successful empty scan; readiness reads
+a failure). A project path that does not exist or cannot be read stays a thrown error. The findings JSON
+keeps the v1 schema (`additionalProperties: false` at its root, and the schema lives in each consumer's
+feature contracts); applicability lives in `quality-evidence.md` and on stderr. Two things the probe found
+on the way: the evidence renderer derived the plan's gate rows a second time and threw on a table in another
+shape (the audit's `| Gate | Command |`), and the template's placeholder row `[gate ID]` rendered as a gate
+named "[gate ID]" marked planned and kept the default rows from applying - one derivation now,
+`Get-PlanQualityGateRows`. The audit's acceptance list is `tests/unit/mechanical-checks-applicability.tests.ps1`
+(20): valid JS, valid PowerShell, documentation-only, source-without-tests, invalid root, plan-required with
+nothing to check, and the audit's own fixture shape; `[AllowEmptyCollection()]` removed reds exactly the
+empty-source cases with the audit's error. Both audit probes replayed on the fix: `empty-source` exit 0 with
+a valid payload and three not-applicable lines; `valid-js` unchanged.
+
+**(2) The fresh-init charter warnings, closed (PRED-BETA4-034).** Init runs `squad init` (which writes
+`.squad/agents/<role>/charter.md`), then `deploy-squad-runtime.ps1`, which composes each charter as the
+squad baseline plus a `specrew-managed directives` block - and wrote no sidecar. `specrew start`'s
+`Install-CopilotCrewRuntime` decides ownership by the `.specrew-managed` sidecar or a comment header whose
+text begins `Specrew-managed` at the opener; init's block marker has `>>>` between the opener and the word.
+So five untouched charters were "user-edited" on every start. **The step that omitted the marker: init's
+deploy step.** And the two steps did not agree on content either - the handler's canonical translation is
+3971 characters with no directives block against init's 5744 - so a bare sidecar would have made the first
+start replace the composition with the shorter body. One ownership convention now: the sidecar records the
+SHA-256 of what Specrew wrote (`Get-SpecrewManagedSidecarContent`, one format, both writers asserted byte
+for byte); `Test-SpecrewManagedFile` vouches only while the file still hashes to it - a mismatch is a genuine
+user edit, reported as "edited since Specrew wrote it", never relabeled; init writes the sidecar for the
+charters of a `.squad` it created this run (`-ClaimCharterOwnership`), and on update only for a charter it
+created or one that still hashes to its previous sidecar; the Copilot handler keeps a block-bearing charter
+that hashes to its sidecar without rewriting it. `tests/integration/crew-charter-ownership.tests.ps1` runs the
+REAL init and three REAL starts on a scratch project (17): zero warnings after init and two starts, five
+charters byte-identical to what init wrote, one real edit reported exactly once and preserved, no other
+charter touched. The sidecar write removed brings the audit's five back ("got 5").
+
+**The nine-boundary harness runs against a package.** `lifecycle-boundary-sync.tests.ps1` expected
+`.specify/` inside the module; a package has none, so the audit's run exited 1 after its assertions passed.
+It now compares the module's `extension.yml` against a DEPLOYED project's copy - `SPECREW_DEPLOYED_PROJECT`
+(a project bootstrapped from the package) when set, the self-host repo's mirror otherwise - and takes the
+sync wrapper from the deployed project, else the module's own extension copy. Run against the audit's
+`module/` snapshot with its `project/` as the deployed project: 4/4, the comparison green.
+
+**Found by running it from a deep path (B4F-075, fixed)**: `git status --porcelain 2>&1` carried
+`warning: could not open directory ...` as ErrorRecords and `Invoke-PreFeatureCloseoutWorkingTreeGate` read
+`.Length` on one under StrictMode - the feature-closeout sync died with "The property 'Length' cannot be
+found on this object". Any git warning at closeout reached a consumer that way. A warning is not a status
+line: skipped, never parsed. `tests/unit/closeout-gate-git-warnings.tests.ps1` builds the shape that found it
+(a path past 260 characters under `core.longpaths=false`), proves the capture carries a stderr record, and
+asserts the gate still names the dirty file; the unfixed gate reds with the exact message.
+
+**What stays beta5, as the audit states it**: review completion invalidating its own evidence (B4F-054/056/058/061) - the ordering repair is **beta4.1** unless the maintainer's demo path enters live sign-off; severity by
+heading (B4F-055); workshop correction is not assent (B4F-011/014/015); handoff/sync ordering (B4F-046);
+blocked-task vocabulary (B4F-059); planned-versus-delivered points (B4F-062); the environment-dependent
+startup hang (B4F-069); source-write enforcement at the tool boundary (B4F-072 (b), beta5's first item). The
+beta5 backlog is not moved into beta4.
+
+**PRED-BETA4-009's acceptance is replaced by the audit's "what would justify green" sequence** (see the
+predictions record): fresh project, intake, one correction, agenda, chosen lenses, spec, plan, tasks, explicit
+implement approval, a working app, one review-with-finding / fix / sign-off cycle, closeout, restart, second
+feature - elapsed time and unexpected repair prompts counted; zero manual ledger edits, zero fake approvals,
+zero severity loss behind a green result, zero repeated acceptance caused by sign-off records alone. From
+the desktop, Friday.
+
+## B4F-076 - A CANONICAL CHARTER CHANGE NEVER REACHED AN UNTOUCHED RUNTIME CHARTER (B4F-017's family; fixed in beta4)
+
+**The auditor's recheck of the installed `4a7585d8`, finding A (P2).** After init, change the canonical
+reviewer charter in `.specrew/team/agents/reviewer.md`, then synchronize the Copilot crew runtime: the
+untouched host charter, carrying init's directives block and matching its sidecar, was returned as
+`preserved-managed` every time - `applied:false`, `notices:[]` through the real installed handler. The
+canonical was never read against it. The crew ran on the old instructions with no warning.
+
+**Why the fix had this half missing**: PRED-BETA4-034 made the sidecar vouch that Specrew wrote the file
+(its SHA-256), and the handler then KEPT a block-bearing charter that hashed to its sidecar. A matching output
+hash proves the user did not edit the file; it does not prove its canonical input is current (the auditor's
+sentence). The fix conflated the two.
+
+**What was found underneath it (B4F-078)**: the base of init's composition was never the canonical charter.
+`squad init` writes its OWN charter bodies (the squad CLI's planner is 1372 characters; Specrew's canonical
+planner is 3970 - the boundary-commit cadence, the implementation-rules conversion, the stop-and-handoff
+packet format are all in the canonical only), and init's deploy step only APPENDED the directives block to
+what `squad init` wrote; the fallback scaffold's base was a one-line `# Planner`. Then the handler preserved
+that file: before beta4 because it was unmarked, after PRED-034 because it was marked. So the canonical
+planner charter never reached a fresh Copilot project's runtime at all - not a stale input, an input never
+applied. `Initialize-SpecrewTeam` seeds the canonical from the same shipped template init's deploy step
+holds, so the composition init writes now starts from that template (`-ClaimCharterOwnership`, a `.squad`
+this run created, nobody's edits), and the first start reads it as current.
+
+**The fix (PRED-BETA4-036).** One shared writer, `Write-SpecrewCharterFromCanonical`: the canonical charter,
+a blank line, the charter's existing directives block when it has one, a newline - the shape init's
+`Set-ManagedBlock` creates - then the managed sidecar re-stamped with the hash of what was written. The
+handler decides per charter, in order: the user's by disposition (`owner: user` sidecar) - kept silently;
+not Specrew's (hash mismatch, or no marker) - kept and reported with two remedies; Specrew's and CURRENT
+(`Test-SpecrewCharterCurrent`: the text before the block equals the canonical, line endings and trailing
+whitespace aside) - kept silently, no rewrite; Specrew's and stale - rewritten through the writer, action
+`updated`, counted in start's "Crew runtime synced" line. A charter without a block is no longer rewritten
+on every start either; it is compared. `specrew team resync <role>` runs the same writer by hand.
+
+**Field consequence, stated before the walk**: a project initialized on `4a7585d8` or earlier (the audit's
+`project/`, the router-skill project) carries `squad init`'s bodies under valid sidecars; the FIRST start on
+this build rewrites those five to the canonical composition and re-stamps them - "Crew runtime synced: 5
+agent file(s) written" once, then silence. A charter the user edited there is not rewritten; it is reported
+with the remedies below.
+
+Test: `tests/integration/crew-charter-ownership.tests.ps1`, the maintainer's acceptance verbatim through
+the REAL init, the REAL start and the REAL `specrew team` verbs (45): change the canonical, start - the runtime
+charter carries the new text, the block after it, the sidecar re-stamped, one file synced, the three untouched
+charters byte-identical to init's, the next start rewrites nothing; edit a charter, change its canonical,
+start - the edit preserved byte for byte, reported once and accurately. Mutation: the current-check removed
+reds exactly the canonical-change assertions (2) - the auditor's `applied:false`; init's canonical base
+removed reds the four byte-identical assertions (the first start then rewrites all five). The auditor's own
+probe replayed on the fix: case 1 `applied:true` with an `updated` action.
+
+## B4F-077 - THE NOTICE'S REMEDY REPRODUCED THE NOTICE (B4F-017's family; fixed in beta4)
+
+**The auditor's recheck, finding B (P2).** The preservation notice said: "delete the sidecar
+'<path>.specrew-managed' to keep it without this notice". Delete it, start again: "Preserving user-edited
+file ... (no Specrew-managed marker; ... delete the sidecar ...)" - the same notice, now recommending the
+deletion of a file that no longer exists. The edit was intact; the promise was false. **Deleting a marker
+cannot distinguish an intentional opt-out from missing metadata** (the auditor), so no marker-deletion could
+ever have kept that promise. This is B4F-017's family exactly: a message naming a remedy that does not clear - there, destroys - the condition it reports; and it was written in a fix (PRED-034) whose finding record
+cites that family by number.
+
+**The fix (PRED-BETA4-036).** The notice says what is true and names two remedies, each persisted, each
+clearing the condition: *"Preserving your charter '<path>' (edited since Specrew wrote it | no
+Specrew-managed marker). It stays as you wrote it. To keep it as yours and end this notice: `specrew team own
+<role>`. To return it to the canonical charter (.specrew/team/agents/<role>.md; your edit is discarded):
+`specrew team resync <role>`."* `own` writes the sidecar in its OWNED form (`owner: user`): the handler keeps
+the charter silently from then on and `Test-SpecrewManagedFile` reads it as not Specrew's to overwrite;
+`resync` returns it to canonical through the shared writer (the directives block survives) and stamps the
+managed form. Both verbs take `--project-path`, which - found on the way - never bound for ANY `specrew team`
+verb (`A parameter cannot be found that matches parameter name '-project-path'`): PowerShell binds
+`--project-path` as a parameter NAMED `-project-path`, and the script's Unix-flag re-invoke handled only
+`--role`/`--charter` (which bind on their own by prefix). One `[Alias('project-path')]` on the parameter.
+The sidecar's own sentence no longer says "delete this file" either; it names the two verbs. The other four
+hosts' handlers say only "delete the file to re-sync from canonical" - a remedy that does clear their
+condition - and offer no keep-and-own path; the owned disposition is shared and available to them (beta5).
+
+Test (same suite): follow the notice's own first instruction - `specrew team own reviewer` - then start
+twice: zero notices, the edit preserved byte for byte, the sidecar reads `owner: user`; follow the second -
+`specrew team resync reviewer` - the charter carries the canonical text including a change made while it
+was the user's, the edit is gone as the notice said, the block survived, two starts silent with no rewrite;
+the old advice replayed (sidecar deleted) yields the unmarked notice once, without the deletion advice, and
+`specrew team own planner --project-path <root>` through `specrew.ps1` clears it. Mutation: the owned
+disposition ignored by the handler reds exactly the two "does not return" assertions (the notice back after
+`own`). The auditor's probe step 3 (the old advice) still shows a notice - by design, the file is unmarked -
+and that notice's remedy clears it, which the old one could not.
+
+## B4F-078 - THE CANONICAL PLANNER NEVER REACHED A FRESH COPILOT PROJECT (found under B4F-076; fixed in beta4)
+
+Recorded separately because it predates both charter fixes: on every fresh Copilot project, `squad init`
+wrote the squad CLI's own charter bodies, init appended the directives block, and the start-time handler
+preserved the result - so `.specrew/team/agents/<role>.md`, the documented single source of truth, was
+never the runtime's base. The canonical planner's boundary-commit cadence and implementation-rules
+conversion, the canonical reviewer's rules, never ran on Copilot from init. Detail and fix under B4F-076;
+the walk from the desktop runs on the canonical crew for the first time.
+
+**Scope, measured once as the maintainer asked (2026-09-11)**: the maintainer verified on the router-skill
+project and on KeyContextAI that `.specrew/team/agents/<role>.md` carries the canonical byte for byte and
+`.squad/agents/<role>/charter.md` carries `squad init`'s generic role plus the directives block with zero
+canonical phrases - the Copilot path. The Claude host, measured on a fresh project (`specrew-init.ps1
+-Agents claude`, then `specrew-start.ps1 -NoLaunch -HostKind claude`): "Crew runtime synced: 5 agent file(s)
+written to .claude/agents"; each `.claude/agents/<role>.md` is frontmatter (name, description, tools, the
+`# Specrew-managed` header) followed by the canonical charter byte for byte - 5321/3971/5973/6910/4782
+canonical characters for the five roles, `body -ceq canonical` true for all five - and the handler rewrites
+it from canonical on every start (the header marks it Specrew's). **Copilot-only asymmetry.** The Claude crew
+ran on the canonical from its first start; it carries no directives block (the Copilot composition's second
+half), which is a different asymmetry and not this finding.
+
+## B4F-079 - TWO CI LANES NEVER RAN ON BETA4: a markdown lint red in the records skipped them on every SHA
+
+**Found when the maintainer said "check, there is a failure."** The push-triggered "Specrew CI" workflow has
+been red on every SHA of `201-first-run-experience` since the branch's first push (2026-09-09, 45+ runs), and
+its last green anywhere is `7debb9fd` on main (2026-08-31). The red job is **Lint** - markdownlint over the
+repository's `.md` files - and it fails on records, not on product: 21 hits in the iteration drift-log (bullet
+entries after indented continuation paragraphs, two fences without blank lines, and the template's `## Events`
+heading gone so the first `### DRIFT-` entry increments past H1), seven in the findings record (four wrapped
+prose lines that begin with a dash and a space, two part-divider H1s, one double blank), one in a workshop fixture. The
+records grew; the count grew with them (22 at the first push, 30 by `6b937d9c`). Because the workflow's
+**Deterministic gate** and **Contract lane** declare `needs: lint`, both were SKIPPED on every beta4 SHA - the
+F-198 honesty regression suite, the production-harness dry run, bootstrap-to-iteration, the brownfield and
+asset-blocker suites, and the rest of that lane have not run on beta4 code once. The census (publish-module)
+is the release's acceptance and sweeps every file matching `tests?.ps1`; several of the gate's suites do not
+match that pattern (`bootstrap-to-iteration.ps1`, `f198-regression-suite.ps1`), so the gate carries content
+the census does not. Nobody read the red because the census was green.
+
+**Fixed as formatting only** (`6b937d9c`+1): the four wrapped lines re-joined, the two dividers demoted to H2,
+the drift-log's `## Events` restored from the template and its blank lines inserted by `markdownlint --fix`,
+one blank line in the fixture (its consumer suite still green). No record's words changed. The lanes run on
+the next push for the first time on this branch; **no prediction of green is made for them** - they have
+never run here, and whatever they return is read as new information, before the release, not after.
+
+**The class**: a lint over hand-written records gating the product's test lanes. Beta5: the product's own
+drift-log writer should keep the template's structure, and the lanes should not depend on prose formatting.
+
+## B4F-080 - THE DETERMINISTIC GATE'S FIRST RUN ON BETA4: one suite written for Windows only (fixed in beta4)
+
+With the base fixed (PRED-BETA4-039), the Specrew CI governance step scoped for the first time on this branch
+(`changed-only to eae15ee0...HEAD (0 iterations, 1 files in diff)`), Lint went green, and the Deterministic
+gate ran on beta4 for the first time: **130 of 131 suites green**, one red - `multi-host-launch-path.tests.ps1`,
+whose test 6 hands `Get-SpecrewHostSkillRoot` the literal `C:\fake\project` and expects backslashes; under
+Linux PowerShell `Join-Path` threw "Cannot find drive. A drive with the name 'C' does not exist" and the
+script died there, so its later tests never ran either. The suite entered the gate's registry on 2026-08-13
+and had never run where the gate runs (ubuntu). Reproduced under WSL, fixed as a platform-neutral root and
+separator-neutral expectations (tests only), green under WSL and Windows. B4F-079's consequence, made
+concrete: a lane that never runs cannot tell you its suites assume a platform.
+
+## B4F-081 - THE CONTRACT LANE'S FIRST RUN ON BETA4: a suite pinning the rule the product replaced on purpose (fixed in beta4)
+
+With the gate green (B4F-080), the Contract lane ran on beta4 for the first time (runs `34591436539`,
+`34591834834`) and failed at `tests/integration/start-command.ps1` test 3: *"Prompt does not require the
+automatic after-tasks to before-implement transition."* The suite pinned the pre-2026-08-23 rule 28 - "treat
+before-implement as the next automatic lifecycle step" - which `847bb1fb` ("no code without approval is now
+enforced, not assumed") replaced deliberately: no product source until the human's typed `approved for
+before-implement` is on the ledger; preparation proceeds, source changes wait. The product was right and the
+test was stale; it sits outside the census's `tests?.ps1` pattern and inside the contract lane, which never ran
+here (B4F-079), so the stale pin was first seen today. Re-pinned to the current rule 28 (the ledger sentence,
+preparation carried forward, no stalling at after-tasks); the suite passes on Windows (the runner's `specify`
+CLI is absent under WSL, where it skips). One thing learned on the way: the generator's double backtick is a
+here-string escape and renders as one; the pin follows the rendered prompt.
+
+## B4F-082 - THE CONTRACT LANE'S SECOND STOP: a live-review test that predates the round-approval gate (fixed in beta4)
+
+Past B4F-081, the lane stopped at `tests/integration/review-command.ps1` test 5 - "live review REFUSES an
+unregistered host loudly" - because beta4's round-approval gate fires BEFORE host resolution: `specrew review
+--live --host fixture` now refuses with *"This review round needs the human's approval before it can run"*,
+which is the right order (a round costs the human's quota; nothing is resolved before their approval), and
+the test asserted the older, later refusal `requested-host-not-available`. The test supplies the product's
+documented scripted-run authorization (`--authorization-ref <label> --ack-reason "<where it came from>"`),
+recorded as an external label and never as a round the human approved; the host refusal then appears
+(`requested-host-not-available:not-cataloged:fixture`) and the suite is green. The lane's five other checks
+and the non-interactive first-run regression pass locally. Same class as B4F-080/081: a lane that never ran
+cannot tell you which of its suites the product has moved past.
+
+## B4F-083 - THE ONE REPAIR PROMPT ON THE 9154f72b WALK: the pre-boundary lint gate halts on its own successful auto-fix (open; the maintainer's call)
+
+**The walk** (`C:/Dev/walks/beta4-mdlink-9154f72b`, Claude Code / Sonnet 5, feature `001-mdlink-checker`,
+Light depth): orientation first with the dials; four lenses closed on one typed reply each; six-section
+specify packet; `approved for specify` hook-captured; no gate refusal in the runtime journal; 60 minutes
+init-to-specify. One unexpected repair prompt against zero predicted: at the specify preflight the
+coordinator asked, through a picker, for a commit before the sync could proceed. Commit `5c0a104`
+"chore(lint): auto-fix markdownlint violations" is the first commit of nine files - the three workshop
+records, `product-domain.yml`, `reviewer-hosts.json`, `implementation-rules.yml`, `lens-applicability.json`,
+the spec stub, `exhausted-turns.jsonl` - which is itself a finding: nothing in the workshop had been
+committed at lens close, so the product's lint gate was what first committed the workshop.
+
+**Reproduced from the walk's own bytes.** The lens records are agent-authored - there is no product writer
+for `workshop/<lens>.md`; `confirm-workshop-lens.ps1` requires the record to exist and the skill prescribes
+no format - so "run the writers" has no subject. The pre-fix content is recoverable from the Claude session
+transcript (`~/.claude/projects/C--Dev-walks-beta4-mdlink-9154f72b/e459cb45….jsonl`): the agent's `Write`
+calls for the three records at 12:48, 12:56 and 13:05 UTC, and the gate's throw at 13:06:35 (`[markdownlint-
+gate] Auto-fixed markdownlint violations in 3 file(s) … Please: 1. git diff 2. git add 3. git commit -m
+'chore(lint): …' 4. git push … Boundary-sync HALTED until the lint findings are resolved and committed`).
+Linted with the repo's rule set as written: **MD022 blanks-around-headings ×19** (every `## Heading` with its
+paragraph on the next line, no blank below) and **MD032 blanks-around-lists ×4**; nothing else. Both are
+auto-fixable; `--fix` inserted the blank lines; the halt then demanded a commit of the product's own fix.
+
+**Cause**: Proposal 088's `Invoke-PreBoundaryMarkdownLintGate` (`scripts/internal/sync-boundary-state.ps1`)
+treats a SUCCESSFUL auto-fix as a halt: it throws with a four-step manual git sequence ("git push" included)
+and refuses the sync until the human commits. The files are already repaired on disk when it throws; the
+boundary commit that follows the sync would carry them. The halt is the repair prompt; the picker was the
+coordinator's rendering of it. B4F-017's family again: a message whose remedy is a hand-run sequence for a
+condition the product had already resolved.
+
+**Fixes, sized, not started** (the maintainer's call: beta4, or a known issue with the Friday walk deciding):
+
+- **A. The gate proceeds after an auto-fix.** Auto-fixed files are reported on stderr and in the sync's
+  output (`[markdownlint-gate] auto-fixed N file(s): …`) and the sync continues; the boundary commit carries
+  the repaired files. Unfixable violations still halt with file:line, as today. `scripts/internal/
+  sync-boundary-state.ps1` only (one copy; the extension wrapper calls it), about fifteen lines; one new
+  case in `tests/integration/boundary-sync-markdownlint-gate.tests.ps1` (auto-fixed → the sync runs and
+  names the files; unfixable → halt) with the policy reverted as the mutation. About an hour. A module
+  file: re-freeze, one census (~1 h), install, the router-skill update.
+- **B. The skill tells the agent the shape.** One sentence in `design-workshop.md` ("a blank line after
+  every heading and around every list") - prompt-level, no guarantee with a model that skimmed the agenda
+  template already. Fifteen minutes; also a module file.
+- **C. Known issue.** Ship as is: the walk sees one repair prompt at specify whenever the agent writes
+  headings without a blank line below, costing one commit picker; the records stay correct.
+
+Recommendation: A. The gate's job is lint-clean records at the boundary; it has them when it halts.
+
+## B4F-084 - THE CODE-IMPLEMENTATION LENS ASKS FOR THE REVIEWER HOST INSIDE THE LENS (observed; no fix requested)
+
+The lens renders the installed reviewer-host list and asks the human to pick (by design: "capture their pick
+into `reviewer_preference` as `mode=human-selected`"; a reply of "use the defaults" chooses the marked
+default). On the walk it read as a question and drew an extra reply - the human typed "codex" - and the lens
+stayed open until "move on". Recorded as observed: the pick is designed to be the human's, and the lens's
+close is a separate typed reply; whether the pick should fold into the lens close is a beta5 question.
+
+## B4F-085 - "SKIP STRAIGHT TO PLAN" IS NOT WHAT CLARIFY RULE 3 ALLOWS (observed; no fix requested)
+
+After `approved for specify` the coordinator offered to "skip straight to plan". `refocus/clarify.md` rule
+3: clarify may be skipped only with a recorded rationale written into the spec and approved at the specify
+verdict - the questions are skippable, the boundary is not. The offer has a source: the launch contract's
+rules 11-12 ("Only skip speckit.clarify when resuming an existing feature whose current spec has already been
+clarified …"; "record a concrete dated skip rationale in .squad/decisions.md before speckit.plan") - a
+different home for the rationale than refocus rule 3's "written into the spec, approved at the specify
+verdict", and no word that the clarify BOUNDARY still stops. The spec on the walk was clarified (`19c7d9f`).
+Two texts, one rule: beta5, unless the maintainer folds it into B4F-086's refocus sentence.
+
+## B4F-086 - AFTER EVERY CAPTURED VERDICT THE COORDINATOR ASKED THE HUMAN TO START WHAT THE VERDICT AUTHORIZED (open; sized, not started)
+
+**The walk** (`9154f72b`, Claude Code / Sonnet 5): after `approved for specify` (13:37:25Z,
+hook-captured-from-transcript) - "What would you like next - run /speckit.clarify, skip straight to plan, or
+something else?"; after `approved for clarify` (13:49:26Z) - "Next stage is plan … that's your call whenever
+you're ready." Two human turns per boundary: the verdict, then an instruction to do what the verdict
+authorized. Nine boundaries on the Friday walk would cost nine extra turns.
+
+**Cause, from the corpus**: no prompt-time provider tells the coordinator that a verdict was captured and
+that the next stage begins in the same turn. The prompt-entry capture path
+(`HandoverStore.ps1`, the `prompt-submit-verdict-capture` branch) returns a `disclosure` only when a
+verdict-shaped turn did NOT authorize (FR-010) or a typed authority was refused (PRED-022); a captured
+verdict returns nothing to the agent. What the coordinator reads at that moment is rule 14A ("advance to the
+next single boundary stop, then halt and ask again") and refocus rule 1 ("one approval advances at most ONE
+boundary") - and "advance, then halt" is what it did. The only "next automatic lifecycle step" wording in the
+corpus is the after-tasks -> before-implement line in `specrew-governance.md:102`. CLAUDE.md's "the next
+stage begins after an explicit approved for <boundary> reply" is description, not an instruction delivered at
+capture.
+
+**Fix shape, sized** (the maintainer's ruling: UX is beta4's top priority; the Friday walk measures nine
+boundaries):
+
+1. **At capture, one line to the coordinator**: *"Verdict captured: approved for <boundary>. The <next stage>
+   stage begins in this turn: <its command>. Do not ask the human to start it; the approval was the
+   instruction."* A function beside the disclosure (`Get-SpecrewVerdictCapturedDirective`) reads the captured
+   crossing's `to` boundary, the next boundary from `Get-SpecrewBoundaryOrder`, and a nine-row table of the
+   command that begins each stage in the launch contract's own names (`speckit.clarify`;
+   `speckit.specrew-speckit.before-plan` then `speckit.plan`; `speckit.tasks`;
+   `speckit.specrew-speckit.after-tasks` then `before-implement` preparation; `speckit.implement`; the
+   review, retro and closeout syncs) - the host renders its own form, as it does for the contract. The two
+   closeout crossings, whose next stage branches (next iteration's plan or feature closeout), get the
+   "captured" half and both exits named, never an ask. The prompt-entry branch sets `disclosure` to that line
+   when `authorized` is true - the same field the hook already renders. About forty lines in
+   `scripts/internal/bootstrap/HandoverStore.ps1`; no mirror.
+2. **Refocus rule 1 gains one sentence**: "A captured approval is the instruction to begin the next stage in
+   the same turn; the agent does not ask the human to start it." `refocus/general.md` is at its 600-token
+   budget, so one existing sentence is trimmed to make room (the digest test pins the budget).
+3. **Test**: `tests/integration/capture-disclosure.tests.ps1` gains the captured cases - specify -> the line
+   names clarify and `speckit.clarify`; clarify -> plan and `before-plan`; tasks -> before-implement
+   preparation; iteration-closeout -> both exits, no ask - and the mutation (the directive dropped from the
+   authorized branch) reds them. About thirty lines.
+
+About two hours. A module file: re-freeze, one census (~1 h), install, the router-skill update - **the same
+cycle B4F-083's fix A needs; ruled in together, they ride one census.**
+
+## The version string on a branch-built module reads `0.40.0-beta3`: the tag stamps it (confirmed)
+
+`Specrew.psd1` carries `Prerelease = 'beta3'` in source. `scripts/internal/module-packaging.ps1` derives the
+release stamp from the tag: `v0.40.0-beta4` (or `-beta.4`, normalized) -> `ManifestPrerelease = 'beta4'`;
+`invoke-module-release.ps1` writes it into the STAGED manifest (`Set-SpecrewManifestReleaseMetadata`) and
+throws if the stamped value differs from the expected one. So the gallery beta4 orients as `0.40.0-beta4` when
+the tag says so; the orientation on the walk read beta3 because a local install from a branch has no tag and
+carries the source manifest. If the local/dev-loop label should say beta4 before the tag, the source line is
+a one-line change in a module file (rides the same census as anything else ruled in).
+
+## B4F-087 - THE LINT GATE'S "UNFIXABLE" HALT WAS DEAD: the parser never matched markdownlint-cli's output (fixed in beta4)
+
+Found building PRED-BETA4-043's control: `Invoke-MarkdownLintAutoFix`'s second pass parsed
+`^(.+\.md):(\d+)(?::\d+)?\s+(MD\d+/\S+)` and markdownlint-cli prints `docs/bad.md:3 error MD001/heading-increment
+…` - the `error` column between the line number and the rule id matched nothing, so `UnfixableViolations`
+was always empty and the gate's unfixable branch never fired. The only live behaviour of the gate was the
+halt on its own successful auto-fix (B4F-083); with fix A removing that, the gate would have halted on nothing
+at all. The column is optional in the pattern now; an MD001 record halts the sync naming `bad.md:3`.
+The consumer's `.markdownlintignore` note (B4F-079) applies here too: markdownlint-cli honours the CURRENT
+directory's ignore file and rejects paths outside it, so the gate reads a dirty file as clean when run from
+anywhere but the project root - the sync runs from the project root, and the suite does the same.
+
+**B4F-083's fix A landed with it (PRED-BETA4-043)**: the gate names what it auto-fixed on stderr and
+proceeds; the boundary commit carries the repaired files; an unfixable violation halts naming file:line and
+no longer instructs a git sequence. `tests/unit/lint-gate-autofix-proceeds.tests.ps1` (8) reproduces the
+walk's shape; against the unpatched gate it reds with the walk's own text.
+
+## B4F-088 - `specrew update` NEVER REFRESHES THE REFOCUS DIGESTS (open; sized, not started)
+
+**Found verifying the router-skill update to `79ab618d`** (PRED-045 part 3): after the update, integrity read
+0 drifted / 0 missing, and the project's `.specify/extensions/specrew-speckit/refocus/general.md` still lacked
+B4F-086's sentence - its hash (`44d9623f…`) is older than `4a7585d8`'s digest (`3e8ba28c…`), i.e. from the
+project's init day; two updates today (to `9154f72b` and `79ab618d`) left it untouched, and the marker was
+re-stamped around it, so the integrity check cannot see it. **Cause, read from the deploy**:
+`deploy-speckit-extension.ps1`'s `$itemsToCopy` lists `commands`, `data`, `extension.yml`, `README.md`,
+`refocus-scopes.json`, `hooks`, `knowledge`, `scripts`, `templates`, `squad-templates` - not `refocus/`.
+Reproduced on a scratch `.specify`: the deploy lands everything but the digests (0 files under `refocus/`).
+A fresh `specrew init` gets them because `specify extension add --dev` copies the whole extension directory -
+so the Friday walk's fresh project runs the current digests - but every UPDATED project runs the digests of
+its init day: PRED-026's rule-1 sentence and PRED-042's never reached the router-skill project, and the hook
+reads the project's copy (`Get-RefocusDigestRoot`), not the module's.
+
+**Ruled into beta4 (2026-09-13) and fixed (PRED-BETA4-046)**: one row in `$itemsToCopy`
+(`@{ Name = 'refocus'; Optional = $false }`) in `deploy-speckit-extension.ps1` and its mirror, so the digests
+deploy and refresh the way `scripts/` does (`specrew update` passes `-RefreshExisting`); marker re-stamped.
+`tests/unit/extension-deploy-refocus-digests.tests.ps1` (6): the real deploy onto a scratch `.specify` lands
+all eleven digests, `general.md` byte-identical to the module's and carrying rule 1's captured-approval
+sentence; a deployed digest altered on disk is refreshed back on the `-RefreshExisting` path and the marker
+reads 0 drifted; the row removed reds case 1 with the reproduction (0 of 11). The router-skill project
+updates once more to the SHA that carries this - the second update the ruling allows, because this is what
+made the first incomplete.
+
+## B4F-056, LOCATED ON `4a22ba8f`: the reviewer scaffold's own output counted as uncovered source (fixed in beta4)
+
+The maintainer asked, before the walk, whether `review.md` must be written after the final round (so the
+record moves the tree) or before it, with the run named from the store. **Measured**: after, by design - the
+finalization envelope in `review-signoff-evidence-gate.ps1` accepts one records-only commit on top of the
+reviewed commit - and the post-round `review.md` does NOT stale coverage: it is in the one execution-record
+classifier, and at the router-skill project's review.md commit (`eca921a`) `source_drift_count` reads 0. What
+staled the sign-off there was `iterations/002/dashboard.md` - written by the product's own reviewer scaffold
+(sixth in its reviewer index) and by the closeout auto-render - which the classifier answered `False` for,
+as it did for `security-surface.md`, the scaffold's other output; `plan.md`'s post-round row corrections
+were the other half, counted deliberately (W51: the standard the code was judged against). So the "repeated
+acceptance caused by sign-off records alone" the audit named is the product's review output classified as
+source. Fixed: both names in the record allowlist and in the finalization envelope's evidence set (they
+already claimed to be the same set); `tests/unit/review-output-is-quiet.tests.ps1` (11) reproduces the field
+delta on a real repository - three records after the covered tree, zero source drift; a plan.md edit still
+stales - and the names removed reds it with the field's exact `source:` list. Under the hour, as the ruling
+required for it to go in before the walk.
+
+**For the walk's crew**: after the final round, write and commit `review.md` and the reviewer evidence as
+ONE records-only commit on the reviewed commit and ask for the sign-off verdict at that HEAD - no `plan.md`,
+`spec.md` or workshop edits between the round's result and the captured verdict.
+
+## B4F-089 - THE RESUME ORIENTATION ANNOUNCED WORK THE DISK HAD ALREADY DONE (recorded under the stopping rule; beta4.1)
+
+**Field, router-skill project on `4a22ba8f`, two consecutive resumes (Claude: Fable 5.1, then Opus 5)**: the
+orientation rendered the rolling handover's paragraph - "at iteration-closeout; the session stopped before
+that evidence was committed; starting now: validating and committing" - while disk held the closeout commit
+`c20bef5` (04:25 PDT), the iteration 003 plan commit `9c46508` (04:35), the plan-crossing sync `1732a66`
+(04:36), and `.specrew/runtime/pending-verdict-stop.md` reading `Boundary to ask for: iteration-closeout ->
+plan / Human approval phrase: approved for plan`. Read from the project: `session-handover.md` (recorded
+11:37:32Z, `from_commit: 1732a66`) still carries `active_boundary: iteration-closeout`, its agent-authored
+sections are placeholders, and its "What I just did" is the Stop's mechanical line; the Fable turn was
+interrupted before its Stop, so the narrative was never rewritten, and the next orientation read the
+narrative rather than the ledger's pending crossing or the commits since the handover's `from_commit`.
+
+**Prediction for the fix, when it is taken up (the maintainer's, recorded verbatim in substance)**: the
+orientation names the pending crossing (from `pending-verdict-stop.md` / the ledger) and the commits since
+the handover was written (`from_commit..HEAD`), and its "starting now" line comes from disk, never from a
+narrative older than the ledger. Not fixed on `4a22ba8f`'s successor: the stopping rule is in force -
+beta4.1.
+
+## B4F-090 - THE FIRST-RUN BLURB ON A RESUMED PROJECT (recorded; beta5)
+
+The same orientation showed the first-run sentence ("before I build anything here, I write down what you
+want") on a project resumed at its third iteration. The blurb is conditioned on something other than "this
+project has a feature past specify".
+
+## B4F-091 - DIAL 7 CALLED "MID-LEVEL"; THE EDITOR'S BAND TABLE SAYS 7-10 IS SENIOR (recorded; beta5)
+
+The profile line in the orientation labels dial value 7 "mid-level" where `/specrew-user-profile`'s band
+table places 7-10 in "Senior". Two renderers, two tables; one table.
+
+## B4F-092 - "APPROVED FOR BEFORE-IMPLEMENT" APPROVES A PREPOSITION (beta5 backlog; two fixes sized)
+
+The one verdict phrase named for a position rather than an artifact: the human is approving the readiness
+evidence and authorizing implementation, and the phrase reads as approving "before". Two fixes, sized from
+the code:
+
+**A. The alias, ledger type unchanged (the cheapest honest fix)** - `approved for implementation` accepted as
+an alias of `before-implement` and offered as the packet's sendable line. Read from the code, five places:
+(1) the recognizer's boundary alternation in `ConversationCaptureAccessor.ps1` (`Test-SpecrewHumanVerdictToken`)
+gains `implementation`, and its `NamedBoundaries` are normalized through
+`Normalize-SpecrewCanonicalBoundaryType` (which already maps `implementation` to `before-implement`) before
+the caller cross-checks them against the pending crossing; (2) the phrase composer, `('approved for {0}' -f $toMarkerBoundary)` in
+`sync-boundary-state.ps1:667` and `HandoverStore.ps1:587`, becomes one boundary -> phrase map so the
+before-implement crossing renders `approved for implementation` in `pending-verdict-stop.md` and the packet;
+(3) the capture's phrase match for the pending crossing (`Get-SpecrewVerdictCaptureDisclosure` and the capture
+itself, `'approved for {0}' -f $to`) accepts either form; (4) the three product-code renderings of the old
+literal - launch-contract rules 28 and 30, the conformance provider's unauthorized-source line, the validator's
+`source-without-implement-authorization` message - and `refocus/before-implement.md` say the new line (the old
+one stays recognized, so nothing typed on an older habit is dropped); (5) the B4F-086 directive's
+`approved for before-implement` text. Tests: the recognizer suites gain the alias cases; the fourteen suites
+that pin `approved for before-implement` keep passing because the old phrase stays valid. About two hours
+plus a census. The ledger's `authorized_boundary` stays `before-implement`; nothing migrates.
+
+**B. The stage rename (the full fix)** - e.g. `readiness`: `Get-SpecrewCanonicalBoundaryTypes`, the sync's
+ValidateSet, the boundary order, the stage-evidence contract row, the refocus digest `before-implement.md` and
+its scope key in `refocus-scopes.json`, the governed command `speckit.specrew-speckit.before-implement`
+(deployed under every host's skills/agents mirrors), the closed-iteration index and every reader of
+`verdict_history[].authorized_boundary` / `last_authorized_boundary` / `pending_next_boundary` across
+`start-context.json`, the seals, the handover frontmatter and the crossing scopes - plus a ledger MIGRATION
+that rewrites recorded `before-implement` values in every consumer project's `start-context.json`, seals and
+journals on `specrew update`, with the old name accepted on read forever. Two to three days, a migration
+suite, and every downstream project's records touched. Beta5 at the earliest, behind A.
+
+Recommendation: A in beta5's first cut; B only if the name is wrong for other reasons too.
+
+## B4F-093 - THE ITERATION SEAL COUNTS AS SOURCE DRIFT (recorded under the stopping rule; beta4.1, B4F-056's class)
+
+Re-measuring the router-skill project's coverage state on `e9334af1`: `specs/…/iterations/002/
+.specrew-iteration-seal.json` - written by the product at the closeout verdict (B4F-063's seal) - is not in
+`Test-SpecrewLifecycleExecutionRecordPath`'s record allowlist, so a sealed iteration's own seal reads as
+uncovered source to the coverage state, exactly as `dashboard.md` did before PRED-048. One name in the same
+allowlist; a case beside PRED-048's; not fixed on the walk's SHA by the stopping rule.
+
+## B4F-094 - THE COVERAGE-DECISION BLOCK DEMANDED A RESET OF AN ALLOWANCE ITS OWN LINE CALLED FRESH (fixed in beta4; the stopping rule's exception)
+
+**Field, router-skill project on `e9334af1`, twice** (10:08Z at 002's closeout, 13:03Z at 003's first
+implementation stop): the block asked "approved for allowance reset / continue without coverage / hold"
+while its coverage line said "iteration 003 has no campaign yet, so it starts with a fresh allowance".
+**Mechanism**: `Get-SpecrewReviewCoverageState` selects the last DELIVERED review's campaign (`cmp-…-i002`,
+4 of 4) and reads `exhausted` from its budget; the provider's predicate blocks on `exhausted`; the line had
+been fixed as labelling only, the selection unchanged - two facts. The human did what the block asked: two
+`round-budget-reset` facts on `cmp-…-i003` (no grants, no spends - inert) and one unspent capture in
+`allowance-reset/pending-allowance-reset.json`. The walk's second feature meets the same stop the moment its
+first campaign's allowance is spent - the walk's own criterion - so the SHA reopened for this repair
+(PRED-BETA4-051).
+
+**Fixed**: the state carries `campaign_iteration`, `active_iteration` and `campaign_is_active`; when the
+delivered campaign's iteration differs from the active one, `exhausted` is false and the line reads the same
+fields. The predicate is untouched: it does not block, and the ordinary files-not-reviewed advisory asks for
+a round. `tests/unit/coverage-state-active-iteration.tests.ps1` (8) builds the router store's shape - i002
+with four delivered runs, i003 with two reset facts and no grants, active iteration 003, source moved - and
+reads `exhausted $false` with the fresh-allowance line; the same store at active iteration 002 still reads
+exhausted (the W52 stop kept). The iteration check removed reds exactly the `exhausted $false` case. Eleven
+adjacent suites green. The router project's two inert reset facts and the unspent capture stay as they are:
+records of the human's act, harmless, and the block that asked for them no longer fires.
+
+## B4F-095 - "SPECREW UNKNOWN IS ACTIVE ON THIS HOST": three version resolvers, two wrong (ruled into the reopened SHA; fixed, PRED-054)
+
+**Field, `e9334af1` and reproduced on `9154f72b`'s walk project**: a fresh init's
+`.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` carries `specrew_version: "unknown"`;
+`declare-turn-end.ps1:170` reads that marker for the owed-orientation render, so the human's first line is
+"Specrew unknown is active on this host" - while the SessionStart orientation resolves the manifest plus
+`Prerelease` correctly (`specrew-bootstrap-provider.ps1:484-498`, "0.40.0-beta4") and `.specrew/config.yml`
+gets the base "0.40.0" from the governance scaffold. **Read from the code**: the extension marker is written by
+`Write-SpecrewDeployedExtensionMarker`, whose `-SpecrewVersion` defaults to `'unknown'`; init's
+`specify extension add` path (`spec-kit-deploy.ps1:238`) calls it with NO version, and `specrew update`'s path
+(`deploy-speckit-extension.ps1:428`) passes `extension.yml`'s version, base only; the review-runtime marker
+(`deploy-squad-runtime.ps1:946-951`) looks for `Specrew.psd1` two levels above the extension root, which under
+the deployed copy is `.specify/`, and lands the literal fallback. Nothing gates on the marker's string (the
+engine mismatch check is content-hash); the string is what the human reads. `config.yml`'s base-only value
+is by design (Prop 134: the tag check compares the tag's version to it), so the third writer is not wrong -
+the label with the prerelease belongs to the markers and the orientations.
+
+**Fix shape, sized (the maintainer's)**: one resolver - manifest `ModuleVersion` plus `Prerelease`, as the
+bootstrap provider already computes it - in `shared-governance.ps1`, used by the bootstrap provider, by
+`declare-turn-end.ps1`'s render, by both marker writers (init's `specify extension add` path passing the
+label; the update deploy passing the label instead of `extension.yml`'s base) and by `deploy-squad-runtime`'s
+review-runtime marker, resolving from the MODULE root the deploy runs from, never from the deployed copy.
+Test: a project initialized from the installed layout carries the full label in both markers and both
+orientations, and the base in `config.yml`; mutation: the deploy script's fallback path restored reds it.
+About two hours and a census. **Not a walk criterion** (no repair prompt, no ask, no ledger effect) - under
+the stopping rule it is recorded here for beta4.1 unless the maintainer rules it into the walk's SHA.
+
+## B4F-096 - THE FIRST REPLY SKIPPED THE ORIENTATION; THE TURN-END RENDER GATE BACKFILLED IT AFTER THE LENS (recorded; beta4.1)
+
+Same first turn: the coordinator's first reply did not render the orientation; the turn-end render gate
+(the owed-orientation backfill) produced it after the first lens had run. The gate worked; the order did not: the human learned the
+project's position after answering a question about it. Recorded against the
+orientation-first rule (CLAUDE.md: "A session opens by orienting the human, not by starting work").
+
+**Ruled in (the reopening ruling, item 1)**: built as PRED-BETA4-054 - `version-label.ps1` is the one
+resolver; 9/9 through the real init; both mutations red their own case and nothing else.
+
+## B4F-097 - A TYPED AGENDA CONFIRM THAT COULD NOT BIND WAS DROPPED WITHOUT A WORD (ruled into the reopened SHA; fixed, PRED-053 + PRED-055 item 3)
+
+**Field, the walk project `C:/Temp/MailSummaryAgent` on `e9334af1`, at the agenda**: the coordinator ran
+`confirm-workshop-agenda.ps1 -RenderOnly` as a tool call (13:32:16Z) and the canonical block lived only in the
+tool result; the assistant turn before the confirm (13:38:50Z) did not contain it; the Stop hook therefore
+bound no `agenda_digest`, and at prompt time `Write-SpecrewWorkshopAuthorityReceipt` took one of its twelve
+silent `return $null` exits - no journal row, no disclosure. The coordinator learned of it when its persist
+call threw, went reading journals, and re-asked. A re-ask at the agenda is the walk's own criterion
+(unexpected repair prompts 0), so the walk was red before the first boundary.
+
+**Two halves.** (a) The silence: `Get-SpecrewWorkshopReceiptDisclosure` says it at prompt entry, with the
+remedy the persist refusal already names (PRED-053; `workshop-confirm-not-bound` 6/6, mutation reds 2).
+(b) The cause: the skill's agenda step said "send the command's complete output as one unchanged,
+contiguous block" - which a coordinator reads as satisfied by a tool result. The step now says **paste the
+command's complete output into your own message**, that a tool result is not a message, and what happens when
+the block is not in the message (PRED-055 item 3; six copies, three refusal Actions).
+
+## B4F-098 - "YES" BOUNCED AT THE AGENDA WHILE A LENS BINDS ANY TYPED REPLY (ruled: one rule; fixed, PRED-055 item 4)
+
+**Field, same walk**: after the agenda was re-rendered, "yes" cost a second ask; the coordinator wanted the
+word `confirm`. **Read from the code**: the recognizer never wanted it - `Get-SpecrewWorkshopResponseAuthority
+-Phase agenda` returns `human-confirmed / lens-selection` for any typed reply that is not a delegation or a
+skip; `confirm`, `yes`, `ok`, `looks right` are the same word to the receipt writer. The asymmetry was in the
+words the coordinator reads: the skill named no vocabulary and the refusal said "a typed confirm or change
+reply".
+
+**The ruling** (the reopening ruling, item 4): the agenda accepts a natural confirmation the way a lens
+accepts any typed reply, and the vocabulary is recorded as ONE rule. The rule, where the coordinator reads
+it (the agenda step, and the three persist refusals' Action texts): *the agenda accepts a natural typed
+confirmation the way a lens accepts any typed reply - `confirm`, `yes`, `ok`, `looks right` all bind; only a
+change request, a skip or a delegation is not a confirmation. Do not ask for a phrase and do not bounce a
+natural one.* Pinned where the receipt is written: `workshop-agenda-vocabulary` (15/15) drives each of the
+four words through the real provider on a visible agenda and reads a `human-confirmed / lens-selection`
+receipt with the digest bound; mutation (the agenda branch narrowed to the literal `confirm`) reds exactly
+`yes`, `ok`, `looks right`. Measured against the prediction: "you decide" on the agenda writes an `invalid`
+receipt row, not no row - the assertion reads "no human-confirmed row", which is the property that matters;
+the prediction's "writes none" was wrong in that detail.
+
+## THE REOPENED SHA AND THE RE-SCOPED ACCEPTANCE (the ruling on the e9334af1 walk)
+
+The walk on `e9334af1` was red by its stated criteria before the first boundary (B4F-095, B4F-097, B4F-098:
+one repair prompt and one re-ask at the agenda, "Specrew unknown" on the first line). The stopping rule
+reopened the SHA for exactly four first-run items, nothing else: (1) one version resolver (PRED-054);
+(2) the prompt-time disclosure when a workshop confirmation cannot bind (PRED-053); (3) the agenda step says
+"paste the -RenderOnly output into your message" (PRED-055); (4) the agenda accepts a natural confirmation,
+one rule (PRED-055). One freeze, one census, install, the router-skill project updated once more.
+
+**Acceptance, re-scoped and recorded as such**: the later half of the lifecycle is witnessed on these builds
+by the router-skill project's iterations 002 and 003, with human verdicts and a held seal on resume; the
+fresh-project walk covers init -> orientation -> product-domain with one correction -> agenda -> first
+technical lens -> specify, then the second feature's first question, with repair prompts 0 and post-verdict
+asks 0. Anything found outside that path is beta4.1.
+
+## B4F-099 - TURN-END DISPLACES THE AGENDA AND WEAKENS THE BOUNDARY CONVERSATION (open; reproduced)
+
+**Detected**: 2026-09-14 UTC, on the maintainer's request to compare the latest release and current beta
+against the `beta4-final-d8ce3ea9` walk. Current source `8dc29187` differs from that walk build only in
+`docs/beta4-predictions.md`.
+
+**Drift type**: violation. **Severity**: critical to the recorded first-run acceptance (zero repair
+prompts). **Work item**: beta4 fix 2 / PRED-BETA4-011, introduced in `dfae6133`.
+**Requirement**: Feature 141 FR-025 (interactive, expertise-adapted per-lens workshop), FR-040 (agenda
+orientation), and current launch-contract rule 46 (substantive boundary review and discussion).
+
+**Evidence**: the product-domain `move on` bound and the checkpoint writer closed that lens. At
+03:37:40Z the agent rendered the complete agenda through the tool. At 03:38:05Z its only following reply
+was the turn-end status, ending `nothing needed`, although agenda confirmation was required. No agenda
+appeared in that reply. The human's 03:43:29Z `yes` therefore had no agenda digest to bind to; the agent
+re-presented it and asked again at 03:44:08Z. The controller remains pending confirmation.
+
+**Cause**: rule 46A and the turn-end skill require the script's output verbatim at every turn end;
+the workshop skill requires the agenda/question in the assistant message. The script has no workshop
+answer-wait kind: conversational has an empty body, in-flight describes background work as needing
+nothing, boundary renders a generic crossing packet. The agent chose in-flight for a human-answer wait.
+The taxonomy and competing response instructions make this more than a missed paste reminder.
+
+**Measured**: isolated replay through the real Stop provider and receipt writer, with identical complete
+prerequisites: status-only reply gives no agenda digest/no `yes` receipt; visible agenda gives both;
+neither reply is Stop-blocked. Direct renderer probes also show empty conversational output and
+boundary sections with cursor metadata/generic discussion instead of targeted review content.
+Agenda-vocabulary, turn-end-update-transition and capture-disclosure suites all pass. They do not cover
+this integrated presentation path. B4F-086's next-stage directive is present and tested; it is not an
+unfixed finding here.
+
+**Resolution path**: human-decision. Proposed repair: keep declaration/authority facts but preserve
+agent-authored interaction content, explicitly represent workshop answer waits, restore substantive
+boundary review sections, and give orientation one owner. No source fix, lifecycle advance or release
+approval was performed in this investigation. B4F-097's disclosure and vocabulary repairs survive;
+its missing-presentation cause remains open under this finding.
+
+**Class closure**: NONE — the current code still reproduces it. Closure requires an installed-host walk
+that preserves the agenda and question through turn-end, binds one reply per scope, and advances after
+each captured verdict without another start request, plus the corresponding integrated regression check.
+
+Full source comparison, timestamps, limitations and acceptance checks:
+[regression analysis](beta4-agent-led-regression-analysis.md),
+[measured replay and renderer outputs](beta4-agent-led-regression-evidence.json).
+
+### B4F-099 ruling and bounded repair, 2026-09-14 UTC
+
+The maintainer ruled the report's four changes into beta4. PRED-BETA4-057 was committed before
+implementation. Agent-authored drafts now survive the final tool call; ordinary declarations emit no
+human-facing text; boundary declarations verify the packet and supply only missing machine lines;
+Stop rejects hidden prepared content; orientation has one owner and a dials-only repair. The workshop
+exemption cannot suppress that opening correction. Authority producers and the captured-verdict
+directive remain unchanged.
+
+The integrated pre-answered walk passes and the disposable mutation fails five assertions. Focused
+identity, crossing, withholding, orientation, capture and package checks retain their authority
+assertions. [Validation and delivery record](beta4-b4f099-validation.md) and
+[repair evidence](beta4-agent-led-repair-evidence.json) carry the results.
+
+**Disposition**: bounded repair candidate; installed-host acceptance remains open. The d8ce3ea9 walk
+is abandoned evidence and its transcript is preserved. One freeze, one census, install and one
+router-skill update are authorized. The stopping rule resumes afterward; acceptance 5 is the
+maintainer's Monday walk, not a claim available from synthetic replay.
+
+### B4F-099 census and maintainer review, 2026-09-14 UTC
+
+The maintainer reviewed `97e03c80` against PRED-BETA4-057: the four changes are present and tested
+as ruled. The one census is red, 420/424; its four failures and the tests/docs-only HEAD past the
+censused SHA are recorded in the [census verdict](beta4-b4f099-validation.md#census-verdict).
+CI `c0d1e148` was red for MD012 in the validation document; `27b40832` corrected it and passed CI.
+No second freeze or census is authorized by those follow-ups. Installed-host acceptance remains open.
+
+## B4F-100 - WHOLE-DRAFT VISIBILITY CAN REJECT A TIGHTENED PACKET (beta4.1; Monday exception)
+
+**Detected**: maintainer review of `97e03c80` against PRED-BETA4-057, 2026-09-14 UTC.
+**Failure scenario**: `Test-SpecrewTurnMessageVisible` requires the whole declared draft,
+whitespace-normalized, inside the assistant reply. Tightening one sentence after saving the packet
+causes Stop to block with `presentation|declared message`; each miss costs a human-visible turn
+until the cap releases. This is a review finding, not a reproduced Monday-walk failure.
+
+**Disposition**: beta4.1 unless Monday's walk trips it. If it does, compare load-bearing lines
+(headings, review-target links, question line, approval line and marker) instead of the entire
+concatenation. The frozen beta4 package retains its current comparison; no repair was added here.
+
+**Live, 2026-10-13 (feature 202):** twice in one session, at lens 7 and at the specify stop, the
+assistant reply carried every meaning-bearing line of the declared draft but reworded some sentences.
+Stop blocked with "include the complete declared message ... and include the pending approval line and
+marker", and the whole message was rendered a second time. At the specify stop no crossing existed,
+so the demand for an approval line and marker named content that could not legitimately exist.
+See DRIFT-202-INTAKE-012.
+
+## B4F-101 - TURN DRAFTS HAVE NO FIXED IGNORED LOCATION (beta4.1)
+
+**Detected**: maintainer review of `97e03c80` against PRED-BETA4-057, 2026-09-14 UTC.
+**Failure scenario**: `-MessagePath` has no fixed location. The three skills say to save the draft
+without naming a path, and the script neither constrains nor cleans it. A draft under `specs/` can
+be swept into the next boundary commit or reported dirty at closeout.
+
+**Disposition**: beta4.1. Use the fixed ignored `.specrew/runtime/turn-message.md`, name it in the
+three skills and default it in the script. This finding is recorded; beta4's package is unchanged.
+
+### B4F-027 recurrence - installed and updated ahead of a green census (process deviation)
+
+**Maintainer ruling, 2026-09-14 UTC**: census `34808258530` was red, so `97e03c80` is **not frozen**.
+The agent installed `97e03c80` and updated the router-skill project despite that result. Reporting the
+four failures did not authorize crossing the green-census prerequisite. Calling the delivery cycle
+complete and the SHA frozen was wrong. This is a process deviation in the B4F-027 class: installation
+and project deployment moved ahead of the evidence that must sanction the pair.
+
+The installation and update remain recorded facts; they are not retroactively valid. Do not repeat
+them ahead of green. The walk is on hold. The bounded correction is to retain the two already committed
+test-only fixes (`c0d1e148`, `4dae0a1b`), re-stamp the stale repository extension receipt, raise the
+PSGallery test's bound as a test-only change, state PRED-BETA4-058, and run one census on the new SHA.
+The sanctioned CI/census pair is the pair; a red is not a request for an unchanged re-dispatch.
+Only after green: byte-verified installation, one further router-skill update, then report the walk SHA.
+B4F-100 and B4F-101 retain their beta4.1 dispositions and the recorded Monday exception for B4F-100.
+
+### B4F-027 recurrence disposition - corrected sequence witnessed
+
+PRED-BETA4-058 was committed in `82a080a1` before the bounded correction; candidate `8d3f9906`
+passed its sanctioned CI/census pair once (census `34813894967`: 424/424, no caller contamination;
+CI `34813883244`: all jobs green). The census workflow completed at 07:26:38 UTC; installation began
+at 07:27:28 UTC, byte-verified all 424 package files, then the router-skill project was updated once
+more at 07:28:38 UTC. Deployment integrity and runtime match; seven saved user records are unchanged.
+The [delivery record](beta4-b4f099-validation.md) carries the validator's own before/after output and
+sequence evidence. The repository receipt was stale; the fixture remains unchanged. The test-only
+PSGallery bound is 15,000 ms; both earlier assertion corrections are in the candidate.
+
+The premature `97e03c80` installation/update remains a process deviation and is not ratified by this
+later green result. The rule remains green before installation and project update. **Walk SHA:
+8d3f9906**. Acceptance 5 remains unwitnessed until the maintainer's walk; B4F-100/101 keep their ruled
+dispositions. This records compliance in the corrected cycle, not closure of the whole B4F-027 class.
+
+### B4F-099 installed-host acceptance - maintainer GREEN, 2026-09-14
+
+The maintainer accepted the re-scoped walk on `8d3f9906` (08:29-09:11 PDT, claude-opus-5 after an
+initial Fable turn): orientation once in the first reply, visible agenda and binding yes, one scoped
+move-on per lens, substantive specify packet with marker last and in-turn spec commit `9adb8f2`,
+same-turn clarify/plan starts on the captured verdicts, and the second feature's first registered
+question. Counts: unexpected repair prompts 0, post-verdict asks 0, partial acceptances 0.
+Acceptance 5 is GREEN within this path; release of exact `8d3f9906` is authorized. The
+[walk record](beta4-b4f099-validation.md#maintainer-walk-verdict---green-on-the-re-scoped-acceptance)
+retains timestamps, the unexercised correction step (three walks running), and duplicate agenda receipt.
+
+## B4F-102 - DESIGN-ANALYSIS REFUSAL OMITS THE PRODUCING STEP (beta4.1)
+
+**Observed beyond the accepted path:** the plan-stage gate names missing
+`iterations/001/design-analysis.md` but omits the step that produces it. In the 2026-09-14 `8d3f9906`
+walk, the coordinator spent four minutes reading module internals and encountered one classifier
+denial before drafting the artifact. **Disposition:** beta4.1, recorded not fixed. A gate refusal
+must name the producing action, as the persist refusal already does; naming the missing file alone
+leaves the coordinator without its next step. Related ordering/default findings are B5F-002/003.
+
+## B4F-103 - GALLERY COMPARISON SCOPE (record-only; beta4.1 correction)
+
+**Detected:** post-publication Gallery verification of `v0.40.0-beta4` / `8d3f9906`, 2026-09-14.
+The tag-triggered workflow succeeded, including census 424/424. The downloaded package embeds the
+same commit, 423-file count and hash as the verified local installation, but its actual content
+re-hashes differently. Three `.gitkeep` placeholders were excluded by NuGet (each has a NU5119
+warning in the publication log); the metadata writer changed two manifest line endings after the
+release path computed the stamp. Replaying that writer on a temporary local-manifest copy reproduces
+the downloaded manifest hash exactly. The remaining 419 present content files match byte-for-byte.
+
+**Evidence:** [publication and hash comparison](beta4-b4f099-validation.md#publication-completed---exact-byte-gallery-check-failed-b4f-103),
+with full hashes and machine checks in the JSON companion record. NuGet documents the observed
+[default dotfile exclusion](https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5119).
+The initial raw comparison found a stamp/scope/serialization mismatch and no other changed file.
+That agent check did not exercise Gallery initialization; the independent maintainer evidence below does.
+
+**Maintainer disposition, 2026-09-14:** **record-only, no republish; beta4 is released and the
+stopping rule is closed.** Independent verification of the Gallery `0.40.0-beta4` copy against the
+byte-verified `8d3f9906` build finds **419/419 shipped content files identical**. The manifest differs
+only by the publish-time stamp, reproduced by metadata replay. The maintainer reports three absent
+zero-byte `.gitkeep` placeholders excluded by NuGet (NU5119). The local
+`.specrew/version-check-cache.json` is runtime output, not package content.
+
+The maintainer also ran `specrew init` from the Gallery copy: hook wiring, skills and every template
+directory with content deployed. The only absent directory, `hooks/`, held nothing. The
+[final disposition and evidence](beta4-b4f099-validation.md#b4f-103-maintainer-disposition---record-only-beta4-released)
+records this human-supplied runtime verification separately from the earlier raw comparison.
+
+**Beta4.1:** the exact-byte Gallery check excludes NuGet-dropped zero-byte placeholders and the
+publish-stamped manifest line(s), or the package stops shipping `.gitkeep`. Either way, the check
+compares the declared content scope: **B4F-018's rule**. Runtime files are outside package content.
+This follow-up is recorded only; no beta4 repair or republish is authorized.
+
+## B4F-104 - UNCHANGED PENDING CROSSING REPAINTED ON EVERY TURN (beta4.1)
+
+**Reported by the maintainer, 2026-09-14:** in a project with a pending crossing, every non-verdict
+turn ends with the full boundary packet repainted and a visible `Stop hook error` line. Reported
+triggers include a side question answered by a skill, a wrong verdict and an orientation request.
+The crossing remains unchanged, but each turn incurs the same boundary re-presentation.
+
+**Required behavior:** boundary re-presentation is owed **once per session while the pending crossing
+is unchanged**, not once per turn. After that presentation, another non-verdict turn must not re-arm
+the same presentation obligation or produce a `Stop hook error` merely because the crossing remains
+pending. A new session still owes its one presentation of the pending crossing; a changed crossing
+has its own presentation obligation. Presentation does not supply a verdict or advance the crossing.
+
+**Disposition:** beta4.1, recorded only. Preserve the reported full-packet repetition and visible
+error as acceptance observations, including all three non-verdict triggers. Beta4 remains released;
+this record does not authorize a repair or republish.
+
+**Live recurrence, 2026-10-13 (feature 202 specify stop, with B4F-100):** the six-section stop rendered
+twice, with a visible `Stop hook error` in between, while it offered no verdict and asked the human
+nothing that the first rendering had not already asked. It violated 202's governing principle
+("Unchanged context needs no packet"). See DRIFT-202-INTAKE-012.
+
+## B4F-105 - DEFAULT DASHBOARD AND SAVED LIFECYCLE STATE SELECT DIFFERENT FEATURES (beta4.1 candidate)
+
+**Observed:** 2026-10-13, Codex status session on branch `201-first-run-experience`, HEAD `24e5701a`.
+`specrew status --project-path . --json` selects `001-specrew-product` as the active feature (Shipped);
+`.specrew/start-context.json` names `199-beta3-stabilization` at `feature-closeout`, with an inactive
+session anchor. `.specify/feature.json` has an empty `feature_directory`. The branch and latest delivery
+records describe feature 201 / beta4. These observations establish inconsistent context selection, not
+that either displayed historical feature is the correct feature to resume.
+
+**Symptom:** a status request requires a second investigation to identify which work the dashboard describes.
+**Suspected surface:** default dashboard feature selection and its relationship to lifecycle, feature-pointer,
+branch and inactive-session context. Root cause not investigated in this intake.
+**Cost:** one contradictory active-feature display and additional status reconciliation; elapsed overhead not measured.
+**Disposition:** beta4.1 candidate for the workshop's scope decision. No repair authorized or implemented.
+
+## B4F-106 - A MISSING DIALS LINE COST A FULL CONFORMANCE REPLY CYCLE (beta4.1 candidate)
+
+**Observed:** 2026-10-13, Codex status session, HEAD `24e5701a`. The substantive status reply correctly
+reported the recorded release, stale lifecycle context, and sealed-record validation failure. The Stop
+hook requested only the missing line beginning `How I am adapting to you:`, with four numeric expertise
+values. The next assistant reply supplied that line and changed no status conclusion or lifecycle authority.
+The earlier visible commentary had already described the expertise bands in prose.
+
+**Symptom:** a cosmetic omission produced an additional hook/assistant round trip, with no work decision
+or approval to make. The omission was real; its recovery cost is the finding.
+**Suspected surface:** orientation/adaptation conformance and the recovery policy for a missing presentation line.
+Root cause not investigated in this intake.
+**Cost:** one additional conformance reply cycle, zero substantive decisions; elapsed overhead not measured.
+**Priority:** judge the extra stop as a cost, not as evidence of rigor. Preserve the adaptation contract while
+deciding a proportionate recovery in the workshop.
+**Disposition:** beta4.1 candidate. No conformance relaxation or implementation is authorized by this record.
+
+## B4F-107 - EXPERTISE DIALS USE NUMBERS ON CODEX AND PROSE ON CLAUDE (beta4.1 candidate)
+
+**Observed/reported:** 2026-10-13. Codex's corrective hook line renders
+`software_architecture=10, ui_ux=10, product_management=7, ai_research_project_management=10`.
+The maintainer reports Claude renders the same adaptation contract as prose such as
+`expert on Software Architecture`. Codex output is observed in this session; the Claude comparison is
+maintainer-supplied evidence, not a new cross-host replay.
+
+**Symptom:** the same adaptation contract exposes implementation keys and numeric values on one host,
+and readable expertise descriptions on another.
+**Suspected surface:** host adaptation renderers and conformance expectations for equivalent content.
+Root cause not investigated in this intake.
+**Cost:** inconsistent readability and a translation burden; no separate extra stop measured for this finding.
+**Scope guard:** B4F-091's expertise-band mismatch remains beta5. This candidate concerns host presentation
+of the same values, not changing values, band thresholds or the profile contract.
+**Disposition:** beta4.1 candidate for the workshop's scope decision. No fix implemented.
+
+## B4F-108 - A TRANSIENT JOURNAL-LOCK FAILURE SILENTLY BLOCKS EVERY WORKSHOP RECEIPT (Codex workshop parity; beta4.1 Tier 1)
+
+**Observed:** 2026-10-13, feature 202 product-domain checkpoint. The maintainer's typed replies (the
+full two-tier scope reply and `move on` on Codex, then `move on` on Claude) produced no workshop
+receipt, so the checkpoint could not close on either host. `.specrew/runtime/workshop-authority.jsonl`
+holds 20 receipts, all `host_kind: claude`, the latest at 2026-09-09T01:22Z, and none with
+`host_kind: codex` ever. On Claude the reply was logged as `typed-turn-exhausted` with `minted: ""`.
+
+**Cause (maintainer diagnosis, 2026-10-13):** `.specrew/runtime/hook-output-authority.jsonl.unhealthy`
+had existed since 2026-09-09T07:28:50Z. Its content is a sharing violation on a journal append:
+`The process cannot access the file '...hook-output-authority.jsonl' because it is being used by another
+process.` While the marker exists, `Test-SpecrewWorkshopResponseIsHookOutput` (workshop-authority-store.ps1,
+near line 409) returns true for every reply, so every typed reply is treated as hook output and no
+receipt can be written on any host. Only specrew-hook-dispatcher.ps1 (lines 102-122) writes the marker,
+and nothing clears it. This also explains the first scope reply that missed before any product record
+existed. The marker has been moved, byte-identical, to
+`specs/202-beta4-1-ux-stabilization/workshop/evidence/hook-output-authority.jsonl.unhealthy`
+(SHA-256 `d4278938...4fbc`).
+
+**Three defects:**
+
+1. **A transient journal-lock failure latches permanently.** One sharing violation on one append
+   writes a marker that nothing removes. A momentary lock becomes a permanent project state that
+   survives sessions, hosts and weeks (2026-09-09 to 2026-10-13).
+2. **The latched marker is undisclosed, so turns are consumed silently.** No session start, status,
+   refusal or hook message mentions the marker. Typed replies are recorded as consumed turns with
+   nothing minted. The human sees questions that never close, and the agent sees only an absent receipt.
+3. **The refusal names a "selection channel" instead of the marker.** The conformance Stop told the
+   agent the answers came "through a selection channel". The maintainer typed them and no structured
+   question tool ran. The refusal inferred a channel from the missing receipt instead of naming the
+   condition that suppressed it.
+
+**Related observation:** product records written before any receipt then made the authority store
+refuse a later product-domain receipt (workshop-authority-store.ps1 near line 485). The only way out
+was setting the records aside. This is preserved as a consequence observed during this incident.
+
+**Required behavior:** a transient write failure does not permanently disable receipt capture. Any
+degraded capture state is disclosed to the human and the agent wherever a reply would otherwise be
+silently consumed. A refusal names the actual cause and one recovery action, and never attributes the
+reply to a channel the human did not use. Codex works in the workshop as well as Claude and Copilot do.
+
+**Acceptance:** a cross-host test runs the same workshop flow (product-domain, agenda, one lens) on
+Claude, Codex and Copilot. On each host it must produce receipts and close each checkpoint with the
+same number of human replies. **Codex has not yet been tested on a healthy worktree**: every Codex
+observation so far postdates the 2026-09-09 latch, so Codex parity is unproven, not shown broken.
+
+**Cost (baseline):** on Codex the product-domain checkpoint never closed. It used the scope reply, a
+`move on`, a recovery proposal, a selection-channel Stop cycle, an approval to set records aside and a
+host switch. On Claude it took one more presentation, one `move on` consumed without a receipt, a
+diagnosis stop and an approval to move the marker. Elapsed time not measured.
+**Disposition:** beta4.1 Tier 1, added by the maintainer on 2026-10-13. Records set aside to
+`workshop/preserved-product-answers/` and the marker to `workshop/evidence/` (both moved, not deleted).
+No fix implemented. Drift: DRIFT-202-INTAKE-004 to 006 in the feature's intake-drift-log.md.
+
+## B4F-109 - A WORKTREE CANNOT OPEN SPECIFY FOR ITS SECOND FEATURE (new-feature cycle reset; beta4.1 Tier 1)
+
+**Observed:** 2026-10-13, feature 202 specify boundary on Claude. The branch was pushed and the boundary
+commit was `3821a05c`. `sync-boundary-state.ps1 -BoundaryType specify -FeatureRef 202-beta4-1-ux-stabilization`
+returned `success: true` and `boundary_record_status: established`, with `pending_verdict_has_pending: false`,
+and wrote no `pending-verdict-stop.md`. The advancement gate meanwhile reports `intake -> specify` blocked
+("No persisted authorization matched"). The gate wants a verdict, but no crossing exists for a typed
+verdict to bind to.
+
+**Cause (maintainer diagnosis, 2026-10-13):** `Get-SpecrewPendingBoundaryCrossing` (shared-governance.ps1)
+resets the lifecycle cycle only for `iteration-closeout -> plan`. In this worktree,
+`last_authorized_boundary` is still feature 199's `feature-closeout`, so 202's `specify` counts as
+already passed and no crossing is minted: `pending_next_boundary` is `specify`, `pending_crossing` is
+null, and `HasPendingVerdict` is false. The authorization writer has the same rule. Authorizing `specify`
+from `feature-closeout` is refused as a backward move, because only the iteration-closeout cycle reset
+is recognized. No worktree can open specify for its second feature.
+
+**Required behavior:** `feature-closeout -> specify` for a new feature is a cycle reset, like
+`iteration-closeout -> plan`. The specify sync for a new feature mints a scoped specify crossing, so the
+human's typed verdict is captured through the normal path. The reset is keyed to the new feature, so a
+closed feature's history can never authorize, or block, another feature's boundaries.
+
+**Widened by the maintainer at the clarify verdict (2026-10-13):** on a new-feature reset, all
+per-feature runtime state is keyed to the new feature: the crossing, the current-feature pointer, and
+the review-campaign coverage line. The coverage line on 202's clarify stop named feature 199's campaign
+(`cmp-199-beta3-stabilization-i002`, 148 files changed since); that is the same leak and is folded in
+here. **Audit trail:** the out-of-band specify authorization recorded for 202 (`auth-83b0f0c2...`,
+`out_of_band: true`, with its bypass record) stays in the ledger permanently. The ledger is append-only,
+and that entry is never rewritten or removed.
+
+**Relation:** sits next to B4F-105 (stale current-feature pointer). Both come from the per-worktree
+lifecycle state carrying a closed feature's position into a new one.
+**Cost:** one boundary stop that could offer no verdict, a second rendering of the same packet, and a
+Stop hook error, with nothing asked of the human (DRIFT-202-INTAKE-012).
+**Disposition:** beta4.1 Tier 1, added by the maintainer on 2026-10-13. No fix implemented.
+Drift: DRIFT-202-INTAKE-010 and 011.
+
+## B4F-110 - HOST SUPPORT TIERS ARE UNDEFINED, SO "SUPPORTED" IS NEVER VALIDATED (beta5 candidate)
+
+**Context (maintainer decision, 2026-10-13):** Specrew lists five agent hosts (Claude, Codex, Copilot,
+Cursor, Antigravity) as supported, but no release validates all of them live, and nothing tells users
+which ones were. B4F-108 shows the cost: Codex was listed as supported while its workshop capture was
+broken for five weeks. For beta4.1, feature 202's spec defines two tiers. **Validated** (Claude, Codex,
+Copilot) carries all cross-host acceptance. **Experimental** (Cursor, Antigravity) works through the
+shared path without a live walk, and is never called supported-and-validated.
+
+**Beta5 candidate (not 202 scope):**
+
+1. Define the support tiers in the user docs and in the installer output.
+2. Separate coding-host validation from reviewer-host validation. Reviewing (run headless, deliver
+   findings) is a much smaller surface, so a host can be validated as a reviewer while experimental as
+   a coding host.
+3. Set the promotion rule: a host moves to Validated when someone owns its live walk and it passes two
+   consecutive releases.
+
+**Evidence:** specs/202-beta4-1-ux-stabilization/spec.md, "Host support tiers".
+**Disposition:** beta5 candidate, recorded by the maintainer's instruction. No 202 work.
+
+## B4F-111 - THE BOUNDARY SYNC SILENTLY EDITS A PRODUCT FILE (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202. Every boundary sync (specify, then clarify) left `Specrew.psd1`
+modified. Restoring the file only restarted the loop.
+**Cause (maintainer diagnosis):** `sync-boundary-state.ps1` calls `Sort-SpecrewManifestFileList` on
+every sync, at the FR-029 guard, near line 2051. The committed FileList was not sorted, because three
+entries were added out of order during beta4: readiness-verdict.ps1, turn-end-store.ps1 and
+specrew-reseal.ps1. The list was sorted once on the 202 branch in `2cb2231a` (membership unchanged,
+419 entries), which ends the loop for now.
+**Beta5 candidate (not 202 scope):** enforce FileList order with a lint or test check at commit time,
+and remove the sort from the boundary sync. A lifecycle sync must not silently edit product files.
+**Disposition:** beta5 candidate, recorded by the maintainer's instruction. Drift: DRIFT-202-INTAKE-010, 013.
+
+## B4F-112 - A VERDICT TYPED AFTER A CONTEXT COMPACTION IS NOT CAPTURED (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202, tasks boundary, Claude host. The tasks packet carried the
+`plan -> tasks` marker. Claude Code then compacted the context before the maintainer replied
+`approved for tasks - Run T001 first...`. The reply did not reach the ledger. The read-only capture
+check (`Get-SpecrewCapturedBoundaryVerdict`) returned the earlier `clarify -> plan` pair as `captured`,
+not the tasks verdict. The classifier itself reads the reply as `approve` for `tasks`. The transcript
+shows the compaction summary as a user-role entry, with no parent link, between the packet and the reply.
+**Effect:** a typed verdict was silently not recorded. The human gave the decision once, and the system
+must ask again or record it out of band. This violates "verdicts stay explicit typed replies" in the
+direction that costs the human a message.
+**Beta5 candidate (not 202 scope unless the maintainer pulls it in):** capture must pair a reply with the
+pending crossing's marker across a compaction boundary. When a verdict-shaped reply is not captured, it
+must say so in the same turn (the W54 class), rather than fall back to an older pair.
+**Disposition:** recorded. Drift: 202 iteration 001 DRIFT-004.
+
+## B4F-113 - COPILOT CTRL+O SUBMITS A DEFAULT ANSWER THE HUMAN NEVER CHOSE (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202 T001, Copilot CLI 1.0.96 TUI in a scratch directory. On an
+`ask_user` form, Ctrl+O returned the tool result "User responded: A" (`elicitation_action: accept`), and
+Esc returned "User cancelled the request." (`elicitation_action: cancel`). The literal
+"User skipped question" that the project instructions and the dispatcher name did not occur. Neither
+dismissal produces a hook event.
+**Effect:** authority stores are safe, because receipts mint only from typed prompts. A model reading the
+tool result, however, sees an answer the human did not give. Workshop questions are already prose-only;
+any other `ask_user` use on Copilot inherits the risk.
+**Beta5 candidate:** update the instructions and the transform registry strings to the observed
+1.0.96 results. Treat a Copilot `accept` that arrives without a typed turn as absence wherever an answer
+carries weight. T002 records the current strings in its registry fixture.
+**Disposition:** recorded. Evidence: `tests/fixtures/hook-payloads/copilot/` and 202 research.md T001.
+
+## B4F-114 - THE UNAUTHORIZED-SOURCE CHECK DOES NOT SEE SOURCE WRITTEN BEFORE THE TASKS AUTHORIZATION (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202, before-implement preparation (maintainer review).
+`validate-governance.ps1` `source-without-implement-authorization` flagged seven Codex fixtures committed
+after the tasks authorization (`9973f2c3`). It did not flag 14 Claude and Copilot fixtures and a
+`.gitattributes` change, committed in `78366194` and `9973f2c3` itself. Those fell in the `plan -> tasks`
+window. The check measures change since the tasks authorization, so source written earlier in the
+cycle passes unflagged.
+**Context:** the files were licensed (maintainer-ratified T001 evidence), so nothing unauthorized landed
+here. The gap would be the same for real code, however. It shares an origin with B4F-112: the lost tasks
+instruction is why the authorization landed after the first commit.
+**Beta5 candidate (not 202 scope):** measure from the last implement authorization of the current feature,
+or from the feature's start when there is none, not from the tasks authorization. Decide separately whether
+recorded-evidence fixtures should be classified apart from source.
+**Disposition:** recorded by the maintainer's instruction. Drift: 202 iteration 001 DRIFT-007.
+
+## B4F-115 - A PLANNED CO-REVIEW CHECKPOINT STOPS FOR APPROVAL THE HUMAN ALREADY GAVE (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202 implement, after T002 and T003 (5.5 SP). The iteration plan names
+the checkpoint cadence (about 5 SP), the reviewer (codex, recorded at the code-implementation lens with an
+authorization reference), and the campaign allowance (iteration 001 starts fresh). The crew still stopped and
+asked for `approved for review round`, because the review machinery treats every round as a fresh spend
+decision.
+**Maintainer ruling (verbatim intent):** a planned co-review checkpoint that fits the campaign allowance
+should not stop for approval. The plan named the checkpoint, the reviewer and the allowance, so the human has
+already decided; the round should run and be disclosed afterwards. A stop is justified only when the allowance
+is exhausted, the round is unplanned, the reviewer changes, or a round returns blocking findings.
+**Beta5 candidate:** a round at a planned checkpoint, inside the allowance and with the recorded reviewer, runs
+under the plan's authority and is disclosed in the next message. Any of the four exceptions above still stops.
+This is the governing principle's "a stop message is justified only when the system needs a human decision".
+**Disposition:** recorded by the maintainer's instruction. Not 202 scope.
+
+## B4F-116 - A REVIEW-ROUND APPROVAL IS READ AS A BOUNDARY VERDICT AND REPORTED AS NOT RECORDED (beta5 candidate)
+
+**Observed:** 2026-10-13, feature 202 implement. The maintainer typed `approved for review round - ...`, the
+phrase the review machinery itself asks for. The prompt hook classified it as a boundary verdict for `review`
+and answered: "your reply reads as a verdict for 'review', but NO crossing is pending right now, so nothing was
+recorded". The round approval is a different authority with its own capture, so the message misdescribes what
+happened and can make the human think the approval failed.
+**Beta5 candidate:** the verdict classifier recognises `approved for review round` as the round-approval phrase
+and leaves it to the round-approval capture. A boundary-verdict disclosure never fires for it.
+**Disposition:** recorded. Observed in the turn transcript.
+**Recurred:** 2026-10-14, the round-3 approval drew the same "reads as a verdict for 'review'" notice. The round
+approval itself was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-3`).
+**Recurred again:** 2026-10-15, the round-4 approval drew the same notice; the round approval was captured (`cmp-202-beta4-1-ux-stabilization-i001-round-4`).
+**The dangerous direction, settled in 202 (maintainer instruction, 2026-10-15):** with no decision pending, the misreading is harmless. At sign-off the review decision IS pending, and a capture there would be an authorization the human never gave. `tests/unit/round-phrase-never-boundary-verdict.tests.ps1` (f199-class-guards-b) drives the real prompt-time capture with `before-implement -> review-signoff` pending. In ledger terms the stop's phrase is `approved for review-signoff`. "approved for review round" in six shapes (bare, capitalized with a period, with instructions after a dash or a comma, after a pasted quote, followed by more text) is never captured: the classifier reads it as naming 'review', a different boundary, so it never reaches the evidence check, and the ledger and the pending decision are unchanged. A control shows the real phrase IS captured in the same setup. It passed on its first run: no fabricated authorization. The misleading notice itself remains the beta5 candidate above.
+**Recurred a fourth time, on a different phrase:** 2026-10-16, the maintainer's typed `approved for partial review signoff - <reason>` drew the same "reads as a verdict for 'review' ... nothing was recorded" notice. The engine had captured it, and sign-off completed on it. The classifier reads any `approved for review...` prefix as the `review` boundary.
+**Fifth time:** 2026-10-16, the re-typed partial sign-off reply drew the same notice; the engine captured it, and the
+review sign-off stage opened on it.
+
+**Recurred a fifth time:** 2026-10-17, feature 202 iteration 002. The maintainer's typed `approved for review round` drew the same notice ("NO crossing is pending ... send the phrase again: approved for review"). The round approval was recorded once by the message hook and became `cmp-202-beta4-1-ux-stabilization-i002-round-1`. The notice names a different phrase as the one to send.
+
+**Recurred a sixth time:** 2026-10-17, the round-2 approval drew the same notice; the round approval was recorded once and became `cmp-202-beta4-1-ux-stabilization-i002-round-2`.
+
+**Recurred a seventh time:** 2026-10-17, the round-3 approval drew the same notice; the round approval was recorded once and became `cmp-202-beta4-1-ux-stabilization-i002-round-3`.
+
+**Recurred an eighth time:** 2026-10-17, the round-4 approval drew the same notice; the round approval was recorded once and became round 4 of `cmp-202-beta4-1-ux-stabilization-i002`.
+
+**Recurred a ninth time:** 2026-10-18, the round-5 approval drew the same notice; the round approval was recorded once and became round 5 of `cmp-202-beta4-1-ux-stabilization-i002`.
+
+**Recurred a tenth time:** 2026-10-18, the round-6 approval drew the same notice; the round approval was recorded once and became round 6 of `cmp-202-beta4-1-ux-stabilization-i002`.
+
+**Recurred an eleventh time:** 2026-10-18, the round-7 approval drew the same notice; the round approval was recorded once and became round 7 of `cmp-202-beta4-1-ux-stabilization-i002`.
+
+**Recurred a twelfth time:** 2026-10-18, the round-8 approval drew the same notice; the round approval was recorded once and became round 8 of `cmp-202-beta4-1-ux-stabilization-i002`.
+
+**Recurred a thirteenth time, on a different phrase:** 2026-10-18, the maintainer's `approved for partial review signoff - <reason>` drew the same "reads as a verdict for 'review'" notice. The partial sign-off was recorded once against the pending request, and the stop completed on it.
+
+## B4F-117 - THE ROUND-APPROVAL CAPTURE ATTRIBUTES A TYPED REPLY TO A PICKER (beta5 candidate; FR-010 class)
+
+**Observed:** 2026-10-13, feature 202 implement. The maintainer typed `approved for review round - Also record a
+beta5 finding...` as a normal chat message. The update needed before the round then took one more exchange,
+and the maintainer answered `yes`. `specrew review --live --approve-round` refused with: "The conversation shows
+the phrase arriving from a question UI or picker. Those replies are not captured, by design." No picker was used
+anywhere in the session.
+**Effect:** the refusal names a channel the maintainer did not use. That is the defect FR-010 forbids on the
+workshop path ("never attribute a reply to a channel the maintainer did not use"), here on the review path, and
+it costs the maintainer another typed message. The real cause is most likely that the capture reads only the
+latest human turn, which was `yes`.
+**Beta5 candidate:** the round-approval capture says what it actually found: no `approved for review round` in
+the latest turn, and where the phrase was seen. Decide separately whether an approval typed earlier in the
+same checkpoint, with no round run since, still stands.
+**Disposition:** recorded; 202's FR-010 covers the workshop surfaces only, so this stays beta5 unless the
+maintainer extends it.
+
+## B4F-118 - A VERIFICATION TIMEOUT IS REPORTED AS AN OPAQUE SEALED FAILURE (beta5 candidate)
+
+**Observed:** 2026-10-13/14, feature 202 implement, at the first co-review checkpoint. Three launches failed the
+pre-review verification inside the frozen copy on `f199-class-guards` (one also on `f199-slice-suites`), and the
+run reported only the sealed reason `diagnostics-require-command-scoped-disclosure`. The crew reproduced
+pass/fail in four conditions and could not reproduce a failure. The maintainer found the cause by measuring
+duration: the lane exits 0 in 243 s against its own `timeout_seconds` of 120, so the engine kills it.
+**Effect:** the engine already computes a derived diagnosis outside the seal,
+`Get-ContinuousCoReviewVerificationFailureDiagnosis` (command, exit code, duration, `timed_out`), and none of it
+reaches the run's `result.json` or `report.md`. A timeout therefore reads as a sealed test failure, and the one
+fact that names the cause is the one withheld. Feature 199 lost about an hour to it (DRIFT-199-I001-112, very
+likely the same class), and 202 about an hour and a half (DRIFT-011, DRIFT-013).
+**Beta5 candidate:** the run record carries the derived diagnosis for every failed verification command: command
+id, exit code, duration against its timeout, and `timed_out`. The sealed output stays sealed; only the derived
+facts are disclosed.
+**Disposition:** recorded on the maintainer's ruling 2026-10-14; beta5.
+
+## B4F-119 - FOUR OLDER SUITES FAIL, AND NO CI JOB OR LANE RUNS THEM (beta5 candidate)
+
+**Widened 2026-10-14 (T010 sweep, 222 suites):** three more suites fail identically at `f3f68c75`, before T010, and
+none is named by any workflow or lane: `feature-017-dashboard-core` ("Healthy fixture: specrew where should
+succeed"), `feature-018-rich-dashboard` ("Rich-capable replay should match the expected rich dashboard contract")
+and `substantive-interaction-model-iteration2` (it expects "Feature 016 Interaction Model" in README.md). The
+first report follows.
+
+**Observed:** 2026-10-14, feature 202 implement, in a regression sweep widened to every suite that mentions a
+changed surface. `tests/integration/validator-hardening-iteration2.ps1` (feature 013) throws "Failed to stage
+workspace changes at" (an empty path) in its `Commit-Workspace` helper. It fails identically at `d3c010a4`,
+before any T009 change, so 202 did not cause it. No workflow and no verification-plan lane names it, which is
+why the failure was invisible.
+**Effect:** a validator-hardening suite whose coverage nobody runs reads as coverage that exists. Root cause not
+investigated: outside 202's Tier 1.
+**Beta5 candidate:** fix the fixture or retire the suite, and make an unrun suite visible.
+**Disposition:** recorded under the beta5 rule for anything beyond Tier 1; no repair in 202.
+
+## B4F-120 - A GREENFIELD BOOTSTRAP COMMIT INSIDE ANOTHER REPOSITORY COMMITS THAT REPOSITORY'S WORK (fixed in 202 by maintainer decision)
+
+**Observed:** 2026-10-14, feature 202 implement, during a parallel regression sweep of the 202 worktree with T011's
+changes uncommitted. Commit `f46c9fb1`, "chore(specrew): bootstrap scaffold", by "Specrew Bootstrap
+<specrew-bootstrap@example.invalid>", landed on branch `202-beta4-1-ux-stabilization`. It carried exactly the
+worktree's uncommitted T011 changes, eight files and nothing else, and was pushed with the next push before anyone
+noticed. The content is correct; the author and message are not. History was not rewritten.
+**Mechanism (read from the code):** `Invoke-SpecrewBootstrapBaseline`'s greenfield path tests only
+`git -C <project> rev-parse --is-inside-work-tree`, which is also true for a folder nested in ANOTHER repository. It
+then skips `git init`, runs `git add --all` - which stages the whole enclosing work tree - and commits there with
+the fallback identity when none is configured. A real `specrew init` in a nested folder probably classifies it as
+brownfield first (the outer HEAD exists), so the exposure is mainly a direct caller. Many suites build fixtures
+under the repository's own `.scratch/`, so a fixture whose `.git` is missing or not yet created is inside this
+repository. The suite that triggered it was not identified; it ran between 17:31 and 17:34 in a 223-suite sweep.
+**Beta5 candidate:** the greenfield path commits only in a repository whose top level IS the project path
+(`rev-parse --show-toplevel`), and initializes one otherwise. Fixtures leave the repository's tree for the
+system temp folder.
+**Mitigation in 202:** sweeps run only on a fully committed tree (DRIFT-022).
+**Disposition:** recorded under the beta5 rule; no repair in 202.
+
+**Reproduced, 2026-10-14 (maintainer-directed, scratch directories outside any repository):**
+
+- **The product defect.** The enclosing repository had no commits yet, an unrelated untracked file, and an unrelated edit. `specrew init <new-folder>` then took the greenfield path: the HEAD test fails on an unborn HEAD, and the work-tree test finds the enclosing repository, so `git init` is skipped. It ran `add --all` and committed in the ENCLOSING repository: `chore(specrew): bootstrap scaffold`, author "Specrew Bootstrap", 762 files, including the owner's untracked file and their `app.txt`.
+- **A correction to the mechanism above.** When the enclosing repository HAS commits, the same command is brownfield: init creates the folder first (`specrew-init.ps1:397`), so the HEAD test at 417-426 runs inside the enclosing repository and succeeds. No commit is made, with or without an identity. The exposure is an enclosing repository with no commits yet, a direct caller of `Invoke-SpecrewBootstrapBaseline`, or a project whose own `.git` disappears between the HEAD test and the commit.
+- **The probable trigger of `f46c9fb1`.** "Specrew Bootstrap" is the fallback for a process with no git identity, and only one suite removes it: `start-command-non-interactive-first-run`, which runs `start-command.ps1` with a temporary HOME. Both suites build their projects in the same `.scratch/start-command` folder inside this repository, and each deletes it first. Run together in a throwaway clone, `start-command` failed 2 of 2 times ("Bootstrap failed"); alone it passed. That collision is the cause of its sweep-only failure. The collision did not reproduce the stray commit, because its timing window (the project's `.git` deleted between the HEAD test and the commit) is narrow. The commit's identity and content both point to it.
+- **Proposed fix (minimum, per the maintainer):**
+  1. A project folder inside another repository's work tree, meaning `rev-parse --show-toplevel` is not the project folder, is never greenfield-committed. The check runs immediately before staging, so a `.git` that vanished mid-init is caught too. Init classifies the project the same way, not by HEAD presence.
+  2. Staging and the commit are limited to the project folder (`add --all -- .` and `commit -- .`). Paths the owner already staged elsewhere can never ride along.
+  3. The two suites stop sharing a folder, and fixtures move to the system temp folder.
+
+**Pulled into 202, 2026-10-15 (maintainer: "B4F-120 into 202").** Fixed as proposed, RED first (`8266e01c`, 202 DRIFT-027):
+
+- `Get-SpecrewProjectGitScope` tells `own` (the folder is its repository's top level), `enclosed` (inside another work tree) and `none`. It uses `--show-prefix`, not a path compare, so 8.3 temp paths and Git's slash form cannot confuse it. The greenfield path re-checks it right before staging: anything but `own` creates no commit, records an offered bootstrap commit instead, and names the enclosing repository.
+- `Resolve-SpecrewBootstrapMode` makes init classify the same way: an empty folder inside another repository is brownfield even when that repository has no commits.
+- Staging and the commit are `add --all -- .` and `commit -- .`, run in the project folder.
+- `start-command.ps1` (shared with the first-run suite) and `bootstrap-commit` build under the system temp folder, in a per-run folder.
+- **Evidence:** `tests/unit/init-stays-in-project.tests.ps1` (f202 lane a) was RED on the unborn enclosing repository, which was committed in full. It now passes on Windows and Linux. The scratch reproduction now leaves the enclosing repository uncommitted, with or without its own commits. Run side by side, `start-command` and the first-run suite both pass (135 s and 139 s), and HEAD is unchanged. Before the fix, `start-command` failed 2 of 2 this way.
+
+## B4F-122 - INIT WRITES `.github/agents/squad.agent.md` AT THE ENCLOSING REPOSITORY'S ROOT (fixed in 202 with B4F-120)
+
+**Observed:** 2026-10-14, during B4F-120's reproduction. `specrew init <outer>/newproj` wrote
+`.github/agents/squad.agent.md` at `<outer>/` as well as inside `newproj/`, whether or not the enclosing
+repository had commits. Init writes outside the folder it was asked to set up. The writing step was not
+identified; Squad's own init, resolving the git top level, is the likely one.
+**Beta5 candidate:** init writes only under the project folder; a test runs init in a subfolder of another
+repository and asserts that nothing outside the project folder changed.
+**Disposition:** recorded. Observed in a scratch reproduction.
+
+**Folded into 202 with B4F-120, 2026-10-15 (the maintainer: fold it in if the same top-level check closes it).**
+
+- **The writer is Squad's own `squad init`.** It writes `.github/agents/squad.agent.md` at the Git top level it discovers. Run directly in a subfolder of a scratch repository, it wrote the file at the enclosing root. With `GIT_CEILING_DIRECTORIES` set to the subfolder's parent, it wrote the file inside the subfolder.
+- **The same check closes it, plus one line on each Squad call.** The question is again whether the project folder is its own top level. Init cannot change Squad, so it fences Squad's Git discovery at the project's parent. Both call sites are fenced: the init call through `Invoke-SquadInitInProject`, and the capability probe, which runs in a throwaway folder under the install root. A project that is its own repository still finds its own `.git`.
+- **Evidence:** `init-stays-in-project` case 5 uses a stand-in `squad` that writes where the real one does. The unfenced call shape wrote at the enclosing root, and the fenced one writes inside the project. The scratch reproduction with the real `squad` no longer creates `.github` at the enclosing root.
+
+## B4F-121 - THE STOP REVIEW CHECK ASKS FOR A ROUND APPROVAL WHILE THE APPROVED ROUND IS RUNNING (beta5 candidate)
+
+**Observed:** 2026-10-14, feature 202 implement. The maintainer typed `approved for review round`, round 3
+started, and the crew ended its turn while the round ran in the background. The Stop review check then blocked
+the turn: "your last review no longer covers these files ... ask the human to approve a fresh review round". It
+named round 2's run (`run-20261014-102731596-597f9ec9`). Round 3 was approved, recorded and running against
+the current tree, and nothing in the tree had changed since it started.
+**Cause (from its output):** the check compares the tree with the latest COMPLETED round's snapshot and does not
+see a round in flight.
+**Beta5 candidate:** a round that is requested or running for the current tree satisfies the check, which says so
+in one line ("round 3 is reviewing these files now") instead of asking for an approval the human just gave. It
+is the governing principle's case: a stop with no decision for the human to make.
+**Disposition:** recorded. Observed in the turn transcript.
+**Recurred:** 2026-10-15, as round 4 started on the maintainer's typed approval: the Stop review check again asked the crew to request a fresh round approval, naming round 3's run.
+**Recurred, seven times in one hour:** 2026-10-16, while the engine's two review stops ran (the stop after round 6 and its re-run with the partial sign-off reply), the Stop review check blocked seven turn ends, each asking the crew to request `approved for review round` for files the running stop already covered. Round 6's run was named each time. Seven stops with no decision for the human.
+**Recurred, after the review sign-off:** 2026-10-17, while the crew recorded the 202 live walk, the Stop review check asked three times for a fresh round approval, naming round 6's run. The review sign-off had been approved the day before (`e1d3bbcd`), and one of the three turns had no commit in it. Three short replies with no decision for the maintainer. A fourth
+followed the iteration closeout packet, while that decision was pending; the check itself said the decision was
+unaffected.
+**Recurred in a new form, during iteration 002's planning:** 2026-10-17, after the iteration 001 closeout, the check
+changed its wording to "these files have not been reviewed yet" and asked for a review round at five turn ends of the
+iteration 002 scope and design questions, with no implementation in the iteration to review. Five stops with no
+decision for the maintainer. Moved to beta5 with the review engine by the iteration 002 scope ruling.
+
+## B4F-123 - A CONTENDED JOURNAL APPEND WAITS FOR A TURN INSTEAD OF QUEUEING THROUGH THE OUTAGE BUFFER (beta5 candidate)
+
+**Observed:** 2026-10-14, feature 202 (DRIFT-023). On Linux and macOS, the hook-output journal's per-write lock is an
+unfair advisory flock, and a writer under four-way contention can lose the gaps between another writer's appends.
+202 bounds the wait at one 1000 ms budget per hook fire. That is outside the agreed tuning (at most 5 attempts within
+250 ms), and it is accepted as a deviation by maintainer ruling on 2026-10-15.
+**Beta5 candidate:** a writer that cannot take the lock within a short wait publishes its record as a closed buffer
+file (the round-2 path), and the next writer that holds the lock flushes it. Nobody waits for a turn, every append
+stays inside the agreed 250 ms window, and nothing is lost. It needs a "contended" outcome that opens no degraded
+episode and shows no disclosure, because contention is not degradation, and a flush that runs often rather than
+rarely. Estimated at 0.5 to 1 SP plus a 3-OS run.
+**Disposition:** the maintainer prefers this design, but "not as a new store state built before the last review round"
+(ruling 2026-10-15). Beta5.
+
+## B4F-124 - THE VALIDATOR JUDGES EVERY HISTORICAL REVIEW RECORD AGAINST WHICHEVER REVIEW CAMPAIGN IS ACTIVE (beta5 candidate)
+
+**Observed:** 2026-10-15, feature 202 T015 (SC-008). The full validator in the 202 worktree failed 15 historical
+iterations, among them 001/002 to 001/012, 005/001-002, 007/002, 048/001 and 197/001 and 006. Each failed with "review.md
+says the review was accepted, but the active review campaign has no completed, valid campaign result". The same code in
+a clean worktree of the same commit, with no review-campaign state (it is git-ignored), fails only the two other
+baseline entries (001/011 defer-provenance, 198/011 needs-rework). So does 202's baseline ref.
+**Cause (from the outputs):** the check reads the ACTIVE campaign, which is now 202's, open and paused after round 3,
+and applies it to every iteration's review record, including features closed long before that campaign existed. The
+count of this baseline category therefore depends on whether some feature has an open campaign, not on the records.
+It is the B4F-109 class (one feature's review state leaking into another's), in the validator.
+**Beta5 candidate:** each iteration's review record is judged against its own feature's campaign, or the historical
+iterations are exempt, as closed ones are, and the baseline category stops moving with unrelated state.
+**Disposition:** recorded under the beta5 rule. In 202 it is within the known baseline category (SC-008 holds).
+
+## B4F-125 - A TYPED APPROVAL IS REFUSED BY ITS POSITION, ONE DECISION TAKES TWO APPROVALS, AND THE HUMAN IS OFFERED A SCRIPT AS THE WAY TO APPROVE (Tier 2, iteration 002, first item)
+
+**Maintainer ruling, 2026-10-16:** this finding goes first in iteration 002 (Tier 2), not beta5. It is the friction 202
+exists to remove, and it happened live at 202's own last review. The earlier B4F-125 (the refusal not saying why) is
+folded in as part (a)'s refusal clause. The retro records it as an observed friction event at the review stage, beside
+the T007 repaint (DRIFT-030).
+
+**Observed:** 2026-10-16, feature 202, before co-review round 5. One decision, to top up the rounds and run round 5,
+cost the maintainer three messages and two extra stops. The exact messages, refusals and crew offer are in
+[`b4f-125-live-messages.json`](../specs/202-beta4-1-ux-stabilization/iterations/001/b4f-125-live-messages.json); each
+part's failing test is built from them.
+
+**(a) A typed approval on its own line is refused because it is not the first characters of the message.** The
+maintainer's message was a pasted block of their own round-5 rules, then `approved for allowance reset` typed on its own
+line. Read-only, `Test-SpecrewHumanVerdictToken` returns `Action = none`, `IsApproval = False`, and
+`--remediate allowance-reset` refused with the generic "no approval from them has been captured", asking for the very
+phrase the maintainer had typed, without saying why. The paste guard (B4F-065) rejects by position. It must instead tell
+a pasted transcript (speaker turns, a packet's marker, assistant text, quote-bar prefixes) from a line the human typed.
+A phrase that leads its own line in the human's own message, with no pasted-transcript structure, is an approval. When a
+recognized phrase still does not count, the refusal says so and says why, in one sentence, instead of the generic ask
+(the W54 class).
+
+- **Failing test:** `reset-below-own-paste` from the fixture classifies as an approval for `allowance reset`, and a
+  pasted transcript carrying the same phrase still does not (the B4F-065 control stays).
+
+**(b) The allowance reset and the round are two approvals for one decision.** After the reset was recorded and
+applied, `--pause-choice 1` refused again, asking for `approved for review round`. The reset existed only to run that
+round. A reset requested in order to run a round authorizes that round.
+
+- **Failing test:** with the allowance exhausted and a round paused, `reset-bare` alone leads to the reset and the round
+  being authorized, with no second approval asked.
+
+**(c) Never offer the human a script to run as the way to give an approval; the typed reply is the path.** Both engine
+refusals end with "run this command from their own terminal, where their invocation is itself the approval", and the
+crew passed that on: its reply offered a `! pwsh ... --remediate allowance-reset ...` command as step 1 (the fixture's
+`crewOffer`). The typed reply is the only approval path to offer.
+
+- **Failing test:** no refusal text, Stop directive or skill line that asks a human for an approval offers a command for
+  them to run as the approval; each names only the typed reply.
+
+**Requirement:** FR-012 / SC-003 (0 corrective exchanges and 0 extra stops for a real decision); the B4F-065 guarantee
+(a pasted transcript never authorizes anything) is kept.
+**Disposition:** Tier 2, iteration 002, first item, ahead of the review-ordering slice. Not fixed in iteration 001.
+
+## B4F-126 - THE REVIEW OFFERED A STOP IT COULD NOT COMPLETE, AND THE REFUSAL NAMED AN INTERNAL CODE (beta5 candidate)
+
+**Observed:** 2026-10-16, feature 202, after co-review round 5 (`run-20261016-002823641-f5fc77f3`). The round's
+result was `snapshot-moved` (`can_approve_current = false`): the crew committed a docs-only change while the round ran.
+The pause still said "Nothing here blocks sign-off ... Stopping the review here is the ordinary next step". The
+maintainer typed `stop the review here`, the final step ran for over ten minutes, and then refused with "the remaining
+findings could not be recorded as accepted (review-human-disposition-requires-complete-current-valid-result) ... fix
+what the message above names". The message names a code, not a fix, and no listed remediation covers a result
+invalidated mid-run.
+**Cost:** one human decision spent on an option that could not succeed, a ten-minute wait, and another decision.
+**Beta5 candidate:** (1) a round whose snapshot moved says so at the pause and does not offer a stop it cannot
+complete; it names the remedy instead. (2) A commit to the reviewed branch while a round runs is refused or warned
+about at the time, not discovered at sign-off. (3) Every refusal names, in plain words, what to do next.
+**Disposition:** recorded under the beta5 rule. In 202 it is brought to the maintainer as a decision (DRIFT-032).
+**Recurred, 2026-10-16, after round 6 (202 DRIFT-033):** the crew offered `stop the review here` again and the
+maintainer typed it. The final check ran for about twenty minutes, then refused with `latest-result-not-current`:
+round 6's four fixes were committed after the round, so its result no longer covers the files, and a stop has no way
+to accept that gap. The refusal did name a path this time: run the stop once, have the human type
+`approved for partial review signoff - <why>`, and run it again with no writes in between. That path closed the
+review in about fifteen more minutes. Cost: a second human decision and two long waits for an outcome that was known when
+round 6's fixes were committed. **Beta5 candidate, added:** (4) when fixes land after the last round, the pause offers
+the partial sign-off reply directly, as the one decision, instead of a stop that must fail first.
+**Recurred a second time, 2026-10-18, after iteration 002 round 8 (202 iteration 002 DRIFT-003):** the same shape,
+and this time the crew made it worse: it recommended the stop and told the maintainer the final check would cover the
+round-8 fixes, repeating the engine's own wording ("a final check runs on your files exactly as they are now"). The
+stop refused with `latest-result-not-current`; the decision was not spent, the refusal refreshed the partial sign-off
+request, and the maintainer's typed partial sign-off closed the review on the second run. The engine's description of
+the stop is what misled the crew: it promises a check of the current files that cannot accept them. **Beta5 candidate,
+added:** (5) the stop's description says it signs off only what the last round reviewed, and names the partial
+sign-off when the files have moved since.
+
+## B4F-127 - ONE TYPED APPROVAL IS RECORDED TWICE, AND THE SPARE COPY CAN BE SPENT (critical; iteration 002, first item)
+
+**Observed:** 2026-10-16, found by the maintainer in `.specrew/authority/exhausted-turns.jsonl`, confirmed against
+the conversation log (202 DRIFT-034). A typed `approved for review round` is recorded when the message arrives (prompt
+hook, `source_event: UserPromptSubmit`). Later, at a turn end where that phrase is still the human's last typed
+message, the turn-end transcript check (`source_event: stop-transcript`) records it again as a new approval:
+10-14 17:30:41 (typed) then 17:33:49 and 17:34:32; 10-15 10:28:30 then 10:29:18; 10-16 03:13:03 then 04:28:27 (UTC).
+Every extra copy came at the end of the same turn, or of a continuation the Stop hook forced, with no new human
+message. Background tasks are not the trigger. When the human sent another message in the same turn (the round-5
+approval, 10-16 00:26), no extra copy was written. A `cross-channel-double-mint` record is written each time, but it
+does not block: it matches identical text across all time, and its `prior_turn_id` points to an August turn. The
+same pattern is in the journal from 2026-08-30, so this predates 202.
+**Consequence:** the 04:28 copy became an unspent `pending-round-approval.json` (`evidence_source:
+hook-captured-from-transcript`, `source_event: Stop`) for about ten and a half hours. A round could have started on it
+with no new message from the maintainer. It was finally used up by the maintainer's partial sign-off reply. One typed
+approval can authorize more than one round: authority the human never gave. **Critical** by the consequence grading.
+**Scope, from a scratch reproduction (202 `iterations/001/b4f-127-reproduction.md`):**
+
+- In a conversation longer than 500 lines, every turn end with no human message records the approval again: 6 from
+  one typed message. The turn-end identity uses a sliding window position and an empty arrival time.
+- After a spend, the next turn end writes a fresh unspent approval, and `--approve-round` accepts it.
+- **Affected:** the review round; the allowance reset, where the guard for a reset that already landed misses the
+  copy; the stop-here decision, which re-binds to a newer pause the human never saw, and stopping here can complete
+  sign-off (the highest-consequence case); coverage deferral, from the source only.
+- **Not affected:** the partial sign-off override, workshop receipts and workshop repair, which accept only the
+  message-received path. Stage approvals are tied to one pending stage, so a second copy finds nothing pending.
+**Fix direction (iteration 002, first item, ahead of B4F-125; maintainer ruling 2026-10-16):** bind each approval to
+one human message by its transcript identity, not its text, and make the second recording path a no-op for a message
+already recorded. Failing test: one typed approval, then N turns with no human message, gives exactly one recorded
+approval.
+**Interim crew rule:** before every round launch, pause choice or allowance reset, read the stored approval; never act
+on one whose `evidence_source` is the transcript check unless the human's own typed message produced it for that run.
+**Disposition:** open at 202's iteration-001 close, stated in the review sign-off packet. (Ruling and release gate
+below.)
+**Maintainer ruling at review sign-off (2026-10-16):** closing iteration 001 with B4F-127 open is consistent with the
+consequence grading, because it predates 202 and 202 does not worsen it. Holding 202 back would leave only the released
+beta4, which has B4F-127 and every defect 202 fixed. **Release gate: closing an iteration is not a release. Beta4.1
+does not ship (no merge to main, no published module) until B4F-127 is fixed in iteration 002.**
+**Live walk (2026-10-17):** did not reproduce. On Claude, Codex and Copilot the specify approval was recorded exactly
+once. B4F-129 is a second route to the same result, on Copilot.
+**Release gate widened (maintainer ruling at the 202 iteration 001 closeout, 2026-10-17):** beta4.1 does not ship until
+both B4F-127 and B4F-129 are fixed.
+**Release gate moved (maintainer ruling, 2026-10-21):** the gate sits at feature 202's closeout. No feature closeout, no
+merge to main and no published module until iteration 003's Copilot re-walk passes.
+
+## B4F-128 - A REWORDED DISCUSSION QUESTION REPAINTS THE WHOLE PACKET (iteration 002, beside B4F-125)
+
+**Observed:** 2026-10-16, feature 202, the review sign-off packet. The crew's reply rephrased discussion prompt 1
+("Does closing with B4F-127 open fit the consequence grading, ..." became "Is closing with B4F-127 open consistent with
+how you grade defects by consequence, ..."). The Stop counted the declared line as missing and had the whole packet
+rendered again. The maintainer saw it twice.
+**Cause:** DRIFT-030's meaning-match covers headings, and round 6's fix covers option lines, but a discussion question
+must still match word for word. The FR-012 repaint class, on a line kind the earlier fixes did not reach.
+**Fix direction (maintainer ruling, 2026-10-16):** iteration 002, beside B4F-125. A discussion question counts as
+present when its meaning matches, the same as a heading. Failing test from the two exact lines above.
+**Disposition:** recorded; friction event in 202 `acceptance-evidence.md` (1 extra stop).
+
+## B4F-129 - ON COPILOT, EVERY SPECREW HOOK ALSO RUNS AS CLAUDE (critical for Copilot; iteration 002 and release gate proposed, ruled at the 202 closeout)
+
+**Observed:** 2026-10-17, 202 live walk, Copilot CLI 1.0.98, `C:\scratch\walk-202\copilot`, found by the maintainer
+from the journals. Each Specrew hook fires twice in one window: as `copilot`, and 2 to 4 seconds later as `claude`.
+**Evidence on disk:** 16 receipts for 8 replies, 8 distinct receipt IDs, each written once per host label. Two session
+folders and two turn-end folders for one window. Hook health files for both Copilot's `agentStop` and Claude's `Stop`.
+All 8 stop-block rows (7 blocks and 1 cap notice) are `host: claude`; Copilot's own hook blocked none.
+**Cause:** `specrew init` writes Claude's hook settings into every project (`.claude/settings.local.json`: session
+start, prompt submit, tool use, end of turn), and Copilot 1.0.98 runs them in addition to its own. The receipt store
+appends a receipt whose ID is already present.
+**Effect:** the crew declares each turn end in Copilot's session, so the Claude-labelled end-of-turn check sees no
+declaration. It blocks every workshop turn as material, which the human does not see, and every approval stop as not
+presented, which the human does see: the full hook text, then the packet twice. Its turn counter froze at the
+spec-packet turn and it reached the block cap. The pending approval stop was recorded with no session owner. 4 to 5 of
+Copilot's 9 extra stops in the walk come from this.
+**Risk:** B4F-127's result from a second cause, one approval recorded under two host labels. It did not happen in the
+walk: the specify approval was recorded once (`hook-captured-user-prompt`).
+**Fix direction (proposal):** a hook acts only for the host whose session it runs in, either by installing only the
+active host's hook settings or by having each hook ignore an event from another host's session; the receipt and
+approval stores refuse an ID that is already present. Failing tests from the walk's doubled rows.
+**Disposition:** iteration 002, alongside B4F-127. **Release gate (maintainer ruling at the 202 iteration 001
+closeout, 2026-10-17): beta4.1 does not ship (no merge to main, no published module) until B4F-129 is fixed, as with
+B4F-127.** **Not fixed live (2026-10-20):** the iteration-002 fix (T016) passed its tests, ten review rounds and CI,
+and failed the Copilot re-walk at M1, because its fixtures came through Copilot's own hooks and not the Claude-hook
+channel (B4F-144).
+
+## B4F-130 - "YOU DECIDE THE REMAINING LENSES" IS RECORDED FOR ONE LENS ONLY (iteration 002 candidate)
+
+**Observed:** 202 live walk, all three hosts. M6 recorded one delegation receipt, for the lens open at the time, and
+each later lens asked "you decide this lens" again: 1 extra stop on Claude, 2 on Codex, 3 on Copilot, each also a
+corrective exchange. On Claude, the reviewer answer left `code-implementation` with a confirmed receipt and no
+delegation, so its close asked "confirm or you decide this lens".
+**Evidence on disk:** one `human-delegated` receipt per reply on every host (Claude: `architecture-core`, then
+`code-implementation` confirmed and then delegated; Codex: four lenses, four replies; Copilot: five lenses, five replies).
+**Fix direction (proposal):** a delegation that names the remaining lenses is recorded for each remaining agenda lens in
+one step, and those lenses do not ask again.
+**Disposition:** recorded. The maintainer's read: iteration 002.
+
+## B4F-131 - ON COPILOT, LENS QUESTIONS GO THROUGH THE QUESTION BOX, AND A BOX ANSWER RECORDS NO RECEIPT (iteration 002 candidate, with B4F-125)
+
+**Observed:** 202 live walk, Copilot. M6 and one lens answer, typed into Copilot's question box, were not recorded, and
+Copilot asked for them again in chat. It kept opening the box after that. Replies per checkpoint: 2/1/2.
+**Cause (the maintainer's reading):** the rules allow the box for workshop questions, while a receipt is written only
+for a typed chat reply. The two rules conflict.
+**Fix direction (proposal):** one rule. Either Copilot's workshop instructions keep the box out of lens questions, or a
+box answer is recorded with its source. With B4F-125, the form an approval may take.
+**Disposition:** recorded. The maintainer's read: iteration 002.
+**Seen again, 2026-10-20** (the SC-011 re-walk, Copilot 1.0.98): the product-domain question went through Copilot's
+question box, and the box answer recorded nothing. T021 covered lens questions only.
+**Pulled into iteration 002 (2026-10-21, the maintainer):** T021's rule, applied to the one question it missed (T029).
+Moved to iteration 003 with T025 to T030 the same day.
+**Seen again, 2026-10-23** (the iteration 003 re-walk, Copilot 1.0.101, `2ea34f92`), with T029's text deployed:
+`product-domain.md` line 32 names `ask_user` and forbids it, and the product-domain question at M1 still went through
+`ask_user`. After M2, a second `ask_user` offered "governed workshop recovery". Neither box answer recorded anything.
+Three walks in a row: an instruction does not keep Copilot off the tool. A fix would refuse the call itself, for
+example in Copilot's tool-use hook while a workshop question is open (not checked). The Esc that followed is B4F-153.
+**Outside the beta4.1 gate** (maintainer ruling, 2026-10-24, `keep the gate as ruled`): it records nothing false, it
+is in the released beta4, and 202 does not make it worse. T029 is recorded as not held live in iteration 003's
+acceptance evidence.
+
+## B4F-132 - FEATURE SETUP REPORTS A BRANCH IT NEVER CREATES (candidate)
+
+**Observed:** 202 live walk, all three hosts. Feature setup reports `BRANCH_NAME 001-<slug>`, and the checkout stays on
+`master`. The pre-check refuses to show the spec packet while work is uncommitted, so Claude stopped to ask permission
+to create the branch and commit (Claude Code commits only when asked): 1 extra stop. Codex and Copilot committed on
+`master` without asking; both scratch repositories have the specify and clarify commits on `master`.
+**Fix direction (proposal):** feature setup creates and checks out the branch it reports, or stops reporting one; the
+pre-check names a missing branch as the cause.
+**Disposition:** recorded; placement at the iteration 002 plan stop.
+
+## B4F-133 - THE ORDER OF THE PRE-SPEC CHECK CONTRADICTS THE WORKSHOP INSTRUCTIONS (candidate)
+
+**Observed:** 202 live walk, all three hosts. The specify pre-check refused the spec placeholder, while the workshop
+skill says the pre-check runs before the spec is written. Claude and Codex recovered without asking; Copilot asked a
+yes/no box, which would be its tenth extra stop if it counts.
+**Fix direction (proposal):** one order, the same in the workshop skill and the pre-check.
+**Disposition:** recorded; placement at the iteration 002 plan stop.
+
+## B4F-134 - THE PACKET IS SHOWN AGAIN AFTER A QUESTION, A COMPACTION OR A RELAUNCH (candidate; FR-012 class)
+
+**Observed:** 202 live walk. Claude, M7: the question was answered and the full packet shown again; the crew chose a
+boundary turn end, with no hook involved. Codex, M7: clean. Codex, M9 after `/compact`: blocked by the hook and the
+packet shown again, because the record that the packet was already shown went from "presented, unchanged" to "not
+presented" across the compaction. Claude after relaunch: 1 presentation block for a missing recommendation, one copy
+shown.
+**Fix direction (proposal):** the "already shown" record survives compaction; an answer to a question at an approval
+stop ends as a conversational turn.
+**Disposition:** recorded; placement at the iteration 002 plan stop, near B4F-128.
+
+## B4F-135 - REFUSALS REACH THE HUMAN AS THROWN POWERSHELL EXCEPTIONS (candidate; SC-007 class)
+
+**Observed:** 202 live walk. Copilot showed raw banners ("Exception: ... Line | 230 | throw"), Codex showed "Failed
+(exit 1)", and Claude hid them. On Copilot, the crew also guessed the lens-confirmation parameters twice before reading
+them.
+**Fix direction (proposal):** a refusal is one plain line naming the cause and one recovery action, with a non-zero exit
+code, and no stack text.
+**Disposition:** recorded; placement at the iteration 002 plan stop.
+
+## B4F-136 - SMALLER OBSERVATIONS FROM THE 202 LIVE WALK (not counted)
+
+- The reviewer choice after M6 is a real decision, because it spends the maintainer's quota, so it was asked in every
+  feature. The maintainer asked whether it could come earlier. Proposal: ask once per project, at setup or with the
+  adaptation sentence, and remember it.
+- Copilot drops text inside angle brackets: `specs//` in the orientation, the verdict options collapsed to one line, the
+  hidden last line of the packet truncated. Copilot shows "Starting New:" where the feature name should be.
+- The orientation repeats "no feature is in progress" under a "Chosen:" label. On Claude, the NEL sentence came out
+  garbled ("treat  break.").
+- The approval row has `authorizing_human: unattributed` and an empty `from_boundary`, on all three hosts.
+- The Claude stop journal has no rows for turns 4 and 10.
+- After a clean `/exit`, the relaunch flagged "another session may be active" (Claude, Codex).
+- Codex ended every reply by quoting its skill rule. Codex and Copilot pasted the raw reviewer-host list, including a
+  line meant for the agent. On Codex the recording step failed visibly twice before succeeding.
+- Codex's specify and clarify packets were not saved as handoff evidence, which surfaced as two validator warnings in a
+  confusing paragraph; the repair was rejected because of `file:///` links against Codex's native links.
+- The hosts diverge: Claude chose 3 lenses, Codex 5, Copilot 6, and the delegated defaults differ (a CRLF counts as 1
+  character on Claude and 2 on Copilot).
+- **The handoff store saves no packets (maintainer's note at the iteration 002 before-implement, 2026-10-17; queued with
+  the six `handoff-block-missing` warnings).** `.specrew/handoff-evidence.json` holds 35 stage events from 2026-08-10 to
+  2026-10-17, and all 35 have `handoff_present: false` and an empty `response_text`: 0 of 35 packets saved since August.
+  The maintainer noted that the boundary draft T023 deletes (`turn-message.md`) is the only copy of the packet text.
+  The crew's check of this session's folder, recorded beside it: each turn record (`turn-N.json`) also carries the full
+  message inline, and the latest boundary record holds the whole before-implement packet down to its last line. Both
+  copies are in `.specrew/runtime/`, which is git-ignored and per session, so neither is durable evidence; the handoff
+  store, the one durable copy, is empty. Whatever fixes the store should read the packet from the turn record, which
+  survives T023.
+
+## B4F-137 - A TYPED APPROVAL IS FOLDED INTO AN OLDER UNSPENT RECORD FROM THE TURN-END PATH (candidate; B4F-127 class)
+
+**Observed:** 2026-10-17, 202 iteration 002, after co-review round 4. The maintainer typed `approved for allowance
+reset` at 19:13:37Z. The message hook recorded the act in the ledger as minted by the allowance-reset writer, but the
+stored approval was still a record from 2026-10-16 00:20Z, written by the turn-end transcript path and never spent: the
+writer returns an existing unspent record with the same text instead of writing the new one. That record was most
+likely a B4F-127 double record left from before T017, and a reset could have run on it at any time without a typed act.
+The B4F-127 interim check caught the provenance; the maintainer confirmed the go-ahead, and the reset
+(`reset-7b13db76ba620c12794b`) spent the old record.
+**Fix direction (proposal):** a typed approval replaces an unspent record whose evidence is the turn-end path, so the
+stored approval carries the provenance of the act that authorizes it. The same idempotent return exists in the other
+pending-approval writers; check each.
+**Disposition:** fixed 2026-10-18 in iteration 002, behind a failing test (`message-identity`, B4F-137 cases for the round
+approval and the allowance reset): a typed approval replaces an unspent turn-end record in the round-approval,
+pause-decision and allowance-reset writers, unless that record has already become a grant. The sign-off override
+writer refuses a differing record instead, and the coverage-deferral writer appends, so neither folds an act.
+
+## B4F-138 - STORED TIMES ARE COMPARED THROUGH A STRING, SHIFTED BY THE MACHINE'S ZONE (fixed; B4F-127 class)
+
+**Observed:** 2026-10-18, 202 iteration 002, after review sign-off, while tracing a Cross-Platform Validation failure
+that had been red since T016 (202 iteration 002 DRIFT-004). ConvertFrom-Json hands an ISO time back as a [datetime];
+six comparison sites cast it to [string] and parsed it again as UTC. The fraction of a second is lost, and a time written
+with a `+00:00` offset is shifted by the machine's zone. Hit: the dispatcher's put-back of an undelivered not-recorded
+line (the CI failure), and three of T017's approval checks. Behind UTC, a `+00:00` ledger row made the legacy check miss
+the message's own record, so the turn end would record the approval again. The real ledger writes `Z` times, which lose
+only the fraction, so no live double record was found.
+**Disposition:** fixed 2026-10-18 in iteration 002, behind failing tests (`timestamp-read` cases 6 to 9, which also run
+under `TZ=America/New_York` on Linux and macOS, now on all three CI platforms). Every site that compares a stored time
+reads it as an instant. The fourth recurrence of the pattern; a tree-wide lint (no stored time compared through a
+string) is a beta5 candidate. Reviewed after sign-off: co-review round 9 found two sites the sweep missed (the
+allowance-reset paths), fixed behind a failing test in `cb5be72f` (`timestamp-read` case 10); round 10 was clean. A
+fifth site, found afterwards, is B4F-141.
+
+## B4F-139 - A ROUND THE REVIEWER MARKS PARTIAL IS REPORTED AS "FOUND NOTHING", THOUGH ITS FINDINGS ARE STORED (candidate; SC-007 class)
+
+**Observed:** 2026-10-20, 202 iteration 002, co-review round 9 (`run-20261020-091334714-2512bac6`). The reviewer
+delivered three valid findings and marked its own coverage partial, because it had not read every file. The engine
+stored the findings in the run's result (`validation: valid`), then printed "That review did not finish, so it found
+nothing and cleared nothing", wrote a pending pause with `result_produced: false` and zero findings, and retried once
+automatically. The retry paused at once on the pending decision. The approval that ran the round stayed unspent until the
+next launch, which found the delivered round and spent it then.
+**Effect:** the human-facing text contradicts the stored evidence. A crew that relays it tells the maintainer a round
+found nothing when it found three real defects. The crew relayed a third explanation (Codex's file delivery), which was
+also wrong and was corrected in the next message.
+**Fix direction (proposal):** a reviewer's partial coverage is a coverage statement, not a failed delivery: report the
+stored findings, say what the reviewer did not read, and spend the approval on the delivered round.
+**Disposition:** beta5, with the review-engine items, by the maintainer's review-signoff instruction (2026-10-20). Graded
+critical under the 202 iteration-002 retro ruling: it misleads the human about a review result.
+
+## B4F-140 - A RE-TYPED ROUND APPROVAL IS NOT STORED WHILE AN OLDER TYPED ONE WAITS (candidate; B4F-137 class)
+
+**Observed:** 2026-10-20, 202 iteration 002. Round 9's first launch was refused before the reviewer started (DRIFT-005),
+leaving the maintainer's typed approval (01:06Z) unspent. A commit followed, and the maintainer typed
+`approved for review round` again at 09:04Z. The message was seen but not stored: the writer kept the older unspent
+approval with the same text. The B4F-127 interim check caught it, the maintainer chose `use it`, and round 9 ran on the
+01:06Z approval, which is older than the tree it reviewed. B4F-137's fix replaces an unspent turn-end record, not an
+unspent typed one.
+**Fix direction (proposal):** the newest typed act replaces an older unspent typed record with the same text, so the
+stored approval is the one the human gave after the last change; or the re-type is recorded beside it.
+**Disposition:** beta5, with the review-engine items, by the maintainer's review-signoff instruction (2026-10-20).
+
+## B4F-141 - THE HOOK-HEALTH RECORD CARRIES AN EPISODE'S START TIME AS TEXT (logged for beta5; B4F-138 class)
+
+**Observed:** 2026-10-20, 202 iteration 002, found in a CI log after co-review round 10. When the dispatcher (both
+copies) writes the next line of an ongoing hook-output problem, it carries `first_seen` from the last line through a
+[string] cast, so the stored start time becomes `10/20/2026 09:00:36`: no fraction, no zone. The reply-recording
+recovery request matches that start time to the tick, so a request written while the episode had one line reads as
+stale after the next line, is removed, and the question is asked again. Round 10's tree-wide search did not catch it.
+**Disposition:** logged, by the maintainer's `log it` at the 202 iteration-002 review close, for the beta5 tree-wide
+check (no stored time compared or carried through a string), the fifth recurrence of the pattern. Confirmed at the
+review-signoff verdict: the tree-wide time scan goes to beta5 with the review-engine items.
+
+## B4F-142 - THE JOURNAL STRESS CASE COUNTED 4001 LINES FOR 4000 APPENDS, ONCE, ON LINUX (open; not investigated)
+
+**Observed:** 2026-10-20, Cross-Platform Validation run 39397465083 at `537352e3` (a records-only commit), job
+"Deterministic fake-provider review runtime (ubuntu-latest)": hook-output journal fault injection (e) found
+4001 lines for 4000 appends and a degraded health transition ("the journal lock stayed held past this hook fire's 1000 ms
+wait budget"). The next push (`cb5be72f`) passed on all three platforms.
+**Open question:** whether an append that times out on the lock can still land, and then be written again. One extra
+line in an authority journal is a duplicate record. Not investigated; a beta5 candidate.
+
+## B4F-143 - A FAILED SQUAD PROBE CLEANUP LEAVES A FOLDER IN THE PROJECT THAT BLOCKS EVERY BOUNDARY (candidate)
+
+**Observed:** 2026-10-20, 202 iteration 002, at the review-signoff sync. `specrew update` on 2026-10-18 created
+`.specrew-squad-probe-<guid>/` at the project root to test `squad init --non-interactive`, and its `finally` block
+removes it with `Remove-Item ... -ErrorAction SilentlyContinue` (`scripts/init/squad-deploy.ps1`). The removal
+failed silently and left two Squad template files. The boundary preflight then refused the review-signoff packet:
+"2 uncommitted product/methodology path(s)". The crew misattributed the two paths to the review-stop records (under
+`.specrew`, which the check ignores), and the maintainer was asked a decision that did not clear the block. The
+folder was moved out on the maintainer's `move it out`.
+**Fix direction (proposal):** create the probe outside the project (a temp directory), and report a cleanup failure
+instead of swallowing it; the preflight's refusal should name the paths it counted.
+
+## B4F-144 - B4F-129 IS NOT FIXED LIVE: THE FIX WAS TESTED AGAINST PAYLOADS FROM THE WRONG CHANNEL (critical; release gate)
+
+**Observed:** 2026-10-20, the maintainer's Copilot re-walk for SC-011 (202 iteration 002), Copilot CLI 1.0.98, build
+`7ebd9dba`, `C:\scratch\rewalk-202\copilot`. SC-011 failed at M1. After M2, rows under `claude`:
+`hook-output-authority.jsonl` holds 2 UserPromptSubmit and 1 SessionStart; `conformance-journal.jsonl` holds 1
+stop-block row with `block_kind` material. Two conformance sessions, one per host label.
+**Cause:** Copilot 1.0.98 sends Claude's hooks snake_case payloads. The build's own records name the shapes
+(`.specrew/runtime/hook-health/unrecognized-payload-claude-UserPromptSubmit-28e5be57dcde.json` and
+`unrecognized-payload-claude-Stop-9c5a641f3428.json`): UserPromptSubmit carries `cwd`, `hook_event_name`, `prompt`,
+`session_id`, `timestamp`; Stop carries `cwd`, `hook_event_name`, `session_id`, `stop_hook_active`, `stop_reason`,
+`timestamp`, `transcript_path`. T016's 12 Copilot fixtures (`tests/fixtures/hook-payloads/copilot`, captured
+2026-10-13 on 1.0.92 and 1.0.96) all came through Copilot's own hooks (`sessionId`, `stopReason`, `transcriptPath`).
+None came through the Claude-hook channel B4F-129 is about. The live shape matched no signature, so DA-1's unknown-shape
+rule handled it as Claude and logged it once, and nothing reads that log.
+**Process cause:** a fix for a bug seen live was accepted without a payload captured from the failing channel, and the
+unrecognized-payload record had no reader. Ten review rounds, eight lanes and green CI all passed it, because each
+checked the code against the fixtures it was given. The crew reported B4F-129 as "fixed in code and covered by the
+review" without checking the fixtures' channel, and the maintainer passed on it without checking either.
+**Disposition:** iteration 002 stays open; its closeout waits for the B4F-129 fix and a passing re-walk (maintainer
+ruling, 2026-10-20). **Moved to iteration 003 (2026-10-21, the maintainer):** iteration 002 closes with SC-011 recorded
+as failed; the fixes (T025 to T030), their review round and the re-walk are iteration 003's, and the release gate sits
+at feature 202's closeout. The fix starts by capturing the real payloads through a committed probe (B4F-145, layer 1).
+Beta4.1's release gate on B4F-129 stands.
+
+## B4F-145 - THE LIVE WALK, AUTOMATED IN THREE LAYERS (beta5 proposal; layer 1 pulled into iteration 002)
+
+**Observed:** 2026-10-20, from B4F-144. The live walk is the only check that runs the real hosts, and it runs by hand,
+late, and leaves no payloads behind.
+**Proposal (the maintainer's):**
+
+- **Layer 1, host payload probes.** Per host, on every host version change and before every beta: run the real CLI
+  headless in a scratch project with a capture hook on every hook channel, including Claude's hooks run by Copilot,
+  and fail on any unrecognized-payload record. Built on `tests/host-probes/copilot-hook-firing-probe.ps1`. **This layer
+  belongs to the B4F-129 fix in iteration 002, not to beta5:** the fix starts by capturing the real payloads through a
+  committed probe.
+- **Layer 2, headless scripted walk.** M1 to M8 through `claude -p --resume`, `codex exec resume` and
+  `copilot -p --resume` (exact flags to be verified), asserting disk invariants only: no foreign-host rows, one receipt
+  per typed answer, nothing recorded by M7, one verdict row for M8, no stop block on approval turns, no
+  unrecognized-payload record. Runs per release candidate. Beta5's headline item; beta5's exit test runs on it.
+- **Layer 3, human walk.** Only the interactive-screen behaviour (question box, paste tags, rendering, compaction) and
+  how it feels, about 5 minutes per host, run after layers 1 and 2 pass.
+- **From now on, every walk project carries a capture hook,** so every walk finding leaves its payload behind as a
+  replay fixture.
+
+**Disposition:** layer 1 with the B4F-129 fix, in iteration 003 (moved from iteration 002 on 2026-10-21); layers 2 and 3
+and the capture-hook rule to beta5.
+
+## B4F-146 - THE CLOSEOUT SYNC RECORDS THE ITERATION AS CLOSED BEFORE THE CLOSEOUT IS APPROVED (iteration 003)
+
+**Observed:** 2026-10-20, 202 iteration 002. The retro-to-closeout sync, run to present the closeout decision, added
+iteration 002 to `.specrew/closed-iterations.yml` (`closed_at: 2026-10-20T12:07:16Z`), wrote an iteration-closeout entry
+to `.squad/decisions.md`, set the session state to iteration-closeout in `.squad/identity/now.md`, rendered
+`iterations/002/dashboard.md` and appended a lifecycle event. The maintainer never approved the closeout: the SC-011
+re-walk failed, and the iteration stays open.
+**Effect:** anything that reads the closed-iterations list sees the iteration closed while its closeout decision is
+still pending, and it stays that way if the decision is never given. Nothing told the human the sync had written it.
+**Recovery (2026-10-21, on the maintainer's `go with the fix plan`):** the four files were restored to their committed
+state and the dashboard moved to `C:\Dev\specrew-moved-aside\202-i002-closeout-sync-2026-10-20\`. The lifecycle event
+was left as it is: it records a sync that did run.
+**Fix direction (proposal):** the closed-iterations entry is written when the closeout is approved, not by the sync that
+asks for the approval.
+**Disposition:** logged at the maintainer's request, 2026-10-21; not yet scheduled.
+**Seen again, 2026-10-21:** the closeout step for iteration 002, run again to ask for the closeout on the current tree,
+added the closed-iterations entry before the maintainer's approval. The approval followed, so the entry stood.
+**Joined iteration 003 (2026-10-21, the maintainer, at its plan stop):** "B4F-146 joins this iteration: 003's closeout
+and 202's feature closeout both come before the release." T031 moves the closed-iterations entry to the approval's
+capture, beside the seal (B4F-063's precedent); T032 does the same for the feature closeout's active-feature clear and
+session-lock release. Iteration 003's closeout and 202's feature closeout are each the fix's live proof.
+
+## B4F-147 - A SUB-AGENT'S TASK TEXT ARRIVES AS A USER PROMPT, ON BOTH COPILOT CHANNELS (iteration 002, with B4F-144)
+
+**Observed:** 2026-10-20, the SC-011 re-walk, Copilot 1.0.98. At 22:15 and 22:19 the Claude-hook channel delivered two
+more shapes the dispatcher did not recognize, a UserPromptSubmit and a Stop, each carrying `agent_id`, `agent_type` and
+`parent_agent_id`. UserPromptSubmit fired on both hosts' hooks for the sub-agent's task text: the exhausted-turn rows
+for `copilot` (22:15:36) and `claude` (22:15:39) carry the same content hash, in a session of its own.
+**Risk:** a sub-agent's task text is written by the model. One that carries an approval phrase could be recorded as the
+human's approval.
+**Disposition:** iteration 002 (the maintainer, 2026-10-21): the probe and the tests cover Copilot sub-agents, and a
+payload carrying `agent_id` or `parent_agent_id` is never recorded as a human approval, on either channel (T028).
+Moved to iteration 003 with T025 to T030 the same day.
+
+## B4F-148 - A TEST THAT RUNS THE REAL PROVIDER WITHOUT A PROJECT ROOT WRITES INTO THE REPOSITORY RUNNING IT (iteration 002, fixed in the test)
+
+**Observed:** 2026-10-20, 202 iteration 002, T028. The first version of the sub-agent approval test ran the real
+handover provider with the dispatcher's arguments, from the repository. It stored an unspent `approved for review
+round` in the repository's own round-approval store, plus append-only rows in the authority and handover journals
+(iteration 002 DRIFT-007).
+**Cause:** the dispatcher hands the provider no `--project-root`. The provider then finds its project from its working
+directory, walking up to the nearest `.specrew`. A test that reuses the dispatcher's arguments and runs from the
+repository writes into the repository.
+**Effect:** the stored approval looked exactly like a typed one. The interim check before a round launch reads the
+evidence source, the time and the spent field, and all three would have passed. The maintainer withdrew it before any
+round ran.
+**Fix (iteration 002):** the test passes `--project-root`, runs the provider from its temp project with
+`CLAUDE_PROJECT_DIR`, `COPILOT_PROJECT_DIR` and `CURSOR_PROJECT_DIR` pointed at it, and fails if the repository's
+approval, authority or journal stores change.
+**Proposal:** a store writer that can record an approval runs only with an explicit project root, or the hook command
+carries one, so no caller depends on its working directory. Logged, not scheduled.
+
+## B4F-149 - THE WITHDRAWAL RECORD WRITES THE WITHDRAWN APPROVAL'S TIME IN A LOCAL DATE FORMAT (candidate)
+
+**Observed:** 2026-10-21, the withdrawal in B4F-148. The row in `.specrew/authority/withdrawals.jsonl` has
+`withdrew_observed_at: "10/20/2026 23:08:41"`, while the approval it withdrew carried `2026-10-20T23:08:41.3656690Z`.
+The row still names the approval, but its time has lost the fraction of a second and the time zone, so it no longer
+matches the approval's own field exactly.
+**Likely cause:** the time is read back from JSON as a date and written out as text. Not checked in the writer.
+**Disposition:** logged, not scheduled.
+
+## B4F-150 - A ROUND APPROVAL IS ANSWERED WITH "NOTHING WAS RECORDED" (candidate)
+
+**Observed:** 2026-10-21, 202 iteration 003. The maintainer typed `approved for review round`. The message hook's
+reply read: "your reply reads as a verdict for 'review', but NO crossing is pending right now, so nothing was recorded
+... When the 'review' crossing is presented, send the phrase again: approved for review". The round approval WAS
+recorded, in the round-approval store (evidence source `hook-captured-user-prompt`, unspent), and the round ran on it.
+**Effect:** the human is told their approval was not recorded, and asked to send a phrase (`approved for review`) that
+is not a boundary at all. A human who follows it sends a second message that means nothing; one who does not is left
+unsure whether the round was approved.
+**Likely cause:** the boundary-verdict reader matches `approved for review` as the prefix of a boundary verdict before
+the round-approval phrase is considered. Not checked in the code.
+**Fix direction (proposal):** the round-approval phrase is recognized first, and its reply says the round approval was
+recorded; the boundary reader never answers a phrase another store has taken.
+**Second occurrence (2026-10-21, after round 1):** the maintainer typed `approved for review round` again for round 2,
+and the same reply came back. This time nothing WAS stored: the store still held round 1's approval with `spent_at`
+null, although round 1 had used it (its `minted_ref` named round 1, and the journal said `spent-without-delivery`), and
+the capture does not store a second approval while one reads as unspent. The launch on that approval was refused
+("That approval already paid for a review") and the refusal marked it spent; the maintainer's next typed approval was
+stored and round 2 ran on it. So the store said "unused" about a used approval, and that one wrong field both blocked
+the new approval and made the hook's "nothing was recorded" true.
+**Disposition:** logged, not scheduled.
+
+## B4F-151 - AN APPROVAL FORM THAT CANNOT BE READ REFUSES WITHOUT TELLING THE HUMAN (follow-up from 202 iteration 003)
+
+**Observed:** 2026-10-22, review round 4 of 202 iteration 003, reading round 3's fix (`8aa15c19`). Confirmed in the
+code, not seen live.
+**What happens:** when `Resolve-SpecrewApprovalForm` throws or is not loaded, the typed-authority router now records no
+authority, which is right. But the "not recorded" report runs only for an unconfirmed origin or a failed writer, and
+the multi-line disclosure calls the same form again unguarded, so it fails too and the error is swallowed. The turn is
+still reserved as seen, so the end-of-turn backup does not offer it again.
+**Effect:** a correctly typed `approved for review round` records nothing and the human is told nothing. Nothing
+unsafe is recorded.
+**Fix direction (the reviewer's):** keep a form-unreadable flag and send it to `Write-SpecrewAuthorityNotRecordedReport`
+with its own reason, as the failed-writer branch does; assert in `approval-form` that the refusal is shown or recorded.
+**Disposition:** carried as a follow-up by the iteration 003 review sign-off; not scheduled.
+
+## B4F-152 - THE REVIEW'S OWN PAUSE PROMPT GIVES A COMMAND THAT REFUSES (candidate)
+
+**Observed:** 2026-10-22, 202 iteration 003, after round 4. The pause prompt said "Answer from this terminal with:
+specrew review --live --pause-choice <1|2|3>". Run as given, after the maintainer typed `stop the review here`, it
+refused: "Specrew does not know which feature you are answering for, so it cannot find the round waiting for you",
+and asked for `--feature <feature-id>`. With `--feature 202-beta4-1-ux-stabilization` the stop went through. The
+refusal spent nothing.
+**Effect:** one wasted run, and a prompt that names a command its own engine will not take.
+**Likely cause:** the feature is not resolved for the pause choice the way it is for `--approve-round`, which found the
+campaign without it. Not checked in the code.
+**Disposition:** logged, not scheduled.
+
+## B4F-153 - ON COPILOT, ESC ON THE QUESTION BOX FOLDS THE TYPED MESSAGE INTO THE RUNNING TURN, AND NO MESSAGE HOOK FIRES (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk (Copilot 1.0.101, `2ea34f92`). With the box from
+B4F-131 open, the maintainer pressed Esc and typed M2. Copilot folded the message into the turn that was running. The
+user-message hook did not fire for it, so nothing was recorded, and Specrew could not report the miss because it never
+saw the message. The maintainer typed M2 again: the walk's one corrective exchange.
+**Effect:** on this path, US8's rule that an act not recorded is reported, not dropped, cannot hold. Nothing false is
+recorded.
+**Fix direction:** it follows B4F-131: with no box, there is nothing to fold into. Whether Copilot shows a folded
+message to any hook is not known.
+**Disposition:** logged, not scheduled. Outside the beta4.1 gate (maintainer ruling, 2026-10-24).
+
+## B4F-154 - A "MOVE ON" CLOSING PRODUCT-DOMAIN IS REFUSED AS AGENDA-NOT-SHOWN, AND THE REFUSAL IS STORED IN LOCAL TIME (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk. The maintainer's first `move on`, closing the
+product-domain lens, was refused with the reason agenda-not-shown. The stored refusal carries a +03:00 local time,
+where the stores otherwise use UTC.
+**Effect:** one more typed reply. The agenda comes after product-domain, so a close of product-domain refused because
+the agenda was not shown reads as the wrong order. Separately, a local time in one store row makes rows hard to order
+against the others.
+**Likely cause:** not checked in the code.
+**Disposition:** logged, not scheduled.
+
+## B4F-155 - A SUB-AGENT'S TASK TEXT STILL LEAVES A REFUSED ROW AND OPENS A SESSION OF ITS OWN (candidate; follow-up to T028)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk. The `speckit.specify` sub-agent's instructions
+reached the user-message hook and were refused as not typed by the human. T028 holds: nothing was stored as an
+approval. But the refusal left a row and an extra conformance session, and one more session appeared after the specify
+approval.
+**What the captures show:** on Claude's hooks as Copilot runs them, the sub-agent's PreToolUse and PostToolUse carry a
+`session_id` equal to its own `agent_id`, not the parent's session, while its SubagentStop carries the parent's. Copilot's
+own channel does the same with `sessionId` on the sub-agent's tool calls. The fixtures are
+`probe-pretooluse-subagent-1.json`, `probe-posttooluse-subagent-1.json` and `probe-subagentstop-subagent-2.json` on
+both Copilot channels (`1509b896`). A hook keyed on the session ID would open a session per sub-agent; this is the
+likely source of the extra session, not checked in the code.
+**Fix direction:** a payload carrying a sub-agent field writes no refused row and opens no session.
+**Disposition:** logged, not scheduled.
+
+## B4F-156 - ON COPILOT, A BOUNDARY PACKET RUNS ITS REPLY OPTIONS TOGETHER AND SHOWS THE HIDDEN BOUNDARY TAG (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk, both packets (specify and clarify). The four reply
+lines ran together on one line, and the hidden tag at the end of the packet showed as visible text ending in `-->`.
+**Effect:** the human cannot read the reply lines as separate phrases to type, and the tag's text is noise.
+**Likely cause:** Copilot's renderer joins single line breaks and does not hide the HTML comment. Not checked.
+**Disposition:** logged, not scheduled.
+
+## B4F-157 - THE WORKSHOP AGENDA QUESTION ALSO ASKS FOR THE REVIEWER CHOICE (candidate)
+
+**Observed:** 2026-10-23, the 202 iteration 003 Copilot re-walk. The agenda question also asked the maintainer to
+choose the reviewer: two decisions in one question.
+**Effect:** one reply has to answer both, and a short answer to one leaves the other open.
+**Fix direction:** ask the reviewer choice as its own question.
+**Disposition:** logged, not scheduled.
+
+## B4F-158 - A CI LINT FAILURE ON A RECORD IN AN ORDINARY LIFECYCLE STATE HIDES THE DETERMINISTIC GATE (candidate)
+
+**Observed:** 2026-10-24, the 202 iteration 003 retro. Specrew CI failed on all 16 pushes from iteration 002's closeout
+to the iteration 003 review sign-off. Fifteen failures came from records or deployed copies in a state the lifecycle
+passes through: `state.md` written after the first code commit, `review.md` committed before its stop moved the plan
+status, an open gap ledger before closeout, a closed iteration in a push's scope, and the deployed copies differing from
+the sources between the review and the runtime refresh. One was a test (`co-review-service.Tests.ps1`, the owner-handoff
+case, at `2ea34f92`). The deterministic gate `needs: lint`, so since that push it has not run.
+**Effect:** red becomes the normal colour, nobody reads it, and a real test failure is hidden behind a record-order
+failure.
+**Fix direction:** the deterministic gate runs whether or not lint passes; the validator in CI accepts the states the
+lifecycle passes through, or the lifecycle writes its records in the order CI accepts.
+**Disposition:** logged at the iteration 003 retro; for the beta5 plan.
+
+## B4F-159 - A CLOSED ITERATION IS SEALED IN A STATE CI'S VALIDATOR REJECTS, SO EVERY LATER PUSH THAT TOUCHES IT FAILS (candidate)
+
+**Observed:** 2026-10-25, the 202 iteration 003 closeout (`794f6559`), as at iteration 002's (`45f0d01c`). The approval's
+capture sets `plan.md` to `complete` and seals the iteration, but leaves `**Completed**:` blank, and the hardening gate
+still lists four concerns without runtime evidence or closure follow-through. CI's lint job fails the closeout push on
+both. The seal forbids editing the files afterwards, so any later push that touches the iteration fails the same way;
+iteration 002's re-walk row (DRIFT-002) and its revert hit it.
+**Effect:** the closeout push is always red, and the deterministic gate is skipped behind it (B4F-158).
+**Fix direction:** the closeout capture writes the Completed date before sealing, and the closeout step refuses to ask
+for approval while the hardening gate has concerns without follow-through, so they are settled while the files can
+still change.
+**Disposition:** logged, not scheduled.
+
+## B4F-160 - THE VALIDATOR'S CACHE IGNORES THE DECISIONS LEDGER, SO A CACHED RESULT OUTLIVES THE DEFERRAL IT JUDGED (candidate)
+
+**Observed:** 2026-10-25, preparing feature 202's merge to main. A corrected defer entry for feature 001's iteration
+011 was added to `.squad/decisions.md`, and two validator runs still reported "Deferred gap entries require a canonical
+defer entry" for that iteration, committed or not. Called on its own, the same check passed. The result came from
+`.specrew/.cache/`: the cache key covers the iteration's files and the validator's code, not the decisions ledger the
+deferral check reads. With `-NoCacheRead` the iteration passed.
+**Effect:** a fixed record keeps failing locally until the cache is bypassed, while CI, starting with no cache, passes.
+The reverse is worse: a deferral removed from the ledger keeps passing locally from the cache.
+**Fix direction:** the cache key includes the content of every file a cached check reads (at least
+`.squad/decisions.md`), or the checks that read the ledger are not cached.
+**Disposition:** logged, not scheduled.
+
+## B4F-161 - THE COMPOSED COORDINATOR COPY FAILS PR MARKDOWN LINT, AND THE FIRST FIX WAS MADE TO THE COPY (candidate)
+
+**Observed:** 2026-10-25, feature 202's pull request into main (#3515). CI's Lint failed in its changed-Markdown step
+on `.github/agents/squad.agent.md:1522`, MD046 (a fenced block inside a list item reads as indented), before the
+governance step ran. The source is the governance fragment,
+`extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, which `specrew update` composes into
+the deployed copy; the fragment lints clean on its own, the composed copy does not.
+**First occurrence:** 2026-06-01, `178d04bc` ("fix(ci): satisfy PR markdown lint"), which de-indented the same block by
+hand in the deployed copy rather than in the fragment. The next composition brought the indentation back.
+**Why it surfaces only at a merge:** markdownlint skips dot-directories unless given `--dot`, so branch pushes, which
+lint `**/*.md`, never read `.github/agents/`. A pull request passes changed files by name, so only then is the copy
+linted.
+**Interim:** the deployed copy is listed in `.markdownlintignore` on the maintainer's `ignore the deployed copy`.
+**Fix direction:** fix the fragment so its composed output lints clean, lint the composed copy where it is produced,
+and lint the deployed dot-directory copies on pushes too (`--dot`), so a break is found when it is made, not at merge.
+Then remove the ignore entry.
+**Disposition:** beta5 fix, on the maintainer's ruling of 2026-10-25; carried in `docs/beta5-findings.md` as B5F-013.
+
+## Beta4.1 intake rulings — 2026-10-13
+
+The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
+B4F-100, B4F-102, B4F-105, B4F-089, B4F-101 and B4F-107. **Tier 2**, only after Tier 1 is accepted,
+is the narrow B4F-054/056/058/061 review-ordering slice bounded by B4F-074, B4F-093 and B4F-103.
+No beta5 review redesign enters through the ordering slice. **B4F-125** (approval intake: position, two
+approvals for one decision, a script offered as the approval) was added FIRST in Tier 2 on 2026-10-16, after it
+happened live before 202's round 5. **B4F-108** (Codex workshop parity)
+was added to Tier 1 later the same day, after the Codex product-domain checkpoint deadlocked.
+**B4F-109** (new-feature cycle reset, `feature-closeout -> specify`) was added to Tier 1 next to B4F-105
+the same day, after 202's specify sync could open no crossing.
+
+**B4F-096 joins Tier 1 on the conditional reproduction ruling.** A corrected controlled replay against
+the installed beta4 package identified as `8d3f9906`, with a governed workshop controller in a disposable
+fixture, shows a visible product question before orientation and a corrective orientation demand only
+at Stop. Baseline: zero real human decisions, one corrective exchange requested, one extra Stop block.
+The first attempt also hit a missing-working-area refusal and is preserved as confounded evidence.
+This is installed-package event replay, not a new live agent session. See the
+[check and evidence](../specs/202-beta4-1-ux-stabilization/workshop/conditional-findings.md).
+
+**B4F-039 remains explicitly beta5, both sub-findings.** Mid-clarify packets without a pending crossing
+and stale directories counted as live sessions have different recorded prerequisites from B4F-104's
+repeated unchanged crossing. Shared interruption cost alone does not establish one defect.
+
+**B4F-090 remains explicitly beta5.** Wrong first-run prose and a stale resume narrative (B4F-089) are
+separable recorded triggers; the records do not establish a shared cause. B4F-089 still owes an accurate
+current-work description. If later evidence establishes a shared producer without additional scope,
+record that evidence before folding B4F-090 in.
+
+All other beta5 items remain excluded. Per-scenario before/after extra-stop and reply counts must
+separate real decisions from corrective exchanges; elapsed time is recorded where observable. Missing
+measurements are not zero. The remaining historical validator review-evidence, defer-provenance and
+verdict failures are out of scope and must be named as known baseline in the feature's specification.
+These are intake scope decisions, not implementation authorization or approval of a lifecycle boundary.

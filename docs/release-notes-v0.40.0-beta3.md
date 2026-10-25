@@ -128,6 +128,48 @@ that init/update copies into consumer projects, not module-only engine internals
   conversation is never replaced by an engineering interrupt. Recovery says whether an answer was
   actually preserved, proposes one action, and does not diagnose or blame Specrew.
 
+## Your features do not get a git branch, and now the tool says so
+
+**Creating a feature makes a directory under `specs/`. It does not create or switch to a branch.** If you
+expected one, nothing failed and nothing is misconfigured.
+
+This has been true since the previous release, not this one. Spec Kit moved branch creation out of its base
+scaffold and into an optional `git` extension, and Specrew installs only its own extension, so no component
+in a project created by `specrew init` makes branches.
+
+What changed here is that you are told. The scaffold used to print a `BRANCH_NAME` line and stop, which is
+the feature's name and also the name a branch would have had, with no way to tell which you were being
+shown. It now says which of four things happened - the branch was created and checked out, it exists but is
+not checked out, there is no repository, or it was not created and why - and says plainly that nothing
+failed.
+
+**If you want feature branches, create them yourself for now.** Whether Specrew should install the extension
+that makes them is an open question rather than a settled one, and it will be answered in a release where
+changing what every new project receives can be exercised properly.
+
+## The workshop's first turn no longer interrupts you
+
+**Type what you want to build, and the first thing you see is the first question.** That was not true
+until this release.
+
+Creating a feature writes a placeholder specification, which says in so many words that the specification
+comes after the workshop. A guard then noticed that a file outside the workshop notes had changed and
+stopped to tell you about it, before you had answered anything, about a file the product had written
+itself seconds earlier and you had never touched.
+
+An exemption for exactly this case already existed and had never once worked. It compared the placeholder
+against the upstream specification template, but the governed step replaces that template with a much
+shorter stub, on purpose, so a template cannot tempt anyone into writing requirements early. The two files
+were never the same size, so the comparison failed before it began.
+
+The check now reads the same marker the specify boundary already reads to decide whether a specification
+has been written. One rule, one answer.
+
+**What still stops you is unchanged.** If anything writes real content into that file during the workshop,
+you are told, because that is genuine work you did not see happen. That protection was proven in both
+directions before this shipped: an authored specification still stops, and the untouched placeholder no
+longer does.
+
 ## What a review actually costs
 
 Stated as a receipt rather than an estimate, from the authority ledger of T067 (the dogfood feature whose review loop exposed these costs):
@@ -190,6 +232,29 @@ review that stands behind it is the **campaign record** — reviewer evidence pr
 than the one that wrote the code — together with the **two field walks** described above, both run on these
 exact bits.
 
+**The release gate is rehearsed before the tag exists, and that rehearsal has already paid for itself.**
+A `workflow_dispatch` dry-run now runs the full-tree census on the release branch before any tag is cut.
+The first one caught a PSGallery corrupt-zip transient in `prepublish-validation` - the publish-test
+container failing to install Specrew with `End of Central Directory` - which had nothing to do with the
+code and everything to do with what happens next: on a tag push that is a red job, a skipped publish, an
+empty gallery, and no one watching. It would have blocked this release silently for the **second
+consecutive time**, on a cause unrelated to the first. The rehearsal turned it into a re-run.
+
+**What the code-unchanged proof proves, stated so it is not read as more than it is.** It compares
+NON-COMMENT token streams, so what it establishes is that **the code is unchanged** - not that the comments
+are inert. Those two claims come apart exactly where a comment carries something a tool reads, and this
+tree has such a case: an authority-marker comment that a guard parses as machine-readable data. None of the
+six rewrites touched a marker, so the gap did not bite - but that was luck rather than scope, and the proof
+is named for what it measures. **A comment correction to a marker-bearing line is NOT covered by it.**
+
+**Scope of the inertness proof, stated so it is not read as more than it is.** The six comment rewrites in
+the deployed scripts were proved inert by tokenizing the four affected files before and after, discarding
+comment and whitespace tokens, and showing the remaining token streams identical - with a negative control
+demonstrating the comparison detects a real code change hidden under a comment change. **That proves those
+four files' behaviour is unchanged. It proves nothing about the tree.** At the moment it was run the tree's
+`.specify/` mirrors still disagreed with those four files, and the census caught that separately. The proof
+is valid for exactly what it claims and is not a tree-level guarantee.
+
 **The full PR review of the beta3 branch happens once, at `feature-closeout`, in beta4.** The feature branch
 stays unmerged until then; only documentation crosses to `main` ahead of it, so that the repository's front
 page describes the release a visitor can actually install.
@@ -214,6 +279,117 @@ the front page a beta tester lands on and the notes attached to the download - a
 the fewest eyes. Every gate this batch built points inward at the code and the lifecycle records; nothing
 pointed at the prose that represents them. The bot was the only reader positioned to see the page as a
 stranger sees it.
+
+## This tag was cut once before, on 31 August, and did not publish
+
+**A tag named `v0.40.0-beta3` already existed. It was deleted and re-cut, and this section is why.**
+
+On 31 August the tag was cut on commit `4f4dce52` and a GitHub pre-release was published from it. The
+publish never completed. The workflow the tag triggered ran three jobs: pre-publish validation passed, the
+full-test census failed, and the publish job was skipped because the census gates it.
+
+The census failed 23 of 404 named test files.
+
+**Nobody noticed for two days.** The pre-release was visible the whole time, so from outside it looked like
+a release had happened. What had actually happened is that the gate did its job and the result went unread.
+That is the part worth saying plainly: the failure was not subtle and not hidden, it was simply not looked
+at.
+
+The response was a respin rather than a patch on top. A branch was taken from the same commit, and the work
+was confined to tests, the census harness, and a small set of packaged fixes the census surfaced. The
+original tag and its pre-release were then deleted and `v0.40.0-beta3` re-cut at the respin candidate, so
+the name points at bits that passed their own gate.
+
+**If you installed from the 31 August pre-release, replace it.** It carries a malformed authority marker in
+a deployed script, described in the next section, and it is a build whose gate never went green.
+
+## What the release gate measured, and why its failure count went up
+
+The full-tree census is the gate this release hangs on. Reading its numbers needs one fact stated plainly,
+because the raw figures invite the opposite conclusion.
+
+**The census went from 22 failures to 25 - and that is the gate getting stronger, not weaker.** A bare
+Windows runner has no `uv` and ships Node 22, while Specrew's own declared floor is Node 24 - unchanged
+since beta2. So `specrew init` failed its own dependency check and the gate recorded the product correctly
+refusing an unsupported machine as failing tests. Provisioning the runner to the product's own stated
+requirements made the census **measure the tree** rather than the runner; tests that could not previously
+run - one of them needs markdownlint - now genuinely execute. More measurement, more findings. Provisioning
+would only be cheating if it went **past** what a real consumer needs; it does not.
+
+Of the 13 new entries, 9 were a single mirror-parity defect introduced and fixed inside this work, and 4
+are distinct. 12 entries survived from the first run and are the real remainder.
+
+**A related limit, stated rather than implied**: this project has no census baseline, because **the census
+has never passed**. The job was added on 2026-08-26, after the beta2 release, which therefore never ran
+it, and every run containing it since has failed. These results are a **first measurement, not a
+regression list**. Nothing in a census result should be read as "this broke recently"; only a local control, holding
+the machine and the harness fixed while varying the tree, can date a failure. The tests are years older
+than the gate, so an individual failure may still be long-standing - one of them is confirmed so.
+
+## What the release gate actually found
+
+**The census found ZERO regressions.** Nothing that worked in the previous release stopped working in this
+one.
+
+It found one **defect at birth** - a malformed authority marker in a deployed script, where the marker
+prefix was followed by prose instead of an identifier, so a scanner captured the word "the" as a control
+name. It shipped in `v0.40.0-beta3`'s first tag and is fixed here.
+
+Everything else was a **test corpus that had not caught up with the batch's own tightening.** This release
+moved several governance checks from *"the artifact exists"* to *"the artifact was produced through the
+governed path"* - a crossing cannot open into a stage whose artifacts are absent, `state.md` must mirror
+the authority record rather than be written alongside it, and `review.md` must carry observed authorship.
+Every fixture in the corpus fabricates its artifacts, because fabrication was sufficient when the checks
+asked only whether a file existed. It is no longer sufficient.
+
+So the honest summary of this census is: **the batch tightened the contracts and the test corpus had not
+caught up.** That is a more useful finding than a regression list, and it is what the evidence supports.
+The remaining items are environmental (a runner that could not bootstrap the product) and longstanding
+(failures already present in the previous release).
+
+One consequence worth stating: the validator's scoping was checked directly during this work and is
+correct. It selects exactly the changed iteration and reports scoped mode. Seven distinct fallback
+conditions positively confirm it does not silently narrow when the diff base is ambiguous. No test covers
+narrowing on the ordinary path, so that confirmation should not be read as broader than it is.
+
+The gate also caught a defect this work introduced, which is the clearest argument for having run it.
+Editing the deployed machinery in this repository without re-stamping its install marker left the recorded
+install state disagreeing with the deployed files, and the integrity check refused rather than reporting a
+clean run it could not vouch for. The marker was regenerated through the product's own writer rather than
+edited by hand, because hand-writing the artifact a check reads is the exact habit this release exists to
+make harder. Nothing here reached users: the marker is per-project deployment state that every install
+regenerates, it is not part of the package, and a project installing this build gets a marker describing
+this build.
+
+The comment-only changes in this release are proven, not asserted. Each affected script was parsed at the
+previous tag and at this one, comments dropped, and the remaining token streams compared. **Three** are
+executable-identical, and the proof covers those three only.
+
+The fourth, the conformance provider, no longer belongs in that set. It began as a comment rewrite and now
+also carries a behavioural fix, so it sits in two categories the way the workshop-lens script already does.
+The fix is described under the workshop's first turn below, and it is the reason the candidate was rebuilt
+and re-walked.
+
+## A disclosed verification gap: FR-032
+
+**FR-032 - a pending crossing is owed by the session that recorded it - ships in this release with no
+passing automated test and no field proof.** It is disclosed here rather than inherited quietly.
+
+The fix is real and answers an observed defect: a second, live session arriving at a boundary it did not
+create was stop-blocked with nothing it could discharge, producing repeated interruptions until the cap.
+Reverting the fix reinstates that. So it ships.
+
+What does not exist behind it:
+
+- **No passing automated test.** Its locking test had eight assertions that were red from the moment they
+  were authored, in the same commit as the fix they were written to lock. That test is relocated to
+  `tools/pending/` with the mechanism recorded.
+- **No field proof.** The behaviour needs two concurrent sessions, and a single-session walk cannot stage
+  that. All three walks behind this release were single-session. **This is a limit of the walk format, not
+  an oversight** - no amount of walk discipline reaches a two-session scenario.
+
+A replacement test is a beta4 item. Until it exists, FR-032's behaviour is supported by the reasoning in
+its fix and by the defect it was written to remove, and by nothing else.
 
 ## Known issues
 
@@ -269,6 +445,70 @@ Boundary packets also run a provider-free preflight before state mutation: remot
 must have the current branch pushed at HEAD, ahead-count provenance is surfaced, dirty paths are
 classified by writer, task/status summaries must agree, and the boundary's owed artifact must exist.
 Local-only projects name the remote check as not applicable rather than inventing a forge obligation.
+
+**Something must be tested against a project made minutes ago, not against this repository.** The drift runs both ways, which is the sharper version of this. Four times in one release cycle the two trees disagreed: three where this repository had something users did not, and once where the shipped behaviour was right and this repository was the stale one. Nothing compares them in either direction, so each can be wrong about the other until someone stumbles into it. This is the
+most valuable thing the release walk found, and what makes it valuable is that it would have prevented a
+shipped defect rather than merely caught one. The missing feature branches above went unnoticed through an
+entire release cycle - not for want of looking, but because everything that looked ran inside the Specrew
+repository, whose scaffolding is pinned from April, which carries every optional extension, and which until
+late August was running a Spec Kit version two minors behind the one it was shipping to everyone else. The
+configuration almost every user has is the one least represented in the project's own testing. The candidate
+walk already has the right shape - a fresh directory, the shipped installer, a real first session - and it
+needs to be a lane that runs rather than a checklist someone remembers.
+
+**The generated .gitignore has two authors and only one is checked.** Half of it comes from a third-party SDK that Specrew deploys but does not write, including the rule that a team’s identity state must stay committed. Specrew tests the half it writes, by calling its own function directly rather than running a real install, so the file people actually get is asserted nowhere. If that SDK changes its block, every new project quietly loses a rule and nothing here would notice. The fix is to run the real install and assert the composed result.
+
+**Whether Specrew should install Spec Kit's `git` extension.** Not changed in this release, because it
+alters what every new project receives and that deserves its own exercise. It looks more like an oversight
+than a decision: the version carrying the change has been pinned for two months, the lifecycle assumes
+feature branches nearly everywhere, and nothing anywhere records a decision to work without them.
+
+**Feature creation should not write a specification file at all.** This release fixes the symptom: a guard
+that interrupted the workshop's first turn over a placeholder the product itself had just written. The
+cause is that the placeholder exists. Nothing reads it before the workshop ends, every path that touches
+it has to special-case it, and the walk that found this hit it on turn one. Removing it changes feature
+creation, which is why it was not done under a release candidate.
+
+**Every exemption owes a test that proves it fires**, and the one this release repaired now has one. The
+interruption fixed here had an exemption written for exactly that case, and it had never once worked in the
+twenty-two days since it was added. It compared the placeholder against the wrong file, so it declined every
+time it was asked. Nothing noticed, because a rule that declines because the case does not apply and a rule
+that declines because it is broken behave identically, and the tests around it only ever checked that the
+guard stops things. A suite written entirely in the negative agrees with a dead exemption perfectly.
+
+That rule is applied here rather than deferred: the repaired exemption ships with a guard asserting it
+fires, which is mutation-proved to go red if the exemption dies again. Applying the same rule to every other
+exemption in the codebase is the beta4 half.
+
+**A guard should test its purpose, not a proxy for it.** The interruption above fired after the agent had
+already explained the placeholder unprompted, so the thing the guard exists to guarantee had happened and
+it stopped anyway. It checks whether a file changed rather than whether the human was told. That shape is
+worth hunting for elsewhere, because a guard that fires after its own purpose is served costs the
+interruption and buys nothing.
+
+**The test corpus has to catch up with the provenance shift, and that is the largest item here.** This
+release moved several checks from asking whether an artifact exists to asking whether it was produced
+through the governed path. Every fixture in the corpus fabricates its artifacts, so any fixture that
+hand-writes a governed artifact is now living on borrowed time. Two are already measured: one trips four
+separate gates, another can no longer mint the crossing it depends on. The method is known rather than
+speculative, because the release walk already uses it: drive the real lifecycle and let each boundary
+produce its own artifacts.
+
+**Nothing checks that the deployed machinery still matches its install stamp.** This release found that
+disagreement the hard way, from inside a test that inherited it. The check that catches it runs only when
+an iteration is validated, so a repository can carry the drift for days without noticing. Re-stamping
+belongs in whatever syncs the deployed copy, or the release gate should assert the two agree. It is a
+one-line assertion either way.
+
+**"This change is comments only" should be measured, not reviewed.** The four such changes in this release
+were proven by parsing each file before and after, dropping comments, and comparing the token streams. That
+proof was written for this release and should become a standing check, because reading a diff and
+concluding it is inert is exactly the judgement a machine makes better.
+
+**Auto-scoping has no test for narrowing on the ordinary path.** Seven separate tests confirm it does not
+silently narrow when the diff base is ambiguous, and they all pass. None covers the case where everything
+resolves cleanly and it selects too few iterations anyway. The confirmation that exists is real and it is
+narrower than it looks.
 
 ## What "continuous co-review" means in this release — read this before relying on it
 

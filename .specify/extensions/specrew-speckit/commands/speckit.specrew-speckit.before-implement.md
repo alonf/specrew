@@ -8,9 +8,17 @@ Before implementation starts, confirm the active iteration artifacts are approve
 
 ## Required checks
 
+0. **First, the overall verdict line - from the ledger, not from your reading.** Run
+   `pwsh -File .specify/extensions/specrew-speckit/scripts/readiness-verdict.ps1 -ProjectPath .` before any other
+   check. Its single output line begins `Overall verdict:` and is derived from `.specrew/start-context.json`'s
+   boundary ledger. That line is the FIRST line of your report, verbatim. Every check below is evidence
+   under it, never a replacement for it: artifact checks that all pass do not make the overall verdict READY,
+   and a report whose first line is not that line is incomplete. (B4F-071: a readiness report's BLOCKED first
+   line was summarized to PASS by the crew that received it, and implementation was announced.)
+
 1. Confirm the latest iteration plan has an approval verdict and is still the active source of truth.
 2. Verify execution is not bypassing unresolved review findings or missing phase artifacts.
-3. Run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` when iteration artifacts are available.
+3. Run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/<feature>/iterations/<active-iteration>` when iteration artifacts are available. Readiness is about the ACTIVE iteration: a closed iteration's recorded state is history, not a gate input for the next iteration, and a preserved FAIL in a closed iteration must never block new work. (Full-repo runs also skip closed iterations automatically; the explicit scope makes the readiness question exact.)
 4. When the active iteration includes Phase 2 hardening-gate scope (`FR-031` through `FR-033`), confirm `quality/hardening-gate.md` exists and records explicit review of:
    - security surface analysis
    - error-handling expectations
@@ -34,8 +42,8 @@ Surface `/speckit.analyze` at this before-implement boundary, but only after `/s
 
 After the readiness checks complete, record the boundary arrival FIRST — the sync mints the pending
 crossing and writes `.specrew/runtime/pending-verdict-stop.md`, the controller truth the verdict
-stop renders from (DRIFT-198-I011-012: this skill previously gated with NO arrival sync at all, so
-the pending ask depended entirely on off-skill machinery — the marker-invention precondition):
+stop renders from. This explicit arrival prevents the pending ask from depending on off-skill
+machinery:
 
 ```powershell
 $featureJson = Get-Content -LiteralPath .\.specify\feature.json -Raw -Encoding UTF8 | ConvertFrom-Json

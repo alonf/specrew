@@ -365,8 +365,14 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
         $result.all_succeeded | Should -BeTrue -Because 'the engine baseline (empty) is sufficient to launch a child on this platform - runtime evidence, not assertion'
         Get-Content -LiteralPath (Join-Path $repo 'launched.txt') -Raw | Should -Be 'ok'
-        # And the baseline function itself is EMPTY on this platform - any future addition demands new evidence.
-        @(Get-ContinuousCoReviewVerificationEngineBaseline).Count | Should -Be 0
+        # The baseline is EXACTLY the engine's own control variable, and nothing else. It was empty
+        # until W39 (2026-08-23) added SPECREW_REVIEW_PREFLIGHT - the marker that scopes ONE cited-run
+        # freshness rule out of a review preflight, so the round that would refresh a stale citation
+        # is not blocked by that citation. This case still carries the evidence the addition demands:
+        # the child above launched and exited 0, and the variable carries no value that changes what a
+        # command DOES. Any FURTHER addition demands its own paired runtime evidence, which is the
+        # standing rule this assertion enforces - by naming the whole set rather than counting it.
+        @(Get-ContinuousCoReviewVerificationEngineBaseline) | Should -Be @('SPECREW_REVIEW_PREFLIGHT')
         # The constructed map carries ONLY declared refs that exist ambiently - nothing implicit.
         @((Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs @()).Keys).Count | Should -Be 0
     }
@@ -574,11 +580,131 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -Not -BeNullOrEmpty
     }
 
+    Context 'T007/FR-013 derived diagnosis - facts ABOUT the failure, never the output' {
+        BeforeAll {
+            function script:New-FailedEvidence {
+                param(
+                    [string]$Id = 'build', [object]$ExitCode = 1, [double]$Seconds = 3.5,
+                    [bool]$TimedOut = $false, [string[]]$EnvRefs = @('PATH', 'PATHEXT'),
+                    [string]$Classification = 'command-exited-non-zero', [string]$Reason = ''
+                )
+                return [pscustomobject]@{
+                    command_id = $Id; command_succeeded = $false; exit_code = $ExitCode
+                    duration_seconds = $Seconds; timed_out = $TimedOut; env_refs = @($EnvRefs)
+                    classification = $Classification; failure_reason = $Reason
+                }
+            }
+        }
+
+        It 'names the env_refs the command was allowed - the line that would have ended T067' {
+            # T067 burned an hour on a sealed failure whose real cause was an empty child environment
+            # with git not on PATH. Every fact needed to say so lives in the PLAN.
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(script:New-FailedEvidence -EnvRefs @('PATH', 'TMPDIR'))
+
+            $d | Should -Match 'PATH, TMPDIR'
+            $d | Should -Match '(?i)env_refs'
+            $d | Should -Match '(?i)names only, never values' -Because 'the no-secrets rule is the thing a consumer editing env_refs most needs to know'
+        }
+
+        It 'an EMPTY env_refs list says so explicitly rather than omitting the line' {
+            # The silent case is the dangerous one: no environment at all looks identical to "the
+            # message did not mention environment", which is exactly how T067 stayed mysterious.
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(script:New-FailedEvidence -EnvRefs @())
+            $d | Should -Match '(?i)NO environment variables at all'
+            $d | Should -Match '(?i)not even PATH'
+        }
+
+        It 'carries the controller facts: which command, exit code, duration, timeout' {
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(script:New-FailedEvidence -Id 'unit-tests' -ExitCode 7 -Seconds 12.25 -TimedOut $true)
+            $d | Should -Match 'unit-tests'
+            $d | Should -Match 'exit code 7'
+            $d | Should -Match '12\.3s|12\.2s'
+            $d | Should -Match '(?i)ran out of time'
+        }
+
+        It 'a command that never started says so instead of inventing an exit code' {
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(script:New-FailedEvidence -ExitCode $null)
+            $d | Should -Match '(?i)no exit code \(it did not start\)'
+        }
+
+        It 'survives a REAL record that lacks fields the synthesised ones all had' {
+            # The defect this case exists for: the first version read every field directly and threw
+            # under StrictMode the moment it met a record without `failure_reason`
+            # (`verification-copy-failed: The property 'failure_reason' cannot be found on this
+            # object`). Its own fixtures passed because they invented records carrying everything.
+            # Evidence comes from several builders; a partial record is the NORMAL case, not the edge.
+            $sparse = [pscustomobject]@{ command_id = 'sparse'; command_succeeded = $false }
+            { Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @($sparse) } | Should -Not -Throw
+
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @($sparse)
+            $d | Should -Match 'sparse'
+            $d | Should -Match '(?i)no exit code'
+            $d | Should -Match '(?i)NO environment variables at all'
+        }
+
+        It 'a record with no command_id is still reported, never dropped' {
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @([pscustomobject]@{ command_succeeded = $false })
+            $d | Should -Match '(?i)unnamed command' -Because 'a failed command that vanishes from the diagnosis is worse than an ugly label'
+        }
+
+        It 'reports EVERY failed command, and stays silent when nothing failed' {
+            $two = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(
+                (script:New-FailedEvidence -Id 'first'), (script:New-FailedEvidence -Id 'second')
+            )
+            $two | Should -Match 'first'
+            $two | Should -Match 'second'
+
+            $none = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(
+                [pscustomobject]@{ command_id = 'ok'; command_succeeded = $true }
+            )
+            $none | Should -BeNullOrEmpty -Because 'a diagnosis rendered on success teaches the reader to skip it'
+        }
+
+        It 'NOTHING here is command output - the seal is untouched' {
+            # The governance guarantee, asserted rather than asserted-in-prose. Every field consumed is
+            # one the controller already owns; stdout/stderr are never read.
+            # Sliced to the NEXT TOP-LEVEL FUNCTION, not to the first closing brace - a `.*?\n\}` stops
+            # inside the first nested block and then guards almost nothing (DRIFT-199-I001-016's
+            # brittle-structural-test lesson). And COMMENTS are stripped before scanning: the comment
+            # above this function correctly contains the word "output" while saying it never reads any,
+            # and a guard that fails on prose describing the rule is a guard reporting the wrong defect.
+            $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/verification-plan-runner.ps1') -Raw
+            $slice = [regex]::Match($source, '(?ms)^function Get-ContinuousCoReviewVerificationFailureDiagnosis \{.*?(?=^function |\z)').Value
+            $slice | Should -Not -BeNullOrEmpty
+            $code = (($slice -split "`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n")
+            $code | Should -Match 'command_succeeded' -Because 'the slice must actually contain the function body, or this guard proves nothing'
+
+            foreach ($forbidden in @('stdout', 'stderr', 'Get-Content', 'ReadAllText', 'StandardOutput')) {
+                $code | Should -Not -Match ([regex]::Escape($forbidden)) -Because "a derived diagnosis that touched $forbidden would be a disclosure wearing a different name"
+            }
+        }
+    }
+
+    It 'T007/FR-013: an absent plan names the NEXT STEP, not just the requirement it violates' {
+        # DRIFT-199-I001-008 is this message reaching a consumer: the campaign preflight died with
+        # `verification-not-configured` and the stop surface demanded a review that could not start.
+        # The old text gave a file path and a requirement id - true, and useless to the person holding
+        # it. T007 part 1 makes this state rare, which is exactly why the cases that survive are the
+        # confusing ones: a hand-deleted plan, or a directory that was never initialised.
+        $repo = New-PlanRunRepo
+        $reason = [string](Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo).reason
+
+        $reason | Should -Match '\.specrew/verification-plan\.json' -Because 'name the file that is missing'
+        $reason | Should -Match '(?i)specrew init' -Because 'name the command that fixes it'
+        $reason | Should -Match '(?i)nothing was (checked|verified)' -Because 'say what the consequence was, not only what is absent'
+        $reason | Should -Not -Match '(?i)FR-0\d\d' -Because 'a requirement id is a note to us, not an instruction to them (FR-015)'
+    }
+
     It 'the selected-plan RESOLVER: absent -> unavailable; schema-invalid -> unavailable (loud, never silently none or silently used); valid -> available (maintainer wiring directive 2026-07-15)' {
         $repo = New-PlanRunRepo
         $r1 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo
         $r1.available | Should -BeFalse
-        [string]$r1.reason | Should -Match 'supplier'
+        # MOVED 2026-08-10 (T007/FR-013). Was `Should -Match 'supplier'`. The GUARANTEE this case exists
+        # for is "absent -> unavailable, with a stated reason"; the word 'supplier' is internal
+        # vocabulary that happened to be in the string. Pinning the guarantee instead, so the message can
+        # be written for the consumer without the case going quiet.
+        [string]$r1.reason | Should -Not -BeNullOrEmpty
+        [string]$r1.reason | Should -Match '\.specrew/verification-plan\.json'
         New-Item -ItemType Directory -Path (Join-Path $repo '.specrew') -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $repo '.specrew/verification-plan.json') -Value '{ "plan_id": "p" }' -Encoding UTF8
         $r2 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo

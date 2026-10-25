@@ -48,8 +48,44 @@ function New-MinimalProject {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
+# THE HARNESS RUNS AGAINST A PACKAGE AS WELL AS THE SELF-HOST REPO (the stage-demo audit of ef80591d ran it
+# against the installed module and it exited 1 expecting `.specify/` INSIDE the module - which no package
+# has). The module under test is $repoRoot (the repo, or an installed module's base). The DEPLOYED project
+# assets it is compared against are, in order: $env:SPECREW_DEPLOYED_PROJECT (a project bootstrapped from
+# the package - the census sets it when running against a package), else the self-host repo's own `.specify/`
+# mirror. The sync wrapper is the deployed project's when one exists, else the module's own extension copy.
+$deployedProjectRoot = if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_DEPLOYED_PROJECT) -and (Test-Path -LiteralPath (Join-Path $env:SPECREW_DEPLOYED_PROJECT '.specify\extensions\specrew-speckit') -PathType Container)) {
+    (Resolve-Path -LiteralPath $env:SPECREW_DEPLOYED_PROJECT).Path
+}
+elseif (Test-Path -LiteralPath (Join-Path $repoRoot '.specify\extensions\specrew-speckit') -PathType Container) { $repoRoot }
+else { $null }
+$deployedExtensionRoot = if ($null -ne $deployedProjectRoot) { Join-Path $deployedProjectRoot '.specify\extensions\specrew-speckit' } else { $null }
+$syncScript = if ($null -ne $deployedExtensionRoot -and (Test-Path -LiteralPath (Join-Path $deployedExtensionRoot 'scripts\sync-boundary-state.ps1') -PathType Leaf)) {
+    Join-Path $deployedExtensionRoot 'scripts\sync-boundary-state.ps1'
+}
+else { Join-Path $repoRoot 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1' }
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+. (Join-Path $repoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+
+function Add-LifecycleCampaignResult {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $ProjectRoot -FeatureId '022-hotfix-schema-tests' -IterationNumber '001' -RunId 'run-lifecycle-sync'
+    $campaignId = [string]$identity.campaign_id
+    $targetLineage = [string]$identity.target_lineage
+    $runId = 'run-lifecycle-sync'
+    $store = Join-Path $ProjectRoot '.specrew/review/authority'
+    $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot).tree_id
+    Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaignId -RunId $runId -TargetLineage $targetLineage -ObservedAt '2026-08-15T00:00:00Z' | Out-Null
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; campaign_id = $campaignId; run_id = $runId; target_digest = $digest
+        harness_id = 'fixture'; completion = 'complete'; verdict = 'pass'; runtime_outcome = 'completed'
+        termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+        can_approve_current = $true; failure_reason = $null; summary = 'mechanical lifecycle sync fixture'
+        findings = @(); started_at = '2026-08-15T00:00:00Z'; ended_at = '2026-08-15T00:00:01Z'; duration_ms = 1000
+    }
+    Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaignId -RunId $runId -Fact $fact | Out-Null
+    Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaignId -RunId $runId -TargetLineage $targetLineage -Disposition released -ObservedAt '2026-08-15T00:00:01Z' | Out-Null
+}
 
 $scratchRoot = Join-Path $repoRoot '.scratch\lifecycle-boundary-sync'
 if (Test-Path -LiteralPath $scratchRoot) {
@@ -61,6 +97,7 @@ $null = New-Item -ItemType Directory -Path $scratchRoot -Force
 $orderedProject = Join-Path $scratchRoot 'ordered'
 New-MinimalProject -ProjectRoot $orderedProject
 foreach ($boundary in @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout')) {
+    if ($boundary -eq 'review-signoff') { Add-LifecycleCampaignResult -ProjectRoot $orderedProject }
     $syncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @('-ProjectPath', $orderedProject, '-BoundaryType', $boundary, '-FeatureRef', '022-hotfix-schema-tests', '-IterationNumber', '001')
     if ($syncResult.ExitCode -ne 0) {
         Write-Fail ("Boundary sync failed for '{0}':`n{1}" -f $boundary, ($syncResult.Output -join [Environment]::NewLine))
@@ -95,9 +132,25 @@ if ($decisionsContent -match 'Auth Commit Hash\*\*:\s*HEAD') {
     exit 1
 }
 
+# 202 T032 (B4F-146's class): the feature-closeout sync ASKS for the closeout, so the pointer still names the feature;
+# the human's approval clears it.
+$featureJson = Get-Content -LiteralPath (Join-Path $orderedProject '.specify\feature.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ([string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
+    Write-Fail 'Asking for the feature closeout already cleared .specify\feature.json; it is cleared by the approval.'
+    exit 1
+}
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+$closeoutContext = Get-Content -LiteralPath (Join-Path $orderedProject '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -AsHashtable
+$pendingCrossing = if ($closeoutContext.Contains('boundary_enforcement') -and $closeoutContext['boundary_enforcement'] -is [System.Collections.IDictionary] -and $closeoutContext['boundary_enforcement'].Contains('pending_crossing')) { $closeoutContext['boundary_enforcement']['pending_crossing'] } else { $null }
+$fromBoundary = if ($pendingCrossing -is [System.Collections.IDictionary] -and $pendingCrossing.Contains('from_boundary') -and $pendingCrossing['from_boundary']) { [string]$pendingCrossing['from_boundary'] } else { 'iteration-closeout' }
+$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $orderedProject -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+if ($null -eq $closeoutVerdict -or [string]$closeoutVerdict.AuthorizedBoundary -ne 'feature-closeout') {
+    Write-Fail 'The feature-closeout approval was not recorded.'
+    exit 1
+}
 $featureJson = Get-Content -LiteralPath (Join-Path $orderedProject '.specify\feature.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not [string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
-    Write-Fail 'Feature closeout should clear .specify\feature.json only after syncing the closeout boundary.'
+    Write-Fail 'The feature-closeout approval should clear .specify\feature.json.'
     exit 1
 }
 
@@ -156,10 +209,19 @@ Write-Pass 'Late-boundary drift remains visible through restart validation and l
 # F-054: enforce the authoritative lifecycle placement of the surfaced lifecycle-adjacent commands.
 # checklist -> before-plan, analyze -> before-implement (after a complete tasks.md), taskstoissues -> deferred.
 $extensionMetadata = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\extension.yml') -Raw -Encoding UTF8
-$extensionMetadataMirror = Get-Content -LiteralPath (Join-Path $repoRoot '.specify\extensions\specrew-speckit\extension.yml') -Raw -Encoding UTF8
-if ($extensionMetadata -ne $extensionMetadataMirror) {
-    Write-Fail 'extension.yml mirrors (extensions/ and .specify/extensions/) have drifted; lifecycle-adjacent metadata must stay identical.'
-    exit 1
+if ($null -ne $deployedExtensionRoot) {
+    # The module's extension.yml against the DEPLOYED project's copy - the repo's own mirror on a self-host
+    # run, the bootstrapped project's on a package run. A package with no deployed project to compare against
+    # skips the comparison and says so, rather than failing on a directory packages never carry.
+    $extensionMetadataMirror = Get-Content -LiteralPath (Join-Path $deployedExtensionRoot 'extension.yml') -Raw -Encoding UTF8
+    if ($extensionMetadata -ne $extensionMetadataMirror) {
+        Write-Fail ("extension.yml in the module and in the deployed project ({0}) have drifted; lifecycle-adjacent metadata must stay identical." -f $deployedExtensionRoot)
+        exit 1
+    }
+    Write-Pass ("extension.yml in the module matches the deployed project's copy ({0})" -f $deployedExtensionRoot)
+}
+else {
+    Write-Host '[info] no deployed project to compare extension.yml against (set SPECREW_DEPLOYED_PROJECT to a project bootstrapped from this package); comparison skipped.'
 }
 foreach ($placement in @(
         @{ Command = 'speckit.checklist'; Placement = 'before-plan' },

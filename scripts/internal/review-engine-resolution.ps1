@@ -7,6 +7,13 @@ $ErrorActionPreference = 'Stop'
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'continuous-co-review/path-identity.ps1')
 }
+# HARD dependency (T006/FR-011), guarded on the EXACT function called here for the same reason as
+# above. This file is where DRIFT-199-I001-005 actually bit: the managed-file hash below refused
+# `_load.ps1` on a OneDrive-backed install, so `specrew review --remediate override-block` - the
+# sanctioned door for recording a governance decision - could not be opened at all.
+if (-not (Get-Command -Name 'Get-SpecrewReparseDispositionForItem' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'continuous-co-review/reparse-tag-policy.ps1')
+}
 
 function Test-SpecrewReviewRuntimePathUnderRoot {
     # This was the SEVENTH OS-family case shortcut, and the structural tests could not see it: they
@@ -39,9 +46,13 @@ function Assert-SpecrewReviewRuntimePathContained {
     if (-not (Test-SpecrewReviewRuntimePathUnderRoot -Path $pathFull -Root $rootFull)) {
         throw "review-runtime-managed-path-escapes-root:$Path"
     }
+    # T006/FR-011: the redirecting families still refuse - that is the whole point of this walk - but a
+    # cloud placeholder is not a redirect and must not be treated as one.
     $rootItem = Get-Item -LiteralPath $rootFull -Force -ErrorAction Stop
-    if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-        throw "review-runtime-managed-root-link-unsupported:$Root"
+    $rootDisposition = Get-SpecrewReparseDispositionForItem -Item $rootItem
+    if (Test-SpecrewReparseRefusesRead -Disposition $rootDisposition.disposition) {
+        throw (Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-root-link-unsupported' -Path $Root `
+                -Disposition $rootDisposition.disposition -LinkType $rootDisposition.link_type)
     }
 
     $relative = $pathFull.Substring($rootFull.Length).Trim([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
@@ -50,22 +61,54 @@ function Assert-SpecrewReviewRuntimePathContained {
         $current = Join-Path $current $segment
         if (-not (Test-Path -LiteralPath $current)) { continue }
         $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
-        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "review-runtime-managed-path-link-unsupported:$Path"
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $item
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
+            throw (Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-path-link-unsupported' -Path $Path `
+                    -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
     }
+    # The walk above proves each existing component is non-redirecting. Re-check lexical
+    # containment after the walk as promised by this function's contract; this also makes a future
+    # path-normalization change fail at the authorization seam instead of relying on the comment.
+    if (-not (Test-SpecrewReviewRuntimePathUnderRoot -Path $pathFull -Root $rootFull)) {
+        throw "review-runtime-managed-path-escapes-root:$Path"
+    }
     return $pathFull
+}
+
+function Read-SpecrewReviewRuntimeManagedText {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    # T006/FR-011 and DRIFT-199-I001-005's exact line. This is the check that refused
+    # `...\OneDrive - <Org>\Documents\PowerShell\Modules\Specrew\0.40.0\...\_load.ps1` and took the
+    # whole remediation door down with it. A link here is still refused; a placeholder is read.
+    $disposition = Get-SpecrewReparseDispositionForItem -Item $item
+    if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
+        throw (Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-file-link-unsupported' -Path $Path `
+                -Disposition $disposition.disposition -LinkType $disposition.link_type)
+    }
+    # HYDRATION IS THE READ. Opening a cloud placeholder is what asks the sync client to fetch it, so
+    # there is no separate hydrate step to call - but the fetch can fail (no network, sync client not
+    # running, the file evicted from the service). Left bare, the consumer gets a raw IO error about a
+    # path inside a module directory they never chose and no idea that syncing is what is wrong. The
+    # wrap applies ONLY to the cloud family, so an ordinary IO failure keeps its own diagnosis.
+    $content = if ($disposition.disposition -ceq 'hydrate-cloud') {
+        try { [IO.File]::ReadAllText($item.FullName, [Text.Encoding]::UTF8) }
+        catch {
+            throw ("review-runtime-managed-file-hydration-unavailable:{0} - This file is stored in the cloud and its contents could not be downloaded, so Specrew cannot verify it. Check that you are online and your sync app (OneDrive or similar) is running, then run the command again. You can also open the folder and choose 'Always keep on this device' to keep it available offline. The underlying error was: {1}" -f $Path, $_.Exception.Message)
+        }
+    }
+    else { [IO.File]::ReadAllText($item.FullName, [Text.Encoding]::UTF8) }
+    return $content
 }
 
 function Get-SpecrewReviewRuntimeManagedTextSha256 {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
 
-    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
-    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-        throw "review-runtime-managed-file-link-unsupported:$Path"
-    }
-    $content = [IO.File]::ReadAllText($item.FullName, [Text.Encoding]::UTF8)
+    $content = Read-SpecrewReviewRuntimeManagedText -Path $Path
     $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
     return [Convert]::ToHexString(
         [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($normalized))
@@ -140,7 +183,7 @@ function Get-SpecrewReviewRuntimeBundleSha256 {
     try {
         foreach ($entry in $manifest) {
             $relative = [string]$entry.path
-            $full = [IO.Path]::GetFullPath((Join-Path $root $relative))
+            $full = Assert-SpecrewReviewRuntimePathContained -Path ([IO.Path]::GetFullPath((Join-Path $root $relative))) -Root $root
             if (-not [IO.File]::Exists($full)) { throw "review-runtime-managed-file-missing:$relative" }
             $hash.AppendData([Text.Encoding]::UTF8.GetBytes($relative))
             $hash.AppendData([byte[]]@(0))
@@ -148,7 +191,9 @@ function Get-SpecrewReviewRuntimeBundleSha256 {
             # Normalize line endings so an otherwise identical deployed engine does
             # not fail the handshake solely because of host checkout conventions or
             # a stripped UTF-8 BOM.
-            $content = [IO.File]::ReadAllText($full, [Text.Encoding]::UTF8)
+            # Marker-provided manifests take this same reparse/hydration path as discovered
+            # manifests. The editable marker may name files; it cannot bypass the read policy.
+            $content = Read-SpecrewReviewRuntimeManagedText -Path $full
             $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
             $hash.AppendData([Text.Encoding]::UTF8.GetBytes($normalized))
             $hash.AppendData([byte[]]@(0))
@@ -186,7 +231,10 @@ function Resolve-SpecrewReviewEngineRoot {
     if ([IO.File]::Exists($markerPath)) {
         try { $marker = [IO.File]::ReadAllText($markerPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -Depth 8 }
         catch { throw "review-engine-marker-invalid:${markerPath}:$($_.Exception.Message)" }
-        if ([string]$marker.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$marker.runtime_bundle_sha256)) {
+        $schemaProperty = $marker.PSObject.Properties['schema_version']
+        $bundleProperty = $marker.PSObject.Properties['runtime_bundle_sha256']
+        if (-not $schemaProperty -or -not $bundleProperty -or [string]$schemaProperty.Value -cne '1.0' -or
+            [string]::IsNullOrWhiteSpace([string]$bundleProperty.Value)) {
             throw "review-engine-marker-invalid:$markerPath"
         }
         if ($marker.PSObject.Properties['managed_files']) {
@@ -202,13 +250,14 @@ function Resolve-SpecrewReviewEngineRoot {
         Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime
     }
     if ($null -ne $marker) {
-        if ([string]$marker.runtime_bundle_sha256 -cne $projectHash) {
-            throw "review-engine-project-runtime-drifted: marker=$($marker.runtime_bundle_sha256); actual=$projectHash; run 'specrew update --project-path `"$project`"'"
+        if ([string]$bundleProperty.Value -cne $projectHash) {
+            throw "review-engine-project-runtime-drifted: marker=$($bundleProperty.Value); actual=$projectHash; run 'specrew update --project-path `"$project`"'"
         }
     }
 
     if ($projectHash -cne $installedHash) {
-        $markerVersion = if ($null -ne $marker -and -not [string]::IsNullOrWhiteSpace([string]$marker.specrew_version)) { [string]$marker.specrew_version } else { 'unversioned' }
+        $versionProperty = if ($null -ne $marker) { $marker.PSObject.Properties['specrew_version'] } else { $null }
+        $markerVersion = if ($versionProperty -and -not [string]::IsNullOrWhiteSpace([string]$versionProperty.Value)) { [string]$versionProperty.Value } else { 'unversioned' }
         throw "review-engine-version-mismatch: installed=$installedHash; project=$projectHash; project_version=$markerVersion; run 'specrew update --project-path `"$project`"' before review"
     }
 

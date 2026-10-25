@@ -1486,6 +1486,28 @@ if ($scopes -contains 'Specrew') {
             Action   = 'verification-plan'
             Detail   = ("{0}: {1}" -f $verificationPlanSetup.Action, $(if ($verificationPlanSetup.Warning) { $verificationPlanSetup.Warning } else { $verificationPlanSetup.State }))
         })
+
+    # Feature 202 T022 (FR-033, DA-5): the shared receipt-outcomes journal is retired - each session keeps its outcome in
+    # its own folder now. It is deleted rather than left behind, because agents read runtime files directly and a stale
+    # journal would be read as current.
+    $retiredReceiptJournal = Join-Path $resolvedProjectPath '.specrew/runtime/workshop-receipt-outcomes.jsonl'
+    if (Test-Path -LiteralPath $retiredReceiptJournal -PathType Leaf) {
+        try {
+            Remove-Item -LiteralPath $retiredReceiptJournal -Force -ErrorAction Stop
+            $null = $summary.Add([pscustomobject]@{
+                    Platform = 'Specrew'
+                    Action   = 'runtime-retired-removed'
+                    Detail   = '.specrew/runtime/workshop-receipt-outcomes.jsonl: no longer used; each session keeps its reply outcomes in its own folder'
+                })
+        }
+        catch {
+            $null = $summary.Add([pscustomobject]@{
+                    Platform = 'Specrew'
+                    Action   = 'runtime-retired-warning'
+                    Detail   = ('.specrew/runtime/workshop-receipt-outcomes.jsonl could not be removed ({0}); nothing reads or writes it any more' -f $_.Exception.Message)
+                })
+        }
+    }
 }
 
 foreach ($platform in @('Spec Kit', 'Squad')) {

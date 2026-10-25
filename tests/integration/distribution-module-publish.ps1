@@ -89,12 +89,30 @@ $summaryPath = Join-Path -Path $scratchRoot -ChildPath 'release-summary.md'
 $releaseScript = Join-Path -Path $workspaceRoot -ChildPath 'scripts\internal\invoke-module-release.ps1'
 $expectedVersion = [string](Import-PowerShellDataFile -Path (Join-Path -Path $repoRoot -ChildPath 'Specrew.psd1')).ModuleVersion
 $expectedTag = 'v{0}' -f $expectedVersion
+$expectedBuildId = ([string](& git -C $repoRoot rev-parse --short=8 HEAD)).Trim()
+$env:SPECREW_BUILD_COMMIT = $expectedBuildId
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
 }
 
 Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
+
+$markerDriver = @"
+`$ErrorActionPreference = 'Stop'
+Import-Module '$((Join-Path $workspaceRoot 'Specrew.psd1') -replace "'", "''")' -Force
+`$command = Get-Command Get-SpecrewReviewCampaignEvidenceState -ErrorAction Stop
+`$state = Get-SpecrewReviewCampaignEvidenceState -ProjectRoot '$($workspaceRoot -replace "'", "''")' -FeatureRef '199-beta3-stabilization' -IterationNumber '001'
+if (`$command.Source -cne 'Specrew' -or `$state.Reason -cne 'no-campaign-result') { exit 3 }
+"@
+$markerDriverPath = Join-Path $scratchRoot 'marker-driver.ps1'
+[System.IO.File]::WriteAllText($markerDriverPath, $markerDriver, [System.Text.UTF8Encoding]::new($false))
+$markerOutput = @(& pwsh -NoProfile -NonInteractive -File $markerDriverPath 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail ("Packaged module did not export a working campaign-evidence marker. Output:`n{0}" -f ($markerOutput -join [Environment]::NewLine))
+    exit 1
+}
+Write-Pass 'Packaged module exports and invokes Get-SpecrewReviewCampaignEvidenceState.'
 
 if (-not (Get-Command -Name Publish-Module -ErrorAction SilentlyContinue)) {
     Write-Fail 'Publish-Module is unavailable in this environment.'
@@ -115,6 +133,12 @@ if ($dryRunExitCode -ne 0) {
     Write-Fail ("Dry-run release flow failed with exit code {0}. Output:`n{1}" -f $dryRunExitCode, ($dryRunOutput -join [Environment]::NewLine))
     exit 1
 }
+
+if (($dryRunOutput -join [Environment]::NewLine) -notmatch [regex]::Escape("Stamped staged build identity $expectedBuildId in build-stamp.json.")) {
+    Write-Fail 'Dry-run release flow did not stamp the source commit into the staged package.'
+    exit 1
+}
+Write-Pass 'Dry-run release flow stamps the source commit into build-stamp.json.'
 
 $manifestContent = Get-Content -LiteralPath (Join-Path -Path $workspaceRoot -ChildPath 'Specrew.psd1') -Raw -Encoding UTF8
 if ($manifestContent -notmatch ("ModuleVersion = '{0}'" -f [regex]::Escape($expectedVersion))) {
@@ -158,14 +182,15 @@ Write-Pass 'Dry-run release summary records the manual-gated WhatIf path.'
 Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
 $prereleaseSummaryPath = Join-Path -Path $scratchRoot -ChildPath 'release-summary-prerelease.md'
 $workspaceManifestPath = Join-Path -Path $workspaceRoot -ChildPath 'Specrew.psd1'
+$uniquePrerelease = 'dryrun{0}' -f $PID
 $workspaceManifestContent = Get-Content -LiteralPath $workspaceManifestPath -Raw -Encoding UTF8
 $workspaceManifestWithPrerelease = [regex]::Replace(
     $workspaceManifestContent,
     "(?m)^(\s*Prerelease\s*=\s*)'[^']*'\s*$",
-    '$1''beta2''',
+    ('$1''{0}''' -f $uniquePrerelease),
     1
 )
-if ($workspaceManifestWithPrerelease -eq $workspaceManifestContent -and $workspaceManifestContent -notmatch "Prerelease\s*=\s*'beta2'") {
+if ($workspaceManifestWithPrerelease -eq $workspaceManifestContent -and $workspaceManifestContent -notmatch ("Prerelease\s*=\s*'{0}'" -f [regex]::Escape($uniquePrerelease))) {
     Write-Fail 'Could not prepare an already-stamped prerelease manifest fixture.'
     exit 1
 }
@@ -176,7 +201,7 @@ $prereleaseDryRunOutput = @(
         -RepositoryRoot $workspaceRoot `
         -ReleaseMode dry-run `
         -GitRefType tag `
-        -GitRefName ('{0}-beta2' -f $expectedTag) `
+        -GitRefName ('{0}-{1}' -f $expectedTag, $uniquePrerelease) `
         -SummaryPath $prereleaseSummaryPath 2>&1
 )
 $prereleaseDryRunExitCode = $LASTEXITCODE
@@ -188,8 +213,8 @@ if ($prereleaseDryRunExitCode -ne 0) {
 
 $prereleaseSummaryContent = Get-Content -LiteralPath $prereleaseSummaryPath -Raw -Encoding UTF8
 foreach ($pattern in @(
-        ('Published version: `{0}-beta2`' -f $expectedVersion),
-        'Manifest prerelease field: `beta2`'
+        ('Published version: `{0}-{1}`' -f $expectedVersion, $uniquePrerelease),
+        ('Manifest prerelease field: `{0}`' -f $uniquePrerelease)
     )) {
     if ($prereleaseSummaryContent -notmatch [regex]::Escape($pattern)) {
         Write-Fail ("Dry-run prerelease summary missed expected text '{0}'." -f $pattern)

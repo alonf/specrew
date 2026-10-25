@@ -526,3 +526,4 @@ switch ($mode) {
 }
 
 exit 0
+# specrew-self-provenance-ok: F-174; implementation history is recorded for maintainers and is never emitted as consumer instruction

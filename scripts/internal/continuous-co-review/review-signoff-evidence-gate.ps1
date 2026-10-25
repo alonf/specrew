@@ -17,7 +17,22 @@ Set-StrictMode -Version Latest
 #
 # This is the DECISION logic only. Wiring it into Invoke-SpecrewBoundaryStateSync as a
 # throw-to-refuse gate stays deferred until the F-185 host-neutral gate-enforcement branch
-# merges; Assert-ContinuousCoReviewSignoffGate is the thin throw-wrapper that wiring will call.
+# merges; Assert-ContinuousCoReviewSignoffGate is the explicit throw-wrapper for direct callers and
+# forwards the complete decision contract. Production boundary wiring persists the decision first,
+# then throws itself so evidence cannot be skipped.
+
+# HARD dependency: the ONE path-identity primitive. Test-ReviewCampaignDeltaIsRecordsOnly asks it for
+# the volume's case rule, and without this load the call depended on whatever ambient load order the
+# caller happened to have - the SHADOWING class where a duplicate loaded later silently answers with
+# the OS-family rule, invisibly, at every call site. Third instance of this class in one day
+# (DRIFT-199-I001-014 in worktree-navigator.ps1 was the second), which is why beta4's target is making
+# the primitive the only REACHABLE path rather than the recommended one.
+# Guarded on the exact function this file calls rather than on a sibling name: DRIFT-198-I009-027's
+# shadow survived a guard that probed a DIFFERENT name, and a stale copy of path-identity.ps1
+# satisfies the older names while lacking anything added since.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
 
 function New-ContinuousCoReviewSignoffGateDecision {
     param(
@@ -278,7 +293,9 @@ function Test-ReviewCampaignFinalizationEnvelope {
 
     $iterationRoot = "specs/$FeatureId/iterations/$IterationNumber"
     $allowed = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($name in @('review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md')) {
+    # The same review-evidence set Test-SpecrewLifecycleExecutionRecordPath lists (PRED-BETA4-048 added the
+    # scaffold's dashboard.md and security-surface.md to both, so a finalization commit may carry them).
+    foreach ($name in @('review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md', 'dashboard.md', 'security-surface.md')) {
         $null = $allowed.Add("$iterationRoot/$name")
     }
     $changedPaths = [Collections.Generic.List[string]]::new()
@@ -308,6 +325,15 @@ function New-ReviewCampaignVerdictPacketDecision {
         [string]$ReviewedCommit,
         [string]$FinalizationCommit,
         [bool]$RenderBoundaryPacket = $false,
+        # ONE VALUE WAS SERVING TWO READERS, which is this iteration's most repeated defect shape.
+        # `render_boundary_packet` told the NAVIGATOR to release the boundary packet, and the signoff
+        # gate ALSO derived its allow/block from it. So a route could not say "the review still covers
+        # you" to the gate without also releasing the packet - and round 4 found the consequence from
+        # the other side: a recorded ALLOW returned a BLOCK because the flag defaulted to false.
+        #
+        # $null means "same as RenderBoundaryPacket", so every existing call site keeps its exact
+        # behaviour and only the branches that need to differ say so.
+        [AllowNull()][object]$GateAllows = $null,
         [bool]$AskNarrowQuestion = $false,
         [string]$ImplementerAction = 'wait'
     )
@@ -316,8 +342,383 @@ function New-ReviewCampaignVerdictPacketDecision {
         campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest
         reviewed_digest = $ReviewedDigest; reviewed_commit = $ReviewedCommit; finalization_commit = $FinalizationCommit
         render_boundary_packet = $RenderBoundaryPacket; render_verdict_marker = $RenderBoundaryPacket
+        gate_allows = $(if ($null -eq $GateAllows) { $RenderBoundaryPacket } else { [bool]$GateAllows })
         ask_narrow_question = $AskNarrowQuestion; implementer_action = $ImplementerAction
     }
+}
+
+function Get-SpecrewCarriedSignoffOverrideAuthorization {
+    # W77 (KeyContextAI walk, 2026-08-27): THE SYNC'S PREFLIGHT MOVES THE TREE ITS OWN GATE THEN
+    # REFUSES AS MOVED.
+    #
+    # Measured on a real landing: partial signoff accepted, landing completes, sync runs, its preflight
+    # demands the lint commits and the owed review.md, THOSE COMMITS MOVE THE TREE, and the gate
+    # re-evaluates coverage against the new digest and refuses - **asking the human to authorize the
+    # same gap a second time because the machinery moved it in between.** The override is looked up by
+    # the tree AT GATE TIME, so an acceptance captured for tree T is orphaned the instant the
+    # preflight's own commits produce T'. Landing and sync judged coverage independently, and an
+    # acceptance spent at one did not carry to the other.
+    #
+    # Same family as DRIFT-008 and the digest race: a gate reasoning about a delta that exists BECAUSE
+    # OF the gate. The only escape was chaining commit and sync in one invocation so nothing moved in
+    # the window - a workaround the operator has to discover, which is not a control.
+    #
+    # THE RULE, and it is narrow on purpose: an acceptance carries across a RECORDS-ONLY delta and only
+    # that. The human accepted a COVERAGE GAP; records moving does not change that gap, because no
+    # source moved - which is the same source-aware question DRIFT-007 settled everywhere else, asked
+    # here of the acceptance rather than of the run. If SOURCE moved in between, the gap is genuinely
+    # different and a fresh acceptance is right; this returns nothing and the gate refuses as before.
+    #
+    # Scoped to the campaign, because an acceptance is for the campaign it was typed against.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentTreeId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
+        [AllowEmptyString()][AllowNull()][string]$FeatureId
+    )
+    if ([string]::IsNullOrWhiteSpace($CurrentTreeId) -or [string]::IsNullOrWhiteSpace($CampaignId)) { return $null }
+    $root = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/signoff-gate/override-authorizations'
+    if (-not [IO.Directory]::Exists($root)) { return $null }
+    $best = $null
+    foreach ($file in @(Get-ChildItem -LiteralPath $root -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+        $fact = $null
+        try { $fact = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+        if ($null -eq $fact) { continue }
+        if ([string]$fact.fact_type -cne 'review-signoff-partial-override') { continue }
+        if ([string]$fact.authority_kind -cne 'human') { continue }
+        if ([string]$fact.campaign_id -cne [string]$CampaignId) { continue }
+        $accepted = [string]$fact.target_tree_id
+        if ([string]::IsNullOrWhiteSpace($accepted)) { continue }
+        # The exact-tree case is the caller's own lookup; this answers only the moved-tree question.
+        if ($accepted -ceq [string]$CurrentTreeId) { continue }
+        $changed = @()
+        try {
+            $output = & git -C $ProjectRoot diff --name-only $accepted $CurrentTreeId 2>$null
+            if ($LASTEXITCODE -ne 0) { continue }
+            $changed = @(@($output) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+        catch { continue }
+        if (@($changed).Count -eq 0) { continue }
+        if (-not (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $changed -RepoRoot $ProjectRoot -FeatureId $FeatureId)) { continue }
+        # Newest acceptance wins, so a later one supersedes an earlier carry.
+        if ($null -eq $best -or [string]$fact.observed_at -gt [string]$best.observed_at) { $best = $fact }
+    }
+    return $best
+}
+
+function Test-ReviewCampaignDeltaIsRecordsOnly {
+    # FR-009. Reviewable content is everything that is NOT the methodology machinery and NOT the
+    # lifecycle records tree. The machinery list comes from the ONE FR-012 resolver so this can never
+    # drift from the digest and worktree strips; `specs/` is reviewable to a reviewer but is records,
+    # not implementation, which is the distinction that stops a drift-log commit invalidating the
+    # review that produced it (DRIFT-199-I001-013).
+    #
+    # -RepoRoot is REQUIRED for that no-drift promise to hold, and its absence is what made the first
+    # revision of this predicate fail OPEN. `Get-ContinuousCoReviewMachineryPaths` answers DIFFERENTLY
+    # depending on the root it is given: called bare it cannot run Test-ContinuousCoReviewSpecrewSourceRepo,
+    # so it takes the DEPLOYED-project branch and appends `scripts/internal/continuous-co-review`,
+    # `scripts/internal/agent-tasks` and `scripts/internal/atomic-write.ps1` to the machinery list. In the
+    # Specrew SOURCE repo those paths are the feature under review, not machinery - so a bare call
+    # classified a change to the co-review engine itself as records-only and left a stale review looking
+    # current. Under-staling is the one direction this feature must never fail in, and the digest strip
+    # (Test-ReviewCampaignFinalizationEnvelope) already passes -RepoRoot, so a bare call here was also a
+    # live divergence from the very list this comment promises it can never drift from.
+    #
+    # An EMPTY or unknown delta returns $false - fail closed. Absence of evidence is not evidence. An
+    # absent or unresolvable RepoRoot fails closed the same way rather than guessing a machinery list:
+    # guessing is exactly what produced the defect above. Not [Parameter(Mandatory)] on purpose - this
+    # runs on the Stop path, where a missing mandatory parameter prompts an interactive host and hangs
+    # the hook instead of failing.
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object[]]$ChangedPaths,
+        [AllowNull()][AllowEmptyString()][string]$RepoRoot,
+        # The ACTIVE feature. Only ITS records tree can be records-only; another feature's tree is
+        # ordinary content. Absent, no specs/ path counts as records - fail closed.
+        [AllowNull()][AllowEmptyString()][string]$FeatureId
+    )
+
+    if ($null -eq $ChangedPaths -or @($ChangedPaths).Count -eq 0) { return $false }
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $false }
+    try { $resolvedRoot = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path }
+    catch { return $false }
+    # W51: RESOLVE, DON'T REQUIRE. A caller that passed no feature id used to kill the records
+    # allowlist outright - and the shared-classifier overlay excludes specs/, so review.md, state.md
+    # and the progress sync staled the review that had just measured them. One human approval per
+    # loop, live on the walk. The active feature is lifecycle state the project already holds.
+    if ([string]::IsNullOrWhiteSpace($FeatureId) -and (Get-Command -Name 'Resolve-SpecrewActiveFeatureRef' -ErrorAction SilentlyContinue)) {
+        try { $FeatureId = [string](Resolve-SpecrewActiveFeatureRef -ProjectRoot $resolvedRoot) } catch { $null = $_ }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $reviewerModule = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $reviewerModule -PathType Leaf) { try { . $reviewerModule } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) { return $false }
+
+    $recordsRoots = @()
+    try {
+        foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRoot)) {
+            if (-not [string]::IsNullOrWhiteSpace($machinery)) { $recordsRoots += (([string]$machinery -replace '\\', '/').Trim('/')) }
+        }
+    }
+    catch { return $false }
+
+    # DRIFT-007's TWIN (2026-08-22, found by the downstream walk after b5c84f48 fixed the validator):
+    # this predicate classified path-by-path against the machinery list plus the feature allowlist,
+    # failing closed on the first unclassifiable path - and the Spec-Kit/Squad deployers write host
+    # mirrors (.github/agents/, .github/prompts/, .claude/skills/, Squad skills) that are in NEITHER.
+    # So every redeploy permanently staled every review in a downstream project: the same byte-vs-source
+    # question the validator had, surviving in a second copy of the check.
+    #
+    # The fix is the same SHARED classifier the validator got - Test-SpecrewReviewAuthorshipSourcePath,
+    # already shared with W33's coverage rule and W34-B's authorship rule - rather than growing this
+    # predicate's own parallel list to chase what deployment writes. One decision, now four consumers.
+    #
+    # SCOPED OUT OF specs/ DELIBERATELY. The classifier calls the whole specs/ tree non-source, but
+    # FR-009 as the maintainer ruled it (2026-08-10) distinguishes INPUT from OUTPUT inside the feature
+    # tree: spec, plan and tasks are the standard the code was judged against and MUST stale, while
+    # review output must not. The allowlist below carries that ruling and stays authoritative for
+    # specs/; the shared classifier covers everything outside it. Fail direction preserved: when the
+    # classifier is not loaded, nothing changes and an unclassifiable path still stales.
+    $sharedClassifier = Get-Command -Name 'Test-SpecrewReviewAuthorshipSourcePath' -ErrorAction SilentlyContinue
+    if ($null -eq $sharedClassifier) {
+        foreach ($sharedGovernanceCandidate in @(
+                (Join-Path $resolvedRoot '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1'),
+                (Join-Path $resolvedRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1'))) {
+            if (Test-Path -LiteralPath $sharedGovernanceCandidate -PathType Leaf) {
+                try { . $sharedGovernanceCandidate } catch { $null = $_ }
+                $sharedClassifier = Get-Command -Name 'Test-SpecrewReviewAuthorshipSourcePath' -ErrorAction SilentlyContinue
+                if ($null -ne $sharedClassifier) { break }
+            }
+        }
+    }
+
+    # The volume that decides case here is the one holding the CHANGED PATHS - the project - never the
+    # one holding this script. They are routinely different volumes: on the default CurrentUser install
+    # the engine sits under a OneDrive-backed Modules directory while the project is on a local disk
+    # (DRIFT-199-I001-005), and asking the engine's volume for the project's case rule is the same
+    # wrong-source mistake as an $IsWindows shortcut. 'distinct' keeps an undetermined volume STALING:
+    # this predicate can only ever quiet the surface, so undetermined must never let it.
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $resolvedRoot -WhenUndetermined 'distinct'
+    foreach ($raw in @($ChangedPaths)) {
+        $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $isRecords = $false
+        foreach ($root in $recordsRoots) {
+            if ([string]::IsNullOrWhiteSpace($root)) { continue }
+            if ($path.Equals($root, $comparison) -or $path.StartsWith(($root + '/'), $comparison)) {
+                $isRecords = $true
+                break
+            }
+        }
+        if (-not $isRecords -and (Test-ReviewCampaignPathIsFeatureProcessRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
+            $isRecords = $true
+        }
+        # The shared source classifier, outside specs/ only (see the block above): a host mirror, a
+        # document, or a dot-directory deployment write is not the reviewed surface. specs/ paths that
+        # the allowlist did not accept keep staling - they are review INPUT.
+        if (-not $isRecords -and $null -ne $sharedClassifier -and
+            -not $path.StartsWith('specs/', $comparison) -and
+            -not (& $sharedClassifier -Path $path)) {
+            $isRecords = $true
+        }
+        if (-not $isRecords) { return $false }
+    }
+    return $true
+}
+
+function Test-ReviewCampaignPathIsFeatureProcessRecord {
+    # FR-009 as the maintainer ruled it (2026-08-10): the distinction is NOT the directory, it is whether an
+    # artifact is INPUT TO a review or OUTPUT OF one.
+    #
+    #   OUTPUT - a record of what a review found, or of the process around it. It cannot invalidate the review
+    #            that produced it; saying otherwise is circular, and that absurdity is DRIFT-199-I001-013: a
+    #            commit whose entire content was the drift log staled the review that wrote it.
+    #   INPUT  - spec, plan, tasks, design, contracts, data-model, quickstart, research. These are the STANDARD
+    #            the code was judged against. Change one and what the review concluded changes, even though no
+    #            code moved. They must stale.
+    #
+    # ALLOWLIST, deliberately, and this is the one place an enumeration is acceptable in this feature: an
+    # allowlist fails toward NAGGING (an artifact nobody listed stales, and the human is asked for a review they
+    # may not owe), while a blocklist fails toward SILENCING (an artifact nobody listed goes quiet, and a real
+    # change slips past review). An omission here is therefore SAFE - which is exactly what was NOT true of the
+    # class guards, where enumeration was rejected for the opposite reason.
+    #
+    # Scoped to the ACTIVE feature, the narrowing the recorded requirement already named: another feature's
+    # records tree is ordinary content to this campaign. No feature id -> nothing qualifies (fail closed).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Path,
+        [AllowNull()][AllowEmptyString()][string]$FeatureId,
+        [Parameter(Mandatory)][StringComparison]$Comparison
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($FeatureId)) { return $false }
+    # W51: the ONE classification lives in shared-governance (Test-SpecrewLifecycleExecutionRecordPath),
+    # consumed by this gate AND the validator's citation-staleness check so the two can never disagree
+    # about what recording a review does to the review. Delegate when loaded; the body below is the
+    # same logic verbatim, kept for a standalone gate load.
+    if (Get-Command -Name 'Test-SpecrewLifecycleExecutionRecordPath' -ErrorAction SilentlyContinue) {
+        return [bool](Test-SpecrewLifecycleExecutionRecordPath -Path $Path -FeatureId $FeatureId)
+    }
+    $featurePrefix = 'specs/' + $FeatureId.Trim().Trim('/') + '/'
+    if (-not $Path.StartsWith($featurePrefix, $Comparison)) { return $false }
+
+    # Everything after specs/<feature>/, with a leading iterations/<n>/ removed so one allowlist covers both the
+    # feature-level and iteration-level copies of the same artifact.
+    $relative = $Path.Substring($featurePrefix.Length)
+    $iteration = [regex]::Match($relative, '^iterations/[^/]+/(?<rest>.*)$')
+    if ($iteration.Success) { $relative = [string]$iteration.Groups['rest'].Value }
+    if ([string]::IsNullOrWhiteSpace($relative)) { return $false }
+
+    # Process records and review OUTPUT. The six review-evidence names are the SAME set this file already
+    # allowlists for a finalization envelope, so the two cannot disagree about what counts as review evidence.
+    $recordFiles = @(
+        'drift-log.md', 'state.md', 'tasks-progress.yml',
+        'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
+        'review-signoff.md', 'retro.md'
+    )
+    foreach ($name in $recordFiles) {
+        if ($relative.Equals($name, $Comparison)) { return $true }
+    }
+    if ($relative.StartsWith('closeout', $Comparison) -and $relative -notmatch '/') { return $true }
+
+    # workshop/ IS DELIBERATELY ABSENT (maintainer ruling, 2026-08-11, on the signoff round's finding).
+    # It sat in this list and was the one entry that inverted the list's own safety argument. A design
+    # workshop holds architecture-core, requirements-nfr, security-compliance, product-domain: the
+    # binding standard the implementation is judged against, INPUT by the ruling's own test. Classified
+    # as a record, a maintainer could change a security or architecture decision after a review and the
+    # campaign would keep authorizing sign-off from the old result - a real change going quiet, which is
+    # precisely the SILENCING failure this allowlist exists to make impossible. An allowlist is safe
+    # because omissions nag; that safety is void for any entry wrongly INCLUDED.
+    foreach ($directory in @('quality/', 'checklists/', 'dashboards/', 'gates/')) {
+        if ($relative.StartsWith($directory, $Comparison)) { return $true }
+    }
+    return $false
+}
+
+function Get-ContinuousCoReviewRecordedSignoffGateDecision {
+    # FR-007's consult, as a READ of the signoff-gate decision store - never a live gate call.
+    #
+    # A live call would recurse without terminating: when campaign authority is enabled,
+    # Get-ContinuousCoReviewSignoffGateDecision is a thin wrapper that calls
+    # Get-ReviewCampaignVerdictPacketDecision, which is the very function consulting it. The spec
+    # names the store, not the gate ("the campaign stop surface MUST consult the signoff-gate
+    # decision store"), and resolves the empty case explicitly: with no recorded decision the surface
+    # evaluates as it does today.
+    #
+    # The stored record wraps the decision and spells the tree `current_tree_id`; the decision logic
+    # asks for `reviewed_digest`. Normalizing here keeps Resolve- a pure function over plain shapes,
+    # which is what lets its fixtures stay store-free. Anything absent, unreadable or malformed
+    # returns $null and confers NOTHING - this consult can only ever quiet the surface, so an
+    # unreadable store must never be the reason it goes quiet.
+    [CmdletBinding()]
+    param([AllowNull()][AllowEmptyString()][string]$RepoRoot)
+
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $null }
+    $latestPath = Join-Path $RepoRoot '.specrew/review/signoff-gate/latest.json'
+    if (-not (Test-Path -LiteralPath $latestPath -PathType Leaf)) { return $null }
+    try { $record = Get-Content -LiteralPath $latestPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return $null }
+    if ($null -eq $record) { return $null }
+    $decision = Get-ReviewAuthorityProperty -Object $record -Name 'decision'
+    if ($null -eq $decision) { return $null }
+    $verdict = [string](Get-ReviewAuthorityProperty -Object $decision -Name 'decision')
+    $treeId = [string](Get-ReviewAuthorityProperty -Object $decision -Name 'current_tree_id')
+    if ([string]::IsNullOrWhiteSpace($verdict) -or [string]::IsNullOrWhiteSpace($treeId)) { return $null }
+    return [pscustomobject][ordered]@{
+        decision        = $verdict
+        reviewed_digest = $treeId
+        reason          = [string](Get-ReviewAuthorityProperty -Object $decision -Name 'reason')
+        boundary_type   = [string](Get-ReviewAuthorityProperty -Object $record -Name 'boundary_type')
+        recorded_at     = [string](Get-ReviewAuthorityProperty -Object $record -Name 'recorded_at')
+    }
+}
+
+function Get-ReviewCampaignChangedPathsSinceResult {
+    # FR-009's evidence: what actually changed between the reviewed tree and the current one. Both
+    # arguments are reviewed-state digests, which ARE git tree objects, so git answers this directly
+    # rather than anything reconstructing a diff by hand.
+    #
+    # $null means UNKNOWN and stales; @() means genuinely nothing changed. The distinction is
+    # load-bearing downstream - Test-ReviewCampaignDeltaIsRecordsOnly fails closed on both, but only
+    # $null should ever arise from a git failure. Every failure path here returns $null so an
+    # unresolvable tree can never be mistaken for a clean delta.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [AllowNull()][AllowEmptyString()][string]$ReviewedDigest,
+        [AllowNull()][AllowEmptyString()][string]$CurrentDigest
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReviewedDigest) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) { return $null }
+    if ($ReviewedDigest -ceq $CurrentDigest) { return @() }
+    try { $root = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path }
+    catch { return $null }
+
+    foreach ($digest in @($ReviewedDigest, $CurrentDigest)) {
+        & git -C $root cat-file -e ("{0}^{{tree}}" -f $digest) 2>$null
+        if ($LASTEXITCODE -ne 0) { return $null }
+    }
+    $paths = @(& git -C $root -c core.quotepath=false diff --name-only --no-renames $ReviewedDigest $CurrentDigest 2>$null)
+    if ($LASTEXITCODE -ne 0) { return $null }
+    return @($paths | ForEach-Object { ([string]$_).Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Test-ReviewCampaignResultReleasesBoundary {
+    # "Would this result reach a boundary-releasing route?" - ONE definition, consumed twice below, so
+    # the pause guard and the boundary-clean return can never answer it differently. The sequential
+    # gates between them stay sequential on purpose: each one owes the consumer a DIFFERENT message
+    # about why their review does not release the boundary, which a single predicate cannot give.
+    [CmdletBinding()]
+    param([AllowNull()]$Result, [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest)
+
+    if ($null -eq $Result) { return $false }
+    return (
+        (Test-ReviewCampaignResultIsCompleteCurrent -Result $Result -CurrentDigest $CurrentDigest) -and
+        [string]$Result.verdict -ceq 'pass' -and
+        [bool]$Result.can_approve_current
+    )
+}
+
+function Test-ReviewCampaignResultIsCompleteCurrent {
+    # Everything a result needs before its VERDICT is even worth reading. Split out because a clean pass is not
+    # the only boundary-releasing shape: a findings result with a recorded human acceptance releases too, and
+    # both need this same conjunction first.
+    [CmdletBinding()]
+    param([AllowNull()]$Result, [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest)
+
+    if ($null -eq $Result) { return $false }
+    return (
+        [string]$Result.target_digest -ceq $CurrentDigest -and
+        [string]$Result.currentness -ceq 'current' -and
+        [string]$Result.completion -ceq 'complete' -and
+        [string]$Result.validation -ceq 'valid' -and
+        [string]$Result.runtime_outcome -cne 'timed-out'
+    )
+}
+
+function Test-ReviewCampaignDispositionAcceptsResult {
+    # ONE definition of "the human has explicitly accepted this exact result", consumed by the pause guard and
+    # by the boundary-human-disposition return, so the two cannot disagree about whether a decision was made.
+    # A require-correction anywhere in the matching set wins over an acceptance - a human who asked for a fix
+    # has not accepted, whatever else they also said.
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object[]]$HumanDispositions,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$RunId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest
+    )
+
+    if ($null -eq $HumanDispositions -or @($HumanDispositions).Count -eq 0) { return $false }
+    $matching = @($HumanDispositions | Where-Object {
+            (Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ `
+                    -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId -ExpectedTargetDigest $CurrentDigest).valid
+        })
+    if (@($matching | Where-Object { [string]$_.decision -ceq 'require-correction' }).Count -gt 0) { return $false }
+    return (@($matching | Where-Object { [string]$_.decision -ceq 'accept-current' }).Count -gt 0)
 }
 
 function Resolve-ReviewCampaignVerdictPacketDecision {
@@ -325,13 +726,45 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     param(
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$CurrentDigest,
+        # The project root the delta below belongs to. Absent, the records-only classification fails
+        # CLOSED (stales) rather than guessing a machinery list - see Test-ReviewCampaignDeltaIsRecordsOnly.
+        [AllowNull()][AllowEmptyString()][string]$RepoRoot,
+        # The ACTIVE feature, so its PROCESS RECORDS can be told apart from its requirement- and
+        # design-bearing artifacts, and from another feature's tree entirely. Absent -> nothing under
+        # specs/ counts as records (fail closed).
+        [AllowNull()][AllowEmptyString()][string]$FeatureId,
         [AllowEmptyCollection()][string[]]$OrderedRunIds = @(),
         [AllowEmptyCollection()][object[]]$Results = @(),
         [AllowNull()]$ActiveRun,
-        [AllowEmptyCollection()][object[]]$HumanDispositions = @()
+        [AllowEmptyCollection()][object[]]$HumanDispositions = @(),
+        # T003 / FR-009: the paths that changed since the latest result. A delta touching only the
+        # methodology machinery or the lifecycle records tree is not reviewable content, so it must
+        # not stale a reviewed state - DRIFT-199-I001-013 caught this twice in one session, once when
+        # a commit containing nothing but the drift log invalidated the review that produced it.
+        # $null (unknown) fails CLOSED and stales as before: absence of evidence is not evidence.
+        [AllowNull()][object[]]$ChangedPathsSinceResult = $null,
+        # FR-009 ON THE IN-FLIGHT PATH (maintainer ruling 2026-08-11, DRIFT-199-I001-036). The same
+        # question as ChangedPathsSinceResult, asked against the RUNNING round's frozen target instead
+        # of the last published result. It needs its own baseline: while a round is in flight the newest
+        # reviewed tree is that round's target, not the previous result's.
+        #
+        # This closes DRIFT-199-I001-013 on the path it was never applied to. The terminal branch below
+        # has exempted records-only deltas since T003; this branch compared digests exactly, so writing
+        # down what a review is about invalidated the review that was running - and every
+        # governance-required commit during a round made the human pay for a round they could not use.
+        # $null (unknown) fails CLOSED and stales, exactly as on the terminal path.
+        [AllowNull()][object[]]$ChangedPathsSinceActiveRun = $null,
+        # T003 / FR-007: the recorded signoff-gate decision. T067's two-governor collision made an
+        # agent adjudicate between a gate that said allow and a surface that said blocked - a call a
+        # consumer cannot make. The surface consults the record instead of contradicting it.
+        [AllowNull()]$SignoffGateDecision = $null,
+        # T003: a pending pause on the CURRENT tree is a sanctioned quiet state (the maintainer's
+        # architecture-lens addition). A superseded pause - one describing a tree that has moved on -
+        # confers nothing, because a stale pause would SILENCE the surface rather than nag it.
+        [AllowNull()]$PendingPause = $null
     )
     if (-not (Test-ReviewAuthorityIdentifier -Value $CampaignId -Kind campaign) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Campaign identity or current digest is unavailable; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Specrew cannot tell which review this is, or what state your files are in, so it cannot ask you for a decision yet.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
     }
     $byRun = @{}
     foreach ($result in @($Results)) {
@@ -363,13 +796,74 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'terminal-result-still-has-active-claim' -Message 'A terminal result exists while its run claim is still active; reconciliation must retire the claim before signoff.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'reconcile-run-claim'
         }
         if ([string]$ActiveRun.target_digest -ceq $CurrentDigest) {
-            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'The single campaign review for the current digest is still running; no human decision is required.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'A review of your files as they are now is still running; there is nothing for you to decide yet.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
         }
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The active review targets an earlier digest and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
+        # The tree moved while the round runs - but a records-only move is not reviewable content, and
+        # the running round still covers the code. Same predicate, same fail-closed default, as the
+        # terminal path: the exemption exists so that WRITING DOWN what a review is about cannot
+        # invalidate that review, and a round in flight has exactly the same claim to it.
+        if ($null -ne $ChangedPathsSinceActiveRun -and
+            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceActiveRun -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight-records-only-delta' -Message 'A review of your files is still running; only governance and records files have changed since it started, so it still covers your project. There is nothing for you to decide yet.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The review that is running started from an earlier version of your files, so it cannot sign off what you have now.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
+    }
+
+    # A pause recorded against the CURRENT tree is a decision already sitting with the human. Nagging
+    # for a review there would ask them to spend on a question they are mid-answer to.
+    #
+    # The quiet rule comes from Test-ReviewCampaignPendingPauseQuiet rather than being re-decided
+    # here. An inline copy of the comparison was the shadowing class in miniature: two
+    # implementations of one rule, and the SILENCING direction is where a divergence does real harm -
+    # a stale pause that still confers quiet suppresses the surface on a tree it never described.
+    #
+    # ...AND A PAUSE NEVER SUPPRESSES A BOUNDARY-RELEASING RESULT. This ordering was latent while the
+    # consult was inert and became a wedge the moment it went live: T001 makes EVERY round end in a
+    # pause, so after any completed round a pending pause and that round's clean pass describe the
+    # same tree simultaneously. Quieting there left the human holding a decision with no packet to
+    # answer it through - the boundary packet IS how they answer - which is the wedge class this
+    # feature exists to remove, arriving from the direction the pause rule was meant to protect.
+    # What the pause legitimately suppresses is a DEMAND: do not nag for another review or
+    # disposition while one is already sitting with them. Releasing what they need in order to answer
+    # is not a demand. Caught by T051's own fixture rather than by reasoning.
+    $pauseQuiets = (Test-ReviewCampaignPendingPauseQuiet -PendingPause $PendingPause -CurrentDigest $CurrentDigest).confers_quiet
+    if ($pauseQuiets -and $ordered.Count -gt 0) {
+        $newestRunId = $ordered[$ordered.Count - 1]
+        if ($byRun.ContainsKey($newestRunId)) {
+            $newest = $byRun[$newestRunId]
+            # A CLEAN pass is not the only boundary-releasing shape. A findings result the human has explicitly
+            # ACCEPTED releases too - and an acceptance IS an answer to the pause, recorded through a different
+            # instrument. Exempting only the clean pass left that case wedged in exactly the way the clean case
+            # was: the human answers, and the surface keeps telling them a decision is outstanding.
+            if (Test-ReviewCampaignResultReleasesBoundary -Result $newest -CurrentDigest $CurrentDigest) {
+                $pauseQuiets = $false
+            }
+            elseif ((Test-ReviewCampaignResultIsCompleteCurrent -Result $newest -CurrentDigest $CurrentDigest) -and
+                [string]$newest.verdict -ceq 'findings' -and
+                (Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $HumanDispositions -CampaignId $CampaignId -RunId $newestRunId -CurrentDigest $CurrentDigest)) {
+                $pauseQuiets = $false
+            }
+        }
+    }
+    if ($pauseQuiets) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'pause-pending' -Reason 'human-pause-decision-outstanding' -Message 'This review is waiting for your decision; nothing is running and nothing is being spent.' -CampaignId $CampaignId -RunId ([string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')) -TargetDigest $CurrentDigest -ImplementerAction 'await-human-pause-decision'
     }
 
     if ($ordered.Count -eq 0) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No claim-ordered campaign result can authorize the current digest.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+        # W52: if the human deliberately deferred coverage to the review phase, this refusal is the
+        # review phase - the ask must say the absence was CHOSEN and is now due, not imply nobody
+        # noticed. The deferral fact is the store's distinction between the two.
+        $w52DeferralNote = ''
+        if (Get-Command -Name 'Get-SpecrewCoverageDeferralAuthorization' -ErrorAction SilentlyContinue) {
+            try {
+                $w52Deferral = Get-SpecrewCoverageDeferralAuthorization -ProjectRoot $RepoRoot
+                if ($null -ne $w52Deferral) {
+                    $w52DeferralNote = (' You deferred coverage on {0} ("{1}") - that deferral ran until the review phase, and the review phase is now, so the round is due.' -f ([string]$w52Deferral.observed_at), [string]$w52Deferral.verdict_text)
+                }
+            }
+            catch { $null = $_ }
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message ('No completed review covers your files as they are now. Approving a review round is the human''s decision and costs one of their rounds, so ASK them for it: their typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is the approval, and Specrew captures it from the conversation. Once they have typed it, run specrew review --live --approve-round yourself. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude.' + $w52DeferralNote) -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
     }
 
     # A newer claimed invocation supersedes every older result, including an older clean result.
@@ -382,10 +876,100 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     }
     $latest = $byRun[$latestRunId]
     if ([string]$latest.target_digest -cne $CurrentDigest -or [string]$latest.currentness -ceq 'snapshot-moved') {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
+        # FR-007: a recorded gate decision for THIS tree is authority, not an opinion to argue with.
+        if ($null -ne $SignoffGateDecision -and
+            [string](Get-ReviewAuthorityProperty -Object $SignoffGateDecision -Name 'decision') -ceq 'allow' -and
+            [string](Get-ReviewAuthorityProperty -Object $SignoffGateDecision -Name 'reviewed_digest') -ceq $CurrentDigest) {
+            # -RenderBoundaryPacket $true, because line ~1007 maps this flag DIRECTLY to allow/block and
+            # it defaults to $false. Without it this branch said "Your review is signed off for the files
+            # as they are now" and returned a BLOCK - the message and the decision contradicting each
+            # other, with the message being the true one. A recorded allow for THIS exact tree is
+            # authority (FR-007); projecting it back into a block wedges sign-off against the store's own
+            # record.
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'signoff-gate-allow-recorded' -Message 'Your review is signed off for the files as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -GateAllows $true -ImplementerAction 'proceed'
+        }
+        # FR-009: only reviewable content stales a review. Machinery and the lifecycle records tree
+        # are not reviewable content, so recording what a review found cannot invalidate it.
+        if ($null -ne $ChangedPathsSinceResult -and
+            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
+            # THE EXEMPTION PRESERVES AN ALREADY-AUTHORIZING RESULT; IT NEVER PROMOTES ONE.
+            #
+            # My own regression, found by round 5. Setting GateAllows here unconditionally meant a
+            # reviewer that TIMED OUT or published a partial/invalid findings result, followed by a
+            # drift-log commit, produced a digest differing only by that record - and this branch handed
+            # the signoff gate an ALLOW for a result that could never have authorized anything. The
+            # records-only rule is about STALENESS, not about authority: it says a records commit does
+            # not take your review away. It must not be able to give you one you never had.
+            #
+            # So the allow is conditional on the result being one that authorizes on its own terms. When
+            # it is not, this falls through to the ordinary handling, which stales - the safe direction.
+            # W74 / round-30 finding, graded BLOCKING: NOT `can_approve_current` - IT CARRIES CURRENTNESS.
+            #
+            # That flag is composed at ingest as (complete AND currentness='current' AND verdict='pass'
+            # AND termination verified). Currentness is stamped SNAPSHOT-EXACT, so a records-only commit
+            # landing WHILE the reviewer runs makes it false for a complete, valid, passing, contained
+            # result - and this branch then refused to preserve the very pass it exists to preserve.
+            # Governance requires records commits; each one could invalidate the round that was running,
+            # and so could the next retry.
+            #
+            # The currentness half is already supplied here, and better: the records-only delta above is
+            # a VERIFIED SOURCE-AWARE comparison, not a frozen flag. So this asks only the other half -
+            # does the result authorize on its own terms - spelled out rather than borrowed:
+            # complete, valid, passing, contained. The round-5 rule is untouched: this preserves an
+            # authorizing result and still cannot promote one.
+            #
+            # THE SIBLING OF THE READER FIXED ONE COMMIT EARLIER (W72), missed under method rule 10 in
+            # the same commit that recorded it.
+            $recordsOnlyAuthorizes = (
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'runtime_outcome') -ceq 'completed' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'completion') -ceq 'complete' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'validation') -ceq 'valid' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'verdict') -ceq 'pass' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'containment') -ceq 'verified' -and
+                [bool](Get-ReviewAuthorityProperty -Object $latest -Name 'termination_verified')
+            )
+            if (-not $recordsOnlyAuthorizes) {
+                return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'records-only-delta-over-non-authorizing-result' -Message 'Only governance and records files changed since your last review, but that review did not finish with a result that can sign anything off. Run a fresh review of your files as they are now: specrew review --live' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
+            }
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -GateAllows $true -ImplementerAction 'proceed'
+        }
+        # T010 / FR-015, FR-016. MEASURED four times in one reviewer session: every word of the old
+        # sentence was true and the reader still could not act, because the two facts that resolve it
+        # were missing.
+        #
+        # (1) WHOSE result it is - and the FIRST attempt at this got the mechanism wrong, so the
+        #     corrected version is recorded here. The observed block named `run-f198-beta2-...-certify`
+        #     during beta3 work, which reads as a beta2 result leaking in. It is NOT: results are
+        #     validated with -ExpectedCampaignId above, so a foreign-campaign result returns
+        #     review-failure and can never reach this branch. What actually happened is a RUN ID whose
+        #     TEXT names another feature (an explicit --run-id) inside THIS campaign. So the fix is not
+        #     a conditional "belongs to a different review" - that case is unreachable - it is to state
+        #     unconditionally which campaign the result belongs to, so a misleading run id cannot imply
+        #     otherwise. The reader then sees the run id and its true owner in the same sentence.
+        # (2) WHO CAN CLEAR IT. The only remediation, `request-current-digest-review`, is addressed to
+        #     the implementer. A reader in any other role holds an instruction they cannot execute, so
+        #     the block re-fires at every stop - and a block correctly declined every time trains people
+        #     to stop reading blocks, which is how the one that matters gets missed.
+        #
+        # The structured `implementer_action` is UNCHANGED; only the human sentence gains these clauses.
+        $latestCampaignId = [string](Get-ReviewAuthorityProperty -Object $latest -Name 'campaign_id')
+        $ownership = if (-not [string]::IsNullOrWhiteSpace($latestCampaignId)) {
+            ' That result belongs to this review ({0}) - whatever its run name suggests - so it is about your own earlier snapshot, not another project.' -f $latestCampaignId
+        }
+        else { '' }
+        $staleMessage = 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' +
+        $ownership +
+        ' If you are not the person running reviews for this project, this is advisory: there is nothing here for you to run, and it does not block your work.'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message $staleMessage -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
     }
     if ([string]$latest.runtime_outcome -ceq 'timed-out') {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-timeout' -Reason 'latest-review-timed-out' -Message ('The review timed out: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+        # FR-018: a consumer who loses a review to the budget must be told which setting to change.
+        # Shape: what happened -> what it means for their project -> the exact next step.
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-timeout' -Reason 'latest-review-timed-out' -Message (
+            'The review ran out of time before it finished (' + [string]$latest.failure_reason + '), so it produced no usable result. ' +
+            'Reviews of this size often need a longer window: raise co_review_timeout_seconds in .specrew/config.yml, ' +
+            'or pass --timeout-seconds on the next run, then run the review again.'
+        ) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
     }
     if ([string]$latest.completion -cne 'complete') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'latest-review-incomplete' -Message 'Validated partial findings remain advisory, but a complete separately authorized run is required.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'use-partial-findings-and-request-rerun-grant'
@@ -393,8 +977,11 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     if ([string]$latest.validation -cne 'valid' -or [string]$latest.currentness -cne 'current') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
     }
-    if ([bool]$latest.can_approve_current -and [string]$latest.verdict -ceq 'pass') {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'The authoritative campaign result is a complete valid pass for the exact current digest.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+    # The SAME predicate the pause guard above consults. Reaching here means the sequential gates have
+    # already excluded every other shape, so this is equivalent to the conjunction it replaces - and
+    # sharing one definition is what stops the pause guard and this return drifting apart.
+    if (Test-ReviewCampaignResultReleasesBoundary -Result $latest -CurrentDigest $CurrentDigest) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'Your review passed, and it covers your files exactly as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
     }
     if ([string]$latest.verdict -ceq 'findings') {
         $matchingDispositions = @($HumanDispositions | Where-Object {
@@ -402,8 +989,9 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             $v.valid
         })
         $requiresCorrection = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'require-correction' }).Count -gt 0
-        $accepted = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'accept-current' }).Count -gt 0
-        if ($accepted -and -not $requiresCorrection) {
+        # The SAME predicate the pause guard consults, so a disposition can never answer the pause and fail to
+        # release here, or the reverse.
+        if (Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $HumanDispositions -CampaignId $CampaignId -RunId $latestRunId -CurrentDigest $CurrentDigest) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-human-disposition' -Reason 'complete-current-findings-human-accepted' -Message 'The exact current result has an explicit identity-bound human disposition accepting its findings.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
         }
         $actionable = @($latest.findings | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
@@ -424,7 +1012,9 @@ function Get-ReviewCampaignVerdictPacketDecision {
         [string]$StoreRoot,
         [string]$FeatureId,
         [string]$IterationNumber,
-        [string[]]$ExcludedPathPatterns = @()
+        [string[]]$ExcludedPathPatterns = @(),
+        # R1: only the navigator's Stop-hook call passes this; the signoff gate never does.
+        [switch]$AllowCache
     )
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
     $identity = $null
@@ -442,9 +1032,9 @@ function Get-ReviewCampaignVerdictPacketDecision {
             -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
     }
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
-    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns
+    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns -AllowCache:$AllowCache
     if ($null -eq $digest -or -not $digest.ok -or [string]::IsNullOrWhiteSpace([string]$digest.tree_id)) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'The current reviewed-state digest could not be computed; no lifecycle verdict may be requested.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'Specrew could not read the current state of your files, so it cannot ask you for a decision yet.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
     }
     $claimFacts = @(Get-ReviewAuthorityClaimFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -TargetLineage $TargetLineage)
     $orderedRunIds = @($claimFacts | Where-Object { [string]$_.fact_type -ceq 'claim-held' } | Sort-Object { [int]$_.generation } | ForEach-Object { [string]$_.run_id })
@@ -513,7 +1103,42 @@ function Get-ReviewCampaignVerdictPacketDecision {
         }
     }
     $decisionDigest = if ($null -ne $finalizationEnvelope) { [string]$finalizationEnvelope.reviewed_digest } else { [string]$digest.tree_id }
-    $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun -HumanDispositions $dispositions
+
+    # T003: the four consults, resolved HERE because this is the only place that holds the store, the
+    # repository and the digests at once. They were accepted by Resolve- but never supplied, so every
+    # rule they carry was inert on the path a consumer actually runs - the stop surface kept demanding
+    # reviews it had the evidence to skip. Each resolves to $null on any failure, and $null is the
+    # fail-closed value for all four: the surface stays LIVE rather than going quiet on a bad read.
+    $pendingPause = $null
+    try { $pendingPause = Get-ReviewCampaignPendingPause -StoreRoot $StoreRoot -CampaignId $CampaignId }
+    catch { $pendingPause = $null }
+
+    $recordedGateDecision = Get-ContinuousCoReviewRecordedSignoffGateDecision -RepoRoot $root
+
+    # FR-009 evidence, computed only when there IS a latest result to have moved away from. Note this
+    # deliberately uses the LATEST RESULT's digest rather than $decisionDigest's history: the question
+    # is "what changed since the thing that reviewed you", not "what changed recently".
+    $changedSinceResult = $null
+    if ($null -ne $latestResult) {
+        $changedSinceResult = Get-ReviewCampaignChangedPathsSinceResult -RepoRoot $root `
+            -ReviewedDigest ([string]$latestResult.target_digest) -CurrentDigest $decisionDigest
+    }
+
+    # The same evidence for a RUNNING round, against its own frozen target. Computed separately rather
+    # than reusing the delta above, because while a round is in flight the newest reviewed tree is that
+    # round's target and the last result's digest is older - so the result baseline would report changes
+    # the running round already covers (DRIFT-199-I001-036).
+    $changedSinceActiveRun = $null
+    if ($null -ne $activeRun) {
+        $changedSinceActiveRun = Get-ReviewCampaignChangedPathsSinceResult -RepoRoot $root `
+            -ReviewedDigest ([string]$activeRun.target_digest) -CurrentDigest $decisionDigest
+    }
+
+    $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest `
+        -RepoRoot $root -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun `
+        -FeatureId $FeatureId -HumanDispositions $dispositions -PendingPause $pendingPause `
+        -SignoffGateDecision $recordedGateDecision -ChangedPathsSinceResult $changedSinceResult `
+        -ChangedPathsSinceActiveRun $changedSinceActiveRun
     if ($null -eq $finalizationEnvelope) { return $packet }
     if ([string]$packet.route -cne 'boundary-clean') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-not-clean' -Message 'The finalization envelope is valid but its bound result is not an authorizing clean result; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
@@ -558,6 +1183,17 @@ function Get-ContinuousCoReviewSignoffGateDecision {
     if (-not $authority.valid -or [string]$authority.mode -ceq 'disabled') {
         return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason ('review-authority-disabled:' + [string]$authority.reason) -Message 'Review authority is missing, malformed, or disabled; neither legacy nor campaign evidence may authorize signoff.'
     }
+
+    # T067 / FR-025: the explicit human-authorized partial-coverage escape hatch applies
+    # to both authority models. Campaign cutover originally returned at line 1047 before
+    # reaching the legacy-positioned check below, which made the documented escape hatch
+    # unreachable precisely when the hard gate became the default. Keep authority config
+    # validation ahead of the override (a missing trust model is never bypassed), then let
+    # a complete, explicit authorization short-circuit either evidence evaluator.
+    if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $OverrideAuthorization) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'human-authorized-partial-override' -Message 'Signoff allowed under a recorded human-authorized partial-coverage override.' -OverrideAuthorization $OverrideAuthorization
+    }
+
     if ([bool]$authority.campaign_authority_enabled) {
         try {
             $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolvedRepoRoot -CampaignId $CampaignId -TargetLineage $TargetLineage -StoreRoot $CampaignStoreRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -ExcludedPathPatterns $ExcludedPathPatterns
@@ -565,17 +1201,11 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         catch {
             return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'campaign-review-state-invalid' -Message ('Campaign review authority could not be read safely: ' + $_.Exception.Message)
         }
-        $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.render_boundary_packet) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
-        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
+        $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.gate_allows) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
+        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'gate_allows', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
             $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
         }
         return $decision
-    }
-
-    # A well-formed human-authorized recorded override short-circuits, with the authorization
-    # captured in the decision evidence (auditable, never silent).
-    if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $OverrideAuthorization) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'human-authorized-partial-override' -Message 'Signoff allowed under a recorded human-authorized partial-coverage override.' -OverrideAuthorization $OverrideAuthorization
     }
 
     # 1. Current reviewed-state digest (fail-closed on any digest/git failure).
@@ -686,10 +1316,21 @@ function Assert-ContinuousCoReviewSignoffGate {
 
         [AllowNull()] $OverrideAuthorization,
 
-        [AllowNull()] $DegradedAcknowledgement
+        [AllowNull()] $DegradedAcknowledgement,
+
+        [string] $AuthorityConfigPath,
+        [string] $CampaignId,
+        [string] $TargetLineage,
+        [string] $FeatureId,
+        [string] $IterationNumber,
+        [string] $CampaignStoreRoot
     )
 
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization -DegradedAcknowledgement $DegradedAcknowledgement
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName `
+        -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization `
+        -DegradedAcknowledgement $DegradedAcknowledgement -AuthorityConfigPath $AuthorityConfigPath `
+        -CampaignId $CampaignId -TargetLineage $TargetLineage -FeatureId $FeatureId `
+        -IterationNumber $IterationNumber -CampaignStoreRoot $CampaignStoreRoot
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"
     }

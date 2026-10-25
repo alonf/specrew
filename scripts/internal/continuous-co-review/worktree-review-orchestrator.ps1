@@ -8,6 +8,11 @@ Set-StrictMode -Version Latest
 # lives here, off the 20s Stop budget. See specs/197-continuous-co-review/iterations/008/design-analysis.md.
 
 . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
+$pathIdentityPath = Join-Path $PSScriptRoot 'path-identity.ps1'
+if (-not (Test-Path -LiteralPath $pathIdentityPath -PathType Leaf)) {
+    throw "Missing continuous co-review path identity primitive '$pathIdentityPath'."
+}
+. (Join-Path $PSScriptRoot 'path-identity.ps1')
 
 function ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp {
     param([datetime]$Timestamp = [datetime]::UtcNow)
@@ -440,9 +445,10 @@ function Test-ContinuousCoReviewPathLineageOverlap {
     # Same review LINEAGE = the current change-set overlaps the prior round's (a fix attempt on the SAME area) -
     # NOT merely "the prior was blocking" (which conflates unrelated checkpoints -> spurious escalation + irrelevant
     # prior findings). Overlap -> increment + thread prior findings; no overlap -> a new checkpoint (round 1).
-    param([string[]]$Current, [string[]]$Prior)
+    param([string[]]$Current, [string[]]$Prior, [Parameter(Mandatory)][string]$CaseRoot)
     if (-not $Current -or -not $Prior -or @($Current).Count -eq 0 -or @($Prior).Count -eq 0) { return $false }
-    $set = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Prior), [System.StringComparer]::OrdinalIgnoreCase)
+    $set = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Prior),
+        (Get-ContinuousCoReviewPathComparer -Path $CaseRoot -WhenUndetermined 'distinct'))
     foreach ($c in @($Current)) { if ($set.Contains([string]$c)) { return $true } }
     return $false
 }
@@ -684,7 +690,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         $maxRounds = Get-ContinuousCoReviewMaxRounds -RepoRoot $RepoRoot
         $prior = Get-ContinuousCoReviewRoundState -RepoRoot $RepoRoot
         $round = 1; $priorFindings = $null
-        if ($null -ne $prior -and ([bool]$prior.blocking) -and (Test-ContinuousCoReviewPathLineageOverlap -Current @($wt.changed_paths) -Prior @($prior.changed_paths))) {
+        if ($null -ne $prior -and ([bool]$prior.blocking) -and (Test-ContinuousCoReviewPathLineageOverlap -Current @($wt.changed_paths) -Prior @($prior.changed_paths) -CaseRoot $RepoRoot)) {
             $round = [int]$prior.round + 1
             $priorFindings = [string]$prior.findings
         }
@@ -763,7 +769,8 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             $containmentOriginRoots = @($RepoRoot)
             try { $cgt = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null); if (-not [string]::IsNullOrWhiteSpace($cgt)) { $containmentOriginRoots += ([string]$cgt).Trim() } } catch { $null = $_ }
             $containmentViolations = [System.Collections.Generic.List[object]]::new()
-            $containmentSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            $containmentSeen = [System.Collections.Generic.HashSet[string]]::new(
+                (Get-ContinuousCoReviewPathComparer -Path $RepoRoot -WhenUndetermined 'distinct'))
             # FR-011 amended (maintainer review 2026-07-12): the monitor records its own HEALTH so weak visibility is
             # never silent inactivity. A hashtable (reference type) so the heartbeat closure's mutations persist.
             $samplerHealth = @{ attempts = 0; successful_samples = 0; failures = 0; last_reason = ''; final_sample_taken = $false; cadence_seconds = 5 }

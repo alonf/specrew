@@ -9,7 +9,7 @@ based on origin/main `b71d3b4c`).
 
 - specify + plan committed (`1f24aa29`, `1b1405f4`).
 - **Iteration 1 (cleaning) DONE + tested + committed (`84f99984`)**: FR-002/003/006. The all-host digests (`general.md` rule-9, `specify.md` step-6/traps) are harness-free + instruct every host to emit the `SPECREW-VERDICT-BOUNDARY` marker. Because the capture is transcript-gated (not Claude-gated), non-Claude transcript hosts now capture verdicts with NO `HandoverStore` change. No new skill file. Test: `tests/integration/host-neutral-gate-cleaning.tests.ps1`.
-- **Iteration 2 PENDING A MAINTAINER DECISION**: the gate provider's Claude mechanical block requires re-registering `PreToolUse`, which F-184 deliberately turned off (~920ms). Surface + measure before activating (advisor's flag) — options: (a) activate with a narrow matcher + measured cost; (b) leave out, rely on cleaning + cooperative-halt (FR-007 stays research-flagged). The non-reversal Iter-2 parts (per-host capability declaration + degraded-mode + parity/gate-detection tests) can proceed regardless.
+- **Historical Iteration-2 ruling (superseded later in this record)**: the original proposal would have re-registered Claude `PreToolUse`, which F-184 deliberately turned off (~920ms). That path was rejected. The implemented direction is the cheaper host-neutral Stop-provider plus each host's strongest available lever, recorded below under D-001/D-002. Remaining Feature-185 debt is lifecycle closeout and direct-host evidence, not an unmade PreToolUse implementation decision.
 
 ## Lifecycle position (honest)
 

@@ -49,6 +49,10 @@ try {
     $transcriptPathArg = $null
     $lastAssistantArg = $null
     $lastUserArg = $null
+    $turnOriginArg = $null
+    $sessionIdArg = $null
+    $messageIdArg = $null
+    $messageIdentityArg = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
@@ -58,6 +62,16 @@ try {
         elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--last-assistant-message' -and ($i + 1) -lt $args.Count) { $lastAssistantArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--last-user-message' -and ($i + 1) -lt $args.Count) { $lastUserArg = [string]$args[$i + 1] }
+        # Feature 202 (FR-006): the dispatcher's origin from the host's declared rules. Only a typed-user prompt can
+        # produce a workshop receipt or approve a recovery; absent (a direct caller), the text checks alone apply.
+        elseif ($args[$i] -eq '--turn-origin' -and ($i + 1) -lt $args.Count) { $turnOriginArg = [string]$args[$i + 1] }
+        # Co-review round 2: the host session, so the reply-recording recovery question is answered only by the
+        # session it was asked in.
+        elseif ($args[$i] -eq '--session-id' -and ($i + 1) -lt $args.Count) { $sessionIdArg = [string]$args[$i + 1] }
+        # Feature 202 iteration 002, T017 (FR-027): the host's ID for the prompt's message, and whether the host
+        # binding declares one ('declared' or 'none'), so both recording paths key one message the same way.
+        elseif ($args[$i] -eq '--message-id' -and ($i + 1) -lt $args.Count) { $messageIdArg = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--message-identity' -and ($i + 1) -lt $args.Count) { $messageIdentityArg = [string]$args[$i + 1] }
     }
 
     $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-HandoverProjectRoot }
@@ -84,7 +98,9 @@ try {
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
-    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor') { . (Join-Path $bdir "$f.ps1") }
+    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor', 'HumanAuthorityStore') { . (Join-Path $bdir "$f.ps1") }
+    $workshopAuthorityPath = Join-Path $root '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+    if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
     # F-174 iteration 011 (T004): load shared-governance so the Stop-hook Update-SpecrewRollingHandover can record
     # the captured human verdict (Add-SpecrewBoundaryAuthorization / Get-SpecrewBoundaryOrder). Same 3-tier
     # resolution the bootstrap provider uses ($bdir -> scripts/internal -> module root -> extensions/.../scripts).
@@ -151,11 +167,20 @@ try {
     # SINGLE save path (F-174 iter-9.1): every trigger - this Stop/PostToolUse hook AND the workshop skill -
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
-    Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
-        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser | Out-Null
+    $handoverResult = Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
+        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser -TurnOrigin $turnOriginArg -SessionId $sessionIdArg `
+        -MessageId $messageIdArg -MessageIdentity $messageIdentityArg
+    # FR-010 (T024): this provider is registered as an INJECT provider, so its stdout reaches the turn.
+    # The one thing it has to say is when a verdict-shaped reply was NOT captured - said at prompt entry,
+    # in the same turn the human typed it, instead of in a recap after two retries.
+    if ($null -ne $handoverResult -and ($handoverResult.PSObject.Properties.Name -contains 'disclosure') -and
+        -not [string]::IsNullOrWhiteSpace([string]$handoverResult.disclosure)) {
+        Write-Output ([string]$handoverResult.disclosure)
+    }
     exit 0
 }
 catch {
     [Console]::Error.WriteLine("[specrew-handover] WARN PROVIDER_FAILED $($_.Exception.Message)")
     exit 0
 }
+# specrew-self-provenance-ok: F-174; implementation history is recorded for maintainers and is never emitted as consumer instruction

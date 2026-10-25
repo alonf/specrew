@@ -226,6 +226,14 @@ function New-StaleProject {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
     New-MinimalProject -ProjectRoot $ProjectRoot
+    # Boundary sync consumes an initialized v2 ledger. Other New-MinimalProject callers intentionally
+    # remain fresh (no start context), so `specrew start` does not mistake a partial fixture for stale state.
+    $initialContext = [ordered]@{
+        schema = 'v2'
+        session_state = [ordered]@{ active = $false; boundary_type = ''; feature_ref = '022-hotfix-schema-tests' }
+        boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $null; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $ProjectRoot '.specrew\start-context.json'), ($initialContext | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
     $syncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @('-ProjectPath', $ProjectRoot, '-BoundaryType', 'plan', '-FeatureRef', '022-hotfix-schema-tests', '-IterationNumber', '001')
     if ($syncResult.ExitCode -ne 0) {
         throw ("Failed to seed plan boundary state:`n{0}" -f ($syncResult.Output -join [Environment]::NewLine))
@@ -363,7 +371,7 @@ $staleContext = @{
         auth_commit_hash = 'deadbeef'
         recorded_at      = '2026-06-01T10:00:00Z'
     }
-    boundary_enforcement = @{ enabled = $true; last_authorized_boundary = 'tasks' }
+    boundary_enforcement = @{ enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
 }
 [System.IO.File]::WriteAllText((Join-Path $cleanupProject '.specrew\start-context.json'), ($staleContext | ConvertTo-Json -Depth 8), $utf8NoBom)
 

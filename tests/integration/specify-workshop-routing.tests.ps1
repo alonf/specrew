@@ -42,12 +42,36 @@ Write-Pass 'FR-010: before_specify hook registered -> before-specify command rou
 # (dogfood test-f185). The coordinator instruction + specify digest are the primary route.
 $coord = Get-Content -LiteralPath (Join-Path $repoRoot 'templates/coordinator-instructions.md') -Raw
 if ($coord -notmatch 'specrew-design-workshop') { Write-Fail 'coordinator instruction must name specrew-design-workshop as the new-feature intake (FR-010)' }
-if ($coord -notmatch '(?i)do NOT ask your own') { Write-Fail 'coordinator instruction must forbid self-asked grounding questions before the workshop (FR-010)' }
-if ($coord -notmatch '(?i)until the workshop is complete') { Write-Fail 'coordinator instruction must forbid speckit-specify / spec-writing before the workshop completes (FR-010)' }
+if ($coord -notmatch '(?is)Grounding and\s+clarification questions belong inside it rather than ahead') { Write-Fail 'coordinator project rules must place grounding questions inside the workshop, not ahead of it (FR-010)' }
+if ($coord -notmatch '(?i)It comes before the spec' -or $coord -notmatch '(?i)spec-writer the workshop leads to') { Write-Fail 'coordinator project rules must place speckit-specify / spec-writing after the workshop (FR-010)' }
 $dig = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/refocus/specify.md') -Raw
 if ($dig -notmatch '(?i)IS the intake') { Write-Fail 'specify digest must declare the workshop is the intake, run first (FR-010)' }
 if ($dig -notmatch '(?i)do NOT pre-ground') { Write-Fail 'specify digest must forbid pre-grounding with self-asked questions (FR-010)' }
 Write-Pass 'FR-010 (instruction route): coordinator + specify digest make the design-workshop the single intake (first, no pre-grounding, no speckit-specify until after)'
+
+# Beta3 stabilization: the final workshop runs the REAL specify gate before the spec writer and before a
+# boundary commit. The wrapper exposes a validation-only switch; the internal engine returns before the
+# ratchet and every state mutation; every primary host skill carries the same exact command.
+$preflightCommandPattern = '(?i)sync-boundary-state\.ps1[^\r\n]*-BoundaryType\s+specify[^\r\n]*-PreflightOnly'
+$primarySkillPaths = @(
+    '.agents/skills/specrew-design-workshop/SKILL.md',
+    '.claude/skills/specrew-design-workshop/SKILL.md',
+    '.cursor/rules/specrew-design-workshop/SKILL.md',
+    '.github/skills/specrew-design-workshop/SKILL.md'
+)
+foreach ($relativeSkillPath in $primarySkillPaths) {
+    $skillText = Get-Content -LiteralPath (Join-Path $repoRoot $relativeSkillPath) -Raw
+    if ($skillText -notmatch $preflightCommandPattern -or $skillText -notmatch '(?i)before the spec writer') {
+        Write-Fail "$relativeSkillPath must require the validation-only specify preflight before the spec writer"
+    }
+}
+$wrapperText = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/sync-boundary-state.ps1') -Raw
+$engineText = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/sync-boundary-state.ps1') -Raw
+if ($wrapperText -notmatch '\[switch\]\$PreflightOnly' -or $wrapperText -notmatch '-PreflightOnly:\$PreflightOnly') { Write-Fail 'sync wrapper must expose and forward -PreflightOnly' }
+$preflightReturnAt = $engineText.IndexOf('if ($PreflightOnly)')
+$ratchetAt = $engineText.IndexOf('Invoke-SpecrewBoundaryRatchetGate', $preflightReturnAt + 1)
+if ($preflightReturnAt -lt 0 -or $ratchetAt -lt 0 -or $preflightReturnAt -gt $ratchetAt) { Write-Fail 'preflight must return before the boundary ratchet/state mutation path' }
+Write-Pass 'Beta3 specify preflight: all primary workshop skills invoke the real validation-only gate before spec writing; wrapper + engine return before lifecycle mutation'
 
 # FR-010 (DETERMINISTIC gate — the non-probabilistic backstop): the design workshop is MANDATORY. The
 # sync-specify boundary command refuses to advance without the workshop's lens records via the
@@ -78,6 +102,50 @@ try {
 }
 finally { Remove-Item -LiteralPath $tmpRoot -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Pass 'FR-010 (functional fail-closed): a selected lens with no record BLOCKS; all-recorded (incl. explicit human-skipped) PASSES'
+
+# Functional preflight regression: a valid workshop passes without changing start-context; a malformed
+# binding blocks while leaving the same bytes untouched. Use a committed scratch repo so markdownlint sees
+# no unrelated changed Markdown and the assertion isolates lifecycle mutation.
+. (Join-Path $repoRoot 'scripts/internal/sync-boundary-state.ps1')
+$preflightRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-specify-preflight-" + [guid]::NewGuid().ToString('N'))
+try {
+    $featureDir = Join-Path $preflightRoot 'specs/001-preflight'
+    $catalogDir = Join-Path $preflightRoot 'extensions/specrew-speckit/knowledge/design-lenses'
+    $null = New-Item -ItemType Directory -Path $featureDir -Force
+    $null = New-Item -ItemType Directory -Path $catalogDir -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path $preflightRoot '.specify') -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path $preflightRoot '.specrew') -Force
+    [IO.File]::WriteAllText((Join-Path $catalogDir 'applicability-map.json'), '{"always_on":["architecture-core"],"questions":[]}', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $featureDir 'spec.md'), "# Preflight Feature`n`nThis substantive feature validates workshop boundary enforcement.`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $preflightRoot '.specify/feature.json'), '{"feature_directory":"specs/001-preflight"}', [Text.UTF8Encoding]::new($false))
+    $validWorkshop = '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"agenda_status":"confirmed","selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["pipeline"],"decision":"layered pipeline","depth":"light","moved_on":true,"confirmation":"human-confirmed","confirmation_scope":"lens-question","bindings":{"pipeline-style":"layered"}}}}'
+    $workshopPath = Join-Path $featureDir 'lens-applicability.json'
+    [IO.File]::WriteAllText($workshopPath, $validWorkshop, [Text.UTF8Encoding]::new($false))
+    $contextPath = Join-Path $preflightRoot '.specrew/start-context.json'
+    $contextBytes = [Text.UTF8Encoding]::new($false).GetBytes('{"sentinel":"must-not-change"}')
+    [IO.File]::WriteAllBytes($contextPath, $contextBytes)
+    & git -C $preflightRoot init -q
+    & git -C $preflightRoot config user.email 'specrew-tests@example.invalid'
+    & git -C $preflightRoot config user.name 'Specrew Tests'
+    & git -C $preflightRoot add .
+    & git -C $preflightRoot commit -q -m baseline
+
+    $preflightResult = Invoke-SpecrewBoundaryStateSync -ProjectPath $preflightRoot -BoundaryType specify -FeatureRef '001-preflight' -PreflightOnly
+    if (-not $preflightResult.success -or -not $preflightResult.preflight_only) { Write-Fail 'valid specify preflight must return explicit validation-only success' }
+    if (([Convert]::ToBase64String([IO.File]::ReadAllBytes($contextPath))) -ne ([Convert]::ToBase64String($contextBytes))) { Write-Fail 'valid specify preflight mutated start-context.json' }
+    if (Test-Path -LiteralPath (Join-Path $preflightRoot '.specrew/last-start-prompt.md')) { Write-Fail 'valid specify preflight must not create lifecycle prompt state' }
+
+    [IO.File]::WriteAllText($workshopPath, $validWorkshop.Replace('"layered"', '"Layered"'), [Text.UTF8Encoding]::new($false))
+    $malformedBlocked = $false
+    try { Invoke-SpecrewBoundaryStateSync -ProjectPath $preflightRoot -BoundaryType specify -FeatureRef '001-preflight' -PreflightOnly | Out-Null }
+    catch { $malformedBlocked = ($_.Exception.Message -match 'bindings are malformed') }
+    if (-not $malformedBlocked) { Write-Fail 'specify preflight must reject a mixed-case workshop binding token' }
+    if (([Convert]::ToBase64String([IO.File]::ReadAllBytes($contextPath))) -ne ([Convert]::ToBase64String($contextBytes))) { Write-Fail 'rejected specify preflight mutated start-context.json' }
+}
+finally {
+    Remove-Item -LiteralPath $preflightRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+Write-Pass 'Beta3 specify preflight (functional): valid artifacts pass without state writes; malformed bindings refuse without state writes'
 
 Write-Host ''
 Write-Host 'Specify workshop-routing (feature 185 FR-010): all assertions pass'

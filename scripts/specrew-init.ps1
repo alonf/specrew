@@ -112,7 +112,7 @@ function Get-ManagedAgentsBlock {
     $lookup = Get-AgentLookup -Agents $Agents
     $lines = @(
         '# >>> specrew-managed agents >>>',
-        '# Specrew-managed delegated-agent opt-in and detection state (FR-022).',
+        '# Specrew-managed delegated-agent opt-in and detection state.',
         'agents:'
     )
 
@@ -414,16 +414,12 @@ $hadGitHubContent = $hadGitHub -and ((@(
             Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.github') -Force -ErrorAction SilentlyContinue
         ).Count) -gt 0)
 $hasSpecrewConfig = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew\config.yml')
-$initialGitHasHead = $false
-if (Test-Path -LiteralPath $resolvedProjectPath -PathType Container) {
-    $null = & git -C $resolvedProjectPath rev-parse --verify HEAD 2>$null
-    $initialGitHasHead = ($LASTEXITCODE -eq 0)
-}
 $alreadyBootstrapped = $hadSpecify -and $hasSpecrewConfig
 if (-not $SpecKitExtensionOnly) {
     $alreadyBootstrapped = $alreadyBootstrapped -and $hadSquad -and $hadGitHub
 }
-$bootstrapMode = if ($blockingEntries.Count -gt 0 -or $initialGitHasHead) { 'brownfield' } else { 'greenfield' }
+# B4F-120: a folder inside another repository's work tree is brownfield even when that repository has no commits yet.
+$bootstrapMode = Resolve-SpecrewBootstrapMode -ProjectPath $resolvedProjectPath -HasBlockingEntries ($blockingEntries.Count -gt 0)
 $shouldInitializeSpecify = -not $hadSpecify
 $shouldInitializeSquad = -not $hadSquad
 $shouldForceSpecifyInit = $Force -or ($blockingEntries.Count -eq 0)
@@ -763,7 +759,7 @@ if (-not $SpecKitExtensionOnly -and $shouldInitializeSquad) {
             Add-Action -Actions $actions -Step 'squad-init' -Outcome 'would initialize .squad via squad init --non-interactive'
         }
         else {
-            $squadInitResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $squadInitPlan.ArgumentList -WorkingDirectory $resolvedProjectPath -TimeoutSeconds 120
+            $squadInitResult = Invoke-SquadInitInProject -ProjectPath $resolvedProjectPath -ArgumentList $squadInitPlan.ArgumentList -TimeoutSeconds 120
             foreach ($line in $squadInitResult.Output) {
                 Write-Host $line
             }
@@ -850,9 +846,21 @@ if (-not $SpecKitExtensionOnly) {
         $resolvedSquadVersion = $SquadVersion
     }
 
+    # PRED-BETA4-054: the base version from the ONE resolver (the module manifest); extension.yml's `version:`
+    # only when no manifest resolves. config.yml carries the BASE by design (Prop 134: the tag check compares
+    # the tag's version to it); the prerelease label lives in the markers and the orientations.
     $specrewManifestContent = Get-Content -LiteralPath $specrewExtensionManifestPath -Raw
     $specrewVersionMatch = [regex]::Match($specrewManifestContent, '(?m)^\s*version:\s*"?(?<version>[^"\r\n]+)')
     $resolvedSpecrewVersion = if ($specrewVersionMatch.Success) { $specrewVersionMatch.Groups['version'].Value.Trim() } else { '0.1.0-dev' }
+    try {
+        $labelScript = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/version-label.ps1'
+        if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+        if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) {
+            $resolvedBase = [string](Get-SpecrewModuleVersionInfo -ModuleRoot $repoRoot).Version
+            if (-not [string]::IsNullOrWhiteSpace($resolvedBase)) { $resolvedSpecrewVersion = $resolvedBase }
+        }
+    }
+    catch { $null = $_ }
 
     Write-Step 'Scaffolding downstream governance'
     $governanceActions = @(
@@ -899,11 +907,14 @@ if (-not $SpecKitExtensionOnly) {
     Set-IterationConfigAgents -IterationConfigPath $iterationConfigPath -Agents $resolvedAgents -Actions $actions -PreviewOnly:$DryRun
 
     if ($squadSurfaceReady) {
+        # PRED-BETA4-034: a .squad this run created holds nobody's edits yet; its charters are this run's and
+        # carry the ownership sidecar, so the first `specrew start` does not call five fresh files user-edited.
         $squadDeploymentActions = @(
             & $deploySquadRuntimeScript `
                 -ProjectPath $resolvedProjectPath `
                 -DryRun:$DryRun `
-                -PassThru
+                -PassThru `
+                -ClaimCharterOwnership:$shouldInitializeSquad
         )
 
         foreach ($deploymentAction in $squadDeploymentActions) {

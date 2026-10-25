@@ -99,3 +99,4 @@ I maintain the squad's shared memory and merge team-relevant decisions into the 
        - **Decisions Recorded**: Review-verdict-signoff authorization added to .squad/decisions.md
        - **Deferred Items**: One cosmetic-only (roadmap phase status marker uniformity)
        - **Next Action**: **Explicit retro-boundary authorization required** before retrospective work begins; do not advance without separate human approval
+<!-- specrew-self-provenance-ok: R-018-V2; historical self-host examples are retained as examples, not downstream instructions -->

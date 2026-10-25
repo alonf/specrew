@@ -1,0 +1,46 @@
+{
+  "finding": "B4F-125",
+  "source": "feature 202, iteration 001, before co-review round 5 (Claude host session 39558f55)",
+  "messages": [
+    {
+      "id": "reset-below-own-paste",
+      "timestamp": "2026-10-16T00:15:14",
+      "part": "a",
+      "expected": "approval for allowance reset (the phrase leads its own line in the human's own message; the pasted block is the human's own rules, with no transcript structure)",
+      "observed": "Test-SpecrewHumanVerdictToken: Action=none, IsApproval=False; --remediate allowance-reset refused",
+      "text": "\n\n<pasted_content id=\"8752\">\nI'll choose the allowance reset in my next message. Ground rules for round 5 first. Scope: only the diff since round 4's target tree, which is the five round-4 fixes (DRIFT-031), the heading meaning-match (DRIFT-030), the B4F-116 guard test, and the CI fixes that followed. Stopping rule, decided now: there is no round 6. Every round-5 finding is checked against the code and listed real or not, as before. Real ones are fixed behind a test that fails first, and those fixes go to sign-off unreviewed by a further round, accepted by me in advance; say so in the sign-off packet. If a finding is blocking and cannot be fixed safely within 202, bring it to me as a decision; do not ask for another reset. For the retro, record the trend: 8, 5, 4 and 5 real findings across rounds 1 to 4, 22 of 22 real, with no decay. Either the iteration was too large for a four-round allowance (25.5 SP against the 20 SP convention), or the fix-then-review loop keeps introducing defects. The retro should say which, with evidence.\n</pasted_content id=\"8752\">\n\n\napproved for allowance reset"
+    },
+    {
+      "id": "reset-bare",
+      "timestamp": "2026-10-16T00:19:34",
+      "part": "b",
+      "expected": "the reset, requested in order to run a round, also authorizes that round",
+      "observed": "reset applied; the round was then refused until a second message",
+      "text": "approved for allowance reset"
+    },
+    {
+      "id": "round-bare",
+      "timestamp": "2026-10-16T00:26:15",
+      "part": "b",
+      "expected": "not needed: the reset already authorized the round",
+      "observed": "required; recorded as cmp-202-beta4-1-ux-stabilization-i001-round-5",
+      "text": "approved for review round"
+    }
+  ],
+  "refusals": [
+    {
+      "part": "a",
+      "command": "specrew review --remediate allowance-reset",
+      "text": "Replenishing the review rounds is the human's decision, and no approval from them has been captured.\n\nAsk them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:\n\n  approved for allowance reset\n\nOnce they have typed it, run this same command again with their reason in --ack-reason. From their own terminal, the human can run it directly - their invocation is itself the approval."
+    },
+    {
+      "part": "b",
+      "command": "specrew review --live --pause-choice 1 (after the reset)",
+      "text": "Approving a review round is the human's decision, and no approval from them has been captured.\n\nAsk them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:\n\n  approved for review round\n\nOnce they have typed it, run this same command again - running it is your job; deciding is theirs.\nThey can also review the artifacts themselves instead of spending a round, or run this command\nfrom their own terminal, where their invocation is itself the approval."
+    }
+  ],
+  "crewOffer": {
+    "part": "c",
+    "text": "1. Run the reset from your own prompt. Running it yourself is the approval, and the reason is yours to edit:\n\n  ! pwsh -NoProfile -File scripts/specrew-review.ps1 --remediate allowance-reset --feature 202-beta4-1-ux-stabilization --ack-reason \"Round 4's five fixes are unreviewed; round 5 is the last, scoped to the diff since round 4's target tree\""
+  }
+}

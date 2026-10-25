@@ -1,5 +1,117 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-10-25 — Verdict: corrected defer entry for feature 001 iteration 011 (FR-054)
+
+- **Decision ID**: defer-fr054-immutability-guardrail
+- **Type**: defer
+- **Affected Requirement**: FR-054
+- **Affected Iteration**: specs\001-specrew-product\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-10-25T02:39:11Z
+- **Next Action**: Address automated immutable-snapshot enforcement in a separate scoped feature.
+- **Rationale**: Correction, on the maintainer's typed `merge as recommended` (2026-10-25). The canonical
+  defer entry of 2026-05-12 for this deferral, approved by Alon Fliess on 2026-05-08, names
+  `specs\198-beta2-hardening\iterations\011` as the affected iteration, while its rationale, and the
+  Gap Ledger of `specs\001-specrew-product\iterations\011\review.md` that cites it, are about feature 001's
+  iteration 011. The validator therefore found no deferral for that iteration. This entry records the same
+  approved deferral against the right iteration; the earlier entries are left as they are.
+
+### 2026-10-25 — Verdict: 202 iteration 003 gap ledger - every open item deferred except T031's live test
+
+- **Decision ID**: f202-i003-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-027, FR-028, FR-032, SC-011
+- **Affected Iteration**: specs\202-beta4-1-ux-stabilization\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-10-24T21:53:36Z
+- **Disposition**: The open items in iteration 003's review.md Gap Ledger, classified at the maintainer's typed
+  `classify the gap ledger as proposed` (2026-10-25), on the crew's proposal of the same day.
+  (1) B4F-151: beta5. Graded critical by the maintainer's rule of 2026-10-20 at the iteration 003 retro; nothing false
+  is recorded, and it is outside the beta4.1 gate.
+  (2) The fixtures added after review sign-off (`1509b896`): accepted as they are. Test data, their suites pass, and the
+  maintainer's partial review signoff covers them; listed as open until this closeout by the maintainer's instruction
+  at review sign-off.
+  (3) T029 on Copilot (B4F-131, B4F-153): beta5, outside the beta4.1 gate (`keep the gate as ruled`, 2026-10-24).
+  (4) B4F-146 live, T032: feature 202's closeout, its live test. T031 is fixed-now, shown by this closeout.
+  (5) The re-walk's other misses (B4F-154 to B4F-157, B5F-011) and B4F-152: logged, not scheduled.
+  (6) The CI step for the stored-time suite: committed locally on `ci-stored-time-step`; its push needs a login with
+  workflow permission and is the maintainer's.
+
+### 2026-10-21 — Verdict: 202 iteration 002 gap ledger - every open item deferred, and the re-walk fixes moved to iteration 003
+
+- **Decision ID**: f202-i002-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-028, SC-011
+- **Affected Iteration**: specs\202-beta4-1-ux-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-10-21T10:03:13Z
+- **Disposition**: The open items in iteration 002's review.md Gap Ledger, classified at the maintainer's ruling of
+  2026-10-21 (`move the fixes to iteration 003 ... close 002 first: take T025-T030 out of its records and mark its open
+  items`).
+  (1) Round 8's fixes: accepted as they are by the maintainer's partial review sign-off (2026-10-20).
+  (2) SC-011: the Copilot re-walk failed at M1 (B4F-144, DRIFT-006). Its fixes, T025 to T030, move to iteration 003;
+  T025 to T029 are committed in `2fd7f2d6` and not yet reviewed.
+  (3) The CI step for the stored-time suite: committed locally; its push needs a login with workflow permission and is
+  the maintainer's.
+  (4) B4F-141: beta5, by the maintainer's `log it` at the review close.
+  (5) B4F-142: one Linux CI count off by one, passed on the next push; not investigated, reopened if it recurs.
+  (6) Beta5 findings raised in iteration 002 (B4F-126, B4F-055, B4F-139, B4F-140 and the rest): beta5, by the
+  maintainer's review-signoff instruction.
+  (7) Findings raised after the retro: B4F-144, B4F-145 layer 1, B4F-147 and B4F-131's product-domain case go to
+  iteration 003; B4F-146, B4F-148 and B4F-149 are logged, not scheduled.
+- **Release gate**: moved by the same ruling to feature 202's closeout. No feature closeout, no merge to main and no
+  published module until iteration 003's Copilot re-walk passes.
+
+### 2026-08-31 — Verdict: FR-026 deferred - the constrained readers have never run outside this repository
+
+- **Decision ID**: f199-i002-defer-fr026-no-field-execution
+- **Type**: defer
+- **Affected Requirement**: FR-026
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-31T00:00:00Z
+- **Disposition**: T017's shared reader `scripts/internal/constrained-yaml.ps1` was ABSENT from Specrew.psd1's FileList
+  and began shipping 2026-08-30 (DRIFT-199-I002-024). Its two dependents loaded it with
+  `if (Test-Path) { . $path }`, so downstream the FR-026 refusal wording was simply undefined and no
+  consumer project has ever executed it. Mutation-proved only, and that label understates it - the
+  code was not merely unobserved in the field, it was not present there. Field evidence arrives with
+  consumer use; deferred rather than closed.
+
+### 2026-08-31 — Verdict: FR-030 deferred to the pre-tag step - the cycle fix is replay-proved, not field-proved
+
+- **Decision ID**: f199-i002-defer-fr030-replay-not-field-proved
+- **Type**: defer
+- **Affected Requirement**: FR-030
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-31T00:00:00Z
+- **Disposition**: Round 3 graded `cycle-reset-mirror-wedge` BLOCKING: replaying a global authorization into a new
+  iteration wedged every second cycle. Fixed by capping the replay at the boundary being synced, and a
+  second defect in the checker was found by an end-to-end replay through the real top-level sync path.
+  Mutation-proved at the gate and proved end to end with a seeded store, but NOT yet observed in a
+  genuine cycle. Deferred to the PRE-TAG step rather than to beta4: iteration 003's plan sync is a
+  gating step before the tag, so the field proof arrives before shipping rather than after.
+
+### 2026-08-31 — Verdict: iteration 002 review-signoff gap ledger - the remaining three deferrals
+
+- **Decision ID**: f199-i002-review-signoff-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-033
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-31T00:00:00Z
+- **Disposition**: The gaps in iteration 002's review.md that are not requirement-scoped.
+  (1) The shipping tree carries 9 source files beyond round 3's target `df2edd1f`, all of them round
+  3's own output; accepted by typed `approved for partial review signoff` with the maintainer's own
+  rationale captured under `.specrew/review/signoff-gate/override-authorizations/`. The no-round-4
+  commitment was made in advance of the finding that would have tested it.
+  (2) Three of six items have no field exercise - T016, T018 and T020 are field-proved; T017 and the
+  two round-3 fixes are not.
+  (3) The review record's severity counts cannot be trusted: the reviewer graded one blocking and
+  seven major across three rounds and the durable record shows zero of each. Beta4's B-3, reclassified
+  from a summariser defect to a RECORD defect (DRIFT-199-I002-016), and the retro's lead item.
+  Full accounts with measurements are in iteration 002's drift-log.md (37 events).
+
 ### 2026-08-06 — Verdict: WAIVE the accepted-verdict finding on iteration 011 for the beta2 release gate
 
 - **Decision ID**: f198-i011-waive-accepted-verdict-finding-release-gate
@@ -28820,3 +28932,565 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 943e455f7042bc16944c1df31c457775909c4285
 - **Recorded At**: 2026-08-02T13:21:48Z
+
+## 2026-08-10T00:35:53Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: clarify
+- **Recorded At**: 2026-08-10T00:35:53Z
+- **Warning**: Expected next boundary 'plan' but received 'specify'.
+
+## 2026-08-10T00:35:54Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 472fa5e2ec96b244629fa17091345739a9d6fcb8
+- **Recorded At**: 2026-08-10T00:35:54Z
+
+## 2026-08-10T00:45:24Z — Boundary enforcement: clarify
+
+- **Feature**: 199-beta3-stabilization
+- **Boundary Type**: clarify
+- **Current Boundary**: specify
+- **Requested Boundary**: clarify
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'specify' is recorded but not human-approved; a second advance to 'clarify' is refused until it is reconciled.
+
+## 2026-08-10T00:55:26Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 78f68e4563c612c7cf1bd1d0cecadd826c887f6c
+- **Recorded At**: 2026-08-10T00:55:26Z
+
+## 2026-08-10T01:15:51Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d9b1cc851586c8c3e65b2a3dd164eec55053e6cf
+- **Recorded At**: 2026-08-10T01:15:50Z
+
+## 2026-08-10T01:18:20Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-08-10T01:18:20Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-08-10T01:18:21Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: ffeea7755f8afd53c3a84d90331077fd2be0241b
+- **Recorded At**: 2026-08-10T01:18:21Z
+
+## 2026-08-10T01:31:19Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-08-10T01:31:19Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-08-10T01:31:20Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 769382ed9eb5a2dfac77a6620a1dbe4d3934cc2d
+- **Recorded At**: 2026-08-10T01:31:19Z
+
+## 2026-08-10T01:45:51Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4ce684291daac0733ab071ac3c7d99f01f5a358b
+- **Recorded At**: 2026-08-10T01:45:50Z
+
+## 2026-08-10T01:51:17Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: b9e25ad1fba3eacfdbd4dfa1e90ef69d05e86ac6
+- **Recorded At**: 2026-08-10T01:51:16Z
+
+## 2026-08-10T08:02:26Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-08-10T08:02:26Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'before-implement'.
+
+## 2026-08-10T08:02:27Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8ed3313d1ec114e33e1696e37e937649ed57afbb
+- **Recorded At**: 2026-08-10T08:02:26Z
+
+## 2026-08-17T07:55:00Z — Defer: FR-016 banner gloss gap to beta4
+
+- **Type**: defer
+- **Affected Requirement**: FR-016
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (maintainer triage ruling 2026-08-11, drift-log ROUND 5: a repeat class routes to beta4 unless it blocks the acceptance bar; the round-5 table records this finding as "BETA4 — does not block the bar")
+- **Rationale**: Round-5 major finding (run-20260811-213318650-9ab64f34): the orientation banner still emits bare requirement IDs and the gloss helper has no production call sites. Deferred to beta4; recorded as the `deferred` entry in the iteration 001 review.md Gap Ledger.
+- **Next Action**: beta4 backlog carries the banner gloss call-site work.
+- **Recorded At**: 2026-08-17T07:55:00Z
+
+## 2026-08-17T22:30:00Z — Superseded: FR-016 deferral replaced by a fix
+
+- **Type**: supersede
+- **Affected Requirement**: FR-016
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (directive 2026-08-17: "We cannot complete until we fix all issues... do additional rounds to fix the issues")
+- **Rationale**: The 2026-08-17T07:55:00Z defer entry parked the FR-016 banner gloss gap for beta4 under the 2026-08-11 triage ruling. Campaign round run-20260817-220959812-f183b4d8 raised it again against the frozen UI/UX design context, which requires every requirement reference in human-visible prose to carry both the identifier and a short description. The gap is now fixed in all three shipped banner copies and enforced by a detector-based guard, so the deferral no longer applies and the review Gap Ledger records it as fixed-now.
+- **Next Action**: none; the deferral is closed by the fix.
+- **Recorded At**: 2026-08-17T22:30:00Z
+
+## 2026-08-18T18:15:00Z — Ruling: session-orientation enforcement stays instruction-level
+
+- **Type**: ruling
+- **Affected Requirement**: FR-020
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (2026-08-18: "a stop is heavy since it runs on any stop, not just on the first time, so maybe we should just have a better instructions... put it in AGENT.md or Claude.md")
+- **Rationale**: The casiocalculator walk received the full session orientation and never showed it to the human (DRIFT-199-I001-073). Three remedies were weighed. A Stop-side check is the only mechanical one and was declined: it runs on every stop to catch a first-turn omission, and adding a block class at release time is the wrong trade. A start-loaded skill was declined: something must still instruct the agent to invoke it, so it inherits the same starting problem one hop further out. The obligation therefore lives in the two always-in-context channels - the host-materialized project instructions and the session directive.
+- **Next Action**: If a later walk skips the orientation with this text in place, treat that as evidence the mechanical check is required and revisit this ruling rather than sharpening the wording again.
+- **Recorded At**: 2026-08-18T18:15:00Z
+
+## 2026-08-18T19:30:00Z — Ruling reversed by its own trigger: the orientation check is built
+
+- **Type**: ruling
+- **Affected Requirement**: FR-020
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (2026-08-18 walk report: "No start banner", on the deployed build with both instruction channels in place)
+- **Rationale**: The 2026-08-18T18:15:00Z ruling declined a Stop-side check and carried its own reversal condition: a later walk skipping the orientation with that text in place would be the evidence to build it rather than sharpen the wording again. The KeyContextAI walk met that condition on the first controlled test - deployed provider carrying the directive, CLAUDE.md carrying the obligation, SessionStart delivered in full mode, banner still absent. The objection that made the check declinable (it would run on every stop to catch a first-turn omission) is answered by scope rather than by argument: it evaluates only while the session has no orientation receipt, only when a bootstrap was actually delivered, never displaces a higher-priority block, and fails open. After the human has seen it, every later stop costs one Test-Path.
+- **Next Action**: Watch the next walk. If the banner appears, the class is closed; if it does not, the defect is in delivery rather than compliance and the lane's detection needs re-examining, not further hardening.
+- **Recorded At**: 2026-08-18T19:30:00Z
+
+## 2026-08-19T12:00:00Z — Ruling: a human prompt must earn its place
+
+- **Type**: ruling
+- **Affected Requirement**: FR-015
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (2026-08-19: "we need not to add more paperwork on the human user. Specrew is heavy compare to other AI SDLC platforms, it requires the human user to be involve, and to take responsibility which is one of the major ideas, however people do not like to do a paperwork and to work hard, we need to find the balance.")
+- **Rationale**: Human involvement is the product, so the weight cannot simply be reduced. The test is whether a prompt is a DECISION, a DISCLOSURE, or CEREMONY. A prompt earns its place only when a different answer would change what happens next. Three corollaries follow: (1) if the system already knows the answer and every alternative is incoherent, act and report instead of asking - the clean-review pause offered "Fix these" against an empty finding set; (2) if the human already knows because they just asked for it, report inline rather than formalising it - the README packet; (3) if the answer cannot change anything downstream, do not ask. The inverse is protected and must not be trimmed: irreversibility gates (specify, plan, tasks, before-implement, review-signoff), anything that SPENDS (authorising a reviewer round), anything that transfers risk outward (branch protection, publishing, deletion), and the design workshop - the lens questions are the human producing the product, not paperwork, which is why the walks show humans engaging with them rather than resenting them.
+- **Ceremony has a second cost beyond annoyance**: a decision the machinery does not consult still gets stored as an `authorized_by: human` fact, so an unnecessary question becomes a forgeable authority record. Removing the question is a stronger fix than authenticating the answer.
+- **Next Action**: Measure it. Count the human prompts in a walk and classify each as decision, disclosure or ceremony; the ceremony count is the number that must be zero. Enforcement that makes the AGENT inform the human (the W25 orientation lane) is disclosure, not paperwork, and does not count against this budget.
+- **Recorded At**: 2026-08-19T12:00:00Z
+
+## 2026-08-27T10:49:39Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 66403e9bc6abbb59cb465c4974f504a7f56c9652
+- **Recorded At**: 2026-08-27T10:49:23Z
+
+## 2026-08-29T01:10:01Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 17d5d853af2e2477fb66267d5bbcf9e4a58dc419
+- **Recorded At**: 2026-08-29T01:09:44Z
+
+## 2026-08-29T02:08:20Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 2d758a21e1f3f0ddbe0ccf833c8b4bb5f1122e25
+- **Recorded At**: 2026-08-29T02:07:58Z
+
+## 2026-08-29T10:52:48Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-08-29T10:52:48Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-08-29T10:53:03Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 53bd94c4eec854ef1ee9aa7433d652e21802b5e6
+- **Recorded At**: 2026-08-29T10:52:48Z
+
+## 2026-08-29T13:50:11Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 14376c0ac917ad26c22f7aca990ba4933b4a7313
+- **Recorded At**: 2026-08-29T13:49:52Z
+
+## 2026-08-29T15:50:49Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 909b8b6ea18d592027ad1f0d3254725aec291d77
+- **Recorded At**: 2026-08-29T15:50:31Z
+
+## 2026-08-31T10:06:13Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c8daf12cbebbdd4ca3b20ca953cebaac60be7049
+- **Recorded At**: 2026-08-31T10:06:00Z
+
+## 2026-08-31T12:47:18Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: e360f3a9696b58f5ac2492d8d791e63aead3c1cd
+- **Recorded At**: 2026-08-31T12:47:03Z
+
+## 2026-08-31T14:16:55Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 02c4e71670393aaa36627bd74833abf12a1b5446
+- **Recorded At**: 2026-08-31T14:16:28Z
+
+## 2026-08-31T14:19:28Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-08-31T14:19:28Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-08-31T14:19:54Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 578c41e5bdc91a3dd35455db6e1d6bc4739d9f53
+- **Recorded At**: 2026-08-31T14:19:28Z
+
+## 2026-08-31T15:40:40Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-08-31T15:40:40Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-08-31T15:40:40Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 16a43c03885c59ce2d2165a2e3b0fa6ca969300e
+- **Recorded At**: 2026-08-31T15:40:40Z
+
+## 2026-09-08T21:08:54Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-09-08T21:08:54Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
+
+## 2026-09-08T21:08:55Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: b6d023aad99d975208786567b956133c75f39860
+- **Recorded At**: 2026-09-08T21:08:54Z
+
+## 2026-09-08T21:20:24Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-09-08T21:20:24Z
+- **Warning**: Expected next boundary 'retro' but received 'iteration-closeout'.
+
+## 2026-09-08T21:20:24Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 45c7e7ec62973d1c09650c7bbf6cf9f5a47538ea
+- **Recorded At**: 2026-09-08T21:20:24Z
+
+## 2026-09-08T22:34:48Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 71895b3823ec460ffe0915330163aa2df2c28767
+- **Recorded At**: 2026-09-08T22:34:33Z
+
+## 2026-09-08T22:38:37Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 006db2b2f959d95d1ef30d6be5465eef10a0b447
+- **Recorded At**: 2026-09-08T22:38:36Z
+
+## 2026-10-13T12:39:49Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3821a05ccbe1657ad5761b3fa86038a7771b53e6
+- **Recorded At**: 2026-10-13T12:39:49Z
+
+## 2026-10-13T12:40:26Z — Boundary enforcement: specify
+
+- **Feature**: 202-beta4-1-ux-stabilization
+- **Boundary Type**: specify
+- **Current Boundary**: intake
+- **Requested Boundary**: specify
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched intake -> specify.
+
+## 2026-10-13T13:08:07Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: fdef447638908865f92b0d1969ced824e023879a
+- **Recorded At**: 2026-10-13T13:08:02Z
+
+## 2026-10-13T15:42:52Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 428a755e8c7171b216c64e7e91fe091ab0ecb826
+- **Recorded At**: 2026-10-13T15:42:48Z
+
+## 2026-10-13T15:51:43Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 91a49b8fa2c298fb4f307c1825edbf654cb50195
+- **Recorded At**: 2026-10-13T15:51:39Z
+
+## 2026-10-13T18:08:58Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 40f268cb93263abcf2dc2e5d3be8740a465b6e6f
+- **Recorded At**: 2026-10-13T18:08:53Z
+
+## 2026-10-13T18:31:52Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-10-13T18:31:52Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'before-implement'.
+
+## 2026-10-13T18:31:57Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: edf199ecc0a2bb6d92e2f038dba2a3adb7001f97
+- **Recorded At**: 2026-10-13T18:31:52Z
+
+## 2026-10-16T16:33:39Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: a5baf65ffdcca60a83f18f016ba1a9d6ae68425f
+- **Recorded At**: 2026-10-16T16:33:34Z
+
+## 2026-10-16T17:00:38Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1f0905a175695a3a6baea4d8114ced259dac5e17
+- **Recorded At**: 2026-10-16T17:00:33Z
+
+## 2026-10-17T03:20:07Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: d01539d0c3b2510eafd0408d23960906a6e70855
+- **Recorded At**: 2026-10-17T03:19:57Z
+
+## 2026-10-17T04:04:04Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-10-17T04:04:04Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-10-17T04:04:08Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 35140b301d1104abeb17aebe2f3acb1d6452868e
+- **Recorded At**: 2026-10-17T04:04:04Z
+
+## 2026-10-17T04:10:03Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: d793e7d02ad972ef96270b5725cec35bb235666c
+- **Recorded At**: 2026-10-17T04:09:58Z
+
+## 2026-10-17T04:18:01Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1f6187c005b29f8562522abb5e704d91bedf1add
+- **Recorded At**: 2026-10-17T04:17:57Z
+
+## 2026-10-20T11:31:45Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 61a17e878d6f35cf11cfd1ccb79b113970c1e271
+- **Recorded At**: 2026-10-20T11:31:41Z
+
+## 2026-10-20T12:01:50Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fd4c28be49ddb09f3b23570ee6156cb2b8f23ddc
+- **Recorded At**: 2026-10-20T12:01:44Z
+
+## 2026-10-21T10:06:14Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: f92eb84c772076b25fa6a2b61659129909717c8e
+- **Recorded At**: 2026-10-21T10:06:04Z
+
+## 2026-10-21T14:01:51Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-10-21T14:01:51Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-10-21T14:01:58Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a494a28826497690cc39bfc785446f60ef72e69a
+- **Recorded At**: 2026-10-21T14:01:51Z
+
+## 2026-10-21T14:26:36Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 87df49cabcda83ee0374fdcf5ef12968f055c29f
+- **Recorded At**: 2026-10-21T14:26:32Z
+
+## 2026-10-21T14:31:14Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8106487e0f65d998c5913bacc63b4db47f7c2108
+- **Recorded At**: 2026-10-21T14:31:10Z
+
+## 2026-10-24T15:04:48Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a7e2b74c95002bbebe3e4ead5f7b5f8c0594a61c
+- **Recorded At**: 2026-10-24T15:04:41Z
+
+## 2026-10-24T20:55:16Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 071c6f70f2a4d293abb841b62aa35efd7338aba7
+- **Recorded At**: 2026-10-24T20:55:09Z
+
+## 2026-10-24T21:56:22Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7ad9a07a061e0838d38a27fc87c910ad9c9c48b3
+- **Recorded At**: 2026-10-24T21:56:17Z
+
+## 2026-10-24T22:55:10Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 202-beta4-1-ux-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: c758ac1c8eb1083901bb6bf7f40abebe5f025cb1
+- **Recorded At**: 2026-10-24T22:55:05Z

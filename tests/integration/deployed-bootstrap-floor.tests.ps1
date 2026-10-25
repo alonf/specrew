@@ -172,7 +172,7 @@ else {
 # PART 3: a FRESH resume READS the handover back AND SURFACES it (deployed, tier-3).
 $resumeOut = & $DeployedProvider --event-json '{"session_id":"t038-resume","source":"resume","hook_event_name":"SessionStart"}' --project-root $Proj 2>&1 | Out-String
 if ($resumeOut -match 'PROVIDER_FAILED') { Write-Output "FAIL Part3 (D-009 FINDING if real): deployed resume bootstrap failed-open under tier-3.`n--- output ---`n$resumeOut"; $fail = 1 }
-elseif ($resumeOut -notmatch 'Validated handover captured by the previous session') { Write-Output "FAIL Part3: resume did NOT surface the authored handover (validity/read failed in the deployed condition).`n--- directive ---`n$resumeOut"; $fail = 1 }
+elseif ($resumeOut -notmatch 'Context from the previous session') { <# 202 T012 replaced the 'Validated handover captured' header (DRIFT-025) #> Write-Output "FAIL Part3: resume did NOT surface the authored handover (validity/read failed in the deployed condition).`n--- directive ---`n$resumeOut"; $fail = 1 }
 elseif ($resumeOut -notlike "*$authoredMarker*") { Write-Output "FAIL Part3: resume surfaced the handover header but NOT the rich body sections.`n--- directive ---`n$resumeOut"; $fail = 1 }
 else { Write-Output 'PASS Part3: deployed resume READ + SURFACED the agent-authored handover - full 3-part round-trip GREEN (tier-3, evidence_locus: deployed)' }
 

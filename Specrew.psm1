@@ -80,6 +80,24 @@ function Invoke-SpecrewScript {
         $forwardedArguments = @($forwardedArguments[0])
     }
 
+    # PowerShell's `pwsh -File` binder treats the colon in a GNU-style
+    # `--option=C:\path` token as parameter syntax and can split the value at
+    # the drive separator before the target script sees it.  The public
+    # Specrew parsers accept both `--option=value` and `--option value`; lower
+    # only the Windows drive-path form to the latter before crossing the child
+    # process boundary.  Other tokens remain byte-for-byte unchanged.
+    $childProcessArguments = [System.Collections.Generic.List[object]]::new()
+    foreach ($argument in $forwardedArguments) {
+        $argumentText = [string]$argument
+        if ($argumentText -match '^(--[^=]+)=([A-Za-z]:[\\/].*)$') {
+            $childProcessArguments.Add([string]$Matches[1])
+            $childProcessArguments.Add([string]$Matches[2])
+        }
+        else {
+            $childProcessArguments.Add($argument)
+        }
+    }
+
     # On Linux/macOS, `specrew start` needs a special launch path because
     # PowerShell on Linux strips TTY from native command children when invoked
     # from a script body (empirically verified: even nano's TUI fails to
@@ -121,7 +139,7 @@ function Invoke-SpecrewScript {
             & $scriptPath @forwardedArguments
         }
         else {
-            & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @forwardedArguments
+            & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @childProcessArguments
         }
 
         # After the script returns, check for a deferred launch request.
@@ -210,6 +228,34 @@ function Show-SpecrewStatus {
     Invoke-SpecrewScript -CommandName 'specrew-where' -Arguments $Arguments
 }
 
+function Get-SpecrewReviewCampaignEvidenceState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [Parameter(Mandatory = $true)][string]$IterationNumber
+    )
+
+    # Keep the module marker on the same implementation used by the validator. Loading the large shared helper
+    # lazily avoids polluting normal CLI startup while still making the new campaign-evidence contract directly
+    # probeable from an installed package.
+    $helperPath = Join-Path $cliRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1'
+    if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
+        throw "Missing Specrew governance helper '$helperPath'."
+    }
+
+    $parameters = @{
+        ProjectRoot = $ProjectRoot
+        FeatureRef = $FeatureRef
+        IterationNumber = $IterationNumber
+    }
+    & {
+        param($SharedGovernancePath, $EvidenceParameters)
+        . $SharedGovernancePath
+        Get-SpecrewReviewCampaignEvidenceState @EvidenceParameters
+    } $helperPath $parameters
+}
+
 # CLI-friendly aliases so users continue typing the names they already know.
 # These don't trigger the unapproved-verb warning that the function names did.
 Set-Alias -Name 'specrew'         -Value 'Invoke-Specrew'        -Force
@@ -230,7 +276,8 @@ Export-ModuleMember `
         'Show-SpecrewVersion',
         'Show-SpecrewReview',
         'Invoke-SpecrewTeam',
-        'Show-SpecrewStatus'
+        'Show-SpecrewStatus',
+        'Get-SpecrewReviewCampaignEvidenceState'
     ) `
     -Alias @(
         'specrew',

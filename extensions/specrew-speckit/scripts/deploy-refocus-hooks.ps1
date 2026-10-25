@@ -118,6 +118,49 @@ function Resolve-ProjectPathFromManifest {
     return (Join-Path $projectRoot $RelativePath)
 }
 
+function ConvertTo-StablePayloadSignature {
+    # Feature 202 iteration 002, T016: a host's PayloadSignature as sorted, string-only data. An event's rule may list
+    # alternatives (B4F-144); one alternative stays a single rule, so a binding without alternatives encodes as before.
+    param($Signature)
+    if ($null -eq $Signature) { return $null }
+    $stable = [ordered]@{}
+    foreach ($eventKey in @(Get-ManifestKeys -Map $Signature | Sort-Object)) {
+        $alternatives = @(foreach ($rule in @(Get-ManifestValue -Map $Signature -Key ([string]$eventKey))) {
+                if ($null -eq $rule) { continue }
+                [ordered]@{
+                    AllOf  = @(@(Get-ManifestValue -Map $rule -Key 'AllOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
+                    NoneOf = @(@(Get-ManifestValue -Map $rule -Key 'NoneOf' -Default @()) | ForEach-Object { [string]$_ } | Sort-Object)
+                }
+            })
+        if ($alternatives.Count -eq 1) { $stable[[string]$eventKey] = $alternatives[0] }
+        elseif ($alternatives.Count -gt 1) { $stable[[string]$eventKey] = $alternatives }
+    }
+    if ($stable.Count -eq 0) { return $null }
+    return $stable
+}
+
+function Get-ForeignPayloadSignatures {
+    # Every other host manifest beside this one that declares a PayloadSignature, keyed by host kind.
+    $result = [ordered]@{}
+    $hostsRoot = Split-Path -Parent (Split-Path -Parent $hostManifestPath)
+    foreach ($dir in @(Get-ChildItem -LiteralPath $hostsRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+        if ($dir.Name -ceq $HostKind) { continue }
+        $manifestFile = Join-Path $dir.FullName 'host.psd1'
+        if (-not (Test-Path -LiteralPath $manifestFile -PathType Leaf)) { continue }
+        try {
+            $other = Import-PowerShellDataFile -LiteralPath $manifestFile
+            $otherBindings = Get-ManifestValue -Map $other -Key 'RefocusHookBindings' -Default $null
+            if ($null -eq $otherBindings) { continue }
+            $otherRuntime = Get-ManifestValue -Map $otherBindings -Key 'DispatcherRuntime' -Default $null
+            if ($null -eq $otherRuntime) { continue }
+            $sig = ConvertTo-StablePayloadSignature -Signature (Get-ManifestValue -Map $otherRuntime -Key 'PayloadSignature' -Default $null)
+            if ($null -ne $sig) { $result[$dir.Name] = $sig }
+        }
+        catch { continue }
+    }
+    return $result
+}
+
 function Get-HostRuntimeBindingEncoded {
     param($Bindings)
     if (-not (Test-ManifestKey -Map $Bindings -Key 'DispatcherRuntime')) { return $null }
@@ -141,6 +184,40 @@ function Get-HostRuntimeBindingEncoded {
         # the entire stop-block delivery is inert in the field while the manifest-path tests stay green (145 F1/TI-1).
         StopBlockShape          = [string](Get-ManifestValue -Map $runtime -Key 'StopBlockShape' -Default 'none')
     }
+    # Feature 202 T002 (DA-1, option B): the host's declared input contract rides the baked binding too, for the
+    # same reason as StopBlockShape - the dispatcher decodes the baked binding first, so a contract left out here
+    # would never reach a deployed project. Keys are emitted sorted so a re-deploy stays byte-idempotent.
+    if (Test-ManifestKey -Map $runtime -Key 'InputFieldMap') {
+        $rawFieldMap = Get-ManifestValue -Map $runtime -Key 'InputFieldMap'
+        $fieldMap = [ordered]@{}
+        foreach ($key in @(Get-ManifestKeys -Map $rawFieldMap | Sort-Object)) {
+            $fieldMap[[string]$key] = @(@(Get-ManifestValue -Map $rawFieldMap -Key ([string]$key)) | ForEach-Object { [string]$_ })
+        }
+        $stableRuntime['InputFieldMap'] = $fieldMap
+    }
+    if (Test-ManifestKey -Map $runtime -Key 'OriginRules') {
+        $rules = foreach ($rule in @(Get-ManifestValue -Map $runtime -Key 'OriginRules')) {
+            $stableRule = [ordered]@{}
+            foreach ($key in @(Get-ManifestKeys -Map $rule | Sort-Object)) {
+                # A payload-field rule names a list of fields (T028); every other rule value is one string.
+                $value = Get-ManifestValue -Map $rule -Key ([string]$key)
+                $stableRule[[string]$key] = if ($value -is [System.Collections.IList]) { @($value | ForEach-Object { [string]$_ }) } else { [string]$value }
+            }
+            $stableRule
+        }
+        $stableRuntime['OriginRules'] = @($rules)
+    }
+    if (Test-ManifestKey -Map $runtime -Key 'InputTransform') {
+        $stableRuntime['InputTransform'] = [string](Get-ManifestValue -Map $runtime -Key 'InputTransform')
+    }
+    # Feature 202 iteration 002, T016 (FR-028, DA-1): this host's payload signature, and every OTHER host's, ride the
+    # baked binding. A host can read another host's hook settings (Copilot runs Claude's), so the hook has to be able
+    # to recognise a payload that positively belongs to another host - and only then stand down. Sorted, so a
+    # re-deploy stays byte-idempotent.
+    $ownSignature = ConvertTo-StablePayloadSignature -Signature (Get-ManifestValue -Map $runtime -Key 'PayloadSignature' -Default $null)
+    if ($null -ne $ownSignature) { $stableRuntime['PayloadSignature'] = $ownSignature }
+    $foreign = Get-ForeignPayloadSignatures
+    if ($foreign.Count -gt 0) { $stableRuntime['ForeignPayloadSignatures'] = $foreign }
     $json = $stableRuntime | ConvertTo-Json -Depth 8 -Compress
     return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
 }
@@ -208,6 +285,23 @@ function Get-SpecrewHookCommand {
             }
             $target = $placeholder.TrimEnd('/', '\') + '/' + $dispatcherRelPath
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}' -f $target, $EventName, $HostKind, $hostBindingArg)
+        }
+        'guarded-project-encoded' {
+            $projectRootVariables = @(Get-ManifestValue -Map $hookBindings -Key 'ProjectRootEnvironmentVariables' -Default @())
+            $projectRootVariable = @($projectRootVariables | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -First 1)
+            if ($projectRootVariable.Count -ne 1) {
+                throw "Host manifest '$hostManifestPath' uses CommandMode=guarded-project-encoded but does not declare exactly one usable ProjectRootEnvironmentVariables entry."
+            }
+            $escapedVariable = ([string]$projectRootVariable[0]).Replace("'", "''")
+            $escapedDispatcher = $dispatcherRelPath.Replace("'", "''")
+            $escapedEvent = $EventName.Replace("'", "''")
+            $hostBindingEncodedArg = ''
+            if (-not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
+                $hostBindingEncodedArg = " -HostBinding '" + ($hostRuntimeBinding.Replace("'", "''")) + "'"
+            }
+            $scriptText = ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}; $dispatcher = Join-Path $projectRoot ''{1}''; if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) {{ throw "Specrew dispatcher not found at ''$dispatcher''." }}; & $dispatcher -Event ''{2}'' -HostKind {3}{4}' -f $escapedVariable, $escapedDispatcher, $escapedEvent, $HostKind, $hostBindingEncodedArg)
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($scriptText))
+            return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
         }
         'launcher-file' {
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}{4}' -f $launcherPath, $EventName, $HostKind, $modulePathArg, $hostBindingArg)
@@ -301,6 +395,10 @@ function Install-HookLauncher {
     # $env:/$raw/${...} literal — it is NOT expanded at deploy time. The launcher path is the only deploy-time
     # value, and it is baked into the command string (Get-SpecrewHookCommand), not into the launcher body.
     $projectRootEnvVarLiteral = ConvertTo-PowerShellStringArrayLiteral -Values @(Get-HookLauncherProjectRootEnvVars)
+    # This here-string GENERATES the launcher file, and the one internal id in it sits inside a
+    # comment of that generated file - the sanctioned half of the provenance rule. The generator
+    # carries it as a string only because the whole file body is one string.
+    # specrew-internal-id-ok: generated-file comment; comments are the sanctioned half
     $launcherBody = @'
 # Specrew user-level hook launcher — GENERATED per-machine by deploy-refocus-hooks.ps1 (do NOT edit by hand).
 # Some host configs are shared across projects, so their command string cannot name a per-project dispatcher path.
@@ -371,7 +469,15 @@ function Find-DispatcherUpTree {
 # must avoid; a try/catch does NOT rescue a blocking read). Mirrors the dispatcher's own guard.
 $raw = ''
 if ([Console]::IsInputRedirected) {
-    try { $raw = [Console]::In.ReadToEnd() } catch { $raw = '' }
+    # Hook payloads are UTF-8, but a host-spawned hook's console input code page is the OEM one (measured ibm437,
+    # 202 research.md T001), and [Console]::In decodes with it - a Hebrew prompt arrived as mojibake. Read the raw
+    # bytes and decode them as UTF-8 explicitly (a leading BOM is dropped).
+    try {
+        $stdinBytes = [IO.MemoryStream]::new()
+        [Console]::OpenStandardInput().CopyTo($stdinBytes)
+        $raw = [Text.UTF8Encoding]::new($false).GetString($stdinBytes.ToArray()).TrimStart([char]0xFEFF)
+    }
+    catch { $raw = '' }
 }
 $payloadCwd = $null
 $payloadRoots = @()

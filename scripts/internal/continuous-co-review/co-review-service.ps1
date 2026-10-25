@@ -34,7 +34,8 @@ function Get-ContinuousCoReviewCheckpointIdentity {
             $lp = Join-Path $PSScriptRoot '_load.ps1'
             if (Test-Path -LiteralPath $lp -PathType Leaf) { . $lp }
         }
-        $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot
+        # R1: the checkpoint identity is the Stop-hook fire/dedupe key, advisory - the cache may serve it.
+        $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot -AllowCache
         if ($null -ne $dg -and [bool]$dg.ok -and -not [string]::IsNullOrWhiteSpace([string]$dg.tree_id)) {
             return ([string]$dg.tree_id).Trim()
         }

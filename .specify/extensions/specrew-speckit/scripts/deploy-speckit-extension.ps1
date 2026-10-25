@@ -386,8 +386,13 @@ $itemsToCopy = @(
     @{ Name = 'extension.yml';   Optional = $false }
     @{ Name = 'README.md';       Optional = $false }
     @{ Name = 'refocus-scopes.json'; Optional = $false }
+    # B4F-088 / PRED-BETA4-046: the refocus DIGESTS the hook reads (`Get-RefocusDigestRoot` takes the project's
+    # copy) were never in this list, so `specrew update` never refreshed them - a consumer ran the digests of
+    # its init day (a fresh init gets them whole through `specify extension add`). Refreshed like `scripts/`.
+    @{ Name = 'refocus';         Optional = $false }
     # specrew-self-ok: Specrew's own update path - the module genuinely installs from this registry
     @{ Name = 'hooks';           Optional = $true  }   # PSGallery drops empty .gitkeep dirs
+    @{ Name = 'knowledge';       Optional = $false }
     @{ Name = 'scripts';         Optional = $false }
     @{ Name = 'templates';       Optional = $false }
     @{ Name = 'squad-templates'; Optional = $false }
@@ -406,13 +411,44 @@ foreach ($item in $itemsToCopy) {
 
 Ensure-ExtensionRegistration -ManifestPath $targetExtensionsManifest -ExtensionName 'specrew-speckit' -ExtensionVersion $extensionVersion -Actions $actions
 
+# W43: stamp the deployed extension so a later hand-edit is detectable. Written after every managed
+# file has landed, so the marker describes what is actually on disk.
+#
+# DRIFT-005 (2026-08-22, found by a downstream walk one day after this landed): this block sat AFTER
+# the `-PassThru` early return below. Both `specrew update` and `specrew init` invoke this script with
+# -PassThru, so the stamp was unreachable on every path that actually deploys - including the one the
+# integrity check's own refusal names as the remedy. The control existed, its consumer existed, and it
+# never ran. Nothing crashed; the marker was simply never there, and the check fails open by design, so
+# the guarantee was silently inactive for every project.
+#
+# The stamp now runs BEFORE any return, on every non-dry-run path through this script. Placement is
+# load-bearing: keep it above the -PassThru block, not below it.
+if (-not $DryRun) {
+    try {
+        # PRED-BETA4-054: the module's label (manifest plus Prerelease) through the one resolver; extension.yml's
+        # base version only when no manifest resolves (a deployed copy running on its own).
+        $markerLabel = $extensionVersion
+        try {
+            $labelScript = Join-Path $PSScriptRoot 'version-label.ps1'
+            if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+            if (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) {
+                $resolvedLabel = [string](Get-SpecrewModuleVersionInfo).Label
+                if (-not [string]::IsNullOrWhiteSpace($resolvedLabel)) { $markerLabel = $resolvedLabel }
+            }
+        }
+        catch { $null = $_ }
+        $extensionMarker = Write-SpecrewDeployedExtensionMarker -ProjectRoot $resolvedProjectPath -SpecrewVersion $markerLabel
+        if ($extensionMarker) { Add-DeploymentAction -Actions $actions -Action 'stamped' -Path $extensionMarker }
+    }
+    catch { Write-Host ("WARN: could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }
+}
+
 if ($PassThru) {
     foreach ($action in $actions) {
         $action
     }
     return
 }
-
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Spec Kit extension deployment {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $resolvedProjectPath)) -ForegroundColor Green
 exit 0

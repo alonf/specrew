@@ -368,12 +368,15 @@ $specLines = @(Get-MarkdownContent -Path $resolvedSpecPath)
 $requirementSummaries = Get-RequirementSummaryMap -Lines $specLines
 $requirementStories = Get-RequirementStoryMap -Lines $specLines
 
-$scopeList = if ($null -ne $RequirementScope -and $RequirementScope.Count -gt 0) {
-    @($RequirementScope | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-}
-else {
-    @($requirementSummaries.Keys)
-}
+# B4F-067: the `@()` INSIDE the if-expression is unrolled on the way out, so a spec with exactly ONE
+# canonical FR handed `$scopeList` a bare string and `.Count` threw under StrictMode - the scaffolder could
+# not open the second iteration of a one-requirement feature. The wrap goes OUTSIDE the expression.
+$scopeList = @(if ($null -ne $RequirementScope -and $RequirementScope.Count -gt 0) {
+        $RequirementScope | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    }
+    else {
+        $requirementSummaries.Keys
+    })
 
 if ($scopeList.Count -eq 0) {
     # iter-006 T003: degrade gracefully when spec has no canonical-format FRs (`- **FR-NNN**: ...`).

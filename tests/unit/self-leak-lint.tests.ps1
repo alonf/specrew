@@ -38,6 +38,7 @@ function New-Fixture {
     { "pattern": "(?i)owner/self-repo", "class": "repo-ref", "reason": "fixture repo fact", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)X:\\\\FixtureDev\\\\tool", "class": "dev-path", "reason": "fixture dev path", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)\\bFIX-42\\b", "class": "feature-id", "reason": "fixture feature id", "source": "fixture", "added": "2026-07-10" },
+    { "pattern": "\\bF-\\d{3}\\b", "class": "self-provenance-id", "reason": "fixture derived provenance id", "source": "fixture", "added": "2026-08-15", "derived": true },
     { "pattern": "(?i)fixture-proposals/\\d{3}", "class": "decision-ref", "reason": "fixture decision ref", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)\\bFixtureMaintainer\\b", "class": "maintainer-id", "reason": "fixture maintainer id", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)must run pytest", "class": "stack-assumption", "reason": "fixture stack mandate", "source": "fixture", "added": "2026-07-18" },
@@ -65,7 +66,7 @@ function New-Fixture {
 Write-Host "Test 1: shipped deny-list shape (FR-037)"
 $shipped = Get-Content -LiteralPath $shippedDenyList -Raw | ConvertFrom-Json
 if ([string]::IsNullOrWhiteSpace([string]$shipped.schema_version)) { Write-Fail "shipped deny-list has no schema_version" } else { Write-Pass "shipped schema_version present ($($shipped.schema_version))" }
-$knownClasses = @('release-model', 'dev-path', 'feature-id', 'maintainer-id', 'registry', 'repo-ref', 'decision-ref', 'stack-assumption', 'delivery-assumption')
+$knownClasses = @('release-model', 'dev-path', 'feature-id', 'self-provenance-id', 'maintainer-id', 'registry', 'repo-ref', 'decision-ref', 'stack-assumption', 'delivery-assumption')
 $shapeOk = $true
 foreach ($entry in $shipped.entries) {
     foreach ($field in @('pattern', 'class', 'reason', 'source', 'added')) {
@@ -76,7 +77,17 @@ foreach ($entry in $shipped.entries) {
 }
 if ($shapeOk) { Write-Pass "all $(@($shipped.entries).Count) shipped entries carry the full shape, known classes, compiling regexes" }
 $coveredClasses = @($shipped.entries | ForEach-Object { $_.class } | Sort-Object -Unique)
-if (@($knownClasses | Where-Object { $_ -notin $coveredClasses }).Count -eq 0) { Write-Pass "shipped seed covers all nine classes" } else { Write-Fail "shipped seed misses classes: $(@($knownClasses | Where-Object { $_ -notin $coveredClasses }) -join ', ')" }
+if (@($knownClasses | Where-Object { $_ -notin $coveredClasses }).Count -eq 0) { Write-Pass "shipped seed covers all ten classes" } else { Write-Fail "shipped seed misses classes: $(@($knownClasses | Where-Object { $_ -notin $coveredClasses }) -join ', ')" }
+$derivedRules = @($shipped.entries | Where-Object { $_.PSObject.Properties['derived'] -and [bool]$_.derived })
+if ($derivedRules.Count -ne 1 -or [string]$derivedRules[0].class -ne 'self-provenance-id') { Write-Fail "shipped rules must contain exactly one derived self-provenance-id rule" }
+else {
+    $derivedRegex = [regex]::new([string]$derivedRules[0].pattern)
+    $required = @('F-174', 'F-199', 'DRIFT-199-I001-043', 'DEC-205-release', 'OBS-001-new-shape')
+    $misses = @($required | Where-Object { -not $derivedRegex.IsMatch($_) })
+    if ($misses.Count -gt 0) { Write-Fail "derived provenance rule misses: $($misses -join ', ')" }
+    elseif ($derivedRegex.IsMatch('FR-001') -or $derivedRegex.IsMatch('T007')) { Write-Fail "derived provenance rule captures consumer requirement/task identifiers" }
+    else { Write-Pass "one derived provenance rule catches historical and future self IDs without capturing FR-001 or T007" }
+}
 
 Write-Host "Test 2: seeded leak per class -> RED naming file/term/class (paired: abuse fails)"
 $seedStrings = @{
@@ -85,6 +96,7 @@ $seedStrings = @{
     'repo-ref'      = 'clone owner/self-repo first'
     'dev-path'      = 'see X:\FixtureDev\tool for details'
     'feature-id'    = 'as FIX-42 established'
+    'self-provenance-id' = 'as F-174 established'
     'decision-ref'  = 'read fixture-proposals/031 for rationale'
     'maintainer-id' = 'ask FixtureMaintainer for approval'
     'stack-assumption' = 'you must run pytest before handoff'
@@ -114,6 +126,17 @@ elseif (($result.Output -notmatch [regex]::Escape('fixture same-line reason')) -
     Write-Fail "annotated output does not surface the human-supplied reason text"
 }
 else { Write-Pass "same-line (# yml) and line-above (md HTML) annotations sanction; the human's reason text is surfaced per hit" }
+Remove-Item -Recurse -Force $fixture
+
+Write-Host "Test 3a: file-level provenance allowlist sanctions exact IDs only"
+$fixture = New-Fixture -Name 'provenance-file-allowlist'
+"<!-- specrew-self-provenance-ok: F-174; repeated implementation provenance -->`nas F-174 established`nas F-175 established" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1) { Write-Fail "exact provenance allowlist: expected unlisted F-175 to remain red" }
+elseif ($result.Output -notmatch "\[annotated\].*F-174" -or $result.Output -notmatch "matched: 'F-175'") { Write-Fail "exact provenance allowlist did not distinguish the listed and unlisted IDs: $($result.Output)" }
+elseif ($result.Output -notmatch 'repeated implementation provenance') { Write-Fail "file-level provenance reason was not surfaced" }
+else { Write-Pass "file-level provenance allowlist sanctions F-174 while a later F-175 remains red" }
 Remove-Item -Recurse -Force $fixture
 
 Write-Host "Test 3b: applicability classes require their closed marker; self-ok cannot suppress"

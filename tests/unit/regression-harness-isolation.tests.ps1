@@ -15,6 +15,7 @@ function Fail {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $runner = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\f198-regression-suite.ps1') -Raw
+$censusRunner = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\full-powershell-test-sweep.ps1') -Raw
 $fixture = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\integration\pending-verdict-stop-artifact.tests.ps1') -Raw
 $distributionFixture = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\integration\distribution-module-update.ps1') -Raw
 
@@ -51,11 +52,52 @@ if ($runner -notmatch '\[switch\]\$Serial' -or
     Fail 'Bounded parallel dispatch must retain an explicit serial lane and per-suite timeout enforcement.'
 }
 if ($runner -notmatch '\$running\.timeout_seconds' -or
-    $runner -notmatch '\$started\.timeout_seconds' -or
-    @([regex]::Matches($runner, 'timeout_seconds\s*=\s*420')).Count -ne 2) {
-    Fail 'Measured slow suites must retain explicit bounded timeout overrides in both parallel and serial lanes.'
+    $runner -notmatch '\$started\.timeout_seconds') {
+    Fail 'Measured slow suites must retain per-row timeout enforcement in both parallel and serial lanes.'
+}
+if ($censusRunner -match 'try \{ & ''\$quoted''; exit 0 \}' -or
+    $censusRunner -notmatch "'-File'") {
+    Fail 'Disk-wide census must execute direct assertion scripts with pwsh -File semantics so exit 1 cannot be overwritten by a wrapper.'
+}
+foreach ($measuredRegistryBound in @(
+        @{ Path = 'review-campaign-verification\.Tests\.ps1'; Seconds = 420 },
+        @{ Path = 'review-public-campaign-command\.Tests\.ps1'; Seconds = 900 },
+        @{ Path = 'verification-plan-runner\.Tests\.ps1'; Seconds = 420 },
+        @{ Path = 'conformance-detection\.tests\.ps1'; Seconds = 600 },
+        @{ Path = 'verification-plan-end-to-end\.Tests\.ps1'; Seconds = 1200 })) {
+    $pattern = "{0}';\s*kind\s*=\s*'[^']+';\s*timeout_seconds\s*=\s*{1}" -f $measuredRegistryBound.Path, $measuredRegistryBound.Seconds
+    if ($runner -notmatch $pattern) {
+        Fail "Feature 198 registry lost the measured $($measuredRegistryBound.Seconds)-second bound for '$($measuredRegistryBound.Path)'."
+    }
 }
 
+foreach ($serialCensusPath in @(
+        'tests\integration\validate-governance-changed-only.tests.ps1',
+        'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
+        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1',
+        'tests\bootstrap\HookRenderDedupe.Tests.ps1',
+        'tests\integration\code-rules-skill-multihost.tests.ps1',
+        'tests\integration\product-domain-multihost.tests.ps1')) {
+    if (-not $censusRunner.Contains($serialCensusPath)) {
+        Fail "Disk-wide census lost measured serial path '$serialCensusPath'."
+    }
+}
+foreach ($serialLaneToken in @('$serialIsRunning', '$nextIsSerial -and $active.Count -gt 0', 'if ($nextIsSerial) { break }')) {
+    if (-not $censusRunner.Contains($serialLaneToken)) {
+        Fail "Disk-wide census no longer drains parallel work around its serial lane ('$serialLaneToken')."
+    }
+}
+if ($censusRunner -notmatch "'tests\\integration\\validate-governance-changed-only\.tests\.ps1'\s*=\s*1800") {
+    Fail 'Disk-wide census lost the measured 30-minute bound for the changed-only governance matrix.'
+}
+if ($censusRunner -notmatch "'tests\\integration\\baseline-hygiene\.tests\.ps1'\s*=\s*600" -or
+    $censusRunner -notmatch "'tests\\integration\\conformance-detection\.tests\.ps1'\s*=\s*900") {
+    Fail 'Disk-wide census lost the measured overlap margins for baseline hygiene or conformance detection.'
+}
+if ($censusRunner -notmatch "'tests\\bootstrap\\Sc012to015Acceptance\.Tests\.ps1'\s*=\s*900" -or
+    $censusRunner -notmatch "'tests\\continuous-co-review\\integration\\verification-plan-end-to-end\.Tests\.ps1'\s*=\s*1200") {
+    Fail 'Disk-wide census lost the measured bounds for its nested SC and verification-plan acceptance matrices.'
+}
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or
     $fixture -match 'Join-Path\s+\$repoRoot\s+''\.scratch\\pending-verdict-stop-artifact''') {
     Fail 'Pending-verdict fixture must live outside the caller repository.'

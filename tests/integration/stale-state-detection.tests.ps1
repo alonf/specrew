@@ -35,6 +35,12 @@ function New-TestProject {
     }
 
     [System.IO.File]::WriteAllText((Join-Path $ProjectRoot '.specrew\config.yml'), "project_name: sample`nspecrew_version: `"0.0.0`"`nbootstrap_date: `"2026-01-01`"`n", [System.Text.UTF8Encoding]::new($false))
+    $initialContext = [ordered]@{
+        schema = 'v2'
+        session_state = [ordered]@{ active = $false; boundary_type = ''; feature_ref = '020-session-state-durability' }
+        boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $null; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $ProjectRoot '.specrew\start-context.json'), ($initialContext | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $ProjectRoot '.specify\feature.json'), "{`n  `"feature_directory`": `"specs/020-session-state-durability`"`n}", [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $ProjectRoot '.squad\team.md'), "# Team`n", [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $ProjectRoot '.squad\config.json'), "{}`n", [System.Text.UTF8Encoding]::new($false))

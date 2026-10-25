@@ -49,9 +49,35 @@ if ($missing.Count -gt 0) {
     Write-Fail ("gate-stop skill is missing Rule 46 section(s): {0}" -f ($missing -join ', '))
 }
 
-# 3. It must forbid the picker for the verdict and render the textual options instead.
-if ($content -notmatch 'AskUserQuestion' -or $content -notmatch "What's your verdict\?") {
-    Write-Fail "gate-stop skill must name AskUserQuestion (to forbid it for the verdict) and render the textual 'What's your verdict?' options."
+# 3. NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT (maintainer ruling 2026-08-12).
+#
+# This assertion used to require the literal "What's your verdict?" heading and a mention of
+# AskUserQuestion. Both were about the OLD surface: a numbered menu whose options were labels, not text
+# a human could send. Measured on two hosts the same day - a picker selection accepted and not captured,
+# a typed `1` not captured - the numbered form is itself the defect, so the assertion now pins the form
+# that replaced it.
+#
+# What is asserted is the PROPERTY, not the wording: every response the stop offers must be a line the
+# human can literally send, and no numbered option may be offered at the verdict step. The four kinds are
+# checked by name because dropping one silently narrows how a human may answer - approve-with-instructions
+# is how they approve without rubber-stamping.
+if ($content -notmatch 'approved for <to>' -or $content -notmatch 'changes needed:' -or $content -notmatch 'discuss prompt') {
+    Write-Fail "gate-stop skill must render the four responses as literally sendable lines (approved for <to>, approved for <to> - <instructions>, changes needed:, discuss prompt N)."
+}
+# T015 (FR-024): the options are CONDITIONAL. A stop whose stage owes artifacts it has not produced must
+# offer none of them and emit no marker - the composition defect TB-1 half 2 named, where the safety rule
+# (always render options) is what produced the unsafe act (a verdict over an empty stage).
+if ($content -notmatch 'I am not offering a verdict here') {
+    Write-Fail 'gate-stop skill must carry the withhold branch: a stage that owes artifacts gets no verdict options.'
+}
+if ($content -notmatch 'indistinguishable in the ledger from an approval of real work') {
+    Write-Fail 'gate-stop skill must say WHY the verdict is withheld, in the same words the machinery uses on its own surface.'
+}
+if ($content -notmatch '(?s)I am not offering a verdict here.*What would you like to do\? Type one of these') {
+    Write-Fail 'the withhold branch must come BEFORE the options block: deciding whether a verdict may be offered precedes offering it.'
+}
+if ($content -match '(?m)^\s*1\.\s*Approve as-is') {
+    Write-Fail "gate-stop skill offers a NUMBERED verdict option; only a typed phrase is captured, so a number is a control that cannot authorize."
 }
 
 # 4. Source <-> .specify self-host mirror parity (Proposal 132).

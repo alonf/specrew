@@ -152,6 +152,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $baselineRef = (@(& git -C $projectRoot rev-parse HEAD 2>&1))[0]
+# PRED-BETA4-017: an EMPTY file in the changed set. `Get-Content -Raw` returns $null for it, and the
+# sensitive-touchpoint scan called a method on that null - taking the whole scaffold down, -DryRun included,
+# on the router-skill consumer whose changed set held three `.gitkeep` files. This fixture now carries one.
+$null = New-Item -ItemType Directory -Path (Join-Path $projectRoot 'src\assets') -Force
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\assets\.gitkeep'), '', [System.Text.UTF8Encoding]::new($false))
+# Staged, not merely present: the changed set is `git diff <baseline>` over TRACKED paths, and the consumer's
+# `.gitkeep` files were committed in the iteration. An untracked empty file would never reach the scan.
+@(& git -C $projectRoot add 'src/assets/.gitkeep' 2>&1) | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $projectRoot 'package.json'), @'
 {
   "name": "sample-project",
@@ -319,8 +327,8 @@ foreach ($check in @(
         @{ Content = $indexContent; Pattern = 'review-diagrams\.md'; Failure = 'Reviewer index is missing the review diagrams link.' },
         @{ Content = $indexContent; Pattern = 'current-architecture\.md'; Failure = 'Reviewer index is missing the current architecture link.' },
         @{ Content = $indexContent; Pattern = 'Coverage:\s+kind=qualitative\s+\|\s+signal=focused_regression'; Failure = 'Reviewer index did not record focused_regression coverage.' },
-        @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051 after executing review-time tests.' },
-        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest after executing review-time tests.' },
+        @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=5 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051 after executing review-time tests.' },
+        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=5 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest after executing review-time tests.' },
         @{ Content = $hardeningGateContent; Pattern = '\*\*Gate ID\*\*:\s*`pre-implementation-hardening`'; Failure = 'Reviewer scaffold did not create the hardening gate placeholder.' },
         @{ Content = $hardeningGateContent; Pattern = '\| `security-surface` \| `security` \| `tbd` \| `true` \|'; Failure = 'Reviewer scaffold hardening gate is missing the security concern placeholder row.' },
         @{ Content = $trapReapplicationContent; Pattern = '\*\*Scan ID\*\*:\s*`trap-reapplication\.pending`'; Failure = 'Reviewer scaffold did not create the trap reapplication placeholder.' },
@@ -491,7 +499,7 @@ foreach ($check in @(
         @{ Content = $omissionDiagramContent; Pattern = 'Flow diagram omitted:'; Failure = 'Review diagrams did not record the flow omission reason.' },
         @{ Content = $omissionIndexContent; Pattern = 'security-surface\.md omitted:'; Failure = 'Reviewer index did not explain the omitted security surface.' },
         @{ Content = $omissionCurrentArchitectureContent; Pattern = 'not generated for this iteration'; Failure = 'Current architecture did not record the omitted security surface state.' },
-        @{ Content = $omissionOutput; Pattern = 'SPECREW_REVIEW schema=v1 iter=006 feature=001-sample verdict=accepted tasks=2/2 reqs=2 files=6 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=0/0 index=specs\\001-sample\\iterations\\006\\reviewer-index\.md'; Failure = 'Omission-path closeout output did not emit the expected digest.' }
+        @{ Content = $omissionOutput; Pattern = 'SPECREW_REVIEW schema=v1 iter=006 feature=001-sample verdict=accepted tasks=2/2 reqs=2 files=7 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=0/0 index=specs\\001-sample\\iterations\\006\\reviewer-index\.md'; Failure = 'Omission-path closeout output did not emit the expected digest.' }
     )) {
     if (-not (Assert-Contains -Content $check.Content -Pattern $check.Pattern -FailureMessage $check.Failure)) {
         exit 1

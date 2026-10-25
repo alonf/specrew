@@ -18,6 +18,8 @@ Re-load scoped Specrew methodology discipline into context ON DEMAND — the man
 
 The same payload engine also fires AUTOMATICALLY: boundary syncs append the incoming stage's digest to their output (every host), and on hook-capable hosts, post-compaction and session-start events re-inject discipline without anyone asking. **Treat any `[specrew-refocus]` block you see in tool output as binding stage discipline, not informational noise.**
 
+Some digest rules are host-specific. Apply clauses that name a host only on that host; otherwise follow the host-neutral fallback named in the digest.
+
 ## When to Use
 
 - You notice drift: reviews going shallow, boundary discipline slipping, role rules fuzzy.

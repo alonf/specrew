@@ -217,7 +217,7 @@ function Copy-ContinuousCoReviewImplementerEvidence {
                     else { $withheld += [pscustomobject]@{ command_id = $rid; classification = $cls } }
                 }
                 if (@($withheld).Count -gt 0) {
-                    foreach ($w in $withheld) { [Console]::Error.WriteLine(("[co-review] WARN PLAN_RUN_WITHHELD command_id '{0}' ({1}) - refused at the injection boundary (FR-048 join)." -f $w.command_id, $w.classification)) }
+                    foreach ($w in $withheld) { [Console]::Error.WriteLine(("[co-review] WARN PLAN_RUN_WITHHELD command_id '{0}' ({1}) - refused at the injection boundary ( join)." -f $w.command_id, $w.classification)) }
                     $record = $record | Select-Object *   # shallow copy: the origin-side durable record stays untouched
                     $record.runs = $keepRuns.ToArray()
                     $record | Add-Member -NotePropertyName 'withheld_runs' -NotePropertyValue @($withheld) -Force
@@ -683,7 +683,7 @@ function Invoke-ContinuousCoReviewRecordedRun {
     $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $resolved
     if (($null -eq $dg) -or (-not [bool]$dg.ok)) {
         $reason = if ($null -ne $dg) { [string]$dg.failure_reason } else { 'digest-unavailable' }
-        throw "recorded-run: cannot bind evidence - reviewed-state digest failed ($reason); refusing to record unbound evidence (fail-loud, FR-015)."
+        throw "recorded-run: cannot bind evidence - reviewed-state digest failed ($reason); refusing to record unbound evidence (fail-loud)."
     }
     $treeId = [string]$dg.tree_id
 
@@ -698,7 +698,7 @@ function Invoke-ContinuousCoReviewRecordedRun {
         if (Test-Path -LiteralPath $resultFull -PathType Leaf) {
             Remove-Item -LiteralPath $resultFull -Force -ErrorAction SilentlyContinue
             if (Test-Path -LiteralPath $resultFull -PathType Leaf) {
-                throw "recorded-run: a PRE-EXISTING result at '$ResultPath' could not be deleted before the run - refusing to execute (an undeletable stale result could be read as this run's; fail-loud, FR-015)."
+                throw "recorded-run: a PRE-EXISTING result at '$ResultPath' could not be deleted before the run - refusing to execute (an undeletable stale result could be read as this run's; fail-loud)."
             }
         }
     }
@@ -724,7 +724,7 @@ function Invoke-ContinuousCoReviewRecordedRun {
     $requiredResultFailure = $null
     if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
         if (-not (Test-Path -LiteralPath $resultFull -PathType Leaf)) {
-            if ($RequireResult) { $requiredResultFailure = "recorded-run: a SpecrewTestResult was REQUIRED at '$ResultPath' but the command produced none - failing loudly (FR-015), never inferring counts from console output." }
+            if ($RequireResult) { $requiredResultFailure = "recorded-run: a SpecrewTestResult was REQUIRED at '$ResultPath' but the command produced none - failing loudly, never inferring counts from console output." }
         }
         else {
             $obj = $null
@@ -740,7 +740,7 @@ function Invoke-ContinuousCoReviewRecordedRun {
             catch { [Console]::Error.WriteLine("[co-review] WARN RESULT_FILE_NOT_CLEANED '$ResultPath' could not be deleted after reading; the reviewed digest will differ from the bound digest and this evidence orphans itself.") }
             $v = Test-ContinuousCoReviewSpecrewTestResult -Object $obj
             if (-not $v.valid) {
-                if ($RequireResult) { $requiredResultFailure = "recorded-run: the SpecrewTestResult at '$ResultPath' is INVALID ($($v.reason)) - failing loudly rather than degrading to a richer pass claim (FR-015)." }
+                if ($RequireResult) { $requiredResultFailure = "recorded-run: the SpecrewTestResult at '$ResultPath' is INVALID ($($v.reason)) - failing loudly rather than degrading to a richer pass claim." }
             }
             else { $testResult = [ordered]@{ result = $v.result; counts = $v.counts; source = 'specrew-test-result' } }
         }
@@ -785,7 +785,7 @@ function Invoke-ContinuousCoReviewRecordedRun {
         Save-ContinuousCoReviewRunRecord -RepoRoot $resolved -TreeId $treeId -Entry ([pscustomobject]$entry) -CommandId $CommandId -Executable $Executable -Arguments @($Arguments) -WorkingDirectory $cwd -RecordedAt ([string]$entry.recorded_at)
     }
     catch {
-        throw "recorded-run: evidence RECORDING failed for '$Executable' bound to ${treeId} (fail-loud, FR-015): $($_.Exception.Message)"
+        throw "recorded-run: evidence RECORDING failed for '$Executable' bound to ${treeId} (fail-loud): $($_.Exception.Message)"
     }
     # FAIL LOUD on a required-result miss - AFTER the real observed record persisted (finding f1).
     if ($null -ne $requiredResultFailure) {

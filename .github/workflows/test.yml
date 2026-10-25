@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [ main, 001-specrew-product ]
+    branches: [ '**' ]
   pull_request:
     branches: [ main, 001-specrew-product ]
   workflow_dispatch:

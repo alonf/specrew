@@ -27,7 +27,7 @@ $script:CoordinatorRulesCache = @{}
 
 function Get-SpecrewUniversalCoordinatorHeader {
     # FR-011 invariant: same literal for every host.
-    return 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
+    return 'This repository uses Specrew; work here follows the project lifecycle and its human-authorized boundaries.'
 }
 
 function Get-SpecrewOriginalCoordinatorHeaderPattern {
@@ -116,7 +116,7 @@ function Get-SpecrewHostOrientationBlock {
         "Welcome back - resuming $featurePart at $boundaryPart."
     }
     else {
-        "Welcome - I'm your Specrew Crew coordinator."
+        'Welcome - Specrew is active in this project.'
     }
     $lifecycleLine = if ($isResume) {
         "Lifecycle: $featurePart at $boundaryPart."
@@ -200,10 +200,15 @@ function Get-SpecrewHostInteractionGuidanceBlock {
     # independently removes the same unsafe picker for the full workshop and uses typed prose
     # choices. Clarify questions are unaffected and keep the picker; only boundary verdict stops
     # route through specrew-gate-stop.
+    # Feature 202 iteration 002, T029 (B4F-131): the guidance below keeps a picker for clarify questions. On the re-walk
+    # Copilot read the first question about a new feature as one and asked it through its question box, which records
+    # nothing. Every host is told that question is a workshop question.
+    $productDomainRule = "The first question about a new feature - what to build, for whom, what hurts today - is the design workshop's product-domain question and never a clarify question, even when its likely answers could be listed: ask it in visible prose and wait for a typed reply."
+
     if ($HostKind -eq 'claude') {
         return @"
 Host-rendered interaction guidance for ${displayName}:
-At every human-verdict boundary stop, invoke the specrew-gate-stop skill to PERFORM the stop. That skill's frontmatter disallows the AskUserQuestion tool, so for the stop you have no picker to collapse into: render the FULL Rule 46 six-section re-entry packet -- What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You, with every artifact reference a visible bare file:/// URL -- followed by the four verdict options as a numbered Markdown list, then stop for the human's typed choice. Do NOT call AskUserQuestion directly for a boundary verdict on this host: it collapses the packet into the picker's short fields, so the human is asked to approve content they cannot read -- that is a Rule 46 violation, not a valid stop. The specrew-design-workshop skill independently disallows AskUserQuestion for the full workshop and renders numbered prose choices for typed answers, so agenda, diagram, and component-map context cannot be swallowed. Clarify questions remain unaffected and keep the picker. ONLY boundary verdict stops route through specrew-gate-stop. Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. Initial feature intake may remain free-form.
+At every human-verdict boundary stop, invoke the specrew-gate-stop skill to PERFORM the stop. That skill's frontmatter disallows the AskUserQuestion tool, so for the stop you have no picker to collapse into: render the FULL Rule 46 six-section re-entry packet -- What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You, with every artifact reference a visible bare file:/// URL -- followed by the four responses as LINES THE HUMAN CAN LITERALLY SEND ("approved for <to>", "approved for <to> - <your instructions>", "changes needed: <what to change>", "discuss prompt 1"), then stop for the human's typed reply. NOT a numbered list: only a typed phrase is captured, and a number is a selection affordance -- measured, a human typed `1` here, nothing was captured, and the agent edited and committed the spec on the strength of it. Do NOT call AskUserQuestion directly for a boundary verdict on this host: it collapses the packet into the picker's short fields, so the human is asked to approve content they cannot read -- that is a Rule 46 violation, not a valid stop. The specrew-design-workshop skill independently disallows AskUserQuestion for the full workshop and renders numbered prose choices for typed answers, so product-domain, agenda, diagram, and component-map context cannot be swallowed and every recorded workshop answer has a typed-turn receipt. Clarify questions remain unaffected and keep the picker. $productDomainRule ONLY boundary verdict stops route through specrew-gate-stop. The four response KINDS are unchanged - approve, approve-with-instructions, send-back, discuss - but they are OFFERED as sendable lines, never as numbered choices. Initial feature intake may remain free-form.
 "@
     }
 
@@ -212,20 +217,25 @@ At every human-verdict boundary stop, invoke the specrew-gate-stop skill to PERF
 
     if (-not [string]::IsNullOrWhiteSpace($primitive)) {
         if ([string]::IsNullOrWhiteSpace($guidance)) {
-            $guidance = "Use the $displayName structured user-input/menu primitive for human approval gates when it is available in the current session."
+            $guidance = "Use the $displayName structured user-input/menu primitive for clarify questions when it is available. Workshop design questions are typed prose because their hook-owned receipt is authority; boundary verdicts are typed phrases because only those are captured."
         }
 
         return @"
 Host-rendered interaction guidance for ${displayName}:
 $guidance
 Structured primitive: $primitive.
-Render the Rule 46 six-section re-entry packet as PROSE in your message FIRST, then call the structured primitive only for the verdict selection. The primitive's fields are short labels by design (a ~12-character header, 1-to-5-word option labels) and CANNOT carry the packet -- the What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts content, with its file:/// links, lives in your prose ABOVE the call. A verdict menu raised without the full packet rendered above it (a bare "What's your verdict?" that skipped the packet) is a Rule 46 violation, not a valid stop -- the menu is only the short picker that follows the rendered packet. Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. If the structured primitive is unavailable in the running host session, emit the textual "What's your verdict?" options exactly as shown above. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
+Render the Rule 46 six-section re-entry packet as PROSE in your message FIRST, then stop for the human's TYPED reply. Do NOT call the structured primitive for a boundary verdict on any host (maintainer ruling 2026-08-12): only a typed phrase is captured, so a picker at the verdict offers a control that cannot authorize -- measured, a selection was accepted by the interface, nothing was captured, and the agent then invoked the authorization writer directly. NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT. Workshop design questions are also typed prose: each product-domain, agenda, and lens answer receives a hook-owned typed-turn receipt, so a picker selection or Ctrl+O dismissal is not workshop authority and cannot be recorded as confirmation or delegation. Clarify questions remain eligible for the structured primitive because they do not write workshop authority. $productDomainRule The primitive's fields are short labels by design (a ~12-character header, 1-to-5-word option labels) and CANNOT carry the packet -- the What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts content, with its file:/// links, lives in your prose ABOVE the call. A verdict menu raised without the full packet rendered above it (a bare "What's your verdict?" that skipped the packet) is a Rule 46 violation, not a valid stop. Render the four responses as literally sendable lines: "approved for <to>", "approved for <to> - <your instructions>", "changes needed: <what to change>", "discuss prompt 1". All four kinds are kept -- approve-with-instructions is how a human approves without rubber-stamping. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
 "@
+    }
+
+    $questionTool = if ($manifest.ContainsKey('QuestionTool')) { [string]$manifest.QuestionTool } else { '' }
+    $questionToolRule = if ([string]::IsNullOrWhiteSpace($questionTool)) { '' } else {
+        " $displayName's question tool, $questionTool, is not a structured primitive here and is never used for a workshop question: its answer, a selection or a dismissal records nothing, and the human is asked again."
     }
 
     return @"
 Host-rendered interaction guidance for ${displayName}:
-No structured question/menu primitive is declared for this host package. Emit the textual "What's your verdict?" options exactly as shown above at every approval boundary. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known and a structured primitive is available; otherwise ask a concise free-form question.
+No structured question/menu primitive is declared for this host package.${questionToolRule} At every approval boundary render the four responses as lines the human can literally send - "approved for <to>", "approved for <to> - <your instructions>", "changes needed: <what to change>", "discuss prompt 1" - and stop for the typed reply. Workshop product-domain, agenda, and lens questions also use visible prose and typed replies; Ctrl+O or a picker result is no answer and grants no authority. $productDomainRule Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known and a structured primitive is available; otherwise ask a concise free-form question.
 "@
 }
 

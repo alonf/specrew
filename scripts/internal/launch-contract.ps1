@@ -1,4 +1,4 @@
-﻿# F-174 iteration 006 (T035). Shared launch-contract generator.
+# F-174 iteration 006 (T035). Shared launch-contract generator.
 #
 # Get-StartPrompt + its prompt-block helpers, EXTRACTED VERBATIM from specrew-start.ps1
 # (AST-exact, byte-identical) into a sourceable lib so BOTH `specrew start` AND the
@@ -240,6 +240,13 @@ function Get-StartPrompt {
     # orientation block + Rule 52 (visible file:/// artifact references in user output).
     $projectPathUrl = ([string]$ResolvedProjectPath).Replace('\', '/').TrimEnd('/')
 
+    # specrew-internal-id-ok: KNOWN LEAK, NAMED RATHER THAN HIDDEN. The governed launch contract
+    # below still cites internal requirement ids (SC-021, SC-025, SC-026, FR-035..FR-040, and a
+    # boundary-commit example naming T013) in the instruction text handed to downstream agents.
+    # Rewriting a governed document is not a mechanical sweep: gates and skills validate against
+    # its phrases, and the ids are load-bearing anchors inside it today. Tracked for beta4;
+    # the W46 firewall keeps this the LAST such surface rather than one of a growing set.
+    # specrew-internal-id-ok: governed contract text; named debt, tracked for beta4
     return @"
 You are Squad running inside a Specrew-bootstrapped repository.
 
@@ -294,7 +301,7 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 
 | Script | What it does | When to invoke |
 |---|---|---|
-| ``.specify/scripts/powershell/create-new-feature.ps1 -ShortName <slug> -Json "<feature description>"`` | Creates feature branch ``001-<ShortName>`` + scaffolds spec.md from template. **Always pass ``-ShortName``** (e.g., ``tip-calculator``); without it the branch slug is auto-derived from the description and tends to be awkward (``001-build-single-page`` vs ``001-tip-calculator``). | Once per new feature, before /speckit.specify |
+| ``.specify/extensions/specrew-speckit/scripts/create-governed-feature.ps1 -ShortName <slug> -Json "<feature description>"`` | Creates feature branch ``001-<ShortName>`` + scaffolds spec.md + the empty pre-agenda workshop controller as one governed operation. **Always pass ``-ShortName``** (e.g., ``tip-calculator``); without it the branch slug is auto-derived from the description and tends to be awkward (``001-build-single-page`` vs ``001-tip-calculator``). | Once per new feature, before the first product-domain question |
 | ``.specify/scripts/powershell/check-prerequisites.ps1`` | Resolves REPO_ROOT / BRANCH / FEATURE_DIR / FEATURE_SPEC / IMPL_PLAN / TASKS paths | At the start of each phase that needs them |
 | ``.specify/extensions/specrew-speckit/scripts/resolve-quality-profile.ps1`` | Resolves quality profile + lens activation; output goes into plan.md | Invoked by /before-plan |
 | ``.specify/extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1 -SpecDirectory <dir> -IterationNumber <NNN>`` | Scaffolds iterations/<NNN>/{state.md, drift-log.md, quality/hardening-gate.md, quality/quality-evidence.md, quality/mechanical-findings.json, quality/lenses/*} — the quality/ subtree is emitted unconditionally. **The emitted hardening-gate.md carries the canonical 9-column schema with placeholder concern rows and an ``Overall Verdict: blocked`` — fill each concern with a canonical Status (``addressed`` / ``not-applicable`` / ``deferred-with-approval``) and flip the verdict to ``ready`` before the before-implement boundary; run-hardening-gate.ps1 stays optional (regeneration from a seed only). A gate that defaulted to ready would wave hardening through unreviewed.** | Before iteration plan write |
@@ -338,7 +345,7 @@ Follow this conversational sequence before implementation work:
    - "brownfield-new": existing app/project content but no active Specrew feature to continue
    - "existing-continue": active feature directory or in-progress lifecycle work already exists
 3. If the state is "existing-continue", continue from the earliest incomplete lifecycle phase without asking the human to restate the feature.
-4. If the state is "greenfield-new" and no concrete feature request is available yet, ask an explicit interactive question such as "What do you want to build?" and wait for the human developer's answer before invoking any `speckit.*` lifecycle agent or command.
+4. If the state is "greenfield-new" and no concrete feature request is available yet, ask an explicit question in visible prose, answered by a typed reply and never through a question tool or picker, such as "What do you want to build?" and wait for the human developer's answer before invoking any `speckit.*` lifecycle agent or command.
 5. If greenfield intake is still incomplete after the first answer, continue with one targeted follow-up question at a time and keep intake open until the scope is concrete enough for `speckit.specify`.
 6. If the state is "brownfield-new", perform brownfield discovery before asking the human broad intake questions: inspect existing code structure, package/manifests, markdown/docs files, and recent git history to reconstruct the current product/system baseline.
 7. For "brownfield-new", use that repo evidence to draft or update the starting spec context yourself, identify likely technology/domain constraints, and ask only targeted follow-up questions about the intended change, corrections, or unresolved decisions.
@@ -367,9 +374,9 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 25. Derive the quality bar from the current feature and project context. Carry the applicable quality attributes into spec clarifications, plan, tasks, implementation, and review. Focus on production-grade concerns that materially apply, such as robustness, retries, idempotency, error handling, logging, telemetry, security, clean code, SOLID boundaries, and semantic correctness.
 26. Treat mechanisms such as revisions, idempotency keys, retries, conflict detection, locks, or telemetry as incomplete until they have real runtime semantics and review evidence. Flag ceremonial sophistication rather than assuming the presence of fields equals correctness.
 27. Before implementation begins, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition. If the active slice includes Phase 2 hardening-gate scope, include the hardening-gate verdict and any human-approved deferral status in that readiness summary. Then ask the human developer to explicitly start implementation. Do not invoke speckit.implement until the human approves.
-28. After speckit.specrew-speckit.after-tasks succeeds, treat speckit.specrew-speckit.before-implement as the next automatic lifecycle step once implementation approval is granted. Do not stop at the after-tasks boundary to ask the human to manually trigger hardening review, explain the blocker, or request a deferral decision that belongs to before-implement.
+28. **Until the boundary ledger holds the human's typed ``approved for before-implement``, no product source file is created or modified. No other approval substitutes: not the tasks verdict, not after-tasks succeeding, not a relayed go-ahead - implementation approval IS that one recorded verdict, and if it is not on the ledger it has not been granted.** After after-tasks succeeds, proceed without stopping to before-implement PREPARATION - fill the hardening gate, run the boundary sync, present the packet - then stop for the verdict. Do not stall at after-tasks asking the human to manually trigger hardening review; preparation needs no approval, source changes do.
 29. If speckit.specrew-speckit.before-implement blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
-30. After the explicit implementation go-ahead, run `speckit.specrew-speckit.before-implement` and continue through implementation, review/demo, and retrospective without asking the human to manually trigger each remaining phase.
+30. After the human's typed ``approved for before-implement`` is recorded on the boundary ledger, run `speckit.specrew-speckit.before-implement` and continue through implementation, review/demo, and retrospective without asking the human to manually trigger each remaining phase.
 31. Preserve the canonical artifact chain on disk: specs/<feature>/spec.md, plan.md, tasks.md, and specs/<feature>/iterations/<NNN>/{plan.md,state.md,drift-log.md,review.md,retro.md} as phases progress.
 32. If any lifecycle agent reports a file-write or tool-contract failure, or a required artifact is missing on disk, stop and repair that underlying failure before claiming the phase succeeded or invoking the next governance gate.
 33. At the end of implementation and review, provide a developer-facing implementation briefing covering what was built, requirement coverage, the main happy path and relevant alternative flows, dependency usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.
@@ -394,7 +401,9 @@ Summarize the meaningful past outcome, not just file names. Include artifacts cr
 
 ## Why I Stopped
 
-Name the exact lifecycle boundary and explain why human judgment is required before the next step. After boundary sync, use ``.specrew/runtime/pending-verdict-stop.md`` as the authoritative source for the boundary name, approval phrase, and last-line marker; never infer ``<from> -> <to>`` from the phase you intend to run next. For ``clarify -> plan``, say that planning will convert the spec into architecture and task direction, so spec mistakes become downstream work.
+Name the exact lifecycle boundary and explain why human judgment is required before the next step. Include the review-coverage line when the controller provides one (pending-verdict artifact or stop directive) - last delivered review, the tree it covered, source files changed since, rounds remaining - so the human sees coverage drift at every stop they already read. After boundary sync, use ``.specrew/runtime/pending-verdict-stop.md`` as the authoritative source for the boundary name, approval phrase, and last-line marker; never infer ``<from> -> <to>`` from the phase you intend to run next. For ``clarify -> plan``, say that planning will convert the spec into architecture and task direction, so spec mistakes become downstream work.
+
+**Authority in flight.** If the human's immediately-preceding turn is the bare approval phrase for the pending crossing, that verdict IS given even when the controller still reads un-authorized mid-turn: on some hosts the capture lands only at end-of-turn, so the recording arrives at this very turn's Stop. Do not re-ask — proceed on the typed phrase, and verify the recorded authorization at the START of your next turn. Ask again only if it is still unrecorded then.
 
 ## What Needs Your Review
 
@@ -415,31 +424,9 @@ Allowed responses: approve as-is, approve with instructions, send back, or discu
 
 Every artifact, file, or directory reference in every packet section MUST use visible ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. The packet text recorded as boundary evidence MUST be the exact human-visible packet you emit for approval; do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 
-46A. **Long-work stop context packet (mandatory).** When you stop after substantial work, a long tool run, a context-heavy investigation, an interruption, or a handoff-worthy pause, render a visible five-part context packet so the human can re-enter without reconstructing the session. This is required in every downstream project and on every host, even when SessionStart/Stop hooks are missing, stale, suppressed, or failed open. Boundary verdict stops still use the full Rule 46 six-section packet; do not duplicate both shapes for the same stop. For non-boundary long-work stops, render these five headings:
-
-``````markdown
-## What I Just Did
-
-Summarize the meaningful work completed, including changed artifacts, decisions, tests or checks run, commits, and important observations. Every artifact, file, or directory reference uses visible ``file:///`` URL form.
-
-## Why I Stopped
-
-Explain the real stop reason: human action needed, blocked condition, verification gap, context limit, requested pause, or natural handoff point after a long run.
-
-## What Needs Your Review
-
-Name the review surfaces, risks, uncertainty, skipped checks, and safe-skim areas. If no review is needed, say what the human should know before resuming.
-
-## What Happens Next
-
-Give the exact resume point and the next safe step for the same agent or a different host. Include any commands only when they are genuinely useful.
-
-## What I Need From You
-
-State the single immediate human action, verdict, or resume instruction. If no human action is needed, say that explicitly and name the next agent-owned action.
-``````
-
+46A. **The turn-end script is the last tool call of the turn; its return is for the agent, never the agent's reply.** Author the human-facing answer, question, complete agenda or Rule 46 packet yourself. As the last tool call, pipe that draft on stdin into ``pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>`` (a PowerShell 7 here-string piped in, or a POSIX heredoc with a quoted delimiter). The script keeps the draft in this turn's own record; never write a draft file of your own. Then send the drafted content in your own reply. An ordinary declaration emits no human-facing text. At a boundary the script verifies your packet and supplies only a missing machine-derived approval line and/or marker; include those in your reply, with the marker last. The packet must identify specific review targets, a recommendation and the next step. Pass ``-Owed '<artifact>'`` for missing stage artifacts and offer no approval or marker; say what is owed and the agent-owned next step. ``in-flight`` is for background work with ``-Pending '<work>'``; a workshop answer wait is ``conversational`` with the question on stdin. Stop verifies that prepared content actually appears in your message. Orientation has one owner at session opening: you render it once; the gate supplies only a missing dials line, never a replacement orientation. Token identity and human boundary authority are unchanged.
 At ``feature-closeout``, copy the ``AGENT NEXT ACTION:`` and ``HUMAN ACTION NEEDED:`` rows from ``## Resolved Feature-Closeout Delivery``. That block is resolved from the recorded release model and is authoritative: execute only non-N/A steps, never invent a forge, review, or publication step, and require prerelease validation before stable only for ``beta-stable``.
+
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible Specrew version, selected host, runtime class, and lifecycle position in this block are generated from the installed runtime and saved start context; do not substitute, infer, omit, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):
 
@@ -545,15 +532,26 @@ sequenceDiagram
 
 These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 
-53. **Structured verdict menu at every human-approval boundary stop (mandatory where available).** Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below. Immediately AFTER you emit the human re-entry packet at a human-verdict gate, follow the host-rendered guidance:
+53. **NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT — the four responses are lines the human can literally send** (maintainer ruling 2026-08-12). Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below.
+
+**A verdict is offered only for a crossing that has something to approve** (FR-024, iteration 002). Before rendering any option: if no pending-verdict artifact exists, or the stage the crossing enters owes artifacts it has not produced, this stop renders NO verdict options and NO marker. It names what is owed and the one step that produces it, and stops — the same thing the machinery says on its own surface when it withholds the artifact, so the two never disagree. A verdict recorded over an empty stage is indistinguishable in the ledger from an approval of real work.
+
+OTHERWISE, immediately AFTER you emit the human re-entry packet at a human-verdict gate, render the four responses as sendable lines, substituting the real boundary name and a real prompt number:
 
 ``````text
-What's your verdict?
-  1. Approve as-is — proceed with the defaults
-  2. Approve with instructions — proceed and carry the added instructions
-  3. Send back — describe what to change before this boundary can advance
-  4. Discuss prompt #N — discuss that prompt only, then return for explicit approval
+What would you like to do? Type one of these:
+
+  approved for <to>
+  approved for <to> - <your instructions>
+  changes needed: <what to change>
+  discuss prompt 1
 ``````
+
+**Not a numbered list, not a picker, not a menu — at the VERDICT step.** Only a typed phrase is captured, so a selection affordance here offers a control that cannot do the thing it names, and the user does exactly what they were offered. Measured on two hosts on 2026-08-12: a picker selection was accepted and not captured, and that agent then invoked the authorization writer directly; a numbered option was typed and not captured, and that agent edited and committed the spec on the strength of it. One cause, opposite failure modes.
+
+**Workshop authority is typed too.** Product-domain, workshop-agenda, and per-lens questions render as visible prose and stop for a typed reply. Each answer is bound to a hook-owned typed-turn receipt; Ctrl+O / ``User skipped question`` and picker selections produce no receipt, grant no delegation/default authority, and cannot be recorded as agreement. Clarify questions may still use a picker because they do not write workshop authority. The first question about a new feature - what to build, for whom, what hurts today - is the product-domain question and never a clarify question: it is asked in visible prose on every host, never through a question tool such as Copilot's ``ask_user``. Boundary verdicts remain typed phrases under the separate rule above.
+
+All four response kinds are kept: **approve with instructions** is how a human approves without rubber-stamping, and **discuss prompt N** opens one item without withdrawing approval of the rest. Do NOT add a line warning that clicking or numbering will not authorize — it defends against an affordance no longer offered, plants the idea, and speaks in the machinery's voice. If someone sends `1` anyway, answer them helpfully at that point.
 
 <<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>
 

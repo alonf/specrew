@@ -85,8 +85,8 @@ $promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 
 # The prompt should contain the standard Crew handoff content (auto-continue behavior)
 # Sentinel string survives the F-040 coordinator-prompt surgery rewrite that replaces
-# "You are Squad running..." with "You are the Crew team coordinator running...".
-$promptSentinel = 'running inside a Specrew-bootstrapped repository'
+# the legacy Squad identity line with Specrew's project-rules header.
+$promptSentinel = 'This repository uses Specrew'
 if ($promptContent -notmatch $promptSentinel) {
     Write-Fail "Auto-continue prompt content is missing or malformed"
     exit 1

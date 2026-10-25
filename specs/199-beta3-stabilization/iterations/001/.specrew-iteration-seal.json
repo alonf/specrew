@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "feature": "199-beta3-stabilization",
+  "iteration": "001",
+  "sealed_at": "2026-08-29T10:18:41.6947360+00:00",
+  "sealed_files": [
+    {
+      "path": "code-map.md",
+      "sha256": "6b7c3030ae75dfcedb9f1832f8d4875b7b61c127a6dcb9219bf7e8a49037073c"
+    },
+    {
+      "path": "coverage-evidence.md",
+      "sha256": "54c50e6db065b404fc4e36a5fbf4ef7bc391b992fdea3c7fb0cc40a909d3ad00"
+    },
+    {
+      "path": "dashboard.md",
+      "sha256": "c91b94afb877cdeb138358fb3b46176147159a33556a7344721d584d89d3d95a"
+    },
+    {
+      "path": "dependency-report.md",
+      "sha256": "d7ced22839baf5de8786c0989ffc699d93cd9f8d62344545fd3b63b4504280eb"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "60344b623fe92ec3a16c27c30993c7ad857cce45bdd7d5af773de48452f09831"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "3e4f9bfd8285be50bd04e59857cd14f37cef77c8e0f7c34bdb8b272e50bedee4"
+    },
+    {
+      "path": "lens-applicability.json",
+      "sha256": "a8ca99db1b03147870302c817521c5ee948483af78a8c053e81ef08d1d86ef0c"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "910efefd6b358e930ddf9c9959ee9f619d728c8bd92e2750bbbe5ad676c2f269"
+    },
+    {
+      "path": "quality/beta3-walk-findings-mitigation.md",
+      "sha256": "3e83123efc355bb67cdc963a971f82ecf9bc2989b1444f2e3cbb816fcbefb03f"
+    },
+    {
+      "path": "quality/claude-deep-review-mitigation.md",
+      "sha256": "d30bbd613df353513b4f3a79eeffa1f2b61f4511e7ea695bc7cb31c43e923630"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "aa2aa69c80fb91d9af2d5b07342f3e896d6a7fb4198bb7f3eca9acff3c6eb0ce"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "8f7e4b92f82591f1160e85db9095a0664d0687ddecf49eb29ffaaeae96e08383"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "176a83aee7186bef468984ed458829bcdfaee2a817e889f2be8573321a3b8809"
+    },
+    {
+      "path": "quality/walk4-fd2ef095-remediation-brief.md",
+      "sha256": "a4dc8e2ffe27f0f748ad1c818dd3fce21ed3f8a9a06bfa8ba03e7d488ba128aa"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "a7b4763236f9b358af043abb094012a93457122114b1d62e8aeb81a2548abc59"
+    },
+    {
+      "path": "review-diagrams.md",
+      "sha256": "3e77bb61781d120eee2d864ac2100e38de0cfd96dc0d23d2151cdfaa418845eb"
+    },
+    {
+      "path": "review.md",
+      "sha256": "0a8d9d7bc34428c4e442f6ab195f9856cf949ee3c9f3eb4c71f8ed6fec156850"
+    },
+    {
+      "path": "reviewer-index.md",
+      "sha256": "b47f7643b602c51cee16de026af3b1e4328b4412487351599d3457346433ccaa"
+    },
+    {
+      "path": "state.md",
+      "sha256": "4badca5ef085beb721e706199a66f10928f39d0ccc5fbc058d16eb15684f308f"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "af241b402d10c68242fe11fcfb2819486f6062a72cce50b67c9e36835266d033"
+    }
+  ],
+  "source": "iteration-closeout"
+}

@@ -7,6 +7,9 @@ $script:SpecrewDesignAnalysisDefaultIterationNumber = '001'
 if (-not (Get-Command -Name 'Test-SpecrewWorkshopDecisionBindings' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'bootstrap/ProjectMetadataAccessor.ps1')
 }
+if (-not (Get-Command -Name 'Test-SpecrewImplementationRulesManifest' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'code-implementation-lens.ps1')
+}
 
 function Normalize-SpecrewDesignAnalysisFeatureRef {
     param([AllowNull()][string]$FeatureRef)
@@ -155,11 +158,18 @@ function Get-SpecrewDesignAnalysisNamedOption {
 
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
 
-    $matches = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b')
+    $matchedItems = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b')
     $unique = New-Object System.Collections.Generic.List[string]
-    foreach ($match in $matches) {
+    foreach ($match in $matchedItems) {
         $value = $match.Groups[1].Value.Trim()
         $normalized = if ($value -match '(?i)^option\s+([A-Z])$') {
+            # DRIFT-199-I001-134: W42 renamed the automatic `$Matches` to `$matchedItems` to remove
+            # the collision it was fixing - and the rename reached this line, where the index is
+            # into the CAPTURE GROUP of the `-match` above, not into the match COLLECTION. The
+            # result threw on every "Option X" text: out of range with one match, and a
+            # method-not-found on a Match object with more. Three suites had been failing on it,
+            # all of them outside the verification lanes. The capture is $Matches[1]; the
+            # collection stays $matchedItems.
             'Option ' + $Matches[1].ToUpperInvariant()
         } elseif ($value -match '(?i)^by[-\s]?the[-\s]?book$') {
             'By-the-book'
@@ -343,7 +353,7 @@ function Test-SpecrewDesignAnalysisLensCoverage {
             if ($addressedMatch.Success) { $addressed = $addressedMatch.Groups['v'].Value }
         }
         if ($null -eq $addressed -or (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value $addressed)) {
-            $errors.Add(("design-analysis.md does not address selected lens '{0}' (FR-026 anti-omission): add a non-placeholder 'Addressed:' coverage entry for it in the Applicable Lenses section, pointing into the option comparison." -f $id)) | Out-Null
+            $errors.Add(("design-analysis.md does not address selected lens '{0}' (anti-omission): add a non-placeholder 'Addressed:' coverage entry for it in the Applicable Lenses section, pointing into the option comparison." -f $id)) | Out-Null
         }
     }
 
@@ -408,8 +418,38 @@ function Test-SpecrewLensWorkshopRecords {
     # lens MUST declare both a provenance value (human-confirmed | human-delegated | human-skipped) and its scope.
     # This prevents a generic lens-agenda approval from being reused as per-lens workshop-question confirmation.
     # Grandfather-safe: pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor
-    # enforces declared scoped evidence; it cannot verify transcript truthfulness (that is SC-027 dogfood/review).
+    # Historical records rely on declared scoped evidence. New typed-turns-v1 records additionally join each
+    # claimed agreement to the hook-owned receipt store, so picker dismissal or model-authored provenance cannot
+    # satisfy the gate; behavioral quality beyond that authority join remains a dogfood/review concern.
     $confirmationRequired = $doc.PSObject.Properties['confirmation_required'] -and [bool]$doc.confirmation_required
+    $typedTurnRequired = $doc.PSObject.Properties['human_turn_contract'] -and [string]$doc.human_turn_contract -eq 'typed-turns-v1'
+    $typedTurnProjectRoot = $null
+    if ($typedTurnRequired) {
+        $featureDir = Split-Path -Parent $ArtifactPath
+        $specsDir = if (-not [string]::IsNullOrWhiteSpace($featureDir)) { Split-Path -Parent $featureDir } else { '' }
+        $typedTurnProjectRoot = if (-not [string]::IsNullOrWhiteSpace($specsDir)) { Split-Path -Parent $specsDir } else { '' }
+        $authorityPath = if (-not [string]::IsNullOrWhiteSpace($typedTurnProjectRoot)) { Join-Path $typedTurnProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1' } else { '' }
+        if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($authorityPath) -and (Test-Path -LiteralPath $authorityPath -PathType Leaf)) {
+            try { . $authorityPath } catch { $null = $_ }
+        }
+        if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+            $errors.Add('typed workshop authority cannot be verified because workshop-authority-store.ps1 is missing.') | Out-Null
+        }
+        else {
+            $featureRef = Split-Path -Leaf $featureDir
+            $agendaReceipt = if ($doc.PSObject.Properties['agenda_turn_receipt']) { [string]$doc.agenda_turn_receipt } else { '' }
+            $agendaDigest = if ($doc.PSObject.Properties['agenda_digest']) { [string]$doc.agenda_digest } else { '' }
+            if ([string]::IsNullOrWhiteSpace($agendaReceipt) -or $agendaDigest -cnotmatch '^[a-f0-9]{64}$' -or
+                -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'agenda' -ReceiptId $agendaReceipt -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection' -AgendaDigest $agendaDigest)) {
+                $errors.Add('the workshop agenda has no matching typed human confirmation receipt; a picker result or model-authored agenda cannot authorize lens selection.') | Out-Null
+            }
+            $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'product-domain'
+            if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid') {
+                $errors.Add('product-domain has no typed human reply receipt; Ctrl+O/dismissal is not delegation.') | Out-Null
+            }
+        }
+    }
     $validProvenance = @('human-confirmed', 'human-delegated', 'human-skipped')
     $requiredConfirmationScopes = @{
         'human-confirmed' = 'lens-question'
@@ -421,7 +461,7 @@ function Test-SpecrewLensWorkshopRecords {
         $rec = $null
         if ($null -ne $workshop -and $workshop.PSObject.Properties[$id]) { $rec = $workshop.$id }
         if ($null -eq $rec) {
-            $errors.Add(("lens-applicability.json has no workshop record for selected lens '{0}' (SC-021): record agenda + decision/agreement + depth + a moved_on marker." -f $id)) | Out-Null
+            $errors.Add(("lens-applicability.json has no workshop record for selected lens '{0}': record agenda + decision/agreement + depth + a moved_on marker." -f $id)) | Out-Null
             continue
         }
 
@@ -436,7 +476,7 @@ function Test-SpecrewLensWorkshopRecords {
         if ($null -eq $movedOn -or -not [bool]$movedOn) { $missing.Add('moved_on') | Out-Null }
 
         if ($missing.Count -gt 0) {
-            $errors.Add(("workshop record for selected lens '{0}' is incomplete (SC-021): missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
+            $errors.Add(("workshop record for selected lens '{0}' is incomplete: missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
         }
 
         # #2904 (iter-007 real-host dogfood): the 'code-implementation' lens's moved_on is HOLLOW unless its
@@ -444,8 +484,10 @@ function Test-SpecrewLensWorkshopRecords {
         # (moved_on) was DECOUPLED from the artifact: a host marked the lens moved_on:true / human-confirmed
         # having written NO manifest and without asking the reviewer question, and this gate trusted the
         # checkbox and authorized. Assert the artifact's PRESENCE here. Its SCHEMA/provenance is the lens's own
-        # Test-SpecrewImplementationRulesManifest + Proposal-196 (event-backed provenance) territory - a COUPLED
-        # follow-up, deliberately NOT this gate, which must not fail-closed on a partial-but-legitimate manifest.
+        # Schema/provenance validation is applied by Invoke-SpecrewSpecifyBoundaryLensGate after this
+        # presence floor succeeds. Keeping the presence check here makes incomplete workshop state visible
+        # to the controller; validating at the real boundary gate prevents a malformed manifest from being
+        # committed as if specify were ready.
         # Scoped to code-implementation (the only lens with a required on-disk manifest) + gated on moved_on
         # truthy, so it is grandfather-safe exactly like the rest of this floor (a pre-A4 artifact never reaches
         # here; a lens that is not moved_on already fails above). Resolved INLINE: the gate is dot-sourced by
@@ -463,13 +505,24 @@ function Test-SpecrewLensWorkshopRecords {
         if ($confirmationRequired) {
             $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
             if ($confirmation -notin $validProvenance) {
-                $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance (SC-026): set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
+                $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance: set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
             } else {
                 $confirmationScope = if ($rec.PSObject.Properties['confirmation_scope']) { [string]$rec.confirmation_scope } else { '' }
                 $requiredScope = $requiredConfirmationScopes[$confirmation]
                 if ($confirmationScope -ne $requiredScope) {
-                    $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope (SC-026, #2212): set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
+                    $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope: set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
                 }
+            }
+        }
+
+        if ($typedTurnRequired -and (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+            $featureRef = Split-Path -Leaf (Split-Path -Parent $ArtifactPath)
+            $receiptId = if ($rec.PSObject.Properties['human_turn_receipt']) { [string]$rec.human_turn_receipt } else { '' }
+            $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
+            $confirmationScope = if ($rec.PSObject.Properties['confirmation_scope']) { [string]$rec.confirmation_scope } else { '' }
+            if ([string]::IsNullOrWhiteSpace($receiptId) -or
+                -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'lens' -Lens $id -ReceiptId $receiptId -Confirmation $confirmation -ConfirmationScope $confirmationScope)) {
+                $errors.Add(("workshop record for selected lens '{0}' has no matching typed human reply receipt; dismissed/skipped picker output cannot become human-confirmed or human-delegated." -f $id)) | Out-Null
             }
         }
     }
@@ -539,7 +592,7 @@ function Test-SpecrewDesignCoDesignRecord {
 
     $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Co-?Design\s+Record')
     if (-not $section.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Body)) {
-        $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section (SC-025): record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
+        $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section: record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
         return $errors.ToArray()
     }
 
@@ -563,10 +616,24 @@ function Test-SpecrewDesignCoDesignRecord {
     }
 
     if ($missing.Count -gt 0) {
-        $errors.Add(("'## Co-Design Record' is incomplete (SC-025): missing {0}." -f ($missing -join ', '))) | Out-Null
+        $errors.Add(("'## Co-Design Record' is incomplete: missing {0}." -f ($missing -join ', '))) | Out-Null
     }
 
     return $errors.ToArray()
+}
+
+# Feature 202 T013 (FR-020; DRIFT-002): what produces the artifact, and what each section must hold - so ONE refusal
+# carries the whole format. Before, the format came out one layer per refusal: the sections, then each option's fields
+# once an Alternatives section existed, then the decision's labels once a Human Decision section existed (three
+# refusals on 202's own intake), and a missing file was named without the step that makes it.
+$script:SpecrewDesignAnalysisProducerText = "It is produced by the design workshop's design-analysis step: New-SpecrewDesignAnalysisArtifact scaffolds it from the template, and the crew fills in the options with the human and records their decision."
+$script:SpecrewDesignAnalysisOptionFields = @('Approach', 'Architectural pattern', 'Quality features considered', 'Effort estimate', 'Reversibility cost', 'Trade-offs')
+$script:SpecrewDesignAnalysisSectionRequirements = [ordered]@{
+    'Problem Framing'            = 'the problem this iteration solves'
+    'Key Design Decision Points' = 'the decisions the design must settle'
+    'Alternatives'               = ("a Simplest and a Reasonable option, plus By-the-book or a line saying why By-the-book is not meaningfully distinct; each option with {0}, and a Mermaid diagram or diagram link" -f ($script:SpecrewDesignAnalysisOptionFields -join ', '))
+    'Crew Recommendation'        = 'exactly one recommended option (for example "Recommended: Option B")'
+    'Human Decision'             = 'the verdict ("approved for plan with Option <X>" or a Chosen Option field), the human''s reason, modifications or instructions, and the commit hash the decision was recorded in (not the draft commit)'
 }
 
 function Test-SpecrewDesignAnalysisArtifact {
@@ -581,8 +648,15 @@ function Test-SpecrewDesignAnalysisArtifact {
     $artifactPath = Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $iteration
     $errors = New-Object System.Collections.Generic.List[string]
 
-    if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
-        $errors.Add("Missing design-analysis artifact: $artifactPath") | Out-Null
+    $content = if (Test-Path -LiteralPath $artifactPath -PathType Leaf) { [string](Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8) } else { $null }
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        # T013: a missing or empty artifact (an empty one threw a parameter-binding error here) gets the producer and the
+        # whole format in this one refusal.
+        $state = if ($null -eq $content) { 'Missing design-analysis artifact' } else { 'Empty design-analysis artifact' }
+        $errors.Add(("{0}: {1}. {2}" -f $state, $artifactPath, $script:SpecrewDesignAnalysisProducerText)) | Out-Null
+        foreach ($name in $script:SpecrewDesignAnalysisSectionRequirements.Keys) {
+            $errors.Add(("design-analysis.md needs a populated {0} section: {1}." -f $name, $script:SpecrewDesignAnalysisSectionRequirements[$name])) | Out-Null
+        }
         return [pscustomobject]@{
             Valid          = $false
             ArtifactPath   = $artifactPath
@@ -591,7 +665,6 @@ function Test-SpecrewDesignAnalysisArtifact {
         }
     }
 
-    $content = Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8
     $problem = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Problem\s+Framing', 'Problem')
     $decisionPoints = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Key\s+Design\s+Decision\s+Points', 'Decision\s+Points')
     $alternatives = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Alternatives', 'Design\s+Alternatives')
@@ -606,7 +679,8 @@ function Test-SpecrewDesignAnalysisArtifact {
             @{ Name = 'Human Decision'; Value = $humanDecision }
         )) {
         if (-not $section.Value.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Value.Body)) {
-            $errors.Add("design-analysis.md is missing a populated $($section.Name) section.") | Out-Null
+            # T013: the section's whole requirement, so its inner checks never surface one refusal later.
+            $errors.Add(("design-analysis.md is missing a populated {0} section: {1}." -f $section.Name, $script:SpecrewDesignAnalysisSectionRequirements[$section.Name])) | Out-Null
         }
     }
 
@@ -615,11 +689,12 @@ function Test-SpecrewDesignAnalysisArtifact {
         $reasonable = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'Reasonable'
         $byTheBook = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'By-the-book'
 
+        $optionNeeds = ("with {0}, and a Mermaid diagram or diagram link" -f ($script:SpecrewDesignAnalysisOptionFields -join ', '))
         if ([string]::IsNullOrWhiteSpace($simplest)) {
-            $errors.Add('Alternatives must include a populated Simplest option.') | Out-Null
+            $errors.Add(("Alternatives must include a populated Simplest option, {0}." -f $optionNeeds)) | Out-Null
         }
         if ([string]::IsNullOrWhiteSpace($reasonable)) {
-            $errors.Add('Alternatives must include a populated Reasonable option.') | Out-Null
+            $errors.Add(("Alternatives must include a populated Reasonable option, {0}." -f $optionNeeds)) | Out-Null
         }
 
         foreach ($option in @(
@@ -629,7 +704,7 @@ function Test-SpecrewDesignAnalysisArtifact {
             )) {
             if ([string]::IsNullOrWhiteSpace($option.Block)) { continue }
 
-            foreach ($field in @('Approach', 'Architectural pattern', 'Quality features considered', 'Effort estimate', 'Reversibility cost', 'Trade-offs')) {
+            foreach ($field in $script:SpecrewDesignAnalysisOptionFields) {
                 if (-not (Test-SpecrewDesignAnalysisOptionField -Block $option.Block -FieldName $field)) {
                     $errors.Add("$($option.Name) option is missing required field: $field.") | Out-Null
                 }
@@ -729,6 +804,8 @@ function Invoke-SpecrewDesignAnalysisPlanBoundaryGate {
         $messageLines = New-Object System.Collections.Generic.List[string]
         $messageLines.Add(("[design-analysis-gate] Plan boundary cannot advance for active substantive feature '{0}'." -f $feature)) | Out-Null
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        $messageLines.Add($script:SpecrewDesignAnalysisProducerText) | Out-Null   # T013: the step that fixes it
+        $messageLines.Add('Every gap is listed below, in one pass:') | Out-Null
         foreach ($err in $result.Errors) {
             $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
@@ -950,6 +1027,8 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         $messageLines = New-Object System.Collections.Generic.List[string]
         $messageLines.Add(("[design-analysis-pre-plan-gate] Do not author plan.md for active substantive feature '{0}' until design analysis is valid." -f $feature)) | Out-Null
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        $messageLines.Add($script:SpecrewDesignAnalysisProducerText) | Out-Null   # T013: the step that fixes it
+        $messageLines.Add('Every gap is listed below, in one pass:') | Out-Null
         foreach ($err in $result.Errors) {
             $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
@@ -1015,7 +1094,7 @@ function Test-SpecrewProductDomainPlanBlock {
     if ($blocking.Count -eq 0) { return @() }
 
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add(("[product-domain-plan-block] Do not author plan.md for '{0}': {1} load-bearing research-needed product-domain gap(s) must be researched or explicitly accepted first (FR-011):" -f $feature, $blocking.Count)) | Out-Null
+    $lines.Add(("[product-domain-plan-block] Do not author plan.md for '{0}': {1} load-bearing research-needed product-domain gap(s) must be researched or explicitly accepted first:" -f $feature, $blocking.Count)) | Out-Null
     foreach ($b in $blocking) { $lines.Add(("  - {0}" -f $b)) | Out-Null }
     return $lines.ToArray()
 }
@@ -1072,11 +1151,23 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
     )
     $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
     if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+    # FR-029 (iteration 002, T020): the not-yet-authored stub. While the sentinel stands, the specification
+    # has not been written - and the specify boundary is exactly the boundary that approves what it says. This
+    # runs BEFORE the intake-required short-circuit so a FRESH feature (which that check would let through)
+    # still gets the sentence that fits its actual state.
+    $stubSpecPath = Join-Path (Join-Path (Join-Path $ProjectRoot 'specs') (Split-Path -Leaf $feature)) 'spec.md'
+    if (Test-Path -LiteralPath $stubSpecPath -PathType Leaf) {
+        $stubText = Get-Content -LiteralPath $stubSpecPath -Raw -Encoding UTF8
+        if ($stubText -match '<!--\s*specrew:spec-not-yet-authored\s*-->') {
+            throw ("[specify-gate] spec.md for '{0}' is still the placeholder created with the feature - the specification has not been authored yet. Your workshop answers are safe and are exactly what the specification will be built from. Author the specification from the completed workshop (the specify step), then run the specify boundary again. File: {1}" -f $feature, $stubSpecPath)
+        }
+    }
+
     if (-not (Test-SpecrewSpecifyLensIntakeRequired -ProjectRoot $ProjectRoot -FeatureRef $feature)) { return $null }
 
     $artifact = Get-SpecrewFeatureLensApplicabilityPath -ProjectRoot $ProjectRoot -FeatureRef $feature
     if ($null -eq $artifact -or -not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
-        throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify (FR-027 / Amendment A3). Expected artifact: {1}" -f $feature, $artifact)
+        throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify. Expected artifact: {1}" -f $feature, $artifact)
     }
 
     # SC-021 (Amendment A4): the per-lens workshop-record FLOOR, enforced HERE against the feature-level
@@ -1087,9 +1178,97 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
     $workshopErrors = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $artifact)
     if ($workshopErrors.Count -gt 0) {
         $lines = New-Object System.Collections.Generic.List[string]
-        $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete (SC-021). Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
+        $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete. Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
         foreach ($wsErr in $workshopErrors) { $lines.Add(("  - {0}" -f $wsErr)) | Out-Null }
         throw ($lines -join [Environment]::NewLine)
+    }
+
+    # The live afcondemo3 walk wrote implementation-rules.yml only after the first boundary attempt, and
+    # hand-authored repairs could have passed the old presence-only floor. Validate the constrained YAML,
+    # schema, catalog references, dependency policy, reviewer selection and confirmation provenance here.
+    # This runs both for a normal sync and for -PreflightOnly, so the workshop can repair the artifact BEFORE
+    # invoking speckit.specify or creating a boundary commit.
+    $applicability = Get-Content -LiteralPath $artifact -Raw -Encoding UTF8 | ConvertFrom-Json
+    $selectedLenses = @()
+    if ($null -ne $applicability -and $applicability.PSObject.Properties['selected']) {
+        $selectedLenses = @($applicability.selected | ForEach-Object { [string]$_ })
+    }
+    if ($selectedLenses -contains 'code-implementation') {
+        $featureDir = Split-Path -Parent $artifact
+        $manifestPath = Get-SpecrewCodeManifestPath -FeatureDir $featureDir
+        $catalogDir = $null
+        foreach ($relativeCatalogDir in @(
+                'extensions\specrew-speckit\knowledge\design-lenses',
+                '.specify\extensions\specrew-speckit\knowledge\design-lenses')) {
+            $candidateCatalogDir = Join-Path $ProjectRoot $relativeCatalogDir
+            if (Test-Path -LiteralPath (Join-Path $candidateCatalogDir 'code-rules.yml') -PathType Leaf) {
+                $catalogDir = $candidateCatalogDir
+                break
+            }
+        }
+        $schemaPath = if ($null -ne $catalogDir) { Join-Path $catalogDir 'implementation-rules.schema.json' } else { $null }
+        $catalogPath = if ($null -ne $catalogDir) { Join-Path $catalogDir 'code-rules.yml' } else { $null }
+        $overlayPath = Join-Path $ProjectRoot 'code-rules.local.yml'
+        $manifestErrors = @(Test-SpecrewImplementationRulesManifest `
+                -Path $manifestPath `
+                -SchemaPath $schemaPath `
+                -CatalogPath $catalogPath `
+                -OverlayPath $overlayPath)
+        if ($manifestErrors.Count -gt 0) {
+            $lines = [System.Collections.Generic.List[string]]::new()
+            $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': implementation-rules.yml is invalid. Repair it before running speckit.specify or committing the boundary." -f $feature)) | Out-Null
+            foreach ($manifestError in $manifestErrors) { $lines.Add(("  - {0}" -f $manifestError)) | Out-Null }
+            throw ($lines -join [Environment]::NewLine)
+        }
+
+        # A preference is not an authorization. The braces/afcondemo3 walks both reached review with no
+        # command-written reviewer-hosts.json, so the campaign reported an opaque harness preflight failure
+        # and the implementer filled the review vacuum itself. Refuse that predictable wedge at specify:
+        # the workshop must name a reviewer and the catalog must contain the matching human authorization.
+        $manifestText = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
+        $manifest = ConvertFrom-SpecrewImplementationRulesYaml -Text $manifestText
+        $reviewerPreference = if ($null -ne $manifest) { Get-SpecrewCodeMember -Object $manifest -Key 'reviewer_preference' } else { $null }
+        $reviewerHost = [string](Get-SpecrewCodeMember -Object $reviewerPreference -Key 'host')
+        $reviewerAuthorizationRef = [string](Get-SpecrewCodeMember -Object $reviewerPreference -Key 'authorization_ref')
+        $reviewerErrors = [System.Collections.Generic.List[string]]::new()
+        if ($null -eq $reviewerPreference) {
+            $reviewerErrors.Add('reviewer_preference is required for a code-writing feature.') | Out-Null
+        }
+        if ([string]::IsNullOrWhiteSpace($reviewerHost)) {
+            $reviewerErrors.Add('reviewer_preference.host must name the reviewer chosen during the workshop; an unresolved auto-select is not runnable evidence.') | Out-Null
+        }
+        if ([string]::IsNullOrWhiteSpace($reviewerAuthorizationRef)) {
+            $reviewerErrors.Add('reviewer_preference.authorization_ref must record the workshop authorization reference.') | Out-Null
+        }
+
+        $reviewerHostsPath = Join-Path $ProjectRoot '.specrew\reviewer-hosts.json'
+        if (-not (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf)) {
+            $reviewerErrors.Add(("no reviewer is authorized in {0}. Run 'specrew review --list-hosts --code-writer-host <current-host>', present the choices, then run 'specrew review --host <chosen-host> --authorization-ref workshop-<feature>'." -f $reviewerHostsPath)) | Out-Null
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($reviewerHost) -and -not [string]::IsNullOrWhiteSpace($reviewerAuthorizationRef)) {
+            try {
+                $reviewerCatalog = Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+                $matchingReviewer = @($reviewerCatalog.hosts | Where-Object {
+                        [string]::Equals([string]$_.host, $reviewerHost, [System.StringComparison]::OrdinalIgnoreCase) -and
+                        [bool]$_.allowed -and
+                        [bool]$_.installed -and
+                        [string]$_.authorization_ref -ceq $reviewerAuthorizationRef
+                    })
+                if ($matchingReviewer.Count -eq 0) {
+                    $reviewerErrors.Add(("reviewer '{0}' is not installed + allowed with authorization_ref '{1}' in {2}. Re-run the explicit reviewer authorization command; do not hand-write the catalog." -f $reviewerHost, $reviewerAuthorizationRef, $reviewerHostsPath)) | Out-Null
+                }
+            }
+            catch {
+                $reviewerErrors.Add(("reviewer authorization catalog is unreadable: {0}" -f $_.Exception.Message)) | Out-Null
+            }
+        }
+
+        if ($reviewerErrors.Count -gt 0) {
+            $lines = [System.Collections.Generic.List[string]]::new()
+            $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': continuous co-review is not runnable yet. Repair reviewer setup before running speckit.specify or committing the boundary." -f $feature)) | Out-Null
+            foreach ($reviewerError in $reviewerErrors) { $lines.Add(("  - {0}" -f $reviewerError)) | Out-Null }
+            throw ($lines -join [Environment]::NewLine)
+        }
     }
 
     # FR-010 (Feature 176): the product-domain record floor. When the product-domain lens is in the
@@ -1153,20 +1332,20 @@ function Test-SpecrewProductDomainGate {
     if (-not (Test-Path -LiteralPath $ymlPath -PathType Leaf)) { $missing.Add('workshop/product-domain.yml') | Out-Null }
     if (-not (Test-Path -LiteralPath $mdPath -PathType Leaf)) { $missing.Add('workshop/product-domain.md') | Out-Null }
     if ($missing.Count -gt 0) {
-        throw ("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the first-stage product-domain record is MISSING ({1}). The product-domain lens runs before the technical lenses (FR-001); run it, capture the evidence-tagged record at the chosen depth, and persist both files before sync-specify. Specrew surfaces this rather than silently skipping the grounding (FR-013). Expected: {2}" -f $feature, ($missing -join ', '), $ymlPath)
+        throw ("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the first-stage product-domain record is MISSING ({1}). The product-domain lens runs before the technical lenses; run it, capture the evidence-tagged record at the chosen depth, and persist both files before sync-specify. Specrew surfaces this rather than silently skipping the grounding. Expected: {2}" -f $feature, ($missing -join ', '), $ymlPath)
     }
 
     # Load the record validator (sibling helper). If it cannot be loaded, fail CLOSED (no silent skip).
     $helper = Join-Path $PSScriptRoot 'product-domain-lens.ps1'
     if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
-        throw ("[product-domain-gate] Cannot validate the product-domain record for '{0}': the record validator helper is missing at {1}. Refusing to pass the specify boundary without validation (fail-closed, FR-013)." -f $feature, $helper)
+        throw ("[product-domain-gate] Cannot validate the product-domain record for '{0}': the record validator helper is missing at {1}. Refusing to pass the specify boundary without validation (fail-closed)." -f $feature, $helper)
     }
     . $helper
     $schemaArg = if (Test-Path -LiteralPath $schemaPath -PathType Leaf) { $schemaPath } else { $null }
     $errs = @(Test-SpecrewProductDomainRecord -Path $ymlPath -SchemaPath $schemaArg)
     if ($errs.Count -gt 0) {
         $lines = New-Object System.Collections.Generic.List[string]
-        $lines.Add(("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the product-domain record is INVALID. Fix these before sync-specify (a batch 'confirm all' is NOT valid product-domain confirmation, FR-009):" -f $feature)) | Out-Null
+        $lines.Add(("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the product-domain record is INVALID. Fix these before sync-specify (a batch 'confirm all' is NOT valid product-domain confirmation):" -f $feature)) | Out-Null
         foreach ($e in $errs) { $lines.Add(("  - {0}" -f $e)) | Out-Null }
         throw ($lines -join [Environment]::NewLine)
     }

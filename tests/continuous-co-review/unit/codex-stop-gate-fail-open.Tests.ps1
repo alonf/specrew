@@ -25,6 +25,11 @@ Describe 'F-198 T036 FR-051 Codex Stop-gate fail-open regression' {
         $fn = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Write-StopBlockOutput' }, $true) | Select-Object -First 1
         if ($null -eq $fn) { throw "Write-StopBlockOutput not found in the dispatcher - the gate emitter moved/renamed (this regression must be updated)." }
         . ([scriptblock]::Create($fn.Extent.Text))
+        # 202 co-review round 4: the envelope per shape is written by ConvertTo-DispatcherStopBlockOutput, which the
+        # emitter calls (once for the reason, and again for a disclosed or held-back reason). Lift it with the emitter.
+        $shapeFn = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'ConvertTo-DispatcherStopBlockOutput' }, $true) | Select-Object -First 1
+        if ($null -eq $shapeFn) { throw "ConvertTo-DispatcherStopBlockOutput not found in the dispatcher - the gate envelope writer moved/renamed (this regression must be updated)." }
+        . ([scriptblock]::Create($shapeFn.Extent.Text))
 
         $script:DispatcherText = Get-Content -LiteralPath $script:DispatcherPath -Raw
     }

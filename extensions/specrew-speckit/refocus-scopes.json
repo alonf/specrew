@@ -49,7 +49,7 @@
     {
       "id": "bootstrap",
       "kind": "inject",
-      "events": ["SessionStart", "PreInvocation"],
+      "events": ["SessionStart", "PreInvocation", "UserPromptSubmit"],
       "order": 20,
       "budget_share": 1.0,
       "command": "specrew-bootstrap-provider.ps1"
@@ -65,7 +65,7 @@
     {
       "id": "conformance",
       "kind": "inject",
-      "events": ["Stop", "agentStop", "stop", "SessionStart", "PostToolUse"],
+      "events": ["Stop", "agentStop", "stop", "SessionStart", "UserPromptSubmit", "PreInvocation", "PostToolUse"],
       "order": 40,
       "budget_share": 1.0,
       "command": "specrew-conformance-provider.ps1"

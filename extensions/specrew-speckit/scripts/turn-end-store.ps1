@@ -1,0 +1,1376 @@
+# THE TURN-END DECLARATION STORE - the one place the writer and the reader agree on.
+#
+# WHY THIS FILE EXISTS AT ALL, and it is the whole design in one sentence: the hook verifies artifacts the
+# agent's SCRIPTS wrote, never the agent's PROSE. What went before scored the agent's text - four of six
+# header phrases in the flattened last message, a 200-line transcript scan for banner wording, an HTML
+# comment marker the agent had to remember to type. Every one of those punished compliant output at least
+# once, because a detector reading prose is guessing at intent from its shadow. Here the agent supplies
+# FACTS as parameters, a script decides what to render, and the hook asks one question with a yes/no answer:
+# did the script run, for this session, for this turn?
+#
+# AND THE HANDSHAKE IS THE FAILURE MODE. If the writer and the reader ever compute a different path, the
+# hook finds no record and refuses every compliant turn - strictly worse than what it replaces. So the path
+# is computed HERE, once, and both sides dot-source this file. A second copy of this arithmetic anywhere is
+# the bug, not a convenience.
+#
+# HOST-NEUTRAL BY CONSTRUCTION: nothing below names a host, branches on one, or asks one anything. The host
+# name is data the dispatcher passes to the hook and is hashed into a directory name. The script never reads
+# it at all - it takes identity from the token the hook issued, for the reasons under THE IDENTITY HANDSHAKE.
+#
+# CHEAP BY CONSTRUCTION: no git, no transcript, no module load. The whole path is small JSON reads on files
+# the session already wrote, because this runs at the end of every turn and a per-turn cost is paid forever.
+
+$script:SpecrewTurnEndSchemaVersion = '1.0'
+$script:SpecrewTurnEndKinds = @('boundary', 'in-flight', 'conversational')
+
+# EVERY TIMESTAMP IS READ THROUGH ONE FUNCTION. Three sites in this batch were bitten by ConvertFrom-Json
+# coercing an ISO string into a [datetime] - the design-decision read-back, the token ordering, and the
+# render cooldown - each wrong in a different way. The reader lives beside this file and is loaded here, so
+# the writer and the reader of every record below agree on what a timestamp is the same way they agree on
+# where a record lives: by sharing the code rather than re-deriving it.
+$script:SpecrewTimestampReadPath = Join-Path $PSScriptRoot 'timestamp-read.ps1'
+if (-not (Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinue) -and
+    (Test-Path -LiteralPath $script:SpecrewTimestampReadPath -PathType Leaf)) {
+    . $script:SpecrewTimestampReadPath
+}
+
+# IN-FLIGHT IS THE ONE KIND THE HOOK CANNOT VERIFY, so it is the one that needs a bound.
+#
+# A boundary declaration is checked against the pending crossing; a conversational one claims nothing. But
+# "work is in flight, continuing when it lands" is an assertion about the world that no artifact confirms -
+# and an unbounded assertion of that shape is a way to never stop. FR-045a already met this problem from the
+# other direction and answered it the same way: a `continue` needs intervening progress, and repeated
+# continues with none trip a bounded guard rather than looping forever. That bound is 3, and it is carried
+# here rather than re-chosen, because two different numbers for the same idea is how a guard rots.
+$script:SpecrewTurnEndInFlightBound = 3
+
+function Get-SpecrewTurnEndOwnerHash {
+    # The SAME arithmetic Get-SpecrewMaterialRuntimeState uses for its per-session state root, kept
+    # deliberately identical so a session's turn-end records sit beside its other per-session records
+    # instead of in a parallel namespace with its own drift.
+    [OutputType([string])]
+    param([AllowNull()][string] $HostKind, [AllowNull()][string] $SessionId)
+
+    if ([string]::IsNullOrWhiteSpace($SessionId)) { return '' }
+    $safeHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'unknown' } else { (($HostKind -replace '[^a-zA-Z0-9-]+', '-').Trim('-').ToLowerInvariant()) }
+    $safeSession = (($SessionId -replace '[^a-zA-Z0-9-]+', '-').Trim('-'))
+    if ([string]::IsNullOrWhiteSpace($safeSession)) { return '' }
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes(('{0}|{1}' -f $safeHost, $safeSession))
+        return (-join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }))
+    }
+    catch { return '' }
+}
+
+# THE IDENTITY HANDSHAKE: THE HOOK HANDS THE TOKEN TO THE AGENT, THE AGENT HANDS IT BACK, AND NOTHING
+# IN BETWEEN GUESSES.
+#
+# What stood here first read `.specrew/runtime/session-marker.json` for the declaring session's identity.
+# The independent review broke it in one probe: the marker is PROJECT-WIDE and stamped by whichever session
+# started last, so with two sessions open, A declared and the record landed under B's path - A refused for a
+# declaration it made, B credited with one it did not. **A project-scoped file cannot answer a
+# session-scoped question**, so the read went, not repaired.
+#
+# What replaced it resolved to the NEWEST token across the project's session directories, and the
+# confirmatory review broke that too, the same way: B started its turn last, A's declaration landed under
+# B, and B's Stop CREDITED it. Newest-wins is the same inference from shared state with a different tiebreak.
+# The ruling on it: crediting the wrong session is worse than refusing, so newest-wins is gone.
+#
+# What stands now has no inference in it at all:
+#
+#   - The hook writes a token into its OWN session directory when the turn starts, and HANDS IT TO THE
+#     AGENT in its turn-start output - one line. The party that knows tells the party that acts.
+#   - declare-turn-end takes -Token and writes under the session holding it. A token no live session holds
+#     is refused, naming the value.
+#   - With NO -Token: exactly one live token is unambiguous and is accepted; more than one is REFUSED,
+#     naming both sessions and the parameter - that is the ambiguous case, and it is the only case where the
+#     fallback decides anything. No tokens at all is absence: a host with no turn-start event, and both
+#     sides degrade together.
+#   - LIVE MEANS UNCONSUMED. The hook deletes its session's token at Stop, after judging the declaration
+#     and only when the turn actually ended (a block force-continues the same turn and keeps it). A session
+#     that crashed leaves its token behind, and that leftover costs the next token-less declarer one
+#     refusal - which names the leftover's path, so a human who knows the session is gone can remove it.
+#     Nothing here ages a token out, because "it is old so it must be dead" is inference again.
+#
+# ABSENCE IS STILL NOT MISMATCH: the hook that issued no token accepts a record carrying none. What fails
+# closed is a token PRESENT on the hook side and different in the record.
+
+function Get-SpecrewTurnTokenPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    return (Join-Path $StateRoot 'turn-token.json')
+}
+
+function Write-SpecrewTurnToken {
+    # THE HOOK'S WRITE, at turn start. A fresh random token per turn: it is an identity, not a secret, and
+    # it only has to be different from the one another session is holding.
+    #
+    # -ReuseUnconsumed is how the hook calls it. A token still on disk at a turn start means this session's
+    # own Stop has not consumed it: the turn is still open (a SessionStart fired mid-turn on compaction, or a
+    # host delivered two turn-start events for one prompt), or the previous Stop never ran. Either way the
+    # open turn keeps its token, and the line the agent was already handed stays true. Overwriting it here
+    # would make the token in the agent's context unknown to the hook that issued it - one refusal per
+    # session opening, on every host that fires SessionStart and then the first prompt event.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot, [AllowNull()][string] $TurnId, [switch] $ReuseUnconsumed)
+
+    $temp = $null
+    try {
+        if ($ReuseUnconsumed) {
+            $existing = Read-SpecrewTurnToken -StateRoot $StateRoot
+            if (-not [string]::IsNullOrWhiteSpace($existing)) { return $existing }
+        }
+        if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
+        $token = [guid]::NewGuid().ToString('N')
+        $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
+        $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        # issued_ms is a NUMBER on purpose, and it is what the ordering reads. ConvertFrom-Json coerces an
+        # ISO-8601 string into a [datetime] on the way back, and re-parsing that lost the sub-second part -
+        # so two tokens issued in the same second compared EQUAL and the newest-wins sort became arbitrary.
+        # Measured: session B won over a token issued 30 ms later, and the losing session could not recover.
+        # This is the second time in this batch that date coercion has broken a round-trip; a number cannot
+        # be coerced into something else, so the ordering no longer depends on a type surviving JSON.
+        $record = [ordered]@{ schema_version = '1.0'; token = $token; turn_id = [string]$TurnId; issued_at = [DateTimeOffset]::UtcNow.ToString('o'); issued_ms = (Get-SpecrewUtcNowMilliseconds) }
+        [System.IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $path, $true)
+        return $token
+    }
+    catch { return '' }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Read-SpecrewTurnToken {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
+        $record = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $record -or -not $record.PSObject.Properties['token']) { return '' }
+        return ([string]$record.token)
+    }
+    catch { return '' }
+}
+
+function Remove-SpecrewTurnToken {
+    # THE HOOK'S CONSUMPTION, at Stop, after the declaration has been judged and only when the turn actually
+    # ended. This is what "live" means: a token that is still on disk belongs to a turn that has not been
+    # closed by its own hook. Returns whether a token was there to consume, so a hook can tell "consumed"
+    # from "there was nothing" without a second read.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+        Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+        return $true
+    }
+    catch { return $false }
+}
+
+function Get-SpecrewLiveTurnTokens {
+    # Every UNCONSUMED token in this project, one per session directory that holds one. This is the whole
+    # of what the script can see, and it is listed rather than ranked: the ranking was the bug.
+    #
+    # THE LEGACY ROOT IS A CANDIDATE TOO. A host that passes no session id keeps its state at the runtime
+    # root itself, and the hook writes its token THERE. The first version scanned only the per-session
+    # directories, so on such a host the hook held a token, the script found none, the record carried
+    # none - and "absence is not mismatch" became a mismatch after all, failing closed on every
+    # declaration. The independent review saw exactly that and withheld it as out of scope; the fix-2 tail
+    # hit it as PH-e. Absence means neither side has a token, not that the script did not look.
+    [OutputType([object[]])]
+    param([Parameter(Mandatory)][string] $ProjectRoot)
+
+    $live = New-Object System.Collections.Generic.List[object]
+    try {
+        $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
+        $roots = @()
+        $roots += [pscustomobject]@{ path = $runtimeRoot; owner = '' }
+        $sessionsRoot = Join-Path $runtimeRoot 'conformance-sessions'
+        if (Test-Path -LiteralPath $sessionsRoot -PathType Container) {
+            foreach ($dir in @(Get-ChildItem -LiteralPath $sessionsRoot -Directory -ErrorAction Stop)) {
+                $roots += [pscustomobject]@{ path = $dir.FullName; owner = $dir.Name }
+            }
+        }
+        foreach ($rootEntry in $roots) {
+            $tokenPath = Get-SpecrewTurnTokenPath -StateRoot $rootEntry.path
+            if (-not (Test-Path -LiteralPath $tokenPath -PathType Leaf)) { continue }
+            try {
+                $record = Get-Content -LiteralPath $tokenPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+                if ($null -eq $record -or [string]::IsNullOrWhiteSpace([string]$record.token)) { continue }
+                # The issue time is reported in the refusal so a human can tell a leftover from a live turn. It
+                # is READ THROUGH THE ONE HELPER, whichever shape the field survived JSON in.
+                $issued = $null
+                if ($record.PSObject.Properties['issued_ms'] -and $null -ne $record.issued_ms) { $issued = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_ms }
+                if ($null -eq $issued -and $record.PSObject.Properties['issued_at']) { $issued = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_at }
+                $live.Add([pscustomobject]@{
+                        token      = [string]$record.token
+                        state_root = [string]$rootEntry.path
+                        owner_hash = [string]$rootEntry.owner
+                        turn_id    = $(if ($record.PSObject.Properties['turn_id']) { [string]$record.turn_id } else { '' })
+                        issued     = $issued
+                        path       = [string]$tokenPath
+                    }) | Out-Null
+            }
+            catch { continue }
+        }
+    }
+    catch { $null = $_ }
+    return @($live.ToArray())
+}
+
+function Resolve-SpecrewTurnTokenHolder {
+    # THE SCRIPT'S SIDE, and the four outcomes are the ruling, in order:
+    #
+    #   matched        -Token names a live token: write under the session holding it.
+    #   unknown-token  -Token names no live token: refused, naming the value. Fails CLOSED.
+    #   single         no -Token, exactly one live token: unambiguous, accepted.
+    #   ambiguous      no -Token, more than one live token: refused, naming every session and -Token.
+    #   absent         no tokens at all: a host with no turn-start event; both sides degrade together.
+    #
+    # Nothing here picks. A caller that gets 'ambiguous' or 'unknown-token' has been told exactly what would
+    # resolve it, and the resolution is information only the agent has.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string] $Token
+    )
+
+    $live = @(Get-SpecrewLiveTurnTokens -ProjectRoot $ProjectRoot)
+    $result = [pscustomobject]@{ outcome = 'absent'; token = ''; state_root = ''; owner_hash = ''; live = $live }
+    $wanted = if ([string]::IsNullOrWhiteSpace($Token)) { '' } else { $Token.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($wanted)) {
+        $match = @($live | Where-Object { [string]$_.token -ceq $wanted })
+        if ($match.Count -ge 1) {
+            $result.outcome = 'matched'
+            $result.token = [string]$match[0].token
+            $result.state_root = [string]$match[0].state_root
+            $result.owner_hash = [string]$match[0].owner_hash
+        }
+        else { $result.outcome = 'unknown-token' }
+        return $result
+    }
+    if ($live.Count -eq 1) {
+        $result.outcome = 'single'
+        $result.token = [string]$live[0].token
+        $result.state_root = [string]$live[0].state_root
+        $result.owner_hash = [string]$live[0].owner_hash
+    }
+    elseif ($live.Count -gt 1) { $result.outcome = 'ambiguous' }
+    return $result
+}
+
+function Get-SpecrewTurnTokenSessionLabel {
+    # How a session is NAMED in a refusal. The per-session directory is a hash of host|session-id - opaque,
+    # but it is the directory the human can go and look at, and the issue time beside it is what tells a
+    # live turn from a leftover.
+    [OutputType([string])]
+    param([Parameter(Mandatory)]$LiveToken)
+    $where = if ([string]::IsNullOrWhiteSpace([string]$LiveToken.owner_hash)) { 'the runtime root (a host that passes no session id)' } else { ('session ' + ([string]$LiveToken.owner_hash).Substring(0, [Math]::Min(12, ([string]$LiveToken.owner_hash).Length)) + '...') }
+    $when = if ($null -ne $LiveToken.issued) { ([DateTimeOffset]$LiveToken.issued).ToString('yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture) + ' UTC' } else { 'an unknown time' }
+    return ('{0}, token issued {1}, at {2}' -f $where, $when, [string]$LiveToken.path)
+}
+
+function Get-SpecrewTurnCounterPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    return (Join-Path $StateRoot 'turn-counter.json')
+}
+
+function Get-SpecrewTurnId {
+    # WHAT A "TURN" IS: a counter THE HOOK INCREMENTS AT STOP. Nothing else advances it.
+    #
+    # The first design derived the id from the conformance turn baseline, which the provider writes at the
+    # host's genuine prompt boundary. It reads well and it is wrong in a way that only shows on the hosts
+    # this most needs to work on: a host that never delivers a prompt event never writes a baseline, so every
+    # turn in that session resolves to the SAME id - and a declaration made once, in turn 1, would satisfy
+    # the hook at turn 50 forever after. The check would be perfectly green and measuring nothing.
+    #
+    # A counter the hook itself advances cannot have that failure. It needs no host cooperation, it advances
+    # exactly once per Stop the hook actually processed, and "did the agent declare THIS turn" becomes a
+    # question about a number rather than about whether a host emitted an event.
+    #
+    # It is READ here and never written: the writer of the counter is the hook, at Stop, and a reader that
+    # also increments would race the very thing it is trying to measure.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+
+    try {
+        $counterPath = Get-SpecrewTurnCounterPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $counterPath -PathType Leaf)) { return 'turn-1' }
+        $counter = Get-Content -LiteralPath $counterPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $counter -or -not $counter.PSObject.Properties['turn']) { return 'turn-1' }
+        $turn = [int]$counter.turn
+        if ($turn -lt 1) { $turn = 1 }
+        return ('turn-{0}' -f $turn)
+    }
+    catch { return 'turn-1' }
+}
+
+function Step-SpecrewTurnCounter {
+    # THE HOOK'S WRITE, and the only one. Called at Stop AFTER the declaration for the current turn has been
+    # read and judged, so a declaration written earlier in the same turn - which is where it will be written,
+    # since the agent runs the script as its last ACTION and the Stop fires after the message - still matches
+    # when the hook looks for it.
+    #
+    # Only a fire the provider actually processed advances it. A duplicate hook delivery for the same
+    # message must not, or the turn would move underneath a declaration that is still current.
+    [OutputType([int])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+
+    $temp = $null
+    try {
+        $counterPath = Get-SpecrewTurnCounterPath -StateRoot $StateRoot
+        $current = 1
+        if (Test-Path -LiteralPath $counterPath -PathType Leaf) {
+            try {
+                $existing = Get-Content -LiteralPath $counterPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+                if ($null -ne $existing -and $existing.PSObject.Properties['turn']) { $current = [int]$existing.turn }
+            }
+            catch { $current = 1 }
+        }
+        if ($current -lt 1) { $current = 1 }
+        $next = $current + 1
+        if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
+        $temp = $counterPath + '.tmp-' + [guid]::NewGuid().ToString('N')
+        [System.IO.File]::WriteAllText($temp, (([ordered]@{ schema_version = '1.0'; turn = $next; stepped_at = [DateTimeOffset]::UtcNow.ToString('o') } | ConvertTo-Json -Compress)), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $counterPath, $true)
+        return $next
+    }
+    catch { return -1 }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+
+# THE JUDGMENT, LEFT BESIDE THE COUNTER (fix 2 item (c), PRED-BETA4-024). The conformance provider judges
+# this session's declaration at Stop and steps the counter afterwards. Everything that runs AFTER it in the
+# same Stop - the co-review navigator, by the dispatcher's order - used to know nothing about the session
+# and blocked every Stop in the project while the tree was unreviewed: a read-only reviewer session was told
+# seventeen times in a row that "its files" had not been reviewed. The judgment is written here once, by
+# the one provider that made it, and read by whoever comes after. Nothing infers it a second time.
+
+function Get-SpecrewTurnMaterialVerdictPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    return (Join-Path $StateRoot 'turn-material.json')
+}
+
+function Write-SpecrewTurnMaterialVerdict {
+    # Written BEFORE the counter steps, so `turn_id` names the turn that was judged. Fail-open: a missing
+    # judgment reads as "no judgment", and the reader keeps today's behavior.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string] $StateRoot,
+        [Parameter(Mandatory)][string] $TurnId,
+        [Parameter()][AllowNull()][AllowEmptyString()][string] $DeclarationKind,
+        [Parameter()][bool] $Material = $false
+    )
+    $temp = $null
+    try {
+        $kind = if ([string]::IsNullOrWhiteSpace($DeclarationKind)) { 'absent' } else { [string]$DeclarationKind }
+        if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
+        $path = Get-SpecrewTurnMaterialVerdictPath -StateRoot $StateRoot
+        $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        $record = [ordered]@{
+            schema_version   = '1.0'
+            turn_id          = [string]$TurnId
+            declaration_kind = $kind
+            material         = [bool]$Material
+            judged_at        = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        [System.IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $path, $true)
+        return $true
+    }
+    catch { return $false }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Read-SpecrewTurnMaterialVerdict {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnMaterialVerdictPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+        $record = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $record -or [string]$record.schema_version -cne '1.0') { return $null }
+        return $record
+    }
+    catch { return $null }
+}
+
+function Test-SpecrewTurnMaterialVerdictQuiet {
+    # THE ONE QUESTION A LATER PROVIDER ASKS: did the provider that judged this session's turn find it
+    # material? Quiet when the session DECLARED conversational, or declared nothing and was judged not
+    # material. Not quiet - today's behavior - for in-flight, boundary, absent-with-material, no judgment
+    # at all, or a judgment that cannot be THIS Stop's: its turn id is neither the current one (a block
+    # left the counter alone) nor the one just stepped past, or it is older than -MaxAgeSeconds. Freshness
+    # is the one clock in this, and it fails toward the advisory, never toward silence.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $StateRoot,
+        [int] $MaxAgeSeconds = 120
+    )
+    $r = [pscustomobject]@{ Quiet = $false; Reason = 'no-judgment'; DeclarationKind = ''; TurnId = '' }
+    $verdict = Read-SpecrewTurnMaterialVerdict -StateRoot $StateRoot
+    if ($null -eq $verdict) { return $r }
+    $r.DeclarationKind = [string]$verdict.declaration_kind
+    $r.TurnId = [string]$verdict.turn_id
+    $current = Get-SpecrewTurnId -StateRoot $StateRoot
+    $currentNumber = 0; $verdictNumber = 0
+    if ($current -match '^turn-(\d+)$') { $currentNumber = [int]$Matches[1] }
+    if ([string]$verdict.turn_id -match '^turn-(\d+)$') { $verdictNumber = [int]$Matches[1] }
+    if ($verdictNumber -lt 1 -or ($verdictNumber -ne $currentNumber -and $verdictNumber -ne ($currentNumber - 1))) { $r.Reason = 'judgment-not-this-turn'; return $r }
+    $age = [double]::MaxValue
+    try {
+        # THE ONE TIMESTAMP READER (timestamp-read.ps1): a [datetime] ConvertFrom-Json coerced, a string, or a
+        # number all become one UTC instant there, never here - census 34533964445 caught a parse of this
+        # store's own, which is exactly what the helper's class guard exists to catch.
+        $judged = ConvertTo-SpecrewUtcTimestamp -Value $verdict.judged_at
+        $age = if ($null -eq $judged) { [double]::MaxValue } else { ([DateTimeOffset]::UtcNow - $judged).TotalSeconds }
+    }
+    catch { $age = [double]::MaxValue }
+    if ($age -lt 0 -or $age -gt $MaxAgeSeconds) { $r.Reason = 'judgment-stale'; return $r }
+    $material = $false
+    try { $material = [bool]$verdict.material } catch { $material = $true }
+    switch ([string]$verdict.declaration_kind) {
+        'conversational' { $r.Quiet = $true; $r.Reason = 'session declared conversational'; return $r }
+        'absent' {
+            if (-not $material) { $r.Quiet = $true; $r.Reason = 'session declared nothing and was judged not material'; return $r }
+            $r.Reason = 'absent-with-material'; return $r
+        }
+        default { $r.Reason = ('declared ' + [string]$verdict.declaration_kind); return $r }
+    }
+    return $r
+}
+
+function Get-SpecrewTurnEndPaths {
+    # THE ONE RESOLVER. Everything that reads or writes a turn-end record comes through here.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [AllowNull()][string] $HostKind,
+        [AllowNull()][string] $SessionId
+    )
+
+    $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
+    $ownerHash = Get-SpecrewTurnEndOwnerHash -HostKind $HostKind -SessionId $SessionId
+    $anchored = -not [string]::IsNullOrWhiteSpace($ownerHash)
+    $stateRoot = if ($anchored) { Join-Path (Join-Path $runtimeRoot 'conformance-sessions') $ownerHash } else { $runtimeRoot }
+    $turnEndRoot = if ($anchored) { Join-Path (Join-Path $runtimeRoot 'turn-end') $ownerHash } else { Join-Path $runtimeRoot 'turn-end' }
+    $turnId = Get-SpecrewTurnId -StateRoot $stateRoot
+    return [pscustomobject]@{
+        Anchored        = $anchored
+        OwnerHash       = $ownerHash
+        StateRoot       = $stateRoot
+        TurnEndRoot     = $turnEndRoot
+        TurnId          = $turnId
+        RecordPath      = Join-Path $turnEndRoot ($turnId + '.json')
+        OrientationPath = Join-Path $stateRoot 'orientation-rendered.json'
+    }
+}
+
+function Get-SpecrewTurnEndPathsForStateRoot {
+    # The same shape Get-SpecrewTurnEndPaths returns, but resolved from a state root the caller already
+    # found rather than from a host/session pair it would have to guess. This is the script's route: it
+    # located the session by the token the hook issued, so it must write into THAT session's directories,
+    # not into ones derived from anything it inferred for itself.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $StateRoot,
+        [AllowNull()][string] $OwnerHash
+    )
+
+    $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
+    $anchored = -not [string]::IsNullOrWhiteSpace($OwnerHash)
+    $turnEndRoot = if ($anchored) { Join-Path (Join-Path $runtimeRoot 'turn-end') $OwnerHash } else { Join-Path $runtimeRoot 'turn-end' }
+    $turnId = Get-SpecrewTurnId -StateRoot $StateRoot
+    return [pscustomobject]@{
+        Anchored        = $anchored
+        OwnerHash       = [string]$OwnerHash
+        StateRoot       = $StateRoot
+        TurnEndRoot     = $turnEndRoot
+        TurnId          = $turnId
+        RecordPath      = Join-Path $turnEndRoot ($turnId + '.json')
+        OrientationPath = Join-Path $StateRoot 'orientation-rendered.json'
+    }
+}
+
+# Feature 202 T014 (FR-021, DA-4): THE TURN DRAFT ARRIVES ON STDIN, never in a file the agent chose.
+#
+# B4F-101: agents wrote their drafts to paths of their own choosing, inside the repository too, so drafts rode into
+# commits, and two sessions in one project wrote the same file. The agent now pipes the draft into the turn-end script.
+# The bytes are read raw and decoded as strict UTF-8: the child's console input encoding is ibm437 under some agent
+# shells (research.md, DA-4), so any console decoder is the B4F-065 class.
+# Iteration 002, T023 (FR-034): the message is kept in the turn record only; the separate draft copy, read by nothing,
+# is no longer written.
+$script:SpecrewTurnDraftMaxBytes = 131072
+$script:SpecrewTurnDraftFirstByteWaitMs = 1500
+$script:SpecrewTurnDraftCompleteWaitMs = 10000
+
+function Read-SpecrewTurnDraftFromStdin {
+    # The draft's raw bytes, or $null when none was sent. A shell that leaves stdin open and sends nothing must not hang
+    # the turn end, so the first bytes are awaited for a short while only; a draft that has started must finish.
+    [OutputType([byte[]])]
+    param()
+    if (-not [Console]::IsInputRedirected) { return $null }
+    $stdin = [Console]::OpenStandardInput()
+    $buffer = [byte[]]::new(65536)
+    $collected = [IO.MemoryStream]::new()
+    $read = $stdin.ReadAsync($buffer, 0, $buffer.Length)
+    if (-not $read.Wait($script:SpecrewTurnDraftFirstByteWaitMs)) { return $null }
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($read.Result -gt 0) {
+        $collected.Write($buffer, 0, $read.Result)
+        if ($collected.Length -gt $script:SpecrewTurnDraftMaxBytes) { throw 'The draft on stdin exceeds 128 KiB.' }
+        $read = $stdin.ReadAsync($buffer, 0, $buffer.Length)
+        $left = [Math]::Max(0, $script:SpecrewTurnDraftCompleteWaitMs - [int]$sw.ElapsedMilliseconds)
+        if (-not $read.Wait($left)) { throw ("The draft on stdin did not finish within {0} s; close stdin after the draft." -f ($script:SpecrewTurnDraftCompleteWaitMs / 1000)) }
+    }
+    if ($collected.Length -eq 0) { return $null }
+    return , $collected.ToArray()
+}
+
+function ConvertFrom-SpecrewTurnDraftBytes {
+    # Strict UTF-8: invalid bytes are refused, never replaced, because a replaced character is the human's text lost.
+    # A leading byte-order mark is not part of the text.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][AllowEmptyCollection()][byte[]] $Bytes)
+    $offset = if ($Bytes.Length -ge 3 -and $Bytes[0] -eq 0xEF -and $Bytes[1] -eq 0xBB -and $Bytes[2] -eq 0xBF) { 3 } else { 0 }
+    try { return [Text.UTF8Encoding]::new($false, $true).GetString($Bytes, $offset, $Bytes.Length - $offset) }
+    catch [Text.DecoderFallbackException] { throw 'The draft is not valid UTF-8. Send it as UTF-8 text (PowerShell 7 pipes UTF-8; Windows PowerShell 5.1 does not).' }
+}
+
+function Read-SpecrewTurnEndRecord {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Path)
+
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($item.Length -le 0 -or $item.Length -gt 262144) { return $null }
+        $record = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $record -or $record -is [System.Array]) { return $null }
+        if ([string]$record.schema_version -cne $script:SpecrewTurnEndSchemaVersion) { return $null }
+        if ([string]$record.kind -cnotin $script:SpecrewTurnEndKinds) { return $null }
+        return $record
+    }
+    catch { return $null }
+}
+
+function Write-SpecrewTurnEndRecord {
+    # Atomic temp-and-move, UTF-8 without BOM, and it READS THE RECORD BACK before reporting success. A
+    # write this whole contract rests on must not be reported on the strength of no exception.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Path, [Parameter(Mandatory)]$Record)
+
+    $temp = $null
+    try {
+        $directory = Split-Path -Parent $Path
+        if ($directory -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+            New-Item -ItemType Directory -Path $directory -Force | Out-Null
+        }
+        $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        [System.IO.File]::WriteAllText($temp, ($Record | ConvertTo-Json -Depth 8 -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $Path, $true)
+        $back = Read-SpecrewTurnEndRecord -Path $Path
+        return ($null -ne $back -and [string]$back.kind -ceq [string]$Record.kind -and [string]$back.turn_id -ceq [string]$Record.turn_id)
+    }
+    catch { return $false }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Test-SpecrewTurnMessageVisible {
+    param([AllowNull()][string]$Message, [AllowNull()][string]$Expected)
+    if ([string]::IsNullOrWhiteSpace($Expected)) { return $false }
+    # Host accessors normalize whitespace. Content and order, rather than line endings, bind presentation.
+    $actualText = ([string]$Message -replace '\s+', ' ').Trim()
+    $expectedText = ($Expected -replace '\s+', ' ').Trim()
+    return $actualText.Contains($expectedText, [StringComparison]::Ordinal)
+}
+
+function Get-SpecrewReviewTargetLinks {
+    # Every review link a message carries, as written (text) and as a local path (path; $null when it cannot be
+    # resolved). ONE reader for the three places that need it - the packet validator, the meaning lines and the
+    # reviewed-artifact memory (co-review round 3, 202): the validator accepted Markdown links to absolute paths while
+    # the other two read only file:/// URLs, so such a link could be dropped from the reply unnoticed and a change to
+    # its file never lifted suppression. Accepted: a bare file:/// URL (Rule 52's form), and a Markdown link whose
+    # target is an absolute path - `C:\...` or `C:/...`, `/C:/...`, or `/...` - optionally in angle brackets.
+    [OutputType([object[]])]
+    param([AllowNull()][string] $Message)
+
+    $links = [System.Collections.Generic.List[object]]::new()
+    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+    # Co-review round 6 (202, FR-011): a path with parentheses ("app (draft)") was cut at the first ')', so the link
+    # named a folder that does not exist, whose "missing" fingerprint never changes - an edit to the real file never
+    # lifted suppression. Balanced parentheses belong to the path; an unbalanced ')' still ends it (a sentence's or a
+    # Markdown link's closing parenthesis).
+    foreach ($match in [regex]::Matches($Message, 'file:///(?:[^\s<>"''`\[\](){}|]|\([^\s<>"''`\[\](){}|]*\))+')) {
+        $url = ([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*')
+        $path = $null
+        try { $path = [System.IO.Path]::GetFullPath([System.Uri]::new($url).LocalPath) } catch { $path = $null }
+        $links.Add([pscustomobject]@{ text = $url; path = $path })
+    }
+    # An angle-wrapped destination runs to its '>' whatever it holds; a bare one keeps balanced parentheses.
+    foreach ($match in [regex]::Matches($Message, '(?i)\]\(\s*(?:<(?<t>(?:[A-Z]:[/\\]|/[A-Z]:/|/)[^<>\r\n]*)>|(?<t>(?:[A-Z]:[/\\]|/[A-Z]:/|/)(?:[^()<>\r\n]|\([^()<>\r\n]*\))*?))\s*\)')) {
+        $target = [string]$match.Groups['t'].Value
+        $local = if ($target -match '^/[A-Za-z]:/') { $target.Substring(1) } else { $target }
+        $path = $null
+        try { $path = [System.IO.Path]::GetFullPath([System.Uri]::UnescapeDataString($local)) } catch { $path = $null }
+        $links.Add([pscustomobject]@{ text = $target; path = $path })
+    }
+    return $links.ToArray()
+}
+
+function Test-SpecrewAuthoredPacket {
+    param([AllowNull()][string]$Message)
+    $missing = [Collections.Generic.List[string]]::new()
+    $sections = @{}
+    $headings = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
+    foreach ($heading in $headings) {
+        $match = [regex]::Match([string]$Message, '(?ims)^##\s+' + [regex]::Escape($heading) + '\s*\r?\n(?<body>.*?)(?=^##\s|\z)')
+        $sections[$heading] = $match.Groups['body'].Value.Trim()
+        if ([string]::IsNullOrWhiteSpace($sections[$heading])) { $missing.Add($heading) }
+    }
+    if (@(Get-SpecrewReviewTargetLinks -Message $sections['What Needs Your Review']).Count -eq 0) {
+        $missing.Add('specific review targets with file links')
+    }
+    if ([string]$Message -notmatch '(?i)\brecommend(?:ation|ed)?\b') { $missing.Add('recommendation') }
+    if ($sections['What Happens Next'] -match '(?i)^On .+ the next stage starts\.|^Your reply decides\.?$') {
+        $missing.Add('specific next step')
+    }
+    if ($sections['Discussion Prompts'] -match '(?i)^1\. Anything above you want changed, questioned, or done differently\.?$') {
+        $missing.Add('specific discussion prompt')
+    }
+    return [pscustomobject]@{ valid = ($missing.Count -eq 0); missing = @($missing) }
+}
+
+# FEATURE 202 T009 (FR-016, SC-005, B4F-107): ONE ADAPTATION SENTENCE ON EVERY HOST. What stood here rendered the
+# profile's raw keys and numbers ("software_architecture=10, ...") and reached Codex that way, while Claude read
+# the prose sentence the session orientation uses. The prose renderer in user-profile.ps1 is now the only one;
+# the host adapter contributes only the correction reference (Get-SpecrewProfileCorrectionReference, beside it).
+function Resolve-SpecrewModuleFile {
+    # A file of the Specrew module tree, from wherever this script runs: the source tree or an installed module
+    # (three levels above extensions/specrew-speckit/scripts), SPECREW_MODULE_PATH, a self-hosting project root,
+    # or the newest installed module. $null when none has it.
+    param([Parameter(Mandatory)][string] $RelativePath, [AllowNull()][string] $ProjectRoot)
+    $roots = [System.Collections.Generic.List[string]]::new()
+    try { $roots.Add([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))) } catch { $null = $_ }
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $roots.Add($env:SPECREW_MODULE_PATH) }
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) { $roots.Add($ProjectRoot) }
+    foreach ($candidateRoot in $roots) {
+        $candidate = Join-Path $candidateRoot $RelativePath
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    try {
+        $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase $RelativePath) -PathType Leaf } | Select-Object -First 1
+        if ($module) { return (Join-Path $module.ModuleBase $RelativePath) }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Get-SpecrewOrientationAdaptationLine {
+    # The shared sentence, or '' when no profile is set. Read through user-profile.ps1's own reader, which honours
+    # SPECREW_USER_PROFILE_PATH, so every surface reads the one profile the human configured.
+    param([AllowNull()][string] $HostKind, [AllowNull()][string] $ProjectRoot)
+    try {
+        if (-not (Get-Command Get-SpecrewProfileCorrectionReference -ErrorAction SilentlyContinue)) {
+            $profileScript = Resolve-SpecrewModuleFile -RelativePath 'scripts/internal/user-profile.ps1' -ProjectRoot $ProjectRoot
+            if (-not $profileScript) { return '' }
+            . $profileScript
+        }
+        $line = Get-SpecrewProfileOrientationLine -CorrectionReference (Get-SpecrewProfileCorrectionReference -HostKind $HostKind)
+        if ([string]::IsNullOrWhiteSpace([string]$line)) { return '' }
+        return [string]$line
+    }
+    catch { return '' }
+}
+
+function Get-SpecrewTurnEndRenderDecision {
+    # THE THREE GATES, AND THEY LIVE HERE RATHER THAN IN THE AGENT'S HEAD.
+    #
+    # This is the half that used to be instruction text: render a packet when there was actual work, not too
+    # soon after the last one, and not the same thing twice. Instructions asking an agent to judge those
+    # three things produced the measured failure this replaces - eight stops in one session, none about the
+    # code. As a function it is decidable, testable, and identical on every host.
+    #
+    # Returning a NO-OP is a first-class outcome, not a failure: the declaration is still recorded, so the
+    # hook can tell "the agent declared and nothing was earned" from "the agent declared nothing at all".
+    # Those two look the same from the outside and mean opposite things.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][ValidateSet('boundary', 'in-flight', 'conversational')][string] $Kind,
+        [AllowNull()]$PreviousRecord,
+        [AllowNull()][string] $ContentHash,
+        [int] $MinimumSecondsBetweenRenders = 45,
+        [AllowNull()][datetime] $NowUtc
+    )
+
+    $now = if ($null -eq $NowUtc) { [datetime]::UtcNow } else { $NowUtc.ToUniversalTime() }
+
+    # Gate 1 - actual work. A conversational turn earns nothing by definition; that is what the kind means.
+    if ($Kind -eq 'conversational') {
+        return [pscustomobject]@{ render = $false; reason = 'conversational-turn-renders-nothing' }
+    }
+
+    if ($null -eq $PreviousRecord) {
+        return [pscustomobject]@{ render = $true; reason = 'first-render-of-this-kind' }
+    }
+
+    # Gate 2 - unchanged content. Checked BEFORE elapsed time on purpose: re-rendering an identical packet
+    # is noise no matter how long ago the last one was, and saying so names the real reason.
+    if (-not [string]::IsNullOrWhiteSpace($ContentHash) -and
+        [string]$PreviousRecord.content_hash -ceq $ContentHash -and
+        [string]$PreviousRecord.kind -ceq $Kind) {
+        return [pscustomobject]@{ render = $false; reason = 'identical-to-the-last-render-of-this-kind' }
+    }
+
+    # Gate 3 - elapsed time since the last render OF THIS KIND. Scoped to the kind so an in-flight line
+    # never suppresses a boundary packet, which is the case that must never be rate-limited away.
+    if ([string]$PreviousRecord.kind -ceq $Kind) {
+        try {
+            # THE THIRD INSTANCE OF ONE ROOT. ConvertFrom-Json coerces the ISO `rendered_at` into a
+            # [datetime]; the first version cast that back to a string, which dropped the UTC designator and
+            # the fraction, and re-parsed it as LOCAL time. The confirmatory review measured it on this
+            # machine: a render 0.5 s old looked ~3 hours old, and the 45-second in-flight cooldown was
+            # bypassed. Three instances made it a pattern, and the pattern's fix is one reader: `rendered_ms`
+            # first (a number survives JSON), the coerced `rendered_at` as the fallback for an older record,
+            # both through ConvertTo-SpecrewUtcTimestamp, which never goes through a string it was not given.
+            $previousAt = $null
+            if ($PreviousRecord.PSObject.Properties['rendered_ms'] -and $null -ne $PreviousRecord.rendered_ms) { $previousAt = ConvertTo-SpecrewUtcTimestamp -Value $PreviousRecord.rendered_ms }
+            if ($null -eq $previousAt -and $PreviousRecord.PSObject.Properties['rendered_at']) { $previousAt = ConvertTo-SpecrewUtcTimestamp -Value $PreviousRecord.rendered_at }
+            if ($null -ne $previousAt) {
+                $elapsed = ([DateTimeOffset]::new($now, [TimeSpan]::Zero) - [DateTimeOffset]$previousAt).TotalSeconds
+                if ($elapsed -ge 0 -and $elapsed -lt $MinimumSecondsBetweenRenders -and $Kind -eq 'in-flight') {
+                    return [pscustomobject]@{ render = $false; reason = 'in-flight-line-already-shown-moments-ago' }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+
+    return [pscustomobject]@{ render = $true; reason = 'render-earned' }
+}
+
+function Get-SpecrewTurnEndContentHash {
+    [OutputType([string])]
+    param([AllowNull()][string] $Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        return (-join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }))
+    }
+    catch { return '' }
+}
+
+function Get-SpecrewInFlightRepeatCount {
+    # How many times IN A ROW this session has declared in-flight against the SAME pending text, counting the
+    # declaration about to be written. The run must be unbroken: any other kind, or a different pending text,
+    # resets it - because the thing being bounded is "nothing is changing", not "in-flight was used a lot".
+    # A session that alternates real work with in-flight waits is doing exactly what in-flight is for.
+    #
+    # IT COUNTS SUPPRESSED NO-OPS TOO, and that is the opposite of what Get-SpecrewTurnEndPreviousRecord does
+    # with -RenderedOnly. The asymmetry is deliberate and load-bearing. The render gates ask *what did the
+    # human last SEE*, so a no-op must not suppress against itself. This bound asks *how long has nothing
+    # changed*, and a suppressed no-op is the strongest possible evidence for that - it is a turn that
+    # produced nothing new, by the gates' own judgement. Filtering it out here would mean the quieter a
+    # session got, the longer it could go on saying nothing, which is exactly backwards.
+    # Measured: runs 1-5 against one pending item give run counts 1,2,3,4,5 with renders at 1, 4 and 5 - the
+    # two suppressed turns still carry the run forward and the bound trips on schedule.
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory)][string] $TurnEndRoot,
+        [AllowNull()][AllowEmptyString()][string] $PendingText,
+        [AllowNull()][string] $ExcludePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PendingText)) { return 1 }
+    $needle = $PendingText.Trim()
+    $run = 1
+    try {
+        if (-not (Test-Path -LiteralPath $TurnEndRoot -PathType Container)) { return $run }
+        $files = @(Get-ChildItem -LiteralPath $TurnEndRoot -Filter '*.json' -File -ErrorAction Stop |
+                Where-Object { [string]::IsNullOrWhiteSpace($ExcludePath) -or $_.FullName -ne $ExcludePath } |
+                Sort-Object LastWriteTimeUtc -Descending)
+        foreach ($file in $files) {
+            $record = Read-SpecrewTurnEndRecord -Path $file.FullName
+            if ($null -eq $record) { continue }
+            # A CONVERSATIONAL TURN DOES NOT BREAK THE RUN, and the first version of this let it.
+            #
+            # Found by the independent review, which ran the sequence rather than reading it: in-flight,
+            # conversational, in-flight, conversational... reset the count to 1 every time and the bound
+            # NEVER TRIPPED. An agent could wait forever on one item by saying "nothing to report" between
+            # waits - and "nothing to report" is, by its own declaration, nothing happening. Treating it as
+            # progress meant the cheapest possible turn laundered the guard.
+            #
+            # So the walk SKIPS conversational records. What breaks a run is something that actually
+            # happened: a boundary declaration (the human was asked something) or a wait on a DIFFERENT
+            # item. Both are real events; a no-op is the absence of one.
+            if ([string]$record.kind -ceq 'conversational') { continue }
+            if ([string]$record.kind -cne 'in-flight') { break }
+            $recordPending = if ($record.PSObject.Properties['pending']) { ([string]$record.pending).Trim() } else { '' }
+            if ($recordPending -cne $needle) { break }
+            $run++
+        }
+        return $run
+    }
+    catch { return $run }
+}
+
+function Get-SpecrewTurnEndPreviousRecord {
+    # The most recent record for this session, whatever turn it belonged to - the gates compare across
+    # turns, because "already shown moments ago" is a fact about the session and not about one turn.
+    #
+    # -RenderedOnly is what keeps the gates from suppressing against something the human never saw. A no-op
+    # record is still a record, and comparing new content against a no-op would let one suppressed render
+    # suppress the next one for the same reason, forever. The gates ask "what did the human last SEE".
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $TurnEndRoot,
+        [AllowNull()][string] $ExcludePath,
+        [switch] $RenderedOnly
+    )
+
+    try {
+        if (-not (Test-Path -LiteralPath $TurnEndRoot -PathType Container)) { return $null }
+        $files = @(Get-ChildItem -LiteralPath $TurnEndRoot -Filter '*.json' -File -ErrorAction Stop |
+                Where-Object { [string]::IsNullOrWhiteSpace($ExcludePath) -or $_.FullName -ne $ExcludePath } |
+                Sort-Object LastWriteTimeUtc -Descending)
+        foreach ($file in $files) {
+            $record = Read-SpecrewTurnEndRecord -Path $file.FullName
+            if ($null -eq $record) { continue }
+            if ($RenderedOnly -and -not [bool]$record.rendered) { continue }
+            return $record
+        }
+        return $null
+    }
+    catch { return $null }
+}
+
+# PRESENTED-CROSSING MEMORY (Feature 202 T006, FR-011, DA-2). An unchanged pending crossing is owed in full
+# ONCE per session, and again only after a context gap. What stood before keyed the obligation on the turn:
+# every non-verdict turn of a session with a pending crossing re-armed the packet and ended in a Stop block -
+# a side question, a wrong verdict and an orientation request each repainted it (B4F-104).
+#
+# THE RECORD IS PER SESSION AND PER CROSSING. It lives in the session's own turn-end directory, so another
+# session never inherits it - a new session owes its own presentation. It names the crossing it was written
+# for, so a different crossing finds nothing to suppress against.
+#
+# THE CONTEXT GAPS are exactly the agreed four, and HEAD movement is deliberately not one of them: the
+# agent's own bookkeeping commits (drift entries, findings) are what repainted the packet in 202's own
+# sessions. A gap is:
+#   - a changed crossing id (the record names another crossing);
+#   - a change to the artifacts under review (the files the presented packet linked);
+#   - SessionStart new/resume/compact (the session-start lane clears the record);
+#   - the long gap ($script:SpecrewPresentedCrossingLongGapHours).
+#
+# THE RECOVERY PATH STAYS OPEN (DRIFT-008, B4F-112). A typed reply that carried this crossing's approval
+# phrase while it was pending, and after which the crossing is STILL pending, is a capture miss: the human
+# answered and the answer did not record. Suppression would leave that human with no packet to answer, so a
+# capture miss lifts it whatever the gap state.
+$script:SpecrewPresentedCrossingLongGapHours = 8
+$script:SpecrewPresentedCrossingFileName = 'presented-crossings.json'
+$script:SpecrewSessionStartFileName = 'session-start.json'
+$script:SpecrewPresentedArtifactLimit = 32
+$script:SpecrewPresentedArtifactMaxBytes = 8MB
+
+function Get-SpecrewPresentedCrossingPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot)
+    return (Join-Path $TurnEndRoot $script:SpecrewPresentedCrossingFileName)
+}
+
+function Write-SpecrewTurnEndJsonFile {
+    # The same atomic temp-and-move the turn records use, for the two small session records that are not
+    # turn records (Read-SpecrewTurnEndRecord rightly refuses them: they carry no turn kind).
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Path, [Parameter(Mandatory)]$Value)
+
+    $temp = $null
+    try {
+        $directory = Split-Path -Parent $Path
+        if ($directory -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+            New-Item -ItemType Directory -Path $directory -Force | Out-Null
+        }
+        $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        [System.IO.File]::WriteAllText($temp, ($Value | ConvertTo-Json -Depth 8 -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $Path, $true)
+        return $true
+    }
+    catch { return $false }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Read-SpecrewTurnEndJsonFile {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Path)
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($item.Length -le 0 -or $item.Length -gt 262144) { return $null }
+        $value = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $value -or $value -is [System.Array]) { return $null }
+        return $value
+    }
+    catch { return $null }
+}
+
+function Clear-SpecrewPresentedCrossing {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot)
+    $path = Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot
+    try {
+        if (Test-Path -LiteralPath $path -PathType Leaf) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
+        return $true
+    }
+    catch { return $false }
+}
+
+function Write-SpecrewSessionStart {
+    # Called on every SessionStart this session receives. EVERY SessionStart is a context gap, so the
+    # presented record is cleared whatever its kind; the kind (startup, resume, clear, compact) is kept only
+    # so the next presented record can say which gap it followed.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot, [AllowNull()][string] $Source)
+
+    $kind = if ([string]::IsNullOrWhiteSpace($Source)) { 'unknown' } else { $Source.Trim().ToLowerInvariant() }
+    $null = Clear-SpecrewPresentedCrossing -TurnEndRoot $TurnEndRoot
+    return (Write-SpecrewTurnEndJsonFile -Path (Join-Path $TurnEndRoot $script:SpecrewSessionStartFileName) -Value ([pscustomobject][ordered]@{
+                kind  = $kind
+                at    = [DateTimeOffset]::UtcNow.ToString('o')
+                at_ms = Get-SpecrewUtcNowMilliseconds
+            }))
+}
+
+function Get-SpecrewReviewedArtifactState {
+    # The artifacts under review are the files the presented packet LINKED (Rule 52's bare file:/// URLs):
+    # the packet is where the human was told what to review. Each linked file is content-hashed. A linked
+    # directory is a pointer to browse, not an artifact, so it is recorded but not hashed - hashing it would
+    # turn every drift entry written inside an iteration folder into a "changed review target", which is the
+    # bookkeeping-commit repaint by another route.
+    [OutputType([object[]])]
+    param([AllowNull()][string] $Message)
+
+    $state = [System.Collections.Generic.List[object]]::new()
+    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+    # Co-review round 6 (202): exact paths. Merging by case hid the second of two files differing only by case on a
+    # case-sensitive filesystem; where case does not matter, both entries fingerprint the same file and change together.
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($link in @(Get-SpecrewReviewTargetLinks -Message $Message)) {
+        if ($state.Count -ge $script:SpecrewPresentedArtifactLimit) { break }
+        $localPath = [string]$link.path
+        if ([string]::IsNullOrWhiteSpace($localPath)) { continue }
+        if (-not $seen.Add($localPath)) { continue }
+        $state.Add((Get-SpecrewArtifactFingerprint -Path $localPath))
+    }
+    return $state.ToArray()
+}
+
+function Get-SpecrewArtifactFingerprint {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Path)
+
+    $entry = [ordered]@{ path = $Path; kind = 'missing'; sha256 = '' }
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Container) { $entry.kind = 'directory' }
+        elseif (Test-Path -LiteralPath $Path -PathType Leaf) {
+            $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+            if ($item.Length -gt $script:SpecrewPresentedArtifactMaxBytes) {
+                $entry.kind = 'file-large'
+                $entry.sha256 = ('{0}:{1}' -f $item.Length, $item.LastWriteTimeUtc.Ticks)
+            }
+            else {
+                $entry.kind = 'file'
+                $entry.sha256 = (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            }
+        }
+    }
+    catch { $entry.kind = 'unreadable' }
+    return [pscustomobject]$entry
+}
+
+function Write-SpecrewPresentedCrossing {
+    # Written only by the Stop that VERIFIED the presentation: a boundary declaration for this crossing whose
+    # packet, approval line and marker all reached the visible reply. A declaration alone is not a
+    # presentation, so nothing upstream of that check writes here.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string] $TurnEndRoot,
+        [Parameter(Mandatory)][string] $CrossingId,
+        [AllowNull()][string] $ApprovalPhrase,
+        [AllowNull()][string] $Marker,
+        [AllowNull()][string] $Message
+    )
+
+    $sessionStart = Read-SpecrewTurnEndJsonFile -Path (Join-Path $TurnEndRoot $script:SpecrewSessionStartFileName)
+    $sessionStartKind = if ($null -ne $sessionStart -and $sessionStart.PSObject.Properties['kind']) { [string]$sessionStart.kind } else { 'none-observed' }
+    return (Write-SpecrewTurnEndJsonFile -Path (Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot) -Value ([pscustomobject][ordered]@{
+                schema_version          = '1.0'
+                crossing_id             = $CrossingId
+                approval_phrase         = [string]$ApprovalPhrase
+                marker                  = [string]$Marker
+                reviewed_artifact_state = @(Get-SpecrewReviewedArtifactState -Message $Message)
+                presented_at            = [DateTimeOffset]::UtcNow.ToString('o')
+                presented_ms            = Get-SpecrewUtcNowMilliseconds
+                session_start_kind      = $sessionStartKind
+                verdict_reply_at        = $null
+            }))
+}
+
+function Test-SpecrewReplyCarriesApprovalPhrase {
+    # Was this typed reply an ATTEMPT to approve the presented crossing? Case- and whitespace-insensitive, on any line:
+    # a reply whose phrase sits on its own line after a pasted block is exactly the DRIFT-008 shape this has to see.
+    #
+    # Co-review round 3 (202): an attempt, not a mention. The phrase anywhere in the reply also matched "What does
+    # 'approved for before-implement' mean?" and "I have not approved for before-implement yet", and the crossing,
+    # rightly still pending, was then read as a missed capture: a repaint, and a false "your approval did not
+    # register". So the phrase must LEAD its line (after an optional "yes," / "I"), as the verdict recognizer
+    # anchors it, and the clause it opens must not be a question; instructions after a delimiter are still fine.
+    [OutputType([bool])]
+    param([AllowNull()][string] $Reply, [AllowNull()][string] $ApprovalPhrase)
+    if ([string]::IsNullOrWhiteSpace($Reply) -or [string]::IsNullOrWhiteSpace($ApprovalPhrase)) { return $false }
+    $words = @((($ApprovalPhrase -replace '\s+', ' ').Trim()) -split ' ' | ForEach-Object { [regex]::Escape($_) })
+    $pattern = '(?i)^\s*(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?' + ($words -join '\s+') + '(?![\w-])'
+    # Co-review round 5 (202, FR-011): a quoted example is a mention too. A side question with the phrase inside a fenced
+    # code block ("Explain this example:" then the block) or an indented one was read as an attempt, and the next Stop
+    # said the approval did not register and repainted. Lines inside a CLOSED fence, and lines of an indented code block
+    # (4+ spaces or a tab, after a blank line), are skipped. An unclosed fence hides nothing, and a line typed after a
+    # closed block still counts - the DRIFT-008 / B4F-125 shape.
+    $lines = @($Reply -split "`r?`n")
+    $quoted = New-Object bool[] $lines.Count
+    $open = -1; $marker = ''
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $fence = [regex]::Match($lines[$i], '^\s{0,3}(```+|~~~+)')
+        if (-not $fence.Success) { continue }
+        if ($open -lt 0) { $open = $i; $marker = $fence.Groups[1].Value.Substring(0, 3) }
+        elseif ($fence.Groups[1].Value.StartsWith($marker) -and $lines[$i].Trim() -match '^(```+|~~~+)$') {
+            for ($j = $open; $j -le $i; $j++) { $quoted[$j] = $true }
+            $open = -1; $marker = ''
+        }
+    }
+    $inIndented = $false
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ([string]::IsNullOrWhiteSpace($lines[$i])) { $inIndented = $false; continue }
+        $indented = $lines[$i] -match '^(?: {4}|\t)'
+        $afterBlank = $i -eq 0 -or [string]::IsNullOrWhiteSpace($lines[$i - 1])
+        if ($indented -and ($afterBlank -or $inIndented)) { $inIndented = $true; $quoted[$i] = $true } else { $inIndented = $false }
+    }
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($quoted[$i]) { continue }
+        $line = $lines[$i]
+        $match = [regex]::Match($line, $pattern)
+        if (-not $match.Success) { continue }
+        $clause = ([regex]::Split($line.Substring($match.Length), '[,.;:]|\s[-–—]\s', 2))[0]
+        if (-not $clause.Contains('?')) { return $true }
+    }
+    return $false
+}
+
+function Register-SpecrewPresentedCrossingReply {
+    # Prompt time, typed replies only. Records THAT a reply carried the presented crossing's approval phrase.
+    # Whether it was a miss is decided at Stop, where the crossing is either still pending (the capture did
+    # not record it) or gone (it did).
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot, [AllowNull()][string] $Reply)
+
+    $path = Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot
+    $record = Read-SpecrewTurnEndJsonFile -Path $path
+    if ($null -eq $record -or -not $record.PSObject.Properties['approval_phrase']) { return $false }
+    if (-not (Test-SpecrewReplyCarriesApprovalPhrase -Reply $Reply -ApprovalPhrase ([string]$record.approval_phrase))) { return $false }
+    $record.verdict_reply_at = [DateTimeOffset]::UtcNow.ToString('o')
+    return (Write-SpecrewTurnEndJsonFile -Path $path -Value $record)
+}
+
+function Get-SpecrewPresentedCrossingDecision {
+    # Does this session's earlier presentation still cover the pending crossing? suppress is $true only for a
+    # crossing that was presented, is unchanged and had no capture miss. Otherwise the reason names the gap,
+    # so the journal says WHY the packet was owed again.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $TurnEndRoot,
+        [Parameter(Mandatory)][string] $CrossingId,
+        [Nullable[DateTimeOffset]] $Now
+    )
+
+    $nowValue = if ($null -ne $Now) { [DateTimeOffset]$Now } else { [DateTimeOffset]::UtcNow }
+    $record = Read-SpecrewTurnEndJsonFile -Path (Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot)
+    if ($null -eq $record -or -not $record.PSObject.Properties['crossing_id']) { return [pscustomobject]@{ suppress = $false; reason = 'not-presented' } }
+    if ([string]$record.crossing_id -cne $CrossingId) { return [pscustomobject]@{ suppress = $false; reason = 'crossing-changed' } }
+    if ($record.PSObject.Properties['verdict_reply_at'] -and -not [string]::IsNullOrWhiteSpace([string]$record.verdict_reply_at)) {
+        return [pscustomobject]@{ suppress = $false; reason = 'capture-miss' }
+    }
+    $presentedAt = if ($record.PSObject.Properties['presented_ms']) { ConvertTo-SpecrewUtcTimestamp -Value $record.presented_ms } else { $null }
+    if ($null -eq $presentedAt -and $record.PSObject.Properties['presented_at']) { $presentedAt = ConvertTo-SpecrewUtcTimestamp -Value $record.presented_at }
+    if ($null -eq $presentedAt) { return [pscustomobject]@{ suppress = $false; reason = 'record-unreadable' } }
+    if (($nowValue - [DateTimeOffset]$presentedAt).TotalHours -ge $script:SpecrewPresentedCrossingLongGapHours) {
+        return [pscustomobject]@{ suppress = $false; reason = 'long-gap' }
+    }
+    foreach ($entry in @($record.reviewed_artifact_state)) {
+        if ($null -eq $entry -or -not $entry.PSObject.Properties['path']) { continue }
+        if ([string]$entry.kind -eq 'directory') { continue }
+        $current = Get-SpecrewArtifactFingerprint -Path ([string]$entry.path)
+        if ([string]$current.kind -cne [string]$entry.kind -or [string]$current.sha256 -cne [string]$entry.sha256) {
+            return [pscustomobject]@{ suppress = $false; reason = 'reviewed-artifacts-changed' }
+        }
+    }
+    return [pscustomobject]@{ suppress = $true; reason = 'presented-unchanged' }
+}
+
+# THE MEANING-LINE SET (Feature 202 T007, FR-012, FR-015, B4F-100). "The draft reached the reply" is checked over the
+# lines that carry meaning, declared once here and used by both declare-turn-end.ps1 and the conformance Stop:
+#   - headings;
+#   - review-target links (each file:/// URL);
+#   - the question line (a line that asks the human something);
+#   - the approval line and the verdict options (the typed responses offered);
+#   - the marker.
+# What stood before required the WHOLE draft, whitespace-normalized, inside the reply. Tightening one sentence after
+# the draft was saved then blocked the Stop and repainted the whole message (B4F-100, twice in 202's own intake).
+# Wording between the meaning lines is the author's to change; the lines themselves are what the human must see.
+function Get-SpecrewTurnMeaningLines {
+    [OutputType([string[]])]
+    param([AllowNull()][string] $Message)
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $add = {
+        param([string]$Text)
+        $normalized = ($Text -replace '\s+', ' ').Trim()
+        if ($normalized.Length -gt 0 -and $seen.Add($normalized)) { $lines.Add($normalized) }
+    }
+    foreach ($raw in ($Message -split "`r?`n")) {
+        $line = $raw.Trim()
+        if ($line.Length -eq 0) { continue }
+        if ($line -match '^#{1,6}\s+\S') { & $add $line; continue }                                             # heading
+        if ($line -match '^<!--\s*SPECREW-VERDICT-BOUNDARY:.*-->$') { & $add $line; continue }                  # marker
+        # Approval line and verdict options. Co-review round 6 (202, FR-015): an option written as a bullet, a quote, a
+        # numbered item, inline code or a bold label was not a meaning line, so a reply could drop it. The wrapper is
+        # formatting: the option inside it is the meaning line, which a reply that keeps the option carries either way.
+        $core = $line
+        do { $before = $core; $core = $core -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)', '' } while ($core -ne $before)
+        $core = $core -replace '^(?:`+|\*\*|__|\*|_)', ''
+        if ($core -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add ($core -replace '(?:`+|\*\*|__)\s*$', ''); continue }
+        # The question line: any line that asks something - a '?' ending a sentence, even when an instruction follows
+        # it on the same line ("Does this match? Type move on."). A '?' inside a URL query does not count.
+        if ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') { & $add $line }
+        foreach ($link in @(Get-SpecrewReviewTargetLinks -Message $line)) { & $add ([string]$link.text) }      # review-target links
+    }
+    return $lines.ToArray()
+}
+
+# A HEADING IS PRESENT WHEN ITS MEANING IS (202 DRIFT-030). The first live run of this check with stdin drafts blocked a
+# reply whose two headings differed from the draft by a function word ("now as one budget" / "now one budget"), and the
+# whole message was rendered again - the B4F-104 repaint class, which FR-012 removed. A heading's meaning is its numbers
+# and identifiers, its negations, and its content words: all three must hold, so "Round 3" never answers for "Round 4",
+# and "does not hold" never answers for "holds". Content words may differ by small wording (Jaccard 0.75 or more).
+# Links, questions, options and the marker stay exact: they are what the human acts on.
+$script:SpecrewHeadingFunctionWords = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'a', 'an', 'the', 'and', 'or', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'now', 'of', 'to', 'in',
+        'on', 'at', 'for', 'by', 'with', 'from', 'into', 'it', 'its', 'this', 'that', 'these', 'those', 'so', 'then',
+        'than', 'also', 'just', 'both', 'all', 'here', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
+$script:SpecrewHeadingNegations = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'not', 'no', 'never', 'without', 'nothing', 'none', 'cannot', 'neither', 'nor', 'unless', 'dont', 'doesnt', 'isnt',
+        'arent', 'wont', 'cant', 'didnt', 'wasnt', 'werent', 'hasnt', 'havent'), [System.StringComparer]::OrdinalIgnoreCase)
+
+function Get-SpecrewHeadingMeaning {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Heading)
+    $text = ($Heading -replace '^\s*#{1,6}\s+', '').ToLowerInvariant() -replace "['’]", ''
+    $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
+        $token = $m.Value
+        if ($token -match '\d') { [void]$anchors.Add($token) }
+        elseif ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token) }
+        elseif (-not $script:SpecrewHeadingFunctionWords.Contains($token)) { [void]$words.Add($token) }
+    }
+    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words }
+}
+
+function Test-SpecrewHeadingMeaningMatch {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Declared, [Parameter(Mandatory)][string] $Replied)
+    $d = Get-SpecrewHeadingMeaning -Heading $Declared
+    $r = Get-SpecrewHeadingMeaning -Heading $Replied
+    if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
+    if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
+    if ($d.Words.Count -eq 0 -and $r.Words.Count -eq 0) { return $true }
+    $union = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $union.UnionWith($r.Words)
+    $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $common.IntersectWith($r.Words)
+    return (($common.Count / [double]$union.Count) -ge 0.75)
+}
+
+# A DISCUSSION QUESTION IS PRESENT WHEN ITS MEANING IS (202 iteration 002, T019, FR-030; B4F-128). The review sign-off
+# packet of 2026-10-16: the reply reworded discussion prompt 1 ("Does closing with B4F-127 open fit the consequence
+# grading, ..." became "Is closing with B4F-127 open consistent with how you grade defects by consequence, ..."), the
+# Stop counted it missing, and the whole packet was rendered again - the FR-012 repaint class on a line kind the heading
+# match did not reach. The same three tests as a heading, tuned for a sentence: its numbers and identifiers, and its
+# negations, must be identical; its content words, lightly stemmed ("grading" and "grade" are one word) and without the
+# words any question carries, must largely overlap - nearly all of the shorter question's words in the longer one
+# (0.8), and half of all the words in common (0.5). Options, links and the marker stay exact.
+$script:SpecrewQuestionFunctionWords = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'do', 'does', 'did', 'how', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'whether', 'you', 'your',
+        'we', 'our', 'i', 'my', 'me', 'us', 'should', 'would', 'could', 'can', 'will', 'shall', 'may', 'might', 'must',
+        'given', 'since', 'because', 'before', 'after', 'while', 'if', 'about', 'any', 'some', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
+# Co-review round 6 (iteration 002): the order words are carried by any question, but not interchangeably. 'before' and
+# 'after' were both dropped, so 'Should the migration run before deployment?' and '... after deployment?' read as one
+# question. A rewording may add or drop one ("the interim launch check" became "the interim check before launches" in
+# B4F-128's reply); a question that has one where the other has its opposite is a changed question.
+$script:SpecrewQuestionOrderOpposites = @(@('before', 'after'), @('earlier', 'later'), @('first', 'last'))
+
+function Get-SpecrewQuestionMeaning {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Question)
+    $text = ($Question -replace '^\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+)+', '').ToLowerInvariant() -replace "['’]", ''
+    $last = $text.LastIndexOf('?')
+    if ($last -ge 0) { $text = $text.Substring(0, $last) }
+    $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $order = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
+        $token = $m.Value
+        foreach ($pair in $script:SpecrewQuestionOrderOpposites) { if ($pair -contains $token) { [void]$order.Add($token) } }
+        if ($token -match '\d') { [void]$anchors.Add($token); continue }
+        if ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token); continue }
+        if ($script:SpecrewHeadingFunctionWords.Contains($token) -or $script:SpecrewQuestionFunctionWords.Contains($token)) { continue }
+        $stem = $token
+        foreach ($suffix in @('ing', 'es', 'ed', 's')) {
+            if ($stem.Length -gt ($suffix.Length + 3) -and $stem.EndsWith($suffix)) { $stem = $stem.Substring(0, $stem.Length - $suffix.Length); break }
+        }
+        if ($stem.Length -gt 4 -and $stem.EndsWith('e')) { $stem = $stem.Substring(0, $stem.Length - 1) }
+        [void]$words.Add($stem)
+    }
+    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words; Order = $order }
+}
+
+function Test-SpecrewQuestionMeaningMatch {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $Declared, [Parameter(Mandatory)][string] $Replied)
+    $d = Get-SpecrewQuestionMeaning -Question $Declared
+    $r = Get-SpecrewQuestionMeaning -Question $Replied
+    if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
+    if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
+    foreach ($pair in $script:SpecrewQuestionOrderOpposites) {
+        $dOrder = @($pair | Where-Object { $d.Order.Contains($_) })
+        $rOrder = @($pair | Where-Object { $r.Order.Contains($_) })
+        if ($dOrder.Count -gt 0 -and $rOrder.Count -gt 0 -and (($dOrder -join ' ') -cne ($rOrder -join ' '))) { return $false }
+    }
+    if ($d.Words.Count -eq 0 -or $r.Words.Count -eq 0) { return $false }
+    $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $common.IntersectWith($r.Words)
+    $union = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
+    $union.UnionWith($r.Words)
+    $smaller = [Math]::Min($d.Words.Count, $r.Words.Count)
+    return ((($common.Count / [double]$smaller) -ge 0.8) -and (($common.Count / [double]$union.Count) -ge 0.5))
+}
+
+function Get-SpecrewTurnMeaningLinesMissing {
+    # The declared meaning lines the reply does not carry, in draft order. Empty when every one is present - the
+    # wording around them may differ freely. Whitespace is normalized on both sides, as the host accessors do. A heading
+    # absent verbatim is still present when a reply heading carries its meaning (above); each reply heading answers for
+    # one declared heading at most.
+    [OutputType([string[]])]
+    param([AllowNull()][string] $Reply, [AllowNull()][string[]] $MeaningLines)
+
+    $replyText = ([string]$Reply -replace '\s+', ' ').Trim()
+    # The host accessors hand the Stop a FLATTENED reply (whitespace normalized to single spaces), so reply headings
+    # are found by their '#' markers, not by line: each marker starts a slot holding the words up to the next marker.
+    $slots = [System.Collections.Generic.List[object]]::new()
+    $markers = @([regex]::Matches($replyText, '(?:^|(?<=\s))(#{1,6})\s+(?=\S)'))
+    for ($i = 0; $i -lt $markers.Count; $i++) {
+        $start = $markers[$i].Index + $markers[$i].Length
+        $end = if ($i + 1 -lt $markers.Count) { $markers[$i + 1].Index } else { $replyText.Length }
+        $slots.Add([pscustomobject]@{ Hashes = $markers[$i].Groups[1].Value; Words = @($replyText.Substring($start, $end - $start).Trim() -split ' ' | Where-Object { $_ }) ; Used = $false })
+    }
+    $missing = [System.Collections.Generic.List[string]]::new()
+    $pendingHeadings = [System.Collections.Generic.List[string]]::new()
+    $pendingQuestions = [System.Collections.Generic.List[string]]::new()
+    # T019: the reply's questions, from the flattened text - each sentence that ends in '?', without its list marker.
+    $replyQuestions = [System.Collections.Generic.List[object]]::new()
+    # Co-review round 5 (iteration 002): a period inside a version or a file name ('1.2', 'plan.md') is not the end of a
+    # sentence, so the question keeps its identifier and its anchor can match.
+    foreach ($q in [regex]::Matches($replyText, '(?:[^?!.#]|\.(?=\S))+\?')) {
+        $qText = ($q.Value -replace '^\s*(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '').Trim()
+        if ($qText.Length -gt 0) { $replyQuestions.Add([pscustomobject]@{ Text = $qText; Used = $false }) }
+    }
+    foreach ($line in @($MeaningLines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($line -match '^#{1,6}\s+\S') {
+            if ($replyText.Contains($line, [StringComparison]::Ordinal)) {
+                # Claim the slot this heading occupies verbatim, so no reworded match can take it.
+                $words = @(($line -replace '^#{1,6}\s+', '') -split ' ')
+                foreach ($slot in $slots) {
+                    if (-not $slot.Used -and $slot.Words.Count -ge $words.Count -and (($slot.Words[0..($words.Count - 1)]) -join ' ') -ceq ($words -join ' ')) { $slot.Used = $true; break }
+                }
+                continue
+            }
+            $pendingHeadings.Add($line)
+            continue
+        }
+        if ($replyText.Contains($line, [StringComparison]::Ordinal)) {
+            # A question present verbatim claims its reply question, so no reworded match can take it.
+            foreach ($rq in $replyQuestions) { if (-not $rq.Used -and $line.Contains($rq.Text, [StringComparison]::Ordinal)) { $rq.Used = $true; break } }
+            continue
+        }
+        $optionCore = $line -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '' -replace '^(?:`+|\*\*|__|\*|_)', ''
+        $isQuestion = ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') -and ($line -notmatch '^<!--') -and ($optionCore -notmatch '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)')
+        if ($isQuestion) { $pendingQuestions.Add($line) } else { $missing.Add($line) }
+    }
+    foreach ($line in $pendingQuestions) {
+        $hitQ = $null
+        foreach ($rq in $replyQuestions) {
+            if ($rq.Used) { continue }
+            if (Test-SpecrewQuestionMeaningMatch -Declared $line -Replied $rq.Text) { $hitQ = $rq; break }
+        }
+        if ($null -ne $hitQ) { $hitQ.Used = $true } else { $missing.Add($line) }
+    }
+    # A reworded heading matches a slot when the slot's first k words carry its meaning, for k within a few words of the
+    # declared heading's length (the slot also holds the prose that follows the heading).
+    $reworded = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($line in $pendingHeadings) {
+        $n = @(($line -replace '^#{1,6}\s+', '') -split ' ' | Where-Object { $_ }).Count
+        $hit = $null
+        foreach ($slot in $slots) {
+            if ($slot.Used) { continue }
+            for ($k = [Math]::Max(1, $n - 3); $k -le [Math]::Min($slot.Words.Count, $n + 3); $k++) {
+                if (Test-SpecrewHeadingMeaningMatch -Declared $line -Replied (($slot.Words[0..($k - 1)]) -join ' ')) { $hit = $slot; break }
+            }
+            if ($null -ne $hit) { break }
+        }
+        if ($null -ne $hit) { $hit.Used = $true } else { [void]$reworded.Add($line) }
+    }
+    # Draft order: rebuild the list with the unmatched headings in their places.
+    $ordered = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in @($MeaningLines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($reworded.Contains($line) -or $missing.Contains($line)) { $ordered.Add($line) }
+    }
+    return $ordered.ToArray()
+}

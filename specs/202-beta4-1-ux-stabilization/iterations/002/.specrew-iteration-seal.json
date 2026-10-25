@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "feature": "202-beta4-1-ux-stabilization",
+  "iteration": "002",
+  "sealed_at": "2026-10-21T13:58:49.9802677+00:00",
+  "sealed_files": [
+    {
+      "path": "acceptance-evidence.md",
+      "sha256": "828e81cbefe942684d7ff845db37d21cffac96e652edf2d75ef45a63d875c4b1"
+    },
+    {
+      "path": "copilot-rewalk.md",
+      "sha256": "e14d15e95110175d3a39aa02be1eaf3047b6d02accc494bd0dfd4760bb971357"
+    },
+    {
+      "path": "dashboard.md",
+      "sha256": "b09fab7222eb77bc2914e574d9b19465ef6597167a530e49765328557cb28f00"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "8d1fc988aae93abc5e24178990313a81b5ec02130a9db53818b2f9947a91b4c7"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "de8e481b1e3d1ecbda3bdeda78a2149776d76aa79c117036df3279ed1d198553"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "e2751d2e65b43f4f32fd6ab4dc089e448aa0090319e7d858cf13e008d7a46d3c"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "8b021b9d1c72dc2c2c162fb05cea12ad254ac460f492bd8178e8f2a58cb8fa4f"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "311105f518b134f9399ac542a1a8d7a710803b2abec9e3c26f25ac6a8ac6c3c9"
+    },
+    {
+      "path": "review.md",
+      "sha256": "f3c3430af21a61ec0f5753d330deb69c8f658153bacaa539cc90045e80489c4f"
+    },
+    {
+      "path": "state.md",
+      "sha256": "e3c4602381a8119d7e9225f3e2979c993df267ebe6086046b77251eb4f11713a"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}

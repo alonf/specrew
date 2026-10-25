@@ -113,31 +113,138 @@ function Limit-SpecrewInlineBlock {
     return ($cut.TrimEnd() + "`n" + $note)
 }
 
+function Format-SpecrewFinishedOrientation {
+    # Feature 202 T008 (FR-014, DA-3): the orientation, FINISHED - every value resolved here, nothing left for the agent
+    # to fill in or to compose. It is supplied with the session's first prompt, so it reaches the human before the
+    # first question instead of being demanded at Stop after one (B4F-096). Plain words first: the opening sentence is
+    # for someone meeting Specrew, so it carries no lifecycle vocabulary.
+    param(
+        [AllowNull()][string]$SpecrewVersion,
+        [AllowNull()][string]$HostDisplay,
+        [AllowNull()][string]$ProjectName,
+        [AllowNull()][string]$Branch,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$FeatureSource,
+        [AllowNull()][string]$LastAuthorized,
+        [AllowNull()][string]$PendingTo,
+        [AllowNull()][string]$ArtifactsUrl,
+        [AllowNull()][string]$DialsLine,
+        [AllowNull()][string]$HealthLine
+    )
+    $versionText = if ([string]::IsNullOrWhiteSpace($SpecrewVersion)) { 'Specrew' } else { "Specrew $SpecrewVersion" }
+    $hostText = if ([string]::IsNullOrWhiteSpace($HostDisplay)) { '' } else { ", running on $HostDisplay" }
+    $projectText = if ([string]::IsNullOrWhiteSpace($ProjectName)) { '' } else { " Project $ProjectName" + $(if ([string]::IsNullOrWhiteSpace($Branch)) { '.' } else { ", branch $Branch." }) }
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('Specrew is active here. It writes down what you want before anything is built, checks with you before each big step, and nothing moves past one of those checks until you say so.')
+    $lines.Add('')
+    $lines.Add(("- Version and host: {0}{1}.{2}" -f $versionText, $hostText, $projectText))
+    if (-not [string]::IsNullOrWhiteSpace($PendingTo) -and -not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $lines.Add(("- Where things stand: feature {0} is waiting for your decision on '{1}'. When you are ready, type: approved for {1}" -f $FeatureRef, $PendingTo))
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $lastText = if ([string]::IsNullOrWhiteSpace($LastAuthorized)) { '' } else { ("; the last step you approved is '{0}'" -f $LastAuthorized) }
+        $lines.Add(("- Where things stand: feature {0}{1}." -f $FeatureRef, $lastText))
+    }
+    else { $lines.Add('- Where things stand: no feature is in progress yet.') }
+    # 202 T010 (FR-018): the same "Chosen" line status shows, naming what decided the feature.
+    if (-not [string]::IsNullOrWhiteSpace($FeatureSource)) { $lines.Add(("- Chosen: {0}" -f $FeatureSource.Trim())) }
+    if (-not [string]::IsNullOrWhiteSpace($ArtifactsUrl)) { $lines.Add(("- Your artifacts: {0}" -f $ArtifactsUrl)) }
+    else { $lines.Add('- Your artifacts: once a feature starts, under specs/<feature>/ in this project.') }
+    $lines.Add('- What I will ask of you: at each step that needs your decision, I stop and wait for your typed reply.')
+    if (-not [string]::IsNullOrWhiteSpace($DialsLine)) { $lines.Add(("- {0}" -f $DialsLine.Trim())) }
+    else { $lines.Add('- How I adapt to you is not set yet; you can set it with /specrew-user-profile.') }
+    if (-not [string]::IsNullOrWhiteSpace($HealthLine)) { $lines.Add(("- {0}" -f $HealthLine.Trim())) }
+    return ($lines -join "`n")
+}
+
+function Get-SpecrewHookOutputDirectDisplay {
+    # Whether this host shows hook output to the human itself (the host binding's HookOutputDirectDisplay). T001
+    # measured no validated host that does (DA-3), so the default is $false: the agent shows the orientation, and a
+    # host that is ever flagged gets no second copy from the agent.
+    param([AllowNull()][string]$HostBinding)
+    if ([string]::IsNullOrWhiteSpace($HostBinding)) { return $false }
+    try {
+        $runtime = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($HostBinding)) | ConvertFrom-Json -ErrorAction Stop
+        return ($null -ne $runtime -and $runtime.PSObject.Properties['HookOutputDirectDisplay'] -and [bool]$runtime.HookOutputDirectDisplay)
+    }
+    catch { return $false }
+}
+
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null, [AllowNull()][string]$ReplyHealthLine = $null, [AllowNull()]$DiskResume = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
     $stateRead = if ($reads.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$reads[1])) { [string]$reads[1] } else { '.specrew/start-context.json' }
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
+    # Feature 202 T008 (FR-014): the finished orientation (items 1 to 3 below) arrives with the human's first message,
+    # marked [specrew-system]. The agent shows that text as written and adds only what applies from items 4 to 7.
+    $lines.Add('[specrew-bootstrap] The finished orientation for this session (items 1 to 3 below) is supplied with the human''s first message, marked [specrew-system]. Show that text as written at the start of your first reply, and do not compose another; add items 4 to 7 after it only where they apply.')
+    $lines.Add('[specrew-bootstrap] SessionStart B2 - the orientation below is written to be SHOWN to the human, not merely read by you. Render it as VISIBLE PROSE in your FIRST reply, before any structured picker and before starting work: reading it to orient yourself is not rendering it, and a human who never sees it cannot correct what you believe about them. A concrete request in their first message does not replace it - announce what is starting and render the orientation with it (render-first: questions are shown as prose before any picker, and that rule is enforced mechanically, not by instruction alone).')  # FR-004/FR-020
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    # Feature 202 T004 (FR-007): a degraded reply-recording state is part of the orientation, so the human knows it
+    # before their first answer, not only from a later refusal.
+    if (-not [string]::IsNullOrWhiteSpace($ReplyHealthLine)) { $lines.Add(('Include this line, as written, in the orientation you show: {0}' -f $ReplyHealthLine)) }
     # F-184 iter-002 (T004, FR-013/FR-014/FR-018): FRONT-LOAD the coordinator posture + the exact anti-
     # specify.exe guard from the SINGLE packaged source (the caller resolves it via
     # Get-SpecrewCoordinatorFragment, so the bootstrap guard cannot drift from the instruction-file guard),
     # ABOVE the broader banner/contract context so a weak model attends to the immediate action + guard first.
     if (-not [string]::IsNullOrWhiteSpace($CoordinatorFragment)) {
-        $lines.Add('=== SPECREW COORDINATOR (front-loaded - the immediate posture + the anti-raw-Spec-Kit guard; read FIRST) ===')
+        $lines.Add('=== HOW THIS PROJECT WORKS (the same text deployed in AGENTS.md / CLAUDE.md, repeated here for convenience) ===')
         $lines.Add($CoordinatorFragment.Trim())
     }
     # FR-001 (banner fix, 2026-06-10): the orientation BANNER is mandatory on EVERY host and must render
     # FIRST. It was skipped on claude (the render instruction sat AFTER the ~45KB inline contract, so claude
     # skimmed past it to the task; copilot rendered it). Hoist the full, EXPANDED banner mandate to the TOP -
     # before the contract - and name the "how we work" + user-profile/expertise content the human expects.
-    $lines.Add('=== MANDATORY FIRST ACTION - render before anything else, on EVERY host ===')
-    $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render it ONCE, only as the opening of THIS session''s first response: if you RE-READ this contract later in the same session (e.g. to re-check the lifecycle state), do NOT render the banner again - you have already oriented; just continue the work. Render, in order:')
-    $lines.Add('  (1) Specrew is governing this session, and HOW we work: a spec-driven lifecycle with human-authorized boundaries - you DRIVE the gates and do NOT free-run the SDLC.')
+    $lines.Add('=== SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH ===')
+    $lines.Add('Sessions in this project open with an orientation banner, before the first request is acted on, so the person can see where the work stands. It is rendered once, as the opening of the session''s first response - re-reading this state later in the same session does not call for another one. It contains, in order:')
+    # Feature 202 T008: items 1 to 3 now arrive finished with the first prompt, so the long composing guidance for item 1
+    # (and its 2026-08-12 measurement note) left this directive; it also had to, to keep the pending-verdict payload
+    # under the 10K host cap (DirectiveDeliveryCap 3b). The plain-words rule now lives in Format-SpecrewFinishedOrientation.
+    $lines.Add('  (1) What Specrew does for THIS person, in plain words: no lifecycle vocabulary in the first sentence they read. The supplied orientation already says it.')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
+    # ================= AGENT-BINDING CLAUSE - NOT PART OF THE RENDERED BANNER =================
+    # RESTORED 2026-08-12 after a measured regression that is mine. The consumer-facing rewrite of item
+    # (1) was correct and stays: the first sentence a person reads must not open with lifecycle, gates,
+    # verdict, SDLC. But the sentence I replaced was doing TWO jobs. Its tail - "I drive the gates and
+    # stop for your verdict at each one - I do not free-run the SDLC" - was the clause that BOUND THE
+    # AGENT, and removing it removed the binding.
+    #
+    # Measured at C:\Dev\docscheck on module 2ff657d1: the banner rendered correctly and in plain
+    # language, and the agent's very next sentence was "this is a concrete, well-scoped request so I am
+    # going straight to implementation." It wrote the tool, committed 83281a1, and declared done - no
+    # workshop, no spec, no clarify, no plan, no tasks, no boundary stop. The only governance that fired
+    # was the Stop hook demanding a packet, which described work that should never have happened. The
+    # same host on the same task shape ran the full workshop and reached clarify the day before, under
+    # the old wording.
+    #
+    # THE CLASS, and it is this week's own lesson committed by the people who named it: THE BANNER HAS
+    # TWO READERS AND THE REWRITE SERVED ONE. Same shape as the demotion mark versus the human sentence,
+    # the agent directive inside the human's block, and the candidate versus terminal finding shape.
+    # When a surface has two readers, a change for one is a change for BOTH until proven otherwise.
+    # Item E was raised by a reviewer and validated by a maintainer; neither of us asked what the removed
+    # sentence was doing for the other reader.
+    #
+    # So the two audiences are now addressed SEPARATELY: (1) speaks to the consumer, this speaks to you.
+    # DE-ESCALATED 2026-08-12, and this reverses my own fix from hours earlier.
+    #
+    # I answered the free-run regression by adding a loud agent-binding block here - capitals, BINDING
+    # ON YOU, a named refusal of the exact rationalisation. Measured on a reasoning-capable host: the
+    # clause was present, and the agent skipped the lifecycle anyway using that very reasoning in
+    # different words. Worse, its stated reason for discounting Specrew was that this text 'looks like a
+    # prompt injection attempt ... a system prompt override claiming I should be a Specrew coordinator'.
+    #
+    # A DISCOUNTED INSTRUCTION DOES NOT BIND AT ANY VOLUME, and emphasis is what makes it look
+    # discountable: mandates arriving in context, claiming authority over behaviour, are structurally
+    # identical to an injection attack, and a safety-trained model is right to treat them that way. More
+    # capitals made the block MORE injection-shaped, not more binding.
+    #
+    # So the rules moved to where they carry provenance - AGENTS.md / CLAUDE.md, user-owned files the
+    # agent trusts - and this channel now reports STATE. An injection that reports state cannot look
+    # like an attack; one that issues mandates always will.
+    $lines.Add('')
+    $lines.Add('The project rules above are also deployed in AGENTS.md / CLAUDE.md at the project root, which is where they are maintained.')
     # FR-025 (banner-3 resolution fix, 2026-07-01 / D-197-I009-012): inject the RESOLVED expertise line straight
     # into the reminder. A POINTER-mode host (claude/codex - whose hook-output cap drops the inline contract) skims
     # the pointer and renders an EMPTY item 3 ("it knows nothing about me") even though ~/.specrew/user-profile.yml
@@ -147,18 +254,19 @@ function Format-BootstrapDirective {
     $bannerItem3 = $null
     try {
         if (Get-Command -Name 'Get-SpecrewProfileOrientationLine' -ErrorAction SilentlyContinue) {
-            $resolvedExpertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile)
+            # Feature 202 T009 (FR-016): the one shared sentence; the host supplies only how to correct it.
+            $resolvedExpertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile) -CorrectionReference (Get-SpecrewProfileCorrectionReference -HostKind $hostKind)
             if (-not [string]::IsNullOrWhiteSpace($resolvedExpertiseLine)) {
-                $bannerItem3 = '  (3) How you will adapt to the HUMAN - render banner item 3 with THIS resolved adaptation, read from the user''s ~/.specrew/user-profile.yml (do NOT substitute the example, and do NOT render the no-profile fallback): ' + ([string]$resolvedExpertiseLine).Trim() + ' (FR-025).'
+                $bannerItem3 = '  (3) How you will adapt to the HUMAN - render banner item 3 with THIS resolved adaptation, read from the user''s ~/.specrew/user-profile.yml (do NOT substitute the example, and do NOT render the no-profile fallback): ' + ([string]$resolvedExpertiseLine).Trim() + '.'  # FR-025
             }
         }
     }
     catch { $bannerItem3 = $null }
     if ([string]::IsNullOrWhiteSpace($bannerItem3)) {
-        $bannerItem3 = '  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025).'
+        $bannerItem3 = '  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can - the expertise dials can be set at init, so hook-only users still get the adaptation.'  # FR-025
     }
     $lines.Add($bannerItem3)
-    $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) the Resume / New / Pick-feature menu as TEXT (offer Resume only when a valid active session exists).')
+    $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) an intake choice only when there are at least two executable actions. Resume exists only for a valid active session. Pick-feature exists only when at least one feature exists. Never offer an action that cannot execute. If two or more real actions exist, render the choices as visible text, end the turn and wait for the human''s typed reply. If only one executable action exists, announce it and proceed without a decorative menu. In particular, a concrete feature request in a project with no existing feature deterministically chooses New: announce that New is starting and continue into the product-domain workshop.')
     # F-174 iter-11 (T009, DF-2): EMBED the resolved version + branch in the directive TEXT so a pointer-mode
     # host (codex - it does NOT inline the contract, so the version/branch never reached its banner; the
     # specrew-self-ok: provenance comment citing the self-host iteration that shaped this behavior
@@ -178,7 +286,7 @@ function Format-BootstrapDirective {
     # the file stays the durable reference re-consulted at later boundaries. Fallback to the read-the-file
     # directive only when the body could not be captured (deployed resolution failure).
     if (-not [string]::IsNullOrWhiteSpace($ContractBody)) {
-        $lines.Add(("Your governed launch contract for THIS session is BELOW - the SAME contract specrew start hands the agent (FR-023): the full lifecycle rules, governance, boundary authorization, the user-profile/expertise adaptation, and the coordinator framing. Follow it EXACTLY; do NOT bypass clarify or governance gates, and do NOT drive from raw Spec Kit scripts. The same contract is saved at {0} (and the current lifecycle state at {1}) for reference as you work each boundary." -f $contractRead, $stateRead))
+        $lines.Add(("Your governed launch contract for THIS session is BELOW - the SAME contract specrew start hands the agent (a hook-started session gets the identical launch contract and session state): the full lifecycle rules, governance, boundary authorization, the user-profile/expertise adaptation, and the coordinator framing. Follow it EXACTLY; do NOT bypass clarify or governance gates, and do NOT drive from raw Spec Kit scripts. The same contract is saved at {0} (and the current lifecycle state at {1}) for reference as you work each boundary." -f $contractRead, $stateRead))
         $lines.Add('')
         $lines.Add('===== BEGIN SPECREW LAUNCH CONTRACT (follow this) =====')
         $lines.Add($ContractBody.TrimEnd())
@@ -191,14 +299,30 @@ function Format-BootstrapDirective {
         # user-profile/expertise adaptation that feeds banner item 3 + the coordinator framing) and the explicit
         # item-3 fallback, since a host that skims the pointer (claude, iter-6 disproof) would otherwise render an
         # empty item 3. Governance itself is script-enforced, so skimming the contract does NOT bypass any gate.
-        $lines.Add(("DRIVE this session from the governed contract (FR-023): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, policy classes, the user-profile/expertise adaptation that feeds banner item 3, and the coordinator framing) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts. (Banner item 3 lives ONLY in that contract here - read it; if it carries no adaptation or you cannot read it, use the /specrew-user-profile fallback named at the top - do NOT invent one.)" -f $contractRead, $stateRead))
+        $lines.Add(("DRIVE this session from the governed contract - a hook-started session gets the identical launch contract and session state: READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, policy classes, the user-profile/expertise adaptation that feeds banner item 3, and the coordinator framing) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts. (Banner item 3 lives ONLY in that contract here - read it; if it carries no adaptation or you cannot read it, use the /specrew-user-profile fallback named at the top - do NOT invent one.)" -f $contractRead, $stateRead))
     }
-    if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
+    # Feature 202 T012 (FR-019; B4F-089): where things stand comes from DISK - the pending decision, the commits since
+    # the previous session's notes, task progress - and so does the starting point (item 6). The notes below are
+    # context only; when they are older than the disk they are flagged and not repeated.
+    $notesStale = $false
+    if ($null -ne $DiskResume) {
+        $lines.Add('')
+        $lines.Add('=== WHERE WE ARE (read from disk: item 2''s position and item 6''s next step) ===')
+        $lines.Add((@($DiskResume.where_line, $DiskResume.commits_line, $DiskResume.progress_line) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) -join ' ')
+        $lines.Add([string]$DiskResume.starting_line)
+        $notesStale = [bool]$DiskResume.notes_stale
+    }
+    if ($notesStale -and $d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
+        $lines.Add((Format-SpecrewResumeNotesFlag -Resume $DiskResume))
+    }
+    elseif ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
             $lines.Add('[!] HOLLOW HANDOVER (rare) - the previous session''s Stop hook captured NO session delta (git unavailable?), so resume context is reduced to the lifecycle artifacts + git state. Re-derive the situation from the artifacts and surface this gap to the human - you are the backstop.')
         }
         else {
-            $lines.Add(("Validated handover captured by the previous session (as of {0}; boundary: {1}). This is your resume context - surface it (render item 2), do not merely cite that it exists. The mechanical sections are hook-captured git/session state; any interpretive sections are agent-authored:" -f $d.handover.recorded_at, $d.handover.active_boundary))
+            # T012: context with its age, not the position (the WHERE WE ARE lines above are the position).
+            $notesAge = if ($null -ne $DiskResume -and -not [string]::IsNullOrWhiteSpace([string]$DiskResume.notes_age)) { ("recorded {0} ago" -f $DiskResume.notes_age) } else { ("as of {0}" -f $d.handover.recorded_at) }
+            $lines.Add(("Context from the previous session, {0} (boundary: {1}), for item 4 - not the position. Mechanical sections are hook-captured git/session state; interpretive ones are agent-authored:" -f $notesAge, $d.handover.active_boundary))
             # F-174 iter-11 (P2): the inlined handover is the dominant SessionStart-payload bloat - the "What I
             # just did" mechanical log repeats the full uncommitted-file list per entry (~6KB in the iter-11
             # worst case), and inlining every section verbatim alone exceeded the host's 10K hook-output cap (the
@@ -264,7 +388,7 @@ function Format-BootstrapDirective {
     # is integrity-critical - a committed boundary read as approved is exactly the DF-4/DF-5 failure.
     if ($null -ne $PendingVerdict -and [bool]$PendingVerdict.HasPendingVerdict) {
         $lines.Add('')
-        $lines.Add('=== AWAITING YOUR VERDICT (committed != authorized - FR-027) ===')
+        $lines.Add('=== AWAITING YOUR VERDICT (committed != authorized - a committed boundary is not an approved one until you say so) ===')  # FR-027
         $lines.Add([string]$PendingVerdict.Message)
         $lines.Add('Treat that boundary as NOT YET approved: do NOT advance the lifecycle on it and do NOT record an authorization yourself. SURFACE this in your orientation banner and ASK the human to confirm; their actual response is the verdict (captured by the next hook fire, or their explicit confirmation), else stay at the prior authorized boundary.')
     }
@@ -332,31 +456,26 @@ function Format-BootstrapDirective {
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
-    $lines.Add('Handover protocol (FR-022): to carry your INTERPRETIVE context across a session switch - your open questions + working hypothesis, which NO hook can author - persist it via `specrew handover author --from <file>` (a markdown body with `## ` section headers; run `specrew handover --help` for the section names), so what you hand off == what the next session inherits. Refresh before you expect to stop. On Claude the Stop hook ALSO captures your rendered boundary packet verbatim, but it is transcript-blind for the interpretive sections - only you can author those. NEVER delete + recreate .specrew/handover/session-handover.md with generic file tools - a crash between the delete and the create loses the handover; the writer (and `specrew handover author`) replaces the file ATOMICALLY and keeps session-handover.md.old as the crash backup (the bootstrap reader falls back to it automatically).')
+    $lines.Add('Handover protocol (you author the handover body; the hook cannot see the conversation): to carry your INTERPRETIVE context across a session switch - your open questions + working hypothesis, which NO hook can author - persist it via `specrew handover author --from <file>` (a markdown body with `## ` section headers; run `specrew handover --help` for the section names), so what you hand off == what the next session inherits. Refresh before you expect to stop. On Claude the Stop hook ALSO captures your rendered boundary packet verbatim, but it is transcript-blind for the interpretive sections - only you can author those. NEVER delete + recreate .specrew/handover/session-handover.md with generic file tools - a crash between the delete and the create loses the handover; the writer (and `specrew handover author`) replaces the file ATOMICALLY and keeps session-handover.md.old as the crash backup (the bootstrap reader falls back to it automatically).')
     $lines.Add('This directive is advisory and non-authorizing: it never advances a lifecycle boundary on its own.')
     return ($lines -join "`n")
 }
 
 try {
-    $eventJson = ''
+    $turnRecordArgument = ''
     $rootOverride = $null
     $hostKind = 'claude'
     $hostBinding = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
-        if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
+        # Feature 202 T002: the dispatcher's standard turn record is the only event input; --event-json is
+        # still passed by the dispatcher for other inject providers and is ignored here.
+        if ($args[$i] -eq '--turn-record' -and ($i + 1) -lt $args.Count) { $turnRecordArgument = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKind = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-binding' -and ($i + 1) -lt $args.Count) { $hostBinding = [string]$args[$i + 1] }
     }
     # Hooks pass manifest folder names; malformed input fails safe to the default.
     if ($hostKind -notmatch '^[A-Za-z0-9_.-]+$') { $hostKind = 'claude' }
-
-    # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
-    $source = $null
-    if (-not [string]::IsNullOrWhiteSpace($eventJson)) {
-        try { $source = ($eventJson | ConvertFrom-Json).source } catch { $source = $null }
-    }
-    if ($source -eq 'compact') { exit 0 }
 
     $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-BootstrapProjectRoot }
 
@@ -385,9 +504,93 @@ try {
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
+    # FEATURE 202 T008 (FR-014, DA-3): THE FIRST-PROMPT LANE. The finished orientation is supplied with the session's
+    # first prompt, so it reaches the human before the first question - never demanded at Stop after one (B4F-096).
+    # Keyed on the prompt event, because Copilot fires its first prompt before SessionStart (T001). Once per session:
+    # every later prompt costs one Test-Path and exits, before any heavier component loads.
+    . (Join-Path $bdir 'HostEventAdapter.ps1')
+    $earlyRecord = ConvertFrom-SpecrewTurnRecordArgument -Encoded $turnRecordArgument
+    if ($null -ne $earlyRecord -and [string]$earlyRecord.event -eq 'UserPromptSubmit') {
+        $sessionP = if ($earlyRecord.PSObject.Properties['safe_session_id']) { [string]$earlyRecord.safe_session_id } else { '' }
+        if ([string]::IsNullOrWhiteSpace($sessionP)) { exit 0 }  # no host session: once-per-session cannot be kept
+        # The stamp is named by session, as the render claims are, so the dispatcher can skip launching this
+        # provider on every later prompt with one Test-Path (measured: the early exit alone cost ~0.3 s a prompt).
+        $suppliedP = Join-Path $root ('.specrew/runtime/hook-bootstrap-orientation-{0}.json' -f ($sessionP -replace '[^a-zA-Z0-9-]', '-'))
+        if (Test-Path -LiteralPath $suppliedP -PathType Leaf) { exit 0 }
+        $internalDirP = Split-Path $bdir -Parent
+        $moduleRootP = Split-Path (Split-Path $internalDirP)
+        $scriptsDirP = Join-Path $moduleRootP 'extensions/specrew-speckit/scripts'
+        . (Join-Path $scriptsDirP 'turn-end-store.ps1')
+        # A session that already showed an orientation (its receipt exists) is not handed a second one.
+        $ownerP = Get-SpecrewTurnEndOwnerHash -HostKind $hostKind -SessionId $sessionP
+        if (-not [string]::IsNullOrWhiteSpace($ownerP) -and (Test-Path -LiteralPath (Join-Path $root (Join-Path (Join-Path '.specrew/runtime/conformance-sessions' $ownerP) 'orientation-rendered.json')) -PathType Leaf)) { exit 0 }
+
+        . (Join-Path $scriptsDirP 'shared-governance.ps1')
+        $versionP = $null
+        try {
+            . (Join-Path $scriptsDirP 'version-label.ps1')
+            $infoP = Get-SpecrewModuleVersionInfo -ModuleRoot $moduleRootP
+            if (-not [string]::IsNullOrWhiteSpace([string]$infoP.Label)) { $versionP = [string]$infoP.Label }
+        }
+        catch { $versionP = $null }
+        $hostDisplayP = $hostKind
+        try {
+            $manifestP = Join-Path $moduleRootP ("hosts/{0}/host.psd1" -f $hostKind)
+            if (Test-Path -LiteralPath $manifestP -PathType Leaf) {
+                $m = Import-PowerShellDataFile -LiteralPath $manifestP
+                if ($m.ContainsKey('DisplayName') -and -not [string]::IsNullOrWhiteSpace([string]$m.DisplayName)) { $hostDisplayP = [string]$m.DisplayName }
+            }
+        }
+        catch { $hostDisplayP = $hostKind }
+        $branchP = $null
+        try { $branchP = ([string](& git -C $root rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $branchP = $null }
+        $featureP = $null; $featureSourceP = $null; $lastAuthP = $null; $pendingToP = $null
+        # Feature 202 T010 (FR-017): the one resolver chooses the feature, as status does, and its source is named.
+        try {
+            $resolutionP = Resolve-SpecrewActiveFeature -ProjectRoot $root
+            $featureP = [string]$resolutionP.feature_ref
+            $featureSourceP = Get-SpecrewActiveFeatureDisclosure -Resolution $resolutionP
+        }
+        catch { $featureP = $null; $featureSourceP = $null }
+        try {
+            $ctxP = Get-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            if ($ctxP.PSObject.Properties['boundary_enforcement'] -and $null -ne $ctxP.boundary_enforcement -and $ctxP.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) { $lastAuthP = [string]$ctxP.boundary_enforcement.last_authorized_boundary }
+        }
+        catch { $null = $_ }
+        try {
+            $pvP = Get-SpecrewPendingVerdictState -ProjectRoot $root
+            if ($null -ne $pvP -and [bool]$pvP.HasPendingVerdict) { $pendingToP = [string]$pvP.PendingToMarkerBoundary }
+        }
+        catch { $pendingToP = $null }
+        $artifactsP = $null
+        if (-not [string]::IsNullOrWhiteSpace($featureP)) {
+            $featureDirP = Join-Path $root (Join-Path 'specs' $featureP)
+            if (Test-Path -LiteralPath $featureDirP -PathType Container) { $artifactsP = ([System.Uri]::new($featureDirP.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar)).AbsoluteUri }
+        }
+        $healthP = $null
+        if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $healthP = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $healthP = $null } }
+        $orientationP = Format-SpecrewFinishedOrientation -SpecrewVersion $versionP -HostDisplay $hostDisplayP -ProjectName (Split-Path -Leaf $root) -Branch $branchP `
+            -FeatureRef $featureP -FeatureSource $featureSourceP -LastAuthorized $lastAuthP -PendingTo $pendingToP -ArtifactsUrl $artifactsP -DialsLine (Get-SpecrewOrientationAdaptationLine -HostKind $hostKind -ProjectRoot $root) -HealthLine $healthP
+        $null = Write-SpecrewTurnEndJsonFile -Path $suppliedP -Value ([pscustomobject][ordered]@{ supplied_at = [DateTimeOffset]::UtcNow.ToString('o'); host = $hostKind })
+        if (Get-SpecrewHookOutputDirectDisplay -HostBinding $hostBinding) {
+            # This host shows hook output to the human itself: the orientation is already on their screen.
+            Write-Output ("[specrew-system] This session's orientation, filled in by Specrew. It is shown to the human directly, so the assistant does not repeat it.`n`n{0}" -f $orientationP)
+        }
+        else {
+            Write-Output ("[specrew-system] This session's orientation, filled in by Specrew. Show it to the human as written, at the start of this reply and before any question, then continue with their request. Do not compose another one.`n`n{0}" -f $orientationP)
+        }
+        exit 0
+    }
+
     foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'HandoverStore', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'HookJournalAccessor', 'SessionBootstrapManager', 'LauncherIntegration') {
         . (Join-Path $bdir "$f.ps1")
     }
+
+    # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011). The source comes from the dispatcher's
+    # standard turn record (Feature 202 T002), decoded by the adapter loaded just above.
+    $turnRecord = ConvertFrom-SpecrewTurnRecordArgument -Encoded $turnRecordArgument
+    $source = if ($null -ne $turnRecord -and $turnRecord.PSObject.Properties['source']) { [string]$turnRecord.source } else { $null }
+    if ($source -eq 'compact') { exit 0 }
 
     # FR-023: the hook hands the agent the SAME launch contract `specrew start` does, via the SAME
     # generator (Get-StartPrompt) - no second hand-rolled directive (no drift). Resolve the generator +
@@ -416,7 +619,7 @@ try {
     if (Test-SpecrewLauncherBootstrapRecent -ProjectRoot $root -NowUtc $nowUtc) { exit 0 }
 
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
-    $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
+    $result = Invoke-SpecrewSessionBootstrap -TurnRecord $turnRecord -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
 
     # F-174 iter-10 double-render dedupe: capture the manager's canonical key (== safe_session_id, the SAME id
     # the journal records) NOW. The ATOMIC render CLAIM is taken LATER - right before Write-Output (see there) -
@@ -435,8 +638,21 @@ try {
     # Resolve the Specrew version from the module manifest ($moduleRoot came from the same 3-tier chain) so the
     # mandatory orientation banner renders the REAL version, not "Specrew: unknown" (the surgery defaults to
     # "unknown" with no version). Fail-soft: an unreadable manifest leaves it null (banner falls back to unknown).
+    # Compose ModuleVersion WITH PrivateData.PSData.Prerelease. Reading
+    # ModuleVersion alone rendered "0.40.0" on a beta build, so a consumer could not tell which
+    # channel they were on (ledger obs-2). Reference implementation:
+    # scripts/specrew-start.ps1 :: Get-ManifestSpecrewVersionText. Fail-soft as before: an
+    # unreadable manifest leaves this null and the banner falls back to unknown.
+    # PRED-BETA4-054: the ONE version resolver (extensions/specrew-speckit/scripts/version-label.ps1), shared
+    # with the turn-end renderer, the marker writers and init's governance scaffold.
     $specrewVersion = $null
-    try { $specrewVersion = [string]((Import-PowerShellDataFile -Path (Join-Path $moduleRoot 'Specrew.psd1')).ModuleVersion) } catch { $specrewVersion = $null }
+    try {
+        $labelScript = Join-Path $moduleRoot 'extensions/specrew-speckit/scripts/version-label.ps1'
+        if (-not (Get-Command Get-SpecrewModuleVersionInfo -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $labelScript -PathType Leaf)) { . $labelScript }
+        $info = Get-SpecrewModuleVersionInfo -ModuleRoot $moduleRoot
+        $specrewVersion = if ([string]::IsNullOrWhiteSpace([string]$info.Label)) { $null } else { [string]$info.Label }
+    }
+    catch { $specrewVersion = $null }
     # F-174 iter-11 (T009, DF-2): resolve the branch HERE (in the fallible-work region, BEFORE the atomic render
     # claim below) so the directive can embed the literal version + branch for pointer-mode hosts. Must NOT run
     # after the claim (the claim->emit window must stay pure string building - a git call could fail/hang).
@@ -474,6 +690,19 @@ try {
     $pendingVerdict = $null
     try { $pendingVerdict = Get-SpecrewPendingVerdictState -ProjectRoot $root } catch { $pendingVerdict = $null }
 
+    # Feature 202 T012 (FR-019): where things stand, read from disk, and the standing of the previous session's notes.
+    # Only once a feature is in progress; fail-open - no section rather than a guess.
+    $diskResume = $null
+    try {
+        $resumeFeature = $null
+        try { $resumeFeature = [string](Resolve-SpecrewActiveFeature -ProjectRoot $root).feature_ref } catch { $resumeFeature = $null }
+        if (-not [string]::IsNullOrWhiteSpace($resumeFeature)) {
+            $resumeNotes = Get-SpecrewRollingHandover -HandoverDir (Join-Path $root '.specrew/handover') -NowUtc $nowUtc
+            $diskResume = Get-SpecrewResumeFromDisk -ProjectRoot $root -FeatureRef $resumeFeature -Handover $resumeNotes -NowUtc $nowUtc
+        }
+    }
+    catch { $diskResume = $null }
+
     # F-174 iter-10 ATOMIC double-render dedupe (the CLAIM). codex fires SessionStart twice per launch
     # near-SIMULTANEOUSLY (worktree dogfood 2026-06-13: two fires ~microseconds apart, same session id +
     # source), so a recency/record-after-render scheme cannot dedupe them - both check before either records
@@ -494,10 +723,13 @@ try {
     }
     $coordinatorFragment = $null
     try { $coordinatorFragment = Get-SpecrewCoordinatorFragment } catch { $coordinatorFragment = $null }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment)
+    $replyHealthLine = $null
+    if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) { try { $replyHealthLine = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $root } catch { $replyHealthLine = $null } }
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment -ReplyHealthLine $replyHealthLine -DiskResume $diskResume)
     exit 0
 }
 catch {
     [Console]::Error.WriteLine("[specrew-bootstrap] WARN PROVIDER_FAILED $($_.Exception.Message)")
     exit 0
 }
+# specrew-self-provenance-ok: D-197-I009-012,F-171,F-174,F-184; implementation history is recorded for maintainers and is never emitted as consumer instruction

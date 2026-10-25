@@ -1,6 +1,9 @@
 ---
-name: specrew-user-profile
-description: Manage your Specrew Crew Interaction Profile — how much Specrew asks, explains, recommends, and auto-decides during specification intake.
+name: "specrew-user-profile"
+description: "Manage your Specrew Crew Interaction Profile — how much Specrew asks, explains, recommends, and auto-decides during specification intake. Run /specrew-user-profile (show | edit | reset). Triggers: user profile, expertise dials, how much you ask, adapt to me, crew interaction profile."
+domain: "lifecycle-governance"
+confidence: "high"
+source: "Specrew beta4 fix 4 - the skill was advertised by init, the session banner and the launch contract, and shipped to no project (B4F-039 walk finding; 0 of 37 skills in three consumer projects). Its backing script always shipped; only this entry point did not."
 ---
 
 # specrew-user-profile
@@ -96,31 +99,23 @@ reconfigure on next `specrew start`.
 
 Backed by: `scripts/internal/user-profile.ps1` helper functions.
 
-**Shell invocation:**
+**Shell invocation** - the helper ships inside the installed Specrew module, so it is resolved from the
+module rather than from any fixed path:
 
 ```powershell
+$userProfileHelper = Join-Path (Get-Module Specrew -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).ModuleBase 'scripts\internal\user-profile.ps1'
+if (-not (Test-Path $userProfileHelper)) { throw "The Specrew module's user-profile helper was not found at '$userProfileHelper'. Is Specrew installed?" }
+. $userProfileHelper
+
 # Show profile
-. C:\Dev\Specrew\scripts\internal\user-profile.ps1
 $profile = Get-UserProfile
 Show-UserProfileSummary -Profile $profile
 
 # Edit profile
-. C:\Dev\Specrew\scripts\internal\user-profile.ps1
 Edit-UserProfile
 
 # Reset profile
-. C:\Dev\Specrew\scripts\internal\user-profile.ps1
 Reset-UserProfile
-```
-
-For portable execution from any Specrew-managed project:
-
-```powershell
-$userProfileHelper = Join-Path (Get-Module Specrew -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).ModuleBase 'scripts\internal\user-profile.ps1'
-if (Test-Path $userProfileHelper) {
-    . $userProfileHelper
-    # Then call Show-UserProfileSummary, Edit-UserProfile, or Reset-UserProfile
-}
 ```
 
 ## Decision-Area Setting Meanings

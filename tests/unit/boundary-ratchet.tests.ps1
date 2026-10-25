@@ -86,6 +86,17 @@ Write-Host "Test 3: re-sync of the SAME unauthorized boundary passes (idempotent
 $gate = Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'tasks'
 if ($gate -ne $true) { Write-Fail "same-boundary re-sync must pass" } else { Write-Pass "same-boundary re-sync passes" }
 
+Write-Host "Test 3b: recognized v1 pre-bootstrap state reaches first-arrival recordability path"
+$legacy = Join-Path ([System.IO.Path]::GetTempPath()) ('ratchet-legacy-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path (Join-Path $legacy '.specrew') -Force | Out-Null
+[System.IO.File]::WriteAllText(
+    (Join-Path $legacy '.specrew\start-context.json'),
+    ([ordered]@{ schema = 'v1'; session_state = [ordered]@{ active = $true; boundary_type = 'specify' } } | ConvertTo-Json -Depth 8),
+    [System.Text.UTF8Encoding]::new($false))
+$gate = Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $legacy -RequestedBoundary 'specify'
+if ($gate -ne $true) { Write-Fail 'recognized v1 pre-bootstrap state must reach the first-arrival recordability path' } else { Write-Pass 'recognized v1 pre-bootstrap state is distinct from a malformed authorization ledger' }
+Remove-Item -Recurse -Force $legacy
+
 Write-Host "Test 4: a SECOND advance refuses loudly, consumer-legible (paired: abuse fails)"
 $threw = $false
 try { Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'before-implement' | Out-Null }
@@ -125,7 +136,7 @@ else { Write-Pass "deep new-cycle crossing asks the earliest cycle boundary firs
 
 Write-Host "Test 7: cycle-reset authorization does not throw backward + records kind"
 $fx = New-RatchetFixture -WorkingBoundary 'plan' -LastAuthorized 'iteration-closeout' -History @(New-HistoryEntry -From 'retro' -To 'iteration-closeout')
-Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -AuthCommitHash 'dddddddd' -EvidenceSource 'human-confirmed-at-resume' -Kind 'retroactive' | Out-Null
+Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -AuthCommitHash 'dddddddd' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture directly exercises the cycle-reset writer outside hook capture' -Kind 'retroactive' | Out-Null
 $state = Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json
 $newest = @($state.boundary_enforcement.verdict_history)[-1]
 if ($newest.to_boundary -ne 'plan' -or $newest.kind -ne 'retroactive') { Write-Fail "cycle-reset authorization must record to=plan kind=retroactive, got: $($newest | ConvertTo-Json -Compress)" }
@@ -133,7 +144,7 @@ else { Write-Pass "iteration-closeout -> plan authorization recorded with kind=r
 
 Write-Host "Test 8: re-fired authorization for the cursor boundary is a no-op (no duplicate entry)"
 $countBefore = @((Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json).boundary_enforcement.verdict_history).Count
-Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -EvidenceSource 'human-confirmed-at-resume' -Kind 'retroactive' | Out-Null
+Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture replays the same direct cycle-reset authorization' -Kind 'retroactive' | Out-Null
 $countAfter = @((Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json).boundary_enforcement.verdict_history).Count
 if ($countAfter -ne $countBefore) { Write-Fail "re-fired authorization appended a duplicate ($countBefore -> $countAfter)" } else { Write-Pass "re-fired authorization is a no-op" }
 Remove-Item -Recurse -Force $fx
@@ -281,6 +292,29 @@ $fx = New-RatchetFixture -WorkingBoundary 'iteration-closeout' -LastAuthorized '
 $un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
 if ($null -eq $un -or $un.Boundary -ne 'iteration-closeout') { Write-Fail "an unauthorized closeout must stay unreconciled across the lag shape, got: $($un | ConvertTo-Json -Compress)" }
 else { Write-Pass "unauthorized closeout stays unreconciled: the prior cycle's closeout cannot leak through the exit edge" }
+Remove-Item -Recurse -Force $fx
+
+Write-Host "Test 17: a hand-edited self-authorization is malformed state, not human authority"
+# Exact dogfood shape: prompt-submit capture failed, then the agent edited start-context.json itself,
+# writing specify -> specify and a boolean `authorizing_human`. Before this guard the shape reader
+# accepted it, the cursor advanced, and later packets claimed the human had authorized the crossing.
+$forged = [ordered]@{
+    from_boundary = 'specify'; to_boundary = 'specify'
+    verdict_text = 'approved for specify'; authorizing_human = $true
+    recorded_at = '2026-08-13T13:05:00Z'; auth_commit_hash = 'b506a09'
+}
+$fx = New-RatchetFixture -WorkingBoundary 'clarify' -LastAuthorized 'specify' -History @($forged)
+$forgedState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $fx
+$forgedIssues = @($forgedState.Issues)
+if (@($forgedIssues | Where-Object { $_ -match 'self-edge' }).Count -eq 0) { Write-Fail "a self-edge authorization was accepted: $($forgedIssues -join '; ')" }
+else { Write-Pass "self-edge authorization is rejected" }
+if (@($forgedIssues | Where-Object { $_ -match 'authorizing_human.*non-empty string' }).Count -eq 0) { Write-Fail "a boolean authorizing_human was accepted: $($forgedIssues -join '; ')" }
+else { Write-Pass "non-string authorizing_human is rejected" }
+$forgedGateThrew = $false
+try { Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'plan' | Out-Null }
+catch { $forgedGateThrew = ($_.Exception.Message -match 'malformed') }
+if (-not $forgedGateThrew) { Write-Fail 'ratchet did not fail closed on the forged authorization state' }
+else { Write-Pass 'ratchet fails closed before consuming a hand-edited authorization' }
 Remove-Item -Recurse -Force $fx
 
 Write-Host ""

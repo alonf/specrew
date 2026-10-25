@@ -116,11 +116,26 @@ try {
         "Boundary commit hash: $boundaryCommit",
         "Artifact state: git-tree $boundaryTree",
         'Human approval phrase: approved for tasks',
-        '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->',
         'Numeric labels are non-authoritative'
     )) {
         Assert-True ($renderOne.Contains($required)) "pending packet carries exact scoped semantic: $required"
     }
+
+    # THE MARKER IS ASSERTED AS A CONTRACT, NOT AS ONE RENDERING.
+    #
+    # It was pinned as the exact literal '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->' and went red
+    # when FR-024 (T014) began appending the crossing identity - see sync-boundary-state.ps1:658, 'the
+    # marker carries the crossing identity when the pending state has one'. Re-pinning the literal with
+    # the suffix would repeat the original mistake, so this asserts the SHAPE the capture reader actually
+    # requires: two boundary tokens separated by ->, with an OPTIONAL @ crossing-<hex>.
+    #
+    # CONTRACT SOURCE: scripts/internal/bootstrap/ConversationCaptureAccessor.ps1:667 and :800, where the
+    # reader's regex is written out TWICE, independently and byte-identically. This comment exists so
+    # that whoever edits either site can grep to the test mirroring them. It does not enforce agreement,
+    # and the accessor is deliberately NOT dot-sourced to borrow the pattern - that is more coupling than
+    # is wise. The durable fix is one named pattern constant consumed by both reader sites and this test.
+    $markerContract = 'SPECREW-VERDICT-BOUNDARY:\s*plan\s*->\s*tasks(?:\s*@\s*crossing-[0-9a-f]{8,})?\s*-->'
+    Assert-True ($renderOne -match $markerContract) 'pending packet carries the paired verdict marker, crossing identity optional'
 
     $duplicate = Add-SpecrewBoundaryAuthorizationCorrection @correctionArgs
     Assert-True (-not [bool]$duplicate.Appended -and @((Get-SpecrewBoundaryEnforcementState -ProjectRoot $scratch).State['correction_history']).Count -eq 1) 'same correction is idempotent and does not append twice'
@@ -149,7 +164,7 @@ try {
     $unrelatedEffective = Get-SpecrewEffectiveBoundaryEnforcementState -BoundaryEnforcement $unrelatedRaw
     Assert-True (@($unrelatedEffective['verdict_history']).Count -eq 1 -and $unrelatedEffective['last_authorized_boundary'] -eq 'tasks') 'scoped correction does not globally invalidate a valid historical verdict'
 
-    Add-SpecrewBoundaryAuthorization -ProjectRoot $scratch -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'human@example.test' -VerdictText 'approved for tasks' -AuthCommitHash $boundaryCommit -RecordedAt '2026-07-02T10:10:00Z' -EvidenceSource 'human-confirmed-at-resume' | Out-Null
+    Add-SpecrewBoundaryAuthorization -ProjectRoot $scratch -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'human@example.test' -VerdictText 'approved for tasks' -AuthCommitHash $boundaryCommit -RecordedAt '2026-07-02T10:10:00Z' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture directly exercises reauthorization after a scoped correction' | Out-Null
     $reauthorized = Get-SpecrewBoundaryEnforcementState -ProjectRoot $scratch
     Assert-True (@($reauthorized.State['verdict_history']).Count -eq 2 -and @($reauthorized.State['correction_history']).Count -eq 1) 'fresh explicit re-authorization appends without rewriting verdict or correction history'
     $newEntry = ConvertTo-SpecrewBoundaryMap -Value @($reauthorized.State['verdict_history'])[-1]
@@ -159,6 +174,27 @@ try {
     Assert-True (-not [bool]$cleanPending.HasPendingVerdict -and $cleanPending.IntegrityStatus -eq 'scoped-clean') 'cleared scoped state never falls back to stale session_state'
     $authorizedGate = Test-SpecrewBoundaryAuthorization -ProjectRoot $scratch -CurrentBoundary 'plan' -RequestedBoundary 'tasks'
     Assert-True ([bool]$authorizedGate.Authorized) 'fresh current-cycle authorization satisfies the live gate after correction'
+
+    # Co-review round 5 (202, FR-026): a new crossing hashes its feature (identity version 2). A correction of such a
+    # crossing must name it the same way, or it would never apply to the crossing it was written for.
+    $v2Scope = New-SpecrewBoundaryCrossingIdentity -FromBoundary 'plan' -ToBoundary 'tasks' -WorkingBoundary 'tasks' -BoundaryCommitHash $boundaryCommit -ArtifactStateId $boundaryTree -RecordedAt '2026-07-04T10:00:00Z' -FeatureRef '198-test' -IdentityVersion '2'
+    Assert-True ([string]$v2Scope['crossing_id'] -ne [string]$scope['crossing_id']) 'a version-2 crossing has its own identity'
+    $context['boundary_enforcement'] = [ordered]@{
+        enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = $null
+        pending_crossing = $v2Scope; policy_classes = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $scratch
+        verdict_history = @($original); correction_history = @(); bypass_history = @()
+    }
+    [System.IO.File]::WriteAllText((Join-Path $scratch '.specrew\start-context.json'), (($context | ConvertTo-Json -Depth 24) + "`n"), [System.Text.UTF8Encoding]::new($false))
+    $v2Args = $correctionArgs.Clone(); $v2Args['RecordedAt'] = '2026-07-04T10:05:00Z'
+    $v2Write = Add-SpecrewBoundaryAuthorizationCorrection @v2Args
+    Assert-True ([bool]$v2Write.Appended) 'a correction of a version-2 crossing appends'
+    $v2After = Get-SpecrewBoundaryEnforcementState -ProjectRoot $scratch
+    Assert-True ($v2After.Issues.Count -eq 0) ("the corrected version-2 state is shape-valid: {0}" -f (@($v2After.Issues) -join '; '))
+    $v2Record = ConvertTo-SpecrewBoundaryMap -Value @($v2After.State['correction_history'])[0]
+    Assert-True ([string]$v2Record['scope_crossing_id'] -eq [string]$v2Scope['crossing_id']) 'the correction names the version-2 crossing it corrects'
+    Assert-True (@($v2After.EffectiveState['verdict_history']).Count -eq 0 -and [string]$v2After.EffectiveState['last_authorized_boundary'] -eq 'plan') 'and applies to it: the corrected authorization is excluded'
+    $v2Pending = Get-SpecrewPendingVerdictState -ProjectRoot $scratch
+    Assert-True ([bool]$v2Pending.HasPendingVerdict -and $v2Pending.IntegrityStatus -eq 'scoped-verified' -and $v2Pending.CrossingId -eq [string]$v2Scope['crossing_id']) ("the version-2 crossing is pending and verifies ({0}, {1})" -f $v2Pending.IntegrityStatus, $v2Pending.CrossingId)
 
     Write-Host ''
     Write-Host 'All boundary correction-ledger tests passed.' -ForegroundColor Green

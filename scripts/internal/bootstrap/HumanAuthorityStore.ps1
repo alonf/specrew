@@ -1,0 +1,2526 @@
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+# W73: the conditional-clause rule lives in the capture accessor, which loads ahead of this module in
+# every production path. Tests and tools that load this module alone still get it, because a recognizer
+# missing its deferral guard would mint conditional approvals - the failure this fix exists to end.
+if (-not (Get-Command Test-SpecrewConditionalDeferralClause -ErrorAction SilentlyContinue)) {
+    $specrewCaptureAccessor = Join-Path $PSScriptRoot 'ConversationCaptureAccessor.ps1'
+    if (Test-Path -LiteralPath $specrewCaptureAccessor -PathType Leaf) { . $specrewCaptureAccessor }
+}
+function Get-SpecrewReviewSignoffOverrideRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/signoff-gate'
+}
+
+function Get-SpecrewHumanAuthorityHash {
+    param([AllowEmptyString()][string]$Text)
+    return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes([string]$Text)))).ToLowerInvariant()
+}
+
+function ConvertTo-SpecrewHumanAuthoritySourceEvent {
+    param([AllowNull()][string]$SourceEvent)
+    $key = ([string]$SourceEvent).Trim().ToLowerInvariant() -replace '[-_]', ''
+    switch ($key) {
+        'userpromptsubmit' { return 'UserPromptSubmit' }
+        'userpromptsubmitted' { return 'UserPromptSubmit' }
+        'preinvocation' { return 'PreInvocation' }
+        default { return $null }
+    }
+}
+
+function Write-SpecrewReviewSignoffOverrideRequest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$TargetTreeId,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [AllowNull()][string]$RunId,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    if ($TargetTreeId -cnotmatch '^[a-f0-9]{40,64}$') { throw 'review-signoff-override-request-tree-invalid' }
+    if ($CampaignId -cnotmatch '^cmp-[a-z0-9][a-z0-9-]{1,190}$') { throw 'review-signoff-override-request-campaign-invalid' }
+    $requestId = 'override-' + (Get-SpecrewHumanAuthorityHash -Text ($TargetTreeId + '|' + $CampaignId)).Substring(0, 24)
+    $request = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        request_id = $requestId
+        target_tree_id = $TargetTreeId
+        campaign_id = $CampaignId
+        run_id = [string]$RunId
+        required_phrase = 'approved for partial review signoff - <why accepting partial coverage is safe>'
+        created_at = $NowUtc
+    }
+    $root = Get-SpecrewReviewSignoffOverrideRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root 'pending-override.json'
+    $json = $request | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    return $request
+}
+
+function Read-SpecrewReviewSignoffOverrideRequest {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Join-Path (Get-SpecrewReviewSignoffOverrideRoot -ProjectRoot $ProjectRoot) 'pending-override.json'
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $item = Get-Item -LiteralPath $path -ErrorAction Stop
+    if ($item.Length -le 0 -or $item.Length -gt 65536) { throw 'review-signoff-override-request-size-invalid' }
+    try { $request = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { throw 'review-signoff-override-request-json-invalid' }
+    foreach ($name in @('schema_version', 'request_id', 'target_tree_id', 'campaign_id', 'required_phrase', 'created_at')) {
+        $property = $request.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { throw "review-signoff-override-request-field-missing:$name" }
+    }
+    if ([string]$request.schema_version -cne '1.0') { throw 'review-signoff-override-request-schema-invalid' }
+    if ([string]$request.target_tree_id -cnotmatch '^[a-f0-9]{40,64}$' -or
+        [string]$request.campaign_id -cnotmatch '^cmp-[a-z0-9][a-z0-9-]{1,190}$') {
+        throw 'review-signoff-override-request-identity-invalid'
+    }
+    $expectedRequestId = 'override-' + (Get-SpecrewHumanAuthorityHash -Text ([string]$request.target_tree_id + '|' + [string]$request.campaign_id)).Substring(0, 24)
+    if ([string]$request.request_id -cne $expectedRequestId -or
+        [string]$request.required_phrase -cne 'approved for partial review signoff - <why accepting partial coverage is safe>') {
+        throw 'review-signoff-override-request-binding-invalid'
+    }
+    $createdAt = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse([string]$request.created_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$createdAt)) {
+        throw 'review-signoff-override-request-time-invalid'
+    }
+    return $request
+}
+
+function Write-SpecrewReviewSignoffOverrideAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: partial-review-signoff
+    <# Capture only from a genuine prompt-entry event and only while a tree-bound request exists. #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    if ($null -eq $event) { return $null }
+    $trimmed = $Response.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b)') { return $null }
+    $match = [regex]::Match($trimmed, '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*(?<rationale>.+?)\s*$')
+    if (-not $match.Success) { return $null }
+    # ONCE THE PHRASE HAS MATCHED, A REJECTION MUST SPEAK. (DRIFT-199-I002-034.)
+    #
+    # This is where a maintainer's valid approval was discarded in silence: the rationale group is read
+    # with `(?is)` and no `m`, so it is EVERYTHING from the dash to the end of the message rather than the
+    # sentence attached to the phrase. An approval followed by two further instruction paragraphs measured
+    # 2193 characters, exceeded the cap, and `return $null` said nothing. The gate then refused with
+    # `latest-result-not-current` - true, and about something else entirely - so the human retyped a phrase
+    # that had never been wrong, twice.
+    #
+    # A phrase that did NOT match stays silent: that is ordinary conversation and announcing it would make
+    # every message a diagnostic. A phrase that DID match and was then rejected is a human trying to
+    # authorize something, and their attempt must never vanish. The message says what to do, not only what
+    # happened - the standard that found this defect applies to its replacement.
+    #
+    # Bounding the rationale to its own paragraph is the better fix and is a change to what COUNTS as a
+    # rationale, i.e. a contract change; it is beta4's, by the same rule that declined to widen the
+    # binding-name pattern mid-batch (DRIFT-199-I002-029).
+    $rationale = $match.Groups['rationale'].Value.Trim()
+    if ($rationale.Length -lt 10 -or $rationale.Length -gt 2000) {
+        $why = if ($rationale.Length -gt 2000) {
+            ("the reason attached to it is too long ({0} characters; the limit is 2000). Note that everything after the dash counts, including anything you wrote further down the same message" -f $rationale.Length)
+        }
+        else {
+            ("the reason attached to it is too short ({0} characters; at least 10 are needed)" -f $rationale.Length)
+        }
+        $line = ("[specrew-authority] YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but {0}. Nothing is wrong with your decision and nothing else has changed. Send the approval again as the WHOLE message, with a short reason and nothing after it: 'approved for partial review signoff - <why accepting it is safe>'." -f $why)
+        [Console]::Error.WriteLine($line)
+        try {
+            $dropJournal = Join-Path $ProjectRoot '.specrew/runtime/authority-capture-drops.jsonl'
+            $dropDir = Split-Path -Parent $dropJournal
+            if ($dropDir -and -not (Test-Path -LiteralPath $dropDir)) { New-Item -ItemType Directory -Path $dropDir -Force | Out-Null }
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-matched-but-rejected'; phrase = 'review-signoff-partial-override'; reason = $(if ($rationale.Length -gt 2000) { 'rationale-too-long' } else { 'rationale-too-short' }); rationale_length = $rationale.Length; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
+        }
+        catch { $null = $_ }
+        return $null
+    }
+    $request = Read-SpecrewReviewSignoffOverrideRequest -ProjectRoot $ProjectRoot
+    if ($null -eq $request) {
+        # The phrase matched and there is nothing outstanding to authorize. Silence here would read to the
+        # human exactly like the over-length drop did: an approval that vanished.
+        [Console]::Error.WriteLine("[specrew-authority] YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but no partial-coverage approval is currently outstanding for this project, so there was nothing for it to authorize. Nothing is wrong with your decision. Run the review command once to see whether it still refuses - if it does, it will name the approval it wants, and sending the phrase again straight afterwards will be recorded against it.")
+        return $null
+    }
+
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        fact_type = 'review-signoff-partial-override'
+        request_id = [string]$request.request_id
+        target_tree_id = [string]$request.target_tree_id
+        campaign_id = [string]$request.campaign_id
+        run_id = [string]$request.run_id
+        authority_kind = 'human'
+        authorized_by = 'unattributed-human'
+        verdict_text = $trimmed
+        rationale = $rationale
+        response_hash = Get-SpecrewHumanAuthorityHash -Text $trimmed
+        evidence_source = 'hook-captured-user-prompt'
+        source_event = $event
+        host_kind = [string]$HostKind
+        observed_at = $NowUtc
+    }
+    $root = Get-SpecrewReviewSignoffOverrideRoot -ProjectRoot $ProjectRoot
+    $factsRoot = Join-Path $root 'override-authorizations'
+    [IO.Directory]::CreateDirectory($factsRoot) | Out-Null
+    $path = Join-Path $factsRoot (([string]$request.request_id) + '.json')
+    $json = $fact | ConvertTo-Json -Depth 8
+    if ([IO.File]::Exists($path)) {
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+        catch { throw 'review-signoff-override-authorization-json-invalid' }
+        $sameAuthority =
+            [string]$existing.schema_version -ceq [string]$fact.schema_version -and
+            [string]$existing.fact_type -ceq [string]$fact.fact_type -and
+            [string]$existing.request_id -ceq [string]$fact.request_id -and
+            [string]$existing.target_tree_id -ceq [string]$fact.target_tree_id -and
+            [string]$existing.campaign_id -ceq [string]$fact.campaign_id -and
+            [string]$existing.authority_kind -ceq 'human' -and
+            [string]$existing.verdict_text -ceq [string]$fact.verdict_text -and
+            [string]$existing.rationale -ceq [string]$fact.rationale -and
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            [string]$existing.evidence_source -ceq [string]$fact.evidence_source -and
+            [string]$existing.source_event -ceq [string]$fact.source_event
+        if (-not $sameAuthority) {
+            throw 'review-signoff-override-authorization-conflict'
+        }
+        return $existing
+    }
+    else {
+        $stream = [IO.File]::Open($path, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        try {
+            $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+            $stream.Write($bytes, 0, $bytes.Length)
+            $stream.Flush($true)
+        }
+        finally { $stream.Dispose() }
+    }
+    # W50: a partial the human explicitly accepts IS a delivered review, and delivery is the only
+    # point that consumes the round entitlement. The acceptance is this override; consume here.
+    if (Get-Command Complete-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) {
+        # Round-16 (DRIFT-199-I001-126): the same postcondition as the CLI's delivered branch - a
+        # consumption that did not land is surfaced, never swallowed, or one approval can deliver
+        # twice. The override itself still stands; what is reported is the unmarked approval.
+        $partialConsumption = $null
+        try { $partialConsumption = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot -AuthorizationRef ('partial-accepted:' + [string]$request.request_id) }
+        catch { $partialConsumption = [pscustomobject]@{ consumed = $false; reason = ('threw:' + $_.Exception.Message) } }
+        if ($null -eq $partialConsumption -or -not [bool]$partialConsumption.consumed) {
+            $partialReason = if ($null -ne $partialConsumption) { [string]$partialConsumption.reason } else { 'no-result' }
+            [Console]::Error.WriteLine('[specrew-authority] WARN ROUND_APPROVAL_NOT_CONSUMED partial-accepted:' + $partialReason)
+        }
+    }
+    return $fact
+}
+
+function Get-SpecrewReviewSignoffOverrideAuthorization {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$ExpectedTargetTreeId,
+        [Parameter(Mandatory)][string]$ExpectedCampaignId
+    )
+    $request = Read-SpecrewReviewSignoffOverrideRequest -ProjectRoot $ProjectRoot
+    if ($null -eq $request -or [string]$request.target_tree_id -cne $ExpectedTargetTreeId -or [string]$request.campaign_id -cne $ExpectedCampaignId) { return $null }
+    $path = Join-Path (Join-Path (Get-SpecrewReviewSignoffOverrideRoot -ProjectRoot $ProjectRoot) 'override-authorizations') (([string]$request.request_id) + '.json')
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $item = Get-Item -LiteralPath $path -ErrorAction Stop
+    if ($item.Length -le 0 -or $item.Length -gt 65536) { throw 'review-signoff-override-authorization-size-invalid' }
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { throw 'review-signoff-override-authorization-json-invalid' }
+    foreach ($name in @('schema_version', 'fact_type', 'request_id', 'target_tree_id', 'campaign_id', 'authority_kind', 'authorized_by', 'verdict_text', 'rationale', 'response_hash', 'evidence_source', 'source_event', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { throw "review-signoff-override-authorization-field-missing:$name" }
+    }
+    if ([string]$fact.schema_version -cne '1.0' -or [string]$fact.fact_type -cne 'review-signoff-partial-override' -or
+        [string]$fact.request_id -cne [string]$request.request_id -or [string]$fact.target_tree_id -cne $ExpectedTargetTreeId -or
+        [string]$fact.campaign_id -cne $ExpectedCampaignId -or [string]$fact.authority_kind -cne 'human' -or
+        [string]$fact.evidence_source -cne 'hook-captured-user-prompt' -or
+        [string]$fact.source_event -cnotin @('UserPromptSubmit', 'PreInvocation')) { return $null }
+    $storedRationale = [string]$fact.rationale
+    $storedVerdict = [string]$fact.verdict_text
+    $storedMatch = [regex]::Match($storedVerdict, '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*(?<rationale>.+?)\s*$')
+    if (-not $storedMatch.Success -or $storedMatch.Groups['rationale'].Value.Trim() -cne $storedRationale -or
+        [string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text $storedVerdict) -or
+        $storedRationale.Length -lt 10 -or $storedRationale.Length -gt 2000) {
+        throw 'review-signoff-override-authorization-content-invalid'
+    }
+    $observedAt = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse([string]$fact.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$observedAt)) {
+        throw 'review-signoff-override-authorization-time-invalid'
+    }
+    return $fact
+}
+
+# ===================================================================================================
+# W44 (2026-08-22, maintainer ruling): ROUND APPROVAL IS A TYPED PHRASE, LIKE EVERY OTHER AUTHORITY.
+#
+# The human's role in this system is authorization, not operation. Boundary verdicts, partial signoff
+# and workshop repair are all typed phrases captured from the conversation, with the agent operating
+# the machinery afterwards. Round approval alone demanded the human execute a CLI command - the W36
+# split, now ruled wrong: telling a human in a conversation to go run `specrew review --live
+# --approve-round` is inconsistent with the system's own model, and it failed as UX the first day
+# (the bash-PATH seam).
+#
+# So: the human types `approved for review round`; the hook captures it here, from the human's own
+# prompt entry, exactly as the partial-signoff override above is captured; and the agent then runs the
+# command carrying that captured phrase as its authority. An agent invoking --approve-round with no
+# captured phrase is refused. A human invoking it from their own terminal - outside any agent session -
+# is still self-evidently authorized: the invocation IS the approving act, performed by the human.
+# ===================================================================================================
+
+function Get-SpecrewAuthorityApprovalLine {
+    # W56 / round-15 finding (DRIFT-199-I001-125): THE APPROVAL LIVES ON ITS OWN LINE.
+    #
+    # Every authority recognizer used to collapse all whitespace BEFORE deciding, so a paragraph
+    # break became an ordinary space and a real approval followed by an instruction block read as
+    # arbitrary prose after the phrase - refused, forcing the human to type a second bare message.
+    # Measured live: the maintainer's approval, refused, with the round it authorized never run.
+    #
+    # This returns the approval's own line, whitespace-normalized: everything before the first line
+    # break. Within it, the closed tail, the deferral scan and the interrogative test apply exactly
+    # as before - a same-line condition ("..., once the tests pass") still defers, which is round
+    # 14's guarantee. What follows a line break is an instruction BLOCK and is not scanned, the same
+    # doctrine the boundary-verdict recognizer already applies across a sentence break.
+    [OutputType([string])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+    $firstLine = ([regex]::Split($Text, '\r\n|\n|\r', 2))[0]
+    return (($firstLine -replace '\s+', ' ').Trim())
+}
+
+function Test-SpecrewAuthorityMessageContinues {
+    # A VERDICT IS ONE LINE (PRED-BETA4-022, the sharpest authority-corruption case in the beta4 record):
+    # the phrase, plus at most the documented same-line instruction form. W56 made every recognizer decide
+    # on the phrase's own line so an instruction BLOCK below it would not refuse the approval - and that
+    # is exactly how a 136-line Copilot transcript from ANOTHER project, pasted into a reviewer session
+    # with the human's typed phrase still at its top, was minted here as a live review-round approval,
+    # twice, under two encodings. The first line matched; the other 135 were never looked at. A message
+    # that continues past its first line into non-empty content is not a verdict, whatever its first
+    # line says; it is refused, and the refusal is disclosed so the human retypes ONE line.
+    [OutputType([bool])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    # The INSTANCE Split takes a count; the static three-argument form reads a RegexOptions there and
+    # splits everything, which made "the rest" mean line two alone (found by W56's own blank-line case).
+    $parts = [regex]::new('\r\n|\n|\r').Split($Text.Trim(), 2)
+    if ($parts.Count -lt 2) { return $false }
+    return (-not [string]::IsNullOrWhiteSpace([string]$parts[1]))
+}
+
+function Get-SpecrewAuthorityMessageLineCount {
+    [OutputType([int])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return 0 }
+    return @([regex]::Split($Text.Trim(), '\r\n|\n|\r')).Count
+}
+
+# Feature 202 iteration 002, T018 (FR-029, DA-3; B4F-125): THE FORM A TYPED APPROVAL MAY TAKE.
+#
+# The one-line rule (PRED-BETA4-022) exists because a pasted transcript with the phrase at its top was once recorded as an
+# approval, and on a host that cannot tell a paste from typing it is the only safe rule. It also refused the maintainer's
+# own `approved for allowance reset`, typed on its own line below a paste of their own notes (B4F-125 a). Claude marks a
+# paste in the message itself, so there the rule is exact: nothing inside a paste counts, and a phrase leading its own
+# line outside every paste is an approval, whatever typed text surrounds it. A paste is marked only by an opening and a
+# closing tag carrying the same ID, so a closing tag quoted inside a paste never ends it, and an opening tag that is never
+# closed makes everything after it pasted. On every host, a message carrying more than one verdict option is a quoted
+# menu - the crew's own options, copied back - and never an approval.
+$script:SpecrewMachineryEnvelopeLinePattern = '(?im)^\s*</?(?:hook_prompt|task-notification|turn_aborted|system-reminder|environment_context|command-name|local-command|bash-stdout)\b'
+$script:SpecrewVerdictOptionLinePattern = '^(?:approv(?:e|ed)\s+for\b|changes\s+needed\s*:|discuss\s+prompt\b|stop\s+the\s+review\s+here\b|abandon\s+this\s+review\s+campaign\b|continue\s+without\s+coverage\b|hold\s+implementation\s+here\b|withdraw\s+the\s+approval\b)'
+
+# THE OBSERVED PASTE-SIZE BOUNDARY (T018). Claude tags a paste only above a size, so untagged text is typing only while it
+# is small. Measured on this project's Claude transcripts (2026-10-18): the smallest of 26 tagged pastes was 675 characters
+# over 9 lines, and no untagged multi-line human message appears at all. Untagged text past either limit cannot be told
+# from an untagged paste, so the one-line rule decides it - which is what keeps a large pasted transcript with the phrase
+# at its top refused on Claude as well (PRED-BETA4-022).
+$script:SpecrewTypedTextMaxLines = 8
+$script:SpecrewTypedTextMaxChars = 674
+
+function Test-SpecrewHostMarksPastes {
+    # The hosts whose recorded payloads mark a paste in the message (Claude's `<pasted_content id="N">`). Every other
+    # host keeps "the phrase alone" until a recorded payload shows how it marks one.
+    [OutputType([bool])]
+    param([AllowNull()][string]$HostKind)
+    return ((([string]$HostKind).Trim().ToLowerInvariant()) -ceq 'claude')
+}
+
+function Remove-SpecrewPairedPastes {
+    # The human's own text: every paste removed. A paste runs from `<pasted_content id="N">` to the first
+    # `</pasted_content id="N">` with the SAME ID after it; an opening tag never closed runs to the end of the message.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return '' }
+    $rest = $Text
+    $kept = New-Object System.Text.StringBuilder
+    while ($true) {
+        $open = [regex]::Match($rest, '<pasted_content\s+id="(?<id>[^"]+)"\s*>')
+        if (-not $open.Success) { [void]$kept.Append($rest); break }
+        [void]$kept.Append($rest.Substring(0, $open.Index))
+        $closeTag = '</pasted_content id="' + $open.Groups['id'].Value + '">'
+        $close = $rest.IndexOf($closeTag, $open.Index + $open.Length, [StringComparison]::Ordinal)
+        if ($close -lt 0) { break }
+        [void]$kept.Append([Environment]::NewLine)
+        $rest = $rest.Substring($close + $closeTag.Length)
+    }
+    return $kept.ToString()
+}
+
+function Resolve-SpecrewApprovalForm {
+    # What the recognizers decide on. { Text; Reason; Options }: Reason 'quoted-menu' when the human's own text carries
+    # more than one verdict option and one of them is a typed authority phrase (Text unchanged, so nothing mints); on a
+    # host that marks pastes, Text is the one authority line outside every paste, or the text with its pastes removed.
+    # Reason 'machinery-envelope' when the human's own text is wrapped in a host envelope, and 'qualified' when the typed
+    # text beside the one authority line carries a condition or a reversal (Text is then left multi-line, so it refuses).
+    # Anywhere else Text is the message unchanged, and the one-line rule decides.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
+    $result = [pscustomobject]@{ Text = [string]$Text; Reason = ''; Options = @() }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $result }
+    $marks = Test-SpecrewHostMarksPastes -HostKind $HostKind
+    $outside = if ($marks) { Remove-SpecrewPairedPastes -Text $Text } else { [string]$Text }
+    # Co-review round 5 (iteration 002): text the host or the machinery wrapped in one of its envelopes is never reduced to
+    # the authority line inside it. Every writer refuses an envelope at the start of the message; reduced, the envelope was
+    # gone before any writer saw it, and '<hook_prompt>' around 'approved for review round' recorded a human approval.
+    # Co-review round 6: looked for in the human's own text, outside every paste. A pasted log that quoted a
+    # '<system-reminder>' line hid the approval typed below it, and no refusal said so.
+    if ($outside -match $script:SpecrewMachineryEnvelopeLinePattern) { $result.Reason = 'machinery-envelope'; return $result }
+    $lines = @([regex]::Split($outside, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })
+    $shapeOf = { param([string]$Line) if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { Get-SpecrewTypedAuthorityShape -Text $Line } else { $null } }
+    # Co-review round 6: an option is an option whatever it is wrapped in. A menu copied with its bullets, quote marks,
+    # numbers or inline code had one counted option, so it was not a quoted menu and its approval line was recorded.
+    $options = @($lines | ForEach-Object { ConvertTo-SpecrewVerdictOptionText -Line $_ } | Where-Object { $_ -match $script:SpecrewVerdictOptionLinePattern } | Select-Object -Unique)
+    $authorityLines = @($lines | Where-Object { $null -ne (& $shapeOf $_) })
+    if ($options.Count -ge 2 -and $authorityLines.Count -ge 1) {
+        $result.Reason = 'quoted-menu'; $result.Options = $options
+        return $result
+    }
+    # Co-review round 6: THE OTHER TYPED LINES CAN QUALIFY THE APPROVAL. Reduced to its line, 'approved for review round'
+    # above 'provided the security checks pass' reached the writer with nothing after it, so the condition every writer
+    # refuses on the same line was never seen and the round was spendable at once. When the typed text beside the line
+    # carries a condition or a reversal, the message is not reduced, and the one-line rule refuses it by name.
+    # Co-review round 8: on every host. Looked for only where the host marks pastes, the condition reached the partial
+    # sign-off writer unrefused on Codex and Copilot, and that writer reads every line after its dash as the reason.
+    $others = @($lines | Where-Object { $null -eq (& $shapeOf $_) })
+    $qualified = ($authorityLines.Count -eq 1 -and $others.Count -gt 0 -and (Test-SpecrewAuthorityContextQualifies -Text ($others -join ' ')))
+    if ($marks) {
+        $typedSized = ($lines.Count -le $script:SpecrewTypedTextMaxLines -and $outside.Trim().Length -le $script:SpecrewTypedTextMaxChars)
+        if ($typedSized -and $authorityLines.Count -eq 1 -and -not $qualified) { $result.Text = [string]$authorityLines[0] }
+        elseif ($typedSized -and $qualified) { $result.Text = $outside.Trim(); $result.Reason = 'qualified' }
+        elseif ($outside -cne [string]$Text) { $result.Text = $outside.Trim() }
+    }
+    elseif ($qualified) { $result.Reason = 'qualified' }
+    return $result
+}
+
+function ConvertTo-SpecrewVerdictOptionText {
+    # One line as an option reads: lower-cased, its list, quote and number markers and its inline emphasis or code marks
+    # removed, as the turn's meaning lines are read.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Line)
+    $text = ([string]$Line).Trim().ToLowerInvariant()
+    $previous = $null
+    while ($text -cne $previous) {
+        $previous = $text
+        $text = ($text -replace '^(?:[-*+>]\s+|>|\d+[.)]\s+|[`*_~"''“”]+)', '').TrimStart()
+    }
+    return $text
+}
+
+# A condition or reversal in the typed text beside an approval line: the clauses the writers refuse after the phrase on its
+# own line (Test-SpecrewConditionalDeferralClause, and the reversals the round writer names).
+$script:SpecrewAuthorityContextReversalPattern = '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|wait|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that|only)\b'
+
+function Test-SpecrewAuthorityContextQualifies {
+    [OutputType([bool])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $lower = $Text.ToLowerInvariant()
+    if (Test-SpecrewConditionalDeferralClause -Text $lower) { return $true }
+    return [bool]($lower -match $script:SpecrewAuthorityContextReversalPattern)
+}
+
+function Get-SpecrewAuthorityMultiLineRefusal {
+    # THE SWEEP BEHIND THE DISCLOSURE. Runs the minting recognizers that carry the one-line rule and
+    # names the first that refused THIS text for continuing past its line - so the drop writer below
+    # and the prompt-entry disclosure read one answer, in one place, and a recognizer added later
+    # joins the table here rather than growing its own copy (the W66 lesson, again).
+    #
+    # The WITHDRAWAL is deliberately absent: it REMOVES authority, and its recognizer's own doctrine
+    # is that a false negative runs a review the human said to stop. The one-line rule bounds what
+    # MINTS; refusing a multi-line withdrawal would fail open.
+    #
+    # T018 (FR-029, DA-3): decided on the approval form - a quoted menu is refused as one, on every host, and on a host
+    # that marks pastes the one-line rule applies to the human's own text, outside every paste.
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text, [AllowNull()][string]$HostKind)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $form = Resolve-SpecrewApprovalForm -Text $Text -HostKind $HostKind
+    if ([string]$form.Reason -ceq 'quoted-menu') {
+        $menuShape = $null
+        foreach ($option in @($form.Options)) { if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) { $menuShape = Get-SpecrewTypedAuthorityShape -Text $option }; if ($null -ne $menuShape) { break } }
+        return [pscustomobject]@{
+            Kind      = if ($null -ne $menuShape) { [string]$menuShape.Kind } else { 'approval' }
+            FirstLine = (Get-SpecrewAuthorityApprovalLine -Text $Text)
+            LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
+            Retype    = if ($null -ne $menuShape) { [string]$menuShape.Retype } else { [string]@($form.Options)[0] }
+            Reason    = 'quoted-menu'
+            Options   = @($form.Options)
+            HostKind  = [string]$HostKind
+        }
+    }
+    $Text = [string]$form.Text
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $table = @(
+        @{ Kind = 'review-round-approval'; Fn = 'Test-SpecrewReviewRoundApprovalPhrase'; Retype = 'approved for review round' }
+        @{ Kind = 'pause-decision'; Fn = 'Test-SpecrewPauseDecisionPhrase'; Retype = 'stop the review here (or: abandon this review campaign)' }
+        @{ Kind = 'allowance-reset'; Fn = 'Test-SpecrewAllowanceResetPhrase'; Retype = 'approved for allowance reset' }
+        @{ Kind = 'coverage-deferral'; Fn = 'Test-SpecrewCoverageDeferralPhrase'; Retype = 'continue without coverage until the review phase' }
+    )
+    foreach ($row in $table) {
+        if (-not (Get-Command ([string]$row.Fn) -ErrorAction SilentlyContinue)) { continue }
+        $r = $null
+        try { $r = & ([string]$row.Fn) -Text $Text } catch { $r = $null }
+        if ($null -eq $r -or [bool]$r.Matched) { continue }
+        if (-not $r.PSObject.Properties['Reason'] -or [string]$r.Reason -cne 'multi-line-refused') { continue }
+        return [pscustomobject]@{
+            Kind      = [string]$row.Kind
+            FirstLine = (Get-SpecrewAuthorityApprovalLine -Text $Text)
+            LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
+            Retype    = [string]$row.Retype
+            Reason    = 'multi-line'
+            Options   = @()
+            HostKind  = [string]$HostKind
+        }
+    }
+    # T018 (FR-029): on a host that marks no pastes the phrase must stand alone, wherever it sits in the message. A phrase
+    # on a later line - typed below a paste the host cannot mark, as in B4F-125 - is refused with that reason, not
+    # passed over in silence because the first line was something else. Co-review round 6: the same on a host that marks
+    # pastes when the typed text beside the phrase qualifies it, so a condition typed above the phrase is refused by name too.
+    if (((-not (Test-SpecrewHostMarksPastes -HostKind $HostKind)) -or [string]$form.Reason -ceq 'qualified') -and (Get-SpecrewAuthorityMessageLineCount -Text $Text) -gt 1 -and
+        (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue)) {
+        foreach ($line in @([regex]::Split($Text, '\r\n|\n|\r') | ForEach-Object { (($_ -replace '\s+', ' ').Trim()) } | Where-Object { $_ })) {
+            $lineShape = Get-SpecrewTypedAuthorityShape -Text $line
+            if ($null -eq $lineShape -or [string]$lineShape.Kind -ceq 'approval-withdrawal') { continue }
+            return [pscustomobject]@{
+                Kind      = [string]$lineShape.Kind
+                FirstLine = $line
+                LineCount = (Get-SpecrewAuthorityMessageLineCount -Text $Text)
+                Retype    = [string]$lineShape.Retype
+                Reason    = 'multi-line'
+                Options   = @()
+                HostKind  = [string]$HostKind
+            }
+        }
+    }
+    return $null
+}
+
+function Get-SpecrewAuthorityMultiLineDisclosure {
+    # The sentence the human reads. It names what was refused, why, and the ONE move that clears it,
+    # in the words the docs use - the refusal standard (B4F-009 family, B4F-064), not a code word.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][pscustomobject]$Refusal)
+    $reason = if ($Refusal.PSObject.Properties['Reason']) { [string]$Refusal.Reason } else { 'multi-line' }
+    if ($reason -ceq 'quoted-menu') {
+        $quoted = (@($Refusal.Options) | Select-Object -First 3 | ForEach-Object { "'" + $(if ($_.Length -gt 60) { $_.Substring(0, 57) + '...' } else { $_ }) + "'" }) -join ', '
+        return ("Specrew: your reply was received but NOT recorded as a {0}. It carries more than one verdict option ({1}), so it reads as a quoted menu, not a choice. Nothing you wrote is lost and no authority was changed. To record your choice, send it on its own line: '{2}'." -f $Refusal.Kind, $quoted, $Refusal.Retype)
+    }
+    $shown = [string]$Refusal.FirstLine
+    if ($shown.Length -gt 80) { $shown = $shown.Substring(0, 77) + '...' }
+    $refusalHost = if ($Refusal.PSObject.Properties['HostKind']) { [string]$Refusal.HostKind } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace($refusalHost) -and -not (Test-SpecrewHostMarksPastes -HostKind $refusalHost)) {
+        return ("Specrew: your reply was received but NOT recorded as a {0}. Its first line is '{1}', but the message continues for {2} more line(s), and on this host Specrew cannot tell a paste from typing, so a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash. Nothing you wrote is lost and no authority was changed. To record it, send a message that is exactly one line: '{3}' or '{3} - <your instructions>'." -f $Refusal.Kind, $shown, ([int]$Refusal.LineCount - 1), $Refusal.Retype)
+    }
+    return ("Specrew: your reply was received but NOT recorded as a {0}. Its first line is '{1}', but the message continues for {2} more line(s), and a verdict is ONE line - the phrase alone, or the phrase with a same-line instruction after a dash. A pasted transcript or a block of notes under the phrase is not a verdict. Nothing you wrote is lost and no authority was changed. To record it, send a message that is exactly one line: '{3}' or '{3} - <your instructions>'." -f $Refusal.Kind, $shown, ([int]$Refusal.LineCount - 1), $Refusal.Retype)
+}
+
+function Write-SpecrewAuthorityMultiLineDrop {
+    # The disclosure half of the one-line rule: a refusal nobody can see is B4F-043's silence again.
+    # Same journal and event the partial-signoff override uses for "the phrase matched and was then
+    # rejected" (DRIFT-199-I002-034), because that is exactly what this is; plus the stderr line for
+    # hosts that surface it. Returns the disclosure sentence so the prompt-entry provider can put it
+    # in the turn, where the human actually reads. Fail-open: never breaks the end of a turn.
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][pscustomobject]$Refusal,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $message = Get-SpecrewAuthorityMultiLineDisclosure -Refusal $Refusal
+    try {
+        $dropJournal = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/authority-capture-drops.jsonl'
+        $dropDir = Split-Path -Parent $dropJournal
+        if ($dropDir -and -not (Test-Path -LiteralPath $dropDir)) { New-Item -ItemType Directory -Path $dropDir -Force | Out-Null }
+        $shown = [string]$Refusal.FirstLine
+        if ($shown.Length -gt 80) { $shown = $shown.Substring(0, 77) + '...' }
+        (([pscustomobject][ordered]@{
+                event = 'authority-phrase-matched-but-rejected'; phrase = [string]$Refusal.Kind
+                reason = $(if ($Refusal.PSObject.Properties['Reason'] -and -not [string]::IsNullOrWhiteSpace([string]$Refusal.Reason)) { [string]$Refusal.Reason } else { 'multi-line' })
+                first_line = $shown; line_count = [int]$Refusal.LineCount
+                host_kind = [string]$HostKind; source_event = [string]$SourceEvent; recorded_at = $NowUtc
+                fix = ("send exactly one line: '{0}' or '{0} - <your instructions>'" -f [string]$Refusal.Retype)
+            }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
+        [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED. {1}" -f ([string]$Refusal.Kind).ToUpperInvariant().Replace('-', ' '), $message))
+    }
+    catch { $null = $_ }
+    return $message
+}
+
+function Get-SpecrewReviewRoundApprovalRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/round-approval'
+}
+
+function Get-SpecrewQuestionUiObservationPath {
+    # W54: lives BESIDE the round-approval store because it is that family's diagnostic - never
+    # authority. The directory is already review runtime evidence (untracked by ruling).
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'question-ui-observation.json'
+}
+
+function Write-SpecrewQuestionUiPhraseObservation {
+    # W54 (maintainer ruling, 2026-08-24): an authority phrase that arrived through a question-UI
+    # tool is visible in the transcript only as a tool result, and capture rightly refuses it by
+    # typed-turns doctrine - but silently, so the agent re-asks through the same tool and the human
+    # answers the same question again (measured: three asks for one decision on the KeyContextAI
+    # walk). This records the OBSERVATION so the refusal downstream can name the actual cause and
+    # remedy. It is a diagnostic fact: nothing reads it as approval, and a genuine typed capture
+    # clears it.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('review-round-approval', 'allowance-reset', 'coverage-deferral')][string]$PhraseKind,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewQuestionUiObservationPath -ProjectRoot $ProjectRoot
+    $dir = Split-Path -Parent $path
+    if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'question-ui-phrase-observation'
+        phrase_kind = $PhraseKind; host_kind = [string]$HostKind; source_event = [string]$SourceEvent
+        observed_at = $NowUtc
+    }
+    $json = $fact | ConvertTo-Json -Depth 4
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return $null }
+    return $fact
+}
+
+function Get-SpecrewQuestionUiPhraseObservation {
+    # The standing observation, or $null. Shape-validated the way every store reader here is; an
+    # unreadable file is treated as absent, and absent just means the refusal names no picker cause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewQuestionUiObservationPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 4 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('fact_type', 'phrase_kind', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'question-ui-phrase-observation') { return $null }
+    return $fact
+}
+
+function Clear-SpecrewQuestionUiPhraseObservation {
+    # Called by the authority writers on a successful mint: once the human typed the phrase in the
+    # chat, the picker diagnosis is history, not standing state.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewQuestionUiObservationPath -ProjectRoot $ProjectRoot
+    try { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } } catch { $null = $_ }
+}
+
+function Get-SpecrewAgentSessionSignalNames {
+    # The env signals that mean "this process is running inside an agent session". MIRRORS the per-host
+    # sets in HandoverStore's Get-SpecrewRuntimeHostFromEnv - a parity test pins the two together, so a
+    # host added there without being added here fails a guard instead of silently bypassing this check.
+    # Credential-only vars are excluded for the same reason they are excluded there.
+    return @(
+        'CODEX_SESSION_ID', 'OPENAI_CODEX_CLI',
+        'CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_PROJECT_DIR',
+        'COPILOT_AGENT_SESSION_ID', 'COPILOT_CLI', 'COPILOT_CLI_BINARY_VERSION',
+        'CURSOR_AGENT', 'CURSOR_TRACE_ID',
+        'ANTIGRAVITY_SESSION_ID'
+    )
+}
+
+function Test-SpecrewInsideAgentSession {
+    # $true when any live host session variable is present. This is a GOVERNANCE discriminator, not a
+    # security boundary: it tells an honestly-behaving invocation which authority rules apply. The
+    # !-prefix case - the human running the command inside a session - shares this environment; it is
+    # handled by the capture recognizing the human's own typed invocation as the approving act.
+    [OutputType([bool])]
+    param()
+    foreach ($name in (Get-SpecrewAgentSessionSignalNames)) {
+        if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) { return $true }
+    }
+    return $false
+}
+
+function Test-SpecrewReviewRoundApprovalPhrase {
+    # Conservative, in the verdict-token tradition: only a CLEAR approving act matches, and anything
+    # ambiguous falls through to "not an approval" so the caller asks rather than invents.
+    #
+    # Two shapes qualify:
+    #   1. The typed phrase: "approved for review round" (leading-anchored; "a"/"one"/"another"/"a
+    #      fresh" allowed; instructions may FOLLOW a delimiter). Interrogatives and deferrals are not
+    #      approvals.
+    #   2. The human's own invocation: a message that IS the approve-round command ("! specrew review
+    #      --live --approve-round"). A human typing the command with the flag is performing the act the
+    #      flag names - this is what keeps the !-prefix path working from inside a session. It must be
+    #      essentially the whole message: a QUESTION about the command, or prose around it, is not it.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+
+    $r = [pscustomobject]@{ Matched = $false; Kind = $null; Phrase = $null; Reason = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    # Machinery envelopes are not human turns, whatever they contain.
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+
+    # W56 decided on the approval's OWN LINE so that "approved for review round?" is still deliberation
+    # while a question in a FOLLOWING block is a follow-up. PRED-BETA4-022 narrows what a following block
+    # may be: nothing. A verdict is one line; a message that continues is refused, by reason, below.
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
+    if ($lower.EndsWith('?')) { return $r }
+
+    # Shape 1: the typed phrase, leading-anchored so mentions and teaching ("reply with approved for
+    # review round") never match.
+    $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed)\s+(?:for\s+)?(?:a\s+|one\s+|another\s+|a\s+fresh\s+)?review\s+round\b')
+    if ($anchor.Success) {
+        if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) { $r.Reason = 'multi-line-refused'; return $r }
+        $tail = $lower.Substring($anchor.Length)
+        # Closed tail: nothing, or a delimiter followed by instructions. Arbitrary prose directly after
+        # the phrase ("...review round seems premature") is not the phrase.
+        if ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]') {
+            # A deferral or negation anywhere in the TAIL still defers. Round-14 finding
+            # (DRIFT-199-I001-123): the first cut split the tail on the delimiter and inspected
+            # element ZERO - empty by construction for a delimited tail - so "approved for review
+            # round, once the tests pass" minted immediately and could spend a round before the
+            # stated condition held. This is SPEND authority: the conservative floor scans the whole
+            # tail, and a false negative costs the human one plain retype, never a spent round.
+            $negated = ($lower -match '^\s*(?:do\s*not|do\s+not|never|not\s+yet|hold\s+off|wait|stop)\b') -or
+                ($tail -match '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b')
+            if (-not (Test-SpecrewConditionalDeferralClause -Text $tail) -and -not $negated) {
+                $r.Matched = $true; $r.Kind = 'typed-phrase'; $r.Phrase = $trimmed
+                return $r
+            }
+        }
+        return $r
+    }
+
+    # Shape 2: the human's own invocation. Single-line, the whole message, carrying the flag.
+    if ($trimmed -notmatch '[\r\n]' -and
+        $lower -match '^!?\s*(?:pwsh\s+[^|;&]*)?specrew(?:\.ps1)?\s+review\b[^|;&]*--approve-round\b[^|;&]*$') {
+        $r.Matched = $true; $r.Kind = 'self-invocation'; $r.Phrase = $trimmed
+        return $r
+    }
+    return $r
+}
+
+function Test-SpecrewTypedActReplacesRecord {
+    # B4F-137 (202 iteration 002): AN APPROVAL THE HUMAN TYPES IS NEVER FOLDED INTO AN OLDER TURN-END RECORD.
+    #
+    # The writers below return an unspent record with the same text as "the same act", so a duplicate never mints twice.
+    # But a record the turn-end path recovered from the transcript is not this typed message: with message identity
+    # (T017) the turn-end path never re-offers a message the message hook recorded, so a typed approval reaching a writer
+    # that already holds a turn-end record is a NEWER act. Returning the old record kept its provenance - an approval
+    # left from an earlier double record, observed 43 hours old, then authorized the step the human had just typed. The
+    # typed act replaces it, so the stored approval carries the evidence of the act that authorizes it.
+    [OutputType([bool])]
+    param([AllowNull()]$Existing, [AllowNull()]$Fact)
+    if ($null -eq $Existing -or $null -eq $Fact) { return $false }
+    # A record that has already become a grant keeps it: its minted_ref is how ownership is joined (W61), and an
+    # undelivered attempt keeps the entitlement it carries.
+    if ($Existing.PSObject.Properties['minted_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$Existing.minted_ref)) { return $false }
+    $existingSource = if ($Existing.PSObject.Properties['evidence_source']) { [string]$Existing.evidence_source } else { '' }
+    return ([string]$Fact.evidence_source -ceq 'hook-captured-user-prompt' -and $existingSource -cne 'hook-captured-user-prompt')
+}
+
+function Write-SpecrewReviewRoundApprovalAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: review-round-approval
+    <# Capture only from a genuine human utterance: a prompt-entry event's own text, or a verified human
+       transcript turn relayed by the Stop backstop. Never from agent output. #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    $evidenceSource = 'hook-captured-user-prompt'
+    if ($null -eq $event) {
+        # The Stop backstop relays the most recent VERIFIED human transcript turn, for hosts where the
+        # prompt-entry event does not deliver the prompt text (observed on claude: verdict capture lands
+        # at Stop). The caller vouches for the turn's origin; every recognizer guard still applies.
+        if (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) {
+            $event = 'Stop'
+            $evidenceSource = 'hook-captured-from-transcript'
+        }
+        else { return $null }
+    }
+    $recognized = Test-SpecrewReviewRoundApprovalPhrase -Text $Response
+    # A `Reason` of multi-line-refused is disclosed by the capture table (Invoke-SpecrewTypedAuthorityCapture),
+    # once for the turn, not here per writer.
+    if (-not [bool]$recognized.Matched) { return $null }
+
+    $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root 'pending-round-approval.json'
+
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        fact_type = 'review-round-approval'
+        authority_kind = 'human'
+        authorized_by = 'unattributed-human'
+        approval_kind = [string]$recognized.Kind
+        verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
+        evidence_source = $evidenceSource
+        source_event = $event
+        host_kind = [string]$HostKind
+        observed_at = $NowUtc
+        spent_at = $null
+        authorization_ref = $null
+        # Round-19 (DRIFT-199-I001-130): present from birth, so ownership has a STABLE SHAPE to
+        # join on. A reader that has to test whether the field exists is one StrictMode throw away
+        # from treating "no round yet" as an error.
+        minted_ref = ''
+        minted_at = ''
+    }
+
+    if ([IO.File]::Exists($path)) {
+        $existing = $null
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+        catch { $existing = $null }
+        # An UNSPENT capture of the same utterance is the same act - do not re-mint.
+        #
+        # W69 (2026-08-26) REPLACES what this comment used to claim. It said a spent slot "is superseded
+        # by the newer human act ... replacing one with the other fabricates nothing". That premise is
+        # inverted whenever the Stop backstop re-offers a turn: THERE IS NO NEWER HUMAN ACT. Replacing a
+        # spent record with a re-offer of its own source fabricates a human act that did not happen a
+        # second time - the forged-disposition class, reached by machinery rather than by an agent,
+        # which is why it outranks the hole it mirrors: the evidence looks correct.
+        #
+        # The condition below is unchanged and is still not sufficient on its own - `spent_at` empty is
+        # a PRECONDITION of this return, so a spent slot falls through to a fresh write. What stops that
+        # now is upstream: the router refuses a turn that has already minted, BEFORE any writer is
+        # called, so this branch is never reached by a re-offer.
+        if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
+            [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) {
+            Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+            return $existing
+        }
+    }
+
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    try {
+        ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Encoding UTF8
+    }
+    catch { $null = $_ }
+    # W54: the human typed it in the chat, so any standing picker diagnosis is now history.
+    Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+    return $fact
+}
+
+function Get-SpecrewAuthorityFlagPhraseMap {
+    # W76 (maintainer finding, 2026-08-27): ONE TABLE PAIRING EACH AUTHORITY FLAG WITH THE PHRASE THAT
+    # ACTUALLY AUTHORIZES IT - read by the advisories that print them AND by the audit that checks them.
+    #
+    # This exists because the audit could not see a surface it was written to police. W44 swept
+    # `--approve-round`; W49 extended the sweep to `--pause-choice`; the exhaustion advisory naming
+    # `--remediate allowance-reset` was written afterwards and nobody added it to the sweep's hand-kept
+    # list. **So the standing check PASSED while the surface violated the rule that check enforces**,
+    # and it reached a human: a downstream agent read the advisory and relayed the flag, correctly,
+    # because that is what Specrew told it to say.
+    #
+    # A LIST THE AUDITOR KEEPS CAN ONLY CATCH WHAT ITS AUTHOR REMEMBERED. The audit now derives its
+    # flags from the surfaces themselves and resolves each against this table; a flag with no entry is
+    # a decision someone must make, not a gap that passes quietly. Adding a flag here is the one step
+    # that makes both the advisory and its audit correct at once - the enumerated-versus-derived lesson
+    # from the self-leak firewall, arriving in the surface sweep.
+    #
+    # A flag is IN THIS TABLE when running it carries a human's typed authority. Flags that carry no
+    # authority - `--live`, `--run-id`, `--ack-reason`, `--host` - are listed as exempt below, with the
+    # reason, so "not authority-bearing" is also a recorded decision rather than an omission.
+    [OutputType([hashtable])]
+    param()
+    return @{
+        '--approve-round'             = 'approved for review round'
+        '--pause-choice'              = 'stop the review here'
+        '--remediate allowance-reset' = 'approved for allowance reset'
+    }
+}
+
+function Get-SpecrewNonAuthorityFlagExemptions {
+    # Flags that appear in reader-facing text and carry NO human authority, each with the reason it is
+    # exempt. Kept beside the authority table so the audit can tell "not authority" from "forgotten",
+    # which is the distinction the sweep could not previously make.
+    [OutputType([hashtable])]
+    param()
+    return @{
+        '--live'            = 'selects the live engine; authorizes nothing'
+        '--run-id'          = 'names an existing run; authorizes nothing'
+        '--ack-reason'      = 'carries the human''s stated reason, and is refused without the typed phrase that authorizes the act'
+        '--host'            = 'selects the reviewer harness; authorizes nothing'
+        '--project-path'    = 'locates the project; authorizes nothing'
+        '--json'            = 'output shape; authorizes nothing'
+        '--remediate'       = 'the bare flag names a remediation FAMILY; each authority-bearing member is listed in the authority table by its full form'
+        '--feature'         = 'selects which feature to act on; authorizes nothing'
+        '--iteration'       = 'selects which iteration to act on; authorizes nothing'
+        '--quiet'           = 'suppresses output; authorizes nothing'
+        '--open'            = 'opens a rendered artifact for reading; authorizes nothing'
+        '--baseline-ref'    = 'names a comparison point; authorizes nothing'
+        '--checkpoint-id'   = 'names an existing checkpoint; authorizes nothing'
+        '--reconcile-run'   = 'repairs bookkeeping for a run that already happened; grants no new round'
+        '--reconcile'       = 'repairs bookkeeping; grants nothing'
+        '--timeout-seconds' = 'bounds how long a reviewer may run; authorizes nothing'
+        '--scope'           = 'narrows what is examined; authorizes nothing'
+        '--list-hosts'      = 'prints the reviewer catalogue; authorizes nothing'
+        '--ack-degraded'    = 'acknowledges a degraded runtime so the reason is recorded; it does not authorize a review, and the typed phrase is still required to run one'
+        '--flag'            = 'appears only as prose about flags in general, never as a command to run'
+        '--authorization-ref' = 'LABELS where an approval came from; it records provenance and explicitly does not stand in for one. Its own advisory says so, and the gate says command-line identity fields are not authority.'
+    }
+}
+
+function Get-SpecrewTypedTurnIdentity {
+    # W69 (maintainer ruling, 2026-08-26): THE TURN IS THE ACT; THE PHRASE IS ONLY ITS CONTENT.
+    #
+    # typed-turns-v1 is not changed by this, it is COMPLETED. Its stated rule is that only a real human
+    # turn mints authority; the unstated half - never needed until the Stop backstop began re-offering
+    # turns - is that each turn mints AT MOST ONCE, EVER. Content was always a proxy for identity, and
+    # the backstop is exactly where the proxy fails: the same turn arrives again at the end of every
+    # assistant turn, identical in every byte, and nothing about the phrase can tell that apart from a
+    # human typing it a second time.
+    #
+    # Identity is POSITION + CONTENT + ARRIVAL, hashed to one stable id per host. Position and arrival
+    # come from the turn as the host delivered it; a genuine retype lands at a different position with
+    # a different arrival and is therefore a different act, which is the property that keeps the rule
+    # from wedging anyone.
+    #
+    # Feature 202 iteration 002, T017 (FR-027, DA-2; B4F-127): ONE MESSAGE, ONE KEY. When the host gives the
+    # message its own ID - Claude's `prompt_id`, which its transcript entry carries as `promptId`, and Codex's
+    # `turn_id` - that ID IS the identity, and the path that saw the message is not part of it. W71 accepted "at
+    # most two mints per utterance" because the hosts shared no per-turn id; Claude and Codex do, so the message
+    # hook and every later turn end now compute the same key, and the exhausted-turn check below admits only the
+    # first. Position and arrival stay as the identity for a host that sends no message ID.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Response,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$TurnPosition,
+        [AllowEmptyString()][AllowNull()][string]$TurnArrival,
+        [AllowEmptyString()][AllowNull()][string]$MessageId
+    )
+    if ([string]::IsNullOrWhiteSpace($Response)) { return '' }
+    if (-not [string]::IsNullOrWhiteSpace($MessageId)) {
+        return (Get-SpecrewHumanAuthorityHash -Text (@('message-id', [string]$HostKind, ([string]$MessageId).Trim()) -join '|'))
+    }
+    $parts = @(
+        [string]$HostKind
+        [string]$SourceEvent
+        [string]$TurnPosition
+        [string]$TurnArrival
+        (Get-SpecrewHumanAuthorityHash -Text ([string]$Response))
+    ) -join '|'
+    return (Get-SpecrewHumanAuthorityHash -Text $parts)
+}
+
+function Get-SpecrewExhaustedTurnLedgerPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return (Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/exhausted-turns.jsonl')
+}
+
+function Test-SpecrewTypedTurnExhausted {
+    # Has this turn already minted? Append-only ledger, read as a set.
+    #
+    # FAILS CLOSED on an unreadable ledger, and that direction is deliberate: the cost of a false
+    # "exhausted" is that the human types the phrase again, while the cost of a false "fresh" is a
+    # forged authority. This is the same call made for the withdrawal journal in W68, for the same
+    # reason.
+    #
+    # W70 / round-27 finding: A TORN LINE IS NOT A LINE TO SKIP. The reader used to `continue` past
+    # anything it could not parse, so an interrupted append - the exact failure the two-phase write
+    # below exists to survive - produced the false-fresh answer this ledger exists to prevent. A record
+    # it cannot read is a turn it cannot rule out.
+    #
+    # W71 (maintainer ruling, 2026-08-26): SAME CHANNEL ONLY. THE SECOND CHANNEL IS OBSERVED, NOT
+    # BLOCKED.
+    #
+    # W70 tried to make one utterance exhaust BOTH channels by matching content + host. Round 28
+    # returned two findings against it that contradict each other - one that it suppressed a genuinely
+    # later retype forever (a WEDGE, with no recovery, exactly when the backstop is needed), one that
+    # it still let a double mint through when the ledger write failed. The ruling names what that
+    # contradiction actually is: **not two defects, but the guess failing to be an identity, stated
+    # twice.** These hosts share no per-turn id; prompt-entry has an event clock, Stop has a transcript
+    # index. Everything built on top of that was a heuristic wearing an identity's clothes.
+    #
+    # THE RESIDUAL, WITH ITS SIZE STATED, because the size is what makes it acceptable: same-channel
+    # exhaustion means each channel mints AT MOST ONCE per utterance, so a dual-event host yields AT
+    # MOST TWO mints from one typed act. Bounded. The pre-W69 hole was unlimited. And it is a
+    # SPEND-ACCOUNTING cost rather than a forgery - the human did approve a round; the machinery may
+    # grant a second one.
+    #
+    # The double mint is RECORDED as an observation by the router, so beta4 gets field data on how
+    # often two channels carry one utterance rather than speculation. Visibility was the right answer
+    # to the exhaustion gap and to the picker gap; it is the right answer here.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId,
+        [AllowEmptyString()][AllowNull()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent
+    )
+    if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { $entry = $null }
+            # W75 / round-31 finding: A TORN LINE IS SKIPPED, AND RECORDED. NOT "every turn is exhausted".
+            #
+            # THE DISTINCTION I MISSED IN W70 AND REPEATED IN W72, and it is the sharpest form of the
+            # wedge-versus-spend trade in this project:
+            #
+            #   Failing closed on "should this ACT be authorized" is SAFETY.
+            #   Failing closed on "can this PROJECT ever be authorized again" is an OUTAGE.
+            #
+            # Returning $true here answered the second question. One interrupted append and the project
+            # accepted no further approval, pause, reset or withdrawal - permanently, with retyping
+            # powerless and the refusal contract forbidding a hand-edit of the store. The trigger is a
+            # Ctrl+C at the wrong moment.
+            #
+            # An unreadable line's turn_id is unknowable, so it can neither confirm nor deny exhaustion
+            # of the turn being asked about. The bounded cost of skipping it is one possible re-mint of
+            # whatever it recorded; the cost of the alternative is an ungovernable project.
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) {
+                if (Get-Command Write-SpecrewAuthorityLedgerDamageObservation -ErrorAction SilentlyContinue) {
+                    Write-SpecrewAuthorityLedgerDamageObservation -ProjectRoot $ProjectRoot -Journal 'exhausted-turns.jsonl' | Out-Null
+                }
+                continue
+            }
+            if ([string]$entry.turn_id -ceq [string]$TurnId) { return $true }
+        }
+    }
+    catch { return $true }
+    return $false
+}
+
+function Get-SpecrewCrossChannelMint {
+    # Did ANOTHER channel already mint this content on this host? Returns the earlier ledger entry, or
+    # $null. This ANSWERS A QUESTION; it does not gate anything - W71 removed the gate because the
+    # match is not an identity. It exists so the router can record what it saw.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent
+    )
+    if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $null }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $thisChannel = if ((([string]$SourceEvent).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript')) { 'stop' } else { 'prompt-entry' }
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['content_hash']) { continue }
+            if ([string]$entry.fact_type -cne 'typed-turn-exhausted') { continue }
+            if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if (-not $entry.PSObject.Properties['minted'] -or [string]::IsNullOrWhiteSpace([string]$entry.minted)) { continue }
+            $entryHost = if ($entry.PSObject.Properties['host_kind']) { [string]$entry.host_kind } else { '' }
+            if ($entryHost -cne [string]$HostKind) { continue }
+            $entrySource = if ($entry.PSObject.Properties['source_event']) { [string]$entry.source_event } else { '' }
+            $entryChannel = if (($entrySource.Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript')) { 'stop' } else { 'prompt-entry' }
+            if ($entryChannel -ceq $thisChannel) { continue }
+            return $entry
+        }
+    }
+    catch { return $null }
+    return $null
+}
+
+function Write-SpecrewCrossChannelMintObservation {
+    # A DIAGNOSTIC FACT, never authority - the same standing as the W54 picker observation. It records
+    # that one typed utterance was minted by both channels, which is the bounded residual W71 accepts,
+    # so its real-world rate can be measured instead of argued about.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$PriorTurnId,
+        [AllowEmptyString()][AllowNull()][string]$PriorSourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$MintedWriters,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        $entry = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'cross-channel-double-mint'; authority_kind = 'none'
+            turn_id = [string]$TurnId; content_hash = [string]$ContentHash
+            host_kind = [string]$HostKind; source_event = [string]$SourceEvent
+            prior_turn_id = [string]$PriorTurnId; prior_source_event = [string]$PriorSourceEvent
+            minted = [string]$MintedWriters; observed_at = $NowUtc
+        }
+        Add-Content -LiteralPath $path -Value ($entry | ConvertTo-Json -Compress -Depth 6) -Encoding UTF8 -ErrorAction Stop
+        return $true
+    }
+    catch { return $false }
+}
+
+function Write-SpecrewAuthorityLedgerDamageObservation {
+    # W75 / round-31 finding: a DIAGNOSTIC fact, never authority - the same standing as the W54 picker
+    # observation and the W71 double-mint one. It records that a journal lost a record, so that
+    # skipping the torn line does not trade an outage for an invisible hole.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Journal,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        # Once per journal, not once per read: this is consulted on every turn, and a damaged file
+        # would otherwise append forever.
+        if ([IO.File]::Exists($path)) {
+            foreach ($existing in [IO.File]::ReadAllLines($path)) {
+                if ([string]$existing -match 'authority-ledger-damaged' -and [string]$existing -match [regex]::Escape($Journal)) { return $true }
+            }
+        }
+        $entry = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'authority-ledger-damaged'; authority_kind = 'none'
+            journal = [string]$Journal; observed_at = $NowUtc
+            detail = 'A record in this journal could not be read - almost always an append interrupted mid-write. It is skipped rather than treated as every future act, because refusing everything would leave a project that can never be authorized again.'
+        }
+        Add-Content -LiteralPath $path -Value ($entry | ConvertTo-Json -Compress -Depth 6) -Encoding UTF8 -ErrorAction Stop
+        return $true
+    }
+    catch { return $false }
+}
+
+function Get-SpecrewTypedAuthorityShape {
+    # Feature 202 iteration 002, T017 (FR-027): which typed authority, if any, this text IS - the minting
+    # recognizers, matched as their writers would match them. Used only to REPORT a message a host's single
+    # recording path did not record; it never mints.
+    #
+    # Co-review round 1 (iteration 002): EVERY act the router's writers mint is shaped here, and the retype is the act
+    # the human typed - a missed `abandon this review campaign` is never answered with `stop the review here`, whose
+    # consequence is different. A withdrawal is shaped too, because it is the one act whose loss fails OPEN.
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $trimmed = $Text.Trim()
+    if (Get-Command Test-SpecrewApprovalWithdrawalPhrase -ErrorAction SilentlyContinue) {
+        $w = $null
+        try { $w = Test-SpecrewApprovalWithdrawalPhrase -Text $Text } catch { $w = $null }
+        if ($null -ne $w -and [bool]$w.Matched) { return [pscustomobject]@{ Kind = 'approval-withdrawal'; Retype = 'withdraw the approval'; Choice = '' } }
+    }
+    $table = @(
+        @{ Kind = 'review-round-approval'; Fn = 'Test-SpecrewReviewRoundApprovalPhrase'; Retype = 'approved for review round' }
+        @{ Kind = 'pause-decision'; Fn = 'Test-SpecrewPauseDecisionPhrase'; Retype = '' }
+        @{ Kind = 'allowance-reset'; Fn = 'Test-SpecrewAllowanceResetPhrase'; Retype = 'approved for allowance reset' }
+        @{ Kind = 'coverage-deferral'; Fn = 'Test-SpecrewCoverageDeferralPhrase'; Retype = 'continue without coverage until the review phase' }
+    )
+    foreach ($row in $table) {
+        if (-not (Get-Command ([string]$row.Fn) -ErrorAction SilentlyContinue)) { continue }
+        $r = $null
+        try { $r = & ([string]$row.Fn) -Text $Text } catch { $r = $null }
+        if ($null -eq $r -or -not [bool]$r.Matched) { continue }
+        $choice = if ($r.PSObject.Properties['Choice']) { [string]$r.Choice } else { '' }
+        $retype = [string]$row.Retype
+        if ([string]$row.Kind -ceq 'pause-decision') {
+            $retype = if ($choice -ceq 'abandon') { 'abandon this review campaign' } else { 'stop the review here' }
+        }
+        return [pscustomobject]@{ Kind = [string]$row.Kind; Retype = $retype; Choice = $choice }
+    }
+    # The two writers with no separate recognizer, matched as their writers match them.
+    if ($trimmed -match '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*\S') {
+        return [pscustomobject]@{ Kind = 'partial-review-signoff'; Retype = 'approved for partial review signoff - <your reason>'; Choice = '' }
+    }
+    if ($trimmed -ceq 'approved for workshop repair') {
+        return [pscustomobject]@{ Kind = 'workshop-repair'; Retype = 'approved for workshop repair'; Choice = '' }
+    }
+    return $null
+}
+
+function Test-SpecrewPromptChannelSawContent {
+    # Did the message hook (any channel that is not the turn end) see EVERY message in this session with this
+    # content? The reservation is written before any writer runs, for every message the hook receives, so it is
+    # proof the hook saw a message whether or not anything minted.
+    #
+    # Co-review round 1 (iteration 002): one same-text reservation is NOT proof for THIS message. Approval A
+    # recorded and spent, the same phrase typed again as B 30 seconds later, B missed - a "recent identical text"
+    # test let A vouch for B and B vanished without a trace. So the answer is a COUNT within the session: the
+    # transcript holds ExpectedCount human messages with this text, and the hook must have reserved at least that
+    # many distinct turns in the same session, from the earliest of those messages on (SinceUtc - the transcript
+    # is read as a window, so a message older than the window is neither counted nor allowed to vouch). A
+    # reservation from another session never counts.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SinceUtc,
+        [AllowEmptyString()][AllowNull()][string]$SessionId,
+        [int]$ExpectedCount = 1,
+        # Co-review round 2 (iteration 002): the arrival of every counted message, oldest first; the LAST is the one asked
+        # about. When given, each message must be paired with a reservation of its own, made within 15 seconds of its
+        # arrival (measured: Copilot's hook records 4-6 s before the transcript entry, Claude's about 4 s after). A
+        # reservation from a message outside the transcript window is near THAT message's arrival, not this one's, so
+        # it can no longer stand in for it - which the count from the earliest message allowed.
+        [AllowNull()][string[]]$MessageTimesUtc
+    )
+    if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $false }
+    if ($ExpectedCount -lt 1) { $ExpectedCount = 1 }
+    # 202 iteration 002, after review sign-off: every time here is read as an instant (ConvertTo-SpecrewAuthorityInstant),
+    # never through a [string] cast. A ledger row's observed_at comes back from ConvertFrom-Json as a [datetime]; its
+    # string drops the fraction and, for a `+00:00` row, prints local time, so a UTC re-parse shifted it by the zone.
+    $messageTimes = @(@($MessageTimesUtc) | ForEach-Object { ConvertTo-SpecrewAuthorityInstant -Value $_ } | Where-Object { $null -ne $_ })
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    $since = [DateTimeOffset]::MinValue
+    $sinceInstant = ConvertTo-SpecrewAuthorityInstant -Value $SinceUtc
+    if ($null -ne $sinceInstant) { $since = $sinceInstant.AddSeconds(-60) }
+    $session = ([string]$SessionId).Trim()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $candidates = [System.Collections.Generic.List[object]]::new()
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['content_hash']) { continue }
+            if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if ([string]$entry.host_kind -cne [string]$HostKind) { continue }
+            if ((([string]$entry.source_event).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript', 'agentstop')) { continue }
+            $entrySession = if ($entry.PSObject.Properties['session_id']) { ([string]$entry.session_id).Trim() } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($session) -and -not [string]::IsNullOrWhiteSpace($entrySession) -and $entrySession -cne $session) { continue }
+            if ($messageTimes.Count -gt 0) {
+                $when = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+                if ($null -ne $when -and $seen.Add([string]$entry.turn_id)) { $candidates.Add([pscustomobject]@{ At = $when; Used = $false }) | Out-Null }
+                continue
+            }
+            $at = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+            if ($null -ne $at -and $at -lt $since) { continue }
+            [void]$seen.Add([string]$entry.turn_id)
+            if ($seen.Count -ge $ExpectedCount) { return $true }
+        }
+    }
+    catch { return $false }
+    if ($messageTimes.Count -eq 0) { return $false }
+    # Oldest message first, each takes the nearest unused reservation within 15 seconds; the answer is the last one's.
+    $matchedLast = $false
+    for ($m = 0; $m -lt $messageTimes.Count; $m++) {
+        $best = $null; $bestGap = [double]::MaxValue
+        foreach ($c in $candidates) {
+            if ($c.Used) { continue }
+            $gap = [math]::Abs(($c.At - $messageTimes[$m]).TotalSeconds)
+            if ($gap -le 15 -and $gap -lt $bestGap) { $best = $c; $bestGap = $gap }
+        }
+        if ($null -ne $best) { $best.Used = $true }
+        if ($m -eq $messageTimes.Count - 1) { $matchedLast = ($null -ne $best) }
+    }
+    return $matchedLast
+}
+
+function Test-SpecrewLegacyTurnRecorded {
+    # Co-review round 1 (iteration 002): THE KEY CHANGED, THE HISTORY DID NOT. A message recorded before the
+    # message-ID key existed is in the ledger under the old key - the turn end's position key, or the message
+    # hook's arrival key. After an update, the next turn end computes the NEW key for that same message, finds
+    # nothing, and would record a spent approval again: B4F-127, one last time, on every upgraded project. So the
+    # turn end also asks whether the OLD record of this message exists. Entries written under the new key carry
+    # `identity`, and are never read here; this answers only for history.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyString()][AllowNull()][string]$LegacyTurnId,
+        [AllowEmptyString()][AllowNull()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SinceUtc,
+        # The writer that records this message's phrase (Write-SpecrewReviewRoundApprovalAuthorization, ...). Empty
+        # when the text is no recognized phrase.
+        [AllowEmptyString()][AllowNull()][string]$ExpectedWriter
+    )
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    # Times read as instants, never through a [string] cast - see Test-SpecrewPromptChannelSawContent.
+    $since = $null
+    $sinceInstant = ConvertTo-SpecrewAuthorityInstant -Value $SinceUtc
+    if ($null -ne $sinceInstant) { $since = $sinceInstant.AddSeconds(-60) }
+    try {
+        $lines = [IO.File]::ReadAllLines($path)
+        # Co-review round 4 (iteration 002): what each old turn RECORDED, read from its second ledger line.
+        $mintedByTurn = @{}
+        foreach ($line in $lines) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or -not $entry.PSObject.Properties['minted']) { continue }
+            foreach ($w in ([string]$entry.minted -split ',')) { if (-not [string]::IsNullOrWhiteSpace($w)) { $mintedByTurn[([string]$entry.turn_id + '|' + $w.Trim())] = $true } }
+        }
+        foreach ($line in $lines) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { continue }
+            if ($entry.PSObject.Properties['identity'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.identity)) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($LegacyTurnId) -and [string]$entry.turn_id -ceq [string]$LegacyTurnId) { return $true }
+            # The old keys cannot always be recomputed (the message hook's used its own clock), so the same text on
+            # the same host, recorded by either path from just before this message arrived on, is this message.
+            # Co-review round 2 (iteration 002): the old message hook hashed the UNTRIMMED text, so a typed approval with a
+            # trailing space has no hash this path can compute. Its record is still the message hook's reservation made
+            # within 15 seconds of this message's arrival (see Test-SpecrewPromptChannelSawContent for the measurement),
+            # so that matches on time alone.
+            # Co-review round 4: time alone is not this message. The old message hook reserved EVERY message, so an
+            # ordinary reply, or an approval, typed seconds before a withdrawal the message hook then missed, matched it,
+            # and the withdrawal was never recorded. A record on time alone is this message only when that old turn
+            # recorded the same kind of act this message asks for.
+            if ($null -ne $since -and -not [string]::IsNullOrWhiteSpace($ExpectedWriter) -and
+                $mintedByTurn.ContainsKey([string]$entry.turn_id + '|' + $ExpectedWriter) -and [string]$entry.host_kind -ceq [string]$HostKind -and
+                (([string]$entry.source_event).Trim().ToLowerInvariant()) -notin @('stop', 'stop-transcript', 'agentstop')) {
+                $near = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+                if ($null -ne $near -and [math]::Abs(($near - $since.AddSeconds(60)).TotalSeconds) -le 15) { return $true }
+            }
+            # With no arrival to compare, any old record of the same text counts: this check fails closed.
+            if ([string]::IsNullOrWhiteSpace($ContentHash)) { continue }
+            if (-not $entry.PSObject.Properties['content_hash'] -or [string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if ([string]$entry.host_kind -cne [string]$HostKind) { continue }
+            $at = if ($entry.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at } else { $null }
+            if ($null -ne $at -and ($null -eq $since -or $at -ge $since)) { return $true }
+            if ($null -eq $since) { return $true }
+        }
+    }
+    catch { return $true }
+    return $false
+}
+
+function Get-SpecrewAuthorityNotRecordedJournalPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return (Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/authority-capture-drops.jsonl')
+}
+
+function Write-SpecrewAuthorityNotRecordedReport {
+    # Feature 202 iteration 002, T017 (FR-027, DA-2 condition 2): on a host whose message hook is the only
+    # recording path, a typed approval that hook did not record is REPORTED, never dropped without a trace. One
+    # row per message (keyed by the transcript entry), in the journal the one-line refusals already use, plus a
+    # stderr line; the human reads it at the next message (Get-SpecrewAuthorityNotRecordedDisclosure).
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][pscustomobject]$Shape,
+        [Parameter(Mandatory)][string]$EntryKey,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId,
+        # Co-review round 2 (iteration 002): 'not-saved' when the message hook received the act but its writer could not
+        # store it; the default when the message never reached the hook.
+        [string]$Reason = 'message-hook-did-not-record',
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
+    $shapeChoice = if ($Shape.PSObject.Properties['Choice']) { [string]$Shape.Choice } else { '' }
+    try {
+        if ([IO.File]::Exists($journal)) {
+            foreach ($line in [IO.File]::ReadAllLines($journal)) {
+                if ($line -notmatch 'authority-phrase-not-recorded') { continue }
+                $row = $null
+                try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+                if ([string]$row.event -ceq 'authority-phrase-not-recorded' -and [string]$row.entry_key -ceq $EntryKey) { return $false }
+            }
+        }
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($journal)) | Out-Null
+        (([pscustomobject][ordered]@{
+                event = 'authority-phrase-not-recorded'; phrase = [string]$Shape.Kind; reason = $Reason
+                retype = [string]$Shape.Retype; choice = $shapeChoice; entry_key = $EntryKey; host_kind = [string]$HostKind
+                session_id = [string]$SessionId; recorded_at = $NowUtc
+            }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
+        [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED: the message reached the conversation but not Specrew. Type it again, alone: '{1}'." -f ([string]$Shape.Kind).ToUpperInvariant().Replace('-', ' '), [string]$Shape.Retype))
+        return $true
+    }
+    catch { return $false }
+}
+
+function Get-SpecrewAuthorityNotRecordedDisclosure {
+    # The one visible line for a not-recorded approval, said once, at the human's next message on that host.
+    # Co-review round 1 (iteration 002): in THE SESSION THAT MISSED IT. Another session on the same project never
+    # hears about it and never marks it said, so the session the human typed into still gets its line.
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $session = ([string]$SessionId).Trim()
+    $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($journal)) { return $null }
+    try {
+        $pending = [ordered]@{}
+        $reports = @{}
+        foreach ($line in [IO.File]::ReadAllLines($journal)) {
+            if ($line -notmatch 'authority-phrase-not-recorded') { continue }
+            $row = $null
+            try { $row = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ([string]$row.host_kind -cne [string]$HostKind) { continue }
+            $rowSession = if ($row.PSObject.Properties['session_id']) { ([string]$row.session_id).Trim() } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($rowSession) -and $rowSession -cne $session) { continue }
+            $key = [string]$row.entry_key
+            if ([string]$row.event -ceq 'authority-phrase-not-recorded') { $pending[$key] = $row; $reports[$key] = $row }
+            elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-disclosed') { $pending.Remove($key) }
+            # Co-review round 2 (iteration 002): the dispatcher withheld the output that carried the line, so it was never
+            # shown; it is pending again and the next message says it.
+            elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-undelivered' -and $reports.ContainsKey($key)) { $pending[$key] = $reports[$key] }
+        }
+        if ($pending.Count -eq 0) { return $null }
+        $lines = foreach ($key in @($pending.Keys)) {
+            $row = $pending[$key]
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = $key; host_kind = [string]$HostKind; session_id = $session; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
+                Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
+            if ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-saved') {
+                ("Specrew: your earlier '{0}' was received but could not be saved, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
+            elseif ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'origin-unconfirmed') {
+                ("Specrew: your '{0}' was received but not recorded - Specrew could not confirm it was typed in this conversation, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
+            else {
+                ("Specrew: your earlier '{0}' was not recorded - it reached the conversation, but Specrew did not receive it, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
+        }
+        return (@($lines) -join "`n")
+    }
+    catch { return $null }
+}
+
+function Register-SpecrewExhaustedTurn {
+    # Record that this turn has minted. Append-only: the ledger is history, and history that can be
+    # rewritten is not a control.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$MintedWriters,
+        [AllowEmptyString()][AllowNull()][string]$ContentHash,
+        # Co-review round 1 (iteration 002): which session reserved it, and `message-id` when the key is the host's
+        # message ID, so the turn end can tell history (no identity) from a record made under the current key.
+        [AllowEmptyString()][AllowNull()][string]$SessionId,
+        [AllowEmptyString()][AllowNull()][string]$Identity,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        $entry = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'typed-turn-exhausted'; turn_id = [string]$TurnId
+            content_hash = [string]$ContentHash
+            host_kind = [string]$HostKind; source_event = [string]$SourceEvent
+            minted = [string]$MintedWriters; session_id = [string]$SessionId; identity = [string]$Identity; observed_at = $NowUtc
+        }
+        # -ErrorAction Stop, and it is load-bearing. Add-Content raises a NON-TERMINATING error, so a
+        # plain try/catch around it never fires: the append failed, the catch was skipped, and this
+        # returned $true. A reservation that reports success it did not achieve is precisely the
+        # failure the reservation exists to prevent, and it was found by the case that locks the ledger.
+        $line = ($entry | ConvertTo-Json -Compress -Depth 6)
+        Add-Content -LiteralPath $path -Value $line -Encoding UTF8 -ErrorAction Stop
+        # And READ IT BACK, because "the write did not throw" is not "the record is there" - the same
+        # postcondition rule the round-approval and allowance-reset consumptions were corrected to.
+        $confirmed = $false
+        foreach ($written in [IO.File]::ReadAllLines($path)) {
+            if ([string]$written -ceq [string]$line) { $confirmed = $true; break }
+        }
+        return $confirmed
+    }
+    catch { return $false }
+}
+
+function Write-SpecrewReviewRoundApprovalFromReset {
+    # T018 (FR-029; B4F-125 b): AN ALLOWANCE RESET TYPED IN ORDER TO RUN A ROUND AUTHORIZES THAT ROUND.
+    #
+    # Observed: the maintainer typed `approved for allowance reset` because a round was waiting on the spent allowance;
+    # the reset landed, and the round was then refused until a second message, `approved for review round`. One human
+    # act, one decision. The review command calls this only when the reset answered a round waiting on the allowance;
+    # the round approval it writes IS the reset's own typed approval - its text, its evidence and its time - plus where
+    # it came from, and it is spent, withdrawn and checked exactly like a typed one. Nothing is minted that the human did
+    # not type; a fresh typed round approval later replaces it as usual.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)]$ResetApproval,
+        [Parameter(Mandatory)][string]$ResetId
+    )
+    if ($null -eq $ResetApproval -or -not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$ResetApproval.verdict_text)).Matched) { return $null }
+    $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root 'pending-round-approval.json'
+    # The reset's time as an instant: ConvertFrom-Json handed it back as a [datetime], and a [string] rendering drops
+    # the fraction and, for a `+00:00` value, prints local time (round 9, after DRIFT-004).
+    $resetAt = ConvertTo-SpecrewAuthorityInstant -Value $ResetApproval.observed_at
+    $observedAt = if ($null -ne $resetAt) { $resetAt.ToUniversalTime().ToString('o') } else { [string]$ResetApproval.observed_at }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-round-approval'; authority_kind = 'human'
+        authorized_by = [string]$ResetApproval.authorized_by; approval_kind = 'typed-phrase'
+        verdict_text = [string]$ResetApproval.verdict_text; response_hash = [string]$ResetApproval.response_hash
+        evidence_source = [string]$ResetApproval.evidence_source; source_event = [string]$ResetApproval.source_event
+        host_kind = [string]$ResetApproval.host_kind; observed_at = $observedAt
+        derived_from = ('allowance-reset:' + $ResetId)
+        spent_at = $null; authorization_ref = $null; minted_ref = ''; minted_at = ''
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    return $fact
+}
+
+function Get-SpecrewReviewRoundApprovalAuthorization {
+    # The unspent captured approval, or $null. Shape-validated: a hand-authored file that does not carry
+    # the full fact is treated as absent, and absent refuses - which is this control's fail direction.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($null -eq $item -or $item.Length -le 0 -or $item.Length -gt 65536) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return $null }
+    foreach ($name in @('schema_version', 'fact_type', 'authority_kind', 'verdict_text', 'response_hash', 'evidence_source', 'source_event', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'review-round-approval' -or [string]$fact.authority_kind -cne 'human') { return $null }
+    if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
+    # The stored text must still BE an approval by the live recognizer - a phrase file whose content
+    # would not capture today does not authorize today. T018 (B4F-125 b): a round approval that came from the reset
+    # typed in order to run it carries the reset's text, checked by the reset's recognizer.
+    $derivedFrom = if ($fact.PSObject.Properties['derived_from']) { [string]$fact.derived_from } else { '' }
+    if ($derivedFrom -cmatch '^allowance-reset:\S+$') {
+        if (-not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    }
+    elseif (-not [bool](Test-SpecrewReviewRoundApprovalPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    $spent = $fact.PSObject.Properties['spent_at']
+    if ($spent -and -not [string]::IsNullOrWhiteSpace([string]$spent.Value)) { return $null }
+    # W68 / round-25 finding (DRIFT-199-I001-141): A WITHDRAWAL THAT COULD NOT DELETE STILL REVOKES.
+    #
+    # Write-SpecrewApprovalWithdrawal journals the human's act and THEN deletes this file. The journal
+    # is written first precisely so the record survives a failed delete - but nothing read it, so a
+    # delete that lost a race left the approval sitting here, spendable, after the human had explicitly
+    # taken it back. The maintainer ruled this class the most severe the system has, one round before
+    # it was found here, in the router introduced to fix the round-24 version of the same shape: the
+    # capture was wired and the CONSUMPTION of the writer's result was not.
+    #
+    # Revocation is decided HERE, at the reader, because that is the only place that cannot be skipped
+    # by a failed write somewhere else.
+    # The stamp the withdrawal writes onto this very fact, honoured directly - the revocation path that
+    # needs no second file to have survived (W71 / round-28).
+    if ($fact.PSObject.Properties['withdrawn_at'] -and -not [string]::IsNullOrWhiteSpace([string]$fact.withdrawn_at)) { return $null }
+    if (-not (Test-SpecrewApprovalIsWithdrawn -ProjectRoot $ProjectRoot -Fact $fact)) { return $fact }
+    return $null
+}
+
+function Test-SpecrewApprovalIsWithdrawn {
+    # Did the human take THIS approval back? A withdrawal journalled at or after the approval was
+    # observed revokes it.
+    #
+    # TIME, NOT A JOIN, AND DELIBERATELY. The journal's `withdrew_observed_at` names the approval it
+    # revoked, but it stores whatever `[string]` rendered from a JSON-parsed date, so it does not
+    # round-trip to the same text on every host - matching on it would fail open exactly where this
+    # control must not. The time rule fails CLOSED and stays RECOVERABLE, which is the pair that
+    # matters: an approval typed AFTER the withdrawal has a later instant and is untouched, so a human
+    # who changes their mind is never wedged (the round-19 lesson, kept).
+    #
+    # Unreadable journal answers "withdrawn". This is the one reader in this file that fails closed on
+    # corruption rather than open: everywhere else a false refusal costs a retype, but here a false
+    # ACCEPT spends authority the human revoked.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowNull()]$Fact
+    )
+    if ($null -eq $Fact) { return $false }
+    # BOTH journals: the one beside the approval, and the independent one under the authority root
+    # that exists so an unwritable round-approval directory cannot erase a revocation (W71/round-28).
+    $journals = @(
+        (Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'captures.jsonl')
+        (Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/withdrawals.jsonl')
+    ) | Where-Object { [IO.File]::Exists($_) }
+    if (@($journals).Count -eq 0) { return $false }
+    $approvedAt = $null
+    if ($Fact.PSObject.Properties['observed_at']) { $approvedAt = ConvertTo-SpecrewAuthorityInstant -Value $Fact.observed_at }
+    if ($null -eq $approvedAt) { return $true }
+    try {
+        foreach ($line in @($journals | ForEach-Object { [IO.File]::ReadAllLines($_) })) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            # W72 / round-29, reported BLOCKING: A TORN LINE IS A REVOCATION IT CANNOT RULE OUT.
+            #
+            # This reader documented itself as failing closed on an unreadable journal and then skipped
+            # individual unparseable LINES - so an interrupted append, which is the exact failure the
+            # independent journal exists to survive, left a torn record that was ignored and the
+            # still-present approval read as usable after the human revoked it.
+            #
+            # W70 fixed precisely this in the exhausted-turn ledger reader and left this sibling alone:
+            # two readers of one concern, corrected one at a time. The rule is the same in both, so it
+            # reads the same in both.
+            # W75: skipped and recorded, for the reason above. A torn line here used to mean EVERY
+            # approval - current and future - read as withdrawn, which is the same outage wearing the
+            # withdrawal reader's clothes.
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $entry = $null }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type']) {
+                if (Get-Command Write-SpecrewAuthorityLedgerDamageObservation -ErrorAction SilentlyContinue) {
+                    Write-SpecrewAuthorityLedgerDamageObservation -ProjectRoot $ProjectRoot -Journal 'withdrawal-journal' | Out-Null
+                }
+                continue
+            }
+            if ([string]$entry.fact_type -cne 'review-round-approval-withdrawn') { continue }
+            if (-not $entry.PSObject.Properties['observed_at']) { continue }
+            $withdrawnAt = ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at
+            if ($null -eq $withdrawnAt) { continue }
+            if ($withdrawnAt -ge $approvedAt) { return $true }
+        }
+    }
+    catch { return $true }
+    return $false
+}
+
+function ConvertTo-SpecrewAuthorityInstant {
+    # W60 / round-19 walk (DRIFT-199-I001-129): AN INSTANT IS NOT A RENDERED STRING.
+    #
+    # Found by the round-18 double-spend block refusing the maintainer's own fresh approval. Both
+    # timestamps come back from ConvertFrom-Json as [DateTime] objects, and PowerShell's [string]
+    # cast renders a Kind=Utc value as a bare UTC clock while rendering a value parsed from a
+    # `+00:00` offset in LOCAL time. Re-parsing both then assumed local, so the two instants were
+    # compared in DIFFERENT FRAMES - skewed by the machine's offset, which on this machine turned
+    # "the round ran 24 minutes BEFORE you approved" into "after". A units mismatch, in the
+    # authority layer, reachable only outside UTC.
+    #
+    # Everything that compares stored times goes through this: objects keep their own instant, and
+    # only genuine strings are parsed - offset-bearing or Z-suffixed round-trip exactly, and a
+    # naive string is read as UTC rather than silently as local, because the store writes UTC.
+    [OutputType([object])]
+    [CmdletBinding()]
+    param([AllowNull()][object]$Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [DateTimeOffset]) { return $Value }
+    if ($Value -is [DateTime]) {
+        $dt = [DateTime]$Value
+        if ($dt.Kind -eq [DateTimeKind]::Unspecified) { $dt = [DateTime]::SpecifyKind($dt, [DateTimeKind]::Utc) }
+        return [DateTimeOffset]::new($dt)
+    }
+    $text = ([string]$Value).Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+    $parsed = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse($text, [Globalization.CultureInfo]::InvariantCulture,
+            ([Globalization.DateTimeStyles]::RoundtripKind -bor [Globalization.DateTimeStyles]::AssumeUniversal), [ref]$parsed)) {
+        return $parsed
+    }
+    return $null
+}
+
+function Get-SpecrewPauseDecisionRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/pause-decision'
+}
+
+function Get-SpecrewPendingPauseIdentity {
+    # W63 / round-21 finding (DRIFT-199-I001-132): which pause is waiting for an answer right now.
+    # Read from the store's own published fact (campaigns/<id>/runs/<run>/pending-pause.json) so a
+    # captured decision can be BOUND to the round it answers. Returns $null when nothing is pending -
+    # which is itself the answer: a decision typed against no pause authorizes no pause.
+    #
+    # W70 / round-27 finding: SCOPED TO THE CAMPAIGN BEING ANSWERED. W68 excluded ANSWERED pauses,
+    # which fixed the reported wedge and left the other half standing: with two campaigns each holding
+    # an unanswered pause, the human answering the active feature was bound to whichever campaign
+    # paused most recently, the CLI rejected it for the run actually waiting, and retyping repeated the
+    # binding. I called scoping secondary hardening at the time; it was the same wedge through the door
+    # left open. Fail-open on SCOPE ALONE - a caller with no campaign to name keeps the project-wide
+    # behaviour, because refusing them would wedge every caller that cannot supply one.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyString()][AllowNull()][string]$CampaignId
+    )
+    $campaignsRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
+    # W71 / round-28 finding: SELF-SCOPE, because the production writer has no campaign to pass.
+    #
+    # W70 added -CampaignId and the test exercised the helper with it. The writer calls this with
+    # ProjectRoot alone, so the fix never reached the path that uses it - the tenth instance of a test
+    # proving the thing added rather than the path that reaches it. Rather than plumb a campaign
+    # through a router that has no idea what one is, the helper resolves the active feature itself and
+    # prefers campaigns belonging to it. Explicit -CampaignId still wins.
+    #
+    # Fail-open on SCOPE ALONE: if no feature resolves, every campaign stays eligible, which is the
+    # pre-W70 behaviour minus answered pauses.
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -and (Get-Command Resolve-SpecrewBranchFeatureRef -ErrorAction SilentlyContinue)) {
+        $activeFeature = ''
+        try { $activeFeature = [string](Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot) } catch { $activeFeature = '' }
+        if (-not [string]::IsNullOrWhiteSpace($activeFeature)) { $script:SpecrewPauseScopeFeature = $activeFeature }
+        else { $script:SpecrewPauseScopeFeature = '' }
+    }
+    else { $script:SpecrewPauseScopeFeature = '' }
+    $newest = $null
+    $newestAt = [DateTimeOffset]::MinValue
+    try {
+        foreach ($pauseFile in @(Get-ChildItem -LiteralPath $campaignsRoot -Filter 'pending-pause.json' -File -Recurse -ErrorAction SilentlyContinue)) {
+            $pause = $null
+            try { $pause = Get-Content -LiteralPath $pauseFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 -ErrorAction Stop } catch { continue }
+            if ($null -eq $pause -or -not $pause.PSObject.Properties['run_id']) { continue }
+            # W68 / round-25 finding (DRIFT-199-I001-141): AN ANSWERED PAUSE IS HISTORY.
+            #
+            # This took the newest pause in the whole project without excluding ones that already carry
+            # a sibling decision - which the canonical Get-ReviewCampaignPendingPause reader DOES
+            # exclude. Two readers of one question, for the fourth time in this feature. With an older
+            # unanswered campaign and a newer answered one, a typed `stop the review here` bound to the
+            # closed run, the CLI rejected it for the run actually waiting, and retyping repeated the
+            # same wrong binding - the human answering forever while nothing moved.
+            #
+            # Scoped by DIRECTORY rather than by re-reading the store, because this is the bootstrap
+            # module and it must not take a dependency on the review-authority reader to answer a
+            # question about a file sitting next to the one it already opened.
+            if ([IO.File]::Exists([IO.Path]::Combine($pauseFile.DirectoryName, 'pause-decision.json'))) { continue }
+            $pauseCampaign = if ($pause.PSObject.Properties['campaign_id']) { [string]$pause.campaign_id } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($CampaignId)) {
+                if ($pauseCampaign -cne [string]$CampaignId) { continue }
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($script:SpecrewPauseScopeFeature)) {
+                if ($pauseCampaign -notmatch [regex]::Escape([string]$script:SpecrewPauseScopeFeature)) { continue }
+            }
+            $observed = $null
+            if ($pause.PSObject.Properties['observed_at']) { $observed = ConvertTo-SpecrewAuthorityInstant -Value $pause.observed_at }
+            if ($null -eq $observed) { $observed = [DateTimeOffset]::MinValue }
+            if ($null -eq $newest -or $observed -gt $newestAt) { $newest = $pause; $newestAt = $observed }
+        }
+    }
+    catch { return $null }
+    if ($null -eq $newest) { return $null }
+    return [pscustomobject]@{
+        campaign_id = $(if ($newest.PSObject.Properties['campaign_id']) { [string]$newest.campaign_id } else { '' })
+        run_id = [string]$newest.run_id
+        target_digest = $(if ($newest.PSObject.Properties['target_digest']) { [string]$newest.target_digest } else { '' })
+    }
+}
+
+function Test-SpecrewPauseDecisionPhrase {
+    # W62 / round-20 finding (DRIFT-199-I001-131): EVERY PAUSE CHOICE CARRIES THE HUMAN.
+    #
+    # Choices 2 and 3 were exempt from the captured-approval gate because they spend no round - but
+    # stopping here passes `AuthorizedBy='human'` into the landing, writes an identity-bound human
+    # disposition, and can COMPLETE SIGN-OFF. So an agent invoking `--pause-choice 2` manufactured
+    # the human authorization for the most consequential act in the lifecycle: the W44 hole, one
+    # door down, on the door that matters most. These are the two typed decisions the W49 menu
+    # already shows the human; now they are authority, captured like every other.
+    #
+    # Same conservative shape as the round-approval recognizer: the decision lives on its own line,
+    # a closed tail admits instructions but not prose, and questions, deferrals, reversals, mentions
+    # and machinery envelopes are not acts.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+
+    $r = [pscustomobject]@{ Matched = $false; Choice = $null; Phrase = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower) -or $lower.EndsWith('?')) { return $r }
+
+    $shapes = @(
+        @{ Choice = 'stop-here'; Pattern = '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?stop\s+(?:the\s+)?review\s+here\b' }
+        @{ Choice = 'abandon'; Pattern = '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?abandon\s+(?:this\s+)?review\s+campaign\b' }
+    )
+    foreach ($shape in $shapes) {
+        $anchor = [regex]::Match($lower, [string]$shape.Pattern)
+        if (-not $anchor.Success) { continue }
+        if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) { $r | Add-Member -NotePropertyName 'Reason' -NotePropertyValue 'multi-line-refused' -Force; return $r }
+        $tail = $lower.Substring($anchor.Length)
+        if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
+        if (Test-SpecrewConditionalDeferralClause -Text $tail) { return $r }
+        if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait)\b') { return $r }
+        if ($tail -match "\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b") { return $r }
+        $r.Matched = $true; $r.Choice = [string]$shape.Choice; $r.Phrase = $trimmed
+        return $r
+    }
+    return $r
+}
+
+function Write-SpecrewPauseDecisionAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: pause-decision
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    $evidenceSource = 'hook-captured-user-prompt'
+    if ($null -eq $event) {
+        if (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { $event = 'Stop'; $evidenceSource = 'hook-captured-from-transcript' }
+        else { return $null }
+    }
+    $recognized = Test-SpecrewPauseDecisionPhrase -Text $Response
+    if (-not [bool]$recognized.Matched) { return $null }
+    # Round-21 finding (DRIFT-199-I001-132): A DECISION ANSWERS ONE PAUSE.
+    #
+    # The first cut recorded only the choice, so a phrase typed in an unrelated conversation - or
+    # against a campaign closed weeks ago - became a standing project-wide capability an agent could
+    # apply to whatever pause happened to be current. The capture now binds to the pause that was
+    # PENDING when the human typed, and a decision bound to nothing answers nothing.
+    $pending = Get-SpecrewPendingPauseIdentity -ProjectRoot $ProjectRoot
+    $root = Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root (([string]$recognized.Choice) + '.json')
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-pause-decision'; authority_kind = 'human'
+        authorized_by = 'unattributed-human'; choice = [string]$recognized.Choice
+        verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
+        evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
+        campaign_id = $(if ($null -ne $pending) { [string]$pending.campaign_id } else { '' })
+        run_id = $(if ($null -ne $pending) { [string]$pending.run_id } else { '' })
+        target_digest = $(if ($null -ne $pending) { [string]$pending.target_digest } else { '' })
+        observed_at = $NowUtc; spent_at = $null; authorization_ref = $null
+    }
+    if ([IO.File]::Exists($path)) {
+        $existing = $null
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
+        # Same act = same phrase AND same pause. Round-21: without the second half, a phrase typed
+        # once while nothing was pending was returned forever - so the human re-typing it against a
+        # REAL pause got their old unbound record back and the decision could never bind.
+        if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
+            [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            [string]$(if ($existing.PSObject.Properties['run_id']) { $existing.run_id } else { '' }) -ceq [string]$fact.run_id -and
+            -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) { return $existing }
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    try { ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Encoding UTF8 } catch { $null = $_ }
+    return $fact
+}
+
+function Get-SpecrewPauseDecisionAuthorization {
+    # The unspent captured decision for ONE choice, or $null. A decision for stopping here never
+    # authorizes abandoning the campaign: they are different acts with different consequences.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('stop-here', 'abandon')][string]$Choice,
+        # Round-21 (DRIFT-199-I001-132): the run this decision must answer. A decision bound to a
+        # different round - or to no pause at all - is not authority for THIS one. Omitted only by
+        # readers that are reporting rather than authorizing.
+        [AllowNull()][string]$RunId
+    )
+    $path = Join-Path (Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot) ($Choice + '.json')
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($null -eq $item -or $item.Length -le 0 -or $item.Length -gt 65536) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('schema_version', 'fact_type', 'authority_kind', 'choice', 'verdict_text', 'response_hash', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'review-pause-decision' -or [string]$fact.authority_kind -cne 'human') { return $null }
+    if ([string]$fact.choice -cne $Choice) { return $null }
+    if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
+    $recognized = Test-SpecrewPauseDecisionPhrase -Text ([string]$fact.verdict_text)
+    if (-not [bool]$recognized.Matched -or [string]$recognized.Choice -cne $Choice) { return $null }
+    if ($fact.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$fact.spent_at)) { return $null }
+    if (-not [string]::IsNullOrWhiteSpace($RunId)) {
+        $boundRun = if ($fact.PSObject.Properties['run_id']) { [string]$fact.run_id } else { '' }
+        # Unbound (typed when no pause was pending) or bound elsewhere: not authority for this round.
+        if ([string]::IsNullOrWhiteSpace($boundRun) -or $boundRun -cne $RunId) { return $null }
+    }
+    return $fact
+}
+
+function Complete-SpecrewPauseDecisionAuthorization {
+    # One decision, one landing - stamped spent with the reference it became, read back like every
+    # other consumption in this store.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('stop-here', 'abandon')][string]$Choice,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Join-Path (Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot) ($Choice + '.json')
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'no-pending-decision' } }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-decision-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-decision-empty' } }
+    $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
+    $fact | Add-Member -NotePropertyName 'authorization_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'readback-failed' } }
+    if ($null -eq $verified -or [string]::IsNullOrWhiteSpace([string]$verified.spent_at)) {
+        return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    return [pscustomobject]@{ consumed = $true; fact = $verified; reason = 'consumed' }
+}
+
+function Set-SpecrewReviewRoundApprovalMintedRef {
+    # W61 / round-19 finding (DRIFT-199-I001-130): OWNERSHIP IS RECORDED, NOT INFERRED.
+    #
+    # The capture now carries the authorization reference minted FROM it, so "has this approval
+    # already bought a round?" is a join through published facts rather than a guess from
+    # timestamps. Stamping the mint does NOT spend the capture - an undelivered attempt keeps the
+    # entitlement, which is the W50 rule - it only records which grant this act became.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ stamped = $false; reason = 'no-pending-capture' } }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-empty' } }
+    $fact | Add-Member -NotePropertyName 'minted_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
+    $fact | Add-Member -NotePropertyName 'minted_at' -NotePropertyValue $NowUtc -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ stamped = $false; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ stamped = $false; reason = 'readback-failed' } }
+    if ($null -eq $verified -or [string]$verified.minted_ref -cne [string]$AuthorizationRef) {
+        return [pscustomobject]@{ stamped = $false; reason = 'mint-ref-not-durable' }
+    }
+    return [pscustomobject]@{ stamped = $true; fact = $verified; reason = 'stamped' }
+}
+
+function Get-SpecrewDeliveredRoundForMintedRef {
+    # W61 / round-19 findings (DRIFT-199-I001-130): THE JOIN, replacing the time inference.
+    #
+    # "Did this approval already buy a delivered round?" is answered by following the facts the
+    # store published: capture.minted_ref -> grants/*.json (authorization_ref) -> grant_id ->
+    # reservations/<grant_id>/**/generation-*.json (run_id) -> runs/<run_id>/result.json. Asking
+    # instead "did ANY completed run start after this capture?" attributed an unrelated round to a
+    # pending approval and refused it - the round-19 major - and made the printed recovery
+    # unreachable, because a re-typed phrase kept the old timestamp - the round-19 blocking wedge.
+    #
+    # Returns the delivered run result, or $null. An unreadable store answers $null: a fabricated
+    # block locks a human out of a round they own, which is the worse failure.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$AuthorizationRef
+    )
+    if ([string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($CampaignId)) { return $null }
+    $campaignRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) (".specrew/review/authority/campaigns/" + $CampaignId)
+    if (-not (Test-Path -LiteralPath $campaignRoot -PathType Container)) { return $null }
+    try {
+        $grantIds = [Collections.Generic.List[string]]::new()
+        foreach ($grantFile in @(Get-ChildItem -LiteralPath (Join-Path $campaignRoot 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+            $grant = $null
+            try { $grant = Get-Content -LiteralPath $grantFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+            if ($null -eq $grant -or -not $grant.PSObject.Properties['authorization_ref']) { continue }
+            if ([string]$grant.authorization_ref -cne $AuthorizationRef) { continue }
+            if ($grant.PSObject.Properties['grant_id'] -and -not [string]::IsNullOrWhiteSpace([string]$grant.grant_id)) {
+                $grantIds.Add([string]$grant.grant_id) | Out-Null
+            }
+        }
+        if ($grantIds.Count -eq 0) { return $null }
+        foreach ($grantId in $grantIds) {
+            $reservationRoot = Join-Path (Join-Path $campaignRoot 'reservations') $grantId
+            if (-not (Test-Path -LiteralPath $reservationRoot -PathType Container)) { continue }
+            foreach ($generation in @(Get-ChildItem -LiteralPath $reservationRoot -Filter '*.json' -File -Recurse -ErrorAction SilentlyContinue)) {
+                $reservation = $null
+                try { $reservation = Get-Content -LiteralPath $generation.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+                if ($null -eq $reservation -or -not $reservation.PSObject.Properties['run_id']) { continue }
+                $runId = [string]$reservation.run_id
+                if ([string]::IsNullOrWhiteSpace($runId)) { continue }
+                $resultPath = Join-Path (Join-Path (Join-Path $campaignRoot 'runs') $runId) 'result.json'
+                if (-not [IO.File]::Exists($resultPath)) { continue }
+                $result = $null
+                try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -ErrorAction Stop } catch { continue }
+                if ($null -eq $result -or -not $result.PSObject.Properties['runtime_outcome']) { continue }
+                # DELIVERED only: an attempt that never reached a reviewer spends nothing (W50).
+                if ([string]$result.runtime_outcome -ceq 'completed') { return $result }
+            }
+        }
+    }
+    catch { return $null }
+    return $null
+}
+
+function Get-SpecrewDeliveredRoundForCapture {
+    # W59 / round-18 finding (DRIFT-199-I001-128): DERIVE THE BLOCK FROM EVIDENCE THAT ALREADY
+    # EXISTS, not from a marker written at the moment of failure.
+    #
+    # Round 17 blocked the double spend with a marker file - and that write fails for exactly the
+    # reason the consumption write failed (unwritable directory, full disk), so once storage
+    # recovered nothing stopped the next mint. Third consecutive round finding the fix one layer
+    # short of enforcement. The store already holds the answer: a DELIVERED run that started after
+    # the capture was observed IS the round that capture paid for, published before any of this
+    # could fail. If such a run exists while the capture is still unspent, the entitlement is
+    # already used, whatever the stamp says.
+    #
+    # Returns the delivered run, or $null. UNPARSEABLE TIMES ANSWER NULL: absent evidence is not
+    # evidence, and this must never fabricate a block that locks a human out of a round they own.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$CaptureObservedAt,
+        [AllowNull()][object[]]$RunResults
+    )
+    if ($null -eq $CaptureObservedAt -or $null -eq $RunResults) { return $null }
+    $observed = ConvertTo-SpecrewAuthorityInstant -Value $CaptureObservedAt
+    if ($null -eq $observed) { return $null }
+    foreach ($run in @($RunResults)) {
+        if ($null -eq $run) { continue }
+        $outcomeProperty = $run.PSObject.Properties['runtime_outcome']
+        if (-not $outcomeProperty -or [string]$outcomeProperty.Value -cne 'completed') { continue }
+        $startedProperty = $run.PSObject.Properties['started_at']
+        if (-not $startedProperty) { continue }
+        $started = ConvertTo-SpecrewAuthorityInstant -Value $startedProperty.Value
+        if ($null -eq $started) { continue }
+        if ($started -gt $observed) { return $run }
+    }
+    return $null
+}
+
+function Get-SpecrewUnconsumedDeliveryPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'delivered-unconsumed.json'
+}
+
+function Write-SpecrewUnconsumedDeliveryFact {
+    # W58 / round-17 finding (DRIFT-199-I001-127): A WARNING IS NOT A CONTROL.
+    #
+    # Round 16 made a failed consumption stamp VISIBLE; round 17 observed that visibility does not
+    # stop it - the capture stayed unspent, so the next invocation minted a fresh round-numbered
+    # grant and started a SECOND paid review from one human approval. The delivered-but-unconsumed
+    # state is therefore durable, and the mint gate fails closed on it: a round that was delivered
+    # and could not be marked paid blocks further spending until a human resolves it.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$RunId,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [Parameter(Mandatory)][string]$Reason,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $ProjectRoot
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-round-delivered-unconsumed'
+        run_id = [string]$RunId; authorization_ref = [string]$AuthorizationRef
+        reason = [string]$Reason; observed_at = $NowUtc
+    }
+    try {
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+        $json = $fact | ConvertTo-Json -Depth 6
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return $null }
+    return $fact
+}
+
+function Get-SpecrewUnconsumedDeliveryFact {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('fact_type', 'authorization_ref', 'reason', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'review-round-delivered-unconsumed') { return $null }
+    return $fact
+}
+
+function Clear-SpecrewUnconsumedDeliveryFact {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $ProjectRoot
+    try { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } } catch { $null = $_ }
+}
+
+function Test-SpecrewApprovalWithdrawalPhrase {
+    # W57 / round-16 finding (DRIFT-199-I001-126): the CLI's undelivered-round refusal tells the
+    # human they may "withdraw the approval (say so, and nothing further runs)" - and nothing
+    # implemented it, so the next invocation loaded the same unspent capture and invoked another
+    # reviewer. A promise made in a refusal is a contract; this is the recognizer that keeps it.
+    #
+    # Same conservative shape as every recognizer here - leading-anchored, so a mention or a
+    # question is not an act - but the floor cuts the OTHER way for a withdrawal: it REMOVES
+    # authority, so a false positive costs a retype while a false negative runs a review the human
+    # said to stop. Hence the deliberately generous verb set and no closed-tail requirement.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    $r = [pscustomobject]@{ Matched = $false; Phrase = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower) -or $lower.EndsWith('?')) { return $r }
+    if ($lower -notmatch '^\s*(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?(?:withdraw|revoke|rescind|retract|cancel)\b') { return $r }
+    if ($lower -notmatch '\b(approval|approve[d]?|round|authorization|authorisation)\b') { return $r }
+    # PRED-BETA4-022's one-line rule is NOT applied here, on purpose: it bounds what MINTS. A withdrawal
+    # removes authority, and this recognizer's floor cuts the other way - a false negative runs a review
+    # the human said to stop - so a withdrawal typed above a block of notes still withdraws.
+    $r.Matched = $true; $r.Phrase = $trimmed
+    return $r
+}
+
+function Write-SpecrewApprovalWithdrawal {
+    # SPECREW-AUTHORITY-CONTROL: approval-withdrawal
+    # Removes the pending capture and records WHY it is gone, so the ledger shows a withdrawal
+    # rather than an approval that silently vanished. Journals before deleting: the record of the
+    # human's act must survive even if the delete then fails.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $recognized = Test-SpecrewApprovalWithdrawalPhrase -Text $Response
+    if (-not [bool]$recognized.Matched) { return $null }
+    $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+    $path = Join-Path $root 'pending-round-approval.json'
+    $withdrawn = $null
+    if ([IO.File]::Exists($path)) {
+        try { $withdrawn = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $withdrawn = $null }
+    }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-round-approval-withdrawn'; authority_kind = 'human'
+        authorized_by = 'unattributed-human'; verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
+        withdrew_observed_at = $(if ($null -ne $withdrawn -and $withdrawn.PSObject.Properties['observed_at']) { [string]$withdrawn.observed_at } else { '' })
+        host_kind = [string]$HostKind; source_event = [string]$SourceEvent; observed_at = $NowUtc
+    }
+    # W71 / round-28 finding, reported BLOCKING: THREE INDEPENDENT WAYS TO REVOKE, because one
+    # unwritable file must not hand the human's authority back.
+    #
+    # W68 made the reader consult the journal, which closed "the delete failed". Round 28 found the
+    # pair: if the journal append ALSO fails there is nothing to consult, and the revoked approval
+    # reads as usable again. So the withdrawal now (1) stamps the pending fact itself, which the reader
+    # honours directly, (2) journals, and (3) deletes. Any one of the three landing is a revocation.
+    # They are attempted in that order because the stamp is the one the reader reads without needing a
+    # second file to survive.
+    $revoked = $false
+    if ($null -ne $withdrawn -and [string]::IsNullOrWhiteSpace([string]$withdrawn.spent_at)) {
+        try {
+            $withdrawn | Add-Member -NotePropertyName 'withdrawn_at' -NotePropertyValue $NowUtc -Force
+            $stampJson = $withdrawn | ConvertTo-Json -Depth 8
+            if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $stampJson }
+            else { [IO.File]::WriteAllText($path, $stampJson, [Text.UTF8Encoding]::new($false)) }
+            $verify = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+            if ($null -ne $verify -and $verify.PSObject.Properties['withdrawn_at'] -and
+                -not [string]::IsNullOrWhiteSpace([string]$verify.withdrawn_at)) { $revoked = $true }
+        }
+        catch { $revoked = $false }
+    }
+    try {
+        [IO.Directory]::CreateDirectory($root) | Out-Null
+        Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Value ($fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop
+        $revoked = $true
+    }
+    catch { $null = $_ }
+    # A FOURTH PATH, IN A DIFFERENT DIRECTORY. The three above all live under the round-approval root,
+    # so "that directory is unwritable" defeats all of them at once - which is precisely the round-28
+    # scenario, and why three paths in one place is really one path wearing three hats. The authority
+    # root is independent storage; if BOTH are unwritable the project has no working store at all.
+    try {
+        $independent = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/withdrawals.jsonl'
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($independent)) | Out-Null
+        Add-Content -LiteralPath $independent -Value ($fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop
+        $revoked = $true
+    }
+    catch { $null = $_ }
+    # An UNSPENT capture is what a withdrawal removes; a spent one is history and stays.
+    if ($null -ne $withdrawn -and [string]::IsNullOrWhiteSpace([string]$withdrawn.spent_at)) {
+        try { [IO.File]::Delete($path); $revoked = $true } catch { $null = $_ }
+    }
+    # Co-review round 3 (iteration 002): NOTHING LANDED IS A FAILURE, NOT A NON-MATCH. The phrase matched, so a null here
+    # read to the router as "not a withdrawal" and the human's revocation vanished without the report FR-027 requires.
+    # Throwing lets the router report it as received but not saved.
+    if (-not $revoked) { throw 'approval-withdrawal-not-saved' }
+    return $fact
+}
+
+function Complete-SpecrewReviewRoundApprovalAuthorization {
+    # One approval, one round: the mint that consumed the phrase stamps it spent, carrying the
+    # authorization reference it became, so the record reads end to end - who approved (the phrase),
+    # what it became (the ref), when it was spent.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
+    # W57: EVERY exit returns the same shape. The old early returns handed back $null, which the
+    # caller could not tell from success - the discard that let a delivered round leave its approval
+    # unspent (round-16 finding). "There was nothing to consume" is itself a reportable outcome.
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'no-pending-capture' } }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-empty' } }
+    $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
+    $fact | Add-Member -NotePropertyName 'authorization_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    # W57 / round-16 finding (DRIFT-199-I001-126): VERIFY THE POSTCONDITION, AND SAY SO.
+    #
+    # The caller swallowed every error here and never checked the outcome, so a transient write
+    # failure left spent_at unset after a DELIVERED review - and the next invocation derived a fresh
+    # grant from the same capture, two delivered reviews from one approval. This now returns
+    # { consumed; fact; reason }: consumed=$true ONLY when the stamp is durably readable back, which
+    # is the same read-back rule the block counter and the cap fact already follow.
+    $reason = 'consumed'
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'readback-failed' } }
+    if ($null -eq $verified -or -not $verified.PSObject.Properties['spent_at'] -or
+        [string]::IsNullOrWhiteSpace([string]$verified.spent_at) -or
+        [string]$verified.authorization_ref -cne [string]$AuthorizationRef) {
+        return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    return [pscustomobject]@{ consumed = $true; fact = $verified; reason = $reason }
+}
+
+# ===================================================================================================
+# W50 (2026-08-23, maintainer ruling): THE ALLOWANCE METERS ATTEMPTS; THE HUMAN AUTHORIZES DELIVERIES.
+#
+# A captured `approved for review round` is an ENTITLEMENT to one DELIVERED review, and it survives
+# system failure:
+#   - failure BEFORE invocation (crash, unresolvable feature, no slot): nothing is consumed - not the
+#     capture, not a slot.
+#   - INVOKED but NOT DELIVERED (infrastructure failure; a partial that examined nothing due to a
+#     harness fault): the token cost is recorded as spent-without-delivery - the cost is real and must
+#     stay visible - but the entitlement stands, and the system gets ONE bounded automatic retry
+#     (different host or more time, its choice, recorded) before it may ask the human anything.
+#   - DELIVERED (complete; or a partial the human explicitly accepts): the entitlement is consumed.
+#     Only here.
+#
+# The bound matters: unlimited retry on "failure" is a token-burn hole. One automatic retry, then a
+# plain-language ask naming what failed, what it cost, and what is requested - never a re-approval of
+# the same decision.
+# ===================================================================================================
+
+function Resolve-SpecrewRoundEntitlementOutcome {
+    # Classifies one campaign invocation against the entitlement rule. The never-reached set is
+    # FR-014's own discriminator, reused verbatim so the entitlement and the round counter cannot
+    # drift apart: a run whose runtime_outcome is preflight-failed, claim-contended or launch-failed
+    # never reached a reviewer.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()]$CampaignRun)
+
+    $r = [pscustomobject]@{ outcome = 'not-invoked'; reason = 'no-run-object'; run_id = $null; completion = $null }
+    if ($null -eq $CampaignRun) { return $r }
+    $status = ''
+    $statusProp = $CampaignRun.PSObject.Properties['status']
+    if ($null -ne $statusProp) { $status = [string]$statusProp.Value }
+    $invoked = $false
+    $invokedProp = $CampaignRun.PSObject.Properties['invoked']
+    if ($null -ne $invokedProp) { $invoked = [bool]$invokedProp.Value }
+    $result = $null
+    $resultProp = $CampaignRun.PSObject.Properties['result']
+    if ($null -ne $resultProp) { $result = $resultProp.Value }
+    $runIdProp = $CampaignRun.PSObject.Properties['run_id']
+    if ($null -ne $runIdProp) { $r.run_id = [string]$runIdProp.Value }
+
+    if (-not $invoked -or $status -cin @('not-started', 'suppressed')) {
+        $r.outcome = 'not-invoked'
+        $r.reason = if ([string]::IsNullOrWhiteSpace($status)) { 'not-invoked' } else { $status }
+        return $r
+    }
+    if ($null -eq $result) {
+        $r.outcome = 'undelivered'
+        $r.reason = 'invoked-no-result'
+        return $r
+    }
+    $runtimeOutcome = ''
+    $roProp = $result.PSObject.Properties['runtime_outcome']
+    if ($null -ne $roProp) { $runtimeOutcome = [string]$roProp.Value }
+    if ($runtimeOutcome -cin @('preflight-failed', 'claim-contended', 'launch-failed')) {
+        # Never reached a reviewer: this is failure-before-invocation in the rule's terms, whatever
+        # the invocation plumbing says - no reviewer saw the files, no round was spent (FR-014).
+        $r.outcome = 'not-invoked'
+        $r.reason = $runtimeOutcome
+        return $r
+    }
+    $completion = ''
+    $cProp = $result.PSObject.Properties['completion']
+    if ($null -ne $cProp) { $completion = [string]$cProp.Value }
+    $r.completion = $completion
+    if ($completion -ceq 'complete') {
+        $r.outcome = 'delivered'
+        $r.reason = 'complete'
+        return $r
+    }
+    # Partial or incomplete: the review product was not delivered. A partial the human explicitly
+    # accepts is consumed at the ACCEPTANCE (the partial-signoff override writer completes the
+    # entitlement), never here.
+    $r.outcome = 'undelivered'
+    $r.reason = if ([string]::IsNullOrWhiteSpace($completion)) { 'no-completion-recorded' } else { "completion-$completion" }
+    return $r
+}
+
+function Write-SpecrewRoundDeliveryJournal {
+    # Spent-without-delivery is a REAL cost and must stay visible: every undelivered invoked attempt,
+    # and every automatic retry choice, is journaled where the captures live.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$EventKind,
+        [AllowNull()][string]$RunId,
+        [AllowNull()][string]$Detail,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    try {
+        $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+        [IO.Directory]::CreateDirectory($root) | Out-Null
+        ([pscustomobject]@{ event = $EventKind; run_id = [string]$RunId; detail = [string]$Detail; recorded_at = $NowUtc } |
+            ConvertTo-Json -Compress) | Add-Content -LiteralPath (Join-Path $root 'delivery-journal.jsonl') -Encoding UTF8
+    }
+    catch { $null = $_ }
+}
+
+# ===================================================================================================
+# ALLOWANCE RESET IS AN AUTHORITY ACT (W50 rider): it replenishes spend authority, so a bare agent
+# invocation is the W44 gap one door down. Same capture pattern: the human types
+# `approved for allowance reset`; the hooks capture it; the agent runs the command carrying it.
+# A human at their own terminal stays self-evident.
+# ===================================================================================================
+
+function Get-SpecrewAllowanceResetRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/allowance-reset'
+}
+
+function Test-SpecrewAllowanceResetPhrase {
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    $r = [pscustomobject]@{ Matched = $false; Phrase = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+    # W56 (DRIFT-199-I001-125): the approval's own line - the reviewer named this sibling site by
+    # line number, and rule 6 requires the same treatment in every copy of the rule.
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
+    if ($lower.EndsWith('?')) { return $r }
+    $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed)\s+(?:for\s+)?(?:an\s+|the\s+)?allowance\s+reset\b')
+    if (-not $anchor.Success) { return $r }
+    if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) { $r | Add-Member -NotePropertyName 'Reason' -NotePropertyValue 'multi-line-refused' -Force; return $r }
+    $tail = $lower.Substring($anchor.Length)
+    if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
+    # Round-14 finding (DRIFT-199-I001-123): the whole TAIL, not element zero of a delimiter split -
+    # which is empty by construction - or "approved for allowance reset, after we verify the
+    # failures" replenishes spend authority before the stated condition holds.
+    if (Test-SpecrewConditionalDeferralClause -Text $tail) { return $r }
+    if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait|stop)\b') { return $r }
+    # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before it.
+    if ($tail -match '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b') { return $r }
+    $r.Matched = $true; $r.Phrase = $trimmed
+    return $r
+}
+
+function Write-SpecrewAllowanceResetAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: allowance-reset
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    $evidenceSource = 'hook-captured-user-prompt'
+    if ($null -eq $event) {
+        if (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { $event = 'Stop'; $evidenceSource = 'hook-captured-from-transcript' }
+        else { return $null }
+    }
+    $recognized = Test-SpecrewAllowanceResetPhrase -Text $Response
+    if (-not [bool]$recognized.Matched) { return $null }
+    $root = Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root 'pending-allowance-reset.json'
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'allowance-reset-approval'; authority_kind = 'human'
+        authorized_by = 'unattributed-human'; verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
+        evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
+        observed_at = $NowUtc; spent_at = $null
+    }
+    if ([IO.File]::Exists($path)) {
+        $existing = $null
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
+        if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
+            [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) {
+            Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+            return $existing
+        }
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    # W54: the human typed it in the chat, so any standing picker diagnosis is now history.
+    Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+    return $fact
+}
+
+function Get-SpecrewAllowanceResetAuthorization {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Join-Path (Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot) 'pending-allowance-reset.json'
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('schema_version', 'fact_type', 'authority_kind', 'verdict_text', 'response_hash', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'allowance-reset-approval' -or [string]$fact.authority_kind -cne 'human') { return $null }
+    if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
+    if (-not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    $spent = $fact.PSObject.Properties['spent_at']
+    if ($spent -and -not [string]::IsNullOrWhiteSpace([string]$spent.Value)) { return $null }
+    return $fact
+}
+
+function Complete-SpecrewAllowanceResetAuthorization {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Reference,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    # W66 / round-24 finding (DRIFT-199-I001-138): SAY WHAT HAPPENED, AND VERIFY IT.
+    #
+    # The caller swallowed every error here, discarded the result, printed success and exited 0 - so a
+    # transient failure writing the stamp left the human's `approved for allowance reset` unspent even
+    # though the reset itself had landed, and a later agent invocation could replenish the allowance
+    # again from that same one approval. Every exit now returns { consumed; fact; reason }, and
+    # consumed=$true only when the stamp reads back durably: the identical rule the round-approval
+    # consumption was corrected to in round 16, arrived at here eight rounds later because the two
+    # paths were fixed one at a time instead of as one class.
+    $path = Join-Path (Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot) 'pending-allowance-reset.json'
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'no-pending-capture' } }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-empty' } }
+    $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
+    $fact | Add-Member -NotePropertyName 'reset_reference' -NotePropertyValue ([string]$Reference) -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'readback-failed' } }
+    if ($null -eq $verified -or -not $verified.PSObject.Properties['spent_at'] -or
+        [string]::IsNullOrWhiteSpace([string]$verified.spent_at) -or
+        [string]$verified.reset_reference -cne [string]$Reference) {
+        return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    return [pscustomobject]@{ consumed = $true; fact = $verified; reason = 'consumed' }
+}
+
+function Get-SpecrewLandedResetForAllowanceCapture {
+    # THE DERIVED GUARD, mirroring W61's join: "has this approval already been spent?" is answered
+    # from the facts the store published, never from a marker that can itself fail to be written. A
+    # budget reset recorded at or after this capture was observed IS this capture's reset - nothing
+    # else could have authorized it - so a lost stamp can no longer replenish the allowance twice.
+    #
+    # Returns the landed reset fact, or $null. A re-typed phrase is a NEW capture with a later
+    # observed_at, so this leaves the human's recovery path open: refusing that was the round-19
+    # wedge, and repeating it here would be the same mistake one door down. An unreadable store also
+    # answers $null - a fabricated block locks a human out of a reset they own, which is worse.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
+        # As stored: the capture's own [datetime] keeps its instant; a string is parsed (round 9, after DRIFT-004).
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyString()][object]$CaptureObservedAt
+    )
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -or $null -eq $CaptureObservedAt -or [string]::IsNullOrWhiteSpace([string]$CaptureObservedAt)) { return $null }
+    $root = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) ('.specrew/review/authority/campaigns/' + $CampaignId + '/budget-resets')
+    if (-not [IO.Directory]::Exists($root)) { return $null }
+    $capturedAt = $null
+    try { $capturedAt = ConvertTo-SpecrewAuthorityInstant -Value $CaptureObservedAt } catch { return $null }
+    if ($null -eq $capturedAt) { return $null }
+    $landed = $null
+    $landedAt = $null
+    try {
+        foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json')) {
+            $reset = $null
+            try { $reset = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+            if ($null -eq $reset -or -not $reset.PSObject.Properties['observed_at']) { continue }
+            $resetAt = $null
+            try { $resetAt = ConvertTo-SpecrewAuthorityInstant -Value $reset.observed_at } catch { continue }
+            if ($null -eq $resetAt -or $resetAt -lt $capturedAt) { continue }
+            if ($null -eq $landedAt -or $resetAt -lt $landedAt) { $landed = $reset; $landedAt = $resetAt }
+        }
+    }
+    catch { return $null }
+    return $landed
+}

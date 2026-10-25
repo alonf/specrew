@@ -1,0 +1,136 @@
+{
+  "schema_version": "1.0",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "agenda_status": "confirmed",
+  "selected": [
+    "architecture-core",
+    "ui-ux",
+    "requirements-nfr",
+    "security-compliance",
+    "devops-operations",
+    "code-implementation"
+  ],
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Which decomposition style binds beta3 (existing core/store/orchestrator/navigator layering vs new structure)?",
+        "Where does the after-every-round pause live (orchestrator terminal state vs Stop-hook interception)?",
+        "Where does single stop authority land (classifier consults signoff-gate store, in-flight suppression, records-only deltas never stale)?",
+        "How does the composed stop-here landing chain frozen-tree verification, residual acceptance, and gate sync as one action?",
+        "Which items are bridge vs durable, and what does beta4 replace per bridge item?"
+      ],
+      "decision": "D1-D5 accepted as recommended: bind to existing core/store/orchestrator/navigator layering (no new layers); the pause is the orchestrator's terminal state after every round (spend stops, console frees; Stop-hook interception rejected on T067 held-console evidence); single stop authority lands at the stale classifier's two emit sites (consult signoff-gate/latest.json before blocking, authorized in-flight run suppresses, records-only deltas never stale); the stop-here landing is one orchestrator-level action composing frozen-tree verification, identity-bound residual acceptance, and gate sync; bridge = pause plumbing + classifier checks + landing composition (each design record names the beta4 replacement), durable = verdict capture, reparse discrimination, init scaffolding, window catalog, banner version, consumer-language layer. Human addition to D3: a pending pause decision (round completed on current tree, surface rendered, human not yet answered) is a sanctioned state the stop governor treats as quiet — no review or disposition demanded while it pends.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md — console-ASCII map of the round engine, stop surface, and signoff gate with the F4/F5/F6/F8 fault sites",
+      "bindings": {
+        "decomposition-style": "existing-core-store-orchestrator-navigator-layering",
+        "pause-ownership": "orchestrator-terminal-state",
+        "stop-authority": "classifier-consults-signoff-gate-store",
+        "pending-pause-decision": "sanctioned-quiet-state",
+        "stop-here-landing": "one-composed-orchestrator-action"
+      }
+    },
+    "ui-ux": {
+      "agenda": [
+        "What does the after-every-round decision surface render (severity groups, cost line, budget position, options, recommendation)?",
+        "What is the consumer-language contract, its banned-token scope, and its mechanical enforcement?",
+        "How are decision stops composed into one message?",
+        "What shape do failure messages take?",
+        "What does the orientation banner show for prerelease versions?"
+      ],
+      "decision": "U1-U5 accepted with three human refinements: the decision surface includes a one-line severity-derived recommendation (numbered options keep the human in charge) alongside findings-by-severity with file:line, non-gating minors shown, cost in rounds/minutes, budget position, three options with consequences in the option text, and the nothing-spends-until-you-answer line; the consumer-language banned-token list covers machinery nouns only (crossing, mint, marker, digest, boundary sync, verdict capture, controller truth, ratchet, claim-ordered, terminalize) while lifecycle stage names and approval phrases stay consumer-visible by design; NEW ID gloss rule - human-visible prose always renders task/requirement/finding IDs with a short plain description via a helper requiring id + title so an unglossed ID is a RED test, while records keep bare IDs canonical; decision stops compose packet + decision surface as one message (stop-hook bounce = instruction defect); failure messages follow what-happened -> what-it-means-for-your-project -> exact-next-step; every version render shows the full prerelease string.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/ui-ux.md — the agreed console decision-surface layout",
+      "bindings": {
+        "decision-surface-recommendation": "severity-derived-one-line",
+        "banned-tokens-scope": "machinery-nouns-only",
+        "id-gloss-rule": "helper-enforced-id-plus-title",
+        "one-message-decision-stops": "instruction-layer",
+        "banner-version": "full-prerelease-string"
+      }
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "What is the default round budget per digest and its semantics?",
+        "What are the per-reviewer-host review-window defaults?",
+        "What counts as a round that consumes the allowance?",
+        "What is the default env_refs allowlist in the scaffolded verification plan?",
+        "What are the measurable acceptance criteria for the release bar?"
+      ],
+      "decision": "N1-N4 ruled and the ten-SC acceptance bar confirmed: default round budget 4 per digest as the runaway fuse (the engine-owned pause is the economics control, every round individually human-authorized, single-run grants only; human rationale recorded - 4 clears a legitimate round-5-class blocker without a mid-flow reset ceremony, small enough that a runaway dies fast); codex-class window 900 s with other hosts untouched and the timeout message naming co_review_timeout_seconds; reviewer-invoked-only spend accounting aligned to the legacy spend-class rule with the T067 three-infra-failures fixture; env_refs default allowlist as proposed plus TMPDIR for POSIX. Human addition 1: the reviewer prompt contract joins item 1's design lineage - reviewer goal changes from findings to a verdict (justified clean verdict is a blessed output; findings require concrete failure scenarios; output ranked and capped; consequence tags stay beta4). Human addition 2: ID gloss rule confirmed as already recorded at ui-ux.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md — quality-attribute priority table",
+      "bindings": {
+        "round-budget-default": "4-per-digest-runaway-fuse",
+        "codex-window-seconds": "900",
+        "spend-accounting": "reviewer-invoked-only",
+        "env-refs-default": "baseline-plus-tmpdir",
+        "reviewer-prompt-contract": "verdict-goal-ranked-capped"
+      }
+    },
+    "security-compliance": {
+      "agenda": [
+        "Which reparse tags does the review engine's integrity check accept, and how are cloud placeholders verified without reopening the beta2 link vector?"
+      ],
+      "decision": "S1 accepted as stated: reparse-TAG discrimination with the cloud-files tag family allowlisted and treated as hydrate-then-verify (trust rests on the hash of hydrated bytes, never the placeholder); junction/symlink refusal untouched with its fixtures green; unknown tags fail closed (allowlist, not blocklist); refusal message in the U4 consumer shape; hydration leg verified by manual measurement on the recorded T067-class environment with the proof line transcribed and scoped. Human ruling: the policy stays SYMMETRIC across module install, authority store, and frozen snapshot (no special-casing - a store under a sync root risks only sync conflicts, which hit regular files identically); one advisory doc sentence recommending governed repositories live outside synced folders, nothing more.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/security-compliance.md — trust-boundary diagram distinguishing redirection reparse points from cloud placeholders",
+      "bindings": {
+        "reparse-policy": "tag-allowlist-cloud-hydrate-verify-else-refuse",
+        "reparse-policy-symmetry": "symmetric-all-containment-roots",
+        "sync-root-guidance": "one-advisory-doc-sentence"
+      }
+    },
+    "devops-operations": {
+      "agenda": [
+        "What is the v0.40.0-beta3 promotion path (certification, tag, publish, Gallery verification, stable gate)?",
+        "What must the release notes carry?",
+        "What install-path guidance ships?",
+        "Does the standing markdownlint CI red land in scope?"
+      ],
+      "decision": "Train confirmed as drawn: feature lifecycle completes on branch 199, PR to main, certification review on the merge candidate before the tag, annotated tag v0.40.0-beta3 at the merge commit, publish workflow with tag-time prepublish gate, Gallery listing with Prerelease flag plus install verification, maintainer PASS/FAIL ruling on the installed prerelease with stable promotion explicitly out of scope (beta-stable model). Release notes carry the review-loop fixes, the updated known-issues list, and the explicit sentence that the evidence-pipeline and path-identity consolidations named in the beta2 claim ship in beta4. Install docs: CurrentUser default becomes campaign-capable, AllUsers alternative kept, one advisory sentence on synced folders. Human ruling: the markdownlint-cli CI install lands IN scope as release hygiene under the closed-scope exception (the red is certain on beta3's own PR; carrying it schedules emergency work mid-release), recorded as the 198-carried chore it is, not a new finding.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md — promotion-path topology for v0.40.0-beta3",
+      "bindings": {
+        "release-train": "certify-before-tag-at-merge-publish-gallery-verify",
+        "stable-promotion": "out-of-scope-beta-stable-model",
+        "markdownlint-ci-chore": "in-scope-release-hygiene-198-carried"
+      }
+    },
+    "code-implementation": {
+      "agenda": [
+        "What is the source of code-rules truth for this feature?",
+        "Which deltas does 199 apply to the inherited 198 rule set?",
+        "May this feature add a dependency?",
+        "Which reviewer host reviews the implementation?"
+      ],
+      "decision": "Inherit the feature-198 implementation-rules.yml wholesale (product-level truth for this exact machinery, stack powershell-markdown-yaml-json) with three human-confirmed 199 deltas: a consumer-language enforcement custom rule (ID gloss helper with id + title required, banned-machinery-noun check, both failing tests); a pause-economics-fixtures custom rule (every economics invariant ships as a RED-first instance-pinned fixture through the shipped entry point); dependency stance unchanged at use-existing-no-new-dependency (markdownlint-cli is a CI runner tool, not a module dependency). All six 198 custom rules carried re-scoped to 199. Reviewer host: codex, human-selected from the live list-hosts output (strongest independent host; reviewing this feature dogfoods the exact fixes it ships; file-delivery quirk stays a beta4 watch item), authorization persisted via specrew review --host codex --authorization-ref workshop-199-beta3-stabilization.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md — design-time manifest to implement-time guidance flow",
+      "bindings": {
+        "code-rules": "inherit-198-plus-199-deltas",
+        "dependency-stance": "use-existing-no-new-dependency",
+        "reviewer-host": "codex-human-selected"
+      }
+    }
+  }
+}

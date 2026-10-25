@@ -11,6 +11,12 @@ BeforeAll {
     # lazy-load must resolve Get-...ReviewedStateDigest itself, replicating the real detached-entry scope.
     . (Join-Path $script:ccr 'co-review-service.ps1')
 
+    # The test exercises the retained legacy digest-promotion path. Pin that authority explicitly;
+    # otherwise beta3's campaign default correctly suppresses the path before the threading assertion.
+    Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+        [pscustomobject]@{ mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true; campaign_authority_enabled = $false; reason = 'authority-mode-legacy' }
+    }
+
     function New-ThreadFx {
         $fx = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-thread-' + [System.Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $fx '.specrew') -Force | Out-Null

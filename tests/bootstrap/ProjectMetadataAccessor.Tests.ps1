@@ -89,15 +89,23 @@ try {
     $strictDir = Join-Path $tmp 'specs/003-strict-workshop'
     $strictWorkshopDir = Join-Path $strictDir 'workshop'
     New-Item -ItemType Directory -Path $strictWorkshopDir -Force | Out-Null
+    $strictCatalogDir = Join-Path $tmp '.specify/extensions/specrew-speckit/knowledge/design-lenses'
+    New-Item -ItemType Directory -Path $strictCatalogDir -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/knowledge/design-lenses/index.yml') -Destination (Join-Path $strictCatalogDir 'index.yml') -Force
     Set-Content -LiteralPath (Join-Path $strictDir 'spec.md') -Value '# Strict Workshop' -Encoding UTF8
     $strictPath = Join-Path $strictDir 'lens-applicability.json'
 
     $preAgenda = [ordered]@{
-        schema_version = '1.0'
+        schema_version = '1.1'
         workshop_intake = $true
         confirmation_required = $true
+        agenda_contract = 'complete-coverage-v1'
         agenda_status = 'pending-confirmation'
         selected = @()
+        agenda = [ordered]@{}
+        skipped = [ordered]@{}
+        agenda_confirmation = 'pending'
+        agenda_confirmation_scope = 'lens-selection'
         workshop = [ordered]@{}
     }
     $preAgenda | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
@@ -132,16 +140,46 @@ try {
         confirmation_scope = 'lens-question'
     }
     $strictActive = [ordered]@{
+        schema_version = '1.1'
         workshop_intake = $true
         confirmation_required = $true
+        agenda_contract = 'complete-coverage-v1'
         agenda_status = 'confirmed'
         selected = @('architecture-core', 'data-storage')
+        agenda = [ordered]@{
+            'architecture-core' = [ordered]@{ depth = 'full'; decision = 'Choose the responsibility boundary.' }
+            'data-storage' = [ordered]@{ depth = 'medium'; decision = 'Choose persistence.' }
+        }
+        skipped = [ordered]@{
+            'requirements-nfr' = 'Covered by the accepted project baseline.'
+            'ui-ux' = 'No user interface.'
+            'devops-operations' = 'No deployment change.'
+            'integration-api' = 'No external integration.'
+            'security-compliance' = 'No security-sensitive surface.'
+            'observability-resilience' = 'No runtime service.'
+            'component-design' = 'Architecture lens is sufficient for this fixture.'
+            'code-implementation' = 'No production code is written by this fixture.'
+        }
+        agenda_confirmation = 'human-confirmed'
+        agenda_confirmation_scope = 'lens-selection'
         workshop = [ordered]@{ 'architecture-core' = $completedArchitecture }
     }
     $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $strictWorkshopDir 'architecture-core.md') -Value '# Architecture Core' -Encoding UTF8
     $strictState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
     Assert-True ($strictState.status -eq 'active' -and $strictState.current_lens -eq 'data-storage' -and @($strictState.completed).Count -eq 1) 'strict workshop: full ordered record + Markdown yields active state and exact current lens'
+
+    $strictActive.skipped.Remove('requirements-nfr')
+    $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $strictIncompleteCoverage = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($strictIncompleteCoverage.status -eq 'invalid' -and $strictIncompleteCoverage.reason -eq 'workshop-agenda-coverage-incomplete') 'strict workshop: a new agenda cannot enter lens 1 while any technical lens is neither selected nor visibly skipped'
+    $strictActive.skipped['requirements-nfr'] = 'Covered by the accepted project baseline.'
+
+    $strictActive.agenda_confirmation = 'pending'
+    $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $strictUnconfirmedAgenda = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($strictUnconfirmedAgenda.status -eq 'invalid' -and $strictUnconfirmedAgenda.reason -eq 'workshop-agenda-confirmation-invalid') 'strict workshop: a complete model-selected agenda cannot enter lens 1 without human confirmation'
+    $strictActive.agenda_confirmation = 'human-confirmed'
 
     $completedData = [ordered]@{
         agenda = @('Choose persistence')

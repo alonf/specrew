@@ -1,0 +1,1209 @@
+{
+  "prediction": "PRED-BETA4-057",
+  "prediction_commit": "91153385",
+  "implementation_baseline": "8dc29187",
+  "acceptance_5": {
+    "verdict": "GREEN on the re-scoped acceptance",
+    "authority": "maintainer walk verdict, 2026-09-14",
+    "sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "project": "C:/Dev/walks/beta4-final-8d3f9906",
+    "host": "claude-opus-5 after an initial Fable turn",
+    "window_pdt": "2026-09-14 08:29-09:11",
+    "orientation": "once, first reply, 0.40.0-beta4",
+    "agenda": "block in crew message; yes bound",
+    "agenda_receipts_pdt": [
+      "08:41:52",
+      "08:42:00"
+    ],
+    "lens_replies_pdt": {
+      "product-domain": "08:32:28",
+      "architecture-core": "08:43:42",
+      "code-implementation": "08:46:25"
+    },
+    "specify_packet": "named review targets, three real discussion prompts, marker last, no lint picker",
+    "spec_commit": "9adb8f2",
+    "specify_verdict_captured_utc": "2026-09-14T15:52:18Z",
+    "clarify_began_same_turn": true,
+    "clarify_verdict_captured_utc": "2026-09-14T15:56:38Z",
+    "plan_began_same_turn": true,
+    "second_feature": "002-fix-broken-links created with workshop controller and registered product-domain question while feature 1 was parked at clarify with a design-analysis draft",
+    "counts": {
+      "unexpected_repair_prompts": 0,
+      "post_verdict_asks": 0,
+      "partial_acceptances": 0
+    },
+    "limits": [
+      "Product-domain correction step was not exercised, for the third walk running.",
+      "Duplicate agenda receipt remains an observation to explain."
+    ],
+    "release_authorized": true,
+    "release_tag": "v0.40.0-beta4",
+    "transcript_snapshot": {
+      "path": "C:\\Users\\alon\\.claude\\projects\\C--Dev-walks-beta4-final-8d3f9906\\6448e0c0-2d5e-453f-b2b1-ff60c8bfb791.jsonl",
+      "bytes": 2556366,
+      "sha256": "0c2b7bada687d36f5bd431df9fc8201c97096684879b2389a133a72331a4d423",
+      "note": "Snapshot only; host may append later metadata/turns. Acceptance window is bounded above."
+    },
+    "agenda_receipt_observation": {
+      "first": {
+        "recorded_at": "2026-09-14T15:41:52.4237990+00:00",
+        "receipt_id": "8c7360e0c4fc3d3f49c346eccbc205d58267e6445604feaa2178d1dce45d2705",
+        "response_hash": "fb021f566a5a68a4f4975df6b7c6fa26909cbb8ee046443817f7a704bd3a19a4"
+      },
+      "second": {
+        "recorded_at": "2026-09-14T15:42:00.3389434+00:00",
+        "receipt_id": "4dfa36bca93c3182bb51fbe9c36d54682923acb807d2fd11cea9fa4c01d82a58",
+        "response_hash": "8a798890fe93817163b10b5f7bd2ca4d25d84c52739a645a889c173eee7d9d3d",
+        "response": "yes",
+        "transcript_user_timestamp": "2026-09-14T15:41:58.994Z"
+      },
+      "shared_source_event": "UserPromptSubmit",
+      "shared_host": "claude",
+      "shared_question_hash": "91d1469dea324e54e3064aa35cb0da57976a0c40694da75dc0aff64b1dc8c69e",
+      "shared_agenda_digest": "bb096aa55427b28cfe31c4250797752886ca2db0741e65571e68eb06cea71acb",
+      "controller_binds_to": "second receipt",
+      "explanation": "The store keys receipt identity by feature, phase, lens, question hash, agenda digest and response hash. The two rows have distinct response hashes, so they are distinct receipt identities for one agenda. The persisted controller cites only the second, matching the literal yes in the transcript.",
+      "unresolved": "The first response is not identifiable in the retained transcript. No persisted input at that timestamp or string matching that response hash was found; its originating input/event cannot be attributed from this evidence. Do not claim a repeated yes or two consumed agenda confirmations.",
+      "disposition": "observation retained; no fix or broader acceptance claim"
+    }
+  },
+  "focused": {
+    "agent-led-workshop-replay.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "b6c3c916a33d430cc0344b742f7145f4041112d1bf51bf242801e45ec1b6c709",
+      "pass_lines": [
+        "PASS: prompt hands this turn its own token",
+        "PASS: opening declaration does not repeat orientation or replace the question",
+        "PASS: the orientation gate fills only the missing dials line from the profile",
+        "PASS: agent-authored opening and product question are accepted",
+        "PASS: one visible opening earns one session orientation receipt",
+        "PASS: no lens receipt exists before the human replies",
+        "PASS: prompt hands this turn its own token",
+        "PASS: product-domain closes on its scoped reply: ",
+        "PASS: agenda declaration emits no status-only replacement",
+        "PASS: current failing reply is blocked with the agenda remedy",
+        "PASS: the same turn completes when its agenda reaches the assistant message",
+        "PASS: prompt hands this turn its own token",
+        "PASS: yes binds and persists the complete agenda once",
+        "PASS: a declared lens question cannot be replaced with a status line",
+        "PASS: the architecture question survives the declaration",
+        "PASS: prompt hands this turn its own token",
+        "PASS: architecture-core closes on its scoped reply: ",
+        "PASS: the code lens has its own visible turn",
+        "PASS: prompt hands this turn its own token",
+        "PASS: code-implementation closes on its scoped reply: ",
+        "PASS: the current generic packet earns neither approval line nor marker",
+        "PASS: agent packet has real review targets, recommendation and next work",
+        "PASS: boundary return supplies only the missing approval line and marker",
+        "PASS: tool-verified packet missing from the reply blocks Stop",
+        "PASS: specific packet and bound marker pass: ",
+        "PASS: packet presentation does not authorize its own crossing",
+        "PASS: prompt hands this turn its own token",
+        "PASS: captured verdict begins clarify with no second start request",
+        "PASS: background declaration emits neither reassurance nor another orientation",
+        "PASS: missing artifacts withhold approval and marker even in a supplied packet",
+        "PASS: the runtime instruction cannot replace the agent reply with the tool return",
+        "agent-led-workshop-replay: all assertions passed"
+      ]
+    },
+    "turn-end-session-identity.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "c1903dff57c0e700ed81e10153ea6ae9104bbbff5f01d37343026d26117ea5d8",
+      "pass_lines": [
+        "  PASS: the turn-end store is present",
+        "  PASS: the declaration script is present",
+        "  PASS: the conformance provider is present",
+        "  PASS: the hook dispatcher is present",
+        "  PASS: the declaration script no longer reads the project-wide session marker",
+        "  PASS: the helper that read it is gone from the store",
+        "  PASS: and the newest-wins resolver is gone too, not merely unused",
+        "  PASS: each session issued its own distinct turn token",
+        "  PASS: 1a: with two live tokens and no -Token the declaration is REFUSED (non-zero exit)",
+        "  PASS: 1a: and no record was written under EITHER session - refused means refused",
+        "  PASS: 1a: the refusal names the -Token parameter",
+        "  PASS: 1a: and names BOTH sessions",
+        "  PASS: 1a: and says where the token comes from - the turn-start line",
+        "  PASS: 1b: with -Token <A> the declaration is accepted and written",
+        "  PASS: 1b: resolved by the token (identity=matched), not by ranking",
+        "  PASS: 1b: the record is under A and carries A's token - so A's Stop credits it",
+        "  PASS: 1b: B has NO record - the session that started last is not credited for A's work",
+        "  PASS: 1b: symmetric - B with -Token <B> lands under B carrying B's token",
+        "  PASS: 1b: and A's record is still A's, untouched by B's declaration",
+        "  PASS: 1c: a token no live session holds is REFUSED",
+        "  PASS: 1c: and the refusal names the value it was given",
+        "  PASS: 1c: neither session's record was touched",
+        "  PASS: 1d: with exactly one live token, no -Token is accepted (identity=single)",
+        "  PASS: 1d: and it is placed under the one live session",
+        "  PASS: 2: without -Token the leftover makes the shape ambiguous and it is REFUSED",
+        "  PASS: 2: the refusal names the leftover's PATH, so a human who knows that session is gone can remove it",
+        "  PASS: 2: and each token's issue time, so a leftover can be told from a live turn",
+        "  PASS: 2: with -Token <live> it is accepted under the live session",
+        "  PASS: 2: and nothing was written under the dead one",
+        "  PASS: 2: after the live token is consumed the leftover is the ONLY live token - and a token-less declaration lands under the DEAD session (the cost of a leftover, exactly as ruled: it is not aged out)",
+        "  PASS: 3: the turn-start lane runs",
+        "  PASS: 3: and issued a token",
+        "  PASS: 3: the turn-start output HANDS THE TOKEN TO THE AGENT in a [specrew-turn] line naming the script",
+        "  PASS: 3: and it is ONE line under 240 characters (measured 1 line(s), 225 chars)",
+        "  PASS: 3: a second turn-start event for the SAME open turn (compaction mid-turn) REUSES the unconsumed token rather than orphaning the line already handed out",
+        "  PASS: 3: the agent declares with the token it was handed",
+        "  PASS: 3: the Stop judges the declaration and does not block",
+        "  PASS: 3: and left its judgment for whoever runs after - conversational, turn-1, not material ({\"schema_version\":\"1.0\",\"turn_id\":\"turn-1\",\"declaration_kind\":\"conversational\",\"material\":false,\"judged_at\":\"2026-09-13T21:48:27.8166743-07:00\"})",
+        "  PASS: 3: and CONSUMED the token - live means unconsumed",
+        "  PASS: 3: so the project now has no live token",
+        "  PASS: 3: the next turn start issues a FRESH token",
+        "  PASS: 3: and last turn's token is now refused by name - it was consumed",
+        "  PASS: 3b: the turn started and a token was issued",
+        "  PASS: 3b: the Stop BLOCKS",
+        "  PASS: 3b: and the block KEPT the token - the turn has not ended",
+        "  PASS: 3b: a blocked turn is still judged - absent, for the turn the counter still names",
+        "  PASS: no turn-start event means no token, resolved as absence",
+        "  PASS: and the session can still declare - it is not locked out",
+        "  PASS: the record carries no token, matching the hook that issued none",
+        "  PASS: 5: the conformance registry row subscribes to BOTH turn-start events (B4F-053: it subscribed to neither)",
+        "  PASS: 5: a dispatched UserPromptSubmit issued a token under the session the host named",
+        "  PASS: 5: and the dispatcher's output carries the [specrew-turn] line with that token - wrapped in the host envelope",
+        "turn-end-session-identity: all cases passed"
+      ]
+    },
+    "turn-end-update-transition.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "2bf9f46cc0f3fe8b504fd184a4aa7c1043dd89c15aeb3d9aeb5ea71a4cd80af1",
+      "pass_lines": [
+        "  PASS: present: specrew-conformance-provider.ps1",
+        "  PASS: present: declare-turn-end.ps1",
+        "  PASS: present: turn-end.md",
+        "  PASS: present: launch-contract.ps1",
+        "  PASS: present: Specrew.psd1",
+        "  PASS: the skill is in the package FileList, so the update can deploy it",
+        "  PASS: the package ships declare-turn-end.ps1",
+        "  PASS: the package ships turn-end-store.ps1",
+        "  PASS: the package ships record-design-decision.ps1",
+        "  PASS: the package ships design-decision-store.ps1",
+        "  PASS: the deployed skill names the command it is about",
+        "  PASS: the launch contract carries the directive sentence",
+        "  PASS: and the directive says WHEN to run it",
+        "  PASS: the five-heading dictation it replaces is gone from the contract",
+        "  PASS: the old-habit prose packet is refused - prose is not evidence",
+        "  PASS: the refusal NAMES the command",
+        "  PASS: and names its parameters",
+        "  PASS: including the one that carries what the turn did",
+        "  PASS: the command appears in the refusal text the agent reads",
+        "  PASS: the refusal contains a runnable path for the command",
+        "  PASS: the named path is the DEPLOYED one a project would have: .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1",
+        "  PASS: the command runs and writes its record",
+        "  PASS: the very next stop is NOT refused - the transition costs one turn, not a loop",
+        "  PASS: and the command is not demanded again once it has been run",
+        "  PASS: the agent-authored packet is verified",
+        "  PASS: only missing approval and marker lines are supplied",
+        "  PASS: no generic packet or discussion is generated",
+        "  PASS: a complete packet earns no duplicate lines",
+        "  PASS: no numbered verdict option - a number is a control that cannot authorize",
+        "  PASS: the marker is the VERY LAST line",
+        "  PASS: a draft cannot offer approval for missing artifacts",
+        "  PASS: withholding retains the named owed artifact",
+        "  PASS: and offers NO responses and NO marker",
+        "turn-end-update-transition: all cases passed"
+      ]
+    },
+    "version-label-one-resolver.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "044c2b008a55670fe67014fc55cb7da7262040de6f7a3ad4df16f3e29fa179f5",
+      "pass_lines": [
+        "  PASS: the resolver reads this tree's manifest: label 0.40.0-beta4 (base 0.40.0, prerelease beta4)",
+        "  PASS: the real init exits 0 (tail: ============================ Documentation: - Getting Started: docs/getting-started.md - User Guide: docs/user-guide.md )",
+        "  PASS: .specrew-extension-runtime.json specrew_version = 0.40.0-beta4 (expected 0.40.0-beta4)",
+        "  PASS: .specrew-runtime.json specrew_version = 0.40.0-beta4",
+        "  PASS: config.yml specrew_version is the base 0.40.0",
+        "  PASS: the SessionStart orientation carries 0.40.0-beta4",
+        "  PASS: turn-end never renders another orientation; SessionStart owns the version label",
+        "  PASS: and never \"Specrew unknown\"",
+        "version-label-one-resolver: all cases passed"
+      ]
+    },
+    "session-orientation-rendered.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "40498461e2c8f224d7b8473459d740a72a7b01a60338276e5c000f8c77e1ab0f",
+      "pass_lines": [
+        "PASS: conformance provider source and deployed mirror are byte-identical",
+        "PASS: with no delivered bootstrap, no orientation is demanded",
+        "PASS: a first reply that goes straight to work is stopped",
+        "PASS: the correction says the orientation was delivered and not shown",
+        "PASS: the correction requires what the crew believes about the human",
+        "PASS: the correction names the exact failure two walks produced",
+        "PASS: the orientation stop emits no boundary verdict marker",
+        "PASS: a genuine banner, in the agent's own words, satisfies the check",
+        "PASS: satisfying the check writes a per-session receipt",
+        "PASS: once the human has seen it, no later stop demands it again",
+        "PASS: a different session owes its own orientation",
+        "PASS: the material demand still fires and is not displaced",
+        "PASS: the orientation rides along on a higher-priority block instead of being lost",
+        "PASS: an orientation rendered in the OPENING message is not demanded again after later work",
+        "PASS: a session that never oriented is still caught across multiple messages",
+        "session orientation is rendered: all assertions pass"
+      ]
+    },
+    "timestamp-read.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "331bcd5fcbcd5f170ce0603bd9ae598f50d20a8e464955a4af685c4e3a27a9d6",
+      "pass_lines": [
+        "  PASS: the helper is present beside the store",
+        "  PASS: the fixture is real: ConvertFrom-Json coerced the ISO string into a [datetime] (Kind Local)",
+        "  PASS: ISO string reads as the same UTC instant, to the millisecond",
+        "  PASS: coerced [datetime] reads as the same UTC instant, to the millisecond",
+        "  PASS: unix milliseconds reads as the same UTC instant, to the millisecond",
+        "  PASS: [DateTimeOffset] reads as the same UTC instant, to the millisecond",
+        "  PASS: unreadable, null and empty read as $null rather than throwing or defaulting to now",
+        "  PASS: a bare stamp with no designator is read as UTC, never as this machine's local time",
+        "  PASS: the read is invariant-culture: the same under he-IL",
+        "  PASS: the fixture is real: the record's rendered_at came back as a [datetime]",
+        "  PASS: a render 0.5 s old is inside the 45 s cooldown - suppressed (got: in-flight-line-already-shown-moments-ago)",
+        "  PASS: and the same with rendered_ms present - the number is read first",
+        "  PASS: a render two minutes old is outside the cooldown - rendered (the gate is not simply closed)",
+        "  PASS: the fixture is real: recorded_at came back as a [datetime]",
+        "  PASS: a record whose timestamp survived JSON as a [datetime] validates (reason: design-decision-valid)",
+        "  PASS: and an unreadable timestamp is rejected by name - the check reads the value, not its type",
+        "  PASS: the issue time is read to the millisecond from issued_at alone",
+        "  PASS: and the refusal label prints it as UTC, invariant: session abc..., token issued 2026-09-10 08:49:29 UTC, at C:\\Users\\alon\\AppData\\Local\\Temp\\tsr-be9a625ca0\\.specrew\\runtime\\conformance-sessions\\abc\\turn-token.json",
+        "  PASS: the turn-end store contains no timestamp parse of its own",
+        "  PASS: the design-decision store reads recorded_at through the helper",
+        "  PASS: the provider's two handover timestamp parses are gone, routed through the helper",
+        "timestamp-read: all cases passed"
+      ]
+    },
+    "capture-disclosure.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "b1cfd288ae02a960902eaa3a903a3121e507e55a5c08af19ec7c721cf99fcdaf",
+      "pass_lines": [
+        "PASS: the quote-bar turn produces a disclosure instead of silence",
+        "PASS: it names what did not happen and which crossing",
+        "PASS: it names the leading text that decided the classification",
+        "PASS: it names the one reachable action, with the phrase position spelled out",
+        "PASS: it reassures: the human's work is safe",
+        "PASS: the non-capture is journaled, so it is diagnosable after the fact",
+        "PASS: the leading-prose turn produces a disclosure",
+        "PASS: it quotes the leading text back, so the human can see exactly what decided it",
+        "PASS: it names the distinction a careful reader cannot otherwise know",
+        "PASS: a leading approval phrase produces no disclosure",
+        "PASS: ordinary conversation produces no disclosure - the trigger is narrow by construction",
+        "PASS: a send-back without the phrase produces no disclosure - it is not a missed verdict",
+        "PASS: the provider writes the disclosure to its inject stdout, so it reaches the same turn",
+        "PASS: and the recognizer is NOT widened: the crossing stays un-authorized",
+        "PASS: a clean phrase at prompt entry authorizes the crossing (the path this disclosure sits beside)",
+        "PASS: and nothing is disclosed when there is nothing to disclose",
+        "PASS: the pasted-transcript turn produces a disclosure instead of silence",
+        "PASS: it names what did not happen and which crossing",
+        "PASS: it names the rule, not a code word",
+        "PASS: it names the one reachable action: the same-line form",
+        "PASS: and it does NOT blame the first line, which was right - the diagnosis is the continuation",
+        "PASS: the non-capture is journaled with its reason",
+        "PASS: the provider puts the disclosure in the turn",
+        "PASS: and the crossing stays un-authorized: the paste minted nothing",
+        "PASS: the typed-authority refusal is said in the turn with the retype",
+        "PASS: no pending round approval was minted from the paste",
+        "PASS: the drop is journaled where the partial-signoff drops already live",
+        "PASS: a verdict with no crossing pending produces a disclosure instead of silence (the router-skill's three retypes)",
+        "PASS: it says nothing is pending and names the last authorized boundary",
+        "PASS: and names the one move: send it again when the crossing is presented",
+        "PASS: journaled with its reason",
+        "PASS: and the ledger is unchanged",
+        "PASS: the provider puts it in the turn",
+        "PASS: ordinary conversation with nothing pending still discloses nothing",
+        "PASS: a send-back with nothing pending discloses nothing - it is not a lost approval",
+        "PASS: a verdict for the wrong boundary produces a disclosure",
+        "PASS: it names the boundary typed, the crossing pending, and the phrase that authorizes it",
+        "PASS: journaled with its reason",
+        "PASS: and the ledger is unchanged",
+        "PASS: the clean phrase authorizes the clarify crossing",
+        "PASS: and the provider's inject stdout carries the directive VERBATIM for clarify -> plan (got: Verdict captured: approved for clarify. The plan stage begins in this turn: /speckit.specrew-speckit.before-plan, then /speckit.plan, then /speckit.specrew-spec)",
+        "PASS: the clean phrase authorizes the specify crossing",
+        "PASS: and the directive for specify -> clarify is verbatim as predicted",
+        "PASS: the before-implement capture names implementation and /speckit.implement",
+        "PASS: and asks nothing - no question mark anywhere in the injected text",
+        "PASS: the clean phrase authorizes the iteration-closeout crossing",
+        "PASS: both exits are named: the next iteration's plan and feature closeout",
+        "PASS: and it does not ask",
+        "PASS: on Codex the sync command is the pwsh form (FR-014), the rest unchanged",
+        "PASS: on Claude it stays the slash form",
+        "PASS: an unknown boundary yields nothing rather than something wrong",
+        "capture-disclosure: all assertions passed"
+      ]
+    },
+    "package-filelist-completeness.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "5487ef4ac90b6d71b40813bebeec2f50932debebe4b576e403aae4b44bd8ee09",
+      "pass_lines": [
+        "PASS: the package ships 'extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1' - absent from FileList it reaches no project, whatever its tests say",
+        "PASS: the package ships 'scripts/internal/constrained-yaml.ps1' - absent from FileList it reaches no project, whatever its tests say",
+        "PASS: no shippable file sits beside a listed sibling while absent from the FileList (found: )",
+        "PASS: New-ReleaseStageRoot stages exactly the FileList, so absence from it is absence from the package",
+        "package-filelist-completeness: all assertions passed"
+      ]
+    },
+    "every-suite-is-named-by-a-lane.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "7895a6c2609509842dbb2f716118618cdd5af90b4a88617d3a02a9068e3ee9f4",
+      "pass_lines": [
+        "PASS: the verification plan exists to be read",
+        "PASS: the per-round lanes name suites to compare against (found 77)",
+        "PASS: the release-cadence manifest exists",
+        "PASS: the release gate names suites too (found 354)",
+        "PASS: the disk census found at least as many suites as the plan names",
+        "PASS: every test file on disk is named by at least one verification lane",
+        "PASS: mutation proof: a suite in no lane is caught by this comparison",
+        "PASS: every suite the lanes name still exists",
+        "every suite is named by a lane: all assertions pass"
+      ]
+    },
+    "maintainer-skill-host-parity.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "62bacde8f95c1eb05855b13b3f8dd8e59046efb62fa811876ca91d221f22e798",
+      "pass_lines": []
+    },
+    "design-workshop-claude-tool-safety.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "4b02f028bc1b7b2c1730005982f8898900a7ed8adfc65b2b45698ab1d198139b",
+      "pass_lines": [
+        "PASS: canonical design-workshop skill exists",
+        "PASS: project-side design-workshop mirror exists",
+        "PASS: canonical and project-side design-workshop sources are byte-identical",
+        "PASS: canonical skill declares Claude-only AskUserQuestion removal",
+        "PASS: canonical skill does not disable another host before materialization",
+        "PASS: workshop conduct tells Claude to use visible typed choices",
+        "PASS: workshop conduct requires typed replies on every host",
+        "PASS: workshop conduct names picker dismissal as no authority",
+        "PASS: workshop conduct initializes durable controller state before the first product-domain question",
+        "PASS: workshop conduct names the strict pre-agenda state",
+        "PASS: workshop conduct requires an explicit confirmed-agenda transition",
+        "PASS: workshop conduct preserves existing controller state on resume",
+        "PASS: claude workshop skill was deployed",
+        "PASS: claude receives the exact host-materialized workshop skill",
+        "PASS: claude does not receive canonical-only deployment metadata",
+        "PASS: Claude cannot call the picker that swallows the rendered workshop agenda",
+        "PASS: cursor workshop skill was deployed",
+        "PASS: cursor receives the exact host-materialized workshop skill",
+        "PASS: cursor does not receive canonical-only deployment metadata",
+        "PASS: cursor has no unsupported Claude-only capability metadata",
+        "PASS: cursor disables workshop pickers through the typed-turn contract",
+        "PASS: github workshop skill was deployed",
+        "PASS: github receives the exact host-materialized workshop skill",
+        "PASS: github does not receive canonical-only deployment metadata",
+        "PASS: github has no unsupported Claude-only capability metadata",
+        "PASS: github disables workshop pickers through the typed-turn contract",
+        "PASS: agents workshop skill was deployed",
+        "PASS: agents receives the exact host-materialized workshop skill",
+        "PASS: agents does not receive canonical-only deployment metadata",
+        "PASS: agents has no unsupported Claude-only capability metadata",
+        "PASS: agents disables workshop pickers through the typed-turn contract",
+        "design-workshop Claude tool-safety: all assertions pass"
+      ]
+    },
+    "skill-templates.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "9d8c166db4c2238af0bc55b8fabb0d0632996dbb4d5682d01e7c64c5eff12f84",
+      "pass_lines": [
+        "PASS: All 17 skill template(s) have YAML frontmatter (7 directory-style + 10 generic-style)",
+        "Skill templates: all assertions pass"
+      ]
+    },
+    "workshop-agenda-confirmation.tests.ps1": {
+      "exit_code": 0,
+      "log_sha256": "8e1fa20e9c502d8f1163968576e3c3e680628e6b31b8ed4716a9024e96cd82c7",
+      "pass_lines": [
+        "PASS: agenda confirmation writer exists",
+        "PASS: agenda confirmation source and deployed mirror are byte-identical",
+        "PASS: writer refuses model-authored agenda state when no typed human response receipt exists",
+        "PASS: render-only refuses before both product-domain records exist and names the real prerequisite: The product-domain records must be persisted before the technical agenda can be rendered or confirmed. Missing: workshop/product-domain.md, workshop/product-domain.yml. Persist both product-domain records from the typed answer already on record, validate them, then run this same agenda command with -RenderOnly once. Try the action above once. If it does not resolve the situation, do not retry and do not edit this project's workshop records by hand. Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, and what you could not complete without assigning blame. Give one concrete next action you can take and ask the human for approval before taking it.",
+        "PASS: redundant product-domain projection remains a valid pre-agenda state and is never treated as a technical decision",
+        "PASS: writer refuses an agenda that hides omitted lenses",
+        "PASS: incomplete-coverage refusal preserves pending controller state byte-for-byte",
+        "PASS: render-only emits the complete canonical selected + skipped agenda the human must see",
+        "PASS: whitespace-normalized exact agenda remains visible",
+        "PASS: fixture actually substitutes the canonical dash bullets",
+        "PASS: a dash-to-bullet rewrite is not the visible canonical agenda",
+        "PASS: reformatted agenda is refused at the Stop that showed it",
+        "PASS: missing canonical agenda gets the one-line agent-authored presentation remedy",
+        "PASS: reformatted-agenda refusal keeps workshop machinery out of the human-facing correction",
+        "PASS: reformatted agenda does not bind confirmation identity",
+        "PASS: an agenda-phase turn that has not shown the agenda is not accused of reformatting it",
+        "PASS: real conformance provider accepts the visible agenda as the active workshop question",
+        "PASS: real conformance provider writes the agenda question handover",
+        "PASS: real conformance provider binds the rendered agenda content independently of transcript prose hashing",
+        "PASS: a receipt for agenda A cannot authorize changed agenda B and names the changed lens",
+        "PASS: writer reports the exact confirmed agenda coverage",
+        "PASS: confirmed state records typed human authority for the lens selection",
+        "PASS: confirmed state makes both selected and skipped sets reviewable",
+        "PASS: confirmed agenda discards the redundant product-domain projection instead of promoting it to technical authority",
+        "PASS: each skipped lens carries its feature-specific reason",
+        "PASS: strict controller opens lens 1 only after complete coverage and human confirmation",
+        "PASS: a hand-written nested skipped entry is rejected by the production controller reader",
+        "PASS: a plausible flat controller whose content does not match its receipt is rejected",
+        "PASS: real conformance provider accepts the visible agenda as the active workshop question",
+        "PASS: real conformance provider writes the agenda question handover",
+        "PASS: real conformance provider binds the rendered agenda content independently of transcript prose hashing",
+        "PASS: pwsh -File accepts the single JSON agenda payload:  feature_ref    : 002-shell-call state          : confirmed selected_count : 4 skipped_count  : 6 artifact_path  : C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-agenda-confirmation-9b83e7bef1fd4c338317aaeaabc6c463\\specs\\002-shell-call                  \\lens-applicability.json ",
+        "PASS: external shell invocation preserves complete selected/skipped coverage",
+        "PASS: product records persisted without any typed receipt are refused at the Stop instead of passing as an intermediate workshop turn",
+        "PASS: unreceipted-records refusal names the selection channel and the typed prose re-ask",
+        "PASS: unreceipted-records refusal keeps the answers safe and routes the record set-aside through human approval",
+        "PASS: unreceipted-records refusal keeps workshop machinery out of the correction",
+        "PASS: typed-walk fixture mints a genuine product-domain receipt before the records exist",
+        "PASS: product records backed by a typed receipt are not accused of arriving through a selection channel"
+      ]
+    },
+    "flush-race-forensic.Tests.ps1": {
+      "exit_code": 0,
+      "tests_passed": 2,
+      "tests_failed": 0,
+      "log_sha256": "939189c48dacd73ec438958b731c3676860d7d72390d5c1aafbedd421321d1e1",
+      "scope": "post-freeze test-only assertion correction"
+    }
+  },
+  "mutation": {
+    "exit_code": 1,
+    "changes": [
+      "restore baseline rule 46A text",
+      "restore old in-flight nothing-needed output",
+      "remove new presentation blocking arms while keeping authority checks"
+    ],
+    "failed_assertions": [
+      "FAIL: the orientation gate fills only the missing dials line from the profile",
+      "FAIL: current failing reply is blocked with the agenda remedy",
+      "FAIL: a declared lens question cannot be replaced with a status line",
+      "FAIL: background declaration emits neither reassurance nor another orientation",
+      "FAIL: the runtime instruction cannot replace the agent reply with the tool return"
+    ],
+    "log_sha256": "8859d4f1d16c410fde9573a7b0f77be9706f92787e70840564856e79b042caab"
+  },
+  "census": {
+    "run_id": 34808258530,
+    "url": "https://github.com/alonf/specrew/actions/runs/34808258530",
+    "head_sha": "97e03c80300a0d1305627e78e53b0896c317d62d",
+    "status": "completed",
+    "conclusion": "failure",
+    "files": 424,
+    "pester": 148,
+    "scripts": 276,
+    "passed": 420,
+    "failed": 4,
+    "caller_contaminated": false,
+    "prepublish_validation": "success",
+    "publication": "skipped",
+    "reruns": 0,
+    "failures": [
+      {
+        "index": 93,
+        "path": "tests\\continuous-co-review\\unit\\flush-race-forensic.Tests.ps1",
+        "kind": "pester",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 10.6953378,
+        "disposition": "Superseded declaration-only source assertion. Test-only correction verifies packet_valid and messageVisible while retaining no-reread checks; focused Pester 2/2 passed. Original census remains failed."
+      },
+      {
+        "index": 258,
+        "path": "tests\\integration\\psgallery-check.tests.ps1",
+        "kind": "script",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 111.4382832,
+        "disposition": "Only offline timing assertion failed: elapsed 10047 ms against strict <10000 ms. Other assertions passed. No timeout, test or source change; not rerun."
+      },
+      {
+        "index": 304,
+        "path": "tests\\integration\\validate-governance-changed-only.tests.ps1",
+        "kind": "script",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 867.3788106,
+        "disposition": "Three positive exit-code assertions failed. First case reproduced on frozen sources: copied repository extension receipt is stale for provider, design-workshop.md and gate-stop.md. Actual validator refuses integrity mismatch. Other scope assertions passed. No validator/receipt repair or full-suite rerun."
+      },
+      {
+        "index": 312,
+        "path": "tests\\integration\\workshop-agenda-confirmation.tests.ps1",
+        "kind": "script",
+        "status": "failed",
+        "exit_code": 1,
+        "duration_seconds": 7.3819396,
+        "disposition": "Superseded agenda-remedy text assertion. Blocking and no-digest checks passed. Test-only correction c0d1e148 retains authority checks; focused suite and CI 27b40832 passed. Original census remains failed."
+      }
+    ],
+    "diagnostic_artifact_sha256": "74f20507c032a5efba93bf33f0e3c115981f4edf7a9a340f319131fd99b69378",
+    "scoped_diagnostic": {
+      "scope": "first positive ChangedOnly fixture only, from frozen sources",
+      "exit_code": 1,
+      "log_sha256": "f315d11e49e37a4e44793f8ca78dfa94c055da71a3db3901b6e9c057bef18b43",
+      "failure": "deployed extension integrity receipt mismatch",
+      "drifted": [
+        "scripts/specrew-conformance-provider.ps1",
+        "squad-templates/skills/design-workshop.md",
+        "squad-templates/skills/gate-stop.md"
+      ]
+    },
+    "verdict": "Red on frozen SHA. Branch HEAD is tests and documentation past that SHA; later focused passes and CI do not relabel this census green."
+  },
+  "install": {
+    "performed": true,
+    "count": 1,
+    "source_checkout": "C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-b4f099-freeze-97e03c80",
+    "source_sha": "97e03c80300a0d1305627e78e53b0896c317d62d",
+    "stamp": {
+      "schema": "specrew-build-stamp/v1",
+      "commit": "97e03c80",
+      "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+      "content_file_count": 423
+    },
+    "packaged_files_byte_verified": 424,
+    "count_explanation": "424 installed package files includes build-stamp.json; stamp content_file_count=423 excludes that self-describing file.",
+    "stamp_verified": true
+  },
+  "router_update": {
+    "performed": true,
+    "count": 1,
+    "project": "C:/Dev/agentic-architecture-router-skill",
+    "exit_code": 0,
+    "runtime": {
+      "runtime_root": "C:\\Dev\\agentic-architecture-router-skill\\scripts\\internal\\continuous-co-review",
+      "source": "project-deployed",
+      "bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+      "project_bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+      "marker_present": true
+    },
+    "extension_integrity": {
+      "checked": true,
+      "drifted": [],
+      "missing": [],
+      "marker": "C:\\Dev\\agentic-architecture-router-skill\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+    },
+    "repaired_mirrors": [
+      {
+        "path": "scripts/turn-end-store.ps1",
+        "matches": true
+      },
+      {
+        "path": "scripts/declare-turn-end.ps1",
+        "matches": true
+      },
+      {
+        "path": "scripts/specrew-conformance-provider.ps1",
+        "matches": true
+      },
+      {
+        "path": "squad-templates/skills/turn-end.md",
+        "matches": true
+      },
+      {
+        "path": "squad-templates/skills/gate-stop.md",
+        "matches": true
+      },
+      {
+        "path": "squad-templates/skills/design-workshop.md",
+        "matches": true
+      }
+    ],
+    "preserved_records": [
+      {
+        "path": ".specrew/authority/exhausted-turns.jsonl",
+        "before": "D57DFACEEF4F93A64C295C1F2F5B26B95CF1D4C9C369B1FC757417E1EAE445BD",
+        "after": "267F1CD4FE12504A82A82709D0B39C988EB4A9D820407B615656A6A0AA73AF4E",
+        "unchanged": false
+      },
+      {
+        "path": ".specrew/review/allowance-reset/pending-allowance-reset.json",
+        "before": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+        "after": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+        "unchanged": true
+      },
+      {
+        "path": ".specrew/review/round-approval/captures.jsonl",
+        "before": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+        "after": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+        "unchanged": true
+      },
+      {
+        "path": ".specrew/review/round-approval/pending-round-approval.json",
+        "before": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+        "after": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+        "unchanged": true
+      },
+      {
+        "path": ".squad/decisions.md",
+        "before": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+        "after": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+        "unchanged": true
+      },
+      {
+        "path": "specs/001-agentic-architecture-skills/iterations/003/state.md",
+        "before": "A801AC7B52863B0B40036A9FD9E9013CFFB5A926E8E98FEFEDD579FA5FB09FAA",
+        "after": "A801AC7B52863B0B40036A9FD9E9013CFFB5A926E8E98FEFEDD579FA5FB09FAA",
+        "unchanged": true
+      },
+      {
+        "path": "specs/001-agentic-architecture-skills/iterations/003/tasks-progress.yml",
+        "before": "2B66328FF80F8594BC89E5F549AAE2C7706D4086839CE59EC391E1BD0682EF83",
+        "after": "2B66328FF80F8594BC89E5F549AAE2C7706D4086839CE59EC391E1BD0682EF83",
+        "unchanged": true
+      }
+    ],
+    "journal_preservation": {
+      "baseline_prefix_intact": true,
+      "baseline_lines": 705,
+      "current_lines": 709,
+      "appended": [
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "0f81db4aaf76ad00d2deef56c55526deb2758742d072de7ff6e0312725d3412c",
+          "content_hash": "88d34acbad3d882693a33625e3d81041ba6f091f99a2139ca279dbcb8d1aba9f",
+          "host_kind": "codex",
+          "source_event": "UserPromptSubmit",
+          "minted": "",
+          "observed_at": "2026-09-14T05:28:55.0335341Z"
+        },
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "3a4c9d15d6fbdb2cab8c6ca7cbe1e28c9993b60970e8a7a121b7da751ccb167d",
+          "content_hash": "88d34acbad3d882693a33625e3d81041ba6f091f99a2139ca279dbcb8d1aba9f",
+          "host_kind": "codex",
+          "source_event": "stop-transcript",
+          "minted": "",
+          "observed_at": "2026-09-14T05:29:29.6979125Z"
+        },
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "d0a3e784331ccfb2ebdbafc28765f4771020ae1e2d8f7ddc88b72126beb8a416",
+          "content_hash": "073c1634c496cdb649d1afe0a312bbb4b7e1741b271542e4a436c3b8824b1761",
+          "host_kind": "codex",
+          "source_event": "UserPromptSubmit",
+          "minted": "",
+          "observed_at": "2026-09-14T06:04:05.0178098Z"
+        },
+        {
+          "schema_version": "1.0",
+          "fact_type": "typed-turn-exhausted",
+          "turn_id": "a6ad586585b374b983913d2c4ff0a5d7aab23c11e04daccabd2bc8fbe9e47c59",
+          "content_hash": "073c1634c496cdb649d1afe0a312bbb4b7e1741b271542e4a436c3b8824b1761",
+          "host_kind": "codex",
+          "source_event": "stop-transcript",
+          "minted": "",
+          "observed_at": "2026-09-14T06:15:54.0531740Z"
+        }
+      ],
+      "journal_last_write_utc": "2026-09-14T06:15:55.182688+00:00",
+      "update_log_last_write_utc": "2026-09-14T06:16:28.352349+00:00"
+    },
+    "preservation_verdict": "Six baseline records byte-identical; exhaustion journal retains all 705 baseline lines byte-for-byte plus four host-event appends. Nothing restored or discarded.",
+    "advisories": 31,
+    "advisory_disposition": "Consumer-assumption findings reported by updater; user-authored files preserved. No expansion of bounded repair.",
+    "log_sha256": "98168E004423A5193049C33502C246ED23F57E896DC0FBC94F27EB8B433D457A"
+  },
+  "focused_conformance": {
+    "cases_1_to_18": "passed before the old case-19 fixture was updated to put the agent-authored packet in the reply",
+    "cases_19_to_24": "passed in a focused replay after that fixture update",
+    "full_census": "Passed in the single census 34808258530 on 97e03c80; not one of its four failed suites.",
+    "full_ci": "Complete suite passed in CI 34808371999 on 331aea94 (same frozen package source)."
+  },
+  "additional_checks": [
+    "provider mirror parity passed",
+    "PSScriptAnalyzer: no Error-severity findings in changed PowerShell",
+    "Markdown lint passed on changed skill templates and validation report",
+    "self-leak lint passed",
+    "session orientation obligation passed"
+  ],
+  "ci": {
+    "first_run": 34808258777,
+    "first_failure": "MD012 in findings and MD047 in predictions; non-packaged whitespace corrected in 331aea94",
+    "second_run": 34808371999,
+    "second_result": "130 of 131 honesty suites passed; only the superseded agenda remedy assertion failed; contract lane skipped",
+    "third_run": 34809695090,
+    "third_head": "c0d1e148",
+    "third_failure": "MD012 (multiple consecutive blank lines) in docs/beta4-b4f099-validation.md; corrected in 27b40832.",
+    "green_run": 34809714198,
+    "green_head": "27b40832",
+    "green_jobs": [
+      "Lint",
+      "Self-leak firewall",
+      "Deterministic gate",
+      "Contract lane"
+    ],
+    "attribution": "This green run covers 27b40832, not the later forensic assertion and evidence-only HEAD; the forensic correction passed its own focused run."
+  },
+  "maintainer_review": {
+    "reviewed_sha": "97e03c80",
+    "verdict": "Four changes present and tested as ruled against PRED-BETA4-057; proceed on census.",
+    "findings": [
+      {
+        "id": "B4F-100",
+        "finding": "Whole whitespace-normalized declared draft must occur in reply; tightening a packet sentence can block presentation|declared message until cap.",
+        "disposition": "beta4.1 unless Monday walk trips it; then compare load-bearing headings, review-target links, question line, approval line and marker.",
+        "implemented": false
+      },
+      {
+        "id": "B4F-101",
+        "finding": "MessagePath lacks fixed/default/cleaned location; draft under specs can enter a boundary commit or dirty closeout.",
+        "disposition": "beta4.1: fixed ignored .specrew/runtime/turn-message.md named in the three skills and defaulted by script.",
+        "implemented": false
+      }
+    ]
+  },
+  "stopping_rule": "CLOSED by maintainer disposition: beta4 is released. B4F-103 is record-only with no republish; comparison-scope correction belongs to beta4.1 under B4F-018. Previously deferred beta4.1/beta5 findings keep their dispositions; no further beta4 work is authorized.",
+  "abandoned_transcript": {
+    "baseline_sha256": "dc3aea61e2aa8aa323f3cd507b1c913c44191b59e2cb9a720c4d9f9689b63946",
+    "baseline_prefix_intact": true,
+    "baseline_lines": 208,
+    "current_lines": 213,
+    "current_sha256": "0781024b120a66712eb439bcfa318bf11b3c1b45c9894abe36aca5c7b2e9ce98",
+    "last_write_utc": "2026-09-14T05:06:15.967360+00:00",
+    "appended_metadata": [
+      {
+        "type": "bridge-session"
+      },
+      {
+        "type": "file-history-snapshot"
+      },
+      {
+        "type": "cost-state"
+      },
+      {
+        "type": "last-prompt"
+      },
+      {
+        "type": "cost-state"
+      }
+    ]
+  },
+  "post_freeze_package_delta": {
+    "packaged_paths_changed": 0,
+    "verified_against": "97e03c80",
+    "scope": "FileList plus module manifest and optional package documents; later tracked changes are tests/docs only, excluding pre-existing user iteration records.",
+    "historical_context": "PRED-BETA4-057 delivery record at 4dae0a1b, before the maintainer reopened the red candidate"
+  },
+  "current_ruling": {
+    "prediction": "PRED-BETA4-058",
+    "prior_sha": "97e03c80",
+    "prior_sha_frozen": false,
+    "walk_allowed": true,
+    "process_deviation_class": "B4F-027",
+    "deviation": "Installed 97e03c80 and updated router project ahead of green census; reporting failures did not satisfy green prerequisite. Do not repeat.",
+    "authorized_next": "None for beta4: released, stopping rule closed. Record B4F-103 only; no republish. Carry the declared-content-scope check correction into beta4.1 under B4F-018.",
+    "walk_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "status": "Beta4 released at 8d3f9906; maintainer independent Gallery verification accepted, B4F-103 record-only, no republish, stopping rule closed.",
+    "correction_authorization_executed": "Retain two committed test fixes, re-stamp stale repository deployment receipt, raise test-only PSGallery bound; one new CI/census pair. Install and update once more only on green."
+  },
+  "reopened_cycle": {
+    "prediction": "PRED-BETA4-058",
+    "prediction_commit": "82a080a1",
+    "prior_test_correction_commits": [
+      "c0d1e148",
+      "4dae0a1b"
+    ],
+    "status": "green pair, verified install and one further router update complete",
+    "receipt": {
+      "decision": "repository receipt was stale; fixture and validator unchanged",
+      "before": {
+        "checked": true,
+        "drifted": [
+          "scripts/specrew-conformance-provider.ps1",
+          "squad-templates/skills/design-workshop.md",
+          "squad-templates/skills/gate-stop.md"
+        ],
+        "missing": [],
+        "marker": "C:\\Dev\\specrew-beta3-stabilization\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+      },
+      "after": {
+        "checked": true,
+        "drifted": [],
+        "missing": [],
+        "marker": "C:\\Dev\\specrew-beta3-stabilization\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+      },
+      "entries_before": 164,
+      "entries_after": 173,
+      "newly_inventoried_existing_files": 9,
+      "version_metadata": "preserved",
+      "sha256": "486f4efc77b36e67c2a9481e31c5fc8189c736db2c754d181c8ee75c69393f23"
+    },
+    "scoped_validator_probe": {
+      "exit_code": 0,
+      "full_suite": false,
+      "log_sha256": "7c9be4f0256ba3842f8eb6af7065bbe62d450fd8ae765fb1ceaaf540b6384ffb",
+      "result_lines": [
+        "[validator-scope] changed-only to origin/main...HEAD (1 iterations, 1 files in diff)",
+        "PASS C:\\Users\\alon\\AppData\\Local\\Temp\\s58-a28a0aa9\\explicit-changed-only\\specs\\013-validator-hardening\\iterations\\001",
+        "[validator-timing] mode=scoped elapsed_ms=64121 iterations_validated=1 trigger_source=local"
+      ]
+    },
+    "psgallery": {
+      "exit_code": 0,
+      "old_bound_ms": 10000,
+      "new_bound_ms": 15000,
+      "scope": "test-only end-to-end startup assertion; no production timeout change",
+      "log_sha256": "9c5e70074d3988f4e2e741f41429b7001ef930a52da193104637f4f5e4aa796b",
+      "pass_lines": [
+        "PASS: specrew init surfaces the PSGallery update warning and seeds the shared cache",
+        "PASS: specrew start reuses the shared PSGallery cache",
+        "PASS: specrew update uses the shared PSGallery warning path",
+        "PASS: --skip-update-check suppresses the PSGallery warning",
+        "PASS: SPECREW_SKIP_UPDATE_CHECK=1 suppresses the PSGallery warning",
+        "PASS: Offline PSGallery failures stay silent and bounded"
+      ]
+    },
+    "install_after_green": {
+      "performed": true,
+      "count": 1,
+      "gate": {
+        "candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+        "ci_run": 34813883244,
+        "ci_completed_at": "2026-09-14T06:56:55Z",
+        "census_run": 34813894967,
+        "census_completed_at": "2026-09-14T07:26:38Z",
+        "install_started_at": "2026-09-14T07:27:28.4289886Z",
+        "install_count": 1,
+        "install_exit_code": 0,
+        "install_completed_at": "2026-09-14T07:27:48.9542563Z"
+      },
+      "stamp": {
+        "schema": "specrew-build-stamp/v1",
+        "commit": "8d3f9906",
+        "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+        "content_file_count": 423
+      },
+      "packaged_files_byte_verified": 424,
+      "log_sha256": "c47cf0a310e5a310c2a6087994b8c12de0214276359bcb5510f3f44602d08089",
+      "ordered_after_green": true
+    },
+    "router_update_after_green": {
+      "performed": true,
+      "count": 1,
+      "verification": {
+        "verified_at": "2026-09-14T07:29:49.1843814Z",
+        "stamp": {
+          "schema": "specrew-build-stamp/v1",
+          "commit": "8d3f9906",
+          "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+          "content_file_count": 423
+        },
+        "module_root": "C:\\Users\\alon\\OneDrive - Zionet LTD\\Documents\\PowerShell\\Modules\\Specrew\\0.40.0",
+        "project_version": "0.40.0-beta4",
+        "runtime": {
+          "runtime_root": "C:\\Dev\\agentic-architecture-router-skill\\scripts\\internal\\continuous-co-review",
+          "source": "project-deployed",
+          "bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+          "project_bundle_sha256": "62bcfae29901f4095ba1300e10e0e3b827e6c23b962851ecec393e01c7ce1dbf",
+          "marker_present": true
+        },
+        "integrity": {
+          "checked": true,
+          "drifted": [],
+          "missing": [],
+          "marker": "C:\\Dev\\agentic-architecture-router-skill\\.specify\\extensions\\specrew-speckit\\.specrew-extension-runtime.json"
+        },
+        "preserved": [
+          {
+            "path": ".specrew/authority/exhausted-turns.jsonl",
+            "before": "C6E486C064B8797DE323B1677A033F00A11702182757132CC9AE71496D9A9809",
+            "after": "C6E486C064B8797DE323B1677A033F00A11702182757132CC9AE71496D9A9809",
+            "unchanged": true
+          },
+          {
+            "path": ".specrew/review/allowance-reset/pending-allowance-reset.json",
+            "before": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+            "after": "C941E88A089C10A6A7EEB23FE2332DAB9C55A7966C14A5EBEFAC322BED09BDEF",
+            "unchanged": true
+          },
+          {
+            "path": ".specrew/review/round-approval/captures.jsonl",
+            "before": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+            "after": "ABCC84AAE712C93A32DB3C66A09A2E505D0FE90CBE080F40CAE26E888567876E",
+            "unchanged": true
+          },
+          {
+            "path": ".specrew/review/round-approval/pending-round-approval.json",
+            "before": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+            "after": "D505DDED7B0E70A1BBB0D3302A8750D332AC428F39B546CC35FCC03E88DBC94B",
+            "unchanged": true
+          },
+          {
+            "path": ".squad/decisions.md",
+            "before": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+            "after": "09AD3F2A0B8370DD2C01051D99C22E948B6C70D1E986BCD6D43E2C579211E1BF",
+            "unchanged": true
+          },
+          {
+            "path": "specs/001-agentic-architecture-skills/iterations/003/state.md",
+            "before": "8C3E41AB5F76C407D4FDA6AAD331BE910DDF6D661472A2DD6F45E52D2F80C0DC",
+            "after": "8C3E41AB5F76C407D4FDA6AAD331BE910DDF6D661472A2DD6F45E52D2F80C0DC",
+            "unchanged": true
+          },
+          {
+            "path": "specs/001-agentic-architecture-skills/iterations/003/tasks-progress.yml",
+            "before": "8687B6BB785AF8F7538E3C11121E6A7ABCDA2E391A7AC181AA32BEC09F633174",
+            "after": "8687B6BB785AF8F7538E3C11121E6A7ABCDA2E391A7AC181AA32BEC09F633174",
+            "unchanged": true
+          }
+        ],
+        "mirrors": [
+          {
+            "path": "scripts/turn-end-store.ps1",
+            "matches": true
+          },
+          {
+            "path": "scripts/declare-turn-end.ps1",
+            "matches": true
+          },
+          {
+            "path": "scripts/specrew-conformance-provider.ps1",
+            "matches": true
+          },
+          {
+            "path": "squad-templates/skills/turn-end.md",
+            "matches": true
+          },
+          {
+            "path": "squad-templates/skills/gate-stop.md",
+            "matches": true
+          },
+          {
+            "path": "squad-templates/skills/design-workshop.md",
+            "matches": true
+          }
+        ],
+        "update_gate": {
+          "candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+          "update_count": 1,
+          "update_started_at": "2026-09-14T07:28:38.2241794Z",
+          "update_completed_at": "2026-09-14T07:28:48.8107569Z",
+          "update_succeeded": true
+        },
+        "update_log_sha256": "B017490DAB7744705C1A688E32C52003437B6FD026BF8A94B168FC95F25AA8B1"
+      },
+      "preserved_records_unchanged": 7,
+      "advisories": 31,
+      "advisory_disposition": "Reported and left outside the bounded repair; user files preserved."
+    },
+    "walk_allowed": true,
+    "candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "census": {
+      "run_id": 34813894967,
+      "url": "https://github.com/alonf/specrew/actions/runs/34813894967",
+      "head_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-09-14T07:26:38Z",
+      "dispatch_count": 1,
+      "files": 424,
+      "pester": 148,
+      "scripts": 276,
+      "failed": 0,
+      "caller_contaminated": false,
+      "jobs": [
+        {
+          "name": "full-test-census",
+          "conclusion": "success"
+        },
+        {
+          "name": "prepublish-validation",
+          "conclusion": "success"
+        },
+        {
+          "name": "publish-module",
+          "conclusion": "success"
+        }
+      ],
+      "summary": "Full PowerShell test sweep: files=424, pester=148, scripts=276, failed=0, caller_contaminated=False",
+      "log_sha256": "5118975ce190e81ab52a71613d318d8e750e8892e198a4e8cb2a9c568b5b3164"
+    },
+    "ci": {
+      "run_id": 34813883244,
+      "url": "https://github.com/alonf/specrew/actions/runs/34813883244",
+      "head_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-09-14T06:56:55Z",
+      "jobs": [
+        {
+          "name": "Self-leak firewall (deploy surface)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deterministic gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Contract lane",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "packaged_implementation_changes": 0,
+    "full_changed_only_suite": "passed in the complete 424-file census; local pre-census reproduction was only the first positive case"
+  },
+  "current_candidate_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+  "release": {
+    "tag": "v0.40.0-beta4",
+    "sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "status": "released; maintainer accepted declared-scope verification and Gallery init; B4F-103 record-only, no republish",
+    "gallery_verification": {
+      "verified_at": "2026-09-14T17:06:39.0985091+00:00",
+      "local_stamp": {
+        "schema": "specrew-build-stamp/v1",
+        "commit": "8d3f9906",
+        "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+        "content_file_count": 423
+      },
+      "gallery_stamp": {
+        "schema": "specrew-build-stamp/v1",
+        "commit": "8d3f9906",
+        "content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+        "content_file_count": 423
+      },
+      "content_file_count": 423,
+      "computed_content_sha256": "0c480fb8381135eef8d5af9ab6bb203e711c407750e3f1b6d587661ad7c92122",
+      "stamp_commit_matches": true,
+      "stamp_hash_matches": true,
+      "stamp_count_matches": true,
+      "computed_hash_matches": false,
+      "missing": [
+        "extensions/specrew-speckit/hooks/.gitkeep",
+        "extensions/specrew-speckit/templates/quality/lenses/.gitkeep",
+        "extensions/specrew-speckit/templates/quality/presets/.gitkeep"
+      ],
+      "different": [
+        "Specrew.psd1"
+      ],
+      "package_metadata_extras": [
+        "[Content_Types].xml",
+        "Specrew.nuspec",
+        "package/services/metadata/core-properties/nuget.psmdcp",
+        "_rels/.rels"
+      ],
+      "success": false,
+      "present_content_file_count": 420,
+      "byte_identical_content_file_count": 419,
+      "manifest_comparison": {
+        "local_bytes": 31092,
+        "gallery_bytes": 31090,
+        "local_sha256": "7819e4900693e19757cc335876983c7a48dc6e639f264d0d0d3d5b4368159be5",
+        "gallery_sha256": "20729334e0b77e3a79c480d1e597f491b8dbd7387e502a17f179011dd0ca44cd",
+        "local_crlf": 473,
+        "gallery_crlf": 471,
+        "local_lf": 473,
+        "gallery_lf": 473,
+        "equal_after_crlf_to_lf": true,
+        "local_bom": false,
+        "gallery_bom": false
+      },
+      "manifest_differing_lines": [
+        3,
+        463
+      ],
+      "metadata_replay_reproduced_gallery_manifest": true,
+      "nuget_exclusion_warnings": "NU5119 for each of the three missing .gitkeep paths, publish log 2026-09-14T17:05:10Z",
+      "current_disposition": "Historical raw 423-file comparison retained unchanged; superseded as a release blocker by the maintainer declared-scope verification and record-only B4F-103 ruling. See release.maintainer_verification."
+    },
+    "publish_run_id": 34867622327,
+    "publish_run_url": "https://github.com/alonf/specrew/actions/runs/34867622327",
+    "local_content_sha256": "deb93b06c2d6f78f54a9ce558e1e66e5e2dde2695e46dae11f3ff0357eeac247",
+    "local_content_file_count": 423,
+    "tag_object_sha": "09f93247cf1264e78a42e29ce21f4da5cf061b94",
+    "tag_peeled_sha": "8d3f99061e41396eaa4ac665d3883bcc75f88730",
+    "publish_run_status": "completed",
+    "publish_run_conclusion": "success",
+    "publish_run_updated_at": "2026-09-14T17:05:44Z",
+    "jobs": [
+      {
+        "name": "prepublish-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-09-14T16:17:05Z",
+        "completedAt": "2026-09-14T16:19:08Z"
+      },
+      {
+        "name": "full-test-census",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-09-14T16:17:07Z",
+        "completedAt": "2026-09-14T17:03:48Z"
+      },
+      {
+        "name": "publish-module",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-09-14T17:03:52Z",
+        "completedAt": "2026-09-14T17:05:39Z"
+      }
+    ],
+    "census": {
+      "files": 424,
+      "pester": 148,
+      "scripts": 276,
+      "failed": 0,
+      "caller_contaminated": false,
+      "summary": "Full PowerShell test sweep: files=424, pester=148, scripts=276, failed=0, caller_contaminated=False",
+      "log_sha256": "b9859a713349161d9fa04c42c2b8ca61ccca3b8886acf5d2f6e975af7bbbb056"
+    },
+    "github_release": {
+      "assets": [
+        {
+          "apiUrl": "https://api.github.com/repos/alonf/specrew/releases/assets/563837012",
+          "contentType": "application/zip",
+          "createdAt": "2026-09-14T17:05:34Z",
+          "downloadCount": 0,
+          "id": "RA_kwDOSFtpt84hm3hU",
+          "label": "",
+          "name": "specrew-0.40.0-beta4.zip",
+          "size": 2831978,
+          "state": "uploaded",
+          "updatedAt": "2026-09-14T17:05:35Z",
+          "url": "https://github.com/alonf/specrew/releases/download/v0.40.0-beta4/specrew-0.40.0-beta4.zip"
+        }
+      ],
+      "isDraft": false,
+      "isPrerelease": true,
+      "publishedAt": "2026-09-14T17:05:35Z",
+      "tagName": "v0.40.0-beta4",
+      "targetCommitish": "main",
+      "url": "https://github.com/alonf/specrew/releases/tag/v0.40.0-beta4"
+    },
+    "github_target_note": "targetCommitish is API metadata main; the existing annotated tag peels to exact 8d3f99061e41396eaa4ac665d3883bcc75f88730, verified remotely after publication and displayed on the release page.",
+    "gallery_url": "https://www.powershellgallery.com/packages/Specrew/0.40.0-beta4",
+    "gallery_download_url": "https://www.powershellgallery.com/api/v2/package/Specrew/0.40.0-beta4",
+    "gallery_push_completed_at": "2026-09-14T17:05:23.5358009Z",
+    "github_published_at": "2026-09-14T17:05:35Z",
+    "nupkg_sha256": "d9c31711f918adfbac1d9230fef82a41e4d7afce25c22fd957d6a0341612c6b6",
+    "nupkg_bytes": 2254740,
+    "publish_log_sha256": "0b056c2f39cb3b9a644dc4e5482ad7220865ae8739f116b91764027fce5f5407",
+    "evidence_directory": "C:\\Users\\alon\\AppData\\Local\\Temp\\specrew-beta4-release-8d3f9906",
+    "disposition": "Maintainer closes beta4 as released. Independent verification: 419/419 shipped content files identical; manifest difference reproduced by metadata replay; NuGet-dropped placeholders and local runtime cache outside declared comparison scope; Gallery init deploys required content. Original raw comparison is retained as historical evidence. B4F-103 is record-only, no republish; comparison-scope correction is beta4.1 under B4F-018. Stopping rule closed.",
+    "maintainer_verification": {
+      "authority": "maintainer B4F-103 disposition and independent verification, 2026-09-14",
+      "source": "human-reported runtime evidence from the maintainer machine; not a new agent-run install",
+      "gallery_version": "0.40.0-beta4",
+      "comparison_build": "byte-verified 8d3f9906 build",
+      "declared_shipped_content_files": 419,
+      "identical_shipped_content_files": 419,
+      "manifest": "Specrew.psd1 differs only by the publish-time stamp; metadata replay reproduces the difference.",
+      "placeholders": "Maintainer reports the three absent files as zero-byte .gitkeep placeholders excluded by NuGet (NU5119).",
+      "runtime_exclusion": ".specrew/version-check-cache.json is written locally by the module and is not package content.",
+      "init": {
+        "source": "Gallery copy",
+        "command": "specrew init",
+        "hook_wiring_deployed": true,
+        "skills_deployed": true,
+        "all_template_directories_with_content_deployed": true,
+        "only_absent_directory": "hooks/",
+        "absent_directory_held_content": false
+      },
+      "release_verdict": "accepted; beta4 is released",
+      "b4f103_disposition": "record-only; no republish",
+      "beta4_1": "Compare the declared content scope under B4F-018: exclude NuGet-dropped zero-byte placeholders and publish-stamped manifest line(s), or stop shipping .gitkeep. Exclude local runtime files from package content.",
+      "stopping_rule": "closed"
+    },
+    "republish_authorized": false,
+    "stopping_rule_closed": true
+  }
+}

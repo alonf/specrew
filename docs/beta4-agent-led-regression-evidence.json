@@ -1,0 +1,35 @@
+{
+  "date_utc": "2026-09-14",
+  "code_head": "8dc29187",
+  "walk_build": "d8ce3ea9",
+  "published_baseline": "v0.40.0-beta3 (11f47c4b)",
+  "replay": [
+    {
+      "case": "status-only",
+      "phase": "agenda",
+      "agenda_digest_present": false,
+      "yes_receipt_minted": false,
+      "stop_block": false
+    },
+    {
+      "case": "visible-agenda",
+      "phase": "agenda",
+      "agenda_digest_present": true,
+      "yes_receipt_minted": true,
+      "stop_block": false
+    }
+  ],
+  "in_flight_text": "**Specrew 0.40.0-beta4 is active on this host.** Work here runs through spec -> plan -> implement -> review -> retro, and every stage boundary waits for your typed approval.\r\n**How I am adapting to you** (from `~/.specrew/user-profile.yml`, and correct me if it is wrong): software_architecture=10, ui_ux=10, product_management=7, ai_research_project_management=10.\r\n**At each boundary** the work stops and you are asked for an explicit `approved for <boundary>` reply. Nothing advances on my assessment that the work looks fine.\r\n\r\nIn flight; continuing when agenda awaiting the human typed confirmation lands; nothing needed.",
+  "conversational_text": "",
+  "boundary_text": "## What I Just Did\r\nPlan prepared; inspect the agreed architecture and tests.\r\n\r\n## Why I Stopped\r\nThe `clarify -> plan` boundary needs your judgment before the next stage starts.\r\n\r\n## What Needs Your Review\r\nFeature `001-markdown-link-checker`; working boundary `plan`; last boundary you authorized `clarify`.\r\n\r\n## What Happens Next\r\nOn `approved for plan` the next stage starts. Nothing advances without it.\r\n\r\n## Discussion Prompts\r\n1. Anything above you want changed, questioned, or done differently.\r\n\r\n## What I Need From You\r\nWhat would you like to do? Type one of these:\r\n\r\n  approved for plan\r\n  approved for plan - <your instructions>\r\n  changes needed: <what to change>\r\n  discuss prompt 1\r\n\r\n<!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan -->",
+  "limitations": [
+    "Synthetic paired replay using copied walk state; no live walk state changed.",
+    "No controlled model execution on beta3.",
+    "The supplied walk has not reached later boundaries."
+  ],
+  "checks": {
+    "turn_end_update_transition": "passed",
+    "agenda_vocabulary": "passed",
+    "capture_disclosure": "passed"
+  }
+}

@@ -516,6 +516,12 @@ try {
     if ($pendingVerdict.HasPendingVerdict) {
         $enforcementLines = @([string]$pendingVerdict.Message, '') + $enforcementLines
     }
+    # Feature 202 T004 (FR-007): while reply recording is degraded, say so first - it decides whether the human's
+    # typed answers are being recorded the normal way. Absent when healthy. (`specrew status` is this command.)
+    if (Get-Command Get-SpecrewReplyRecordingHealthLine -ErrorAction SilentlyContinue) {
+        $replyHealthLine = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $parsed.ProjectPath
+        if (-not [string]::IsNullOrWhiteSpace([string]$replyHealthLine)) { $enforcementLines = @($replyHealthLine, '') + $enforcementLines }
+    }
     $lines = @($enforcementLines + @('') + $lines)
 
     if (-not [string]::IsNullOrWhiteSpace($parsed.OutputPath)) {

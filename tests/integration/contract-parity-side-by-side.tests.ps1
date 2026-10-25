@@ -78,7 +78,7 @@ Assert-True ($hookContract -eq $ref) 'SIDE-BY-SIDE: the hook contract is byte-id
 
 # (4) Defense-in-depth: the parity content iter-6 dropped is actually present.
 Assert-True ($hookContract -match 'What I know about you') 'parity content present: the user-profile/expertise adaptation line'
-Assert-True ($hookContract -match 'You are the Crew team coordinator') 'parity content present: the coordinator framing'
+Assert-True ($hookContract -match 'This repository uses Specrew') 'parity content present: the project-rules framing'
 foreach ($m in '## Lifecycle Quick Reference', 'HUMAN APPROVAL GATE', 'boundary_enforcement.policy_classes') {
     Assert-True ($hookContract -like "*$m*") "parity content present: invariant contract marker '$m'"
 }

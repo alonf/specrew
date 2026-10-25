@@ -334,9 +334,19 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $reused = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-public-two' `
             -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
-        $reused.status | Should -Be 'not-started'
+        # ORDERING CHANGED 2026-08-11 when the pause protocol was wired to this command, and the change
+        # is deliberate rather than incidental. After a completed round BOTH refusals are true: the
+        # round's decision is unanswered, and the single grant is spent. The old order reported
+        # 'allowance-exhausted' first, which points the consumer at `--remediate allowance-reset` - a
+        # spend-enabling action - while the thing actually owed is an ANSWER. Answering may well end the
+        # campaign (option 2 stops here and completes sign-off) with no top-up needed at all, so the
+        # pause is not merely first in the code, it is the cheaper and more accurate next step.
+        #
+        # What has NOT changed is the part that matters most: nothing was invoked and nothing was spent.
+        # The two fact counts below are unchanged from before this reordering and are the real guarantee.
+        $reused.status | Should -Be 'paused'
         $reused.invoked | Should -BeFalse
-        $reused.reason | Should -Be 'allowance-exhausted'
+        $reused.reason | Should -Match 'pause-decision-pending'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind grants).Count | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 1
     }
@@ -612,7 +622,9 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
                 (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($timeout)))) {
             $blocked.render_boundary_packet | Should -BeFalse
             $blocked.render_verdict_marker | Should -BeFalse
-            (Build-ReviewCampaignNavigatorStopBlock -PacketDecision $blocked) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            # MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive and no
+            # longer prints in the human's block. Same guarantee, different channel.
+            (Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $blocked -PendingCrossing $null) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
     }
 
@@ -809,12 +821,32 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
     }
 
     It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(
-        @{ name = 'script'; path = 'scripts/change.ps1' },
-        @{ name = 'test'; path = 'tests/change.Tests.ps1' },
-        @{ name = 'spec'; path = 'specs/001-demo/spec.md' },
-        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md' },
-        @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md' }
+        @{ name = 'script'; path = 'scripts/change.ps1'; expected = 'review-stale' },
+        @{ name = 'test'; path = 'tests/change.Tests.ps1'; expected = 'review-stale' },
+        @{ name = 'spec'; path = 'specs/001-demo/spec.md'; expected = 'review-stale' },
+        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md'; expected = 'review-stale' },
+        @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md'; expected = 'review-current' }
     ) {
+        # ROUTE EXPECTATIONS, FR-009 as ruled 2026-08-10. Exactly ONE row moved, and the guarantee this
+        # case exists to hold did NOT move at all. Recorded here rather than only in the drift log,
+        # because a reader meeting this -ForEach table needs to see why one row differs from the rest.
+        #
+        #   state:                    'review-stale'  ->  'review-current'
+        #   spec / contract:          'review-stale'  ->  unchanged
+        #   script / test:            'review-stale'  ->  unchanged
+        #
+        # The rule is NOT "specs/ is records". It is whether an artifact is INPUT TO a review or OUTPUT
+        # OF one. `state.md` is a record of the process - it cannot invalidate the review that produced
+        # it, and that circularity is DRIFT-199-I001-013, where a commit whose entire content was the
+        # drift log staled the review that wrote it. `spec.md` and `plan.md` are the STANDARD the code
+        # was judged against: change one and what the review concluded changes even though no code
+        # moved, so they still stale. `scripts/` and `tests/` are reviewable content and always did.
+        #
+        # THE DENIAL THIS CASE NAMES IS UNCHANGED IN EVERY ROW: no boundary packet is released and no
+        # finalization fact is published. Those two are asserted explicitly below rather than left to
+        # be implied by the route name - the route says whether the review still covers the tree, the
+        # assertions say whether anything was authorized, and only the first of those was ever the
+        # thing FR-009 speaks to.
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "finalization-denied-$name")
         $store = Join-Path $TestDrive "finalization-denied-$name-store"
         $null = Add-CleanCampaignResult -Root $root -Store $store -RunId "run-denied-$name"
@@ -822,8 +854,9 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
             -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
-        $decision.route | Should -Be 'review-stale'
-        $decision.render_boundary_packet | Should -BeFalse
+        $decision.route | Should -Be $expected
+        $decision.render_boundary_packet | Should -BeFalse -Because 'no non-review-evidence path may release the boundary packet, whatever the route'
+        $decision.render_verdict_marker | Should -BeFalse -Because 'nor may it produce a capturable lifecycle authorization'
         Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
     }
 
@@ -834,10 +867,18 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# First envelope'
         $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/coverage-evidence.md' -Content '# Chained envelope'
 
+        # ROUTE EXPECTATION MOVED 2026-08-10 by FR-009:  'review-stale'  ->  'review-current'.
+        # Both commits above are review EVIDENCE (`review.md`, `coverage-evidence.md`) - output of a
+        # review, and the same six names this engine already allowlists for a finalization envelope -
+        # so they cannot stale the review that produced them. What this case is ACTUALLY about - that a finalization
+        # whose parent is not the reviewed commit is refused, with no fact published - is unchanged and
+        # is what the assertions below hold. The single-hop envelope still finalizes (the case above
+        # this one), so the chain refusal is still doing its work.
         $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
             -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
-        $decision.route | Should -Be 'review-stale'
-        $decision.render_boundary_packet | Should -BeFalse
+        $decision.route | Should -Be 'review-current'
+        $decision.render_boundary_packet | Should -BeFalse -Because 'a two-hop chain never releases the boundary packet, whatever the route says about currency'
+        $decision.render_verdict_marker | Should -BeFalse
         Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
     }
 

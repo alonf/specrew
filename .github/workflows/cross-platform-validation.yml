@@ -7,6 +7,7 @@ on:
       - 'feature/**'
       - '0*-*'  # Feature branches like 019-specrew-distribution-module
       - '1*-*'  # Feature branches like 140-unix-native-install
+      - '2*-*'  # Feature branches like 202-beta4-1-ux-stabilization (202 DRIFT-018: 200+ never ran on push)
   pull_request:
     branches:
       - main
@@ -265,6 +266,27 @@ jobs:
             Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
           }
           Import-Module Pester -RequiredVersion 5.7.1 -Force
+
+      # Feature 202 T005 case (e): two real pwsh processes append to the hook-output journal at once. The journal
+      # opens an append-only handle on Windows and a plain Append stream elsewhere; this leg decides whether Linux
+      # and macOS need the permitted per-write lock (202 research.md, T003).
+      - name: Hook-output journal concurrent append (case e) and outage buffer
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -NonInteractive -File ./tests/unit/journal-fault-injection.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'journal-concurrent-append-failed' }
+          # 202 DRIFT-018: the outage buffer (one closed file per record, 0b62bf9b) behaves differently on Linux and
+          # macOS, where a rename does not detach an open writer; case (e) never degrades, so this exercises it.
+          & pwsh -NoProfile -NonInteractive -File ./tests/unit/hook-output-journal.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'hook-output-buffer-failed' }
+
+      # Feature 202 T014 (FR-021): turn drafts arrive on stdin as raw bytes and round-trip byte-exact (Hebrew, emoji,
+      # CRLF) into the session's own folder; the acceptance names Windows, macOS and Linux.
+      - name: Turn-draft intake over stdin (T014)
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -NonInteractive -File ./tests/unit/turn-draft-intake.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'turn-draft-intake-failed' }
 
       - name: Prepare bounded cgroup v2 root for privileged Linux review-process tests
         if: runner.os == 'Linux'
