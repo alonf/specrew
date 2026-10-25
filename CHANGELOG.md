@@ -42,6 +42,9 @@ validated, are in [docs/release-notes-v0.40.0-beta41.md](https://github.com/alon
 
 ### Known issues
 
+- **Rarely, a typed approval records nothing and nobody is told (B4F-151).** If Specrew cannot read the form of an
+  approval, it records none, and the notice saying so is lost. Nothing unsafe is recorded. If the work does not
+  move on after you approve, type the approval again. The fix is in Beta5.
 - **On Copilot, a workshop question can open Copilot's question box, and an answer typed there is not recorded
   (B4F-131).** Copilot asks again in chat. Answer in the chat as a normal message; if an answer went into the box,
   type it again in the chat.

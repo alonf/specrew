@@ -70,6 +70,11 @@ so. Each session now keeps its reply outcomes in its own folder.
 
 ## Known issues
 
+**Rarely, a typed approval records nothing and nobody is told (B4F-151).** If Specrew cannot read the form of an
+approval, it correctly records no approval, but the notice that should say so is lost. The approval is not offered
+again at the end of the turn either. Found in review and confirmed in the code; not seen live. Nothing unsafe is
+recorded. **If the work does not move on after you approve, type the approval again.** The fix is in Beta5.
+
 **On Copilot, workshop questions can open Copilot's question box, and an answer typed into the box is not recorded
 (B4F-131).** Copilot then asks again in chat. Specrew's Copilot instructions forbid the box for workshop questions,
 and Copilot still used it in three walks in a row. Nothing false is recorded. **Answer in the chat as a normal
