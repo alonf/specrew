@@ -5743,6 +5743,19 @@ for approval while the hardening gate has concerns without follow-through, so th
 still change.
 **Disposition:** logged, not scheduled.
 
+## B4F-160 - THE VALIDATOR'S CACHE IGNORES THE DECISIONS LEDGER, SO A CACHED RESULT OUTLIVES THE DEFERRAL IT JUDGED (candidate)
+
+**Observed:** 2026-10-25, preparing feature 202's merge to main. A corrected defer entry for feature 001's iteration
+011 was added to `.squad/decisions.md`, and two validator runs still reported "Deferred gap entries require a canonical
+defer entry" for that iteration, committed or not. Called on its own, the same check passed. The result came from
+`.specrew/.cache/`: the cache key covers the iteration's files and the validator's code, not the decisions ledger the
+deferral check reads. With `-NoCacheRead` the iteration passed.
+**Effect:** a fixed record keeps failing locally until the cache is bypassed, while CI, starting with no cache, passes.
+The reverse is worse: a deferral removed from the ledger keeps passing locally from the cache.
+**Fix direction:** the cache key includes the content of every file a cached check reads (at least
+`.squad/decisions.md`), or the checks that read the ledger are not cached.
+**Disposition:** logged, not scheduled.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
