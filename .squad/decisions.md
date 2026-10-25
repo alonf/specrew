@@ -1,5 +1,21 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-10-25 — Verdict: corrected defer entry for feature 001 iteration 011 (FR-054)
+
+- **Decision ID**: defer-fr054-immutability-guardrail
+- **Type**: defer
+- **Affected Requirement**: FR-054
+- **Affected Iteration**: specs\001-specrew-product\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-10-25T02:39:11Z
+- **Next Action**: Address automated immutable-snapshot enforcement in a separate scoped feature.
+- **Rationale**: Correction, on the maintainer's typed `merge as recommended` (2026-10-25). The canonical
+  defer entry of 2026-05-12 for this deferral, approved by Alon Fliess on 2026-05-08, names
+  `specs\198-beta2-hardening\iterations\011` as the affected iteration, while its rationale, and the
+  Gap Ledger of `specs\001-specrew-product\iterations\011\review.md` that cites it, are about feature 001's
+  iteration 011. The validator therefore found no deferral for that iteration. This entry records the same
+  approved deferral against the right iteration; the earlier entries are left as they are.
+
 ### 2026-10-25 — Verdict: 202 iteration 003 gap ledger - every open item deferred except T031's live test
 
 - **Decision ID**: f202-i003-gap-ledger-deferrals
