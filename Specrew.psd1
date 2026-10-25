@@ -452,11 +452,10 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the 0.40.0 Beta4.1 candidate, published as 'beta41' (ruled 2026-10-25). Beta4
-            # (ruled 2026-09-11: the walk's orientation read
-            # beta3 from a branch-built module; the tag stamps the staged manifest, this line is the dev-loop's
-            # word). Prerelease is empty for stable;
-            # publish-stable stamps it clear from a stable v0.40.0 tag only after a separate promotion gate.
+            # Source prerelease state for the 0.40.0 Beta4.1 candidate, published as 'beta41' because a label may
+            # not contain a dot (ruled 2026-10-25). The tag stamps the staged manifest; this line is the dev loop's
+            # word (ruled 2026-09-11, when a branch-built module oriented as the previous beta). Prerelease is empty
+            # for stable; publish-stable stamps it clear from a stable v0.40.0 tag only after a separate promotion gate.
             # The publish-module.yml workflow stamps the actual published version from the git tag at release
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
@@ -468,7 +467,7 @@
             # Kept in step with Prerelease above. These notes are what a consumer reads on the gallery
             # page before installing, so a stale label here points them at the wrong release's known
             # limitations - which is the one thing they are reading it for.
-            ReleaseNotes = 'Specrew 0.40.0-beta41 is Beta4.1, the UX stabilization of Beta4: it changes what you see and how often you are stopped, not what governance requires. Your approval is recorded once, keyed by the host''s own message ID; Copilot no longer records everything twice by also running Claude Code''s hooks; a sub-agent''s task text is never taken as your approval. Codex workshop answers are recorded, and a lasting failure is reported in the same turn. The packet is shown once per session, the Stop hook no longer blocks a turn over wording, and the orientation comes before the first question. Status, orientation, resume and specrew start name the same feature; refusals name the step that fixes them; specrew init no longer writes into an enclosing repository. Validated on Claude Code, Codex and Copilot CLI; Cursor and Antigravity are experimental. Known limitations (a rare typed approval that records nothing without saying so, two on Copilot''s question box, one review-coverage block in retro and closeout) are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta41 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
+            ReleaseNotes = 'Specrew 0.40.0-beta41 is Beta4.1, the UX stabilization of Beta4: it changes what you see and how often you are stopped, not what governance requires. Your approval is recorded once, keyed by the host''s own message ID; Copilot no longer records everything twice by also running Claude Code''s hooks; a sub-agent''s task text is never taken as your approval. Codex workshop answers are recorded, and a lasting failure is reported in the same turn. The packet is shown once per session, the Stop hook no longer blocks a turn over wording, and the orientation comes before the first question. Status, orientation, resume and specrew start name the same feature; refusals name the step that fixes them; specrew init no longer writes into an enclosing repository. Validated on Claude Code, Codex and Copilot CLI; Cursor and Antigravity are experimental. Seven known limitations (a rare typed approval that records nothing without saying so; three on Copilot: two on its question box and one on packet rendering; a workshop turn that can end without saying what to type; stale guidance after specrew init; a review-coverage block in retro and closeout) are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta41 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
         }
     }
 }

@@ -76,13 +76,30 @@ again at the end of the turn either. Found in review and confirmed in the code; 
 recorded. **If the work does not move on after you approve, type the approval again.** The fix is in Beta5.
 
 **On Copilot, workshop questions can open Copilot's question box, and an answer typed into the box is not recorded
-(B4F-131).** Copilot then asks again in chat. Specrew's Copilot instructions forbid the box for workshop questions,
-and Copilot still used it in three walks in a row. Nothing false is recorded. **Answer in the chat as a normal
-message.** If an answer goes into the box, type it again in the chat.
+(B4F-131).** Copilot's recovery is a second question box, offering a workshop recovery, and an answer there is not
+recorded either. Specrew's Copilot instructions forbid the box for workshop questions, and Copilot still used it in
+three walks in a row. Nothing false is recorded. **Answer in the chat as a normal message, the recovery included.**
+If an answer goes into a box, type it again in the chat.
 
 **On Copilot, pressing Esc on the question box can swallow your next message (B4F-153).** Copilot folds the message
 you type after Esc into the turn that is still running. No hook sees it, so Specrew cannot record it or tell you it
 was missed. Nothing false is recorded. **If Copilot carries on as if you had not answered, type the answer again.**
+
+**On Copilot, a boundary packet runs its reply options together and shows its hidden tag (B4F-156).** The reply lines
+appear on one line, and the tag at the end of the packet, which other hosts hide, shows as text ending in `-->`.
+**Type one reply on its own:** `approved for <stage>`, `approved for <stage> - <your instructions>`,
+`changes needed: <what to change>` or `discuss prompt <N>`. The tag needs nothing from you.
+
+**A workshop turn that waits for you can end without saying what to type (B5F-011).** It can close on a line such as
+"Next comes the short workshop agenda", which reads as if the crew is still working, with the reply it needs (for
+example `move on`) in the middle of a paragraph. **If a workshop turn ends and nothing follows, it is waiting for
+you:** look in its last paragraphs for the reply it asks for.
+
+**The guidance `specrew init` prints after setup is out of date (B5F-008).** It names `docs/getting-started.md`, which
+is in Specrew's repository, not in your project. It tells you to do lifecycle steps that the crew does, describes a
+flow that stops at retro, ties the team re-sync to `specrew start` although launching your host directly is the
+recommended path, and never explains "prompt approvals". **Launch your host in the project; the crew drives the
+lifecycle from there,** with your approval at each stage.
 
 **After the review allowance is used up, a review-coverage block can stop every turn end, even during a retro or a
 closeout (B5F-012).** It counts records, runtime copies and test data as source that changed after the last review.
