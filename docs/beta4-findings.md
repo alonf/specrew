@@ -5756,6 +5756,24 @@ The reverse is worse: a deferral removed from the ledger keeps passing locally f
 `.squad/decisions.md`), or the checks that read the ledger are not cached.
 **Disposition:** logged, not scheduled.
 
+## B4F-161 - THE COMPOSED COORDINATOR COPY FAILS PR MARKDOWN LINT, AND THE FIRST FIX WAS MADE TO THE COPY (candidate)
+
+**Observed:** 2026-10-25, feature 202's pull request into main (#3515). CI's Lint failed in its changed-Markdown step
+on `.github/agents/squad.agent.md:1522`, MD046 (a fenced block inside a list item reads as indented), before the
+governance step ran. The source is the governance fragment,
+`extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, which `specrew update` composes into
+the deployed copy; the fragment lints clean on its own, the composed copy does not.
+**First occurrence:** 2026-06-01, `178d04bc` ("fix(ci): satisfy PR markdown lint"), which de-indented the same block by
+hand in the deployed copy rather than in the fragment. The next composition brought the indentation back.
+**Why it surfaces only at a merge:** markdownlint skips dot-directories unless given `--dot`, so branch pushes, which
+lint `**/*.md`, never read `.github/agents/`. A pull request passes changed files by name, so only then is the copy
+linted.
+**Interim:** the deployed copy is listed in `.markdownlintignore` on the maintainer's `ignore the deployed copy`.
+**Fix direction:** fix the fragment so its composed output lints clean, lint the composed copy where it is produced,
+and lint the deployed dot-directory copies on pushes too (`--dot`), so a break is found when it is made, not at merge.
+Then remove the ignore entry.
+**Disposition:** beta5 fix, on the maintainer's ruling of 2026-10-25; carried in `docs/beta5-findings.md` as B5F-013.
+
 ## Beta4.1 intake rulings — 2026-10-13
 
 The maintainer scoped feature 202 in two tiers, one iteration each. **Tier 1** is B4F-104, B4F-106,
