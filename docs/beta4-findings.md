@@ -5485,7 +5485,7 @@ stale after the next line, is removed, and the question is asked again. Round 10
 check (no stored time compared or carried through a string), the fifth recurrence of the pattern. Confirmed at the
 review-signoff verdict: the tree-wide time scan goes to beta5 with the review-engine items.
 
-## B4F-142 - THE JOURNAL STRESS CASE COUNTED 4001 LINES FOR 4000 APPENDS, ONCE, ON LINUX (open; not investigated)
+## B4F-142 - THE JOURNAL STRESS CASE COUNTED MORE LINES THAN APPENDS ON LINUX, FOUR TIMES (open; read from the code)
 
 **Observed:** 2026-10-20, Cross-Platform Validation run 39397465083 at `537352e3` (a records-only commit), job
 "Deterministic fake-provider review runtime (ubuntu-latest)": hook-output journal fault injection (e) found
@@ -5493,6 +5493,29 @@ review-signoff verdict: the tree-wide time scan goes to beta5 with the review-en
 wait budget"). The next push (`cb5be72f`) passed on all three platforms.
 **Open question:** whether an append that times out on the lock can still land, and then be written again. One extra
 line in an authority journal is a duplicate record. Not investigated; a beta5 candidate.
+**Occurrences (counted 2026-10-26):** four, all in the same Linux job, case (e), each with a degraded health
+transition and no hash missing: 4001 lines (run 39397465083, `537352e3`, 2026-10-20), 4002 (39626630566, `29cf7760`,
+2026-10-21), 4003 (40238801847, `d78ae755`, pull request #3712, 2026-10-25) and 4005 (40291903124, `06276c4b`, pull
+request #3713, 2026-10-26). Two more runs degraded with the count exact (39321088439, `7550f535`, 2026-10-19;
+40173154742, `e58b59b7`, 2026-10-25). Windows and macOS passed every time.
+**Read from the code (2026-10-26):** the append path (`Add-DispatcherJournalText` in
+`extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`) writes two journals: `hook-output-authority.jsonl`,
+the hashes of Specrew's own hook output, and `hook-output-health.jsonl`, the degraded and recovered transitions. A
+hash it cannot append goes to a file in `hook-output-buffer/`. Nothing on this path records an approval. Its reader
+(`Test-SpecrewWorkshopResponseIsHookOutput` in `workshop-authority-store.ps1`) only asks whether a reply's hash is
+present, to refuse a reply that copies hook output, so a duplicate line changes no decision.
+An append that runs out of lock wait does not land: the `TimeoutException` is thrown before the journal is opened, and
+the hash goes to the buffer instead. The extra lines come from the buffer flush (`Complete-DispatcherHookOutputRecovery`).
+A flusher claims a buffer file by renaming it `.flushing-<guid>.jsonl`, and any other flusher that lists the folder
+before the first removes it reads and journals the claimed file too. That is by design, so a crashed flusher's claim is
+not lost, and its comment calls a re-flushed hash a harmless duplicate. With four writers, two flushers overlap and each
+such file is journaled twice. Not reproduced; read from the code.
+**Still open:** the degraded transitions themselves. The one-second lock budget per hook fire (DRIFT-023) still runs
+out on Linux CI under four writers; in a project, that contention would put the health line on `specrew status` and
+`specrew where` until the next good append.
+**Fix direction (beta5):** decide which rule holds: a flusher skips a claim that another flusher made moments ago and
+re-flushes only a stale one, or case (e) counts distinct hashes and accepts a flush's duplicates. Then find why the
+Linux lock still keeps a writer waiting a full second.
 
 ## B4F-143 - A FAILED SQUAD PROBE CLEANUP LEAVES A FOLDER IN THE PROJECT THAT BLOCKS EVERY BOUNDARY (candidate)
 
