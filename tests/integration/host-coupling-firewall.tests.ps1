@@ -42,7 +42,8 @@ $allowListExact = @(
     # ~2400-line scripts. Fixing requires substantial scope; tracked separately.
     'scripts/specrew-init.ps1',                # lines 1642 (agent-enable validator) + 1730 (iteration-config.yml agents block) in original layout
     'scripts/init/agent-detection.ps1',        # Same hardcodes moved here during Proposal 108 Slice 6 extraction; cleanup requires iteration-config.yml schema migration to add antigravity slot (deferred)
-    'tests/manual/multi-host-smoke.ps1'        # intentionally enumerates the original 3 hosts for smoke comparison
+    'tests/manual/multi-host-smoke.ps1',       # intentionally enumerates the original 3 hosts for smoke comparison
+    'tests/host-probes/host-payload-capture-probe.ps1' # 202: captures hook payloads from the three validated hosts only
 )
 
 # Directories to skip wholesale (specs, proposals, CHANGELOG, docs, .scratch, .squad, .specify mirrors)

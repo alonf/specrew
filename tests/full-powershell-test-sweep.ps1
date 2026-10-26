@@ -60,6 +60,9 @@ $fileTimeoutOverrides = @{
     'tests\integration\baseline-hygiene.tests.ps1' = 600
     'tests\integration\conformance-detection.tests.ps1' = 900
     'tests\continuous-co-review\unit\review-public-campaign-command.Tests.ps1' = 900
+    # 202's message-identity suite measured 196 seconds alone and crossed the 420-second bound in the
+    # four-way census on 56c8829f
+    'tests\unit\message-identity.tests.ps1' = 600
 }
 
 # These suites launch enough nested repositories/processes that overlapping them with three other

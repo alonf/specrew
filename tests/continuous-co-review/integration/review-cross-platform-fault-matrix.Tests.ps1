@@ -139,8 +139,9 @@ exit 0
             # The first native Windows process on a fresh hosted runner can pay cold PowerShell,
             # code-signing, and endpoint-scanning startup cost. Keep successful fake cases bounded
             # without turning that infrastructure latency into a semantic timeout. The dedicated
-            # descendant-kill case below still supplies its independent five-second bound.
-            param($Case, [int]$TimeoutSeconds = 30)
+            # descendant-kill case below still supplies its independent five-second bound. The
+            # full census on 56c8829f ran the Claude and Codex cases past 30 seconds (about 5 alone).
+            param($Case, [int]$TimeoutSeconds = 60)
             $harness = New-T059FakeProcessHarness -HostName $Case.host -TimeoutSeconds $TimeoutSeconds
             $runtime = New-T059NativeRuntime -TimeoutSeconds $TimeoutSeconds
             $harnessReady = & $harness.preflight $Case.invocation
