@@ -4,6 +4,65 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.40.0-beta41] - 2026-10-25
+
+Feature 202, the Beta4.1 UX stabilization. **BETA** - this prerelease is not a stable promotion. Gallery prerelease
+labels may not contain a dot, so Beta4.1 is published as `0.40.0-beta41`.
+
+**Beta4.1 changes what you see and how often you are stopped, not what governance requires.** Validated on Claude
+Code, Codex and Copilot CLI; Cursor and Antigravity are experimental. The full notes, including how this release was
+validated, are in [docs/release-notes-v0.40.0-beta41.md](https://github.com/alonf/specrew/blob/v0.40.0-beta41/docs/release-notes-v0.40.0-beta41.md).
+
+### Fixed
+
+- **Your approval is recorded once**, keyed by the host's own message ID, so no spare approval is left behind. On
+  Copilot, an approval that was not recorded is reported.
+- **Copilot no longer records everything twice** by also running Claude Code's hooks. Passed live on Copilot CLI
+  1.0.101.
+- **A sub-agent's task text is never taken as your approval or your answer.**
+- **Codex workshop answers are recorded.** A brief journal lock is retried, a lasting failure is reported in the same
+  turn, and `specrew status` leads with a health line while it lasts.
+- **The packet is shown once per session**, and again only after a resume, a compaction, a long gap or a change to
+  what it shows. A side question gets an answer.
+- **The Stop hook no longer blocks a turn over wording**, and a missing profile line is filled in for you.
+- **The orientation comes before the first question**, and the adaptation sentence reads the same on every host.
+- **Status, orientation, resume and `specrew start` name the same feature** and say which record decided it.
+- **A second feature in a worktree can reach specify**, and readiness no longer reports a false READY.
+- **Refusals name the step that fixes them**; the design-analysis refusal lists every gap at once.
+- **`specrew init` inside another repository's folder** no longer commits to it or writes `.github/` at its root.
+- **A closeout is recorded only on your approval**, and two sessions no longer see each other's refusals.
+
+### Changed
+
+- **The approval form on Claude Code**: a phrase on its own line counts even beside a paste; text inside a paste never
+  counts; a message quoting more than one offered reply is refused as a quoted menu. Other hosts keep the one-line
+  rule.
+- **"the remaining lenses"** delegates every open workshop lens; the reviewer is chosen once, at the agenda.
+- **`specrew update`** removes the retired `.specrew/runtime/workshop-receipt-outcomes.jsonl` and says so.
+
+### Known issues
+
+- **Rarely, a typed approval records nothing and nobody is told (B4F-151).** If Specrew cannot read the form of an
+  approval, it records none, and the notice saying so is lost. Nothing unsafe is recorded. If the work does not
+  move on after you approve, type the approval again. The fix is in Beta5.
+- **On Copilot, a workshop question can open Copilot's question box, and an answer typed there is not recorded
+  (B4F-131).** Copilot's recovery is a second question box, and an answer there is not recorded either. Answer in
+  the chat as a normal message, the recovery included; if an answer went into a box, type it again in the chat.
+- **On Copilot, pressing Esc on the question box can swallow your next message (B4F-153).** Copilot folds it into the
+  running turn, and no hook sees it. If Copilot carries on as if you had not answered, type the answer again.
+- **On Copilot, a boundary packet runs its reply options together and shows its hidden tag (B4F-156).** Type one
+  reply on its own (`approved for <stage>`, `changes needed: <what to change>`, ...); the tag needs nothing from you.
+- **A workshop turn that waits for you can end without saying what to type (B5F-011).** If a workshop turn ends and
+  nothing follows, it is waiting for you: look in its last paragraphs for the reply it asks for, such as `move on`.
+- **The guidance `specrew init` prints after setup is out of date (B5F-008).** It names a guide that is not in your
+  project and describes steps the crew does. Launch your host in the project; the crew drives the lifecycle.
+- **After the review allowance is used up, a review-coverage block can stop every turn end, even in a retro or a
+  closeout (B5F-012).** It counts records and test data as changed source and offers implementation choices that do
+  not apply there. Claude Code shows it as "Stop hook error"; it is not a crash, your work is safe, and outside
+  implementation there is nothing to decide.
+- **Beta4's two known issues are unchanged**: lens confirmations bind the next typed reply, and a scaffolded feature
+  you never started keeps announcing its workshop.
+
 ## [0.40.0-beta3] - 2026-09-01
 
 Feature 199 stabilizes the Beta2 line. **BETA** — this prerelease is not a stable promotion.

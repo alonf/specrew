@@ -22,7 +22,8 @@ Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)
         $script:Provider = Join-Path $script:RepoRoot 'scripts/internal/specrew-bootstrap-provider.ps1'
         # SC-010 names this value. It is asserted LITERALLY, independent of the manifest under test.
         # Beta4 (ruled 2026-09-11): the channel moved with the Prerelease line; this literal moves with it.
-        $script:ExpectedVersion = '0.40.0-beta4'
+        # Beta4.1 (ruled 2026-10-25): 'beta41', since a gallery prerelease label may not contain a dot.
+        $script:ExpectedVersion = '0.40.0-beta41'
         $script:ModuleVersion = '0.40.0'
         $manifest = Import-PowerShellDataFile -Path (Join-Path $script:RepoRoot 'Specrew.psd1')
         $script:ManifestVersionText = '{0}-{1}' -f [string]$manifest.ModuleVersion, ([string]$manifest.PrivateData.PSData.Prerelease).Trim()
@@ -71,10 +72,11 @@ Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)
         $notes | Should -Match ([regex]::Escape("Specrew $expected")) -Because 'the notes must name the version they describe'
         $notes | Should -Match ([regex]::Escape("releases/tag/v$expected")) -Because 'the known-limitations link must point at THIS release, not the previous one'
 
-        # And it must not still be advertising a different prerelease of the same version.
-        $otherLabels = @('beta1', 'beta2', 'beta4', 'rc1') | Where-Object { $expected -notlike "*-$_" }
+        # And it must not still be advertising a different prerelease of the same version. A label is
+        # matched whole: '0.40.0-beta4' is a prefix of '0.40.0-beta41', and must not match inside it.
+        $otherLabels = @('beta1', 'beta2', 'beta3', 'beta4', 'beta41', 'rc1') | Where-Object { $expected -notlike "*-$_" }
         foreach ($stale in $otherLabels) {
-            $notes | Should -Not -Match ([regex]::Escape("0.40.0-$stale")) -Because "the notes still mention $stale while the package ships $expected"
+            $notes | Should -Not -Match ([regex]::Escape("0.40.0-$stale") + '(?![0-9A-Za-z])') -Because "the notes still mention $stale while the package ships $expected"
         }
     }
 
