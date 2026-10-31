@@ -47,6 +47,11 @@ then T014.
   - **Acceptance:** with the variable set, the broken project-tree file is not loaded; with it unset, behaviour is
     unchanged for downstream projects; reviewed in its own round; after sign-off, the `.specify` mirror is synced
     from the same commit and the pin is created at it.
+  - **Acceptance, failure direction (tasks verdict, 2026-10-31):** a missing or corrupt pin (the path absent, not a
+    checkout, or missing an engine file) makes the hooks refuse visibly, in plain words with one recovery action,
+    and never silently fall back to the worktree's source or the deployed bundle. Today's engine loader falls back
+    to the deployed bundle or the repository source. RED: `live-engine-resolution.Tests.ps1` removes and corrupts
+    the pin and asserts the refusal and that no project-tree engine file was loaded.
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,
@@ -156,12 +161,19 @@ then T014.
 
 - [ ] T011 [owner: Implementer] [sp: 1.5] [US4] **Decision parts, not a second copy (FR-046).**
   - **Work:** the Stop check verifies the reply itself for the approval line, the marker and the options; a
-    reworded content line passes; the word-for-word declared-vs-reply comparison goes.
-  - **RED:** `tests/unit/presented-check.Tests.ps1`: a reworded discussion line blocks today (09:36, 2026-10-31).
-  - **Acceptance:** a reworded line passes; a missing marker or option blocks.
+    reworded content line passes; the word-for-word declared-vs-reply comparison goes. **Tasks verdict addition:**
+    piping the packet (or any reply draft) into `declare-turn-end.ps1` goes too. The piped copy shows in the
+    maintainer's terminal as the command's input, so every boundary packet reaches the human twice even when
+    nothing blocks (the tasks packet did at 11:43, 2026-10-31). The declaration keeps its kind, token, summary and
+    pending item; the skills and refocus surfaces that tell the agent to pipe a draft are updated, born-clean.
+  - **RED:** `tests/unit/presented-check.Tests.ps1`: a reworded discussion line blocks today (09:36, 2026-10-31);
+    `declare-turn-end` requires a piped draft for a boundary declaration today.
+  - **Acceptance:** a reworded line passes; a missing marker or option blocks; a boundary declaration needs no
+    piped draft, and no shipped skill or refocus text asks for one.
   - **Trace:** FR-046.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`,
-    `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `tests/unit/presented-check.Tests.ps1`.
+    `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `extensions/specrew-speckit/scripts/declare-turn-end.ps1`,
+    the skill and refocus sources that name the piped draft, `tests/unit/presented-check.Tests.ps1`.
 
 ## Phase 7: Evidence and deployment
 

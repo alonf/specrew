@@ -422,7 +422,9 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   packet is absent or misses a decision-bearing part (the approval line, the boundary marker, the response
   options). A reworded content line MUST NOT block. Verifying the reply MUST be preferred over comparing it
   word for word with a second, separately authored copy of the packet (pres-declared and
-  pres-boundary-packet, B5F-004).
+  pres-boundary-packet, B5F-004). The turn-end declaration MUST NOT take the packet or reply draft as input:
+  a piped copy shows in the human's terminal as the command's input, so every packet reaches the human twice
+  (maintainer, tasks verdict, 2026-10-31).
 - **FR-045**: Iteration 1 MUST end with a short Claude-only capture check, manual with records: a verdict
   typed after a compaction, a standalone approval phrase quoted mid-message, and one inside pasted content.
   The first is recorded once in its own turn; the other two record nothing.
