@@ -35,7 +35,7 @@ capture code judges the maintainer's approvals.
 - **Performance Goals**: none new; a scoped round must receive only its listed files (DA-7, token cost).
 - **Constraints**: authority rules live once (DA-1); stores keep ids and hashes; no script or `!` approval path;
   no checkout inside the worktree (DA-8); the live engine advances only after an iteration's review.
-- **Scale/Scope**: iteration 001 covers FR-001 to FR-027, FR-041 (correlation), FR-042, FR-043, FR-045, FR-046.
+- **Scale/Scope**: iteration 001 covers FR-001 to FR-011, FR-014 to FR-027, FR-041 (correlation), FR-042, FR-043, FR-045, FR-046; FR-012 and FR-013 moved to iteration 002 by the plan verdict.
 
 ## Architecture
 
@@ -113,7 +113,7 @@ This changes the inherited `provider-mirror-parity` rule ("syncs its `.specify` 
 
 ## Work breakdown, effort, and FR-to-test mapping (iteration 001)
 
-**32 SP is planned against the 20 SP convention, an overcommit of 12 SP that is visible and not hidden.** The
+**28.5 SP is planned against the 20 SP convention, an overcommit of 8.5 SP, accepted by the plan verdict (W8 and W9 moved to iteration 002, below).** The
 maintainer fixed iteration 001's scope (US1 to US3 plus FR-046). Review effort is governed by the review budget,
 not by SP. Every work item lands RED-first: the fixture reproduces the defect through the shipped entry point,
 then the fix turns it green.
@@ -128,8 +128,8 @@ then the fix turns it green.
 | W5 | Not-recorded reporter: every branch with its own reason (incl. stage evidence absent), store checked when speaking, Claude visible line, justified stop elsewhere | FR-026, FR-027, FR-032 (touched refusals) | 2.0 | `not-recorded-report.Tests.ps1`: each branch reports; a recorded approval never reports |
 | W6 | Budget declaration and snapshot: `## Review budget` parser, ceiling validation at plan sync and snapshot (refusal names the ceiling and `.specrew/config.yml`), grant fact citing the verdict; zero rounds when absent | FR-001, FR-002, FR-003, FR-008 | 2.5 | `review-budget-snapshot.Tests.ps1`: a plan edit after the verdict does not change the grant; above-ceiling refused at both points |
 | W7 | Orchestrator loop: single grant, reservation before invocation, top-up starts the next round, infra-failure cap and host advance, pause facts (a)-(d), navigator reads pause facts only, stop layout and phrases | FR-004 to FR-007, FR-009, FR-011 | 5.0 | `review-budget-loop.Tests.ps1`: no reviewer invoked past `budget_total` (the July shape); 2 infra failures advance codex to copilot; exhausted order pauses (d) |
-| W8 | Scoped late-fix round: sparse materialization of the listed paths, `scoped` label, coverage rule | FR-013 | 2.0 | `scoped-round.Tests.ps1`: the reviewer worktree contains only the listed paths; coverage complete only when every changed file is covered |
-| W9 | Token usage: parse host-reported usage (Claude, Codex from its delivery file, Copilot if reported), round result and sign-off total | FR-012 | 1.5 | `review-usage.Tests.ps1`: recorded reviewer outputs yield tokens or "not reported by <host>" |
+| W8 (iteration 002) | Scoped late-fix round: sparse materialization of the listed paths, `scoped` label, coverage rule | FR-013 | 2.0 | `scoped-round.Tests.ps1`: the reviewer worktree contains only the listed paths; coverage complete only when every changed file is covered |
+| W9 (iteration 002) | Token usage: parse host-reported usage (Claude, Codex from its delivery file, Copilot if reported), round result and sign-off total | FR-012 | 1.5 | `review-usage.Tests.ps1`: recorded reviewer outputs yield tokens or "not reported by <host>" |
 | W10 | FR-046: the Stop check verifies the reply's decision parts; the word-for-word declared-vs-reply comparison goes | FR-046 | 1.5 | `presented-check.Tests.ps1`: a reworded content line passes; a missing marker or option blocks |
 | W11 | Audit and correlation: record-to-typed-turn join audit; reservations cite grant and reset; turn identity and campaign id on records | FR-024, FR-041 (part) | 1.5 | `authority-audit.Tests.ps1`: a record with no joined typed turn fails the audit |
 | W12 | Test evidence suite: no-human-turn fixtures for every mint path, non-approval phrase fixtures, cross-host replay incl. compaction, budget economics fixtures | FR-042, FR-043 | 1.5 | the suites above, collected and run in the census and a PR lane |

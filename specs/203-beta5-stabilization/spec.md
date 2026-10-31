@@ -520,7 +520,7 @@ the Windows shards replace none of them; the 12 script-style suites join the cen
 
 | Story | Findings | Requirements | Owner roles | Iteration (proposed) |
 |---|---|---|---|---|
-| US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1 |
+| US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1; FR-012 and FR-013 in 2 (plan verdict) |
 | US2 | B4F-112, B4F-116/150, B4F-117, B4F-140/137 | FR-014 to FR-025, FR-042, FR-045 | Implementer; Reviewer (codex); maintainer for the Claude capture check | 1 |
 | US3 | B4F-151, B4F-112 | FR-026, FR-027 | Implementer; Reviewer | 1 |
 | US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032 | Implementer; maintainer rules the audit table | 2 |
