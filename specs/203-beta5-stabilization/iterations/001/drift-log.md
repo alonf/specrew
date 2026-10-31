@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 3 (DRIFT-001 to DRIFT-003)
-**Resolution rate**: 3 of 3 handled locally; all three carry an open product class for the backlog
+**Total drift events**: 5 (DRIFT-001 to DRIFT-005)
+**Resolution rate**: 4 of 5 handled locally; DRIFT-005 is open for the maintainer
 **Specification drift**: 0
 
 ## Events
@@ -49,3 +49,31 @@
 - **Class closure**: OPEN — backlog candidate: at a pending crossing the readiness line should read as the state
   it is ("waiting for your approval to start implementing") rather than as a failure, while still never being
   summarized to PASS; or the line belongs in the crew's checks, not the human's packet.
+
+### DRIFT-004 — the pin is selected by a record file, not by the launcher's SPECREW_MODULE_PATH (design detail)
+
+- **Observed**: 2026-11-01, T002 implementation. The plan and DA-8 said the pin would be selected through the hook
+  launcher's `-ModulePath` (`SPECREW_MODULE_PATH`).
+- **Requirement**: DA-8; T002 "inert until configured" (before-implement verdict).
+- **Resolution**: the pin is configured by `.specrew/runtime/live-engine.json` (machine-local, git-ignored), written
+  only by `scripts/internal/live-engine-pin.ps1`. `SPECREW_MODULE_PATH` is a shared developer override that tests and
+  the boundary-sync wrapper also read; giving it "configured but unusable refuses" semantics would reach beyond the
+  hooks. The record file keeps T002 inert until configured and confines the refusal to the hooks.
+- **Class closure**: NONE — a design detail within DA-8's intent; plan.md wording updated at the next plan touch.
+
+### DRIFT-005 — mirror-parity tests fail on the branch between deployment points (open, for the maintainer)
+
+- **Observed**: 2026-11-01, the T002 regression sweep (103 files touching the changed providers, the dispatcher or
+  shared-governance, run in a scratch checkout of `9f81fb52`). 10 failed; the same 10 at the base `fca9067e` gave 2
+  pre-existing failures (`boundary-reader-conformance`, `CoordinatorFrontLoad`). Of the 8 new ones, 7 are mirror or
+  deployed-copy parity checks (`ProviderMirrorParity`, `deployed-mirror-parity`, `conformance-material-turn-gate`
+  parity case, `conformance-provider-seam`, `host-identity-runtime`, `session-orientation-rendered`,
+  `workshop-material-packet-language`), all failing on "source and deployed `.specify` mirror differ", which the
+  203 exception makes true until the deployment point. The 8th, `refocus-dispatcher` ("non-Specrew directory:
+  silent no-op"), failed once under the 6-way parallel sweep and passed 3 of 3 in isolation.
+- **Requirement**: the 203 `provider-mirror-parity` exception (plan, "When 203's changes reach the live hooks");
+  the B4F-158 class (red as the normal colour hides real failures).
+- **Resolution**: OPEN — these suites run in the branch CI lanes and the census, so the branch shows red on parity
+  between deployment points. Options for the maintainer: accept the red on parity until each deployment point, or
+  have the parity checks honour `iterations/<NNN>/deploy-pending.md` (fail on any drift NOT listed there).
+- **Class closure**: OPEN.
