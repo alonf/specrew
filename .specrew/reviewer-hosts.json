@@ -23,7 +23,7 @@
       "review_class_rank": 85,
       "model_source": "human-entered",
       "cost_class": "non-default",
-      "authorization_ref": "workshop-202-beta4-1-ux-stabilization",
+      "authorization_ref": "9cf4941286e3612614fee43468e0ec6d4f5c551ca184e07ee52b4bab3b7c16e8",
       "fallback_allowed": false,
       "timeout_seconds": 0
     },

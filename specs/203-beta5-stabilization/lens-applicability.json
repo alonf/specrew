@@ -1,0 +1,258 @@
+{
+  "schema_version": "1.1",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "agenda_contract": "complete-coverage-v1",
+  "human_turn_contract": "typed-turns-v1",
+  "agenda_status": "confirmed",
+  "selected": [
+    "architecture-core",
+    "requirements-nfr",
+    "ui-ux",
+    "security-compliance",
+    "devops-operations",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "agenda": {
+    "architecture-core": {
+      "depth": "full",
+      "decision": "Where review-budget authority lives: the plan-stated budget and host order read by the review engine, one typed-authority capture for verdicts and the top-up or one per channel, and how the stop check decides the four stop conditions; the default when a plan states no review budget (features planned before 203); and when a merged feature's claim is released (B5F-014)."
+    },
+    "requirements-nfr": {
+      "depth": "medium",
+      "decision": "Make success measures a-f testable: what \"recorded the first time\" means across a compaction, how authorizations per boundary are counted against the six-baseline, and what the three-host walk must show."
+    },
+    "ui-ux": {
+      "depth": "medium",
+      "decision": "What the four review stops, the top-up request and a refusal say to the human, and the one closing line naming what to type (B5F-011); no Stop hook error for a stop without a decision (B5F-012); and the B5F-004 audit: every stop reason outside the four review stops, kept only if it protects authority or a needed decision."
+    },
+    "security-compliance": {
+      "depth": "medium",
+      "decision": "Authority integrity: how measure b (no approval recorded that the human did not type) is enforced, including the transcript backstop and unspent-record folding (B4F-137/140), and what the autonomous cycle may spend without asking."
+    },
+    "devops-operations": {
+      "depth": "medium",
+      "decision": "The CI rider: which PR lanes carry the census-failable tests (B5F-015, B4F-119), linting the composed and dot-directory copies (B5F-013), and whether lint may keep gating the deterministic gate (B4F-079, B4F-158)."
+    },
+    "observability-resilience": {
+      "depth": "medium",
+      "decision": "Journal integrity for B4F-142, capture that survives a compaction (B4F-112), refusals that say what was looked for and where (B4F-151), and how reviewer token usage is shown in the round result."
+    },
+    "code-implementation": {
+      "depth": "light",
+      "decision": "Inherit 202's implementation rules and change only what the budget model touches; reviewer codex first, plan budget host order codex, copilot, claude."
+    }
+  },
+  "skipped": {
+    "component-design": "The component map is co-designed at the design-analysis stop; at intake the only structural decision is architecture-core's authority model.",
+    "data-storage": "No new store: the records involved (plan budget, top-up record, spend ledger, active-features claim) are decided inside architecture-core and security-compliance.",
+    "integration-api": "No new external API; reviewer usage reporting is a small adapter item handled in observability-resilience."
+  },
+  "agenda_confirmation": "human-confirmed",
+  "agenda_confirmation_scope": "lens-selection",
+  "agenda_turn_receipt": "9cf4941286e3612614fee43468e0ec6d4f5c551ca184e07ee52b4bab3b7c16e8",
+  "agenda_digest": "9701e33c316818d8ba4a3141d6515696f399566d09028f009f8bfdb5f1801984",
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Design method",
+        "How the budget becomes authority",
+        "Grant model: N-slot or budget_total",
+        "One capture or one per channel",
+        "What the stop check decides",
+        "Plan with no budget",
+        "When a merged claim is released"
+      ],
+      "decision": "Inherit layered hooks plus campaign facts. The before-implement verdict snapshots the plan budget (rounds, host order codex-copilot-claude) into a single grant whose budget_total is the plan rounds; one runtime counter rounds_used vs budget_total, checked at reservation before invocation; config fuse kept only as a validation bound refused at plan and at snapshot with the ceiling and its location named. Top-up approved for allowance reset is the existing budget-reset fact. One classifier reads each typed turn once and routes it to one act. Human stops only on the four pause facts, never outside implement, no crew-facing next-round block. Plan without budget: zero rounds. Claim released on observed merge at session start and sync. Maintainer confirmed.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/architecture-core.md - review-budget authority flow",
+      "bindings": {
+        "decomposition-style": "existing-layered-hooks-plus-campaign-facts",
+        "review-budget-source": "plan-snapshot-at-before-implement",
+        "review-grant-model": "single-grant-budget-total",
+        "review-config-fuse": "plan-validation-bound-only",
+        "review-runtime-counter": "rounds-used-vs-snapshot-budget-total",
+        "round-cap-enforcement": "reservation-before-invocation",
+        "typed-act-capture": "single-classifier-one-act-per-turn",
+        "top-up-phrase": "approved-for-allowance-reset",
+        "review-human-stops": "budget-spent-dispute-defer-judgment-host-outside-order",
+        "crew-next-round-block": "none",
+        "no-budget-plan-default": "zero-rounds",
+        "reviewer-host-order": "codex-copilot-claude",
+        "claim-release": "on-observed-merge-session-start-and-sync"
+      },
+      "human_turn_receipt": "882bcfeacd9e19851f56632fb457a3bb259635e1046a1701ab19c44f6ca4a65a"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Priority order",
+        "Meaning of recorded the first time",
+        "How (b) is proven",
+        "How (e) is proven",
+        "What the three-host walk contains"
+      ],
+      "decision": "Priority b, a, c, d, f, e; authority correctness outranks friction. (b) reads no approval recorded that the human did not GIVE, proven by a record-to-typed-turn audit, mint-path fault tests with no human turn, and non-approval phrase tests (quoted, backticks, pasted content). (a) same-turn identity including after a compaction; a re-type fails. (c) reports check the store when they speak. (e) census-to-PR-lane parity check in CI. (f) review costs at most sign-off plus top-ups; a workshop confirmation costs one reply, confirmed-with-changes saves against the amended text or the crew applies and saves without re-asking. Manual three-host walk with records. Maintainer confirmed.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/requirements-nfr.md - measure priority and threshold table",
+      "bindings": {
+        "measure-priority": "b-a-c-d-f-e",
+        "measure-b-wording": "not-given",
+        "measure-b-proof": "audit-plus-mint-path-faults-plus-non-approval-phrases",
+        "measure-a-definition": "same-turn-identity-incl-compaction",
+        "measure-e-proof": "census-lane-parity-check-in-pr-ci",
+        "walk-mode": "manual-with-records",
+        "workshop-confirm-cost": "one-reply"
+      },
+      "human_turn_receipt": "87c5ce7e80795a03dd303a39b2d1b218d6a1dea73891b15ba4621812b866825f"
+    },
+    "ui-ux": {
+      "agenda": [
+        "Review stop layout",
+        "Sendable phrases per stop",
+        "Who a hook block speaks to",
+        "Closing line on waiting turns",
+        "How the B5F-004 audit runs",
+        "Refusal wording"
+      ],
+      "decision": "Review stops share one layout: why, what happened counted, the one decision, sendable lines each stating its consequence. Phrases: approved for allowance reset; stop the review here (sign-off lists what remains uncovered); defer finding <id> to <backlog item or iteration>; drop finding <id>; fix finding <id>; allow reviewer <host> (not approved for reviewer, which hits the review prefix). A deferral always names its destination. Crew guidance goes through non-blocking context where the host has it; any blocking text is plain words for a human, no internal codes. Closing line is supplied, never blocked; per-host mechanism verified, drift entry where a host can only add it by blocking. B5F-004 keep/drop/convert table goes in the spec. All touched refusals follow the refusal standard. Maintainer confirmed.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/ui-ux.md - review stop layout and phrase table",
+      "bindings": {
+        "review-stop-layout": "why-what-decision-sendable-lines-with-consequence",
+        "reviewer-allow-phrase": "allow-reviewer-host",
+        "deferral-destination": "required",
+        "crew-guidance-channel": "non-blocking-context-where-available",
+        "blocking-text-audience": "human-plain-words",
+        "closing-line": "supply-never-block-drift-entry-where-host-cannot",
+        "stop-reason-audit": "keep-drop-convert-table-in-spec",
+        "refusal-standard": "applies-to-all-touched-refusals",
+        "top-up-phrase": "approved-for-allowance-reset"
+      },
+      "human_turn_receipt": "438d8af3d47846c26054d86620d6272e6c0d9e9ea8e4514eef9ea895f4846712"
+    },
+    "security-compliance": {
+      "agenda": [
+        "One mint origin",
+        "Unspent-record folding",
+        "What the cycle may spend",
+        "Audit trail",
+        "Self-approval by the crew",
+        "What is stored"
+      ],
+      "decision": "One mint origin: the typed turn from the host user-prompt event. The four conditions (turn identity, human-authored, phrase stands alone not quoted/backticked/pasted, no record yet) apply on the hook path too, and recovery paths may only recover under them. Verify per host whether the user-prompt event carries a message id (define an explicit substitute where not) and how pasted content reaches the hook. Newest unspent act supersedes older via an immutable fact. Cycle spends rounds within budget on approved hosts and approved tasks only. Reservations cite grant and latest reset; stop answers cite their turn. A writer re-reads the cited turn and mints only the act the classifier derives, if unrecorded; --approve-round CLI removed; no script or ! approval path. Records keep ids and hashes. Top-up is hook-minted; its reason is the human text or none, never agent-authored. Maintainer confirmed.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/security-compliance.md - authority trust boundaries",
+      "bindings": {
+        "mint-origin": "typed-turn-user-prompt-event",
+        "standalone-phrase-rule": "all-paths-including-hook",
+        "turn-identity": "host-message-id-or-explicit-per-host-substitute",
+        "pasted-content-handling": "verify-per-host",
+        "recovery-paths": "recover-only-under-four-conditions",
+        "unspent-supersession": "newest-supersedes-immutable-fact",
+        "cycle-autonomy": "rounds-within-budget-approved-hosts-approved-tasks",
+        "authority-audit": "reservation-cites-grant-and-reset-stop-answer-cites-turn",
+        "writer-acceptance": "rederive-act-from-cited-turn-mint-if-unrecorded",
+        "approve-round-cli": "removed",
+        "top-up-mint": "hook-minted-reason-human-text-or-none",
+        "record-content": "ids-and-hashes-phrase-argument-only"
+      },
+      "human_turn_receipt": "cf803a2c2439163be746656270ee0de32070398442670f66b026ca9df6cacf3e"
+    },
+    "devops-operations": {
+      "agenda": [
+        "How measure e is met",
+        "Docs-only PRs",
+        "The census universe",
+        "Lint stops gating the tests",
+        "Dot-directory lint",
+        "B4F-142 CI side"
+      ],
+      "decision": "Census sweep runs as a required sharded windows-latest check on every PR into main, same selection and exclusions as publish (structural parity test); covers B5F-015. Repo is public: cost is wall-clock. Inventory the deterministic gate before the spec fixes lanes; steps that only run census suites are replaced by shards, not duplicated. Linux and macOS curated lanes stay. Shard count sized to the concurrent-job limit. Recorded fact: the gate runs on ubuntu-latest with POSIX-branch suites, so which steps move is an open point the maintainer rules at specify. No path filter. Census selects every tests .ps1 minus a reviewed non-suite list; B4F-119 suites fixed or retired with a record. Gate drops needs: lint; lint stays its own required check; B4F-158 record-state half to backlog. B5F-013: fix fragment, lint composed and dot-dir copies on push, remove interim ignore. B4F-142 CI side unchanged. Maintainer confirmed.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/devops-operations.md - CI topology today",
+      "bindings": {
+        "census-in-pr-ci": "required-sharded-windows-same-selection",
+        "census-pr-parity": "structural-same-selection-and-exclusions",
+        "gate-overlap": "inventory-before-spec-shards-replace-census-only-steps",
+        "os-lanes": "linux-macos-curated-lanes-stay",
+        "shard-count": "sized-to-concurrent-job-limit",
+        "census-path-filter": "none",
+        "census-universe": "all-tests-ps1-minus-reviewed-non-suite-list",
+        "unrun-suites": "fix-or-retire-with-record",
+        "lint-gates-tests": "no-lint-own-required-check",
+        "record-state-validator": "backlog",
+        "dot-directory-lint": "fix-fragment-lint-composed-and-dot-dirs-on-push"
+      },
+      "human_turn_receipt": "d39441aa871f09b709525ee7bbb888463887874a2314053b7e621a82c860f31c"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "B4F-142 flush rule",
+        "B4F-112 pairing across compaction",
+        "No silent nothing-recorded",
+        "Token usage display",
+        "Correlation and what is not logged"
+      ],
+      "decision": "B4F-142: a flusher skips a fresh claim and re-flushes only a stale one; exactly-once except crash recovery, where duplicates are accepted because nothing decides on this journal; exact-count case (e) covers the no-crash path; Linux lock wait measured before any budget change. B4F-112: pair a verdict-shaped reply with the durable pending-crossing record, not the transcript chain; unpaired reply reported same turn, no fallback to an older pair; a reply naming a different boundary than the waiting one is reported and records nothing. B4F-151 class: every no-record branch reports in the same turn with its own reason, plain words, diagnosis to drift, tested per branch; channel is the ui-ux visible line, and on a host without one it is a justified stop recorded as keep in the B5F-004 audit. Token usage display only, host-reported per round and total at sign-off. Records carry turn identity plus campaign id; raw prompts not logged. Maintainer confirmed.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/observability-resilience.md - failure traces",
+      "bindings": {
+        "journal-flush-rule": "exactly-once-except-crash-recovery-duplicates-accepted",
+        "journal-stress-count": "exact-line-count-no-crash-path",
+        "linux-lock-wait": "measure-cause-before-budget-change",
+        "verdict-pairing": "pending-crossing-record-not-transcript-chain",
+        "verdict-boundary-mismatch": "report-and-record-nothing",
+        "not-recorded-report": "every-branch-own-reason-same-turn",
+        "not-recorded-channel": "visible-line-else-justified-stop-kept-in-b5f-004-audit",
+        "token-usage": "display-only-host-reported-per-round-and-total",
+        "correlation-key": "turn-identity-plus-campaign-id"
+      },
+      "human_turn_receipt": "c69d30bf8669efb511928aa4ae1553a573a52a0fe72deaaf360fbb80ea462571"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Source of code rules",
+        "Rules changed by 203",
+        "Rules added by 203",
+        "Dependencies",
+        "Reviewer"
+      ],
+      "decision": "Inherit 202 implementation rules; change authz-security-context, careful-retries, no-magic-numbers, budget-economics-fixtures, main-sync, paired-honesty-tests; add census-selection and blocking-text-for-humans. Infrastructure failures spend no round but N consecutive failures on a host move to the next host in the approved order and an exhausted order pauses for the human (stop d). Main is merged before each before-implement packet, never after the approval. No new dependency. Reviewer codex, authorized with the agenda confirmation receipt as the human-provenance anchor. Maintainer confirmed.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/203-beta5-stabilization/workshop/code-implementation.md - inherited rules delta",
+      "bindings": {
+        "code-rules-source": "inherit-202-manifest",
+        "rules-changed": "authz-retries-magic-numbers-economics-main-sync-honesty",
+        "rules-added": "census-selection-blocking-text",
+        "infra-failure-cap": "n-consecutive-then-next-host-exhausted-order-pauses",
+        "main-sync": "before-implement-packet-never-after-approval",
+        "dependency-stance": "use-existing-no-new-dependency",
+        "reviewer-host": "codex",
+        "reviewer-authorization-ref": "agenda-confirmation-receipt"
+      },
+      "human_turn_receipt": "a698204d0036dc9e0532147bcae46313792ea32a6110d7af5a3779b82a6c6f50"
+    }
+  }
+}

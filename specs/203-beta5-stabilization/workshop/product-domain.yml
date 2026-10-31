@@ -1,0 +1,125 @@
+schema_version: "1"
+depth: standard
+depth_reason: >-
+  A later feature in a known product would take Light, but this one changes the approval-authority
+  path, spans three hosts, and its scope was the main decision, so it needs the current workaround,
+  success measures, alternatives and rollout that Standard adds. Not Deep: no new product or user
+  segment. Confirmed by the maintainer's typed "confirm" on Claude, 2026-10-30
+  (workshop receipt 6f4065f86f53f5fd0329c0037c6932ff0e94b0566f2002d5e3a8912ad7d4d19c).
+context_scope: feature_standalone
+product_id: specrew
+product_context_ref: null
+areas:
+  users_stakeholders: >-
+    The maintainer as the dogfooding human; beta users on Claude Code, Copilot CLI and Codex; the
+    harmed human, whose typed approval is lost (re-typing, blocked work) or, worse, recorded when they
+    never gave it. Operator: the beta-stable release pipeline to the PowerShell Gallery.
+  pain_job: >-
+    (1) Approvals are lost, misreported, or outnumber the decisions they stand for (B4F-112, -116,
+    -117, -140, -151; B4F-061 measured six typed authorizations for one boundary). (2) Stops block when
+    no decision is needed (B4F-121, B5F-012, B5F-004, B5F-011). (3) CI hides failures until merge or
+    publish (B5F-013, B5F-015, B4F-079, B4F-119, B4F-158).
+  current_workaround: >-
+    The maintainer re-types approvals, answers the "use it" interim check, uses partial sign-off and
+    runs protection windows with "!"; CI gaps are fixed by follow-up pull requests after the release
+    dry run.
+  existing_system: >-
+    Extension of Specrew 0.40.0-beta41: the typed-authority capture (boundary verdicts, review-round
+    approvals, workshop receipts), the Stop/turn-end checks, the continuous co-review engine, and the
+    CI workflows (Specrew CI, Test, Cross-Platform Validation, publish census).
+  maintainer_direction_review_budget: >-
+    Per-round review approvals go. The plan states a review budget in rounds plus a reviewer host
+    order; approving before-implement approves it. Within the budget the cycle runs without asking: a
+    clean result ends the review; a fix-needed result means fix, then the next round. The human is
+    stopped only when (a) the budget is spent (top-up is "approved for allowance reset", which also
+    starts the next round), (b) the crew wants to dispute or defer a finding, (c) a finding needs the
+    human's judgment such as a scope change, or (d) the next reviewer host is outside the approved
+    order. Token usage is captured for display only; no host fills the usage slot today.
+  constraints: >-
+    The typed reply stays the only way to approve; friction is cut without weakening authority. Fixes
+    hold on all three validated hosts, and Copilot also runs the Claude hooks. Release is beta-stable on
+    the PowerShell Gallery (prerelease, human validation, then stable). No commit between an approval
+    and the step that consumes it. Schedule unknown.
+  success_metrics: >-
+    (a) every typed approval is recorded the first time it is typed; (b) no approval is recorded that
+    the human did not type; (c) no false "not recorded" reports; (d) a review stops the human only for
+    budget spent, a dispute or deferral, a judgment call, or a reviewer host outside the approved
+    order; (e) every test the publish census can fail on also runs in a PR lane; (f) on the three-host
+    walk a review costs at most the sign-off verdict plus one approval per top-up (baseline six per
+    boundary, B4F-061).
+  mvp: >-
+    A. Review budget model, absorbing B4F-115, -121, -061, -126, -152, B5F-012 and the residues of
+    B4F-116/150, -117, -140/137, -058, -054; token capture display-only. B. Approval capture
+    correctness: B4F-112, B4F-151 and the capture residues from A. C. Stops that carry no decision:
+    B5F-004, B5F-011. D. Lifecycle: B5F-014 (a merged feature's claim is never released). Rider, CI:
+    B5F-013, B5F-015, B4F-079, B4F-119, B4F-158, B4F-142.
+  out_of_scope: >-
+    Init and bootstrap B5F-006 to B5F-010 (candidate feature 204); B5F-001, -002, -003, -005;
+    B4F-125 (dropped by the maintainer); the remaining beta4 items marked beta5 (dashboards, host
+    tiers, Ctrl+O and others), which stay in the backlog.
+  alternatives: >-
+    Rejected: keep per-round approvals, merge the phrases (B4F-061 option 2) and fix the capture bugs
+    one by one; cheaper, but it keeps one authorization per round and treats the classes symptom by
+    symptom.
+  rollout: >-
+    Beta-stable prerelease validated by a live walk on Claude, Copilot and Codex that measures (a) to
+    (f), then stable.
+  workshop_receipt: 6f4065f86f53f5fd0329c0037c6932ff0e94b0566f2002d5e3a8912ad7d4d19c
+statements:
+  - text: "The maintainer is the primary human in the dogfood walks."
+    area: users_stakeholders
+    evidence: known
+  - text: "Beta users run Specrew on Claude Code, Copilot CLI and Codex; their number and host mix are not known."
+    area: users_stakeholders
+    evidence: assumed
+  - text: "Typed approvals were lost or misreported on the 202 walks (B4F-112, -116, -117, -140, -151)."
+    area: pain_job
+    evidence: known
+  - text: "One review-signoff boundary cost six typed authorizations (B4F-061)."
+    area: pain_job
+    evidence: known
+  - text: "Stops blocked turns with no decision for the human (B4F-121, B5F-012)."
+    area: pain_job
+    evidence: known
+  - text: "CI let lint, firewall and older-suite failures reach merge or publish (B5F-013, B5F-015, B4F-079, B4F-119, B4F-158)."
+    area: pain_job
+    evidence: known
+  - text: "No reviewer adapter fills the review engine's usage slot; every real run reports usage unavailable."
+    area: maintainer_direction_review_budget
+    evidence: known
+  - text: "The review budget is approved inside the before-implement verdict, not by a new phrase."
+    area: maintainer_direction_review_budget
+    evidence: known
+  - text: "The budget model removes B4F-115 and B4F-121 as stops and reduces B4F-061 to the sign-off verdict plus top-ups."
+    area: mvp
+    evidence: assumed
+  - text: "The capture defects of B4F-117 and B4F-140/137 survive on the budget and top-up capture unless fixed there."
+    area: mvp
+    evidence: assumed
+  - text: "B5F-014 exists on branch docs/beta5-b5f-014 (717db3ce), opened as PR #3715; the claims of 198, 199 and 202 are still in .squad/active-features.yml."
+    area: mvp
+    evidence: known
+  - text: "B4F-142 has no approval on its path and surfaced as a Linux CI failure."
+    area: mvp
+    evidence: known
+  - text: "The typed reply stays the only approval path."
+    area: constraints
+    evidence: known
+  - text: "Copilot CLI executes the Claude hooks, so hook changes affect both hosts."
+    area: constraints
+    evidence: known
+  - text: "The schedule and target date are not set."
+    area: constraints
+    evidence: unknown
+  - text: "Success measures (a) to (f) hold on a live three-host walk."
+    area: success_metrics
+    evidence: assumed
+  - text: "Copilot's reviewer reports token usage in a capturable form."
+    area: maintainer_direction_review_budget
+    evidence: research-needed
+    load_bearing: false
+follow_up_research:
+  - "Check whether the Copilot reviewer reports token usage, and how the Codex file delivery carries it."
+  - "Measure (a) to (f) on the live three-host walk against the six-per-boundary baseline."
+confirmation: human-confirmed
+confirmation_scope: lens-question
