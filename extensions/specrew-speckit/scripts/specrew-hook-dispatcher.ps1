@@ -622,10 +622,34 @@ function Write-DispatcherUnrecognizedPayloadLog {
     catch { $null = $_ }
 }
 
+function Get-DispatcherLiveEngine {
+    # Feature 203 T002 (DA-8): the live-engine pin, or $null when the helper is not deployed or no root is known.
+    # Beside the deployed copy; the scripts/internal twin finds it in the source tree.
+    param([AllowNull()][string]$ProjectRoot)
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    $helper = @((Join-Path $PSScriptRoot 'live-engine-resolution.ps1'), (Join-Path $PSScriptRoot '../../extensions/specrew-speckit/scripts/live-engine-resolution.ps1')) |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace([string]$helper)) { return $null }
+    try {
+        if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $helper }
+        return (Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot)
+    }
+    catch { return $null }
+}
+
 function Find-DispatcherHostManifestPath {
     param([string]$Kind, [AllowNull()][string]$ProjectRoot)
     $starts = New-Object System.Collections.Generic.List[string]
-    foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
+    # A valid pin supplies the host bindings. A configured but unusable pin skips the project tree: the providers
+    # refuse visibly, and the installed module's bindings only route the event to that refusal.
+    $liveEngine = Get-DispatcherLiveEngine -ProjectRoot $ProjectRoot
+    $pinConfigured = ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured)
+    $walkStarts = if ($pinConfigured) { @() } else { @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot) }
+    if ($pinConfigured -and -not [bool]$liveEngine.Refused) {
+        $pinned = Join-Path ([string]$liveEngine.Pin.Root) ("hosts/{0}/host.psd1" -f $Kind)
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { return $pinned }
+    }
+    foreach ($start in $walkStarts) {
         if (-not [string]::IsNullOrWhiteSpace($start) -and (Test-Path -LiteralPath $start -PathType Container)) {
             $starts.Add((Resolve-Path -LiteralPath $start).Path) | Out-Null
         }
@@ -959,8 +983,14 @@ function Resolve-ProviderCommandPath {
     $deployedDir = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts'
     $candidate = Join-Path $deployedDir (Split-Path -Leaf $Command)
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
-    # Self-host fallback: the Specrew repo's own internal scripts dir.
+    # Self-host fallback: the Specrew repo's own internal scripts dir, or the live-engine pin's when one is
+    # configured (Feature 203 T002); an unusable pin offers no fallback.
     $selfHost = Join-Path $ProjectRoot 'scripts/internal'
+    $liveEngine = Get-DispatcherLiveEngine -ProjectRoot $ProjectRoot
+    if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
+        if ([bool]$liveEngine.Refused) { return $null }
+        $selfHost = [string]$liveEngine.Root
+    }
     $candidate = Join-Path $selfHost (Split-Path -Leaf $Command)
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     return $null
@@ -1574,6 +1604,14 @@ function Resolve-DispatcherHookHealthModulePath {
     # holds it, then fall back to the installed module base. Returns $null if it is not found.
     param([AllowNull()][string]$ProjectRoot)
     $rel = 'scripts/internal/continuous-co-review/hook-health-receipt.ps1'
+    # Feature 203 T002: a configured live-engine pin is the only source; an unusable one resolves nothing.
+    $liveEngine = Get-DispatcherLiveEngine -ProjectRoot $ProjectRoot
+    if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
+        if ([bool]$liveEngine.Refused) { return $null }
+        $pinned = Join-Path ([string]$liveEngine.Pin.Root) $rel
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { return $pinned }
+        return $null
+    }
     foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
         if ([string]::IsNullOrWhiteSpace($start) -or -not (Test-Path -LiteralPath $start -PathType Container)) { continue }
         $candidate = (Resolve-Path -LiteralPath $start).Path

@@ -126,7 +126,28 @@ try {
     $rel = 'scripts/internal/continuous-co-review/worktree-navigator.ps1'
     $navFn = 'Invoke-ContinuousCoReviewWorktreeNavigator'
 
-    $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot -Rel $rel
+    # Feature 203 T002 (DA-8): a configured live-engine pin is the only source of the navigator logic. An unusable
+    # pin loads nothing and stops visibly: the human must act, and a silent fall back to the project tree would
+    # let unreviewed review code run.
+    $logicPath = $null
+    $liveEngine = $null
+    $liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+    if (Test-Path -LiteralPath $liveEnginePath -PathType Leaf) {
+        . $liveEnginePath
+        $liveEngine = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $projectRoot
+    }
+    if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
+        if ([bool]$liveEngine.Refused) {
+            Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'refused' -Reason ('live-engine pin unusable: ' + [string]$liveEngine.Pin.Reason)
+            if ($isStop) { Write-Output ("<<<SPECREW-STOP-BLOCK>>>`n" + (Get-SpecrewLiveEngineRefusalMessage -Pin $liveEngine.Pin)) }
+            exit 0
+        }
+        $pinned = Join-Path ([string]$liveEngine.Root) ($rel -replace '^scripts/internal/', '')
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { $logicPath = $pinned }
+    }
+    else {
+        $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot -Rel $rel
+    }
     if ([string]::IsNullOrWhiteSpace($logicPath)) {
         # Diagnosable degrade (NOT a silent dead provider): WARN (diagnostic) + a VISIBLE note + a durable
         # trace, so a dark navigator is OBSERVABLE this time (D-197-I009-001: it was stderr-silent for days).

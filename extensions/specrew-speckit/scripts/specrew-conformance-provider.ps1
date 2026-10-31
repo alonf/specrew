@@ -436,6 +436,16 @@ function Resolve-SpecrewBootstrapDir {
     # (project tree, then SPECREW_MODULE_PATH) FIRST; the Get-Module -ListAvailable scan (slow over OneDrive /
     # multi-version) runs ONLY if they miss. $null if none resolves.
     param([string]$ProjectRoot)
+    # Feature 203 T002 (DA-8): a configured live-engine pin is the only source; an unusable one resolves nothing.
+    $liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and (Test-Path -LiteralPath $liveEnginePath -PathType Leaf)) {
+        if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $liveEnginePath }
+        $liveEngine = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot
+        if ([bool]$liveEngine.Pin.Configured) {
+            if ([bool]$liveEngine.Refused) { return $null }
+            return (Join-Path ([string]$liveEngine.Root) 'bootstrap')
+        }
+    }
     foreach ($base in @($ProjectRoot, $env:SPECREW_MODULE_PATH)) {
         if ([string]::IsNullOrWhiteSpace($base)) { continue }
         $bd = Join-Path $base 'scripts/internal/bootstrap'

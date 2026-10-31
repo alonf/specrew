@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 2 (DRIFT-001 to DRIFT-002)
-**Resolution rate**: 2 of 2 handled locally; both carry an open product class for the backlog
+**Total drift events**: 3 (DRIFT-001 to DRIFT-003)
+**Resolution rate**: 3 of 3 handled locally; all three carry an open product class for the backlog
 **Specification drift**: 0
 
 ## Events
@@ -36,3 +36,16 @@
 - **Class closure**: OPEN — the B4F-111 family (generated-surface churn and ordering). Backlog candidate: the
   agent-context update must not drop existing entries, and a no-new-technology run should leave the file
   untouched.
+
+### DRIFT-003 — the before-implement packet opened with "Overall verdict: BLOCKED for implementation" (observation)
+
+- **Observed**: 2026-11-01, the before-implement packet. The before-implement command requires the readiness
+  script's first line verbatim as the report's first line. At a normal approval step, before the human's verdict,
+  that line is always `Overall verdict: BLOCKED for implementation - 'before-implement' is not authorized ...`, so
+  the packet opened with what reads as a failure at the exact moment nothing was wrong.
+- **Requirement**: the refusal standard and the ui-ux binding `blocking-text-audience: human-plain-words`; B4F-071
+  is the reason the line exists (a BLOCKED line was once summarized to PASS).
+- **Resolution**: recorded at the maintainer's before-implement verdict; no change to the packet already sent.
+- **Class closure**: OPEN — backlog candidate: at a pending crossing the readiness line should read as the state
+  it is ("waiting for your approval to start implementing") rather than as a failure, while still never being
+  summarized to PASS; or the line belongs in the crew's checks, not the human's packet.

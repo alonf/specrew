@@ -47,7 +47,11 @@ then T014.
   - **Acceptance:** with the variable set, the broken project-tree file is not loaded; with it unset, behaviour is
     unchanged for downstream projects; reviewed in its own round; after sign-off, the `.specify` mirror is synced
     from the same commit and the pin is created at it.
-  - **Acceptance, failure direction (tasks verdict, 2026-10-31):** a missing or corrupt pin (the path absent, not a
+  - **Inert until configured (before-implement verdict, 2026-11-01):** with no pin configured, engine resolution
+    behaves exactly as today. Only a pin that IS configured but missing or corrupt refuses visibly. Otherwise T002's
+    own review round and the pin creation step would be refused by the hooks T002 just changed. A pin is configured
+    by `.specrew/runtime/live-engine.json` (machine-local, git-ignored), written only by the pin script.
+  - **Acceptance, failure direction (tasks verdict, 2026-10-31):** a configured pin that is missing or corrupt (the path absent, not a
     checkout, or missing an engine file) makes the hooks refuse visibly, in plain words with one recovery action,
     and never silently fall back to the worktree's source or the deployed bundle. Today's engine loader falls back
     to the deployed bundle or the repository source. RED: `live-engine-resolution.Tests.ps1` removes and corrupts

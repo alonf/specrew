@@ -484,8 +484,27 @@ try {
     # the deployed .specify mirror, so prefer the project-local source tree before any ambient
     # SPECREW_MODULE_PATH/installed-module fallback. Downstream projects normally lack scripts/internal,
     # so they still resolve through the dev-tree override or the installed module (FileList).
+    # Feature 203 T002 (DA-8): a configured live-engine pin decides where engine code loads from. No pin record ->
+    # today's resolution below, unchanged. A valid pin -> the pin only. A configured but unusable pin -> load nothing
+    # and say so in plain words (never a silent fall back to the project tree or a module).
+    $liveEngine = $null
+    # Beside the deployed copy; the scripts/internal twin finds it in the source tree.
+    $liveEnginePath = @((Join-Path $PSScriptRoot 'live-engine-resolution.ps1'), (Join-Path $PSScriptRoot '../../extensions/specrew-speckit/scripts/live-engine-resolution.ps1')) |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not [string]::IsNullOrWhiteSpace([string]$liveEnginePath)) {
+        . $liveEnginePath
+        $liveEngine = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $root
+        if ([bool]$liveEngine.Refused) {
+            [Console]::Error.WriteLine(("[specrew-bootstrap] WARN LIVE_ENGINE_REFUSED {0} {1}" -f [string]$liveEngine.Pin.Reason, [string]$liveEngine.Pin.Detail))
+            Write-Output (Get-SpecrewLiveEngineRefusalMessage -Pin $liveEngine.Pin)
+            exit 0
+        }
+    }
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
-    if (-not (Test-Path -LiteralPath $bdir)) {
+    if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
+        $bdir = Join-Path ([string]$liveEngine.Root) 'bootstrap'
+    }
+    elseif (-not (Test-Path -LiteralPath $bdir)) {
         $selfHostBdir = Join-Path $root 'scripts/internal/bootstrap'
         $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
         if (Test-Path -LiteralPath $selfHostBdir) { $bdir = $selfHostBdir }
