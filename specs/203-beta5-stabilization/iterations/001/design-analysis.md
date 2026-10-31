@@ -297,6 +297,25 @@ accepted, DA-3 to DA-6 accepted as proposed, and DA-2, DA-7 and DA-8 amended, in
   verdict ledger → budget snapshot reads the plan's `## Review budget`, validates it against the ceiling, and
   writes the grant fact citing the verdict entry.
 
+**Flow: top-up after a spent budget (agreed as drawn in the co-design)**
+
+```mermaid
+sequenceDiagram
+  participant O as Orchestrator
+  participant N as Navigator
+  participant H as Human
+  participant D as Dispatcher
+  participant K as Resolve-SpecrewTypedAct
+  participant S as Campaign fact store
+  O->>S: rounds_used = budget_total -> pause (a)
+  N->>H: review stop (why, counted, decision, sendable lines)
+  H->>D: types "approved for allowance reset"
+  D->>K: turn record (identity, origin typed-user)
+  K->>S: budget-reset fact (human's text or no reason)
+  O->>S: reserve next round (cites grant + reset)
+  O->>O: invoke reviewer
+```
+
 ## Human Decision
 
 **Chosen Option**: Option B (one classifier, every path re-derives through it), with DA-2 to DA-8 as recorded
