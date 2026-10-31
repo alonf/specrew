@@ -314,7 +314,7 @@ above, including the maintainer's amendments to DA-2, DA-7 and DA-8.
   up its files); compare a checkout outside the worktree with the installed module as the pin, and pick one.
   The crew picked the checkout outside the worktree, with the comparison recorded under DA-8.
 
-**Decision commit**: recorded in the commit that first records this Co-Design Record (see the plan's inputs).
+**Decision commit**: `130e88c7` (the commit that first recorded this Co-Design Record).
 **Transcription disclosure**: this decision is agent-transcribed from the maintainer's typed co-design reply in
 the governing session. It records the design choice only. The plan itself is approved, or not, at the plan
 boundary with its own typed verdict.
