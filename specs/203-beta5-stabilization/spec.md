@@ -28,6 +28,10 @@ with a recorded receipt. The records are under `specs/203-beta5-stabilization/wo
     deliberately does not refuse, so that a component hiccup cannot drop a real verdict, and a bare
     marker still captures. In that case the block is the only thing that keeps an approval from being
     offered over unverifiable work, so it is **kept** for that case alone.
+- Q: Does `pres-boundary-packet` stay a keep? → A: Only for a packet that is absent or missing its
+  decision-bearing parts (approval line, marker, options). A reworded content line is not a block. The
+  root cause of today's three declared-vs-reply blocks is the packet written twice and checked word for
+  word; verify the reply itself at Stop instead (FR-046). Maintainer ruling at clarify.
 - Q: Iterations? → A: Two. Iteration 1 ends with a short Claude-only capture check (a verdict typed after a
   compaction, a quoted phrase, a pasted phrase); the full three-host walk stays at the end of iteration 2
   (FR-045).
@@ -409,6 +413,11 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   verdict typed after a compaction; a review with at least one fix-needed round; a spent budget and a top-up;
   one disputed finding; one plan without a budget. It MUST record the stop reasons and the authorization count
   per boundary.
+- **FR-046**: The Stop check MUST verify a boundary packet from the reply itself: it blocks only when the
+  packet is absent or misses a decision-bearing part (the approval line, the boundary marker, the response
+  options). A reworded content line MUST NOT block. Verifying the reply MUST be preferred over comparing it
+  word for word with a second, separately authored copy of the packet (pres-declared and
+  pres-boundary-packet, B5F-004).
 - **FR-045**: Iteration 1 MUST end with a short Claude-only capture check, manual with records: a verdict
   typed after a compaction, a standalone approval phrase quoted mid-message, and one inside pasted content.
   The first is recorded once in its own turn; the other two record nothing.
@@ -433,7 +442,8 @@ visible line for the human, or a drift entry; the refusal at the writer stays.
 | evidence-absent (checked and absent) | a crossing waits and the bound tree lacks the stage's artifacts | convert | the verdict writer already refuses; its refusal joins FR-026 |
 | evidence-absent (unverifiable) | the stage's evidence cannot be checked against the bound tree | keep | the writer does not refuse this case, so the block is the only guard |
 | boundary-unrecordable | a boundary was reached and could not be recorded | keep | authority integrity; the human must know |
-| pres-boundary-packet | a declared boundary packet is missing from the reply | keep | the decision must reach the human |
+| pres-boundary-packet (decision parts) | the packet is absent, or misses the approval line, the boundary marker or the options | keep | the decision must reach the human |
+| pres-boundary-packet (reworded content) | a content line of the packet is reworded in the reply | convert | not a block: the decision parts are present (fired 09:36 on 2026-10-31 over a reworded discussion line) |
 | pres-declared | other declared lines are missing from the reply | convert | crew-only; supply or guide next turn |
 | pres-workshop-agenda | the agenda was proposed but never shown | keep | the confirmation binds only to a shown agenda |
 | workshop-conflict | two recorded workshop answers disagree | keep | the human decides which holds |
@@ -463,8 +473,14 @@ visible line for the human, or a drift entry; the refusal at the writer stays.
 | rc-failure | about 14 invalid, missing or failed review-state messages | convert | infrastructure under FR-009; integrity under stop (c) |
 | rc-pause-fallback | a pause is pending but its surface could not be built | convert | falls back to the stop surface under the refusal standard |
 
-**Totals**: 41 reasons (39 reachable); evidence-absent is split in two rows by the clarify check, so 42
-rows. Keep 15, convert 19, drop 8. Of the review-related 13, two remain as stops (pause-surface,
+**Totals**: 41 reasons (39 reachable); evidence-absent and pres-boundary-packet are each split in two rows
+at clarify, so 43 rows. Keep 15, convert 20, drop 8.
+
+**Root cause of the declared-vs-reply blocks** (three on 2026-10-31: pres-declared at 08:43 and 09:27,
+pres-boundary-packet at 09:36): the packet is authored twice, once declared to the turn-end script and once
+in the reply, and the two are compared word for word, so any rewording of the second copy blocks. The
+direction (FR-046) is to verify the reply itself at Stop for its decision-bearing parts rather than compare
+it with a second authored copy. Of the review-related 13, two remain as stops (pause-surface,
 rc-human-decision) plus campaign-gate-failed as stop (c). Ruled by the maintainer at the specify verdict.
 The `declare-turn-end.ps1` refusals (unknown token, ambiguous session, unreadable or invalid draft) are
 crew-only script refusals, not stops, and are not changed.
@@ -502,7 +518,7 @@ the Windows shards replace none of them; the 12 script-style suites join the cen
 | US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1 |
 | US2 | B4F-112, B4F-116/150, B4F-117, B4F-140/137 | FR-014 to FR-025, FR-042, FR-045 | Implementer; Reviewer (codex); maintainer for the Claude capture check | 1 |
 | US3 | B4F-151, B4F-112 | FR-026, FR-027 | Implementer; Reviewer | 1 |
-| US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032 | Implementer; maintainer rules the audit table | 2 |
+| US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032, FR-046 | Implementer; maintainer rules the audit table | 2 |
 | US5 | B5F-013, B5F-015, B4F-079, B4F-119, B4F-158 | FR-034 to FR-038 | Implementer; maintainer rules the gate inventory | 2 |
 | US6 | B5F-014 | FR-033 | Implementer; Spec Steward | 2 |
 | US7 | B4F-142 | FR-039 to FR-041 | Implementer | 2 |
