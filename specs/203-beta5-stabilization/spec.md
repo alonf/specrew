@@ -32,6 +32,11 @@ with a recorded receipt. The records are under `specs/203-beta5-stabilization/wo
   decision-bearing parts (approval line, marker, options). A reworded content line is not a block. The
   root cause of today's three declared-vs-reply blocks is the packet written twice and checked word for
   word; verify the reply itself at Stop instead (FR-046). Maintainer ruling at clarify.
+- Clarify verdict instructions (2026-10-31): the unverifiable-evidence block stays as written; the plan
+  proposes the review budget with its reasoning; FR-046 moves to iteration 1; and the plan MUST state when
+  203's changes reach the live hook copies that govern this feature's own boundaries, with the maintainer's
+  preference that they reach them only after an iteration's review, so a half-built capture never judges
+  the maintainer's approvals.
 - Q: Iterations? → A: Two. Iteration 1 ends with a short Claude-only capture check (a verdict typed after a
   compaction, a quoted phrase, a pasted phrase); the full three-host walk stays at the end of iteration 2
   (FR-045).
@@ -518,7 +523,8 @@ the Windows shards replace none of them; the 12 script-style suites join the cen
 | US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1 |
 | US2 | B4F-112, B4F-116/150, B4F-117, B4F-140/137 | FR-014 to FR-025, FR-042, FR-045 | Implementer; Reviewer (codex); maintainer for the Claude capture check | 1 |
 | US3 | B4F-151, B4F-112 | FR-026, FR-027 | Implementer; Reviewer | 1 |
-| US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032, FR-046 | Implementer; maintainer rules the audit table | 2 |
+| US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032 | Implementer; maintainer rules the audit table | 2 |
+| US4 (part) | B5F-004 (declared-vs-reply blocks) | FR-046 | Implementer | 1 (maintainer, clarify verdict) |
 | US5 | B5F-013, B5F-015, B4F-079, B4F-119, B4F-158 | FR-034 to FR-038 | Implementer; maintainer rules the gate inventory | 2 |
 | US6 | B5F-014 | FR-033 | Implementer; Spec Steward | 2 |
 | US7 | B4F-142 | FR-039 to FR-041 | Implementer | 2 |
@@ -581,7 +587,7 @@ In priority order (b, a, c, d, f, e). `assumed` until the three-host walk measur
 - **Spec Steward**: the spec-steward role. The maintainer owns scope.
 - **Iteration Facilitator**: the coordinator session for 203, under the maintainer's boundary verdicts.
 - **Capacity Model**: two iterations (maintainer ruling at the specify verdict): (1) authority core, US1 to
-  US3, ending with the Claude-only capture check (FR-045); (2) stops, CI rider, lifecycle and journal, US4 to
+  US3, plus FR-046 (moved at the clarify verdict), ending with the Claude-only capture check (FR-045); (2) stops, CI rider, lifecycle and journal, US4 to
   US7, ending with the three-host walk (FR-044). The plan sets the effort model.
 - **Drift Signals**: the feature drift log from plan onward; workshop bindings reconciled across lenses; the
   validator against the known baseline; continuous co-review within the approved budget.
