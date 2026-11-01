@@ -5,7 +5,7 @@
 ## Summary
 
 **Total drift events**: 5 (DRIFT-001 to DRIFT-005)
-**Resolution rate**: 4 of 5 handled locally; DRIFT-005 is open for the maintainer
+**Resolution rate**: 5 of 5 handled locally; DRIFT-001 to DRIFT-003 carry an open product class for the backlog
 **Specification drift**: 0
 
 ## Events
@@ -70,10 +70,20 @@
   parity case, `conformance-provider-seam`, `host-identity-runtime`, `session-orientation-rendered`,
   `workshop-material-packet-language`), all failing on "source and deployed `.specify` mirror differ", which the
   203 exception makes true until the deployment point. The 8th, `refocus-dispatcher` ("non-Specrew directory:
-  silent no-op"), failed once under the 6-way parallel sweep and passed 3 of 3 in isolation.
+  silent no-op"), failed once under the 6-way parallel sweep and passed 3 of 3 in isolation: it is
+  load-sensitive under parallel runs, not a T002 regression.
+- **Pre-existing on main**: `boundary-reader-conformance` and `CoordinatorFrontLoad` also fail on main at
+  `df1141a8` (checked 2026-11-01 in a scratch checkout), so they predate 203 entirely.
 - **Requirement**: the 203 `provider-mirror-parity` exception (plan, "When 203's changes reach the live hooks");
   the B4F-158 class (red as the normal colour hides real failures).
-- **Resolution**: OPEN — these suites run in the branch CI lanes and the census, so the branch shows red on parity
-  between deployment points. Options for the maintainer: accept the red on parity until each deployment point, or
-  have the parity checks honour `iterations/<NNN>/deploy-pending.md` (fail on any drift NOT listed there).
-- **Class closure**: OPEN.
+- **Resolution**: resolved by the maintainer, 2026-11-01: **accept the red parity checks until each deployment
+  point**, which is what the plan already says (parity is enforced at deployment points and at the pull request).
+  No waiver is added to the tests: a list the tests read to excuse differences would outlive 203 and could hide a
+  real mirror gap on main. Instead, **every regression sweep report in 203 lists the expected parity failures on
+  one line and flags anything outside that list as new.** The expected list, until the next deployment point:
+  `ProviderMirrorParity`, `deployed-mirror-parity`, `conformance-material-turn-gate` (parity case),
+  `conformance-provider-seam`, `host-identity-runtime`, `session-orientation-rendered`,
+  `workshop-material-packet-language`. Also reported on their own line: the two pre-existing main failures above,
+  and `refocus-dispatcher` when it fails only under parallel load.
+- **Class closure**: NONE for 203 (the exception ends at each deployment point); the load-sensitive
+  `refocus-dispatcher` case and the two pre-existing main failures are backlog candidates.
