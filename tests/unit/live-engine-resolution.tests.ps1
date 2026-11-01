@@ -131,6 +131,58 @@ try {
     Set-PinRecord -ProjectRoot $n -Path $pinPath -Commit $pinCommit
     $res = Invoke-Provider -ProjectRoot $n -Script 'specrew-co-review-navigator-provider.ps1' -ProviderArgs @('--source-event', 'stop')
     Assert-True ($res.Loaded -eq 'pin') ("valid pin: navigator engine loaded from the pin only (got '{0}')" -f $res.Loaded)
+
+    # --- the dispatcher: a pin record plus a helper that fails or is missing refuses (round 1, finding 4) ---
+    # The dispatcher's own Get-DispatcherLiveEngine, run beside a helper stand-in; "no pin" would silently fall back.
+    $dispatcherPath = Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1'
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($dispatcherPath, [ref]$null, [ref]$null)
+    $functionText = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -in @('Get-DispatcherLiveEngine', 'Write-DispatcherWarn') }, $false) | ForEach-Object { $_.Extent.Text }) -join "`n"
+    $harnessText = "param([string]`$ProjectRoot)`n`$script:Banner = '[test]'`n$functionText`n`$r = Get-DispatcherLiveEngine -ProjectRoot `$ProjectRoot`nif (`$null -eq `$r) { 'none' } elseif ([bool]`$r.Refused) { 'refused' } else { 'resolved' }"
+    $broken = Join-Path $work 'helper-throws'; $absent = Join-Path $work 'helper-absent'
+    New-Item -ItemType Directory -Path $broken, $absent | Out-Null
+    Set-Content -LiteralPath (Join-Path $broken 'live-engine-resolution.ps1') -Value "throw 'helper broken'"
+    foreach ($dir in @($broken, $absent)) { Set-Content -LiteralPath (Join-Path $dir 'harness.ps1') -Value $harnessText }
+    $d = New-StubProject 'dispatcher'
+    $outcome = { param([string]$Dir) ((& pwsh -NoProfile -File (Join-Path $Dir 'harness.ps1') -ProjectRoot $d 2>$null) | Select-Object -Last 1) }
+    Assert-True ((& $outcome $broken) -eq 'none') 'dispatcher, no record, helper fails: no pin (today''s resolution)'
+    Set-PinRecord -ProjectRoot $d -Path $pinPath -Commit $pinCommit
+    Assert-True ((& $outcome $broken) -eq 'refused') 'dispatcher, pin record, helper fails: refuses'
+    Assert-True ((& $outcome $absent) -eq 'refused') 'dispatcher, pin record, helper missing: refuses'
+
+    # --- the pin script: Create and Advance refuse a pin with local changes (round 1, finding 3) ---
+    $pinScript = Join-Path $repoRoot 'scripts/internal/live-engine-pin.ps1'
+    $pinProject = Join-Path $work 'pin-project'
+    New-Item -ItemType Directory -Path $pinProject | Out-Null
+    Invoke-Git @('-C', $pinProject, 'init', '-q')
+    Set-Content -LiteralPath (Join-Path $pinProject 'engine.txt') -Value 'one'
+    Invoke-Git @('-C', $pinProject, 'add', '-A')
+    Invoke-Git @('-C', $pinProject, '-c', 'user.email=t@example.invalid', '-c', 'user.name=t', 'commit', '-q', '-m', 'one')
+    $commitOne = (& git -C $pinProject rev-parse HEAD).Trim()
+    Set-Content -LiteralPath (Join-Path $pinProject 'engine.txt') -Value 'two'
+    Invoke-Git @('-C', $pinProject, '-c', 'user.email=t@example.invalid', '-c', 'user.name=t', 'commit', '-q', '-am', 'two')
+    $commitTwo = (& git -C $pinProject rev-parse HEAD).Trim()
+    New-Item -ItemType Directory -Path (Join-Path $pinProject '.specrew/runtime') -Force | Out-Null
+    $scriptPin = Join-Path $work 'script-pin'
+    $invokePin = { param([string[]]$PinArgs) $out = (& pwsh -NoProfile -File $pinScript -ProjectRoot $pinProject @PinArgs 2>&1) -join "`n"; [pscustomobject]@{ Exit = $LASTEXITCODE; Output = $out } }
+    $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', $scriptPin)
+    Assert-True ($r.Exit -eq 0) ("pin script: Create pins a clean checkout (exit {0})" -f $r.Exit)
+    $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', (Join-Path $work 'second-pin'))
+    Assert-True ($r.Exit -ne 0 -and $r.Output -match 'already configured') 'pin script: Create refuses while a pin is configured'
+    $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitTwo)
+    Assert-True ($r.Exit -eq 0 -and (& git -C $scriptPin rev-parse HEAD).Trim() -eq $commitTwo) 'pin script: Advance moves a clean pin'
+    Set-Content -LiteralPath (Join-Path $scriptPin 'engine.txt') -Value 'edited inside the pin'
+    $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitOne)
+    Assert-True ($r.Exit -ne 0 -and $r.Output -match 'local changes') 'pin script: Advance refuses a pin with an edited file'
+    Assert-True ((& git -C $scriptPin rev-parse HEAD).Trim() -eq $commitTwo) 'pin script: a refused Advance leaves the pin where it was'
+    Invoke-Git @('-C', $scriptPin, 'checkout', '--', 'engine.txt')
+    Set-Content -LiteralPath (Join-Path $scriptPin 'stray.ps1') -Value '# untracked'
+    $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitOne)
+    Assert-True ($r.Exit -ne 0 -and $r.Output -match 'local changes') 'pin script: Advance refuses a pin with an untracked file'
+    Remove-Item -LiteralPath (Join-Path $scriptPin 'stray.ps1') -Force
+    Invoke-Git @('-C', $pinProject, 'worktree', 'remove', '--force', $scriptPin)
+    $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitOne)
+    # pwsh wraps a long error across lines, so the two parts are matched separately.
+    Assert-True ($r.Exit -ne 0 -and $r.Output -match 'cannot be advanced' -and $r.Output -match 'pin-missing') 'pin script: Advance on a missing pin says so plainly'
 }
 finally {
     try { & git -C $pinSource worktree remove --force $pinPath 2>&1 | Out-Null } catch { $null = $_ }

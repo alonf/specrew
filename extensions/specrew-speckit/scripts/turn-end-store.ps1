@@ -671,6 +671,18 @@ function Resolve-SpecrewModuleFile {
     # (three levels above extensions/specrew-speckit/scripts), SPECREW_MODULE_PATH, a self-hosting project root,
     # or the newest installed module. $null when none has it.
     param([Parameter(Mandatory)][string] $RelativePath, [AllowNull()][string] $ProjectRoot)
+    # Feature 203 T002 (DA-8): with a live-engine pin configured, the pin is the only source; an unusable one
+    # resolves nothing. Without this, the self-hosting project root below loads the worktree's unreviewed copy.
+    $liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and (Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf)) {
+        if (-not (Test-Path -LiteralPath $liveEnginePath -PathType Leaf)) { return $null }
+        if (-not (Get-Command Get-SpecrewLiveEnginePin -ErrorAction SilentlyContinue)) { . $liveEnginePath }
+        $pin = Get-SpecrewLiveEnginePin -ProjectRoot $ProjectRoot
+        if (-not [bool]$pin.Valid) { return $null }
+        $pinned = Join-Path ([string]$pin.Root) $RelativePath
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { return $pinned }
+        return $null
+    }
     $roots = [System.Collections.Generic.List[string]]::new()
     try { $roots.Add([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))) } catch { $null = $_ }
     if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $roots.Add($env:SPECREW_MODULE_PATH) }

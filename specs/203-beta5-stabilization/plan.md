@@ -108,7 +108,10 @@ from the project working tree first, so an uncommitted edit would go live at onc
    dispatcher that walked up from its own folder would write approvals and state there. When the launcher runs
    the pin's dispatcher it passes the host's project directory (`CLAUDE_PROJECT_DIR`, or the payload's cwd for
    the per-machine launcher) as `-ProjectRoot`; the dispatcher uses it as given. A pin record whose pin cannot be
-   found refuses visibly; nothing falls back to the worktree's deployed copy.
+   found refuses visibly; nothing falls back to the worktree's deployed copy. The launcher, not the pin, checks the
+   pin before running any of its code (review round 1): the pin's HEAD, read from its git files without starting
+   git, must equal the recorded commit. The pin script refuses a pin with local changes at Create and Advance;
+   edits made inside the pin after that are not caught at runtime (DRIFT-010).
    `tests/unit/live-engine-hook-root.tests.ps1` runs hook events through a configured pin and proves the writes
    land only in the project: nothing in the pin, nothing in the profile's `.specrew`, and no worktree engine copy
    runs.

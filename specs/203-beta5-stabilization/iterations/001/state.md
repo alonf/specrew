@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: (none)
 **Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008, T011, T012, T013, T014
-**In Progress**: T002 (live-engine pin), extended at the maintainer's implement ruling of 2026-11-01 so the hooks run entirely from the pin (DRIFT-007); waiting for a fresh review round approval
+**In Progress**: T002 (live-engine pin): review round 1 found 4 non-blocking findings; 2 to 4 fixed at the maintainer's ruling (DRIFT-010), 1 carried to T006; waiting for the round 2 approval
 **Baseline Ref**: fca9067e
-**Updated**: 2026-11-01T09:27:36Z
+**Updated**: 2026-11-01T11:19:23Z
 
 ## Execution Summary
 

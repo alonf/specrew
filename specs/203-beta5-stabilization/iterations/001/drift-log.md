@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 9 (DRIFT-001 to DRIFT-009)
-**Resolution rate**: 9 of 9 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 and DRIFT-009 carry an open product class
+**Total drift events**: 11 (DRIFT-001 to DRIFT-011)
+**Resolution rate**: 11 of 11 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-011 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -174,3 +174,45 @@
 - **Resolution**: written with T002's fix commit.
 - **Class closure**: OPEN — backlog candidate: the before-implement readiness check should name a missing state.md
   before the crossing, not after the first implement commit.
+
+### DRIFT-010 — T002 review round 1: four findings, three fixed before round 2 (review outcome)
+
+- **Observed**: 2026-11-01, run `run-20261101-094929560-b322b837` (round 1 of campaign
+  `cmp-203-beta5-stabilization-i001`, on `040fb169`): 4 findings, none blocking.
+- **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the before-implement
+  verdict (a configured but unusable pin refuses visibly, never a silent fall back).
+- **Resolution**: the maintainer ruled to fix 2 to 4 before round 2.
+  - Finding 2, the pin's commit was not checked before its dispatcher ran: fixed in the launcher, not the
+    dispatcher, at the maintainer's direction, because a dispatcher checking its own pin is the unreviewed code
+    deciding whether it may run. The launcher reads the pin's HEAD from its git files (following a worktree's
+    `gitdir:`) without starting git and refuses unless it equals the recorded commit.
+  - Finding 3, a dirty pin passed as reviewed: `live-engine-pin.ps1` refuses a pin with local or untracked changes
+    at Create and Advance, verifies HEAD after both, refuses Create while a pin is configured, and refuses Advance on
+    a missing or non-checkout pin in plain words. **Not caught at runtime: edits made inside the pin after Create
+    or Advance.** The per-event check compares HEAD only, which an in-place edit does not move; a per-event clean
+    check would start git on every hook event.
+  - Finding 4, a helper error read as "no pin": a pin record plus a missing or failing helper now refuses in the
+    dispatcher.
+  - Finding 1, the launcher's refusal goes to stderr with a non-zero exit, which most hosts do not show the model:
+    carried as a follow-up to T006 (the visible not-recorded line) and the iteration-002 three-host walk.
+  - A mutation check of the new launcher test (the commit comparison removed) found another engine load the
+    earlier fix had missed: `turn-end-store.ps1`'s `Resolve-SpecrewModuleFile` tries a self-hosting project root
+    and loaded `<project>/scripts/internal/user-profile.ps1`. With a pin record it now resolves from the pin only;
+    `live-engine-hook-root.tests.ps1` covers it.
+- **Class closure**: OPEN — follow-up for finding 1 (T006 and the three-host walk); runtime detection of edits
+  inside a pin stays a known gap, accepted by the maintainer.
+
+### DRIFT-011 — the Stop hook asked for a round approval while the approved round was running (observation)
+
+- **Observed**: 2026-11-01, while round 1 ran in the background (about 30 minutes, 26 of them in the pre-review
+  verification lanes). Two Stop events in that window blocked with "these files have not been reviewed yet ... ASK
+  them for it", although the maintainer's approval had been recorded as `cmp-203-beta5-stabilization-i001-round-1`
+  and the reviewer was running. The prompt hook also answered the round approval itself with "your reply reads as a
+  verdict for 'review' ... nothing was recorded" (the DRIFT-006 residue), while the launch recorded it correctly.
+- **Requirement**: spec FR-026 (a not-recorded report states its own reason, never a false one); measure (c), no
+  false "not recorded"; FR-011 (the navigator reads pause facts only).
+- **Resolution**: no action taken on the requests; the crew told the maintainer that the round was running and that
+  no approval was needed.
+- **Class closure**: OPEN — evidence for T008 (the navigator reads the campaign's in-flight and pause facts, so it
+  never asks for a round while one runs) and for T003/T006 (a round approval is not reported as an unrecorded
+  boundary verdict).

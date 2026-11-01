@@ -50,6 +50,23 @@ function Write-PinRecord {
     Move-Item -LiteralPath $tmp -Destination $recordPath -Force
 }
 
+function Assert-PinClean {
+    # A pin with uncommitted or untracked changes would run those edits as the reviewed engine (round 1, finding 3).
+    # Checked when the pin is created or advanced; edits made inside the pin afterwards are not caught at runtime,
+    # where only its HEAD is compared with the record (DRIFT-010).
+    param([string]$Path)
+    $status = Invoke-PinGit @('-C', $Path, 'status', '--porcelain', '--untracked-files=all')
+    if (-not [string]::IsNullOrWhiteSpace($status)) {
+        throw ("The pinned copy at {0} has local changes, so it is not the reviewed commit. Remove it (-Action Remove) and create it again:`n{1}" -f $Path, $status)
+    }
+}
+
+function Assert-PinAt {
+    param([string]$Path, [string]$Sha)
+    $head = (Invoke-PinGit @('-C', $Path, 'rev-parse', 'HEAD')).ToLowerInvariant()
+    if ($head -ne $Sha) { throw ("The pinned copy at {0} is at {1}, not {2}." -f $Path, $head.Substring(0, 8), $Sha.Substring(0, 8)) }
+}
+
 function Get-DefaultPinPath {
     $branch = (Invoke-PinGit @('-C', $ProjectRoot, 'rev-parse', '--abbrev-ref', 'HEAD'))
     if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq 'HEAD') { $branch = Split-Path -Leaf $ProjectRoot }
@@ -78,20 +95,29 @@ switch ($Action) {
     }
     'Create' {
         $sha = Resolve-PinCommit -Rev $Commit
+        if (Test-Path -LiteralPath $recordPath -PathType Leaf) { throw 'A pin is already configured for this project; use -Action Advance to move it, or -Action Remove first.' }
         $path = if ([string]::IsNullOrWhiteSpace($PinPath)) { Get-DefaultPinPath } else { [System.IO.Path]::GetFullPath($PinPath) }
         Assert-OutsideWorktree -Path $path
         if (Test-Path -LiteralPath $path) { throw ("{0} already exists; use -Action Advance to move it, or -Action Remove first." -f $path) }
         $parent = Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
         Invoke-PinGit @('-C', $ProjectRoot, 'worktree', 'add', '--detach', $path, $sha) | Out-Null
+        Assert-PinAt -Path $path -Sha $sha
+        Assert-PinClean -Path $path
         Write-PinRecord -Path $path -Sha $sha
         Write-Output ("Pinned the live engine at {0} ({1})." -f $path, $sha.Substring(0, 8))
     }
     'Advance' {
         $pin = Get-SpecrewLiveEnginePin -ProjectRoot $ProjectRoot
         if (-not [bool]$pin.Configured) { throw 'No pin is configured; use -Action Create.' }
+        if ([string]$pin.Reason -in @('record-unreadable', 'pin-missing', 'pin-not-a-checkout')) {
+            throw ("The configured pin at {0} cannot be advanced ({1}); use -Action Remove, then -Action Create." -f [string]$pin.Root, [string]$pin.Reason)
+        }
         $sha = Resolve-PinCommit -Rev $Commit
+        Assert-PinClean -Path ([string]$pin.Root)
         Invoke-PinGit @('-C', [string]$pin.Root, 'checkout', '--quiet', '--detach', $sha) | Out-Null
+        Assert-PinAt -Path ([string]$pin.Root) -Sha $sha
+        Assert-PinClean -Path ([string]$pin.Root)
         Write-PinRecord -Path ([string]$pin.Root) -Sha $sha
         Write-Output ("Advanced the live engine pin to {0}." -f $sha.Substring(0, 8))
     }

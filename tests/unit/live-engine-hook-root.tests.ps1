@@ -4,8 +4,8 @@
 # so a dispatcher that walked up from its own folder or from the process cwd would write approvals and state there.
 #
 # A hook event run through a configured pin must write only into the project: nothing into the pin, nothing into
-# %USERPROFILE%\.specrew, and none of the project's own deployed engine copies may run. A pin record whose pin is gone
-# refuses visibly and runs nothing.
+# %USERPROFILE%\.specrew, and none of the project's own deployed engine copies may run. A pin record whose pin is gone,
+# or whose pin has moved off the recorded commit, refuses visibly in the launcher and runs nothing.
 #
 # Mutation that turns this file red: drop -ProjectRoot from the launcher's pinned call, make the dispatcher ignore it,
 # or resolve the catalog or provider commands from the project's .specify instead of the dispatcher's own tree.
@@ -98,11 +98,14 @@ try {
     $hookEnv = @{ USERPROFILE = $fakeHome; HOME = $fakeHome; SPECREW_TEST_MARKER = $marker; SPECREW_MODULE_PATH = ''; CLAUDE_PROJECT_DIR = $project }
 
     # The pin: this repository's engine, a .specrew of its own (as a real checkout has), detached at a commit.
+    # Like a `git worktree`, its .git is a file naming a gitdir whose HEAD holds the detached commit.
     foreach ($rel in $engineDirs) { Copy-Item -LiteralPath (Join-Path $repoRoot $rel) -Destination (Join-Path $pin $rel) -Recurse -Force }
-    New-Item -ItemType Directory -Path (Join-Path $pin '.specrew'), (Join-Path $pin '.git') -Force | Out-Null
+    $pinGitDir = Join-Path $work 'pin-gitdir'
+    New-Item -ItemType Directory -Path (Join-Path $pin '.specrew'), $pinGitDir -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repoRoot '.specrew/config.yml') -Destination (Join-Path $pin '.specrew/config.yml')
     $pinCommit = ([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')).Substring(0, 40)
-    Set-Content -LiteralPath (Join-Path $pin '.git/HEAD') -Value $pinCommit
+    Set-Content -LiteralPath (Join-Path $pin '.git') -Value ("gitdir: {0}" -f $pinGitDir)
+    Set-Content -LiteralPath (Join-Path $pinGitDir 'HEAD') -Value $pinCommit
 
     # The project: a Specrew project whose deployed engine copies are all traps.
     New-Item -ItemType Directory -Path (Join-Path $project '.specrew/runtime') -Force | Out-Null
@@ -155,6 +158,26 @@ try {
     $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
     $runtimeNew = @(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter | Where-Object { $_.SideIndicator -eq '=>' })
     Assert-True ($runtimeNew.Count -gt 0) ("the hooks' writes landed in the project ({0} file(s) new or changed)" -f $runtimeNew.Count)
+
+    # The turn-end store's module-file lookup tries a self-hosting project root; with a pin it must use the pin only
+    # (round 1: it loaded the project's scripts/internal/user-profile.ps1 on a path the events above do not reach).
+    $storePath = Join-Path $pin '.specify/extensions/specrew-speckit/scripts/turn-end-store.ps1'
+    $resolved = (& pwsh -NoProfile -Command ". '$storePath'; Resolve-SpecrewModuleFile -RelativePath 'scripts/internal/user-profile.ps1' -ProjectRoot '$project'" 2>$null | Select-Object -Last 1)
+    Assert-True ([string]$resolved -eq (Join-Path $pin 'scripts/internal/user-profile.ps1')) ("turn-end store: a module file resolves to the pin, not the project (got '{0}')" -f $resolved)
+
+    # --- a pin moved off its recorded commit: the launcher refuses before any pin code runs ---
+    # The launcher's own check, not the pin's: a dispatcher checking its own pin would be the unreviewed code deciding
+    # whether it may run. Any pin code that ran would write into the project.
+    $otherCommit = ([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')).Substring(0, 40)
+    Set-Content -LiteralPath (Join-Path $project '.specrew/runtime/live-engine.json') -Value (([ordered]@{ schema_version = '1'; path = $pin; commit = $otherCommit }) | ConvertTo-Json)
+    $runtimeBefore = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['Stop']) -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-moved') -Environment $hookEnv
+    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'not at the reviewed commit') ("pin off its commit, Claude: the launcher refuses (exit {0})" -f $r.ExitCode)
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'UserPromptSubmit', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-moved') -Environment $launcherEnv
+    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'not at the reviewed commit') ("pin off its commit, launcher: the launcher refuses (exit {0})" -f $r.ExitCode)
+    $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
+    Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) 'pin off its commit: no pin code ran (nothing was recorded)'
+    Assert-True (-not (Test-Path -LiteralPath $marker)) "pin off its commit: nothing falls back to the project's deployed copy"
 
     # --- a record whose pin is gone refuses visibly and runs nothing ---
     Set-Content -LiteralPath (Join-Path $project '.specrew/runtime/live-engine.json') -Value (([ordered]@{ schema_version = '1'; path = (Join-Path $work 'absent'); commit = $pinCommit }) | ConvertTo-Json)

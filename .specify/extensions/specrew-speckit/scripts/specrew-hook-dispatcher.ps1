@@ -627,18 +627,29 @@ function Write-DispatcherUnrecognizedPayloadLog {
 }
 
 function Get-DispatcherLiveEngine {
-    # Feature 203 T002 (DA-8): the live-engine pin, or $null when the helper is not deployed or no root is known.
-    # Beside the deployed copy; the scripts/internal twin finds it in the source tree.
+    # Feature 203 T002 (DA-8): the live-engine pin, or $null when no root is known or no pin is configured and the
+    # helper is not deployed. Beside the deployed copy; the scripts/internal twin finds it in the source tree.
+    # A pin record that exists while the helper is missing or fails refuses (round 1, finding 4): reading that as
+    # "no pin" would silently replace a configured pin with today's resolution.
     param([AllowNull()][string]$ProjectRoot)
     if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    $recordExists = Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf
+    $refused = [pscustomobject]@{ Refused = $true; Root = $null
+        Pin = [pscustomobject]@{ Configured = $true; Valid = $false; Root = $null; Commit = $null; Reason = 'helper-unavailable'; Detail = $null } }
     $helper = @((Join-Path $PSScriptRoot 'live-engine-resolution.ps1'), (Join-Path $PSScriptRoot '../../extensions/specrew-speckit/scripts/live-engine-resolution.ps1')) |
         Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-    if ([string]::IsNullOrWhiteSpace([string]$helper)) { return $null }
+    if ([string]::IsNullOrWhiteSpace([string]$helper)) { if ($recordExists) { return $refused }; return $null }
     try {
         if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $helper }
         return (Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot)
     }
-    catch { return $null }
+    catch {
+        if ($recordExists) {
+            Write-DispatcherWarn -Code 'LIVE_ENGINE_REFUSED' -Message ("live-engine helper failed with a pin record present; refusing: {0}" -f $_.Exception.Message)
+            return $refused
+        }
+        return $null
+    }
 }
 
 function Find-DispatcherHostManifestPath {

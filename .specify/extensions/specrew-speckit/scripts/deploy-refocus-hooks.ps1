@@ -265,11 +265,33 @@ function Get-LiveEnginePinLauncherText {
     # Feature 203 T002 (DA-8): the launcher half of the live-engine pin, one line of PowerShell shared by every
     # launcher shape. It reads $projectRoot and $dispatcher and leaves $pinArgs for the dispatcher call. With no pin
     # record it changes nothing. With one, $dispatcher becomes the pin's copy and $pinArgs carries the project root,
-    # so the pinned dispatcher never walks up from the pin (which has its own .specrew). A record whose pin cannot
-    # be found refuses in plain words; nothing falls back to this project's deployed copy.
+    # so the pinned dispatcher never walks up from the pin (which has its own .specrew). The pin is checked here,
+    # before any of its code runs (a dispatcher checking its own pin would be unreviewed code deciding whether it may
+    # run): its HEAD, read from its git files without starting git, must be the recorded commit. A record whose pin
+    # cannot be found or is not at that commit refuses in plain words; nothing falls back to this project's copy.
     param([string]$DispatcherRelPath)
-    $refusal = 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The pinned copy named in .specrew/runtime/live-engine.json could not be found. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?'
-    return ('$pinArgs = @{{}}; $pinRecord = Join-Path $projectRoot ''.specrew/runtime/live-engine.json''; if (Test-Path -LiteralPath $pinRecord -PathType Leaf) {{ $pinRoot = ''''; try {{ $pinRoot = [string](Get-Content -LiteralPath $pinRecord -Raw | ConvertFrom-Json).path }} catch {{ $pinRoot = '''' }}; $pinned = if ([string]::IsNullOrWhiteSpace($pinRoot)) {{ '''' }} else {{ Join-Path $pinRoot ''{0}'' }}; if ([string]::IsNullOrWhiteSpace($pinned) -or -not (Test-Path -LiteralPath $pinned -PathType Leaf)) {{ throw ''{1}'' }}; $dispatcher = $pinned; $pinArgs[''ProjectRoot''] = $projectRoot }}; ' -f $DispatcherRelPath, $refusal)
+    $refusal = 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The pinned copy named in .specrew/runtime/live-engine.json could not be found, or is not at the reviewed commit it was set to. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?'
+    $text = @'
+$pinArgs = @{};
+$pinRecord = Join-Path $projectRoot '.specrew/runtime/live-engine.json';
+if (Test-Path -LiteralPath $pinRecord -PathType Leaf) {
+    $pinRoot = ''; $pinCommit = ''; $pinHead = '';
+    try { $pinData = Get-Content -LiteralPath $pinRecord -Raw | ConvertFrom-Json; $pinRoot = [string]$pinData.path; $pinCommit = ([string]$pinData.commit).ToLowerInvariant() } catch { $pinRoot = '' };
+    if (-not [string]::IsNullOrWhiteSpace($pinRoot)) {
+        try {
+            $pinGitDir = Join-Path $pinRoot '.git';
+            if (Test-Path -LiteralPath $pinGitDir -PathType Leaf) { $pinGitDir = ([string](Get-Content -LiteralPath $pinGitDir -TotalCount 1) -replace '^gitdir:\s*', '').Trim(); if (-not [IO.Path]::IsPathRooted($pinGitDir)) { $pinGitDir = Join-Path $pinRoot $pinGitDir } };
+            $pinHead = ([string](Get-Content -LiteralPath (Join-Path $pinGitDir 'HEAD') -TotalCount 1)).Trim().ToLowerInvariant()
+        } catch { $pinHead = '' }
+    };
+    $pinned = if ([string]::IsNullOrWhiteSpace($pinRoot)) { '' } else { Join-Path $pinRoot '__DISPATCHER__' };
+    if ([string]::IsNullOrWhiteSpace($pinned) -or $pinCommit -notmatch '^[0-9a-f]{40}$' -or $pinHead -ne $pinCommit -or -not (Test-Path -LiteralPath $pinned -PathType Leaf)) { throw '__REFUSAL__' };
+    $dispatcher = $pinned; $pinArgs['ProjectRoot'] = $projectRoot
+};
+'@
+    # One line: the Claude command embeds it in an encoded single-line script.
+    $text = ($text -replace '\r?\n\s*', ' ').Trim() + ' '
+    return $text.Replace('__DISPATCHER__', $DispatcherRelPath).Replace('__REFUSAL__', $refusal.Replace("'", "''"))
 }
 
 function Get-SpecrewHookCommand {

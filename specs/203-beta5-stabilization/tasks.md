@@ -64,6 +64,10 @@ then T014.
     runs hook events through a configured pin and asserts nothing is written into the pin or the profile's
     `.specrew`, no worktree engine copy runs, the writes land in the project, and a pin that cannot be found refuses
     visibly. Condition (b): scripts the crew runs itself keep running from this worktree's `.specify` (accepted).
+  - **Review round 1 (2026-11-01; DRIFT-010):** the launcher checks the pin's HEAD against the recorded commit
+    before running any pin code; the pin script refuses a dirty pin at Create and Advance; a pin record plus a
+    failing or missing helper refuses in the dispatcher. Finding 1 (the refusal's visible channel per host) is a
+    follow-up to T006 and the iteration-002 three-host walk.
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,
