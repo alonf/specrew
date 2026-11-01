@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 15 (DRIFT-001 to DRIFT-015)
-**Resolution rate**: 15 of 15 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-015 carry an open product class
+**Total drift events**: 16 (DRIFT-001 to DRIFT-016)
+**Resolution rate**: 16 of 16 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-016 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -288,3 +288,50 @@
   - Finding 1 (the launcher refusal's visible channel) repeats round 1's finding 1 and stays with T006 and the
     three-host walk.
 - **Class closure**: OPEN — finding 1 only (T006, the three-host walk).
+
+### DRIFT-016 — 52f37279's deploy script writes Claude hook commands over the command-line limit; every Claude hook failed (defect, release-blocking)
+
+- **Observed**: 2026-11-01. After `73b91c06` redeployed this worktree's Claude hooks from the pin, every Claude hook
+  failed from 14:33Z: the transcript shows "-EncodedCommand is not properly encoded" on every PostToolUse and on
+  Stop. Specrew was off in this session, so typed approvals would not have recorded. The maintainer found it; the
+  crew did not.
+- **Cause**: the generated Claude command grew from 8,084 to 12,632 characters. A host that starts hooks through
+  cmd.exe cuts a command at 8,191 characters, so pwsh received a truncated `-EncodedCommand`. The live-engine pin
+  check added about 1,700 characters of script, and an encoded command carries about 2.7 characters per script
+  character. The commands before the pin were already within about 100 characters of the limit: the baked host
+  binding (2,568 characters) rides inside the encoded text. Antigravity's encoded command, unchanged by 203, was
+  7,348 characters for the same reason.
+- **Reach**: `52f37279`'s deploy script makes these commands for every project, pin or not, because the pin check is
+  in every Claude command. Any release carrying it would break Claude hooks in every project on its next
+  `specrew update`, so it blocks any release until fixed.
+- **Process failures**:
+  - The crew reported the redeploy as working after decoding the settings file, without checking that a hook ran.
+    The test suites ran the commands as argument arrays (CreateProcess, 32,767 characters), never through the
+    host's shell, so the limit was never exercised.
+  - `8594e1c1` (T001's first commit) was committed at 14:39Z, while the hooks were off.
+- **Recovery, 2026-11-01**: `.claude/settings.local.json` restored as of `8a9a5d1c` and the pin removed
+  (`2a9179b4`), so the no-pin path the sweep tested applies. The next tool call ran its hooks without error, and
+  this session's refocus state and handover were written again at 14:43Z.
+- **Fix (T002 follow-up)**:
+  - Claude (`guarded-project-encoded`): the deploy generates `.claude/specrew-hook-launch.ps1` beside the settings
+    file, tracked with them and so exactly as trusted. It holds what the command carried inline: the project-root
+    variable, the pin check (still before any pin code runs) and the baked binding. The command only finds and runs
+    it: 1,028 characters.
+  - Antigravity (`launcher-encoded`): the binding moves to `~/.specrew/hook-bindings/<host>.binding`, which the
+    per-machine launcher reads when no binding is passed: 680 characters.
+  - The hook health check reads the generated launcher; an old inline Claude command now reads as stale, so
+    `specrew hooks install` regenerates it.
+  - `tests/unit/hook-command-length.tests.ps1` deploys every host into its own scratch project and asserts every
+    command is within 4,095 characters (half of cmd.exe's limit). It runs Claude's and Antigravity's commands
+    through cmd.exe, and a control shows an over-length one fails there. The `52f37279` deploy script turns it red
+    (Claude 12,632, Antigravity 7,380).
+- **Per-machine launcher (Codex, Copilot, Cursor)**: the commands that start it are 2,686 to 3,083 characters,
+  unchanged by 203 and within the limit. The launcher file grew from 6,772 to 9,325 bytes; it is a file, not a
+  command line. **Observation**: this machine's launcher already holds `52f37279`'s version (8,800 bytes, written at
+  14:26Z while the stop's final check ran the verification lanes), so a suite in those lanes deploys to the real
+  user folder instead of a scratch one. With no pin record it behaves as before.
+- **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the refusal standard
+  (a hook failure the human cannot see).
+- **Class closure**: OPEN until the fix is reviewed and signed off; the pin is recreated and the hooks redeployed
+  only after that, confirmed from the transcript. Backlog candidates: tests run hook commands through each host's
+  shell; find the suite that writes the real per-machine launcher.

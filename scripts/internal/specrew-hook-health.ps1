@@ -261,6 +261,12 @@ function Get-SpecrewHooksStatus {
                 }
                 else {
                     $inspectionText = Get-SpecrewHookInspectionText -Value $raw
+                    # A guarded-project-encoded command runs the launcher generated beside its config (203 DRIFT-016);
+                    # what that launcher runs is part of the entry, and a missing launcher leaves the entry stale.
+                    $projectLauncher = Join-Path (Split-Path -Parent $configPath) 'specrew-hook-launch.ps1'
+                    if ($inspectionText.Contains('specrew-hook-launch.ps1') -and (Test-Path -LiteralPath $projectLauncher -PathType Leaf)) {
+                        try { $inspectionText += "`n" + (Get-Content -LiteralPath $projectLauncher -Raw -Encoding UTF8) } catch { $null = $_ }
+                    }
                     $hasDispatcher = $inspectionText.Contains('specrew-hook-dispatcher.ps1')
                     $hasLauncher = $inspectionText.Contains('specrew-hook-launch.ps1')
                     $bindings = Get-SpecrewHookHealthBindings -HostKind $hostKind
@@ -275,6 +281,7 @@ function Get-SpecrewHooksStatus {
                             if (-not [string]::IsNullOrWhiteSpace($placeholder)) { $requiredTokens.Add($placeholder) | Out-Null }
                         }
                         'guarded-project-encoded' {
+                            $requiredTokens.Add('specrew-hook-launch.ps1') | Out-Null
                             $requiredTokens.Add('specrew-hook-dispatcher.ps1') | Out-Null
                             $projectVariables = @(Get-ManifestValue -Map $bindings -Key 'ProjectRootEnvironmentVariables' -Default @())
                             foreach ($variable in $projectVariables) {
@@ -303,7 +310,9 @@ function Get-SpecrewHooksStatus {
                         # Wiring drift: every event the manifest REGISTERS must actually carry a Specrew entry,
                         # both for event maps and inside the exact owned named definition.
                         $missingEvents = @(Get-SpecrewHookMissingEventRegistrations -ParsedConfig $parsedConfig -Bindings $bindings)
-                        if ($missingRequired.Count -eq 0 -and $requiredTokens.Count -gt 0 -and $missingEvents.Count -gt 0) {
+                        # An older command shape is stale too (it lacks a token the current one carries), but the
+                        # missing events are still the more useful thing to name.
+                        if (($missingRequired.Count -eq 0 -or $hasDispatcher -or $hasLauncher) -and $requiredTokens.Count -gt 0 -and $missingEvents.Count -gt 0) {
                             # The dispatcher IS wired, just not for everything the manifest now registers - the
                             # exact shape a config written by an older Specrew takes. Reported as `stale`, which
                             # is already the "run install" state, and the missing events are NAMED so the

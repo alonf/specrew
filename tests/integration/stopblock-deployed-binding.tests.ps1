@@ -12,7 +12,13 @@ function Expand-HookCommandText {
     param([Parameter(Mandatory)][string]$Command)
     $encoded = [regex]::Match($Command, '-EncodedCommand\s+(\S+)')
     if (-not $encoded.Success) { return $Command }
-    return [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded.Groups[1].Value.Trim('"', "'")))
+    $decoded = [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded.Groups[1].Value.Trim('"', "'")))
+    # Claude's command runs the launcher generated beside its settings, which carries the binding (203 DRIFT-016).
+    $projectLauncher = Join-Path $proj '.claude/specrew-hook-launch.ps1'
+    if ($decoded.Contains('.claude/specrew-hook-launch.ps1') -and (Test-Path -LiteralPath $projectLauncher -PathType Leaf)) {
+        $decoded += "`n" + (Get-Content -LiteralPath $projectLauncher -Raw)
+    }
+    return $decoded
 }
 
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path

@@ -68,6 +68,11 @@ then T014.
     before running any pin code; the pin script refuses a dirty pin at Create and Advance; a pin record plus a
     failing or missing helper refuses in the dispatcher. Finding 1 (the refusal's visible channel per host) is a
     follow-up to T006 and the iteration-002 three-host walk.
+  - **Follow-up: hook command length (2026-11-01; DRIFT-016):** every generated hook command, for every host, stays
+    within 4,095 characters (half of cmd.exe's 8,191). Claude's command runs a launcher generated beside its settings,
+    which carries the pin check and the baked binding; Antigravity's binding is read from beside the per-machine
+    launcher. RED and acceptance: `tests/unit/hook-command-length.tests.ps1`, including runs through cmd.exe. Reviewed in
+    its own round; the pin is recreated and the hooks redeployed only after its sign-off, confirmed from the transcript.
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,

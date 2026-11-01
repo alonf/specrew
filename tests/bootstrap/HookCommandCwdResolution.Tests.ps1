@@ -105,7 +105,10 @@ exit 0
     Assert-True ($encodedMatch.Success) 'claude: command carries one encoded bootstrap command'
     $decodedCommand = [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encodedMatch.Groups[1].Value.Trim('"', "'")))
     Assert-True ($decodedCommand -match "GetEnvironmentVariable\('CLAUDE_PROJECT_DIR'\)") 'claude: encoded command reads the host project-root environment variable'
-    Assert-True ($decodedCommand -match 'Join-Path\s+\$projectRoot\s+''\.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher\.ps1''') 'claude: encoded command resolves the dispatcher beneath the live project root'
+    Assert-True ($decodedCommand -match 'Join-Path\s+\$projectRoot\s+''\.claude/specrew-hook-launch\.ps1''') 'claude: encoded command runs the launcher generated beneath the live project root (203 DRIFT-016)'
+    $projectLauncherText = Get-Content -LiteralPath (Join-Path $proj '.claude/specrew-hook-launch.ps1') -Raw
+    Assert-True ($projectLauncherText -match 'Join-Path\s+\$projectRoot\s+''\.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher\.ps1''') 'claude: the generated launcher resolves the dispatcher beneath the live project root'
+    Assert-True (-not $projectLauncherText.Contains($proj)) 'claude: the generated launcher contains no machine-specific project path'
     Assert-True (-not $decodedCommand.Contains($proj)) 'claude: encoded command contains no machine-specific project path (portable across clone/worktree)'
 
     $resolved = Join-Path $proj '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'

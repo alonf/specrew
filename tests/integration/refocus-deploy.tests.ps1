@@ -18,6 +18,7 @@ $deployScript = Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'
 $scratchRoot = Join-Path $repoRoot '.scratch\refocus-deploy'
 $projectRoot = Join-Path $scratchRoot 'project'
 $settingsPath = Join-Path $projectRoot '.claude\settings.local.json'
+$projectLauncherPath = Join-Path $projectRoot '.claude\specrew-hook-launch.ps1'
 
 function New-ScratchProject {
     if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
@@ -33,7 +34,12 @@ function Decode-EncodedPwshCommand {
     param([string]$Command)
     $match = [regex]::Match($Command, '(?i)(?:^|\s)-EncodedCommand\s+([A-Za-z0-9+/=]+)')
     if (-not $match.Success) { return '' }
-    return [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))
+    $decoded = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))
+    # Claude's command runs the launcher generated beside its settings (203 DRIFT-016); what it runs is part of it.
+    if ($decoded.Contains('.claude/specrew-hook-launch.ps1') -and (Test-Path -LiteralPath $projectLauncherPath -PathType Leaf)) {
+        $decoded += "`n" + (Get-Content -LiteralPath $projectLauncherPath -Raw)
+    }
+    return $decoded
 }
 
 function Test-CommandTargetsSpecrewDispatcher {
@@ -63,6 +69,7 @@ Assert-True ($claudePostToolDecoded.Contains("-Event 'PostToolUse'")) 'PostToolU
 Assert-True (-not $settings.hooks.PSObject.Properties['PreToolUse']) 'PreToolUse NOT registered (dormant F-165 seat)'
 $claudeSessionDecoded = Decode-EncodedPwshCommand -Command ([string]$settings.hooks.SessionStart[0].hooks[0].command)
 Assert-True ($claudeSessionDecoded.Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
+Assert-True ((Test-Path -LiteralPath $projectLauncherPath -PathType Leaf) -and -not (Decode-EncodedPwshCommand -Command ([string]$settings.hooks.SessionStart[0].hooks[0].command)).Split("`n")[0].Contains('-HostBinding')) 'Claude: the launcher is generated beside the settings, and the binding is in it, not in the command (203 DRIFT-016)'
 
 # A project can carry Claude's repo-local settings while the active host is Copilot. Copilot v1.0.79
 # executes that repo hook too, but does not define CLAUDE_PROJECT_DIR. The old literal placeholder became
@@ -89,10 +96,12 @@ finally {
 }
 
 # --- 2. Idempotence: re-deploy is byte-identical ------------------------------------
+$launcherBefore = Get-Content -LiteralPath $projectLauncherPath -Raw
 $before = Get-Content -LiteralPath $settingsPath -Raw
 $null = Invoke-Deploy
 $after = Get-Content -LiteralPath $settingsPath -Raw
 Assert-True ($before -eq $after) 're-deploy is byte-idempotent'
+Assert-True ((Get-Content -LiteralPath $projectLauncherPath -Raw) -eq $launcherBefore) 're-deploy leaves the generated Claude launcher byte-identical'
 
 # --- 3. User entries preserved exactly (pure user group + mixed group) ---------------
 New-ScratchProject
@@ -135,6 +144,7 @@ $ssCommands = @(if ($settings.hooks.PSObject.Properties['SessionStart']) { @($se
 Assert-True (($ssCommands -contains 'echo user-session-hook') -and -not ($ssCommands -like '*specrew-hook-dispatcher*')) '-Remove strips only Specrew entries'
 $optOutMarker = Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout'
 Assert-True (Test-Path -LiteralPath $optOutMarker -PathType Leaf) 'opt-out marker recorded'
+Assert-True (-not (Test-Path -LiteralPath $projectLauncherPath)) '-Remove deletes the generated Claude launcher'
 
 # --- 6. Opt-out respected; -Force re-enables explicitly --------------------------------
 $out = Invoke-Deploy
@@ -277,9 +287,9 @@ $antiStopCmd = [string]$anti.'specrew-refocus'.Stop[0].command
 $antiPreDecoded = Decode-EncodedPwshCommand -Command $antiPreCmd
 $antiStopDecoded = Decode-EncodedPwshCommand -Command $antiStopCmd
 Assert-True (Test-Path -LiteralPath (Join-Path $antiHome '.specrew\specrew-hook-launch.ps1') -PathType Leaf) 'antigravity: cwd-robust per-machine launcher generated'
-Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity') -and $antiPreDecoded.Contains('-HostBinding')) 'antigravity: PreInvocation command uses encoded cwd-robust launcher with manifest runtime binding'
+Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity') -and -not $antiPreDecoded.Contains('-HostBinding') -and (Test-Path -LiteralPath (Join-Path $antiHome '.specrew\hook-bindings\antigravity.binding') -PathType Leaf)) 'antigravity: PreInvocation command uses encoded cwd-robust launcher; the manifest runtime binding is in a file beside the launcher (203 DRIFT-016)'
 Assert-True (-not $antiPreCmd.Contains('./.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1')) 'antigravity: PreInvocation command does not depend on project-root cwd'
-Assert-True ($antiStopCmd.Contains('-EncodedCommand') -and $antiStopDecoded.Contains('specrew-hook-launch.ps1') -and $antiStopDecoded.Contains("-Event 'Stop'") -and $antiStopDecoded.Contains('-HostKind antigravity') -and $antiStopDecoded.Contains('-HostBinding')) 'antigravity: Stop command dispatches through cwd-robust launcher with manifest runtime binding'
+Assert-True ($antiStopCmd.Contains('-EncodedCommand') -and $antiStopDecoded.Contains('specrew-hook-launch.ps1') -and $antiStopDecoded.Contains("-Event 'Stop'") -and $antiStopDecoded.Contains('-HostKind antigravity') -and -not $antiStopDecoded.Contains('-HostBinding')) 'antigravity: Stop command dispatches through cwd-robust launcher; the binding is read from beside the launcher'
 $before = Get-Content -LiteralPath $antiPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome)
 Assert-True ((Get-Content -LiteralPath $antiPath -Raw) -eq $before) 'antigravity: re-deploy byte-idempotent'
