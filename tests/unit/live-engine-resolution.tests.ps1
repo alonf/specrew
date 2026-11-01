@@ -155,6 +155,11 @@ try {
     New-Item -ItemType Directory -Path $pinProject | Out-Null
     Invoke-Git @('-C', $pinProject, 'init', '-q')
     Set-Content -LiteralPath (Join-Path $pinProject 'engine.txt') -Value 'one'
+    # Create and Advance write the pin's host bindings with the pin's own deployer: a stand-in that names the host.
+    $stubDeploy = Join-Path $pinProject 'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $stubDeploy), (Join-Path $pinProject 'hosts/stub') -Force | Out-Null
+    Set-Content -LiteralPath $stubDeploy -Value @('param([string]$ProjectPath, [string]$HostKind, [switch]$EmitBindingOnly)', '[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content -LiteralPath (Join-Path $PSScriptRoot ''../../../engine.txt'') -Raw).Trim() + '':'' + $HostKind))')
+    Set-Content -LiteralPath (Join-Path $pinProject 'hosts/stub/host.psd1') -Value "@{ RefocusHookBindings = @{ DispatcherRuntime = @{} } }"
     Invoke-Git @('-C', $pinProject, 'add', '-A')
     Invoke-Git @('-C', $pinProject, '-c', 'user.email=t@example.invalid', '-c', 'user.name=t', 'commit', '-q', '-m', 'one')
     $commitOne = (& git -C $pinProject rev-parse HEAD).Trim()
@@ -166,10 +171,17 @@ try {
     $invokePin = { param([string[]]$PinArgs) $out = (& pwsh -NoProfile -File $pinScript -ProjectRoot $pinProject @PinArgs 2>&1) -join "`n"; [pscustomobject]@{ Exit = $LASTEXITCODE; Output = $out } }
     $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', $scriptPin)
     Assert-True ($r.Exit -eq 0) ("pin script: Create pins a clean checkout (exit {0})" -f $r.Exit)
+    # Review round 3, finding 1: the bindings come from the pin's own deployer and carry the pin's commit.
+    $pinBindingsPath = Get-SpecrewLiveEngineBindingsPath -ProjectRoot $pinProject
+    $readBinding = { $b = Get-Content -LiteralPath $pinBindingsPath -Raw | ConvertFrom-Json; [pscustomobject]@{ Commit = $b.commit; Stub = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b.bindings.stub)) } }
+    $b = & $readBinding
+    Assert-True ($b.Commit -eq $commitOne -and $b.Stub -eq 'one:stub') ("pin script: Create writes the pin's bindings stamped with its commit (got {0} '{1}')" -f $b.Commit, $b.Stub)
     $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', (Join-Path $work 'second-pin'))
     Assert-True ($r.Exit -ne 0 -and $r.Output -match 'already configured') 'pin script: Create refuses while a pin is configured'
     $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitTwo)
     Assert-True ($r.Exit -eq 0 -and (& git -C $scriptPin rev-parse HEAD).Trim() -eq $commitTwo) 'pin script: Advance moves a clean pin'
+    $b = & $readBinding
+    Assert-True ($b.Commit -eq $commitTwo -and $b.Stub -eq 'two:stub') ("pin script: Advance rewrites the bindings from the new commit and restamps them (got '{0}')" -f $b.Stub)
     Set-Content -LiteralPath (Join-Path $scriptPin 'engine.txt') -Value 'edited inside the pin'
     $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitOne)
     Assert-True ($r.Exit -ne 0 -and $r.Output -match 'local changes') 'pin script: Advance refuses a pin with an edited file'
@@ -206,6 +218,7 @@ try {
     $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', $failedPin)
     Assert-True ($r.Exit -eq 0) ("pin script: a retry after the refusal is not blocked by a leftover folder (exit {0})" -f $r.Exit)
     $null = & $invokePin @('-Action', 'Remove')
+    Assert-True (-not (Test-Path -LiteralPath $pinBindingsPath)) 'pin script: Remove deletes the bindings with the record'
 
     # --- ProjectMetadataAccessor: a pin record plus a missing helper loads no store (round 2, finding 4) ---
     # The accessor alone, with no live-engine-resolution.ps1 three levels above it, reading a project whose own

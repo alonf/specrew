@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 16 (DRIFT-001 to DRIFT-016)
-**Resolution rate**: 16 of 16 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-016 carry an open product class
+**Total drift events**: 17 (DRIFT-001 to DRIFT-017)
+**Resolution rate**: 17 of 17 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-017 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -335,3 +335,41 @@
 - **Class closure**: OPEN until the fix is reviewed and signed off; the pin is recreated and the hooks redeployed
   only after that, confirmed from the transcript. Backlog candidates: tests run hook commands through each host's
   shell; find the suite that writes the real per-machine launcher.
+
+### DRIFT-017 — T002 follow-up review round 3: two findings fixed before round 4; Specrew's stop text understated them (review outcome, evidence for B5F-017 and T008)
+
+- **Observed**: 2026-11-01, run `run-20261101-153513761-f6955543` (round 3 of `cmp-203-beta5-stabilization-i001`, on
+  `0999ff62`). Reviewer: Codex (`codex-cli-file-primary`). Approval spent: the maintainer's typed approval captured
+  at 17:34:52 local time (UTC+2). Pre-review checks ran 17:35 to 18:00 (1,536 s), the reviewer 18:00 to 18:08.
+  Two findings, both already present in `52f37279`:
+  - Finding 1, reported major by the reviewer: the binding baked into the hook settings is decoded before the
+    pin-aware manifest lookup, so the pinned engine runs under whatever binding the last deploy wrote, and Advance
+    leaves it unchanged. The binding holds the rules for what counts as a typed approval, the rules T003 to T006
+    change.
+  - Finding 2: the generated Claude launcher checks the pin before `SPECREW_REFOCUS_DISABLE`, so the documented
+    off switch cannot stop failing hooks while the pin is broken.
+- **How Specrew presented it**: finding 1 was demoted to minor "because it stated no concrete failure scenario",
+  although its own text gives one (a redeploy from an unreviewed tree, an Advance without a redeploy). The stop text
+  then read "That round found nothing that needs your attention" next to "1 finding was downgraded ... read it
+  before you decide", and recommended stopping. Evidence for B5F-017 (the recommendation judges findings without
+  the task's purpose) and for T008's stop-layout acceptance item (DRIFT-014).
+- **Resolution**: the maintainer ruled to fix both before round 4, in one commit with B5F-018, B5F-019 and the
+  lane changes.
+  - Finding 1: Create and Advance write `.specrew/runtime/live-engine-bindings.json`: every host's binding, computed
+    by the pin's own deployer (`deploy-refocus-hooks.ps1 -EmitBindingOnly`) and stamped with the pin's commit. Both
+    launchers refuse in plain words, before any pin code runs, when that file is missing or stamped for another
+    commit, and pass the pin's binding to the pinned dispatcher instead of the baked one. Remove deletes the file.
+  - Finding 2: the generated Claude launcher checks `SPECREW_REFOCUS_DISABLE` first, as the per-machine launcher
+    and the dispatcher do, and still answers a decision-only event with its no-op.
+  - `live-engine-hook-root.tests.ps1` shows the pinned dispatcher receives the pin's binding (through the
+    dispatcher's per-event switch), refuses a missing or wrongly stamped binding with nothing recorded, and exits 0
+    with the off switch set while the pin is missing. `live-engine-resolution.tests.ps1` covers Create, Advance and
+    Remove writing, restamping and deleting the bindings. Removing the stamp check, or the early off switch, turns
+    them red.
+- **Lane changes (maintainer ruling, 2026-11-01)**: the five f202 lanes and the two f199 slice lanes are not 203's
+  and are parked in `.specrew/verification-plan.signoff-lanes.json` until 203's signoff round (the 202 precedent:
+  202 DRIFT-013). Eleven of their suites exercise code 203 changes and run in the new `f203-i001-carried` lane. The
+  f199 class-guard lanes are permanent and stay. Their time is recorded under B5F-016 in `docs/beta5-findings.md`.
+- **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); FR-026; the refusal
+  standard.
+- **Class closure**: OPEN until round 4 signs off; B5F-017 and T008 carry the presentation class.

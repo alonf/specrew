@@ -18,7 +18,10 @@ param(
     [switch]$Remove,
     [switch]$Force,
     # Test seam: override the user-home root so suites never touch the real one.
-    [string]$UserHomeOverride
+    [string]$UserHomeOverride,
+    # Feature 203 (review round 3, finding 1): print this host's runtime binding and change nothing. The live-engine
+    # pin script runs the PIN's deployer with it, so the binding the pinned hooks use comes from the reviewed commit.
+    [switch]$EmitBindingOnly
 )
 
 Set-StrictMode -Version Latest
@@ -234,6 +237,10 @@ if (-not (Test-ManifestKey -Map $hostManifest -Key 'RefocusHookBindings') -or $n
     throw "Host manifest '$hostManifestPath' is missing RefocusHookBindings."
 }
 $hookBindings = Get-ManifestValue -Map $hostManifest -Key 'RefocusHookBindings'
+if ($EmitBindingOnly) {
+    Write-Output (Get-HostRuntimeBindingEncoded -Bindings $hookBindings)
+    exit 0
+}
 $dispatcherRelPath = [string](Get-ManifestValue -Map $hookBindings -Key 'DispatcherPath')
 if ([string]::IsNullOrWhiteSpace($dispatcherRelPath)) {
     throw "Host manifest '$hostManifestPath' is missing RefocusHookBindings.DispatcherPath."
@@ -267,15 +274,21 @@ $projectLauncherRelPath = if ([string]::IsNullOrWhiteSpace($settingsDirRel)) { '
 $projectLauncherPath = Join-Path (Split-Path -Parent $settingsPath) 'specrew-hook-launch.ps1'
 
 function Get-LiveEnginePinLauncherText {
-    # Feature 203 T002 (DA-8): the launcher half of the live-engine pin, one line of PowerShell shared by every
-    # launcher shape. It reads $projectRoot and $dispatcher and leaves $pinArgs for the dispatcher call. With no pin
+    # Feature 203 T002 (DA-8): the launcher half of the live-engine pin, shared by the per-machine launcher and the
+    # generated project launcher. It reads $projectRoot and $dispatcher and leaves $pinArgs for the dispatcher call. With no pin
     # record it changes nothing. With one, $dispatcher becomes the pin's copy and $pinArgs carries the project root,
     # so the pinned dispatcher never walks up from the pin (which has its own .specrew). The pin is checked here,
     # before any of its code runs (a dispatcher checking its own pin would be unreviewed code deciding whether it may
     # run): its HEAD, read from its git files without starting git, must be the recorded commit. A record whose pin
     # cannot be found or is not at that commit refuses in plain words; nothing falls back to this project's copy.
+    #
+    # The host binding comes from the pin too (review round 3, finding 1): it holds the rules for what counts as a typed
+    # approval, so the one baked into this launcher by whatever deploy ran last does not apply. The pin script writes
+    # the pin's bindings stamped with its commit; a stamp that is not the pin's commit refuses, before any pin code
+    # runs. Both launchers name the host in $HostKind and leave the binding to pass in $HostBinding.
     param([string]$DispatcherRelPath)
     $refusal = 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The pinned copy named in .specrew/runtime/live-engine.json could not be found, or is not at the reviewed commit it was set to. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?'
+    $bindingRefusal = 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The host settings in .specrew/runtime/live-engine-bindings.json are missing, or were written for a different commit than the pinned copy. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?'
     $text = @'
 $pinArgs = @{};
 $pinRecord = Join-Path $projectRoot '.specrew/runtime/live-engine.json';
@@ -291,12 +304,13 @@ if (Test-Path -LiteralPath $pinRecord -PathType Leaf) {
     };
     $pinned = if ([string]::IsNullOrWhiteSpace($pinRoot)) { '' } else { Join-Path $pinRoot '__DISPATCHER__' };
     if ([string]::IsNullOrWhiteSpace($pinned) -or $pinCommit -notmatch '^[0-9a-f]{40}$' -or $pinHead -ne $pinCommit -or -not (Test-Path -LiteralPath $pinned -PathType Leaf)) { throw '__REFUSAL__' };
-    $dispatcher = $pinned; $pinArgs['ProjectRoot'] = $projectRoot
+    $pinBinding = '';
+    try { $pinBindings = Get-Content -LiteralPath (Join-Path $projectRoot '.specrew/runtime/live-engine-bindings.json') -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop; if (([string]$pinBindings.commit).ToLowerInvariant() -eq $pinCommit -and $null -ne $pinBindings.bindings.PSObject.Properties[$HostKind]) { $pinBinding = [string]$pinBindings.bindings.$HostKind } } catch { $pinBinding = '' };
+    if ([string]::IsNullOrWhiteSpace($pinBinding)) { throw '__BINDING_REFUSAL__' };
+    $dispatcher = $pinned; $HostBinding = $pinBinding; $pinArgs['ProjectRoot'] = $projectRoot
 };
 '@
-    # One line: the Claude command embeds it in an encoded single-line script.
-    $text = ($text -replace '\r?\n\s*', ' ').Trim() + ' '
-    return $text.Replace('__DISPATCHER__', $DispatcherRelPath).Replace('__REFUSAL__', $refusal.Replace("'", "''"))
+    return $text.Replace('__DISPATCHER__', $DispatcherRelPath).Replace('__REFUSAL__', $refusal.Replace("'", "''")).Replace('__BINDING_REFUSAL__', $bindingRefusal.Replace("'", "''"))
 }
 
 function Get-GuardedProjectRootVariable {
@@ -315,15 +329,22 @@ function Install-ProjectHookLauncher {
     # runs before any pin code) and the baked binding. Idempotent: same bytes every deploy.
     $escapedVariable = (Get-GuardedProjectRootVariable).Replace("'", "''")
     $escapedDispatcher = $dispatcherRelPath.Replace("'", "''")
-    $bindingArg = if ([string]::IsNullOrWhiteSpace($hostRuntimeBinding)) { '' } else { " -HostBinding '" + $hostRuntimeBinding.Replace("'", "''") + "'" }
     $body = @(
         '# Specrew project hook launcher - GENERATED by deploy-refocus-hooks.ps1 (do NOT edit by hand; re-deploy instead).'
         'param([Parameter(Mandatory = $true)][string]$Event)'
+        ('$HostKind = ''{0}''' -f $HostKind.Replace("'", "''"))
+        ('$HostBinding = ''{0}''' -f ([string]$hostRuntimeBinding).Replace("'", "''"))
+        # The kill switch comes first, as in the per-machine launcher and the dispatcher, so it still works when the pin
+        # check below would refuse (review round 3, finding 2). Decision-only events still get their no-op answer.
+        'if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {'
+        '    try { if (@(([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($HostBinding)) | ConvertFrom-Json).DecisionOnlyEvents | ForEach-Object { [string]$_ }) -contains $Event) { @{} | ConvertTo-Json -Compress } } catch { $null = $_ }'
+        '    exit 0'
+        '}'
         ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}' -f $escapedVariable)
         ('$dispatcher = Join-Path $projectRoot ''{0}''' -f $escapedDispatcher)
         (Get-LiveEnginePinLauncherText -DispatcherRelPath $escapedDispatcher).Trim()
         'if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) { throw "Specrew dispatcher not found at ''$dispatcher''." }'
-        ('& $dispatcher -Event $Event -HostKind {0} @pinArgs{1}' -f $HostKind, $bindingArg)
+        'if ([string]::IsNullOrWhiteSpace($HostBinding)) { & $dispatcher -Event $Event -HostKind $HostKind @pinArgs } else { & $dispatcher -Event $Event -HostKind $HostKind -HostBinding $HostBinding @pinArgs }'
     ) -join "`n"
     New-Item -ItemType Directory -Path (Split-Path -Parent $projectLauncherPath) -Force | Out-Null
     [System.IO.File]::WriteAllText($projectLauncherPath, $body + "`n", [System.Text.UTF8Encoding]::new($false))

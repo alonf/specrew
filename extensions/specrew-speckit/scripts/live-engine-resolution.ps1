@@ -22,6 +22,49 @@ function Get-SpecrewLiveEngineRecordPath {
     return (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json')
 }
 
+function Get-SpecrewLiveEngineBindingsPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    return (Join-Path $ProjectRoot '.specrew/runtime/live-engine-bindings.json')
+}
+
+function Write-SpecrewLiveEngineBindings {
+    # Review round 3, finding 1: with a pin, the hooks use host bindings taken from the pin and stamped with its commit.
+    # A binding holds the rules for what counts as a typed approval, so one baked into the hook settings by a later,
+    # unreviewed deploy must not apply to the pinned engine. Written by the pin script at Create and Advance; the
+    # launchers refuse a binding whose stamp is not the pin's commit, before any pin code runs.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$PinRoot,
+        [Parameter(Mandatory = $true)][string]$Commit
+    )
+    $deploy = Join-Path $PinRoot 'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1'
+    if (-not (Test-Path -LiteralPath $deploy -PathType Leaf)) {
+        throw ("The pinned copy at {0} has no deploy-refocus-hooks.ps1, so its host settings cannot be written." -f $PinRoot)
+    }
+    $bindings = [ordered]@{}
+    foreach ($dir in @(Get-ChildItem -LiteralPath (Join-Path $PinRoot 'hosts') -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+        $manifestPath = Join-Path $dir.FullName 'host.psd1'
+        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { continue }
+        $hookBindings = (Import-PowerShellDataFile -LiteralPath $manifestPath)['RefocusHookBindings']
+        if ($null -eq $hookBindings -or $null -eq $hookBindings['DispatcherRuntime']) { continue }
+        # The pin's own deployer computes the binding, so it is exactly what a deploy from the pin would bake.
+        $out = @(& pwsh -NoProfile -File $deploy -ProjectPath $ProjectRoot -HostKind $dir.Name -EmitBindingOnly 2>&1)
+        $binding = ([string]($out | Select-Object -Last 1)).Trim()
+        if ($LASTEXITCODE -ne 0 -or $binding -notmatch '^[A-Za-z0-9+/=]+$') {
+            throw ("The pinned copy's host settings for {0} could not be read: {1}" -f $dir.Name, (($out | Out-String).Trim()))
+        }
+        $bindings[$dir.Name] = $binding
+    }
+    if ($bindings.Count -eq 0) { throw ("The pinned copy at {0} declares no host settings." -f $PinRoot) }
+    $path = Get-SpecrewLiveEngineBindingsPath -ProjectRoot $ProjectRoot
+    $dir = Split-Path -Parent $path
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $record = [ordered]@{ schema_version = '1'; commit = $Commit.ToLowerInvariant(); bindings = $bindings }
+    $tmp = "$path.tmp"
+    Set-Content -LiteralPath $tmp -Value ($record | ConvertTo-Json -Depth 4) -Encoding UTF8
+    Move-Item -LiteralPath $tmp -Destination $path -Force
+}
+
 function Get-SpecrewLiveEngineCheckoutHead {
     # The pin is a `git worktree`, so its `.git` is a file naming the gitdir; a detached HEAD there is a bare sha.
     # Read directly rather than spawning git: this runs on every hook fire. $null when it is not a detached checkout.

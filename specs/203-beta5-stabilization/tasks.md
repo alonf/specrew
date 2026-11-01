@@ -73,6 +73,11 @@ then T014.
     which carries the pin check and the baked binding; Antigravity's binding is read from beside the per-machine
     launcher. RED and acceptance: `tests/unit/hook-command-length.tests.ps1`, including runs through cmd.exe. Reviewed in
     its own round; the pin is recreated and the hooks redeployed only after its sign-off, confirmed from the transcript.
+  - **Follow-up review round 3 (2026-11-01; DRIFT-017):** with a pin, the hooks use the pin's host bindings,
+    written by Create and Advance from the pin's own deployer and stamped with its commit; both launchers refuse a
+    missing or wrongly stamped binding before any pin code runs. The generated Claude launcher honours
+    `SPECREW_REFOCUS_DISABLE` before the pin check. RED and acceptance: `live-engine-hook-root.tests.ps1` and
+    `live-engine-resolution.tests.ps1`. Design follow-up for iteration 002 or 204: B5F-019 (the pin leaves shipped code).
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,

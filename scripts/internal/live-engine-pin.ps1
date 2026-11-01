@@ -107,6 +107,7 @@ switch ($Action) {
         try {
             Assert-PinAt -Path $path -Sha $sha
             Assert-PinClean -Path $path
+            Write-SpecrewLiveEngineBindings -ProjectRoot $ProjectRoot -PinRoot $path -Commit $sha
         }
         catch {
             $failure = $_
@@ -127,6 +128,9 @@ switch ($Action) {
         Invoke-PinGit @('-C', [string]$pin.Root, 'checkout', '--quiet', '--detach', $sha) | Out-Null
         Assert-PinAt -Path ([string]$pin.Root) -Sha $sha
         Assert-PinClean -Path ([string]$pin.Root)
+        # Until both are rewritten the old stamp no longer matches the pin's HEAD, so the hooks refuse rather than
+        # run the new engine under the old binding.
+        Write-SpecrewLiveEngineBindings -ProjectRoot $ProjectRoot -PinRoot ([string]$pin.Root) -Commit $sha
         Write-PinRecord -Path ([string]$pin.Root) -Sha $sha
         Write-Output ("Advanced the live engine pin to {0}." -f $sha.Substring(0, 8))
     }
@@ -140,6 +144,8 @@ switch ($Action) {
             catch { $leftInPlace = [string]$pin.Root }
         }
         if (Test-Path -LiteralPath $recordPath -PathType Leaf) { Remove-Item -LiteralPath $recordPath -Force }
+        $bindingsPath = Get-SpecrewLiveEngineBindingsPath -ProjectRoot $ProjectRoot
+        if (Test-Path -LiteralPath $bindingsPath -PathType Leaf) { Remove-Item -LiteralPath $bindingsPath -Force }
         Write-Output 'Removed the live-engine pin; the hooks use this worktree''s engine code again.'
         if ($leftInPlace) { Write-Output ("{0} is not a worktree of this repository, so it was left in place; delete it by hand if it is no longer needed." -f $leftInPlace) }
     }

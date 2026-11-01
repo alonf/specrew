@@ -123,6 +123,12 @@ try {
     Assert-True (Test-Path -LiteralPath $launcher -PathType Leaf) 'the deployer wrote the per-machine launcher'
 
     Set-Content -LiteralPath (Join-Path $project '.specrew/runtime/live-engine.json') -Value (([ordered]@{ schema_version = '1'; path = $pin; commit = $pinCommit }) | ConvertTo-Json)
+    # The pin's host bindings, stamped with its commit, as the pin script writes them at Create and Advance.
+    . (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/live-engine-resolution.ps1')
+    Write-SpecrewLiveEngineBindings -ProjectRoot $project -PinRoot $pin -Commit $pinCommit
+    $bindingsPath = Get-SpecrewLiveEngineBindingsPath -ProjectRoot $project
+    $pinBindings = Get-Content -LiteralPath $bindingsPath -Raw | ConvertFrom-Json
+    Assert-True ($pinBindings.commit -eq $pinCommit -and $null -ne $pinBindings.bindings.PSObject.Properties['claude'] -and $null -ne $pinBindings.bindings.PSObject.Properties['codex']) 'the pin bindings are written from the pin and stamped with its commit'
 
     # The profile's .specrew only: pwsh itself keeps caches under the profile's AppData.
     $homeSpecrew = Join-Path $fakeHome '.specrew'
@@ -165,6 +171,45 @@ try {
     $resolved = (& pwsh -NoProfile -Command ". '$storePath'; Resolve-SpecrewModuleFile -RelativePath 'scripts/internal/user-profile.ps1' -ProjectRoot '$project'" 2>$null | Select-Object -Last 1)
     Assert-True ([string]$resolved -eq (Join-Path $pin 'scripts/internal/user-profile.ps1')) ("turn-end store: a module file resolves to the pin, not the project (got '{0}')" -f $resolved)
 
+    # --- the binding the dispatcher gets is the pin's, not the one baked into the hook settings (round 3, finding 1) ---
+    # Observable through the dispatcher's per-event switch: a disabled event answers {} only when the binding it was
+    # given lists that event as decision-only. The baked Claude binding lists none; the pin's is given one here.
+    $disabledEnv = $hookEnv.Clone(); $disabledEnv['SPECREW_DISABLE_EVENTS'] = 'UserPromptSubmit'
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['UserPromptSubmit']) -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-binding') -Environment $disabledEnv
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdOut.Trim() -eq '') ("control: with the pin's own binding, the disabled event answers nothing (got '{0}')" -f $r.StdOut.Trim())
+    $marked = $pinBindings | ConvertTo-Json -Depth 4 | ConvertFrom-Json
+    foreach ($kind in @('claude', 'codex')) {
+        $runtime = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($marked.bindings.$kind)) | ConvertFrom-Json
+        $runtime.DecisionOnlyEvents = @(@($runtime.DecisionOnlyEvents) + 'UserPromptSubmit')
+        $marked.bindings.$kind = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($runtime | ConvertTo-Json -Depth 8 -Compress)))
+    }
+    Set-Content -LiteralPath $bindingsPath -Value ($marked | ConvertTo-Json -Depth 4)
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['UserPromptSubmit']) -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-binding') -Environment $disabledEnv
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdOut.Trim() -eq '{}') ("Claude: the pinned dispatcher got the pin's binding (got '{0}')" -f $r.StdOut.Trim())
+    $disabledLauncherEnv = $launcherEnv.Clone(); $disabledLauncherEnv['SPECREW_DISABLE_EVENTS'] = 'UserPromptSubmit'
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'UserPromptSubmit', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-binding') -Environment $disabledLauncherEnv
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdOut.Trim() -eq '{}') ("launcher: the pinned dispatcher got the pin's binding (got '{0}')" -f $r.StdOut.Trim())
+    Set-Content -LiteralPath $bindingsPath -Value ($pinBindings | ConvertTo-Json -Depth 4)
+
+    # --- a binding stamped for another commit, or none at all: the launcher refuses before any pin code runs ---
+    # The refusal reaches stderr wrapped, colored or serialized depending on how pwsh was started; compare letters only.
+    foreach ($case in @('stamped for another commit', 'missing')) {
+        if ($case -eq 'missing') { Remove-Item -LiteralPath $bindingsPath -Force }
+        else {
+            $stale = $pinBindings | ConvertTo-Json -Depth 4 | ConvertFrom-Json
+            $stale.commit = ([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')).Substring(0, 40)
+            Set-Content -LiteralPath $bindingsPath -Value ($stale | ConvertTo-Json -Depth 4)
+        }
+        $runtimeBefore = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
+        $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['Stop']) -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-stamp') -Environment $hookEnv
+        Assert-True ($r.ExitCode -ne 0 -and ($r.StdErr -replace '_x[0-9A-F]{4}_(\[[0-9;]*m)?|<[^>]*>|[^A-Za-z]', '') -match 'hostsettingsin') ("binding {0}, Claude: the launcher refuses (exit {1})" -f $case, $r.ExitCode)
+        $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'UserPromptSubmit', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-stamp') -Environment $launcherEnv
+        Assert-True ($r.ExitCode -ne 0 -and ($r.StdErr -replace '_x[0-9A-F]{4}_(\[[0-9;]*m)?|<[^>]*>|[^A-Za-z]', '') -match 'hostsettingsin') ("binding {0}, launcher: the launcher refuses (exit {1})" -f $case, $r.ExitCode)
+        $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
+        Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) ("binding {0}: no pin code ran (nothing was recorded)" -f $case)
+    }
+    Set-Content -LiteralPath $bindingsPath -Value ($pinBindings | ConvertTo-Json -Depth 4)
+
     # --- a pin moved off its recorded commit: the launcher refuses before any pin code runs ---
     # The launcher's own check, not the pin's: a dispatcher checking its own pin would be the unreviewed code deciding
     # whether it may run. Any pin code that ran would write into the project.
@@ -190,6 +235,16 @@ try {
     Assert-True (-not (Test-Path -LiteralPath $marker)) "missing pin: nothing falls back to the project's deployed copy"
     $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
     Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) 'missing pin: nothing was recorded'
+
+    # --- the kill switch works while the pin is broken (round 3, finding 2) ---
+    # It comes before the pin check in both launchers, so turning the hooks off is a recovery that cannot be refused.
+    $offEnv = $hookEnv.Clone(); $offEnv['SPECREW_REFOCUS_DISABLE'] = '1'
+    $offLauncherEnv = $launcherEnv.Clone(); $offLauncherEnv['SPECREW_REFOCUS_DISABLE'] = '1'
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['Stop']) -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-off') -Environment $offEnv
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdErr -notmatch 'could not load') ("hooks switched off, pin missing, Claude: exits 0 without the refusal (exit {0})" -f $r.ExitCode)
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'Stop', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-off') -Environment $offLauncherEnv
+    Assert-True ($r.ExitCode -eq 0 -and $r.StdErr -notmatch 'could not load') ("hooks switched off, pin missing, launcher: exits 0 without the refusal (exit {0})" -f $r.ExitCode)
+    Assert-True (-not (Test-Path -LiteralPath $marker)) 'hooks switched off: nothing ran'
 
     # --- no record: the launcher runs the project's own deployed dispatcher, as before ---
     Remove-Item -LiteralPath (Join-Path $project '.specrew/runtime/live-engine.json') -Force

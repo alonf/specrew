@@ -40,9 +40,10 @@ try {
     $stopCmd = [string]$cfg.hooks.Stop[0].hooks[0].command
 
     # Extract the baked -HostBinding base64 the deployed hook actually passes the dispatcher.
-    $m = [regex]::Match((Expand-HookCommandText -Command $stopCmd), '-HostBinding\s+(\S+)')
+    # The generated Claude launcher assigns it ($HostBinding = '...'); a command string passes it as -HostBinding.
+    $m = [regex]::Match((Expand-HookCommandText -Command $stopCmd), '\$HostBinding = ''([^'']+)''|-HostBinding\s+([A-Za-z0-9+/=]+)')
     Assert-True ($m.Success) 'the deployed Stop command bakes a -HostBinding'
-    $encoded = $m.Groups[1].Value.Trim('"', "'")
+    $encoded = @(@($m.Groups[1].Value, $m.Groups[2].Value) | Where-Object { $_ })[0].Trim('"', "'")
 
     # (a) DECODE the baked binding and assert StopBlockShape is present + correct (the direct F1 catch).
     $decoded = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded)) | ConvertFrom-Json
