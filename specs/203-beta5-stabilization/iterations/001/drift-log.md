@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 17 (DRIFT-001 to DRIFT-017)
-**Resolution rate**: 17 of 17 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-017 carry an open product class
+**Total drift events**: 18 (DRIFT-001 to DRIFT-018)
+**Resolution rate**: 18 of 18 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-018 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -373,3 +373,36 @@
 - **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); FR-026; the refusal
   standard.
 - **Class closure**: OPEN until round 4 signs off; B5F-017 and T008 carry the presentation class.
+
+### DRIFT-018 — round 4's pre-review checks failed on a test's text match; the refusal it checks reaches stderr wrapped and colored (defect in a test, evidence for T006, T008 and T011)
+
+- **Observed**: 2026-11-01, run `run-20261101-194756957-70c172a4` (Codex, `codex-cli-file-primary`, on `de972712`),
+  launched on the maintainer's typed approval captured at 21:47:39 local time (UTC+2). The checks ran 21:48 to 21:57
+  (587 s) and stopped on `f203-i001-suites` with `verification-command-failed:...:diagnostics-require-command-scoped-disclosure`.
+  The reviewer was not invoked; Specrew reported that no round was used and the approval stayed unspent.
+- **Cause**: two checks in `tests/unit/live-engine-hook-root.tests.ps1` (the per-machine launcher refusing a missing
+  or wrongly stamped binding) reduced stderr to letters and looked for `hostsettingsin`. The checks pass only the 15
+  variables in the lane's `env_refs`; in that environment the launcher's refusal reaches stderr in pwsh's error view,
+  wrapped at the console width behind a `|` gutter and with raw ANSI color codes, and every code left an `m` between
+  the words. The launcher itself refused correctly (exit 1, the right message). The crew's sweep of `de972712` ran
+  the suites with the full environment, where the codes do not appear, so it passed.
+- **Resolution (maintainer ruling, 22:12 local)**: the test reduces stderr to plain text explicitly (ANSI escapes,
+  raw and CLIXML-encoded, removed; the error view's gutter dropped; whitespace collapsed) and every refusal check in
+  the file uses it. Verified in a separate checkout under the lane's environment and the full one: the whole wrapped
+  sentence matches, and a phrase absent from the message turns the checks red. A suite the crew sweeps before a
+  round runs under the lane's `env_refs`, not the crew's own environment.
+- **Refusal visibility (evidence for T006)**: what the test saw is what a host shows the human. A launcher refusal is
+  a `throw`, so it arrives in pwsh's error view: a `Line |` header, a source excerpt, the message wrapped behind a
+  gutter, and color codes (or CLIXML from `-EncodedCommand`). Added to T006's refusal-visibility follow-up: a hook
+  refusal is written as plain text.
+- **Stop blocks during this round**:
+  - 21:48 local, while round 4's checks ran: "your last review no longer covers these files ... ask the human to
+    approve a fresh review round", about round 3's result. The approved round was already running. Evidence for
+    T008 (no Stop asks for a round while one runs; DRIFT-011, DRIFT-014).
+  - 22:07 local: "your reply is missing these lines from the message you declared. Add them as written". The reply
+    carried the declared question reworded; the word-for-word comparison blocked it, and the line had to be sent
+    again verbatim. Evidence for T011 (a reworded content line passes; the declared-vs-reply comparison goes).
+- **Requirement**: the refusal standard (a refusal the human can read); FR-026; FR-046; the sweep rule (the tree the
+  checks see, under the environment they use).
+- **Class closure**: OPEN — the test fix is reviewed in round 4; T006 carries the plain-text refusal, T008 and T011
+  the Stop blocks.

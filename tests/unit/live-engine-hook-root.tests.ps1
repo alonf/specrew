@@ -18,6 +18,20 @@ function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -Foreg
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
+function ConvertTo-PlainStderr {
+    # A refusal reaches stderr in pwsh's error view: wrapped at the console width behind a '|' gutter, colored with
+    # ANSI escapes, and serialized as CLIXML when pwsh runs from -EncodedCommand. Which of these appear depends on how
+    # pwsh was started and on the environment (the review checks pass only a few variables, 203 DRIFT-018), so the
+    # message is reduced to its words: escapes removed, gutters dropped, whitespace collapsed.
+    param([string]$Text)
+    $plain = $Text -replace '\x1b\[[0-9;?]*[A-Za-z]', ''
+    $plain = $plain -replace '_x001B_\[[0-9;?]*[A-Za-z]', ''
+    $plain = $plain -replace '_x000D_|_x000A_', "`n"
+    $plain = $plain -replace '#< CLIXML|<[^>]*>', ''
+    $plain = $plain -replace '(?m)^\s*\|', ''
+    return ($plain -replace '\s+', ' ')
+}
+
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-pinroot-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $pin = Join-Path $work 'pin'
 $project = Join-Path $work 'project'
@@ -192,7 +206,6 @@ try {
     Set-Content -LiteralPath $bindingsPath -Value ($pinBindings | ConvertTo-Json -Depth 4)
 
     # --- a binding stamped for another commit, or none at all: the launcher refuses before any pin code runs ---
-    # The refusal reaches stderr wrapped, colored or serialized depending on how pwsh was started; compare letters only.
     foreach ($case in @('stamped for another commit', 'missing')) {
         if ($case -eq 'missing') { Remove-Item -LiteralPath $bindingsPath -Force }
         else {
@@ -202,9 +215,9 @@ try {
         }
         $runtimeBefore = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
         $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['Stop']) -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-stamp') -Environment $hookEnv
-        Assert-True ($r.ExitCode -ne 0 -and ($r.StdErr -replace '_x[0-9A-F]{4}_(\[[0-9;]*m)?|<[^>]*>|[^A-Za-z]', '') -match 'hostsettingsin') ("binding {0}, Claude: the launcher refuses (exit {1})" -f $case, $r.ExitCode)
+        Assert-True ($r.ExitCode -ne 0 -and (ConvertTo-PlainStderr $r.StdErr) -match 'host settings in') ("binding {0}, Claude: the launcher refuses (exit {1})" -f $case, $r.ExitCode)
         $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'UserPromptSubmit', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-stamp') -Environment $launcherEnv
-        Assert-True ($r.ExitCode -ne 0 -and ($r.StdErr -replace '_x[0-9A-F]{4}_(\[[0-9;]*m)?|<[^>]*>|[^A-Za-z]', '') -match 'hostsettingsin') ("binding {0}, launcher: the launcher refuses (exit {1})" -f $case, $r.ExitCode)
+        Assert-True ($r.ExitCode -ne 0 -and (ConvertTo-PlainStderr $r.StdErr) -match 'host settings in') ("binding {0}, launcher: the launcher refuses (exit {1})" -f $case, $r.ExitCode)
         $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
         Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) ("binding {0}: no pin code ran (nothing was recorded)" -f $case)
     }
@@ -217,9 +230,9 @@ try {
     Set-Content -LiteralPath (Join-Path $project '.specrew/runtime/live-engine.json') -Value (([ordered]@{ schema_version = '1'; path = $pin; commit = $otherCommit }) | ConvertTo-Json)
     $runtimeBefore = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
     $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['Stop']) -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-moved') -Environment $hookEnv
-    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'not at the reviewed commit') ("pin off its commit, Claude: the launcher refuses (exit {0})" -f $r.ExitCode)
+    Assert-True ($r.ExitCode -ne 0 -and (ConvertTo-PlainStderr $r.StdErr) -match 'not at the reviewed commit') ("pin off its commit, Claude: the launcher refuses (exit {0})" -f $r.ExitCode)
     $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'UserPromptSubmit', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-moved') -Environment $launcherEnv
-    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'not at the reviewed commit') ("pin off its commit, launcher: the launcher refuses (exit {0})" -f $r.ExitCode)
+    Assert-True ($r.ExitCode -ne 0 -and (ConvertTo-PlainStderr $r.StdErr) -match 'not at the reviewed commit') ("pin off its commit, launcher: the launcher refuses (exit {0})" -f $r.ExitCode)
     $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
     Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) 'pin off its commit: no pin code ran (nothing was recorded)'
     Assert-True (-not (Test-Path -LiteralPath $marker)) "pin off its commit: nothing falls back to the project's deployed copy"
@@ -229,9 +242,9 @@ try {
     if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force }
     $runtimeBefore = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
     $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['UserPromptSubmit']) -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-gone') -Environment $hookEnv
-    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'could not load its reviewed engine') ("missing pin, Claude: the hook refuses in plain words (exit {0})" -f $r.ExitCode)
+    Assert-True ($r.ExitCode -ne 0 -and (ConvertTo-PlainStderr $r.StdErr) -match 'could not load its reviewed engine') ("missing pin, Claude: the hook refuses in plain words (exit {0})" -f $r.ExitCode)
     $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'Stop', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-gone') -Environment $launcherEnv
-    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'could not load its reviewed engine') ("missing pin, launcher: the hook refuses in plain words (exit {0})" -f $r.ExitCode)
+    Assert-True ($r.ExitCode -ne 0 -and (ConvertTo-PlainStderr $r.StdErr) -match 'could not load its reviewed engine') ("missing pin, launcher: the hook refuses in plain words (exit {0})" -f $r.ExitCode)
     Assert-True (-not (Test-Path -LiteralPath $marker)) "missing pin: nothing falls back to the project's deployed copy"
     $runtimeAfter = Get-TreeSnapshot -Root (Join-Path $project '.specrew')
     Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) 'missing pin: nothing was recorded'
@@ -241,9 +254,9 @@ try {
     $offEnv = $hookEnv.Clone(); $offEnv['SPECREW_REFOCUS_DISABLE'] = '1'
     $offLauncherEnv = $launcherEnv.Clone(); $offLauncherEnv['SPECREW_REFOCUS_DISABLE'] = '1'
     $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands['Stop']) -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-off') -Environment $offEnv
-    Assert-True ($r.ExitCode -eq 0 -and $r.StdErr -notmatch 'could not load') ("hooks switched off, pin missing, Claude: exits 0 without the refusal (exit {0})" -f $r.ExitCode)
+    Assert-True ($r.ExitCode -eq 0 -and (ConvertTo-PlainStderr $r.StdErr) -notmatch 'could not load') ("hooks switched off, pin missing, Claude: exits 0 without the refusal (exit {0})" -f $r.ExitCode)
     $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'Stop', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'Stop' -Session 'pinroot-off') -Environment $offLauncherEnv
-    Assert-True ($r.ExitCode -eq 0 -and $r.StdErr -notmatch 'could not load') ("hooks switched off, pin missing, launcher: exits 0 without the refusal (exit {0})" -f $r.ExitCode)
+    Assert-True ($r.ExitCode -eq 0 -and (ConvertTo-PlainStderr $r.StdErr) -notmatch 'could not load') ("hooks switched off, pin missing, launcher: exits 0 without the refusal (exit {0})" -f $r.ExitCode)
     Assert-True (-not (Test-Path -LiteralPath $marker)) 'hooks switched off: nothing ran'
 
     # --- no record: the launcher runs the project's own deployed dispatcher, as before ---

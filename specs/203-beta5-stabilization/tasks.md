@@ -163,6 +163,10 @@ then T014.
   - **Acceptance:** each branch reports with its reason; a recorded approval never reports.
     **Added after T002's review (DRIFT-014):** a recorded round approval never gets the "nothing was recorded"
     notice (it got one 4 times on 2026-11-01).
+    **Added after T002's round 4 checks (DRIFT-018), the refusal-visibility follow-up from T002 round 1 finding 1:**
+    a hook refusal is written as plain text. Today a launcher refusal is a `throw` and reaches the host in pwsh's
+    error view: a source excerpt, the message wrapped behind a `|` gutter, ANSI color codes, or CLIXML from
+    `-EncodedCommand`.
   - **Trace:** FR-026, FR-027, FR-032 (touched refusals).
   - **Depends:** T001, T003.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `scripts/internal/bootstrap/HandoverStore.ps1`,
@@ -211,6 +215,9 @@ then T014.
     `declare-turn-end` requires a piped draft for a boundary declaration today.
   - **Acceptance:** a reworded line passes; a missing marker or option blocks; a boundary declaration needs no
     piped draft, and no shipped skill or refocus text asks for one.
+    **Evidence added (DRIFT-018):** 22:07, 2026-11-01, a conversational reply carrying the declared question
+    reworded was blocked with "your reply is missing these lines from the message you declared. Add them as
+    written", and the line was sent again verbatim.
   - **Trace:** FR-046.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`,
     `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `extensions/specrew-speckit/scripts/declare-turn-end.ps1`,
