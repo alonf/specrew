@@ -183,6 +183,53 @@ try {
     $r = & $invokePin @('-Action', 'Advance', '-Commit', $commitOne)
     # pwsh wraps a long error across lines, so the two parts are matched separately.
     Assert-True ($r.Exit -ne 0 -and $r.Output -match 'cannot be advanced' -and $r.Output -match 'pin-missing') 'pin script: Advance on a missing pin says so plainly'
+
+    # --- the pin script: Remove clears a record whose folder is not a worktree (round 2, finding 3) ---
+    $plainFolder = Join-Path $work 'plain-folder'
+    New-Item -ItemType Directory -Path $plainFolder | Out-Null
+    Set-PinRecord -ProjectRoot $pinProject -Path $plainFolder -Commit $commitOne
+    $r = & $invokePin @('-Action', 'Remove')
+    Assert-True ($r.Exit -eq 0 -and -not (Test-Path -LiteralPath (Get-SpecrewLiveEngineRecordPath -ProjectRoot $pinProject))) ("pin script: Remove deletes the record when the folder is not a worktree (exit {0})" -f $r.Exit)
+    Assert-True ((Test-Path -LiteralPath $plainFolder) -and $r.Output -match 'left in place') 'pin script: that folder is left on disk, and the output says so'
+
+    # --- the pin script: a Create that fails its checks removes the checkout again (round 2, finding 2) ---
+    # A post-checkout hook leaves an untracked file in the new checkout, so the clean check fails after the add.
+    $hookFile = Join-Path $pinProject '.git/hooks/post-checkout'
+    Set-Content -LiteralPath $hookFile -Value "#!/bin/sh`necho stray > untracked.txt" -NoNewline
+    $failedPin = Join-Path $work 'failed-pin'
+    $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', $failedPin)
+    $listed = (& git -C $pinProject worktree list --porcelain) -join "`n"
+    Assert-True ($r.Exit -ne 0 -and $r.Output -match 'local changes') 'pin script: Create refuses a checkout that is not clean'
+    Assert-True (-not (Test-Path -LiteralPath $failedPin) -and $listed -notmatch [regex]::Escape(($failedPin -replace '\\', '/'))) 'pin script: the refused checkout is removed, folder and worktree entry'
+    Assert-True (-not (Test-Path -LiteralPath (Get-SpecrewLiveEngineRecordPath -ProjectRoot $pinProject))) 'pin script: a refused Create writes no record'
+    Remove-Item -LiteralPath $hookFile -Force
+    $r = & $invokePin @('-Action', 'Create', '-Commit', $commitOne, '-PinPath', $failedPin)
+    Assert-True ($r.Exit -eq 0) ("pin script: a retry after the refusal is not blocked by a leftover folder (exit {0})" -f $r.Exit)
+    $null = & $invokePin @('-Action', 'Remove')
+
+    # --- ProjectMetadataAccessor: a pin record plus a missing helper loads no store (round 2, finding 4) ---
+    # The accessor alone, with no live-engine-resolution.ps1 three levels above it, reading a project whose own
+    # .specify store would write the marker if it were loaded.
+    $accessorHome = Join-Path $work 'accessor-only/scripts/internal/bootstrap'
+    New-Item -ItemType Directory -Path $accessorHome -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1') -Destination $accessorHome
+    $a = Join-Path $work 'accessor-project'
+    $storeDir = Join-Path $a '.specify/extensions/specrew-speckit/scripts'
+    New-Item -ItemType Directory -Path $storeDir, (Join-Path $a '.specrew/runtime'), (Join-Path $a 'specs/001-pin-probe') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $storeDir 'workshop-authority-store.ps1') -Value @("Add-Content -LiteralPath `$env:SPECREW_TEST_MARKER -Value 'project-store'", 'function Test-SpecrewWorkshopAuthorityReceipt { return $true }')
+    Set-Content -LiteralPath (Join-Path $a 'specs/001-pin-probe/lens-applicability.json') -Value (@{ workshop_intake = $true; confirmation_required = $true; agenda_status = 'pending-confirmation'; selected = @(); workshop = @{}; human_turn_contract = 'typed-turns-v1' } | ConvertTo-Json)
+    $accessorReason = {
+        if (Test-Path -LiteralPath $markerFile) { Remove-Item -LiteralPath $markerFile -Force }
+        $env:SPECREW_TEST_MARKER = $markerFile
+        try { $reason = (& pwsh -NoProfile -Command ". '$accessorHome/ProjectMetadataAccessor.ps1'; (Get-SpecrewWorkshopLifecycleState -ProjectRoot '$a' -FeatureRef '001-pin-probe').reason" 2>$null) | Select-Object -Last 1 }
+        finally { Remove-Item Env:SPECREW_TEST_MARKER -ErrorAction SilentlyContinue }
+        [pscustomobject]@{ Reason = [string]$reason; Loaded = (Test-Path -LiteralPath $markerFile) }
+    }
+    $res = & $accessorReason
+    Assert-True ($res.Loaded) ("accessor, no record: the project's store loads as today (reason '{0}')" -f $res.Reason)
+    Set-PinRecord -ProjectRoot $a -Path $pinPath -Commit $pinCommit
+    $res = & $accessorReason
+    Assert-True (-not $res.Loaded -and $res.Reason -eq 'workshop-human-turn-helper-missing') ("accessor, pin record, helper missing: no store loads (reason '{0}')" -f $res.Reason)
 }
 finally {
     try { & git -C $pinSource worktree remove --force $pinPath 2>&1 | Out-Null } catch { $null = $_ }

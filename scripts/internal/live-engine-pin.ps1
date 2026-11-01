@@ -102,8 +102,17 @@ switch ($Action) {
         $parent = Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
         Invoke-PinGit @('-C', $ProjectRoot, 'worktree', 'add', '--detach', $path, $sha) | Out-Null
-        Assert-PinAt -Path $path -Sha $sha
-        Assert-PinClean -Path $path
+        # A checkout that fails its checks is removed again, so a retry is not refused by its leftover folder
+        # (round 2, finding 2).
+        try {
+            Assert-PinAt -Path $path -Sha $sha
+            Assert-PinClean -Path $path
+        }
+        catch {
+            $failure = $_
+            & git -C $ProjectRoot worktree remove --force $path 2>&1 | Out-Null
+            throw $failure
+        }
         Write-PinRecord -Path $path -Sha $sha
         Write-Output ("Pinned the live engine at {0} ({1})." -f $path, $sha.Substring(0, 8))
     }
@@ -123,10 +132,15 @@ switch ($Action) {
     }
     'Remove' {
         $pin = Get-SpecrewLiveEnginePin -ProjectRoot $ProjectRoot
+        $leftInPlace = $null
         if ([bool]$pin.Configured -and -not [string]::IsNullOrWhiteSpace([string]$pin.Root) -and (Test-Path -LiteralPath ([string]$pin.Root))) {
-            Invoke-PinGit @('-C', $ProjectRoot, 'worktree', 'remove', '--force', [string]$pin.Root) | Out-Null
+            # A recorded folder that is not a worktree of this repository is left on disk, and the record still goes,
+            # so the hooks stop refusing (round 2, finding 3).
+            try { Invoke-PinGit @('-C', $ProjectRoot, 'worktree', 'remove', '--force', [string]$pin.Root) | Out-Null }
+            catch { $leftInPlace = [string]$pin.Root }
         }
         if (Test-Path -LiteralPath $recordPath -PathType Leaf) { Remove-Item -LiteralPath $recordPath -Force }
         Write-Output 'Removed the live-engine pin; the hooks use this worktree''s engine code again.'
+        if ($leftInPlace) { Write-Output ("{0} is not a worktree of this repository, so it was left in place; delete it by hand if it is no longer needed." -f $leftInPlace) }
     }
 }

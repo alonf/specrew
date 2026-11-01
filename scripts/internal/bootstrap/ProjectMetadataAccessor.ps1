@@ -469,14 +469,18 @@ function Get-SpecrewWorkshopLifecycleState {
             $humanTurnContract = [string]$humanTurnContractProperty.Value
             $authorityStorePath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
             # Feature 203 T002 (DA-8): with a live-engine pin configured, the store loads from the pin's deployed tree
-            # only, never the project's; an unusable pin loads none.
+            # only, never the project's; an unusable pin loads none. A pin record with a missing or failing helper
+            # loads none either (round 2, finding 4), as in the dispatcher and the turn-end store.
             $liveEngineHelper = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'extensions/specrew-speckit/scripts/live-engine-resolution.ps1'
-            $pinnedStore = $false
-            if (Test-Path -LiteralPath $liveEngineHelper -PathType Leaf) {
-                if (-not (Get-Command Resolve-SpecrewLiveEngineExtensionScript -ErrorAction SilentlyContinue)) { . $liveEngineHelper }
-                if ([bool](Get-SpecrewLiveEnginePin -ProjectRoot $ProjectRoot).Configured) {
-                    $pinnedStore = $true
-                    $authorityStorePath = [string](Resolve-SpecrewLiveEngineExtensionScript -ProjectRoot $ProjectRoot -Name 'workshop-authority-store.ps1')
+            $pinnedStore = Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf
+            if ($pinnedStore) {
+                $authorityStorePath = $null
+                if (Test-Path -LiteralPath $liveEngineHelper -PathType Leaf) {
+                    try {
+                        if (-not (Get-Command Resolve-SpecrewLiveEngineExtensionScript -ErrorAction SilentlyContinue)) { . $liveEngineHelper }
+                        $authorityStorePath = [string](Resolve-SpecrewLiveEngineExtensionScript -ProjectRoot $ProjectRoot -Name 'workshop-authority-store.ps1')
+                    }
+                    catch { $authorityStorePath = $null }
                 }
             }
             if ($pinnedStore -and [string]::IsNullOrWhiteSpace($authorityStorePath)) {

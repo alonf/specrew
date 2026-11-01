@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 14 (DRIFT-001 to DRIFT-014)
-**Resolution rate**: 14 of 14 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-014 carry an open product class
+**Total drift events**: 15 (DRIFT-001 to DRIFT-015)
+**Resolution rate**: 15 of 15 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-015 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -268,3 +268,23 @@
   B5F-016, the pre-review checks take about 26 of every 30 minutes and run again for a stop on an unchanged tree;
   B5F-017, Specrew's stop recommendation judges findings without the task's purpose.
 - **Class closure**: OPEN — closed by T003, T006 and T008 for the acceptance items; B5F-016 and B5F-017 stay open.
+
+### DRIFT-015 — T002 review round 2: four findings, signed off; 2 to 4 fixed in T001's first commit (review outcome)
+
+- **Observed**: 2026-11-01, run `run-20261101-113731180-a7ccc5b7` (round 2, on `52f37279`, reviewer Claude per
+  DRIFT-013): 4 findings, none blocking. The maintainer stopped the review; sign-off completed on `52f37279` and the
+  pin was created there.
+- **Requirement**: FR-014; the before-implement verdict (a configured but unusable pin refuses, never falls back).
+- **Resolution**: at the maintainer's instruction, findings 2 to 4 are fixed in T001's first commit; the pin keeps
+  running `52f37279` until the next sign-off advances it (T014).
+  - Finding 2, a Create that failed its checks left an orphan worktree: the checkout is removed again before the
+    refusal, so a retry is not blocked.
+  - Finding 3, Remove kept the record when the recorded folder was not a worktree: the record is deleted anyway and
+    the folder is left in place with a plain note.
+  - Finding 4, `ProjectMetadataAccessor` fell back to the project's store with a pin record and no helper: it now
+    loads no store, like the dispatcher and the turn-end store.
+  - `live-engine-resolution.tests.ps1` covers all three; reverting each fix turns its cases red. The `f203-i001-suites`
+    lane was re-timed (79.1 s, timeout 190 s).
+  - Finding 1 (the launcher refusal's visible channel) repeats round 1's finding 1 and stays with T006 and the
+    three-host walk.
+- **Class closure**: OPEN — finding 1 only (T006, the three-host walk).

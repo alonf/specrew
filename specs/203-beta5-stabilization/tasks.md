@@ -88,6 +88,9 @@ then T014.
   - **Trace:** FR-016, FR-017, FR-027; DA-2, DA-3, DA-4.
   - **Owns:** `tests/fixtures/hook-payloads/**`, `tests/unit/typed-turn-identity.Tests.ps1`,
     `specs/203-beta5-stabilization/research.md`.
+  - **First commit (maintainer's instruction, 2026-11-01; DRIFT-015):** carries T002's round 2 findings 2 to 4:
+    `scripts/internal/live-engine-pin.ps1`, `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`,
+    `tests/unit/live-engine-resolution.tests.ps1` and the `f203-i001-suites` lane in `.specrew/verification-plan.json`.
 
 ## Phase 2: Foundational (blocks US1 to US3)
 
