@@ -27,7 +27,9 @@ function Write-EngineStubs {
     $boot = Join-Path $Root 'scripts/internal/bootstrap'
     $ccr = Join-Path $Root 'scripts/internal/continuous-co-review'
     $ext = Join-Path $Root 'extensions/specrew-speckit/scripts'
-    foreach ($d in @($boot, $ccr, $ext)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+    $deployed = Join-Path $Root '.specify/extensions/specrew-speckit/scripts'
+    foreach ($d in @($boot, $ccr, $ext, $deployed)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+    Set-Content -LiteralPath (Join-Path $deployed 'specrew-hook-dispatcher.ps1') -Value '# stub'
     $markerLine = "Add-Content -LiteralPath `$env:SPECREW_TEST_MARKER -Value '$Label'"
     Set-Content -LiteralPath (Join-Path $boot 'HandoverStore.ps1') -Value @($markerLine, 'function Update-SpecrewRollingHandover { return $null }')
     foreach ($f in 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor', 'HumanAuthorityStore') {

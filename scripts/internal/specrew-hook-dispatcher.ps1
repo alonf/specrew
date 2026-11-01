@@ -24,7 +24,11 @@ param(
     # T014: per-host event/output shaping. The neutral -Event vocabulary stays
     # host-blind (SessionStart | PostToolUse | UserPromptSubmit | PreToolUse);
     # the BINDING (per-host hook config) names both when it registers.
-    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude'
+    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude',
+    # Feature 203 T002 (DA-8): the project this fire belongs to, passed by the launcher when it runs this
+    # dispatcher from a live-engine pin. A pin is a checkout of the repository with its own .specrew, so walking up
+    # from this file would find the pin, not the project. Without it, the root is found as before.
+    [string]$ProjectRoot
 )
 
 function Write-EarlyDecisionOnlyNoopIfNeeded {
@@ -722,8 +726,23 @@ function Test-IsB3DeliveryEvent {
     return (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'B3DeliveryEvents' -Default @('PostToolUse', 'UserPromptSubmit')))
 }
 
+function Test-DispatcherIsDeployedCopy {
+    return ($PSScriptRoot -match '[\\/]\.specify[\\/]extensions[\\/]specrew-speckit[\\/]scripts[\\/]?$')
+}
+
+function Get-DispatcherEngineScriptsDir {
+    # The deployed extension scripts this fire loads its catalog and providers from: the dispatcher's own folder
+    # when it is a deployed copy (the project's, or a live-engine pin's - Feature 203 T002), else the project's.
+    param([string]$ProjectRoot)
+    if (Test-DispatcherIsDeployedCopy) { return $PSScriptRoot }
+    return (Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts')
+}
+
 function Get-DispatcherProjectRoot {
     # Resolve the project root (the dir holding .specrew) so the dispatcher works from ANY host cwd.
+    #
+    # An explicit root (Feature 203 T002: the launcher passes the host's project directory when it runs a pinned
+    # dispatcher) is used as given and never walked from; one without a .specrew is not a Specrew project.
     #
     # When THIS dispatcher is the DEPLOYED copy — its own directory is
     # <project>/.specify/extensions/specrew-speckit/scripts — its location reliably identifies the project the
@@ -732,7 +751,12 @@ function Get-DispatcherProjectRoot {
     # ~/.specrew), which a cwd-first walk-up would wrongly resolve. When it is the in-repo SOURCE copy
     # (scripts/internal, used in dev/tests) the dispatcher's own location is the framework repo rather than the
     # target project, so resolve from the cwd FIRST (the project under test), falling back to $PSScriptRoot.
-    $isDeployedCopy = $PSScriptRoot -match '[\\/]\.specify[\\/]extensions[\\/]specrew-speckit[\\/]scripts[\\/]?$'
+    param([AllowNull()][string]$ExplicitRoot)
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitRoot)) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ExplicitRoot '.specrew') -PathType Container)) { return $null }
+        return (Resolve-Path -LiteralPath $ExplicitRoot).Path
+    }
+    $isDeployedCopy = Test-DispatcherIsDeployedCopy
     $starts = if ($isDeployedCopy) { @($PSScriptRoot, (Get-Location).Path) } else { @((Get-Location).Path, $PSScriptRoot) }
     foreach ($start in $starts) {
         $candidate = $start
@@ -963,7 +987,7 @@ function ConvertTo-DispatcherTurnRecordArgument {
 function Get-DispatcherCatalog {
     param([string]$ProjectRoot)
     foreach ($path in @(
-            (Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/refocus-scopes.json'),
+            (Join-Path (Split-Path -Parent (Get-DispatcherEngineScriptsDir -ProjectRoot $ProjectRoot)) 'refocus-scopes.json'),
             (Join-Path $ProjectRoot 'extensions/specrew-speckit/refocus-scopes.json')
         )) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
@@ -979,8 +1003,9 @@ function Get-DispatcherCatalog {
 function Resolve-ProviderCommandPath {
     param([string]$ProjectRoot, [string]$Command)
     # Security control (lens 5 / FR-004): provider commands MUST resolve under the
-    # project's deployed extension tree — an out-of-tree command is refused.
-    $deployedDir = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts'
+    # deployed extension tree this fire runs from (the project's, or a live-engine pin's) — an out-of-tree
+    # command is refused.
+    $deployedDir = Get-DispatcherEngineScriptsDir -ProjectRoot $ProjectRoot
     $candidate = Join-Path $deployedDir (Split-Path -Leaf $Command)
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     # Self-host fallback: the Specrew repo's own internal scripts dir, or the live-engine pin's when one is
@@ -1718,7 +1743,7 @@ try {
     $earlyHostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $null -EncodedBinding $HostBinding
 
     # Self-gate: a stray hook firing outside a Specrew project is a silent no-op.
-    $projectRoot = Get-DispatcherProjectRoot
+    $projectRoot = Get-DispatcherProjectRoot -ExplicitRoot $ProjectRoot
     if ($null -eq $projectRoot) {
         Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
         exit 0

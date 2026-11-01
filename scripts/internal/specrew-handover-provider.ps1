@@ -118,7 +118,9 @@ try {
         }
     }
     foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor', 'HumanAuthorityStore') { . (Join-Path $bdir "$f.ps1") }
-    $workshopAuthorityPath = Join-Path $root '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+    # A valid pin also supplies the deployed extension scripts this provider loads as code.
+    $engineBase = if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) { [string]$liveEngine.Pin.Root } else { $root }
+    $workshopAuthorityPath = Join-Path $engineBase '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
     if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
     # F-174 iteration 011 (T004): load shared-governance so the Stop-hook Update-SpecrewRollingHandover can record
     # the captured human verdict (Add-SpecrewBoundaryAuthorization / Get-SpecrewBoundaryOrder). Same 3-tier

@@ -24,7 +24,11 @@ param(
     # T014: per-host event/output shaping. The neutral -Event vocabulary stays
     # host-blind (SessionStart | PostToolUse | UserPromptSubmit | PreToolUse);
     # the BINDING (per-host hook config) names both when it registers.
-    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude'
+    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude',
+    # Feature 203 T002 (DA-8): the project this fire belongs to, passed by the launcher when it runs this
+    # dispatcher from a live-engine pin. A pin is a checkout of the repository with its own .specrew, so walking up
+    # from this file would find the pin, not the project. Without it, the root is found as before.
+    [string]$ProjectRoot
 )
 
 function Write-EarlyDecisionOnlyNoopIfNeeded {
@@ -622,10 +626,34 @@ function Write-DispatcherUnrecognizedPayloadLog {
     catch { $null = $_ }
 }
 
+function Get-DispatcherLiveEngine {
+    # Feature 203 T002 (DA-8): the live-engine pin, or $null when the helper is not deployed or no root is known.
+    # Beside the deployed copy; the scripts/internal twin finds it in the source tree.
+    param([AllowNull()][string]$ProjectRoot)
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    $helper = @((Join-Path $PSScriptRoot 'live-engine-resolution.ps1'), (Join-Path $PSScriptRoot '../../extensions/specrew-speckit/scripts/live-engine-resolution.ps1')) |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace([string]$helper)) { return $null }
+    try {
+        if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $helper }
+        return (Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot)
+    }
+    catch { return $null }
+}
+
 function Find-DispatcherHostManifestPath {
     param([string]$Kind, [AllowNull()][string]$ProjectRoot)
     $starts = New-Object System.Collections.Generic.List[string]
-    foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
+    # A valid pin supplies the host bindings. A configured but unusable pin skips the project tree: the providers
+    # refuse visibly, and the installed module's bindings only route the event to that refusal.
+    $liveEngine = Get-DispatcherLiveEngine -ProjectRoot $ProjectRoot
+    $pinConfigured = ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured)
+    $walkStarts = if ($pinConfigured) { @() } else { @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot) }
+    if ($pinConfigured -and -not [bool]$liveEngine.Refused) {
+        $pinned = Join-Path ([string]$liveEngine.Pin.Root) ("hosts/{0}/host.psd1" -f $Kind)
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { return $pinned }
+    }
+    foreach ($start in $walkStarts) {
         if (-not [string]::IsNullOrWhiteSpace($start) -and (Test-Path -LiteralPath $start -PathType Container)) {
             $starts.Add((Resolve-Path -LiteralPath $start).Path) | Out-Null
         }
@@ -698,8 +726,23 @@ function Test-IsB3DeliveryEvent {
     return (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'B3DeliveryEvents' -Default @('PostToolUse', 'UserPromptSubmit')))
 }
 
+function Test-DispatcherIsDeployedCopy {
+    return ($PSScriptRoot -match '[\\/]\.specify[\\/]extensions[\\/]specrew-speckit[\\/]scripts[\\/]?$')
+}
+
+function Get-DispatcherEngineScriptsDir {
+    # The deployed extension scripts this fire loads its catalog and providers from: the dispatcher's own folder
+    # when it is a deployed copy (the project's, or a live-engine pin's - Feature 203 T002), else the project's.
+    param([string]$ProjectRoot)
+    if (Test-DispatcherIsDeployedCopy) { return $PSScriptRoot }
+    return (Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts')
+}
+
 function Get-DispatcherProjectRoot {
     # Resolve the project root (the dir holding .specrew) so the dispatcher works from ANY host cwd.
+    #
+    # An explicit root (Feature 203 T002: the launcher passes the host's project directory when it runs a pinned
+    # dispatcher) is used as given and never walked from; one without a .specrew is not a Specrew project.
     #
     # When THIS dispatcher is the DEPLOYED copy — its own directory is
     # <project>/.specify/extensions/specrew-speckit/scripts — its location reliably identifies the project the
@@ -708,7 +751,12 @@ function Get-DispatcherProjectRoot {
     # ~/.specrew), which a cwd-first walk-up would wrongly resolve. When it is the in-repo SOURCE copy
     # (scripts/internal, used in dev/tests) the dispatcher's own location is the framework repo rather than the
     # target project, so resolve from the cwd FIRST (the project under test), falling back to $PSScriptRoot.
-    $isDeployedCopy = $PSScriptRoot -match '[\\/]\.specify[\\/]extensions[\\/]specrew-speckit[\\/]scripts[\\/]?$'
+    param([AllowNull()][string]$ExplicitRoot)
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitRoot)) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ExplicitRoot '.specrew') -PathType Container)) { return $null }
+        return (Resolve-Path -LiteralPath $ExplicitRoot).Path
+    }
+    $isDeployedCopy = Test-DispatcherIsDeployedCopy
     $starts = if ($isDeployedCopy) { @($PSScriptRoot, (Get-Location).Path) } else { @((Get-Location).Path, $PSScriptRoot) }
     foreach ($start in $starts) {
         $candidate = $start
@@ -939,7 +987,7 @@ function ConvertTo-DispatcherTurnRecordArgument {
 function Get-DispatcherCatalog {
     param([string]$ProjectRoot)
     foreach ($path in @(
-            (Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/refocus-scopes.json'),
+            (Join-Path (Split-Path -Parent (Get-DispatcherEngineScriptsDir -ProjectRoot $ProjectRoot)) 'refocus-scopes.json'),
             (Join-Path $ProjectRoot 'extensions/specrew-speckit/refocus-scopes.json')
         )) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
@@ -955,12 +1003,19 @@ function Get-DispatcherCatalog {
 function Resolve-ProviderCommandPath {
     param([string]$ProjectRoot, [string]$Command)
     # Security control (lens 5 / FR-004): provider commands MUST resolve under the
-    # project's deployed extension tree — an out-of-tree command is refused.
-    $deployedDir = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts'
+    # deployed extension tree this fire runs from (the project's, or a live-engine pin's) — an out-of-tree
+    # command is refused.
+    $deployedDir = Get-DispatcherEngineScriptsDir -ProjectRoot $ProjectRoot
     $candidate = Join-Path $deployedDir (Split-Path -Leaf $Command)
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
-    # Self-host fallback: the Specrew repo's own internal scripts dir.
+    # Self-host fallback: the Specrew repo's own internal scripts dir, or the live-engine pin's when one is
+    # configured (Feature 203 T002); an unusable pin offers no fallback.
     $selfHost = Join-Path $ProjectRoot 'scripts/internal'
+    $liveEngine = Get-DispatcherLiveEngine -ProjectRoot $ProjectRoot
+    if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
+        if ([bool]$liveEngine.Refused) { return $null }
+        $selfHost = [string]$liveEngine.Root
+    }
     $candidate = Join-Path $selfHost (Split-Path -Leaf $Command)
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     return $null
@@ -1574,6 +1629,14 @@ function Resolve-DispatcherHookHealthModulePath {
     # holds it, then fall back to the installed module base. Returns $null if it is not found.
     param([AllowNull()][string]$ProjectRoot)
     $rel = 'scripts/internal/continuous-co-review/hook-health-receipt.ps1'
+    # Feature 203 T002: a configured live-engine pin is the only source; an unusable one resolves nothing.
+    $liveEngine = Get-DispatcherLiveEngine -ProjectRoot $ProjectRoot
+    if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
+        if ([bool]$liveEngine.Refused) { return $null }
+        $pinned = Join-Path ([string]$liveEngine.Pin.Root) $rel
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { return $pinned }
+        return $null
+    }
     foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
         if ([string]::IsNullOrWhiteSpace($start) -or -not (Test-Path -LiteralPath $start -PathType Container)) { continue }
         $candidate = (Resolve-Path -LiteralPath $start).Path
@@ -1680,7 +1743,7 @@ try {
     $earlyHostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $null -EncodedBinding $HostBinding
 
     # Self-gate: a stray hook firing outside a Specrew project is a silent no-op.
-    $projectRoot = Get-DispatcherProjectRoot
+    $projectRoot = Get-DispatcherProjectRoot -ExplicitRoot $ProjectRoot
     if ($null -eq $projectRoot) {
         Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
         exit 0

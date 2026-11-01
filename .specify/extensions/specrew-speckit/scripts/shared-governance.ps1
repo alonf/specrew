@@ -1,6 +1,19 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Get-SpecrewEngineInternalRoot {
+    # Feature 203 T002 (DA-8): the scripts/internal root that engine helpers load from. No live-engine pin
+    # configured -> the project's own scripts/internal, as before. A valid pin -> the pin's. A configured but
+    # unusable pin -> $null, so callers load nothing rather than fall back to unreviewed project-tree code.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $helper = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return (Join-Path $ProjectRoot 'scripts/internal') }
+    if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $helper }
+    $resolved = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot
+    if ([bool]$resolved.Refused) { return $null }
+    return [string]$resolved.Root
+}
+
 function Resolve-ProjectPath {
     # Resolve a project path argument against PowerShell's current location rather than the
     # .NET process CurrentDirectory, which on Windows often stays at the shell startup dir
@@ -2085,8 +2098,10 @@ function Select-SpecrewProductSourcePaths {
     if ($candidates.Count -eq 0) { return @() }
 
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
-        $resolverPath = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1'
-        if (Test-Path -LiteralPath $resolverPath -PathType Leaf) { try { . $resolverPath } catch { $null = $_ } }
+        $resolverPath = $null
+        $engineInternal = Get-SpecrewEngineInternalRoot -ProjectRoot $ProjectRoot
+        if ($engineInternal) { $resolverPath = Join-Path $engineInternal 'continuous-co-review/worktree-reviewer.ps1' }
+        if ($resolverPath -and (Test-Path -LiteralPath $resolverPath -PathType Leaf)) { try { . $resolverPath } catch { $null = $_ } }
     }
     $machineryRoots = @()
     if (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue) {
@@ -7808,8 +7823,10 @@ function Get-SpecrewReviewCoverageState {
     # Source drift since the covered tree, on the ONE refined classification (machinery-aware,
     # execution-records-quiet, standard-artifacts-stale).
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
-        $digestHelper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1'
-        if (Test-Path -LiteralPath $digestHelper -PathType Leaf) { try { . $digestHelper } catch { $null = $_ } }
+        $digestHelper = $null
+        $engineInternal = Get-SpecrewEngineInternalRoot -ProjectRoot $ProjectRoot
+        if ($engineInternal) { $digestHelper = Join-Path $engineInternal 'continuous-co-review/reviewed-state-digest.ps1' }
+        if ($digestHelper -and (Test-Path -LiteralPath $digestHelper -PathType Leaf)) { try { . $digestHelper } catch { $null = $_ } }
     }
     if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
         try {
@@ -7829,8 +7846,10 @@ function Get-SpecrewReviewCoverageState {
     # Rounds remaining, from the ONE production counter - never a parallel reimplementation. The
     # engine ladder-loads from the project's own deployed bundle (or this repository's source).
     if (-not (Get-Command -Name 'Get-ReviewCampaignRoundBudgetState' -ErrorAction SilentlyContinue)) {
-        $engineLoad = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/_load.ps1'
-        if (Test-Path -LiteralPath $engineLoad -PathType Leaf) { try { . $engineLoad } catch { $null = $_ } }
+        $engineLoad = $null
+        $engineInternal = Get-SpecrewEngineInternalRoot -ProjectRoot $ProjectRoot
+        if ($engineInternal) { $engineLoad = Join-Path $engineInternal 'continuous-co-review/_load.ps1' }
+        if ($engineLoad -and (Test-Path -LiteralPath $engineLoad -PathType Leaf)) { try { . $engineLoad } catch { $null = $_ } }
     }
     if (Get-Command -Name 'Get-ReviewCampaignRoundBudgetState' -ErrorAction SilentlyContinue) {
         try {
@@ -8356,6 +8375,20 @@ function Resolve-SpecrewModuleInternalDirectory {
         [AllowNull()][object[]]$InstalledModules
     )
 
+    # Feature 203 T002 (DA-8): a configured live-engine pin is the only source; an unusable one resolves nothing.
+    $liveEngineHelper = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+    if (Test-Path -LiteralPath $liveEngineHelper -PathType Leaf) {
+        if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $liveEngineHelper }
+        $liveEngine = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot
+        if ([bool]$liveEngine.Pin.Configured) {
+            if ([bool]$liveEngine.Refused) { return $null }
+            $pinned = [string]$liveEngine.Root
+            if ((Test-Path -LiteralPath (Join-Path $pinned 'session-management.ps1') -PathType Leaf) -and
+                (Test-Path -LiteralPath (Join-Path $pinned 'feature-claims.ps1') -PathType Leaf)) { return $pinned }
+            return $null
+        }
+    }
+
     $candidates = [System.Collections.Generic.List[string]]::new()
     if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal')) }
     if (-not [string]::IsNullOrWhiteSpace($ExtensionScriptsRoot)) { $candidates.Add((Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $ExtensionScriptsRoot))) 'scripts/internal')) }
@@ -8727,8 +8760,10 @@ function Get-SpecrewReviewCurrentTreeId {
     param([Parameter(Mandatory)][string]$ProjectRoot)
     try {
         if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
-            $helper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1'
-            if (Test-Path -LiteralPath $helper -PathType Leaf) { . $helper }
+            $helper = $null
+            $engineInternal = Get-SpecrewEngineInternalRoot -ProjectRoot $ProjectRoot
+            if ($engineInternal) { $helper = Join-Path $engineInternal 'continuous-co-review/reviewed-state-digest.ps1' }
+            if ($helper -and (Test-Path -LiteralPath $helper -PathType Leaf)) { . $helper }
         }
         if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) { return '' }
         $state = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot

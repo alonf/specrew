@@ -468,7 +468,21 @@ function Get-SpecrewWorkshopLifecycleState {
             }
             $humanTurnContract = [string]$humanTurnContractProperty.Value
             $authorityStorePath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
-            if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+            # Feature 203 T002 (DA-8): with a live-engine pin configured, the store loads from the pin's deployed tree
+            # only, never the project's; an unusable pin loads none.
+            $liveEngineHelper = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'extensions/specrew-speckit/scripts/live-engine-resolution.ps1'
+            $pinnedStore = $false
+            if (Test-Path -LiteralPath $liveEngineHelper -PathType Leaf) {
+                if (-not (Get-Command Resolve-SpecrewLiveEngineExtensionScript -ErrorAction SilentlyContinue)) { . $liveEngineHelper }
+                if ([bool](Get-SpecrewLiveEnginePin -ProjectRoot $ProjectRoot).Configured) {
+                    $pinnedStore = $true
+                    $authorityStorePath = [string](Resolve-SpecrewLiveEngineExtensionScript -ProjectRoot $ProjectRoot -Name 'workshop-authority-store.ps1')
+                }
+            }
+            if ($pinnedStore -and [string]::IsNullOrWhiteSpace($authorityStorePath)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-human-turn-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if (-not $pinnedStore -and -not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
                 $moduleAuthorityPath = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
                 if (Test-Path -LiteralPath $moduleAuthorityPath -PathType Leaf) { $authorityStorePath = $moduleAuthorityPath }
             }

@@ -13,7 +13,8 @@ $script:SpecrewLiveEngineRequiredFiles = @(
     'scripts/internal/bootstrap/HumanAuthorityStore.ps1',
     'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1',
     'scripts/internal/continuous-co-review/worktree-navigator.ps1',
-    'extensions/specrew-speckit/scripts/shared-governance.ps1'
+    'extensions/specrew-speckit/scripts/shared-governance.ps1',
+    '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
 )
 
 function Get-SpecrewLiveEngineRecordPath {
@@ -105,4 +106,14 @@ function Resolve-SpecrewLiveEngineInternalRoot {
     }
     if (-not [bool]$pin.Valid) { return [pscustomobject]@{ Refused = $true; Root = $null; Pin = $pin } }
     return [pscustomobject]@{ Refused = $false; Root = (Join-Path ([string]$pin.Root) 'scripts/internal'); Pin = $pin }
+}
+
+function Resolve-SpecrewLiveEngineExtensionScript {
+    # A script from the deployed extension tree that the hooks load as code (not data): the pin's copy when a pin is
+    # configured and usable, the project's .specify copy when none is configured (today's resolution), and $null when
+    # a configured pin is unusable. The hooks run from the pin's .specify, so the project's copy is unreviewed code.
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot, [Parameter(Mandatory = $true)][string]$Name)
+    $pin = Get-SpecrewLiveEnginePin -ProjectRoot $ProjectRoot
+    $base = if (-not [bool]$pin.Configured) { $ProjectRoot } elseif ([bool]$pin.Valid) { [string]$pin.Root } else { return $null }
+    return (Join-Path $base (Join-Path '.specify/extensions/specrew-speckit/scripts' $Name))
 }

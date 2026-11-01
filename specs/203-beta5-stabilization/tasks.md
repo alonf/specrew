@@ -56,11 +56,23 @@ then T014.
     and never silently fall back to the worktree's source or the deployed bundle. Today's engine loader falls back
     to the deployed bundle or the repository source. RED: `live-engine-resolution.Tests.ps1` removes and corrupts
     the pin and asserts the refusal and that no project-tree engine file was loaded.
+  - **The hooks run from the pin (implement ruling, 2026-11-01; DRIFT-007):** with a pin configured, the hook
+    launcher runs the pin's deployed dispatcher, which reads its catalog and providers from its own tree, and every
+    hook-path code load (including the deployed extension scripts) resolves to the pin. The `.specify` mirror is
+    synced in every commit again. Condition (a): the launcher passes the host's project directory as
+    `-ProjectRoot` and the dispatcher uses it as given. RED and acceptance: `tests/unit/live-engine-hook-root.tests.ps1`
+    runs hook events through a configured pin and asserts nothing is written into the pin or the profile's
+    `.specrew`, no worktree engine copy runs, the writes land in the project, and a pin that cannot be found refuses
+    visibly. Condition (b): scripts the crew runs itself keep running from this worktree's `.specify` (accepted).
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,
-    `extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1`, both dispatcher copies,
-    `scripts/internal/live-engine-pin.ps1`, `tests/unit/live-engine-resolution.Tests.ps1`.
+    `extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1`,
+    `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, both dispatcher and deployer copies,
+    `extensions/specrew-speckit/scripts/live-engine-resolution.ps1`, `shared-governance.ps1`,
+    `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`, `scripts/internal/live-engine-pin.ps1`, the `.specify`
+    mirror of each, `.specrew/verification-plan.json`, `tests/unit/live-engine-resolution.tests.ps1`,
+    `tests/unit/live-engine-hook-root.tests.ps1`.
 - [ ] T001 [owner: Implementer] [sp: 2.0] **Host facts in scratch directories (W0).**
   - **Work:** in scratch directories only (rule `feature-203.rule.scratch-probes-only`): both Copilot firings
     (native and Claude-hook) for one prompt; a paste on Copilot and on Codex; a Claude hook emitting

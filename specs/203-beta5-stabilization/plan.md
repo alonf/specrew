@@ -41,8 +41,8 @@ capture code judges the maintainer's approvals.
 
 Bound by the design gate: the existing layered hooks plus the campaign fact store, with the agreed component map
 in iterations/001/design-analysis.md (Co-Design Record). Component-to-file anchors (source of truth; the
-`.specify` mirrors and the `scripts/internal` / `extensions` twin copies change only at a deployment point, see
-"When 203's changes reach the live hooks"):
+`.specify` mirrors and the `scripts/internal` / `extensions` twin copies change in the same commit, and the live
+hooks run from the pin, see "When 203's changes reach the live hooks"):
 
 | Component | Files |
 | --- | --- |
@@ -57,7 +57,7 @@ in iterations/001/design-analysis.md (Co-Design Record). Component-to-file ancho
 | Scoped round | `worktree-review-orchestrator.ps1`, `worktree-reviewer.ps1`, `review-target-port.ps1` |
 | Token usage | `review-claude-harness-port.ps1`, `review-codex-harness-port.ps1`, `review-copilot-harness-port.ps1`, `review-progress-projection.ps1` |
 | Stop check (FR-046) | `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`, `turn-end-store.ps1` |
-| Live engine pin | the providers' engine resolution (`specrew-handover-provider.ps1:82-87`, `specrew-co-review-navigator-provider.ps1:60`, `specrew-bootstrap-provider.ps1`, dispatcher 955-965); a pin script under `scripts/internal/` |
+| Live engine pin | `extensions/specrew-speckit/scripts/live-engine-resolution.ps1`; the providers' and `ProjectMetadataAccessor.ps1`'s engine resolution; the dispatcher's `-ProjectRoot`, catalog and provider-command resolution; the hook launchers in `deploy-refocus-hooks.ps1`; `scripts/internal/live-engine-pin.ps1` |
 
 ## Review budget
 
@@ -93,23 +93,43 @@ boundaries, and they reach the live hooks only after an iteration's review, so a
 the maintainer's approvals. The research found that in this self-host repo the live providers load engine code
 from the project working tree first, so an uncommitted edit would go live at once. The plan:
 
-1. **W1 (first, deployed alone).** The providers' engine resolution changes so the self-host tree yields to an
-   explicitly set `SPECREW_MODULE_PATH`. A pin is created outside the worktree,
-   `%USERPROFILE%\.specrew\live-engine\203-beta5-stabilization`, as a detached `git worktree` at W1's reviewed
-   commit, and this worktree's hook launcher is pointed at it (`-ModulePath`). W1 gets its own review round on
-   today's engine; after sign-off the `.specify` mirror is synced from the same commit and the pin is created.
-   From then on, engine edits in this worktree are inert.
-2. **During the iteration.** Source changes land in `extensions/` and `scripts/internal/` only. The `.specify`
-   mirror and the pin stay at the last deployed commit. The mirror-parity check is enforced at deployment
-   points and at the pull request, not on every branch commit; a deploy-pending record
-   (`specs/203-beta5-stabilization/iterations/001/deploy-pending.md`) lists what is waiting.
-3. **Deployment point.** After the iteration's review sign-off, and before the Claude-only capture check
-   (FR-045): the pin advances to the signed-off commit and the `.specify` mirror is synced from it, in one
-   commit. The capture check then exercises the deployed engine.
-4. **Iteration 002** repeats the same cycle; its review is the first to run on the budget model.
+1. **W1 (first, deployed alone).** A pin is a detached `git worktree` of a reviewed commit outside the worktree,
+   `%USERPROFILE%\.specrew\live-engine\203-beta5-stabilization`, configured by `.specrew/runtime/live-engine.json`
+   (machine-local, git-ignored) and written only by `scripts/internal/live-engine-pin.ps1` (DRIFT-004). With a
+   pin configured, the hooks run entirely from it: the hook launcher (Claude's per-project command and the
+   per-machine launcher Codex and Copilot use) runs the pin's deployed dispatcher, the dispatcher reads its
+   catalog and providers from its own (the pin's) `.specify` tree, and the providers load `scripts/internal`,
+   `hosts/` and the deployed extension scripts from the pin. Only data and state come from the project.
+   W1 gets its own review round on today's engine; after sign-off the pin is created at the signed-off commit
+   and this worktree's hooks are redeployed so the launcher carries the pin hand-off. From then on, edits in this
+   worktree, including its `.specify`, are inert for the live hooks.
+2. **The project root is explicit (implement ruling, 2026-11-01, condition a).** A pin is a checkout of this
+   repository with its own `.specrew`, and `%USERPROFILE%\.specrew` holds the per-machine launcher, so a
+   dispatcher that walked up from its own folder would write approvals and state there. When the launcher runs
+   the pin's dispatcher it passes the host's project directory (`CLAUDE_PROJECT_DIR`, or the payload's cwd for
+   the per-machine launcher) as `-ProjectRoot`; the dispatcher uses it as given. A pin record whose pin cannot be
+   found refuses visibly; nothing falls back to the worktree's deployed copy.
+   `tests/unit/live-engine-hook-root.tests.ps1` runs hook events through a configured pin and proves the writes
+   land only in the project: nothing in the pin, nothing in the profile's `.specrew`, and no worktree engine copy
+   runs.
+3. **During the iteration.** The inherited `provider-mirror-parity` rule applies unchanged: every
+   `extensions/specrew-speckit` change syncs its `.specify` mirror in the same commit, so the parity suites stay
+   green and the pre-review verification lanes can run. The pin stays at the last deployed commit.
+4. **Scripts the crew runs itself (implement ruling, 2026-11-01, condition b).** `declare-turn-end.ps1`,
+   `sync-boundary-state.ps1`, `validate-governance.ps1` and the other governed scripts the crew invokes keep
+   running from this worktree's `.specify`, so they run the branch's code as soon as it is committed. Accepted by
+   the maintainer. If one of them breaks mid-iteration, the crew runs that script from the pin instead.
+5. **Deployment point.** After the iteration's review sign-off, and before the Claude-only capture check
+   (FR-045): the pin advances to the signed-off commit. The capture check then exercises the deployed engine.
+6. **Iteration 002** repeats the same cycle; its review is the first to run on the budget model.
 
-This changes the inherited `provider-mirror-parity` rule ("syncs its `.specify` mirror in the same commit") for
-203: the manifest records the scoped exception.
+T002 itself is the one exception to "only reviewed code goes live": until its own sign-off no pin exists, so the
+`.specify` sync of T002's commits puts T002's code in the live hooks before its review. That code is inert
+without a pin record; its regression sweep shows the no-pin path behaves as before.
+
+An earlier version of this section held the `.specify` mirror back until each deployment point, which made the
+mirror-parity suites fail between deployments and blocked the pre-review verification lanes (DRIFT-005, now
+superseded by DRIFT-007). The 203 scoped exception to `provider-mirror-parity` is withdrawn.
 
 ## Work breakdown, effort, and FR-to-test mapping (iteration 001)
 
@@ -121,7 +141,7 @@ then the fix turns it green.
 | # | Work item | FRs | SP | RED fixture (through the shipped path) |
 | --- | --- | --- | --- | --- |
 | W0 | Host facts in scratch directories only: both Copilot firings for one prompt (native and Claude-hook), asserting one stand-in identity; a paste on Copilot and on Codex; Claude `systemMessage` visibility (the maintainer observes it); a Claude compaction entry as a fixture | FR-016, FR-017, FR-029 (DA-4) | 2.0 | Fixtures under `tests/fixtures/hook-payloads/<host>/` with provenance; `typed-turn-identity.Tests.ps1` asserts one identity for the two Copilot firings |
-| W1 | Live engine pin: resolution yields to `SPECREW_MODULE_PATH`; pin script (create, advance, show); launcher wiring; twin-copy parity; deployed alone after its own review | clarify instruction | 2.0 | `live-engine-resolution.Tests.ps1`: with the variable set, a deliberately broken worktree engine file is not loaded |
+| W1 | Live engine pin: a configured pin supplies every engine load and the deployed hook scripts; the launcher runs the pin's dispatcher with an explicit project root; pin script (create, advance, show); twin-copy parity; deployed alone after its own review | clarify instruction; implement ruling 2026-11-01 | 2.0 | `live-engine-resolution.tests.ps1`: a valid pin loads engine code from the pin only, an unusable one refuses and loads nothing; `live-engine-hook-root.tests.ps1`: hook events through a pin write only into the project |
 | W2 | `Resolve-SpecrewTypedAct`: act DTO, identity per binding (DA-2, Copilot normalization), standalone rule (DA-3), pending-state routing to one act | FR-014, FR-015, FR-018, FR-020, FR-023 | 4.0 | `typed-act-classifier.Tests.ps1`: quoted, backticked and pasted phrases yield none; a compaction summary yields none; one turn yields one act |
 | W3 | `Write-SpecrewTypedAct` with re-derivation; rewire the router, turn-end recovery, backstop and writer CLIs; remove per-path rules and `--approve-round`; supersession fact | FR-010, FR-014, FR-021, FR-022, FR-025 | 4.0 | `typed-act-writer.Tests.ps1`: an agent citing a real `confirm` turn mints no verdict; a re-typed approval supersedes, never reuses |
 | W4 | Verdict pairing against the pending-crossing record across a compaction; mismatched boundary reported, nothing recorded | FR-019, FR-020 | 1.5 | `verdict-pairing.Tests.ps1`: packet, compaction, verdict records once; `approved for tasks` while plan waits records nothing |
@@ -133,7 +153,7 @@ then the fix turns it green.
 | W10 | FR-046: the Stop check verifies the reply's decision parts; the word-for-word declared-vs-reply comparison goes | FR-046 | 1.5 | `presented-check.Tests.ps1`: a reworded content line passes; a missing marker or option blocks |
 | W11 | Audit and correlation: record-to-typed-turn join audit; reservations cite grant and reset; turn identity and campaign id on records | FR-024, FR-041 (part) | 1.5 | `authority-audit.Tests.ps1`: a record with no joined typed turn fails the audit |
 | W12 | Test evidence suite: no-human-turn fixtures for every mint path, non-approval phrase fixtures, cross-host replay incl. compaction, budget economics fixtures | FR-042, FR-043 | 1.5 | the suites above, collected and run in the census and a PR lane |
-| W13 | Deployment and the Claude-only capture check: pin advance plus `.specify` sync after sign-off; the maintainer's check (verdict after a compaction, quoted phrase, pasted phrase) with records | FR-045 | 1.0 | `iterations/001/capture-check.md` with the three results |
+| W13 | Deployment and the Claude-only capture check: the pin advances to the signed-off commit; the maintainer's check (verdict after a compaction, quoted phrase, pasted phrase) with records | FR-045 | 1.0 | `iterations/001/capture-check.md` with the three results |
 
 ## Test strategy
 

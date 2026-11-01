@@ -431,6 +431,18 @@ function Get-SpecrewMaterialRuntimeState {
 
 
 
+function Resolve-ConformanceExtensionScriptPath {
+    # Feature 203 T002 (DA-8): a deployed extension script this provider loads as code - the live-engine pin's copy
+    # when one is configured ($null when it is unusable), else the project's, as before.
+    param([string]$ProjectRoot, [string]$Name)
+    $liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Test-Path -LiteralPath $liveEnginePath -PathType Leaf)) {
+        return (Join-Path $ProjectRoot (Join-Path '.specify/extensions/specrew-speckit/scripts' $Name))
+    }
+    if (-not (Get-Command Resolve-SpecrewLiveEngineExtensionScript -ErrorAction SilentlyContinue)) { . $liveEnginePath }
+    return (Resolve-SpecrewLiveEngineExtensionScript -ProjectRoot $ProjectRoot -Name $Name)
+}
+
 function Resolve-SpecrewBootstrapDir {
     # The scripts/internal/bootstrap dir (ConversationCaptureAccessor + ProjectMetadataAccessor). Direct candidates
     # (project tree, then SPECREW_MODULE_PATH) FIRST; the Get-Module -ListAvailable scan (slow over OneDrive /
@@ -678,8 +690,8 @@ function Resolve-SpecrewWorkshopQuestionPause {
             # agenda-decision identity. RenderOnly writes the immutable agenda content separately. Bind that digest
             # only when the visible assistant turn contains the canonical agenda block.
             $proposalPath = Join-Path $ProjectRoot '.specrew/handover/workshop-agenda-proposal.json'
-            $authorityPath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
-            if ((Test-Path -LiteralPath $proposalPath -PathType Leaf) -and (Test-Path -LiteralPath $authorityPath -PathType Leaf)) {
+            $authorityPath = Resolve-ConformanceExtensionScriptPath -ProjectRoot $ProjectRoot -Name 'workshop-authority-store.ps1'
+            if ((Test-Path -LiteralPath $proposalPath -PathType Leaf) -and -not [string]::IsNullOrWhiteSpace($authorityPath) -and (Test-Path -LiteralPath $authorityPath -PathType Leaf)) {
                 try {
                     if (-not (Get-Command Get-SpecrewWorkshopAgendaDigest -ErrorAction SilentlyContinue)) { . $authorityPath }
                     $proposal = Get-Content -LiteralPath $proposalPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 12 -ErrorAction Stop
@@ -2077,8 +2089,8 @@ try {
                 $conflict = $workshopQuestion.binding_conflict
                 [void]$sb.AppendLine(("Specrew paused this workshop because two recorded answers disagree: decision '{0}' was '{1}' in '{2}' and is now '{3}' in '{4}'. Do not continue to another topic yet. If the later answer came from a default, keep the earlier human-confirmed answer. If the human intentionally changed it, ask one concise question to confirm which answer should apply, then update the affected workshop records consistently." -f $conflict.binding, $conflict.prior_value, $conflict.prior_lens, $conflict.value, $conflict.lens))
                 if (-not (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue)) {
-                    $workshopAuthorityPath = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
-                    if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
+                    $workshopAuthorityPath = Resolve-ConformanceExtensionScriptPath -ProjectRoot $projectRoot -Name 'workshop-authority-store.ps1'
+                    if (-not [string]::IsNullOrWhiteSpace($workshopAuthorityPath) -and (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf)) { . $workshopAuthorityPath }
                 }
                 if (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue) {
                     [void]$sb.AppendLine((Get-SpecrewWorkshopRefusalContractText))
@@ -2139,8 +2151,8 @@ try {
                     [void]$sb.AppendLine('The implementation discussion is marked complete, but its agreed coding rules have not been recorded. Record those rules through the project-provided workshop action, then show the current question again. Do not continue to another topic first.')
                 }
                 if (-not (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue)) {
-                    $workshopAuthorityPath = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
-                    if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
+                    $workshopAuthorityPath = Resolve-ConformanceExtensionScriptPath -ProjectRoot $projectRoot -Name 'workshop-authority-store.ps1'
+                    if (-not [string]::IsNullOrWhiteSpace($workshopAuthorityPath) -and (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf)) { . $workshopAuthorityPath }
                 }
                 if (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue) {
                     $answerState = if ($preScaffoldWorkshopAttempt) { 'none' } else { 'preserved' }

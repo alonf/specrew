@@ -3,7 +3,7 @@
   "plan_id": "f199.i003.slice.v1",
   "commands": [
     {
-      "command_id": "iteration-003-governance-202",
+      "command_id": "iteration-001-governance-203",
       "executable": "pwsh",
       "arguments": [
         "-NoProfile",
@@ -12,7 +12,7 @@
         "-ProjectPath",
         ".",
         "-IterationPath",
-        "specs/202-beta4-1-ux-stabilization/iterations/003",
+        "specs/203-beta5-stabilization/iterations/001",
         "-NoCacheRead",
         "-NoParallel"
       ],
@@ -38,7 +38,40 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Explicit governance validation of the ACTIVE iteration - feature 202 iteration 003 (re-pointed 2026-10-21 before iteration 003's review round: iteration 002 is sealed, iteration 003 DRIFT-001). Before that: iteration 002 (re-pointed 2026-10-17 at iteration 002's before-implement, iteration 002 DRIFT-002: iteration 001 is sealed). Earlier history: RE-POINTED 2026-10-13 for the THIRD time (202 DRIFT-011): the plan still named 199's closed stub iteration 003, which fails on records a sealed stub never had (no task rows, no Completed date, no retro sections), and on a review check that now reads 202's campaign as the active one. The recurrence the 199 entries predicted. Making the command name the active iteration rather than a number remains open (beta4 owned it; now beta5)."
+      "label": "Explicit governance validation of the ACTIVE iteration - feature 203 iteration 001 (re-pointed 2026-11-01 after T002's first review round failed before the reviewer ran, 203 DRIFT-008: the lane still named 202's closed iteration 003, which now fails on closed-iteration records). Before that: Explicit governance validation of the ACTIVE iteration - feature 202 iteration 003 (re-pointed 2026-10-21 before iteration 003's review round: iteration 002 is sealed, iteration 003 DRIFT-001). Before that: iteration 002 (re-pointed 2026-10-17 at iteration 002's before-implement, iteration 002 DRIFT-002: iteration 001 is sealed). Earlier history: RE-POINTED 2026-10-13 for the THIRD time (202 DRIFT-011): the plan still named 199's closed stub iteration 003, which fails on records a sealed stub never had (no task rows, no Completed date, no retro sections), and on a review check that now reads 202's campaign as the active one. The recurrence the 199 entries predicted. Making the command name the active iteration rather than a number remains open (beta4 owned it; now beta5)."
+    },
+    {
+      "command_id": "f203-i001-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/live-engine-resolution.tests.ps1','tests/unit/live-engine-hook-root.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 150,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 203 iteration 001 suites, added 2026-11-01 with T002 (203 DRIFT-007, DRIFT-008). live-engine-resolution: with no pin configured engine resolution is today's; a valid pin loads engine code from the pin only; a configured pin that is missing or corrupt refuses in plain words and loads nothing. live-engine-hook-root (the maintainer's condition (a)): hook events run through a configured pin, by Claude's deployed command and by the per-machine launcher, write only into the project - nothing into the pin (which has its own .specrew) or the profile's .specrew, and none of the project's own deployed engine copies run; a pin that cannot be found refuses visibly. Measured together 59.5 s against 150 s (2.52x)."
     },
     {
       "command_id": "f202-slice-suites-a",
@@ -203,7 +236,7 @@
       },
       "label": "Feature 202 iteration 003 suites, added 2026-10-21 (T031, T032, B4F-146). closeout-records-on-approval: through the real closeout sync and the real approval capture in a temp git project, the closed-iterations index does not list an iteration while its closeout decision is pending (asked once or twice), the approval adds it once and seals the iteration; T032: while the feature-closeout decision is pending the session stays active and the pointer, the session lock and the claim stay, the approval releases all four and rewrites the identity and launch-prompt text, and the validator's closure rule allows the pending decision; the repository's own stores stay unchanged. Measured alone 19 s against 120 s."
     },
-{
+    {
       "command_id": "f199-class-guards-a",
       "executable": "pwsh",
       "arguments": [

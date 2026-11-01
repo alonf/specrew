@@ -261,6 +261,17 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH) -and (Test-Path 
 $launcherPath = (Join-Path $userHome '.specrew/specrew-hook-launch.ps1') -replace '\\', '/'
 $optOutMarker = Resolve-ProjectPathFromManifest -RelativePath ([string](Get-ManifestValue -Map $hookBindings -Key 'OptOutMarkerFile')) -FieldName 'OptOutMarkerFile'
 
+function Get-LiveEnginePinLauncherText {
+    # Feature 203 T002 (DA-8): the launcher half of the live-engine pin, one line of PowerShell shared by every
+    # launcher shape. It reads $projectRoot and $dispatcher and leaves $pinArgs for the dispatcher call. With no pin
+    # record it changes nothing. With one, $dispatcher becomes the pin's copy and $pinArgs carries the project root,
+    # so the pinned dispatcher never walks up from the pin (which has its own .specrew). A record whose pin cannot
+    # be found refuses in plain words; nothing falls back to this project's deployed copy.
+    param([string]$DispatcherRelPath)
+    $refusal = 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The pinned copy named in .specrew/runtime/live-engine.json could not be found. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?'
+    return ('$pinArgs = @{{}}; $pinRecord = Join-Path $projectRoot ''.specrew/runtime/live-engine.json''; if (Test-Path -LiteralPath $pinRecord -PathType Leaf) {{ $pinRoot = ''''; try {{ $pinRoot = [string](Get-Content -LiteralPath $pinRecord -Raw | ConvertFrom-Json).path }} catch {{ $pinRoot = '''' }}; $pinned = if ([string]::IsNullOrWhiteSpace($pinRoot)) {{ '''' }} else {{ Join-Path $pinRoot ''{0}'' }}; if ([string]::IsNullOrWhiteSpace($pinned) -or -not (Test-Path -LiteralPath $pinned -PathType Leaf)) {{ throw ''{1}'' }}; $dispatcher = $pinned; $pinArgs[''ProjectRoot''] = $projectRoot }}; ' -f $DispatcherRelPath, $refusal)
+}
+
 function Get-SpecrewHookCommand {
     param([string]$EventName)
     # Command shape is host manifest data (`RefocusHookBindings.CommandMode`),
@@ -299,7 +310,9 @@ function Get-SpecrewHookCommand {
             if (-not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
                 $hostBindingEncodedArg = " -HostBinding '" + ($hostRuntimeBinding.Replace("'", "''")) + "'"
             }
-            $scriptText = ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}; $dispatcher = Join-Path $projectRoot ''{1}''; if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) {{ throw "Specrew dispatcher not found at ''$dispatcher''." }}; & $dispatcher -Event ''{2}'' -HostKind {3}{4}' -f $escapedVariable, $escapedDispatcher, $escapedEvent, $HostKind, $hostBindingEncodedArg)
+            # Feature 203 T002 (DA-8): a project with a live-engine pin record runs the pin's dispatcher, told the
+            # project root explicitly; a record whose pin cannot be found refuses, and nothing falls back.
+            $scriptText = ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}; $dispatcher = Join-Path $projectRoot ''{1}''; {5}if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) {{ throw "Specrew dispatcher not found at ''$dispatcher''." }}; & $dispatcher -Event ''{2}'' -HostKind {3} @pinArgs{4}' -f $escapedVariable, $escapedDispatcher, $escapedEvent, $HostKind, $hostBindingEncodedArg, (Get-LiveEnginePinLauncherText -DispatcherRelPath $escapedDispatcher))
             $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($scriptText))
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
         }
@@ -515,10 +528,16 @@ if ([string]::IsNullOrWhiteSpace($dispatcher)) {
     exit 0
 }
 
+# A project with a live-engine pin runs the pin's dispatcher, told this project's root; a pin that cannot be
+# found refuses (the one exit that is not 0), and nothing falls back to the project's deployed copy.
+$projectRoot = $dispatcher
+foreach ($level in 1..5) { $projectRoot = Split-Path -Parent $projectRoot }
+__SPECREW_LIVE_ENGINE_PIN__
+
 # Hand off to the project's deployed dispatcher. Pass the captured payload via -EventJson so the dispatcher does
 # not try to re-read the now-consumed stdin (only when non-empty). The dispatcher's stdout (injection output)
 # flows through this process to the host. Always exit 0.
-$dispatchArgs = @{ Event = $Event; HostKind = $HostKind; ProviderTimeoutSeconds = $ProviderTimeoutSeconds }
+$dispatchArgs = @{ Event = $Event; HostKind = $HostKind; ProviderTimeoutSeconds = $ProviderTimeoutSeconds } + $pinArgs
 if (-not [string]::IsNullOrWhiteSpace($raw)) { $dispatchArgs['EventJson'] = $raw }
 if (-not [string]::IsNullOrWhiteSpace($HostBinding)) { $dispatchArgs['HostBinding'] = $HostBinding }
 try { & $dispatcher @dispatchArgs }
@@ -529,6 +548,7 @@ catch {
 exit 0
 '@
     $launcherBody = $launcherBody.Replace('__SPECREW_PROJECT_ROOT_ENV_VARS__', $projectRootEnvVarLiteral)
+    $launcherBody = $launcherBody.Replace('__SPECREW_LIVE_ENGINE_PIN__', (Get-LiveEnginePinLauncherText -DispatcherRelPath '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'))
     New-Item -ItemType Directory -Path (Split-Path -Parent $launcherPath) -Force | Out-Null
     [System.IO.File]::WriteAllText($launcherPath, $launcherBody, [System.Text.UTF8Encoding]::new($false))
 }

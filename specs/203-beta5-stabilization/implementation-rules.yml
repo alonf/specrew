@@ -158,7 +158,7 @@ selections:
     checked: true
 custom_rules:
   - id: "feature-203.rule.provider-mirror-parity"
-    text: "Every extensions/specrew-speckit script change syncs its .specify mirror (ProviderMirrorParity). 203 scoped exception (maintainer clarify instruction; plan section on when 203 changes reach the live hooks): the .specify mirror and the live-engine pin advance together only at a deployment point after an iteration review sign-off; between deployment points parity is enforced at deployment and at the pull request, and iterations/<NNN>/deploy-pending.md lists what is waiting."
+    text: "Every extensions/specrew-speckit script change syncs its .specify mirror in the same commit (ProviderMirrorParity). No 203 exception: the scoped exception recorded at plan was withdrawn at the implement ruling of 2026-11-01 (DRIFT-005 superseded by DRIFT-007). The live hooks run from the live-engine pin, which advances only at a deployment point after an iteration review sign-off, so a synced .specify mirror never reaches the live hooks unreviewed."
     scope: "feature-203"
     provenance: "free-text"
   - id: "feature-203.rule.psd1-filelist"
