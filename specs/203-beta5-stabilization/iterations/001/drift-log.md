@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 11 (DRIFT-001 to DRIFT-011)
-**Resolution rate**: 11 of 11 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-011 carry an open product class
+**Total drift events**: 14 (DRIFT-001 to DRIFT-014)
+**Resolution rate**: 14 of 14 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-014 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -216,3 +216,55 @@
 - **Class closure**: OPEN — evidence for T008 (the navigator reads the campaign's in-flight and pause facts, so it
   never asks for a round while one runs) and for T003/T006 (a round approval is not reported as an unrecorded
   boundary verdict).
+
+### DRIFT-012 — round 1 ran on the 00:05 approval, not the maintainer's 09:48 one, and the crew reported otherwise (observation, evidence for T003-T006)
+
+- **Observed**: 2026-11-01. The maintainer's `approved for review round` at 09:48 local arrived as a queued message
+  and was not captured: `.specrew/review/round-approval/captures.jsonl` held one line (observed 00:05:18Z) until
+  round 2's approval (11:36:55Z). `specrew review --live --approve-round` at 09:49 nevertheless launched round 1
+  (`run-20261101-094929560-b322b837`), spending grant `grant-da0d8a55d8010e5de242`
+  (`cmp-203-beta5-stabilization-i001-round-1`, observed 00:05:41Z). That approval was given before T002 changed,
+  and DRIFT-008 had recorded that it would not be used. The launch printed "Round approved by the human's typed
+  phrase"; the crew repeated that to the maintainer without checking which capture it spent.
+- **Requirement**: spec FR-014 (one mint origin: the typed turn), FR-015 (human-authored, standalone), FR-026 (a
+  report states its own reason, never a false one); measure (a) recorded the first time typed; the standing rule
+  that a launch is checked against the approval the maintainer just typed.
+- **Resolution**: recorded at the maintainer's instruction. Round 1's findings stand (the review itself ran on
+  `040fb169` under verified containment); the authority it ran on was not the one the maintainer gave.
+- **Class closure**: OPEN, inputs for T003 to T006: (1) a queued typed message must count as typed — the second
+  occurrence after DRIFT-006; (2) an unspent round approval must expire when a new commit lands, so an approval
+  given for one tree cannot launch a round on another.
+
+### DRIFT-013 — rounds 1 and 2 were reviewed by Claude, reported to the maintainer as Codex (observation)
+
+- **Observed**: 2026-11-01. Every fact of both runs (`requested`, `reserved`, `preflighted`, `claimed`, `invoked`,
+  `result`) records `harness_id: claude-code-file-primary`. The crew told the maintainer the reviewer was Codex.
+  The round reports print no reviewer name, and the crew did not read it from the result before reporting.
+- **Requirement**: FR-026 (no false report); the clarify instruction that the reviewer is independent of the
+  implementing agent (the implementer here is Claude).
+- **Resolution**: at the maintainer's direction, from now on rounds launch with the Codex reviewer
+  (`specrew review --live --approve-round --host codex`), and each round report to the maintainer names the reviewer
+  that actually ran, read from the run's `result.json` `harness_id`.
+- **Class closure**: OPEN — backlog candidate: the round report should print the reviewer harness, and a launch
+  should refuse, or say plainly, when the configured reviewer is the same host as the implementing agent.
+
+### DRIFT-014 — T002's review: 12 Stop blocks since midnight, most asking for something already given or running (UX evidence, maintainer ruling)
+
+- **Observed**: 2026-11-01, T002's review (campaign `cmp-203-beta5-stabilization-i001`, rounds 1 and 2 and the
+  stop). 12 Stop blocks since midnight; most asked for something the maintainer had already given or that was
+  already running: a round approval while the approved round ran (DRIFT-011), and the round 2 decision again
+  after `stop the review here` had been typed and relayed, while the stop's final check ran. The prompt hook told
+  the maintainer "nothing was recorded" for a round approval that was recorded, 4 times. Round 1 spent an approval
+  the maintainer had ruled out, and both round reports omitted the reviewer that ran (DRIFT-012, DRIFT-013). The
+  round 2 stop text said "That round found nothing that needs your attention" next to "4 findings".
+- **Requirement**: spec FR-011 (the navigator reads pause facts only), FR-026 (no false "not recorded"),
+  FR-014/FR-015 (the typed turn is the mint origin); measure (a) and measure (c); the beta4 UX priority ruling.
+- **Resolution**: at the maintainer's instruction, acceptance items added to tasks.md: T003 (a queued typed
+  approval counts as typed; fixtures from DRIFT-006 and DRIFT-012), T006 (a recorded round approval never gets
+  the "nothing was recorded" notice), T008 (no Stop asks while a round or a stop's final check runs; every round
+  report and stop names the reviewer host, the approval spent with its time, and the commit reviewed; the stop
+  layout never pairs "found nothing that needs your attention" with a findings count).
+- **Named backlog items** (iteration 002 or a later feature), recorded in `docs/beta5-findings.md`:
+  B5F-016, the pre-review checks take about 26 of every 30 minutes and run again for a stop on an unchanged tree;
+  B5F-017, Specrew's stop recommendation judges findings without the task's purpose.
+- **Class closure**: OPEN — closed by T003, T006 and T008 for the acceptance items; B5F-016 and B5F-017 stay open.

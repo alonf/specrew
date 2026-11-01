@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: (none)
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008, T011, T012, T013, T014
-**In Progress**: T002 (live-engine pin): review round 1 found 4 non-blocking findings; 2 to 4 fixed at the maintainer's ruling (DRIFT-010), 1 carried to T006; waiting for the round 2 approval
+**Last Completed Task**: T002
+**Tasks Remaining**: T001, T003, T004, T005, T006, T007, T008, T011, T012, T013, T014
+**In Progress**: (none); next T001, after the pin is created at 52f37279 and the hooks are redeployed
 **Baseline Ref**: fca9067e
-**Updated**: 2026-11-01T11:19:23Z
+**Updated**: 2026-11-01T14:30:59Z
 
 ## Execution Summary
 
@@ -18,7 +18,10 @@
   `.specify` mirror syncs per commit again (DRIFT-005 superseded by DRIFT-007). The round approval given before
   that change is not used.
 - This file was missing until 2026-11-01 (the before-implement scaffold did not write it); added with T002's fix.
-- Task progress: 0 complete, 1 in-progress, 11 pending, 0 blocked.
+- T002 review: round 1 (`run-20261101-094929560-b322b837`) and round 2 (`run-20261101-113731180-a7ccc5b7`), both
+  reviewed by Claude (DRIFT-013); the maintainer stopped the review after round 2 and sign-off completed on
+  `52f37279`. Round 2 findings 2 to 4 are fixed in T001's first commit; finding 1 is carried to T006.
+- Task progress: 1 complete, 0 in-progress, 11 pending, 0 blocked.
 
 ## Notes
 

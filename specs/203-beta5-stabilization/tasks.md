@@ -98,6 +98,8 @@ then T014.
   - **RED:** `tests/unit/typed-act-classifier.Tests.ps1`: a quoted, backticked or pasted phrase mints today on at
     least one path; a compaction summary entry is routed.
   - **Acceptance:** non-approval phrases yield none; a compaction summary yields none; one turn yields one act.
+    **Added after T002's review (DRIFT-014):** a typed approval that arrives queued (a queue-operation entry before
+    the user turn) counts as typed; fixtures from DRIFT-006 and DRIFT-012.
   - **Trace:** FR-014, FR-015, FR-018, FR-020, FR-023.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `hosts/*/host.psd1`,
     `tests/unit/typed-act-classifier.Tests.ps1`.
@@ -146,6 +148,8 @@ then T014.
   - **RED:** `tests/unit/not-recorded-report.Tests.ps1`: an unreadable approval form records nothing and says
     nothing today (B4F-151).
   - **Acceptance:** each branch reports with its reason; a recorded approval never reports.
+    **Added after T002's review (DRIFT-014):** a recorded round approval never gets the "nothing was recorded"
+    notice (it got one 4 times on 2026-11-01).
   - **Trace:** FR-026, FR-027, FR-032 (touched refusals).
   - **Depends:** T001, T003.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `scripts/internal/bootstrap/HandoverStore.ps1`,
@@ -173,6 +177,10 @@ then T014.
   - **RED:** `tests/unit/review-budget-loop.Tests.ps1`: a reviewer is invoked past the cap today (the July shape).
   - **Acceptance:** no reviewer invoked past `budget_total`; two infrastructure failures advance codex to copilot;
     an exhausted order pauses at (d); no stop asks for a round.
+    **Added after T002's review (DRIFT-014):** no Stop asks for a round, a decision or a review while a round or a
+    stop's final check is running. Each round report and stop states, in the engine's own words, the reviewer host
+    that ran, the approval it spent with its time, and the commit reviewed. The stop layout never says "found
+    nothing that needs your attention" next to a findings count.
   - **Trace:** FR-004, FR-005, FR-006, FR-007, FR-009, FR-011, FR-043.
   - **Depends:** T007.
   - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/unit/review-budget-loop.Tests.ps1`.
