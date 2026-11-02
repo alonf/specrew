@@ -55,6 +55,14 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
   TUI: each carried the same session id, text and instant to the millisecond on both channels. Fixtures with
   provenance: `tests/fixtures/hook-payloads/copilot/tui-paste/` (all recognized by the deployed hooks; the Claude
   hook copies stand down).
+- **W0 result, Codex (2026-11-02, Codex 0.163.0 TUI, the maintainer pasting in a scratch folder):** no marker
+  either. The same three prompts reach `UserPromptSubmit` with the same fields and only the text, and Codex's own
+  transcript stores them alike (content kind `user.text`, empty `text_elements`). Each carries its own `turn_id`,
+  which the deployed hook passes on as the message id. Fixtures with provenance:
+  `tests/fixtures/hook-payloads/codex/tui-paste/`.
+- **Outcome for T003:** only Claude marks a paste. On Copilot and Codex the rule stays as decided; there is nothing
+  per host to tighten it with, and the residual (a short one-line paste of a bare phrase reads as typed) is the
+  same on both.
 
 ## R3. Visible line (FR-029, DA-4)
 

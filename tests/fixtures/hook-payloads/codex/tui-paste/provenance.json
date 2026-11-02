@@ -1,0 +1,93 @@
+{
+  "task": "T001 (feature 203, iteration 001)",
+  "host": "codex",
+  "what": "One Codex TUI session: a multi-line paste (9 lines, 877 characters), a one-line paste and a typed line, as they reached the UserPromptSubmit hook, and the session's SessionStart.",
+  "method": "The maintainer ran Codex interactively (with --dangerously-bypass-hook-trust for that run) in a scratch git folder outside any repository, with a scratch CODEX_HOME holding only a capture hook and a copy of auth.json, removed afterwards; the maintainer pasted from a prepared file with Ctrl+V. The capture hook copied raw stdin bytes. Environment values are not recorded.",
+  "redaction": "The user name in every profile path is replaced with probe-user. sha256 is the captured bytes; fixture_sha256 is the file.",
+  "finding": "No paste marker: a pasted prompt reaches the hook exactly as a typed one, same fields, text only, line breaks as LF. Codex's own transcript stores the three user messages alike too (content kind user.text, empty text_elements). Each prompt has its own turn_id, which the deployed hook passes on as the message id.",
+  "fixtures": [
+    {
+      "fixture": "userpromptsubmit-paste-multiline.json",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T17:41:14.3812485Z",
+      "host_version": "codex-cli 0.163.0",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 1496,
+      "sha256": "1b642a0d372ca4a733bb2e519f4a80493660ecc09092916978d347de6eaed5fc",
+      "fixture_sha256": "87e47730e3fb4c06c474ea417dd0601fadce2b665538a76c0408fa8efce6f763",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "prompt",
+        "session_id",
+        "transcript_path",
+        "turn_id"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "userpromptsubmit-paste-one-line.json",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T17:41:28.0148122Z",
+      "host_version": "codex-cli 0.163.0",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 688,
+      "sha256": "034b71ed0653ff8dfe694a397cf2f07fa5446907a28827c88d29da70d7bc6fc5",
+      "fixture_sha256": "17bca4b3b9ed560d4f57cc59edfcdbb3e93a27605e9bc461c0e0791b80a406c4",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "prompt",
+        "session_id",
+        "transcript_path",
+        "turn_id"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "userpromptsubmit-typed-one-line.json",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T17:42:20.1925357Z",
+      "host_version": "codex-cli 0.163.0",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 647,
+      "sha256": "8cce612f0d6e39d1a782f4cb640fd5f2f07efe6e669dba37ad5404760c432b33",
+      "fixture_sha256": "2d1cd642996951e2f27b26a650c2f043e8e184dbb2be21b2b613d1a08d8a4d61",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "prompt",
+        "session_id",
+        "transcript_path",
+        "turn_id"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "sessionstart-startup.json",
+      "event": "SessionStart",
+      "hook_ran_utc": "2026-11-02T17:41:13.6700812Z",
+      "host_version": "codex-cli 0.163.0",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 565,
+      "sha256": "2582e2d45276ca152a6f9901ea06ebbee0f996cf64f19330c7d6b48f730c506a",
+      "fixture_sha256": "58e18eeaa0f1312426ef904752cc8a582cc8bc04d9cd65920fff4abbcc66ac14",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "model",
+        "permission_mode",
+        "session_id",
+        "source",
+        "transcript_path"
+      ],
+      "origin": "recorded"
+    }
+  ]
+}
