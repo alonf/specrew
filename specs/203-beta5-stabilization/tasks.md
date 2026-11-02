@@ -264,6 +264,9 @@ then T014.
     stop's final check is running. Each round report and stop states, in the engine's own words, the reviewer host
     that ran, the approval it spent with its time, and the commit reviewed. The stop layout never says "found
     nothing that needs your attention" next to a findings count.
+    **Evidence added 2026-11-02 (T003):** after T003's commit, mid-iteration with the review planned after T013,
+    Stop blocked the turn with "your last review no longer covers these files" and asked the crew to request
+    `approved for review round`: a stop whose only purpose was a round (FR-006).
   - **Trace:** FR-004, FR-005, FR-006, FR-007, FR-009, FR-011, FR-043.
   - **Depends:** T007.
   - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/unit/review-budget-loop.Tests.ps1`.
