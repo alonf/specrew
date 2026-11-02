@@ -198,6 +198,11 @@ then T014.
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.
     After T004's sign-off and the pin's advance, the crew checks the maintainer's first typed approval of each kind
     against the stores before relying on it.
+  - **Launch and scope (DRIFT-028):** T004's own rounds launch from the pin's review script (`063e233a` until the pin
+    advances). T004 leaves `scripts/internal/continuous-co-review/` unchanged, because a launch resolves its review
+    engine to the worktree's copy and refuses when it differs from the pin's. `record-design-decision.ps1 -HumanTurn`
+    is routed through the re-deriving writer. The acceptance "no script or `!` approval path remains" excludes the
+    review CLI's out-of-session and out-of-band forms, which move to T008.
 
 ## Phase 3: US2, nothing recorded that I did not give, recorded the first time (P1)
 
@@ -259,7 +264,9 @@ then T014.
 - [ ] T008 [owner: Implementer] [sp: 5.0] [US1] **Orchestrator loop on the budget.**
   - **Carries from T004 (DRIFT-027):** removing the per-round approval (FR-010): the `approved for review round` act
     in the classifier, its capture writer and `--approve-round`, in the same change that makes the grant the only
-    launch authority.
+    launch authority. Also from T004 (DRIFT-028): the review CLI's out-of-session form and its out-of-band
+    `--authorization-ref ... --ack-reason` form; and, before T008 changes `continuous-co-review`, a pinned launch must
+    load its review engine from the pin.
   - **Work:** single grant; reservation before invocation against `budget_total`; clean ends, fix-needed runs the
     next round; the top-up starts the next round; `infra_failure_cap` consecutive infrastructure failures advance
     the host; pause facts (a) to (d) are the navigator's only stop source; the stop layout and the phrases

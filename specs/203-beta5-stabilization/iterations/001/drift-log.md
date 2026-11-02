@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 27 (DRIFT-001 to DRIFT-027)
-**Resolution rate**: 27 of 27 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 and DRIFT-025 carry an open product class
+**Total drift events**: 28 (DRIFT-001 to DRIFT-028)
+**Resolution rate**: 28 of 28 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023, DRIFT-025 and DRIFT-028 carry an open product class
 **Specification drift**: 1 (DRIFT-026: FR-018 clarified to name four further acts)
 
 ## Events
@@ -628,3 +628,34 @@
   typed approval of each kind against the stores before relying on it.
 - **Requirement**: FR-010 (moved to T008), FR-021, FR-022; tasks.md T004 and T008.
 - **Class closure**: CLOSED (plan change recorded; FR-010's acceptance moves to T008).
+
+### DRIFT-028 — review rounds launch from the pin from T004 on; the review engine still resolves to the worktree (plan change, maintainer ruling; observation)
+
+- **Ruling**: the maintainer typed `launch from the pin`, then asked for the switch already for T004's own rounds:
+  rounds launch from the pin's review script as it is now (`063e233a`),
+  `C:\Users\alon\.specrew\live-engine\203-beta5-stabilization\scripts\specrew-review.ps1`, with today's flags
+  (`--host codex`, pause choices), so the script is proven before T004 changes capture. Reason: the engine that
+  records the maintainer's approvals must be the one that spends them; the installed module (0.40.0-beta41) would
+  ignore T004's supersession facts.
+- **Proof before the first launch (2026-11-02, read only)**: through the engine a pin launch loads, campaign
+  `cmp-203-beta5-stabilization-i001` reads `rounds_used=3`, `budget_total=4`, not exhausted, reset at 11:10:19 local
+  (09:10:19Z); the latest invoked run is `run-20261102-123751219-4d7497f3` (round 7, harness `codex-cli-file-primary`,
+  started 14:47:23 local, verdict findings), as recorded in DRIFT-023. No file under `.specrew` changed.
+- **Which folders it loads**: the CLI and `HumanAuthorityStore.ps1` from the pin (`$PSScriptRoot`-relative). The
+  review engine (`scripts/internal/continuous-co-review`) resolves to the WORKTREE's copy:
+  `Resolve-SpecrewReviewEngineRoot` prefers a project-deployed runtime whose bundle hash equals its own, and both are
+  `f98ec871...` today (the installed module's too). A worktree copy that differs makes every launch, from the pin or
+  the installed module, refuse with `review-engine-version-mismatch`.
+- **Consequence**: T004 does not change `scripts/internal/continuous-co-review/` (its owned
+  `review-authority-core.ps1` included), so its rounds stay launchable; the writer-CLI rewiring is in
+  `scripts/specrew-review.ps1` and the bootstrap stores. T007/T008 change that engine and must first make a pinned
+  launch take its review engine from the pin (the B5F-019 class: a pin loads code from the project tree).
+- **record-design-decision -HumanTurn (correction to the T004 map)**: the agent runs it from the turn-end skill
+  (line 92) and types the maintainer's reply in itself, labelled `crew-declared-human-reply`. It is routed through
+  T004's re-deriving writer: the agent passes the turn's identity, and the writer reads the reply from the host's
+  record of that turn.
+- **T004 acceptance**: "no script or `!` approval path remains" now excludes the review CLI's out-of-session form
+  (a bare command outside an agent session counts as the human's act) and its out-of-band form
+  (`--authorization-ref ... --ack-reason`); both move to T008 with the per-round approval.
+- **Requirement**: FR-022, FR-025; tasks.md T004, T008.
+- **Class closure**: OPEN until a pinned review launch loads its review engine from the pin (T008).
