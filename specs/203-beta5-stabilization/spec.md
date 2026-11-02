@@ -334,6 +334,9 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   each.
 - **FR-018**: One classifier MUST read each typed turn exactly once and route it to exactly one act: boundary
   verdict, top-up, stop answer, or workshop reply.
+  **Maintainer ruling (2026-11-02, T003; spec clarification DRIFT-026):** the list also includes the four acts today's router records
+  that it did not name: an approval withdrawal, a partial review sign-off, a workshop repair and a coverage deferral.
+  They are kept as they are. The round approval is not among them; it is removed (FR-010).
 - **FR-019**: A verdict-shaped reply MUST be paired with the durable pending-crossing record, not with a marker
   reached by walking the transcript; a compaction summary MUST NOT count as a human turn; the fallback to an
   older pair MUST be removed.

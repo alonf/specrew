@@ -4,9 +4,9 @@
 
 ## Summary
 
-**Total drift events**: 25 (DRIFT-001 to DRIFT-025)
-**Resolution rate**: 25 of 25 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 and DRIFT-025 carry an open product class
-**Specification drift**: 0
+**Total drift events**: 26 (DRIFT-001 to DRIFT-026)
+**Resolution rate**: 26 of 26 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 and DRIFT-025 carry an open product class
+**Specification drift**: 1 (DRIFT-026: FR-018 clarified to name four further acts)
 
 ## Events
 
@@ -593,10 +593,21 @@
   end re-record approvals stored under the old key.
 - **Spec gap**: FR-018 names four acts; today's router also writes a withdrawal, a partial sign-off, a workshop
   repair, a coverage deferral and the round approval. The classifier routes all of them so T004 loses none; the
-  round approval goes with FR-010 in T004. Whether the other four stay as they are is open for the maintainer.
+  round approval goes with FR-010 in T004. Ruled 2026-11-02: recorded as the spec clarification DRIFT-026.
 - **Requirement**: FR-014 to FR-023; DA-2, DA-3.
 - **Resolution**: `Resolve-SpecrewTypedAct` and `Get-SpecrewTypedActIdentity` (pure, not yet called); RED cases from
   recorded fixtures; three mutations (identity without text, verdict not at the start, compaction flag ignored) each
   turn the classifier test red.
 - **Class closure**: OPEN until T004 wires every path through the classifier (queued key at the turn end,
   prompt-entry verdict reader) and T006 reports the reasons.
+
+### DRIFT-026 — FR-018 clarified: its list of acts includes four the spec did not name (specification drift, maintainer ruling)
+
+- **Requirement**: FR-018 ("route it to exactly one act: boundary verdict, top-up, stop answer, or workshop reply").
+- **Clarification**: the list also includes an approval withdrawal, a partial review sign-off, a workshop repair and a
+  coverage deferral. Each is kept as it is today. The round approval is not added; FR-010 removes it.
+- **Why**: no loss of a reply in use today. All four are typed acts the router records now, and the classifier T004
+  wires every path through would otherwise drop them (found at T003, DRIFT-025).
+- **Ruling**: the maintainer typed `keep the four acts`, 2026-11-02. The spec edit (a note under FR-018) is in the
+  same commit as this entry.
+- **Class closure**: CLOSED (the spec and the classifier agree).
