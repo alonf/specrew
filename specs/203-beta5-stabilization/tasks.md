@@ -190,9 +190,14 @@ then T014.
     through a writer; a re-typed approval folds into an older unspent one.
   - **Acceptance:** the cited-turn case mints nothing; supersession retires, never reuses; no script or `!`
     approval path remains.
-  - **Trace:** FR-010, FR-021, FR-022, FR-025.
+  - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/internal/continuous-co-review/review-authority-core.ps1`, `tests/unit/typed-act-writer.Tests.ps1`.
+  - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
+    keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
+    removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.
+    After T004's sign-off and the pin's advance, the crew checks the maintainer's first typed approval of each kind
+    against the stores before relying on it.
 
 ## Phase 3: US2, nothing recorded that I did not give, recorded the first time (P1)
 
@@ -252,6 +257,9 @@ then T014.
     `scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1`,
     `tests/unit/review-budget-snapshot.Tests.ps1`.
 - [ ] T008 [owner: Implementer] [sp: 5.0] [US1] **Orchestrator loop on the budget.**
+  - **Carries from T004 (DRIFT-027):** removing the per-round approval (FR-010): the `approved for review round` act
+    in the classifier, its capture writer and `--approve-round`, in the same change that makes the grant the only
+    launch authority.
   - **Work:** single grant; reservation before invocation against `budget_total`; clean ends, fix-needed runs the
     next round; the top-up starts the next round; `infra_failure_cap` consecutive infrastructure failures advance
     the host; pause facts (a) to (d) are the navigator's only stop source; the stop layout and the phrases
@@ -267,7 +275,7 @@ then T014.
     **Evidence added 2026-11-02 (T003):** after T003's commit, mid-iteration with the review planned after T013,
     Stop blocked the turn with "your last review no longer covers these files" and asked the crew to request
     `approved for review round`: a stop whose only purpose was a round (FR-006).
-  - **Trace:** FR-004, FR-005, FR-006, FR-007, FR-009, FR-011, FR-043.
+  - **Trace:** FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-043.
   - **Depends:** T007.
   - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/unit/review-budget-loop.Tests.ps1`.
 
@@ -328,7 +336,7 @@ then T014.
 | --- | --- |
 | FR-001, FR-002, FR-003, FR-008 | T007 |
 | FR-004, FR-005, FR-006, FR-007, FR-009, FR-011 | T008 |
-| FR-010 | T004 |
+| FR-010 | T008 (moved from T004, DRIFT-027) |
 | FR-012 | T010 (iteration 002) |
 | FR-013 | T009 (iteration 002) |
 | FR-014 | T002, T003 |

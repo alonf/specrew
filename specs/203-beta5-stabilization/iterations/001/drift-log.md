@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 26 (DRIFT-001 to DRIFT-026)
-**Resolution rate**: 26 of 26 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 and DRIFT-025 carry an open product class
+**Total drift events**: 27 (DRIFT-001 to DRIFT-027)
+**Resolution rate**: 27 of 27 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 and DRIFT-025 carry an open product class
 **Specification drift**: 1 (DRIFT-026: FR-018 clarified to name four further acts)
 
 ## Events
@@ -611,3 +611,20 @@
 - **Ruling**: the maintainer typed `keep the four acts`, 2026-11-02. The spec edit (a note under FR-018) is in the
   same commit as this entry.
 - **Class closure**: CLOSED (the spec and the classifier agree).
+
+### DRIFT-027 — the per-round approval's removal moves from T004 to T007/T008, so every review stays launchable (plan change, maintainer ruling)
+
+- **Facts**: review rounds are launched by the installed module (`specrew review` is an alias for Specrew
+  0.40.0-beta41 in `Documents\PowerShell\Modules\Specrew\0.40.0`), not by this worktree or the pin. The typed
+  `approved for review round` a launch spends is captured by the hooks, which run the pin's engine (`063e233a`). A
+  pin advanced to a T004 that no longer captures that act would leave the installed CLI's `--approve-round` with
+  nothing to spend, and T004's own rounds, and every round after it until T008, could not launch.
+- **Choice (the maintainer's preference, adopted)**: T004 does the rewiring through the classifier and the
+  supersession fact, and keeps the round-approval act, its capture and `--approve-round`. Their removal (FR-010)
+  lands with T007/T008, in the change that makes the budget grant the launch authority. Until then rounds launch as
+  today: the maintainer's typed `approved for review round`, captured by the pin's hooks, spent by the installed
+  module's `specrew review --live --host codex --approve-round` (or a pause choice).
+- **Check after T004 lands**: after T004's sign-off and the pin's advance, the crew checks the maintainer's first
+  typed approval of each kind against the stores before relying on it.
+- **Requirement**: FR-010 (moved to T008), FR-021, FR-022; tasks.md T004 and T008.
+- **Class closure**: CLOSED (plan change recorded; FR-010's acceptance moves to T008).
