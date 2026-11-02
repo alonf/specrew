@@ -115,6 +115,11 @@ then T014.
       live-engine pin record, so a pinned project without its deployed dispatcher runs the pin's dispatcher, never
       an ancestor project's. RED and acceptance: `hook-binding-per-project.tests.ps1` and
       `live-engine-hook-root.tests.ps1` (all three fail against `2dd67efe`; the ancestor's dispatcher ran).
+  - **Round 7 (Codex, on `063e233a`; DRIFT-023); signed off on `063e233a`.** Two findings, both reported major and
+    demoted, both a file missing from inside the pin falling back to the project's copy (the refocus lookup of
+    `work-kind-common.ps1`; `Get-DispatcherCatalog`'s source-catalog fallback). The maintainer stopped the review;
+    both go to B5F-019 with the class and a sweep of every hook-path load as its acceptance. The pin was advanced
+    to `063e233a` and the Claude hooks redeployed from it, confirmed from the transcript.
     - Finding 2: the per-machine launcher looks for the pin only after it finds the project's own dispatcher file,
       so a pinned project whose `.specify` dispatcher is missing runs ungoverned (exit 0, nothing recorded), or an
       ancestor project's dispatcher takes the event. Recognize the pin record during root discovery. Joins B5F-019.

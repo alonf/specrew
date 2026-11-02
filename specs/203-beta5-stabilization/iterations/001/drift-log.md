@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 22 (DRIFT-001 to DRIFT-022)
-**Resolution rate**: 22 of 22 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-022 carry an open product class
+**Total drift events**: 23 (DRIFT-001 to DRIFT-023)
+**Resolution rate**: 23 of 23 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -527,3 +527,29 @@
   standard (plain text).
 - **Class closure**: OPEN — the fixes are reviewed in the next round; B5F-019 keeps the rest of its design
   (the pin out of shipped code).
+
+### DRIFT-023 — review round 7, stopped and signed off on 063e233a; two approval-shaped messages during the round recorded nothing (review outcome, observation)
+
+- **Round 7**: run `run-20261102-123751219-4d7497f3`, reviewer Codex (`codex-cli-file-primary`), on `063e233a`,
+  launched by the round 6 pause choice on the maintainer's typed approval captured at 14:37:26 local time (UTC+2),
+  grant `grant-282ff2e09492f25375a2`. Checks 14:38 to 14:47 (569 s), reviewer 14:47 to 14:55. Round 3 of the
+  topped-up 4. Two findings, both reported major and demoted (B5F-017, the fifth time), both the class "a file
+  missing from inside the pin falls back to the project's copy" (`work-kind-common.ps1` in the refocus lookup;
+  `refocus-scopes.json` in `Get-DispatcherCatalog`). The maintainer typed `stop the review here`; the final check
+  passed and sign-off completed at 15:08 local (`.specrew/review/signoff-gate/latest.json`, matched to the round 7
+  run). Both findings go to B5F-019 with the class and a sweep of every hook-path load as acceptance.
+- **Approval-shaped messages while the round ran**: (1) at 14:39 the maintainer pasted the transcript of the
+  previous turns, which begins with the line `approved for review round`; no capture was written (the paste is not
+  a standalone typed approval; a passing case for T003). (2) at 14:46 the maintainer typed
+  `approved for review round` while round 7 ran; no capture was written either, and the prompt hook answered only
+  with the wrong "reads as a verdict for 'review'" notice. With an approval already minted for the running round,
+  dropping it records nothing false, but the human is not told why (T006), and the Stop hook asked twice for a
+  round during this round (T008).
+- **Pin and hooks**: `scripts/internal/live-engine-pin.ps1 -Action Advance` moved the pin to `063e233a` (clean;
+  bindings for five hosts restamped). The Claude hooks were redeployed from the pin's deployer; the settings and the
+  generated launcher came out byte-identical. Confirmed from the transcript: no hook error after the redeploy at
+  15:08:56, and the PostToolUse hook wrote the refocus state at 15:09:08. This machine's user-level Codex, Copilot
+  and Cursor hooks are unchanged (DRIFT-021) and await the maintainer.
+- **Requirement**: FR-014; FR-015 (standalone typed approval); FR-026; the clarify instruction (only reviewed code
+  reaches the live hooks).
+- **Class closure**: CLOSED for T002's review (signed off); OPEN in B5F-019 (the fallback class), T003, T006, T008.
