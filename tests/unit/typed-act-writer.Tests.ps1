@@ -17,18 +17,49 @@
 #
 # Each case runs in a temporary project root; the launches run the real review CLI from this checkout in a fixture
 # with no commit, so preflight refuses before any reviewer is invoked (an undelivered round, released). Never the
-# repository's own stores.
+# repository's own stores: a host's project-root variables are cleared in this process and in every child launch (run
+# inside a Claude session, CLAUDE_PROJECT_DIR names the real worktree), and the suite fails if the real worktree's
+# round-approval store or the real ~/.specrew changed during the run.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
-. (Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1')
-$reviewCli = Join-Path $repoRoot 'scripts\specrew-review.ps1'
 $script:failCount = 0
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 $script:roots = [System.Collections.Generic.List[string]]::new()
+
+# The host project-root variables, as the T001 probes cleared them; any other *_PROJECT_DIR is cleared too.
+$script:hostRootVariablePattern = '^(CLAUDE_PROJECT_DIR|CURSOR_PROJECT_DIR|COPILOT_PROJECT_DIR|\w+_PROJECT_DIR)$'
+$script:clearedHostRoots = [ordered]@{}
+foreach ($entry in @(Get-ChildItem Env: | Where-Object { $_.Name -match $script:hostRootVariablePattern })) {
+    $script:clearedHostRoots[$entry.Name] = [string]$entry.Value
+    Remove-Item -LiteralPath ('Env:' + $entry.Name) -ErrorAction SilentlyContinue
+}
+
+# The real stores this suite must never touch: the round-approval store of this checkout and of any project a cleared
+# variable named (the real worktree when run inside a session), and the real user profile's .specrew, resolved from the
+# OS rather than from USERPROFILE so a lane's redirected home does not hide it.
+$script:guardedPaths = [System.Collections.Generic.List[string]]::new()
+foreach ($projectRoot in @(@($repoRoot) + @($script:clearedHostRoots.Values) | Where-Object { $_ } | ForEach-Object { [IO.Path]::GetFullPath($_) } | Sort-Object -Unique)) {
+    $script:guardedPaths.Add((Join-Path $projectRoot '.specrew\review\round-approval'))
+}
+$script:guardedPaths.Add((Join-Path ([Environment]::GetFolderPath('UserProfile')) '.specrew'))
+function Get-GuardSnapshot {
+    $lines = foreach ($path in $script:guardedPaths) {
+        if (-not (Test-Path -LiteralPath $path)) { "$path|absent"; continue }
+        foreach ($item in @(Get-ChildItem -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue)) {
+            if ($item.PSIsContainer) { "$($item.FullName)|dir" }
+            else { '{0}|{1}|{2}' -f $item.FullName, $item.Length, $item.LastWriteTimeUtc.Ticks }
+        }
+    }
+    return @($lines | Sort-Object)
+}
+$script:guardBefore = Get-GuardSnapshot
+
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1')
+$reviewCli = Join-Path $repoRoot 'scripts\specrew-review.ps1'
 
 # A writer parameter T004 adds is passed only when the writer has it, so the RED is the behaviour, not a binding error.
 function Add-IfSupported {
@@ -154,7 +185,9 @@ function New-CampaignFixture {
 function Invoke-AgentLaunch {
     # -File, so --live and --approve-round reach the CLI's own argument parser; an agent session, as the crew runs it.
     param([string]$Root)
-    $command = "`$env:CLAUDECODE = '1'; pwsh -NoProfile -File '$reviewCli' -ProjectPath '$Root' -FeatureId 001-fixture --live --approve-round; exit `$LASTEXITCODE"
+    # The child clears the host project-root variables itself as well, so nothing it inherits names the real worktree.
+    $command = "Get-ChildItem Env: | Where-Object { `$_.Name -match '$($script:hostRootVariablePattern)' } | ForEach-Object { Remove-Item -LiteralPath ('Env:' + `$_.Name) }; " +
+        "`$env:CLAUDECODE = '1'; pwsh -NoProfile -File '$reviewCli' -ProjectPath '$Root' -FeatureId 001-fixture --live --approve-round; exit `$LASTEXITCODE"
     $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
     $text = $output -join "`n"
     $runId = if ($text -match 'Run: (run-\S+)') { $Matches[1] } else { '' }
@@ -229,5 +262,13 @@ $cliSource = Get-Content -LiteralPath $reviewCli -Raw
 Assert-True ($cliSource -match 'Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -RunId') 'the review CLI passes the run to the consumption after a delivered round'
 
 foreach ($root in $script:roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+
+Write-Host '--- the real stores are unchanged ---'
+$guardAfter = Get-GuardSnapshot
+$guardDiff = @(Compare-Object -ReferenceObject $script:guardBefore -DifferenceObject $guardAfter)
+foreach ($change in ($guardDiff | Select-Object -First 10)) { Write-Host ("  {0} {1}" -f $(if ($change.SideIndicator -eq '=>') { 'now' } else { 'was' }), $change.InputObject) }
+Assert-True ($guardDiff.Count -eq 0) ("no file changed under {0}" -f ($script:guardedPaths -join '; '))
+foreach ($name in $script:clearedHostRoots.Keys) { Set-Item -LiteralPath ('Env:' + $name) -Value $script:clearedHostRoots[$name] }
+
 if ($script:failCount -gt 0) { Write-Host "typed-act-writer: $($script:failCount) failure(s)" -ForegroundColor Red; exit 1 }
 Write-Host 'typed-act-writer: all passed' -ForegroundColor Green
