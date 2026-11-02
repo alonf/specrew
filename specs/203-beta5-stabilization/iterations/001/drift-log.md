@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 23 (DRIFT-001 to DRIFT-023)
-**Resolution rate**: 23 of 23 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 carry an open product class
+**Total drift events**: 24 (DRIFT-001 to DRIFT-024)
+**Resolution rate**: 24 of 24 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -553,3 +553,22 @@
 - **Requirement**: FR-014; FR-015 (standalone typed approval); FR-026; the clarify instruction (only reviewed code
   reaches the live hooks).
 - **Class closure**: CLOSED for T002's review (signed off); OPEN in B5F-019 (the fallback class), T003, T006, T008.
+
+### DRIFT-024 — this machine's user-level Codex, Copilot and Cursor hooks redeployed from the pin (observation, maintainer ruling)
+
+- **Before**: since 11:40 local (DRIFT-021) the three hosts' user-level hooks ran the per-machine launcher written
+  by round 5's review copy (`c9549a9d`, unreviewed) and named that deleted copy as `-ModulePath`.
+- **Ruling**: the maintainer typed `redeploy them from the pin` (16:06 local, UTC+2).
+- **Done**: at 16:07 local the pin's deployer (`063e233a`, signed off) ran with `-HostKind codex`, `copilot` and
+  `cursor`, with `SPECREW_MODULE_PATH` and `SPECREW_USER_HOME_OVERRIDE` unset; all three exited 0. Every command
+  in `~/.codex/hooks.json`, `~/.copilot/hooks/specrew-refocus.json` and `~/.cursor/hooks.json` now names
+  `~/.specrew/hooks/b958cbe133e6a88ee358f7c5f89d5a67/specrew-hook-launch.ps1` (its content id verified) and no
+  module path; no command names a deleted or temporary path. `~/.claude/settings.json`, `~/.codex/config.toml` and
+  the Antigravity settings are byte-unchanged. The old `~/.specrew/specrew-hook-launch.ps1` and the Antigravity
+  binding in `~/.specrew/hook-bindings/` stay in place, unused by these three hosts. A smoke run of the store
+  launcher in a scratch folder (no project) exited 0 with no output. The files as they were are kept in the
+  session scratchpad (`home-backup-before-redeploy`).
+- **Expected next**: Codex may ask for its hooks to be trusted again, because `hooks.json` changed.
+- **Requirement**: the clarify instruction (only reviewed code reaches the live hooks); FR-014.
+- **Class closure**: CLOSED for this machine; the class (verification runs writing the real home) was closed in
+  `c988b849` (DRIFT-021).
