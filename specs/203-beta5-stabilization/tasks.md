@@ -87,7 +87,24 @@ then T014.
       copies. Fixed in its own commit and reviewed before any release. **Fixed in `9d224109` (DRIFT-020):** the
       binding file is named by its content id and written once, the command names the id with `-BindingId`, and
       the launcher reads only that file when its content matches; RED and acceptance:
-      `tests/unit/hook-binding-per-project.tests.ps1` (fails against `7abcd180`'s deployer). Review pending.
+      `tests/unit/hook-binding-per-project.tests.ps1` (fails against `7abcd180`'s deployer). Reviewed in round 5.
+  - **Round 5 (Codex, on `c9549a9d`; DRIFT-021).** Four findings, all reported major and demoted; 1, 3 and 4 fixed
+    in `c988b849` at the maintainer's instruction, 2 joins B5F-019:
+    - Finding 1: the per-machine launcher was still one file, so an older engine's launcher without `-BindingId`
+      broke another project's commands. Launchers and bindings now share one content-addressed store,
+      `~/.specrew/hooks/<id>/specrew-hook-launch.ps1` and `~/.specrew/hooks/bindings/<host>-<id>.binding`, written once;
+      every launcher command names its launcher, an encoded one its binding too. RED and acceptance:
+      `hook-binding-per-project.tests.ps1`, two projects from two launcher implementations in both orders (fails
+      against `9d224109`).
+    - Finding 2 (a repeat of round 4's finding 2): the per-machine launcher finds the pin only after the project's
+      dispatcher file. B5F-019.
+    - Finding 3: a pin record with the pin's `live-engine-resolution.ps1` missing made the handover, bootstrap and
+      navigator providers and the conformance and shared-governance resolvers load the project's own code; they now
+      refuse. RED and acceptance: `live-engine-hook-root.tests.ps1` (against the old providers the project's
+      HandoverStore, ClassificationEngine and ProjectMetadataAccessor ran).
+    - Finding 4: `crew-charter-ownership` and `version-label-one-resolver` ran the real init, which deployed the real
+      home's user-level hooks with their checkout as `-ModulePath`. The deployer honours `SPECREW_USER_HOME_OVERRIDE`;
+      both suites use a scratch home and check the real home's hook files are unchanged.
     - Finding 2: the per-machine launcher looks for the pin only after it finds the project's own dispatcher file,
       so a pinned project whose `.specify` dispatcher is missing runs ungoverned (exit 0, nothing recorded), or an
       ancestor project's dispatcher takes the event. Recognize the pin record during root discovery. Joins B5F-019.

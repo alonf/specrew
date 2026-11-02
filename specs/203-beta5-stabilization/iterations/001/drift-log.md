@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 20 (DRIFT-001 to DRIFT-020)
-**Resolution rate**: 20 of 20 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-020 carry an open product class
+**Total drift events**: 21 (DRIFT-001 to DRIFT-021)
+**Resolution rate**: 21 of 21 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-021 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -471,3 +471,33 @@
 - **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the sweep rule.
 - **Class closure**: OPEN — the fix is reviewed in the next round; tracing the suite that writes the real home
   folder is a follow-up.
+
+### DRIFT-021 — review round 5: four findings, three fixed; verification runs had rewritten this machine's live user-level hooks (review outcome, observation)
+
+- **Round 5**: run `run-20261102-093217738-8ada35e9`, reviewer Codex (`codex-cli-file-primary`), on `c9549a9d`,
+  launched on the maintainer's typed approval captured at 11:31:54 local time (UTC+2), grant
+  `grant-145a3cbb28d38f633204` (a new grant; the pending approval was the new capture). Pre-review checks 11:32 to
+  11:41 (548 s), reviewer 11:41 to 11:48. Specrew counted it as round 1 of the topped-up 4. Four findings, all
+  reported major by the reviewer and demoted "for no concrete failure scenario", although each states one (the
+  third time; B5F-017). The Stop hook asked twice for a round about round 4's result while round 5 was running
+  or its decision was pending (T008).
+- **Maintainer's ruling (11:53 local)**: fix 1, 3 and 4 before the next round; finding 1 with one mechanism for
+  launcher and binding (content id named by every command, files written once, two launcher implementations in
+  both orders); for finding 4, check this machine's real home first and change nothing there without asking.
+- **The real home, as found** (nothing changed): `~/.codex/hooks.json`, `~/.copilot/hooks/specrew-refocus.json`,
+  `~/.cursor/hooks.json` and `~/.specrew/specrew-hook-launch.ps1` were written at 11:40:34, during round 5's
+  pre-review checks. Every Specrew command in them runs `~/.specrew/specrew-hook-launch.ps1` with
+  `-ModulePath "C:\Dev\.specrew-targets\rt-S_5FzfKpFDsUmEiD"`, round 5's temporary review copy, now deleted; the
+  launcher ignores a module path that does not exist, so those hooks fall back to each project's deployed engine.
+  The launcher is the reviewed candidate's (`c9549a9d`), so unreviewed launcher code serves Codex, Copilot and
+  Cursor on this machine; Codex's recorded trust hashes in `config.toml` may no longer match the rewritten
+  `hooks.json`. Antigravity has no user-level hook config. Source: `crew-charter-ownership.tests.ps1` and
+  `version-label-one-resolver.tests.ps1`, which set `SPECREW_MODULE_PATH` to their checkout and run the real init.
+  Whether to redeploy those hooks from a reviewed engine is the maintainer's decision, asked after the round.
+- **Fixes** (`c988b849`): see tasks.md T002, round 5. Sweep of `c988b849` in a separate checkout, every active lane
+  under its own environment, with this machine's user-level hook files hashed before and after: governance 21 s,
+  f203-i001-suites 113 s (timeout raised 200 to 250 s), f203-i001-carried 145 s, f199-class-guards-a 80 s, -b 62 s,
+  all green; 0 real-home hook files changed. Finding 4 has no mutation run: the old code would rewrite the real
+  hooks again.
+- **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the sweep rule.
+- **Class closure**: OPEN — the fixes are reviewed in the next round; the real home's hooks await the maintainer.
