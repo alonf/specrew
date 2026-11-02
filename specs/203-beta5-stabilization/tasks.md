@@ -105,6 +105,16 @@ then T014.
     - Finding 4: `crew-charter-ownership` and `version-label-one-resolver` ran the real init, which deployed the real
       home's user-level hooks with their checkout as `-ModulePath`. The deployer honours `SPECREW_USER_HOME_OVERRIDE`;
       both suites use a scratch home and check the real home's hook files are unchanged.
+  - **Round 6 (Codex, on `2dd67efe`; DRIFT-022).** Three findings, all reported major and demoted; all three fixed in
+    `03dd3c3b` at the maintainer's instruction:
+    - Finding 1: deploy deleted the old shared `~/.specrew/hook-bindings/<host>.binding`, which commands deployed from
+      `0999ff62`..`7abcd180` still read. It is left in place; the new launcher never reads it.
+    - Finding 2: a named binding the launcher could not read or verify was dropped and the dispatcher fell back to a
+      manifest. The per-machine launcher now refuses in plain text (exit 1), after the kill switch.
+    - Finding 3 (rounds 4 to 6; B5F-019's root discovery): the per-machine launcher's root discovery also stops at a
+      live-engine pin record, so a pinned project without its deployed dispatcher runs the pin's dispatcher, never
+      an ancestor project's. RED and acceptance: `hook-binding-per-project.tests.ps1` and
+      `live-engine-hook-root.tests.ps1` (all three fail against `2dd67efe`; the ancestor's dispatcher ran).
     - Finding 2: the per-machine launcher looks for the pin only after it finds the project's own dispatcher file,
       so a pinned project whose `.specify` dispatcher is missing runs ungoverned (exit 0, nothing recorded), or an
       ancestor project's dispatcher takes the event. Recognize the pin record during root discovery. Joins B5F-019.

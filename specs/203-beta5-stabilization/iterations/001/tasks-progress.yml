@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-02T10:13:24.0962420Z"
+updated_at: "2026-11-02T12:18:51.9993307Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"

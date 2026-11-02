@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 21 (DRIFT-001 to DRIFT-021)
-**Resolution rate**: 21 of 21 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-021 carry an open product class
+**Total drift events**: 22 (DRIFT-001 to DRIFT-022)
+**Resolution rate**: 22 of 22 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-022 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -501,3 +501,29 @@
   hooks again.
 - **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the sweep rule.
 - **Class closure**: OPEN — the fixes are reviewed in the next round; the real home's hooks await the maintainer.
+
+### DRIFT-022 — review round 6: a first attempt failed its checks without a cause the crew could reproduce; three findings, all fixed (review outcome, observation)
+
+- **First attempt**: run `run-20261102-102506804-a062c679` (Codex, on `2dd67efe`), launched by the round 5 pause
+  choice on the maintainer's typed approval captured at 12:24:46 local time (UTC+2), grant
+  `grant-746e0827d68364fac9bd`. The pre-review checks ran 12:25 to 12:38 (802 s, against about 420 s in the crew's
+  sweep of the same code) and stopped on `f199-class-guards-b` with
+  `verification-command-failed:...:diagnostics-require-command-scoped-disclosure`; the reviewer was not invoked,
+  the grant was released unspent. Specrew withholds the lane's output. The crew ran the lane three times in a
+  separate checkout of `2dd67efe`, in its own shape (15 script suites at throttle 6, then Pester) and environment:
+  all green in 60 to 67 s. The real home's hook files had not changed, so the round 5 home check was not the cause.
+  Unexplained; the slow run points to a load-sensitive suite. Evidence for B5F-018 (no lane output or progress is
+  visible to the crew or the human).
+- **Retry**: `run-20261102-112822145-ef37fd40`, same commit, same approval and grant, with `--preserve-debug`.
+  Checks 13:28 to 13:38 (583 s, green), reviewer 13:38 to 13:46. Specrew counted it as round 2 of the topped-up 4.
+  Three findings, all reported major and demoted "for no concrete failure scenario", although each states one
+  (B5F-017, the fourth time); finding 3 is the root-discovery defect raised in rounds 4, 5 and 6.
+- **Maintainer's ruling (14:07 local)**: fix findings 1, 2 and 3 before the next round.
+- **Fixes** (`03dd3c3b`): see tasks.md T002, round 6. Sweep of `03dd3c3b` in a separate checkout, every active lane
+  under its own environment, this machine's user-level hook files hashed before and after: governance 21 s,
+  f203-i001-suites 117 s, f203-i001-carried 143 s, f199-class-guards-a 86 s, -b 63 s, all green; 0 real-home
+  hook files changed.
+- **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the refusal
+  standard (plain text).
+- **Class closure**: OPEN — the fixes are reviewed in the next round; B5F-019 keeps the rest of its design
+  (the pin out of shipped code).
