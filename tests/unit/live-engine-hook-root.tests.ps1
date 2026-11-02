@@ -243,6 +243,27 @@ try {
     Assert-True ((ConvertTo-PlainStderr $helperOutput) -match 'missing its pin helper') 'pin helper missing: the hooks say in plain words that the reviewed engine could not be loaded'
     foreach ($s in $saved) { Copy-Item -LiteralPath $s.Copy -Destination $s.Path -Force }
 
+    # --- a pinned project without its deployed dispatcher, nested under another project (rounds 4 to 6) ---
+    # The per-machine launcher finds the project by its pin record, not only by the deployed dispatcher, so the walk
+    # stops at the pinned project instead of reaching the ancestor's dispatcher (a trap here) or exiting silently.
+    $ancestorDispatcher = Join-Path $work '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $ancestorDispatcher) -Force | Out-Null
+    Set-Content -LiteralPath $ancestorDispatcher -Value "Add-Content -LiteralPath `$env:SPECREW_TEST_MARKER -Value 'ancestor-dispatcher'; exit 0"
+    $projectDispatcher = Join-Path $project '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    $projectDispatcherText = Get-Content -LiteralPath $projectDispatcher -Raw
+    Remove-Item -LiteralPath $projectDispatcher -Force
+    if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force }
+    # The pin's dispatcher shows itself as above: with the event switched off and the pin's binding listing it as
+    # decision-only, only the pinned dispatcher answers {}; the ancestor's trap prints nothing and leaves a marker.
+    Set-Content -LiteralPath $bindingsPath -Value ($marked | ConvertTo-Json -Depth 4)
+    $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Event', 'UserPromptSubmit', '-HostKind', 'codex') -Stdin (New-Payload -EventName 'UserPromptSubmit' -Session 'pinroot-nested') -Environment $disabledLauncherEnv
+    Set-Content -LiteralPath $bindingsPath -Value ($pinBindings | ConvertTo-Json -Depth 4)
+    $ran = if (Test-Path -LiteralPath $marker) { (Get-Content -LiteralPath $marker) -join ', ' } else { '' }
+    Assert-True ($r.ExitCode -eq 0 -and [string]::IsNullOrEmpty($ran)) ("pinned project without its dispatcher, under another project: the ancestor's dispatcher did not run (exit {0}, ran: '{1}')" -f $r.ExitCode, $ran)
+    Assert-True ($r.StdOut.Trim() -eq '{}') ("and the pin's dispatcher ran for this project (got '{0}')" -f $r.StdOut.Trim())
+    Set-Content -LiteralPath $projectDispatcher -Value $projectDispatcherText -NoNewline
+    Remove-Item -LiteralPath (Join-Path $work '.specify') -Recurse -Force
+
     # --- a pin moved off its recorded commit: the launcher refuses before any pin code runs ---
     # The launcher's own check, not the pin's: a dispatcher checking its own pin would be the unreviewed code deciding
     # whether it may run. Any pin code that ran would write into the project.

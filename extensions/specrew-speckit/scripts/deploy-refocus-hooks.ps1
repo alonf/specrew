@@ -518,9 +518,8 @@ function Install-HookLauncher {
     if ($hookCommandMode -eq 'launcher-encoded' -and -not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
         $bindingText = $hostRuntimeBinding.Trim()
         Write-HookStoreFile -Path (Join-Path $hookStoreRoot ("bindings/{0}-{1}.binding" -f $HostKind, (Get-HookContentId -Text $bindingText))) -Text $bindingText
-        # The shared per-host file of 0999ff62 to 7abcd180 is no longer read; leaving it would invite the mistake back.
-        $legacyBindingFile = Join-Path $userHome (".specrew/hook-bindings/{0}.binding" -f $HostKind)
-        if (Test-Path -LiteralPath $legacyBindingFile -PathType Leaf) { Remove-Item -LiteralPath $legacyBindingFile -Force }
+        # The shared ~/.specrew/hook-bindings/<host>.binding of 0999ff62 to 7abcd180 is left in place: this launcher never
+        # reads it, but commands deployed from those commits still do (review round 6, finding 1).
     }
 }
 
@@ -557,14 +556,20 @@ param(
 # An encoded host command leaves the baked binding out (it alone would near the command-line limit) and names it by
 # content id instead; deploy writes it to the store beside this launcher's folder once. Only the file the command
 # names is read, and only when its content still matches the id, so one project's deploy cannot change another's.
-if ([string]::IsNullOrWhiteSpace($HostBinding) -and $HostKind -match '^[A-Za-z0-9_.-]+$' -and $BindingId -match '^[0-9a-f]{32}$') {
-    $bindingFile = Join-Path (Split-Path -Parent $PSScriptRoot) ("bindings/{0}-{1}.binding" -f $HostKind, $BindingId)
-    try {
-        $bindingText = ([IO.File]::ReadAllText($bindingFile)).Trim()
-        $bindingHash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($bindingText)))
-        if ($bindingHash.Substring(0, 32).ToLowerInvariant() -eq $BindingId) { $HostBinding = $bindingText }
+# A named binding that cannot be read or verified refuses below, after the kill switch: running without it would
+# apply whatever rules a manifest found elsewhere holds (review round 6, finding 2).
+$bindingUnverified = $false
+if ([string]::IsNullOrWhiteSpace($HostBinding) -and -not [string]::IsNullOrWhiteSpace($BindingId)) {
+    $bindingUnverified = $true
+    if ($HostKind -match '^[A-Za-z0-9_.-]+$' -and $BindingId -match '^[0-9a-f]{32}$') {
+        $bindingFile = Join-Path (Split-Path -Parent $PSScriptRoot) ("bindings/{0}-{1}.binding" -f $HostKind, $BindingId)
+        try {
+            $bindingText = ([IO.File]::ReadAllText($bindingFile)).Trim()
+            $bindingHash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($bindingText)))
+            if ($bindingHash.Substring(0, 32).ToLowerInvariant() -eq $BindingId) { $HostBinding = $bindingText; $bindingUnverified = $false }
+        }
+        catch { $HostBinding = $null }
     }
-    catch { $HostBinding = $null }
 }
 function Test-LauncherDecisionOnlyEvent {
     param([string]$EventName, [string]$EncodedBinding)
@@ -589,6 +594,11 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
     Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
+if ($bindingUnverified) {
+    # Plain text, not an error record: this is what the host shows the human.
+    [Console]::Error.WriteLine('Specrew could not load the host settings this hook was set up with, so it recorded nothing from this turn. The settings file the hook names, in .specrew/hooks/bindings under your user folder, is missing or was changed after it was written. Your earlier approvals and answers are unchanged. To fix it, the crew can redeploy this project''s hooks with specrew update. Should it do that?')
+    exit 1
+}
 $ErrorActionPreference = 'Stop'
 
 # Dev-tree dogfood path: when specrew init/update ran from an imported development tree, bake that module
@@ -599,16 +609,19 @@ if (-not [string]::IsNullOrWhiteSpace($ModulePath) -and (Test-Path -LiteralPath 
 
 # The dispatcher's project-relative subpath — the SENTINEL we look for when walking up a candidate root. We key
 # on the dispatcher FILE (not a .specrew dir) so a stray ~/.specrew up the cwd tree never mis-resolves a project
-# (this launcher itself lives under ~/.specrew).
+# (this launcher itself lives under ~/.specrew). A live-engine pin record is a sentinel too (Feature 203 T002, review
+# rounds 4 to 6): a pinned project is found at its own folder even when its deployed dispatcher is missing, so the
+# walk never passes it to reach an ancestor project's dispatcher, and the pin decides below.
 $dispatcherSub = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+$pinRecordSub = '.specrew/runtime/live-engine.json'
 $projectRootEnvVars = __SPECREW_PROJECT_ROOT_ENV_VARS__
 
-function Find-DispatcherUpTree {
-    param([string]$Start, [string]$Sub)
+function Find-ProjectUpTree {
+    param([string]$Start)
     $candidate = $Start
     while (-not [string]::IsNullOrWhiteSpace($candidate)) {
-        $probe = Join-Path $candidate $Sub
-        if (Test-Path -LiteralPath $probe -PathType Leaf) { return $probe }
+        if ((Test-Path -LiteralPath (Join-Path $candidate $dispatcherSub) -PathType Leaf) -or
+            (Test-Path -LiteralPath (Join-Path $candidate $pinRecordSub) -PathType Leaf)) { return $candidate }
         $parent = Split-Path -Parent $candidate
         if ($parent -eq $candidate) { break }
         $candidate = $parent
@@ -657,20 +670,20 @@ if (-not [string]::IsNullOrWhiteSpace($payloadCwd)) { $candidates.Add($payloadCw
 foreach ($r in $payloadRoots) { if (-not [string]::IsNullOrWhiteSpace($r)) { $candidates.Add($r) } }
 try { $candidates.Add((Get-Location).Path) } catch { $null = $_ }
 
-$dispatcher = $null
+$projectRoot = $null
 foreach ($start in $candidates) {
-    $found = Find-DispatcherUpTree -Start $start -Sub $dispatcherSub
-    if (-not [string]::IsNullOrWhiteSpace($found)) { $dispatcher = $found; break }
+    $found = Find-ProjectUpTree -Start $start
+    if (-not [string]::IsNullOrWhiteSpace($found)) { $projectRoot = $found; break }
 }
-if ([string]::IsNullOrWhiteSpace($dispatcher)) {
+if ([string]::IsNullOrWhiteSpace($projectRoot)) {
     Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
 
 # A project with a live-engine pin runs the pin's dispatcher, told this project's root; a pin that cannot be
-# found refuses (the one exit that is not 0), and nothing falls back to the project's deployed copy.
-$projectRoot = $dispatcher
-foreach ($level in 1..5) { $projectRoot = Split-Path -Parent $projectRoot }
+# found refuses (the one exit that is not 0), and nothing falls back to the project's deployed copy. A project
+# found by its pin record alone has no deployed dispatcher, so only the pin can run it.
+$dispatcher = Join-Path $projectRoot $dispatcherSub
 __SPECREW_LIVE_ENGINE_PIN__
 
 # Hand off to the project's deployed dispatcher. Pass the captured payload via -EventJson so the dispatcher does

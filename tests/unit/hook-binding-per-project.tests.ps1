@@ -12,7 +12,8 @@
 # the binding it loaded lists the event, so each command's output shows which launcher ran and which binding it read.
 #
 # Mutation that turns this file red: run one launcher path for every command, read a per-host binding file, drop
-# -BindingId from the encoded command, or skip the launcher's content check.
+# -BindingId from the encoded command, skip the launcher's content check, run on an unverified named binding instead of
+# refusing, or delete the old shared binding file that commands from 0999ff62..7abcd180 still read (round 6).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -70,6 +71,22 @@ function Invoke-Switched-Off {
     return $text
 }
 
+function Invoke-Launcher {
+    # Runs an encoded command with the hooks on, from a folder that holds no project.
+    param([string]$Encoded, [string]$HomeDir)
+    $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
+    foreach ($a in @('-NoProfile', '-NonInteractive', '-EncodedCommand', $Encoded)) { $psi.ArgumentList.Add($a) }
+    $psi.WorkingDirectory = $work
+    $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.RedirectStandardInput = $true
+    foreach ($pair in @{ USERPROFILE = $HomeDir; HOME = $HomeDir; SPECREW_MODULE_PATH = '' }.GetEnumerator()) { $psi.Environment[$pair.Key] = $pair.Value }
+    [void]$psi.Environment.Remove('SPECREW_REFOCUS_DISABLE')
+    $p = [Diagnostics.Process]::Start($psi)
+    $p.StandardInput.Close()
+    $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit(60000)) { $p.Kill(); return [pscustomobject]@{ Exit = 'timeout'; Err = '' } }
+    return [pscustomobject]@{ Exit = $p.ExitCode; Err = $err.Result }
+}
+
 function Get-NamedId { param([string]$Decoded, [string]$Pattern) if ($Decoded -match $Pattern) { return $Matches[1] } return '' }
 
 try {
@@ -105,7 +122,9 @@ try {
 
         if ($order -eq 'A then B') { $a = Deploy-Project -Deployer $deployerA -Project $projectA -HomeDir $homeDir; $b = Deploy-Project -Deployer $deployerB -Project $projectB -HomeDir $homeDir }
         else { $b = Deploy-Project -Deployer $deployerB -Project $projectB -HomeDir $homeDir; $a = Deploy-Project -Deployer $deployerA -Project $projectA -HomeDir $homeDir }
-        Assert-True (-not (Test-Path -LiteralPath (Join-Path $homeDir '.specrew/hook-bindings/antigravity.binding'))) "${order}: deploy removes the shared per-host binding file the old launcher read"
+        # Commands deployed from those commits still read it through the old shared launcher (round 6, finding 1).
+        $legacyFile = Join-Path $homeDir '.specrew/hook-bindings/antigravity.binding'
+        Assert-True ((Test-Path -LiteralPath $legacyFile) -and [IO.File]::ReadAllText($legacyFile) -eq $bindingB) "${order}: deploy leaves the old shared per-host binding file as it was"
 
         $launcherPattern = '\.specrew/hooks/([0-9a-f]{32})/specrew-hook-launch\.ps1'
         $launcherA = Get-NamedId -Decoded $a['PreInvocation'].Decoded -Pattern $launcherPattern; $launcherB = Get-NamedId -Decoded $b['PreInvocation'].Decoded -Pattern $launcherPattern
@@ -132,9 +151,18 @@ try {
         Assert-True (($before -join '|') -ceq ($after -join '|')) "${order}: redeploying the first project leaves every store file unchanged"
         Assert-True ((Invoke-Switched-Off -Encoded $b['PreInvocation'].Encoded -HomeDir $homeDir) -eq '{"engine":"b"}' -and (Invoke-Switched-Off -Encoded $a['PreInvocation'].Encoded -HomeDir $homeDir) -eq '') "${order}: after the redeploy each project still runs its own launcher and binding"
 
-        # A binding file whose content no longer matches its id is not used.
+        # A named binding that cannot be verified is not used, and with the hooks on the launcher refuses rather than
+        # run on whatever rules a manifest elsewhere holds (round 6, finding 2). The scratch cwd holds no project, so
+        # the control (a verified binding) exits 0 without running anything.
+        $control = Invoke-Launcher -Encoded $a['Stop'].Encoded -HomeDir $homeDir
+        Assert-True ($control.Exit -eq 0 -and $control.Err -notmatch 'could not load') ("${order}: control, A's verified binding with the hooks on: exit 0 (exit {0})" -f $control.Exit)
         Set-Content -LiteralPath $fileA -Value $bindingB -NoNewline
         Assert-True ((Invoke-Switched-Off -Encoded $a['Stop'].Encoded -HomeDir $homeDir) -eq '') "${order}: a binding file changed after deploy is ignored (A's Stop gets no binding, so no decision no-op)"
+        $changedRun = Invoke-Launcher -Encoded $a['Stop'].Encoded -HomeDir $homeDir
+        Assert-True ($changedRun.Exit -eq 1 -and ($changedRun.Err -replace '\s+', ' ') -match 'could not load the host settings this hook was set up with' -and $changedRun.Err -notmatch '\x1b|Exception|Line \|') ("${order}: with the hooks on, a changed binding file refuses in plain text (exit {0})" -f $changedRun.Exit)
+        Remove-Item -LiteralPath $fileA -Force
+        $missingRun = Invoke-Launcher -Encoded $a['Stop'].Encoded -HomeDir $homeDir
+        Assert-True ($missingRun.Exit -eq 1 -and ($missingRun.Err -replace '\s+', ' ') -match 'could not load the host settings this hook was set up with') ("${order}: with the hooks on, a missing binding file refuses (exit {0})" -f $missingRun.Exit)
     }
 }
 finally {
