@@ -761,6 +761,9 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         [Parameter(Mandatory)][string]$Response,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SourceEvent,
+        # 203 T004 (FR-021): the typed act's identity (Get-SpecrewTypedActIdentity). With it, a different message is a
+        # newer act that supersedes an unspent record instead of folding into it.
+        [AllowNull()][string]$TurnIdentity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
@@ -803,12 +806,51 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         # from treating "no round yet" as an error.
         minted_ref = ''
         minted_at = ''
+        turn_identity = [string]$TurnIdentity
     }
 
     if ([IO.File]::Exists($path)) {
         $existing = $null
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
         catch { $existing = $null }
+        # 203 T004 (FR-021; the 02:44 case, DRIFT-019): A NEWER TYPED ACT SUPERSEDES; IT NEVER FOLDS.
+        #
+        # The 21:47 approval had minted round 4 and its reservation was released before invocation. The maintainer
+        # typed the approval again at 02:44; this writer returned the older record (same text, and a minted record is
+        # never replaced), wrote nothing, and the relaunch ran on 21:47. With the act's identity the two are told apart:
+        # the same message re-offered is the same act; a different, later message journals an immutable supersession
+        # fact and takes the slot, so the spender only ever sees the newest. The round number does not move with it: a
+        # launch derives `<campaign>-round-<rounds run + 1>` from delivered rounds, so a superseded capture whose round
+        # was delivered is never paid for twice.
+        if ($null -ne $existing -and -not [string]::IsNullOrWhiteSpace($TurnIdentity) -and
+            $existing.PSObject.Properties['spent_at'] -and [string]::IsNullOrWhiteSpace([string]$existing.spent_at)) {
+            $existingTurn = if ($existing.PSObject.Properties['turn_identity']) { [string]$existing.turn_identity } else { '' }
+            if ($existingTurn -ceq $TurnIdentity) {
+                Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+                return $existing
+            }
+            $existingAt = if ($existing.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $existing.observed_at } else { $null }
+            $newAt = ConvertTo-SpecrewAuthorityInstant -Value $NowUtc
+            # An older message reaching the writer late (a recovery path) never retires the newer record.
+            if ($null -ne $existingAt -and $null -ne $newAt -and $newAt -lt $existingAt) { return $existing }
+            $supersession = [pscustomobject][ordered]@{
+                schema_version = '1.0'
+                fact_type = 'review-round-approval-superseded'
+                authority_kind = 'human'
+                # The instant, rendered round-trip: a [string] cast of a parsed date drops its offset (W60).
+                superseded_observed_at = if ($null -ne $existingAt) { ([DateTimeOffset]$existingAt).ToUniversalTime().ToString('o') } else { '' }
+                superseded_turn_identity = $existingTurn
+                superseded_minted_ref = if ($existing.PSObject.Properties['minted_ref']) { [string]$existing.minted_ref } else { '' }
+                superseded_by_observed_at = $NowUtc
+                superseded_by_turn_identity = [string]$TurnIdentity
+                observed_at = $NowUtc
+            }
+            # Journal first: without the fact the older record would vanish unexplained, so a failed append records
+            # nothing (the not-recorded report names it).
+            try { Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Value ($supersession | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop }
+            catch { return $null }
+            $existing = $null
+        }
         # An UNSPENT capture of the same utterance is the same act - do not re-mint.
         #
         # W69 (2026-08-26) REPLACES what this comment used to claim. It said a spent slot "is superseded
@@ -2388,6 +2430,10 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][string]$AuthorizationRef,
+        # 203 T004 (option 1, maintainer's instruction 2026-11-03): the run this approval paid for. The run is cited
+        # through the approval's own record; the engine's record formats are unchanged (the run naming the approval is
+        # T012's).
+        [AllowNull()][string]$RunId,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
@@ -2401,6 +2447,7 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
     if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-empty' } }
     $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
     $fact | Add-Member -NotePropertyName 'authorization_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
+    if (-not [string]::IsNullOrWhiteSpace($RunId)) { $fact | Add-Member -NotePropertyName 'run_id' -NotePropertyValue ([string]$RunId) -Force }
     $json = $fact | ConvertTo-Json -Depth 8
     # W57 / round-16 finding (DRIFT-199-I001-126): VERIFY THE POSTCONDITION, AND SAY SO.
     #
@@ -2422,6 +2469,23 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
         [string]::IsNullOrWhiteSpace([string]$verified.spent_at) -or
         [string]$verified.authorization_ref -cne [string]$AuthorizationRef) {
         return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    # The journal line that ties the run to the approval that paid for it. The waiting slot above is the truth, so a
+    # failed append does not undo the consumption.
+    if (-not [string]::IsNullOrWhiteSpace($RunId)) {
+        $approvalAt = if ($verified.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $verified.observed_at } else { $null }
+        $spentFact = [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            fact_type = 'review-round-approval-spent'
+            authority_kind = 'human'
+            approval_observed_at = if ($null -ne $approvalAt) { ([DateTimeOffset]$approvalAt).ToUniversalTime().ToString('o') } else { '' }
+            approval_turn_identity = if ($verified.PSObject.Properties['turn_identity']) { [string]$verified.turn_identity } else { '' }
+            authorization_ref = [string]$AuthorizationRef
+            run_id = [string]$RunId
+            observed_at = $NowUtc
+        }
+        try { Add-Content -LiteralPath (Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'captures.jsonl') -Value ($spentFact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop }
+        catch { $null = $_ }
     }
     return [pscustomobject]@{ consumed = $true; fact = $verified; reason = $reason }
 }

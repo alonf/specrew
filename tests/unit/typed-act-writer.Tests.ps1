@@ -257,7 +257,8 @@ $spentRecord = Read-Pending -Root $r2
 Assert-True ([bool]$spent.consumed -and (Test-SameInstant -Value $spentRecord.observed_at -Expected $newer) -and
     $spentRecord.PSObject.Properties['run_id'] -and [string]$spentRecord.run_id -ceq $launch2.RunId) 'the spent 02:44 approval names the run it paid for'
 $citing = @(Read-Captures -Root $r2 | Where-Object { $_.PSObject.Properties['run_id'] -and [string]$_.run_id -ceq $launch2.RunId })
-Assert-True ($citing.Count -ge 1 -and @($citing | Where-Object { -not (Test-SameInstant -Value $_.observed_at -Expected $newer) }).Count -eq 0) 'no record ties the run to the superseded 21:47 approval'
+$citesNewer = { param($line) if ($line.PSObject.Properties['approval_observed_at']) { Test-SameInstant -Value $line.approval_observed_at -Expected $newer } else { Test-SameInstant -Value $line.observed_at -Expected $newer } }
+Assert-True ($citing.Count -ge 1 -and @($citing | Where-Object { -not (& $citesNewer $_) }).Count -eq 0) 'no record ties the run to the superseded 21:47 approval'
 $cliSource = Get-Content -LiteralPath $reviewCli -Raw
 Assert-True ($cliSource -match 'Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -RunId') 'the review CLI passes the run to the consumption after a delivered round'
 

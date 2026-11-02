@@ -1387,7 +1387,7 @@ if ($Live) {
                     }
                     if ($null -ne $alreadyDelivered) {
                         $retired = $null
-                        try { $retired = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $mintedRef }
+                        try { $retired = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $mintedRef -RunId ([string]$alreadyDelivered.run_id) }
                         catch { $retired = $null }
                         Write-Host 'That approval already paid for a review - Specrew found the completed round it authorized.' -ForegroundColor Yellow
                         Write-Host ''
@@ -1766,7 +1766,7 @@ if ($Live) {
                         # approval could not be marked spent", which the human must see before
                         # anything reuses it.
                         $consumption = $null
-                        try { $consumption = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef }
+                        try { $consumption = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef -RunId ([string]$campaignRun.run_id) }
                         catch { $consumption = [pscustomobject]@{ consumed = $false; reason = ('threw:' + $_.Exception.Message) } }
                         if ($null -eq $consumption -or -not [bool]$consumption.consumed) {
                             $consumptionReason = if ($null -ne $consumption) { [string]$consumption.reason } else { 'no-result' }
