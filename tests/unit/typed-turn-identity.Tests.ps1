@@ -19,7 +19,7 @@
 # Green today, and kept: the two captured firings agree on the inputs the identity is built from, and the Claude
 # hook run by Copilot stands down (B4F-129), so only one channel carries the prompt to a provider.
 #
-# Not in a per-round lane until T003 turns it green (.specrew/release-gate-suites.txt until then).
+# Green since T003 (the binding declares the stand-in; the dispatcher builds it); in the f203-i001-suites lane.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -84,7 +84,7 @@ try {
     Write-Host '--- the Copilot firing carries an identity built from the payload alone (RED before T003) ---'
     $first = Invoke-CopilotPrompt -Fixture $projects['copilot'] -Bytes $nativeBytes
     Assert-True ($first.ExitCode -eq 0 -and $first.Ran) 'the Copilot hook exits 0 and the handover provider runs'
-    Assert-True ([string]$first.Identity -ceq 'declared') ("the binding declares a message identity for Copilot (got '{0}')" -f $first.Identity)
+    Assert-True ([string]$first.Identity -ceq 'stand-in') ("the binding declares a stand-in message identity for Copilot (got '{0}')" -f $first.Identity)
     Assert-True (-not [string]::IsNullOrWhiteSpace([string]$first.Id)) 'the handover provider receives a message id'
 
     # The same bytes seen again later (a second path, a retry): the hook runs at a different time, the identity

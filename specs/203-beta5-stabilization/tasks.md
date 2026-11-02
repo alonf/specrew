@@ -168,6 +168,20 @@ then T014.
   - **Trace:** FR-014, FR-015, FR-018, FR-020, FR-023.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `hosts/*/host.psd1`,
     `tests/unit/typed-act-classifier.Tests.ps1`.
+  - **RED set (maintainer's instruction, 2026-11-02):** a queued typed approval counts as typed (DRIFT-006,
+    DRIFT-012); a compaction summary quoting `approved for review round` is not a typed turn (R4); a pasted
+    transcript that begins with the phrase is not typed (DRIFT-023, the 14:39 paste). Each is a case in
+    `typed-act-classifier.Tests.ps1`, built from a recorded fixture.
+  - **Not T003 (named so the split is visible):** the re-typed approval dropped while an older one is unspent (02:44
+    and 14:45 local, 2026-11-02; DRIFT-019, DRIFT-023) is T004's supersession (FR-021), and the notice the human gets
+    for it is T006's.
+  - **Result (2026-11-02, DRIFT-025):** `Resolve-SpecrewTypedAct` and `Get-SpecrewTypedActIdentity` in
+    HumanAuthorityStore (pure; nothing calls them until T004). The Copilot stand-in identity is declared in
+    `hosts/copilot/host.psd1` and built by the dispatcher, with the deployer carrying it (T002's files, twins
+    synced); `typed-turn-identity.Tests.ps1` is green and both suites are in the `f203-i001-suites` lane. Found on
+    the way: Claude reuses the running turn's `prompt_id` for a queued message, the cause of DRIFT-006 and
+    DRIFT-012; and the live prompt-entry verdict path takes `I approved for tasks yesterday` as approval of a waiting
+    crossing. The classifier refuses both; the live paths change in T004.
 - [ ] T004 [owner: Implementer] [sp: 4.0] **Write-SpecrewTypedAct and the rewiring.**
   - **Work:** the only writer for recovery paths: re-reads the cited turn and re-derives through T003, writes only
     if unrecorded; rewire the user-prompt router, turn-end recovery, transcript backstop and writer CLIs; remove

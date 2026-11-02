@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 24 (DRIFT-001 to DRIFT-024)
-**Resolution rate**: 24 of 24 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 carry an open product class
+**Total drift events**: 25 (DRIFT-001 to DRIFT-025)
+**Resolution rate**: 25 of 25 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023 and DRIFT-025 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -572,3 +572,31 @@
 - **Requirement**: the clarify instruction (only reviewed code reaches the live hooks); FR-014.
 - **Class closure**: CLOSED for this machine; the class (verification runs writing the real home) was closed in
   `c988b849` (DRIFT-021).
+
+### DRIFT-025 — T003: the cause of the dropped queued approvals found; T003 touched T002's dispatcher and deployer (observation, scope)
+
+- **Queued approvals (DRIFT-006, DRIFT-012), cause found**: Claude Code hands a message sent while a turn runs
+  (queued) to the UserPromptSubmit hook with the RUNNING turn's `prompt_id` (headless probe in a scratch folder,
+  Claude Code 2.1.314, 2026-11-02; `tests/fixtures/hook-payloads/claude/queued/`). The router keys a turn on
+  `prompt_id` alone, so both queued `approved for review round` messages were the previous turn, already reserved in
+  `.specrew/authority/exhausted-turns.jsonl`, and returned before any writer, report or reservation. The ledger
+  matches: no reservation at 00:03:27Z or 09:48:53Z on 2026-11-01, while each queued message's own transcript
+  `promptId` was reserved later under a task-notification's text. The wrong "reads as a verdict for 'review'" notice
+  was a separate path (B4F-116/150) and not the cause.
+- **A non-approval phrase that authorizes today**: the prompt-entry verdict reader takes `I approved for tasks
+  yesterday` as an approval of a waiting `plan -> tasks` crossing (`Test-SpecrewHumanVerdictToken` without DA-3's
+  "starts the message"). Found by the classifier's test; live in the pin until T004 rewires the path.
+- **Scope**: the Copilot stand-in identity has to be built where the payload is read, so T003 changed T002's
+  dispatcher (turn record) and deployer (binding key), twins synced, besides its own `hosts/copilot/host.psd1`. The
+  turn end's Copilot path is unchanged (its Stop record still declares `none`). The classifier's own identity hashes
+  the message id with the text; the live router keeps its key until T004, because changing it now would let the turn
+  end re-record approvals stored under the old key.
+- **Spec gap**: FR-018 names four acts; today's router also writes a withdrawal, a partial sign-off, a workshop
+  repair, a coverage deferral and the round approval. The classifier routes all of them so T004 loses none; the
+  round approval goes with FR-010 in T004. Whether the other four stay as they are is open for the maintainer.
+- **Requirement**: FR-014 to FR-023; DA-2, DA-3.
+- **Resolution**: `Resolve-SpecrewTypedAct` and `Get-SpecrewTypedActIdentity` (pure, not yet called); RED cases from
+  recorded fixtures; three mutations (identity without text, verdict not at the start, compaction flag ignored) each
+  turn the classifier test red.
+- **Class closure**: OPEN until T004 wires every path through the classifier (queued key at the turn end,
+  prompt-entry verdict reader) and T006 reports the reasons.

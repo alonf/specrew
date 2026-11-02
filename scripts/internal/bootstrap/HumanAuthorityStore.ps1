@@ -1174,6 +1174,193 @@ function Get-SpecrewTypedAuthorityShape {
     return $null
 }
 
+# Feature 203 T003 (FR-014 to FR-023; DA-1 option B, DA-2, DA-3): ONE CLASSIFIER, ONE ACT PER TYPED TURN.
+#
+# Today a typed turn is read by the prompt router, the turn end, the transcript backstop and the writer CLIs, each with
+# its own reading rules, and the spread is the root of B4F-112, B4F-116/150, B4F-117 and B4F-137/140. Resolve-SpecrewTypedAct
+# is the one reading: a turn record and the pending state in, exactly one act or none with a reason out. It is pure: it
+# reads no store and writes none. T004 rewires the paths to it and removes their own rules; until then nothing calls it.
+#
+# The reasons a turn records nothing, and whether the human must be told (FR-026; data-model.md):
+#   not-an-act           the text is no act and nothing waits for a reply                     not reported
+#   not-human            host-injected text or a compaction summary (FR-015, FR-019; R4)       not reported
+#   not-standalone       quoted, in backticks, inside a paste, or a quoted menu (FR-015)       not reported
+#   not-standalone       the human's own text carries the phrase but goes on, or qualifies it  reported: retype one line
+#   origin-unconfirmed   the dispatcher could not tell who wrote it                            reported
+#   no-identity          the host gave the turn no identity (FR-015)                           reported
+#   already-recorded     this identity has an act already (FR-015, FR-022)                     not reported
+#   form-unreadable      the form or verdict reader failed or is missing                       reported
+#   no-pending-crossing  an act with nothing waiting for it                                    reported
+#   boundary-mismatch    a verdict naming another boundary than the waiting one (FR-020)       reported
+#   stage-evidence-absent the waiting crossing's stage owes its artifacts                       reported
+#   missing-destination  `defer finding <id>` without `to <destination>` (FR-011)              reported
+#
+# Kinds: the four FR-018 names, plus the acts today's router writes that FR-018 does not name, routed here so T004's
+# rewiring loses none of them: withdrawal, partial-signoff, workshop-repair, coverage-deferral, and round-approval, which
+# T004 removes with the per-round approval (FR-010). Until then 'approved for review round' is never read as a verdict
+# for the 'review' boundary (B4F-116/150, DRIFT-006).
+#
+# Deliberately NOT here (T003 notes): a re-typed approval dropped while an older one is unspent (02:44 and 14:45 local,
+# 2026-11-02; DRIFT-019, DRIFT-023) is supersession, T004 (FR-021); the human-facing notice for it is T006.
+
+function Get-SpecrewTypedActIdentity {
+    # One key per typed message, from the turn record alone (FR-016, DA-2). The host's message id, or the binding's
+    # declared stand-in (Copilot), together with the text. The text is part of the key because Claude reuses a
+    # message id: a message queued while a turn runs reaches the prompt hook with that RUNNING turn's prompt_id
+    # (measured on Claude Code 2.1.314, 2026-11-02, a scratch-folder probe). Keyed on the id alone, the queued
+    # approval was the previous turn, already recorded, and it was dropped without a word (DRIFT-006, DRIFT-012).
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()]$Turn)
+    $none = [pscustomobject]@{ Identity = ''; Kind = 'none' }
+    if ($null -eq $Turn) { return $none }
+    $prop = { param($name) if ($Turn.PSObject.Properties[$name]) { [string]$Turn.$name } else { '' } }
+    $messageId = (& $prop 'message_id').Trim()
+    $text = (& $prop 'text').Trim()
+    if ([string]::IsNullOrWhiteSpace($messageId) -or [string]::IsNullOrWhiteSpace($text)) { return $none }
+    $hostKind = (& $prop 'host').Trim().ToLowerInvariant()
+    $kind = if ((& $prop 'message_identity').Trim() -ceq 'stand-in') { 'stand-in' } else { 'host-message-id' }
+    $identity = Get-SpecrewHumanAuthorityHash -Text (@('typed-act', $hostKind, $messageId, (Get-SpecrewHumanAuthorityHash -Text $text)) -join '|')
+    return [pscustomobject]@{ Identity = $identity; Kind = $kind }
+}
+
+function Get-SpecrewStopAnswerShape {
+    # The review-stop lines of FR-011 that no older recognizer reads. One line, the phrase alone. $null when none.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $line = ($Text.Trim() -replace '\s+', ' ')
+    if ($line -match '(?i)^defer\s+finding\s+(?<id>\S+)\s+to\s+(?<to>\S.*?)\s*\.?$') { return [pscustomobject]@{ Answer = 'defer'; Finding = $Matches['id']; Argument = $Matches['to'] } }
+    if ($line -match '(?i)^defer\s+finding\s+(?<id>\S+)\s*\.?$') { return [pscustomobject]@{ Answer = 'defer'; Finding = $Matches['id']; Argument = '' } }
+    if ($line -match '(?i)^drop\s+finding\s+(?<id>\S+)\s*\.?$') { return [pscustomobject]@{ Answer = 'drop'; Finding = $Matches['id']; Argument = '' } }
+    if ($line -match '(?i)^fix\s+finding\s+(?<id>\S+)\s*\.?$') { return [pscustomobject]@{ Answer = 'fix'; Finding = $Matches['id']; Argument = '' } }
+    if ($line -match '(?i)^allow\s+reviewer\s+(?<host>[a-z][a-z0-9-]*)\s*\.?$') { return [pscustomobject]@{ Answer = 'allow-reviewer'; Finding = ''; Argument = $Matches['host'].ToLowerInvariant() } }
+    return $null
+}
+
+function Resolve-SpecrewTypedAct {
+    # Turn: host, message_id, message_identity ('declared' | 'stand-in' | 'none'), origin ('typed-user' | 'host-injected'
+    # | 'unknown'), text, and is_compact_summary when a transcript reader built it. Pending: Crossing { From; To;
+    # StageEvidenceAbsent }, Pause { Kind ('a-budget-spent' | 'b-dispute-or-defer' | 'c-judgment' |
+    # 'd-host-outside-order'); Id }, WorkshopQuestion { Id }, each $null when nothing waits. RecordedIdentities: the
+    # identities that already have an act. Returns { Kind; Reason; Report; TurnIdentity; IdentityKind; Target; Answer;
+    # Argument; Shape }.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()]$Turn,
+        [Parameter()][AllowNull()]$Pending,
+        [Parameter()][AllowNull()][string[]]$RecordedIdentities = @()
+    )
+    $act = [pscustomobject]@{ Kind = 'none'; Reason = 'not-an-act'; Report = $false; TurnIdentity = ''; IdentityKind = 'none'; Target = ''; Answer = ''; Argument = ''; Shape = '' }
+    $none = { param([string]$Reason, [bool]$Report) $act.Kind = 'none'; $act.Reason = $Reason; $act.Report = $Report; return $act }
+    if ($null -eq $Turn) { return (& $none 'not-an-act' $false) }
+    $prop = { param($Object, $name) if ($null -ne $Object -and $Object.PSObject.Properties[$name]) { $Object.$name } else { $null } }
+    $text = [string](& $prop $Turn 'text')
+    $hostKind = ([string](& $prop $Turn 'host')).Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($text)) { return (& $none 'not-an-act' $false) }
+    $crossing = & $prop $Pending 'Crossing'
+    $pause = & $prop $Pending 'Pause'
+    $question = & $prop $Pending 'WorkshopQuestion'
+
+    # What act, if any, the human's own standalone text is. A reader that throws is a form that cannot be read.
+    $form = $null; $shape = $null; $verdict = $null; $stop = $null
+    try {
+        $form = Resolve-SpecrewApprovalForm -Text $text -HostKind $hostKind
+        $own = [string]$form.Text
+        if ([string]::IsNullOrWhiteSpace([string]$form.Reason) -and -not [string]::IsNullOrWhiteSpace($own)) {
+            $shape = Get-SpecrewTypedAuthorityShape -Text $own
+            if ($null -eq $shape -and -not (Test-SpecrewAuthorityMessageContinues -Text $own)) { $stop = Get-SpecrewStopAnswerShape -Text $own }
+            if ($null -eq $shape -and $null -eq $stop) {
+                if (-not (Get-Command Test-SpecrewHumanVerdictToken -ErrorAction SilentlyContinue)) { throw 'the boundary verdict reader is not loaded' }
+                # DA-3: the phrase starts the message. The verdict reader alone took 'I approved for tasks yesterday' as an
+                # approval of the waiting crossing, as the prompt-entry verdict path still does until T004.
+                $token = Test-SpecrewHumanVerdictToken -Text $own
+                if ([bool]$token.IsApproval -and $own.TrimStart() -match '^(?i)approv(?:e|ed)\b') { $verdict = $token }
+            }
+        }
+    }
+    catch {
+        $act.Shape = 'unreadable'
+        return (& $none 'form-unreadable' $true)
+    }
+    $isAct = ($null -ne $shape -or $null -ne $stop -or $null -ne $verdict)
+    $act.Shape = if ($null -ne $shape) { [string]$shape.Kind } elseif ($null -ne $stop) { 'stop-answer' } elseif ($null -ne $verdict) { 'boundary-verdict' } else { '' }
+
+    # Who wrote it (FR-015, FR-019). Never reported: the human did not type it, so telling them it was "not recorded"
+    # would be false (measure c). A compaction summary quotes the human's earlier approvals (R4, Claude 2.1.312).
+    $compact = & $prop $Turn 'is_compact_summary'
+    if ($compact -eq $true -or [string]$compact -match '(?i)^\s*true\s*$') { return (& $none 'not-human' $false) }
+    $origin = ([string](& $prop $Turn 'origin')).Trim()
+    if ($origin -ceq 'host-injected') { return (& $none 'not-human' $false) }
+    if ($origin -cne 'typed-user') { return (& $none $(if ($isAct) { 'origin-unconfirmed' } else { 'not-an-act' }) $isAct) }
+
+    $identity = Get-SpecrewTypedActIdentity -Turn $Turn
+    $act.TurnIdentity = [string]$identity.Identity; $act.IdentityKind = [string]$identity.Kind
+    if ([string]::IsNullOrWhiteSpace($act.TurnIdentity)) { return (& $none $(if ($isAct) { 'no-identity' } else { 'not-an-act' }) $isAct) }
+    if (@($RecordedIdentities) -contains $act.TurnIdentity) { return (& $none 'already-recorded' $false) }
+
+    if (-not $isAct) {
+        # The form named a reason, or reduced the message to nothing: the phrase is not the human's own standalone line.
+        $refusal = $null
+        try { $refusal = Get-SpecrewAuthorityMultiLineRefusal -Text $text -HostKind $hostKind } catch { $refusal = $null }
+        if ($null -ne $refusal) { $act.Shape = [string]$refusal.Kind; return (& $none 'not-standalone' $true) }
+        $unwrapped = @([regex]::Split((Remove-SpecrewPairedPastes -Text $text), '\r\n|\n|\r') + @([regex]::Split($text, '\r\n|\n|\r')) |
+                ForEach-Object { ConvertTo-SpecrewVerdictOptionText -Line (($_ -replace '[`"''“”]', ' ') -replace '\s+', ' ').Trim() } | Where-Object { $_ })
+        foreach ($line in $unwrapped) {
+            if ($null -ne (Get-SpecrewTypedAuthorityShape -Text $line) -or $line -match $script:SpecrewVerdictOptionLinePattern) { return (& $none 'not-standalone' $false) }
+        }
+        # Any other typed reply answers what waits for one: a judgment call at a review stop, then a workshop question.
+        if ($null -ne $pause -and [string](& $prop $pause 'Kind') -ceq 'c-judgment') {
+            $act.Kind = 'stop-answer'; $act.Reason = ''; $act.Answer = 'judgment'; $act.Target = [string](& $prop $pause 'Id')
+            return $act
+        }
+        if ($null -ne $question) {
+            $act.Kind = 'workshop-reply'; $act.Reason = ''; $act.Target = [string](& $prop $question 'Id')
+            return $act
+        }
+        return (& $none 'not-an-act' $false)
+    }
+
+    $route = { param([string]$Kind, [string]$Target, [string]$Answer, [string]$Argument)
+        $act.Kind = $Kind; $act.Reason = ''; $act.Report = $false; $act.Target = $Target; $act.Answer = $Answer; $act.Argument = $Argument
+        return $act }
+    $pauseId = [string](& $prop $pause 'Id')
+    if ($null -ne $shape) {
+        switch ([string]$shape.Kind) {
+            'approval-withdrawal' { return (& $route 'withdrawal' '' '' '') }
+            'review-round-approval' { return (& $route 'round-approval' '' '' '') }
+            'partial-review-signoff' { return (& $route 'partial-signoff' '' '' '') }
+            'workshop-repair' { return (& $route 'workshop-repair' '' '' '') }
+            'coverage-deferral' { return (& $route 'coverage-deferral' '' '' '') }
+            'allowance-reset' {
+                if ($null -eq $pause -or [string](& $prop $pause 'Kind') -cne 'a-budget-spent') { return (& $none 'no-pending-crossing' $true) }
+                return (& $route 'top-up' $pauseId '' '')
+            }
+            'pause-decision' {
+                if ($null -eq $pause) { return (& $none 'no-pending-crossing' $true) }
+                return (& $route 'stop-answer' $pauseId $(if ([string]$shape.Choice -ceq 'abandon') { 'abandon' } else { 'stop-review' }) '')
+            }
+        }
+        return (& $none 'not-an-act' $false)
+    }
+    if ($null -ne $stop) {
+        if ($null -eq $pause) { return (& $none 'no-pending-crossing' $true) }
+        if ([string]$stop.Answer -ceq 'defer' -and [string]::IsNullOrWhiteSpace([string]$stop.Argument)) { return (& $none 'missing-destination' $true) }
+        $routed = & $route 'stop-answer' $pauseId ([string]$stop.Answer) ([string]$stop.Argument)
+        if (-not [string]::IsNullOrWhiteSpace([string]$stop.Finding)) { $routed.Target = ('{0}#{1}' -f $pauseId, [string]$stop.Finding) }
+        return $routed
+    }
+    # A boundary verdict pairs with the durable pending crossing, never with a marker (FR-019).
+    if ($null -eq $crossing) { return (& $none 'no-pending-crossing' $true) }
+    $canon = { param([string]$b) $v = $b.Trim().ToLowerInvariant(); if (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue) { try { $v = [string](Normalize-SpecrewCanonicalBoundaryType -Boundary $v) } catch { $null = $_ } }; $v }
+    $from = & $canon ([string](& $prop $crossing 'From'))
+    $to = & $canon ([string](& $prop $crossing 'To'))
+    $named = @(@($verdict.NamedBoundaries) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { & $canon ([string]$_) })
+    if ($named.Count -gt 0 -and @($named | Where-Object { $_ -ceq $to -or $_ -ceq $from }).Count -eq 0) { return (& $none 'boundary-mismatch' $true) }
+    $absent = & $prop $crossing 'StageEvidenceAbsent'
+    if ($absent -eq $true) { return (& $none 'stage-evidence-absent' $true) }
+    return (& $route 'boundary-verdict' ('{0}->{1}' -f $from, $to) '' '')
+}
+
 function Test-SpecrewPromptChannelSawContent {
     # Did the message hook (any channel that is not the turn end) see EVERY message in this session with this
     # content? The reservation is written before any writer runs, for every message the hook receives, so it is

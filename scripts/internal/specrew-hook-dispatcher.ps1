@@ -554,7 +554,9 @@ function ConvertFrom-DispatcherRuntimeBinding {
         # Feature 202 T002 (DA-1, option B): the host's declared input contract (host.psd1). $null when the
         # binding predates it; ConvertTo-SpecrewTurnRecord then uses the host-neutral defaults below.
         InputFieldMap           = Get-DispatcherMapValue -Map $Runtime -Key 'InputFieldMap'
-        OriginRules             = Get-DispatcherMapValue -Map $Runtime -Key 'OriginRules'
+        # Feature 203 T003 (FR-016, DA-2): how a host with no message id builds its stand-in identity; $null otherwise.
+        MessageIdentity         = Get-DispatcherMapValue -Map $Runtime -Key 'MessageIdentity'
+        OriginRules            = Get-DispatcherMapValue -Map $Runtime -Key 'OriginRules'
         InputTransform          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'InputTransform' -Default '')
         # Feature 202 iteration 002, T016 (FR-028, DA-1): this host's payload signature and the other hosts'.
         PayloadSignature         = Get-DispatcherMapValue -Map $Runtime -Key 'PayloadSignature'
@@ -860,6 +862,44 @@ function Get-DispatcherTurnFieldValue {
     return $null
 }
 
+function ConvertTo-DispatcherEpochMilliseconds {
+    # A payload instant as UTC epoch milliseconds: Copilot's own channel sends a number, its Claude-hook channel an ISO
+    # string, which ConvertFrom-Json may already have turned into a DateTime. $null when it is neither.
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [DateTimeOffset]) { return $Value.ToUnixTimeMilliseconds() }
+    if ($Value -is [datetime]) { return ([DateTimeOffset]$Value.ToUniversalTime()).ToUnixTimeMilliseconds() }
+    $text = ([string]$Value).Trim()
+    if ($text -match '^\d{10,16}$') { return [int64]$text }
+    $parsed = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse($text, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { return $parsed.ToUnixTimeMilliseconds() }
+    return $null
+}
+
+function Get-DispatcherStandInMessageId {
+    # Feature 203 T003 (FR-016, DA-2): the stand-in message id a binding declares (MessageIdentity Kind 'stand-in'): the
+    # session id, the instant in UTC epoch milliseconds and the prompt text, hashed. Every part must be present, or there
+    # is no identity, and the turn records nothing (FR-015).
+    param($Payload, $Binding, [AllowEmptyString()][string]$SessionId, [AllowEmptyString()][string]$TypedText)
+    $declared = Get-DispatcherMapValue -Map $Binding -Key 'MessageIdentity'
+    if ($null -eq $declared -or [string](Get-DispatcherMapValue -Map $declared -Key 'Kind' -Default '') -cne 'stand-in') { return $null }
+    if ([string]::IsNullOrWhiteSpace($SessionId) -or [string]::IsNullOrWhiteSpace($TypedText) -or $null -eq $Payload) { return $null }
+    $epochMs = $null
+    foreach ($path in @(Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'Timestamp')) {
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $node = $Payload
+        foreach ($segment in $path.Split('.')) {
+            if ($null -eq $node -or $node -isnot [psobject] -or $null -eq $node.PSObject.Properties[$segment]) { $node = $null; break }
+            $node = $node.PSObject.Properties[$segment].Value
+        }
+        $epochMs = ConvertTo-DispatcherEpochMilliseconds -Value $node
+        if ($null -ne $epochMs) { break }
+    }
+    if ($null -eq $epochMs) { return $null }
+    $sha = { param([string]$s) ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.UTF8Encoding]::new($false).GetBytes($s)))).ToLowerInvariant() }
+    return (& $sha ('stand-in|{0}|{1}|{2}' -f $SessionId.Trim().ToLowerInvariant(), $epochMs, (& $sha $TypedText.Trim())))
+}
+
 function Get-DispatcherTurnFieldPaths {
     # The declared paths for one field; a key the binding does not declare falls back to the host-neutral default.
     param($Binding, [string]$Field)
@@ -969,6 +1009,14 @@ function ConvertTo-SpecrewTurnRecord {
     # the only recording path for a typed approval.
     $messageIdPaths = @(Get-DispatcherTurnFieldPaths -Binding $Binding -Field 'MessageId' | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
     $messageId = if ($isPromptEvent -and $messageIdPaths.Count -gt 0) { Get-DispatcherTurnFieldValue -Payload $Payload -Paths $messageIdPaths } else { $null }
+    $messageIdentity = if ($messageIdPaths.Count -gt 0) { 'declared' } else { 'none' }
+    # Feature 203 T003 (FR-016, DA-2): a host that sends no message id may declare a stand-in built from the payload alone,
+    # so every path that sees the prompt computes one key. Without it the prompt path keyed the turn on the time the hook
+    # ran, and Copilot's two channels for one prompt ran 727 ms apart (research.md R1).
+    if ($isPromptEvent -and $messageIdPaths.Count -eq 0) {
+        $standIn = Get-DispatcherStandInMessageId -Payload $Payload -Binding $Binding -SessionId ([string]$sessionId) -TypedText ([string]$typedText)
+        if (-not [string]::IsNullOrWhiteSpace($standIn)) { $messageId = $standIn; $messageIdentity = 'stand-in' }
+    }
     return [ordered]@{
         schema           = 'specrew-turn-record/v1'
         event            = $EventName
@@ -982,7 +1030,7 @@ function ConvertTo-SpecrewTurnRecord {
         stop_hook_active = ($stopHookActive -eq $true -or [string]$stopHookActive -eq 'True')
         tool             = $tool
         message_id       = if ([string]::IsNullOrWhiteSpace([string]$messageId)) { $null } else { [string]$messageId }
-        message_identity = if ($messageIdPaths.Count -gt 0) { 'declared' } else { 'none' }
+        message_identity = $messageIdentity
     }
 }
 

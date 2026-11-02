@@ -203,6 +203,14 @@ function Get-HostRuntimeBindingEncoded {
         }
         $stableRuntime['InputFieldMap'] = $fieldMap
     }
+    # Feature 203 T003 (FR-016, DA-2): a host with no message id declares how its stand-in identity is built.
+    if (Test-ManifestKey -Map $runtime -Key 'MessageIdentity') {
+        $rawIdentity = Get-ManifestValue -Map $runtime -Key 'MessageIdentity'
+        $stableRuntime['MessageIdentity'] = [ordered]@{
+            From = @(@(Get-ManifestValue -Map $rawIdentity -Key 'From' -Default @()) | ForEach-Object { [string]$_ })
+            Kind = [string](Get-ManifestValue -Map $rawIdentity -Key 'Kind' -Default '')
+        }
+    }
     if (Test-ManifestKey -Map $runtime -Key 'OriginRules') {
         $rules = foreach ($rule in @(Get-ManifestValue -Map $runtime -Key 'OriginRules')) {
             $stableRule = [ordered]@{}

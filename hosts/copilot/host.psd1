@@ -85,7 +85,13 @@
                 ToolName       = @('toolName')
                 ToolOutcome    = @('toolResult.toolTelemetry.properties.outcome')
                 ToolQuestion   = @('toolResult.toolTelemetry.restrictedProperties.question')
+                Timestamp      = @('timestamp')
             }
+            # Feature 203 T003 (FR-016, DA-2): Copilot sends no message id, so the binding declares a stand-in built from
+            # the payload alone: the session id, the prompt's instant as UTC epoch milliseconds, and the prompt text.
+            # Both Copilot hook channels carry all three identically for one prompt (research.md R1; fixtures
+            # tests/fixtures/hook-payloads/copilot/one-prompt-two-firings and tui-paste, Copilot 1.0.103 and 1.0.105).
+            MessageIdentity         = @{ Kind = 'stand-in'; From = @('SessionId', 'Timestamp', 'Prompt') }
             # Evaluated in order; the first matching rule decides. A prompt that matches no host-injected rule
             # is typed-user, and only typed-user can produce a receipt (FR-006). hook-output-journal: the prompt
             # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a

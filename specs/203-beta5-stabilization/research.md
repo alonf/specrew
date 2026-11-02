@@ -33,6 +33,14 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
   `tests/unit/typed-turn-identity.Tests.ps1` (today the binding declares no identity and the prompt path keys on
   the time the hook ran). Also measured: a sub-agent's task text still fires `userPromptSubmitted` with its own
   `sessionId` (equal to `agentId`) and `parentAgentId`, as on 1.0.101 (B4F-147, already handled).
+- **Added at T003 (2026-11-02, Claude Code 2.1.314, headless probe in a scratch folder):** Claude's `prompt_id` is
+  not one key per message. A message sent while a turn runs (queued) reaches the UserPromptSubmit hook with the
+  RUNNING turn's `prompt_id` and its own text; in the TUI its transcript entry gets its own `promptId`, with
+  `promptSource: queued` and origin kind `human`. Keyed on `prompt_id` alone, the router took both queued
+  approvals (DRIFT-006, DRIFT-012) for the previous turn, already recorded, and dropped them without a reservation
+  or a report. The classifier's identity therefore hashes the message id with the text (data-model.md). The live
+  router keeps its key until T004, which also has to give the turn end the hook's key for a queued entry. Fixtures:
+  `tests/fixtures/hook-payloads/claude/queued/`.
 
 ## R2. Pasted content (FR-017, DA-3)
 

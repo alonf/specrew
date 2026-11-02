@@ -197,10 +197,17 @@ try {
                 $sid = if ($payload.PSObject.Properties['session_id']) { $payload.session_id } else { $payload.sessionId }
                 Assert-Equal (Get-ArgValue $hand '--session-id') (Get-SafeSessionId $sid) "$prefix - the session id comes from the declared field map"
                 # Feature 202 iteration 002, T017 (FR-027): the host's own message ID reaches the provider, from the
-                # declared field map: Claude prompt_id, Codex turn_id; Copilot declares none and sends none.
-                $expectedMessageId = if ($payload.PSObject.Properties['prompt_id']) { [string]$payload.prompt_id } elseif ($payload.PSObject.Properties['turn_id']) { [string]$payload.turn_id } else { $null }
-                Assert-Equal (Get-ArgValue $hand '--message-id') $expectedMessageId "$prefix - the message id comes from the declared field map"
-                Assert-Equal (Get-ArgValue $hand '--message-identity') $(if ($h -eq 'copilot') { 'none' } else { 'declared' }) "$prefix - the binding's message-identity declaration"
+                # declared field map: Claude prompt_id, Codex turn_id. Feature 203 T003 (FR-016, DA-2): Copilot sends none,
+                # and its binding declares a stand-in built from the payload (tests/unit/typed-turn-identity.Tests.ps1).
+                if ($h -eq 'copilot') {
+                    Assert-True ([string](Get-ArgValue $hand '--message-id') -match '^[0-9a-f]{64}$') "$prefix - the provider receives the stand-in message id"
+                    Assert-Equal (Get-ArgValue $hand '--message-identity') 'stand-in' "$prefix - the binding's message-identity declaration"
+                }
+                else {
+                    $expectedMessageId = if ($payload.PSObject.Properties['prompt_id']) { [string]$payload.prompt_id } elseif ($payload.PSObject.Properties['turn_id']) { [string]$payload.turn_id } else { $null }
+                    Assert-Equal (Get-ArgValue $hand '--message-id') $expectedMessageId "$prefix - the message id comes from the declared field map"
+                    Assert-Equal (Get-ArgValue $hand '--message-identity') 'declared' "$prefix - the binding's message-identity declaration"
+                }
             }
             'start' {
                 $r = Invoke-DeployedHook -Fixture $fx -NativeEvent $nativeStart[$h] -StdinBytes $bytes

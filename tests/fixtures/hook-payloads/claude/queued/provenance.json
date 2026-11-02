@@ -1,0 +1,40 @@
+{
+  "task": "T003 (feature 203, iteration 001)",
+  "host": "claude",
+  "what": "A message sent while the previous turn is still running (queued). The two payloads are what the UserPromptSubmit hook received for the running turn and for the queued message; the transcript excerpt is the maintainer's queued approval of 2026-11-01 00:03:27Z (DRIFT-006): its queue-operation enqueue and dequeue lines and its user entry.",
+  "method": "Payloads: a headless probe (claude -p with stream-json input, --setting-sources local) in a scratch git folder outside any repository, the second message written 8 seconds into a 20-second first turn; a capture hook copied raw stdin bytes. Excerpt: copied from this repository's development session transcript.",
+  "redaction": "The user name in every profile path is replaced with probe-user.",
+  "finding": "The queued message reached the hook with the RUNNING turn's prompt_id (66274807-...), the same as the first message, and different text. In the TUI the queued entry is stored with promptSource queued, origin kind human and its own promptId. A key built from prompt_id alone makes the queued approval the previous turn, already recorded: the router dropped both queued approvals without a reservation or a report (DRIFT-006, DRIFT-012).",
+  "fixtures": [
+    {
+      "fixture": "print-userpromptsubmit-running-turn.json",
+      "event": "UserPromptSubmit",
+      "host_version": "2.1.314",
+      "entrypoint": "cli -p, stream-json input",
+      "sha256": "db99f9d1fb9e0d9250d4f81b15fb9c03c9678c16439a01383316e87968ae2ac6",
+      "fixture_sha256": "9d5cbabb467b9b4e95a01daf44b6a1d3526cfa3efa4d5ddc1ff3e970996a7f53",
+      "origin": "recorded"
+    },
+    {
+      "fixture": "print-userpromptsubmit-queued.json",
+      "event": "UserPromptSubmit",
+      "host_version": "2.1.314",
+      "entrypoint": "cli -p, stream-json input",
+      "sha256": "dfe08b6671f86b38c2cd5d6f5bc36f64b27e7e298cba9295264622c9ea442ac8",
+      "fixture_sha256": "c62206b3ac3cebf56ae3054bc9ae7a25c649e558c08862eed756186c3095cc62",
+      "origin": "recorded"
+    },
+    {
+      "fixture": "tui-transcript-queued-approval.jsonl",
+      "host_version": "2.1.312",
+      "entrypoint": "cli (TUI)",
+      "source_line_sha256": [
+        "90d440e8ae264c9ae0d23e49623dbc6fd33b0424672137fb767fb96b50fc94b7",
+        "f42ca67287a247373186488ce03fc6788c09ff4d3e701f6167f200e2ae259127",
+        "9c4ef22ad2b57d0df482ad7886a23666c295ebb9344638b090406276eaa409d7"
+      ],
+      "fixture_sha256": "238e10cf694cabf57903eeed56a9ea9ad3a3cf2df36ea36015bae812d2fd98f0",
+      "origin": "recorded (redacted)"
+    }
+  ]
+}

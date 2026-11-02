@@ -1,0 +1,7 @@
+{
+  "host": "claude",
+  "origin": "typed-user",
+  "message_id": "fec7eb92-18d7-401a-b29e-228b91f090f8",
+  "message_identity": "declared",
+  "text": "\n\n<pasted_content id=\"bd20\">\napproved for review round\n\n  Ran 2 shell commands\n\nYour approval was captured at 14:37:26 local, and the pending approval is that new one. The campaign is paused at round 6's decision, so I'll answer it with \"run another round\" and Codex:\n\n[... shortened for the fixture ...]\n</pasted_content id=\"bd20\">\n"
+}

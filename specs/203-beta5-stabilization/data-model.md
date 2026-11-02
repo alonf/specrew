@@ -27,6 +27,17 @@ fact is idempotent success, a conflicting one fails closed. Records keep ids and
 Rule: one turn yields exactly one act or `none`. Only `none` reasons other than `already-recorded` and
 `not-standalone` produce a not-recorded report.
 
+**As built in T003 (2026-11-02), `Resolve-SpecrewTypedAct`:** the act carries `Report` (whether the human must be
+told), so the rule above is computed once, by the classifier. Reasons added: `not-an-act` (no act shape and nothing
+waiting; not reported), `origin-unconfirmed` (FR-026; reported), `missing-destination` (a deferral without its
+destination, FR-011; reported). `not-human` (host-injected text or a compaction summary) is not reported, because the
+human did not type it. `not-standalone` is reported only when the human's own text carries the phrase and goes on or
+qualifies it (the retype-one-line case); a phrase quoted, in backticks or inside a paste is silent. Kinds added so
+T004's rewiring loses no act today's router writes: `withdrawal`, `partial-signoff`, `workshop-repair`,
+`coverage-deferral`, and `round-approval`, which T004 removes (FR-010). `identity` is
+`sha256(typed-act | host | message id | sha256(text))`: Claude reuses the running turn's `prompt_id` for a queued
+message (research.md R1), so the id alone is not one key per message.
+
 ## Review grant (campaign fact)
 
 | Field | Meaning |

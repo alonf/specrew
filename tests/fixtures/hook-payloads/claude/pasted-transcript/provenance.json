@@ -1,0 +1,18 @@
+{
+  "task": "T003 (feature 203, iteration 001)",
+  "host": "claude",
+  "what": "The maintainer's message of 2026-11-02 14:39:04 local (DRIFT-023): a pasted transcript of the previous turns whose first pasted line is approved for review round. Stored as a turn record (the classifier's input), not as a hook payload.",
+  "method": "Built from this repository's development session transcript entry (Claude Code 2.1.312): text is the entry's message content, message_id its promptId.",
+  "redaction": "The paste body is shortened to its first six lines and a marked elision; the opening blank lines, the paste tags and any text after the closing tag are unchanged. The user name in every profile path is replaced with probe-user.",
+  "finding": "Claude tagged the paste, and nothing outside it is typed: no act. The router recorded nothing for it at the time, the correct outcome, and the classifier must keep it.",
+  "fixtures": [
+    {
+      "fixture": "tui-paste-begins-with-phrase.turn.json",
+      "host_version": "2.1.312",
+      "captured_utc": "2026-11-02T12:39:04.477Z",
+      "source_line_sha256": "33ff9135e821f3e379931223a4824e4267454bef5c7b27caf4b4b653743a370e",
+      "fixture_sha256": "5a7e487946f983ffdc12d0ac7d852b2a7ae3469041d277bc9d5d9ce0146c20cd",
+      "origin": "recorded (shortened, redacted)"
+    }
+  ]
+}
