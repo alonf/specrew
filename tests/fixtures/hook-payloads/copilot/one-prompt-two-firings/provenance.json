@@ -1,0 +1,47 @@
+{
+  "task": "T001 (feature 203, iteration 001)",
+  "host": "copilot",
+  "what": "One prompt as Copilot delivers it to both hook channels in the same run: its own userPromptSubmitted hook (COPILOT_HOME/hooks) and the Claude UserPromptSubmit hook in .claude/settings.local.json, which Copilot also runs.",
+  "method": "tests/host-probes/host-payload-capture-probe.ps1 -Hosts copilot: the real host CLI, headless (copilot -p), in a scratch folder outside any repository, with scratch COPILOT_HOME; a capture hook copied raw stdin bytes. Environment values are not recorded. The real user hook files were verified byte-unchanged.",
+  "redaction": "The user name in every profile path is replaced with probe-user (tests/host-probes/probe-fixture-redaction.ps1). sha256 is the captured bytes; fixture_sha256 is the file.",
+  "finding": "Both firings carry the same session id, the same prompt text and the same instant to the millisecond (native timestamp 1793629006802 epoch ms; Claude-hook timestamp 2026-11-02T14:16:46.802Z). The hooks themselves ran 727 ms apart (hook_ran_utc).",
+  "fixtures": [
+    {
+      "fixture": "native-userpromptsubmitted.json",
+      "channel": "copilot",
+      "event": "userPromptSubmitted",
+      "hook_ran_utc": "2026-11-02T14:16:47.7220392Z",
+      "host_version": "GitHub Copilot CLI 1.0.103.",
+      "entrypoint": "cli -p",
+      "stdin_bytes": 225,
+      "sha256": "afb5e059954803d78efdb4b06e135653ba6ec8c3eb24b52214492b1efdfd7989",
+      "fixture_sha256": "cae60a7e098e1ff2ff197579eab4387c2c9585c2346893e72ddda29f5265bc1e",
+      "field_names": [
+        "cwd",
+        "prompt",
+        "sessionId",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "claude-hooks-userpromptsubmit.json",
+      "channel": "copilot-claude-hooks",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T14:16:48.4489507Z",
+      "host_version": "GitHub Copilot CLI 1.0.103.",
+      "entrypoint": "cli -p",
+      "stdin_bytes": 276,
+      "sha256": "688ba4f46b7e16c9ce3b19fbe14be8e33098d58c0c47d2e25b018e4dc867d53f",
+      "fixture_sha256": "0627c5bdea9bda2fe96c2eb5d5a65e2fedfc5f658d6a6d46edcdc66ea717b43c",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "prompt",
+        "session_id",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    }
+  ]
+}

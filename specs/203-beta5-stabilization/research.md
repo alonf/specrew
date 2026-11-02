@@ -25,6 +25,14 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
   for prompt-time capture); prompt hash alone (two identical replies in one session would collide).
 - **Open (W0)**: whether both Copilot firings carry the same instant. If not, the replacement comes to the
   before-implement boundary.
+- **W0 result (2026-11-02, Copilot 1.0.103, `copilot -p` in a scratch folder):** they do. One prompt reached
+  both channels with the same session id, the same prompt text and the same instant to the millisecond
+  (`1793629006802` epoch ms on the native channel, `2026-11-02T14:16:46.802Z` on the Claude-hook channel), while
+  the two hooks ran 727 ms apart. The decision stands; no replacement is needed. Fixtures with provenance:
+  `tests/fixtures/hook-payloads/copilot/one-prompt-two-firings/`. RED for T003:
+  `tests/unit/typed-turn-identity.Tests.ps1` (today the binding declares no identity and the prompt path keys on
+  the time the hook ran). Also measured: a sub-agent's task text still fires `userPromptSubmitted` with its own
+  `sessionId` (equal to `agentId`) and `parentAgentId`, as on 1.0.101 (B4F-147, already handled).
 
 ## R2. Pasted content (FR-017, DA-3)
 
@@ -55,6 +63,15 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
   the SessionStart `source` value `compact`.
 - **Decision**: pair verdicts against the pending-crossing record, which does not depend on transcript shape; W0
   records a real Claude compaction entry as a fixture.
+- **W0 result (2026-11-02, Claude 2.1.312, a real automatic compaction):** a compaction writes a `system` entry
+  (`subtype: compact_boundary`, `compactMetadata` with trigger, token counts and the preserved segment, and
+  `logicalParentUuid` to the pre-compaction chain), then the summary as a `user` entry with
+  `isCompactSummary: true`, `isVisibleInTranscriptOnly: true` and string content. **The summary entry reuses the
+  `promptId` and `turnPosition` of the last prompt before the compaction** (seen in all five compactions of the
+  session), and its text quotes the human's earlier messages, including `approved for review round` seven times.
+  So a reader that keys a turn on `promptId`, or takes the latest `user` entry, finds the summary as that turn
+  unless it checks `isCompactSummary` first. Fixture (shortened and redacted, provenance there):
+  `tests/fixtures/hook-payloads/claude/compaction/`. Feeds T003 (a compaction summary yields no act) and T005.
 
 ## R5. Reviewer token usage (FR-012)
 

@@ -370,3 +370,5 @@ tests/integration/cycle-reset-mirror.tests.ps1
 tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1
 tests/unit/authority-capture-never-drops-silently.tests.ps1
 tests/integration/agent-led-workshop-replay.tests.ps1
+# Feature 203 T001: RED until T003 declares the Copilot identity; T003 moves it to the f203-i001-suites lane.
+tests/unit/typed-turn-identity.Tests.ps1

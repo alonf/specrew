@@ -1,0 +1,23 @@
+{
+  "task": "T001 (feature 203, iteration 001)",
+  "host": "claude",
+  "what": "A real automatic compaction in a Claude Code TUI session (version 2.1.312): the last prompt entry before it, the system compact_boundary entry and the compaction summary entry, in that order (source lines 9784, 9901 and 9902 of the session transcript; the 116 transcript lines between the prompt and the boundary, tool calls and their results, are left out).",
+  "method": "Copied from this repository's own development session transcript (feature 203 T002, 2026-11-02 14:06:09Z). No agent CLI was run for it.",
+  "redaction": "The user name in every profile path is replaced with probe-user. The summary entry's message.content is shortened to three verbatim excerpts (its opening paragraph, the first line of its quoted user-message list, its closing instruction), joined by marked elisions; every other field of every line is unchanged.",
+  "finding": "The summary entry is type user with isCompactSummary true and isVisibleInTranscriptOnly true, and it carries the promptId and turnPosition (promptIndex 62, turnIndex 87) of the last prompt before the compaction, here a host-injected task-notification. The full summary quoted the typed phrase approved for review round seven times inside its user-message list. Four earlier compactions in the same session show the same promptId reuse.",
+  "fixtures": [
+    {
+      "fixture": "tui-compaction-transcript-excerpt.jsonl",
+      "host_version": "2.1.312",
+      "entrypoint": "cli (TUI)",
+      "captured_utc": "2026-11-02T14:06:09.542Z",
+      "source_line_sha256": [
+        "0376dde3422e3a2a46492e6e1980fa1643108f8c764baea61b0c1a6bf2b33b55",
+        "e3e5991d6cfe436d45c358569ddd6d53919d334b70706fb059420561573f8197",
+        "767f1cdb5cb5d7a36ac7c12ad0c8ed46f3e39088dab25ac851917a16da2d40bb"
+      ],
+      "fixture_sha256": "7ad21b51a2713d111a027d38b9ff2dfd1eff4968dbe4dfcdd8d037df8f8f3bad",
+      "origin": "recorded (shortened, redacted)"
+    }
+  ]
+}
