@@ -192,7 +192,27 @@ then T014.
     approval path remains.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
-    `scripts/internal/continuous-co-review/review-authority-core.ps1`, `tests/unit/typed-act-writer.Tests.ps1`.
+    `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
+    (and its `.specify` twin), `tests/unit/typed-act-writer.Tests.ps1`. `review-authority-core.ps1` left T004's Owns
+    on 2026-11-02 (see "Review-act supersession" below); it stays with T008.
+  - **Review-act supersession (2026-11-02, the maintainer's question):** the re-typed round approval (02:44 and 14:45
+    local) goes green in T004 with `scripts/internal/continuous-co-review/` unchanged. The review acts are captured,
+    held and spent in `HumanAuthorityStore.ps1`, not in the review engine: the capture writer keeps one pending slot
+    (`.specrew/review/round-approval/pending-round-approval.json`), and the launch reads only that slot, stamps the
+    grant reference on it and marks it spent after a delivered round. The fold is in that writer: an unspent record
+    with the same text is returned as "the same act", and a record that already minted a grant is never replaced
+    (`Test-SpecrewTypedActReplacesRecord`), so the 02:44 reply wrote nothing. T004 replaces both rules with the act
+    identity: a newer typed act of the kind writes its own capture, an immutable supersession fact retires the
+    older one, and the slot holds the newest, so the spender only ever sees the newest. `review-authority-core.ps1`
+    decides reservation and spend by the grant reference `<campaign>-round-<rounds run + 1>`, which does not depend
+    on which capture authorized it, so it needs no change. Its pause-decision facts change with T008's stop answers.
+    The same rule covers the top-up, the coverage deferral and the partial sign-off, which the same file holds.
+  - **RED, split (2026-11-02):** T004 keeps the capture half: a re-typed approval while an older one is unspent
+    (minted or not) writes its own capture and a supersession fact; the launch stamps and spends the newer one; the
+    older one is never reused. The grant and reservation records naming the typed turn that authorized them stay
+    with T012 (turn identity on every record), in `review-authority-store.ps1`. Added acceptance: superseding a
+    capture whose round was delivered but not marked spent never pays for that round twice; the newer act mints
+    the next round.
   - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
     keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.
