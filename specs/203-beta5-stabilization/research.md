@@ -73,6 +73,15 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
 - Codex: `systemMessage` and `stopReason` were never surfaced (198 characterization).
 - **Decision**: Claude `systemMessage`, verified in W0 with the maintainer observing; Copilot and Codex have no
   verified channel, so the not-recorded report is a justified stop there and the closing line gets a drift entry.
+- **W0 result, Claude (2026-11-02, Claude Code 2.1.314 TUI, the maintainer observing):** a scratch folder with
+  only its local settings (`--setting-sources local`), a UserPromptSubmit hook returning a `systemMessage` (A) and
+  an `additionalContext` (B), and a Stop hook returning a `systemMessage` (C). On screen, A appeared directly under
+  the typed prompt as `UserPromptSubmit says: <text>`, and C directly under the reply as `Stop says: <text>`, on both
+  turns. B was not shown. Asked to quote any hook text, the model quoted only B (labelled `UserPromptSubmit hook
+  additional context:`), so `systemMessage` reaches the human and not the model, and `additionalContext` the model
+  and not the human. The decision stands: on Claude, the not-recorded report is a `systemMessage`, from the prompt
+  hook when the cause is known at prompt time and from Stop otherwise. The model does not see it, so a report
+  meant for the agent as well still needs `additionalContext` beside it.
 
 ## R4. Compaction (FR-019)
 

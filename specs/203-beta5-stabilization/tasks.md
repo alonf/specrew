@@ -146,6 +146,13 @@ then T014.
   - **First commit (maintainer's instruction, 2026-11-01; DRIFT-015):** carries T002's round 2 findings 2 to 4:
     `scripts/internal/live-engine-pin.ps1`, `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`,
     `tests/unit/live-engine-resolution.tests.ps1` and the `f203-i001-suites` lane in `.specrew/verification-plan.json`.
+  - **Result (2026-11-02):** all four facts recorded in research.md (R1 to R4 W0 results); no replacement is needed
+    for the before-implement packet. Copilot's two firings of one prompt carry the same session, text and instant
+    (headless 1.0.103 and TUI 1.0.105); no paste marker on Copilot or Codex; Claude shows `systemMessage` to the
+    human only; a real compaction summary reuses the last prompt's `promptId`. Fixtures with provenance:
+    `copilot/one-prompt-two-firings/`, `copilot/tui-paste/`, `codex/tui-paste/`, `claude/compaction/`. The RED test
+    fails today for the stated reason and is listed in `.specrew/release-gate-suites.txt` (outside this task's owned
+    files, so the suite guard passes) until T003 moves it to the `f203-i001-suites` lane.
 
 ## Phase 2: Foundational (blocks US1 to US3)
 
