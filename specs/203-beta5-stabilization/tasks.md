@@ -213,6 +213,12 @@ then T014.
     with T012 (turn identity on every record), in `review-authority-store.ps1`. Added acceptance: superseding a
     capture whose round was delivered but not marked spent never pays for that round twice; the newer act mints
     the next round.
+  - **The 02:44 relaunch (maintainer's instruction, 2026-11-03; option 1):** after the newer approval supersedes one
+    that already minted a grant, the relaunch keeps the same round number (`<campaign>-round-<n>`), reuses that
+    grant's slot as its next reservation generation (no second grant, no second slot), and the run cites the newer
+    approval through the approval's own record: the newer capture carries the round reference and, once spent, the
+    run's id; no record ties the run to the superseded capture. The engine's record formats are unchanged; the run
+    record naming the approval itself is T012's.
   - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
     keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.
@@ -241,11 +247,19 @@ then T014.
   - **Work:** an audit joining every authority record to a typed human turn; reservations cite the grant and the
     latest reset; turn identity on every record and campaign id on review records.
   - **RED:** `tests/unit/authority-audit.Tests.ps1`: a backstop-minted record with no typed turn passes today.
+    **Added 2026-11-03 (maintainer's instruction):** the round-4 grant `grant-2ea3d06fc52ba0d3f381`
+    (`cmp-203-beta5-stabilization-i001-round-4`) still shows its creation at 21:48 local on 2026-11-01, from the 21:47
+    approval, although round 4 ran on 2026-11-02 and the approval that should authorize a relaunch is the newer typed
+    one (DRIFT-019): no grant, reservation or run record names the typed turn that authorized it. The audit fails on
+    that shape; the run and reservation records name the authorizing turn (a closed-format change in
+    `review-authority-core.ps1`, after T008 makes a pinned launch load its review engine from the pin).
   - **Acceptance:** any record without a joined typed turn fails the audit.
   - **Trace:** FR-024, FR-041.
   - **Depends:** T004, T008.
   - **Owns:** `scripts/internal/bootstrap/*.ps1`,
-    `scripts/internal/continuous-co-review/review-authority-store.ps1`, `tests/unit/authority-audit.Tests.ps1`.
+    `scripts/internal/continuous-co-review/review-authority-store.ps1`,
+    `scripts/internal/continuous-co-review/review-authority-core.ps1` (record formats, after T008),
+    `tests/unit/authority-audit.Tests.ps1`.
 
 ## Phase 4: US3, told in the same turn (P1)
 
