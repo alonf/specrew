@@ -3,9 +3,9 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: not-started
-**Last Completed Task**: (none)
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008, T011, T012, T013, T014
-**In Progress**: (none)
+**Last Completed Task**: T002
+**Tasks Remaining**: T001, T003, T004, T005, T006, T007, T008, T011, T012, T013, T014
+**In Progress**: T001
 **Baseline Ref**: fca9067e
 **Updated**: 2026-11-01T18:19:51.4660975Z
 
@@ -29,7 +29,12 @@
   `52f37279`. Round 2 findings 2 to 4 are fixed in T001's first commit; finding 1 is carried to T006.
 - The pin was created at `52f37279` and this worktree's Claude hooks redeployed (`73b91c06`); every Claude hook then
   failed (commands over the command-line limit, DRIFT-016). The hooks were restored and the pin removed (`2a9179b4`).
-- Task progress: 0 complete, 1 in-progress, 10 pending, 1 blocked.
+- The T002 follow-up was reviewed in rounds 3 and 4 by Codex (DRIFT-017, DRIFT-018); the maintainer stopped the
+  review after round 4 and sign-off completed on `7abcd180` (2026-11-02). The pin was recreated at `7abcd180` and
+  the Claude hooks redeployed from the pin's deployer; the transcript showed the hooks running with no error
+  (DRIFT-019). T001 resumes. Round 4 finding 1 (a binding shared by every project on the machine) is a
+  release-blocking follow-up; finding 2 joins B5F-019.
+- Task progress: 1 complete, 1 in-progress, 10 pending, 0 blocked.
 ## Notes
 
 - Update this file after each task completes.

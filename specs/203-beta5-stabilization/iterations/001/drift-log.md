@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 18 (DRIFT-001 to DRIFT-018)
-**Resolution rate**: 18 of 18 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-018 carry an open product class
+**Total drift events**: 19 (DRIFT-001 to DRIFT-019)
+**Resolution rate**: 19 of 19 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-019 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -406,3 +406,39 @@
   checks see, under the environment they use).
 - **Class closure**: OPEN — the test fix is reviewed in round 4; T006 carries the plain-text refusal, T008 and T011
   the Stop blocks.
+
+### DRIFT-019 — round 4 ran on the 21:47 approval because the re-typed one was not captured; T002 signed off on 7abcd180 and the pin is live (observation, review outcome; evidence for T003, T004 and T008)
+
+- **Observed (the approval)**: 2026-11-02. The maintainer's `approved for review round` at 02:44:14 local time
+  (UTC+2), an ordinary typed turn after the commits `f41befb3` and `7abcd180`, wrote no line to
+  `.specrew/review/round-approval/captures.jsonl`; the prompt hook recorded only the "no pending crossing for
+  'review'" notice (`verdict-not-captured-disclosed`), as it had for the 21:47 approval, which was captured. The
+  pending approval stayed the 21:47:39 capture, minted to `cmp-203-beta5-stabilization-i001-round-4` and its grant
+  `grant-2ea3d06fc52ba0d3f381` released, not spent, by the failed first attempt (DRIFT-018). The crew did not
+  launch and asked; the maintainer ruled "launch it" knowing the record would cite 21:47.
+- **The launch**: relaying round 3's pause choice again refused ("No review round is waiting for your answer");
+  `specrew review --live --approve-round --host codex` at 10:11:31 local re-minted the 21:47 capture as round 4 and
+  reserved the same grant. No new grant was written, and no record cites the 02:44 reply. The second occurrence of
+  the DRIFT-012 class, and T004's RED case: a re-typed approval folds into an older unspent one.
+- **Round 4**: run `run-20261102-081131410-ab12b993`, reviewer Codex (`codex-cli-file-primary`), on `7abcd180`.
+  Pre-review checks 10:11 to 10:21 (613 s, against round 3's 1,536 s with the 202 and 199 lanes parked; B5F-016),
+  reviewer 10:21 to 10:30. Two findings, both reported major and demoted "for no concrete failure scenario",
+  although each states one (the DRIFT-017 pattern; B5F-017): a per-machine binding shared by every project
+  (introduced in `0999ff62`, release-blocking) and the per-machine launcher finding the pin only after the
+  project's dispatcher file. Both are T002 follow-ups in tasks.md. The stop text again said "That round found
+  nothing that needs your attention" next to "read them before you decide".
+- **Stop blocks today (transcript times, local)**: 10:12, while round 4 ran, a request for a fresh review round
+  about round 3's result; 10:31, the round 4 decision repeated in full after the crew had presented it; 10:53,
+  after the maintainer had typed `stop the review here` and while its final check ran, the same decision asked
+  for again. Evidence for T008 (DRIFT-011, DRIFT-014, DRIFT-018).
+- **Resolution**: the maintainer stopped the review; the final check passed and sign-off completed on `7abcd180`
+  (`.specrew/review/signoff-gate/latest.json`, 11:01:52 local). The pin was created at `7abcd180` (clean, its
+  deployer has `-EmitBindingOnly`, bindings for five hosts stamped `7abcd180`), and the Claude hooks were
+  redeployed from the pin's deployer: commands of 996 to 1,028 characters calling `.claude/specrew-hook-launch.ps1`.
+  Confirmed from the transcript, not the settings file: after the redeploy at 11:02 no hook error appeared and the
+  PostToolUse hook wrote the refocus state at 11:03:28; with a pin record the launcher only runs the pin's
+  dispatcher or refuses, so the pin ran. T002 is done; T001 resumes.
+- **Requirement**: FR-014, FR-015, FR-021, FR-022 (supersession, never reuse); FR-011; the standing rule that a
+  launch is checked against the approval the maintainer just typed.
+- **Class closure**: OPEN — T003 and T004 carry the re-typed approval (a newer typed approval supersedes an
+  unspent one and is what the launch cites); T008 the Stop blocks; finding 1 blocks any release.

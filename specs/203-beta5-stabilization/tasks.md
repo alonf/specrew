@@ -78,6 +78,16 @@ then T014.
     missing or wrongly stamped binding before any pin code runs. The generated Claude launcher honours
     `SPECREW_REFOCUS_DISABLE` before the pin check. RED and acceptance: `live-engine-hook-root.tests.ps1` and
     `live-engine-resolution.tests.ps1`. Design follow-up for iteration 002 or 204: B5F-019 (the pin leaves shipped code).
+  - **Signed off on `7abcd180` after review round 4 (2026-11-02; DRIFT-019).** Follow-ups from round 4 (Codex), both
+    reported major and demoted by Specrew:
+    - Finding 1, **release-blocking** (introduced in `0999ff62`): the launcher-encoded command reads its binding from
+      `~/.specrew/hook-bindings/<host>.binding`, one file per machine, so deploying project B from a different module
+      version or tree changes project A's typed-approval and stop rules, with or without a pin. Store the binding
+      per project, or as an immutable content-addressed file the command names; a two-project test. Both deployer
+      copies. Fixed in its own commit and reviewed before any release.
+    - Finding 2: the per-machine launcher looks for the pin only after it finds the project's own dispatcher file,
+      so a pinned project whose `.specify` dispatcher is missing runs ungoverned (exit 0, nothing recorded), or an
+      ancestor project's dispatcher takes the event. Recognize the pin record during root discovery. Joins B5F-019.
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,
