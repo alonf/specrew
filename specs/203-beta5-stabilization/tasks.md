@@ -195,6 +195,13 @@ then T014.
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
     (and its `.specify` twin), `tests/unit/typed-act-writer.Tests.ps1`. `review-authority-core.ps1` left T004's Owns
     on 2026-11-02 (see "Review-act supersession" below); it stays with T008.
+    **Added with the RED test (2026-11-03):** `extensions/specrew-speckit/scripts/shared-governance.ps1` (and its
+    `.specify` twin), where `Add-SpecrewBoundaryAuthorization` takes a captured evidence label on the caller's word;
+    after T004 it honours one only by re-deriving the cited turn. Twelve existing tests call it directly with a
+    captured label and move to a cited typed turn or a declared out-of-band reason: unit `closeout-records-on-approval`,
+    `crossing-mint-gate`, `crossing-mirrors`, `new-feature-reset`; integration `closeout-identity-schema-parity`,
+    `feature-051-iteration2a-callsite-wiring`, `launch-mode-boundary-enforcement`, `lifecycle-boundary-sync`,
+    `no-code-without-approval`, `plan-sync-target-iteration`, `sealed-iteration-writers`, `verdict-capture-blocks`.
   - **Review-act supersession (2026-11-02, the maintainer's question):** the re-typed round approval (02:44 and 14:45
     local) goes green in T004 with `scripts/internal/continuous-co-review/` unchanged. The review acts are captured,
     held and spent in `HumanAuthorityStore.ps1`, not in the review engine: the capture writer keeps one pending slot

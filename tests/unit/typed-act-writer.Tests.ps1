@@ -1,0 +1,233 @@
+# Feature 203 iteration 001, T004 (FR-021, FR-022, FR-025): the re-deriving writer and the supersession fact.
+#
+# Two cases this project met, each RED against the build before T004:
+#   1 THE CITED TURN (spec US2 scenario 5, FR-022). An agent cites the maintainer's real `confirm` turn and asks a writer
+#     for a verdict. Today the boundary writer takes a captured evidence label on the caller's word and records the
+#     verdict. After T004 a captured label is honoured only by re-reading the cited turn and re-deriving its act through
+#     the classifier (Resolve-SpecrewTypedAct): `confirm` is no verdict, so nothing is recorded; the real typed verdict
+#     is recorded once and a second citation of it is already-recorded.
+#   2 THE RE-TYPED ROUND APPROVAL (02:44 local, 2026-11-02; DRIFT-019, DRIFT-023; FR-021). The 21:47 approval had minted
+#     round 4 and its reservation was released before invocation. The maintainer typed the approval again; the capture
+#     writer returned the older record and wrote nothing, and the relaunch ran on the 21:47 approval. After T004 the
+#     newer typed act writes its own capture and an immutable supersession fact retires the older one. The relaunch
+#     (maintainer's instruction, 2026-11-03, option 1) keeps the same round number, reuses the grant's slot as its next
+#     reservation generation (no second grant, no second slot), and the run is cited through the newer approval's own
+#     record: it carries the round reference and, once spent, the run's id. The engine's record formats are unchanged;
+#     the run record naming the approval itself is T012's.
+#
+# Each case runs in a temporary project root; the launches run the real review CLI from this checkout in a fixture
+# with no commit, so preflight refuses before any reviewer is invoked (an undelivered round, released). Never the
+# repository's own stores.
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1')
+$reviewCli = Join-Path $repoRoot 'scripts\specrew-review.ps1'
+$script:failCount = 0
+function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
+function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
+function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
+$script:roots = [System.Collections.Generic.List[string]]::new()
+
+# A writer parameter T004 adds is passed only when the writer has it, so the RED is the behaviour, not a binding error.
+function Add-IfSupported {
+    param([hashtable]$Splat, [string]$Command, [string]$Name, $Value)
+    if ((Get-Command $Command).Parameters.ContainsKey($Name)) { $Splat[$Name] = $Value }
+}
+
+# ---------------------------------------------------------------------------------------------------
+# Case 1 fixture: a project waiting at tasks -> before-implement, and the host's record of two typed turns.
+function New-CitedTurnFixture {
+    $root = Join-Path ([System.IO.Path]::GetTempPath()) ('t004-cite-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    $script:roots.Add($root)
+    $feature = Join-Path $root 'specs\001-feat'
+    New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $feature 'iterations\001\quality') | Out-Null
+    Set-Content -LiteralPath (Join-Path $feature 'spec.md') -Value "# Feature Specification: Feat`n`nBody." -Encoding UTF8
+    foreach ($rel in 'plan.md', 'state.md', 'quality/hardening-gate.md') {
+        Set-Content -LiteralPath (Join-Path $feature ('iterations\001\' + $rel)) -Value ("# {0}`n`n**Status**: fixture" -f $rel) -Encoding UTF8
+    }
+    Set-Content -LiteralPath (Join-Path $feature 'tasks.md') -Value "# Tasks`n`n- [ ] T001 fixture" -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $root '.gitignore') -Value ".specrew/`n" -Encoding UTF8
+    & git -C $root init -q -b main
+    & git -C $root config user.email 't@t'
+    & git -C $root config user.name 't'
+    & git -C $root -c core.autocrlf=false add -A
+    & git -C $root commit -q -m fixture
+    $head = ([string](& git -C $root rev-parse HEAD)).Trim()
+    $context = [ordered]@{
+        schema = 'v2'
+        boundary_enforcement = [ordered]@{
+            enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = $null
+            policy_classes = [ordered]@{
+                specify = 'human-judgment-required'; clarify = 'human-judgment-required'; plan = 'human-judgment-required'
+                tasks = 'human-judgment-required'; 'before-implement' = 'human-judgment-required'
+                'review-signoff' = 'human-judgment-required'; retro = 'human-judgment-required'
+                'iteration-closeout' = 'human-judgment-required'; 'feature-closeout' = 'human-judgment-required'
+            }
+            verdict_history = @(); bypass_history = @()
+        }
+        generated_at_utc = '2026-11-02T00:00:00Z'
+        session_state = [ordered]@{
+            active = $true; boundary_type = 'before-implement'; feature_ref = '001-feat'; feature_path = $feature
+            iteration_number = '001'; auth_commit_hash = $head; recorded_at = '2026-11-02T00:00:00Z'
+        }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $root '.specrew\start-context.json'), ($context | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+    $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $root -WorkingBoundary 'before-implement' -BoundaryCommitHash $head -RecordedAt '2026-11-02T00:00:01Z' 2>$null
+
+    # The host's record: Claude's transcript, in the recorded shape (tests/fixtures/hook-payloads/claude/queued).
+    $session = 'session-t004'
+    $lines = @(
+        [ordered]@{ type = 'assistant'; uuid = 'a-1'; sessionId = $session; timestamp = '2026-11-02T08:00:00.000Z'
+            message = [ordered]@{ role = 'assistant'; content = @([ordered]@{ type = 'text'; text = 'Does this agenda look right?' }) } }
+        [ordered]@{ type = 'user'; uuid = 'u-confirm'; promptId = 'prompt-confirm'; sessionId = $session; timestamp = '2026-11-02T08:01:00.000Z'
+            origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; message = [ordered]@{ role = 'user'; content = 'confirm' } }
+        [ordered]@{ type = 'assistant'; uuid = 'a-2'; sessionId = $session; timestamp = '2026-11-02T08:02:00.000Z'
+            message = [ordered]@{ role = 'assistant'; content = @([ordered]@{ type = 'text'; text = 'Type approved for before-implement to start.' }) } }
+        [ordered]@{ type = 'user'; uuid = 'u-verdict'; promptId = 'prompt-verdict'; sessionId = $session; timestamp = '2026-11-02T08:03:00.000Z'
+            origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; message = [ordered]@{ role = 'user'; content = 'approved for before-implement' } }
+    )
+    $transcript = Join-Path $root 'transcript.jsonl'
+    [System.IO.File]::WriteAllLines($transcript, [string[]]@($lines | ForEach-Object { $_ | ConvertTo-Json -Depth 8 -Compress }), [System.Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Root = $root; Transcript = $transcript; Session = $session }
+}
+function Get-VerdictHistory {
+    param([string]$Root)
+    $ctx = Get-Content -LiteralPath (Join-Path $Root '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+    return @($ctx.boundary_enforcement.verdict_history | Where-Object { $null -ne $_ })
+}
+function Invoke-AgentBoundaryWrite {
+    # What an agent can do today: dot-source the writer and call it with a captured evidence label.
+    param($Fixture, [string]$TurnIdentity)
+    $splat = @{
+        ProjectRoot = $Fixture.Root; CurrentBoundary = 'tasks'; AuthorizedBoundary = 'before-implement'; AuthorizingHuman = 'unattributed'
+        VerdictText = 'approved for before-implement'; EvidenceSource = 'hook-captured-from-transcript'
+    }
+    if ($TurnIdentity) {
+        Add-IfSupported -Splat $splat -Command 'Add-SpecrewBoundaryAuthorization' -Name 'TurnIdentity' -Value $TurnIdentity
+        Add-IfSupported -Splat $splat -Command 'Add-SpecrewBoundaryAuthorization' -Name 'TranscriptPath' -Value $Fixture.Transcript
+        Add-IfSupported -Splat $splat -Command 'Add-SpecrewBoundaryAuthorization' -Name 'HostKind' -Value 'claude'
+    }
+    try { $null = Add-SpecrewBoundaryAuthorization @splat 2>$null; return 'returned' } catch { return ('refused: ' + $_.Exception.Message) }
+}
+
+Write-Host '--- case 1: an agent cites the real `confirm` turn to a writer (FR-022) ---'
+$f1 = New-CitedTurnFixture
+$outcome1 = Invoke-AgentBoundaryWrite -Fixture $f1 -TurnIdentity 'prompt-confirm'
+Assert-True (@(Get-VerdictHistory -Root $f1.Root).Count -eq 0) "citing the 'confirm' turn records no verdict (writer $outcome1)"
+
+$f1b = New-CitedTurnFixture
+$outcome1b = Invoke-AgentBoundaryWrite -Fixture $f1b -TurnIdentity ''
+Assert-True (@(Get-VerdictHistory -Root $f1b.Root).Count -eq 0) "a captured label with no cited turn records no verdict (writer $outcome1b)"
+
+$hasWriter = $null -ne (Get-Command 'Write-SpecrewTypedAct' -ErrorAction SilentlyContinue)
+Assert-True $hasWriter 'Write-SpecrewTypedAct exists: the only writer for the recovery paths'
+if ($hasWriter) {
+    $f1c = New-CitedTurnFixture
+    $confirm = Write-SpecrewTypedAct -ProjectRoot $f1c.Root -HostKind 'claude' -TurnIdentity 'prompt-confirm' -TranscriptPath $f1c.Transcript
+    Assert-True ([string]$confirm.Act.Kind -cne 'boundary-verdict' -and -not [bool]$confirm.Written) ("the re-derived act of 'confirm' is no verdict and nothing is written (got {0}/{1})" -f $confirm.Act.Kind, $confirm.Act.Reason)
+    Assert-True (@(Get-VerdictHistory -Root $f1c.Root).Count -eq 0) "the ledger holds no verdict after citing 'confirm'"
+
+    $typed = Write-SpecrewTypedAct -ProjectRoot $f1c.Root -HostKind 'claude' -TurnIdentity 'prompt-verdict' -TranscriptPath $f1c.Transcript
+    $history = @(Get-VerdictHistory -Root $f1c.Root)
+    Assert-True ([string]$typed.Act.Kind -ceq 'boundary-verdict' -and [bool]$typed.Written -and $history.Count -eq 1) 'the real typed verdict, cited, is recorded once'
+    Assert-True ($history.Count -eq 1 -and $history[0].PSObject.Properties['turn_identity'] -and [string]$history[0].turn_identity -ceq [string]$typed.Act.TurnIdentity) 'the ledger entry carries the turn identity it was derived from'
+    $again = Write-SpecrewTypedAct -ProjectRoot $f1c.Root -HostKind 'claude' -TurnIdentity 'prompt-verdict' -TranscriptPath $f1c.Transcript
+    Assert-True (-not [bool]$again.Written -and [string]$again.Act.Reason -ceq 'already-recorded' -and @(Get-VerdictHistory -Root $f1c.Root).Count -eq 1) 'citing the same turn again records nothing (already-recorded)'
+    $unknown = Write-SpecrewTypedAct -ProjectRoot $f1c.Root -HostKind 'claude' -TurnIdentity 'prompt-not-in-the-record' -TranscriptPath $f1c.Transcript
+    Assert-True (-not [bool]$unknown.Written -and @(Get-VerdictHistory -Root $f1c.Root).Count -eq 1) ("a turn the host's record does not hold mints nothing (got {0})" -f $unknown.Act.Reason)
+}
+
+# ---------------------------------------------------------------------------------------------------
+# Case 2 fixture: a review campaign with no commit, so every launch is released before invocation.
+function New-CampaignFixture {
+    $root = Join-Path ([System.IO.Path]::GetTempPath()) ('t004-round-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    $script:roots.Add($root)
+    New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-fixture/iterations/001') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "specrew_version: `"0.40.0`"`nbootstrap_mode: `"fixture`"" -Encoding UTF8
+    & git init -q -b 001-fixture $root 2>&1 | Out-Null
+    return $root
+}
+function Invoke-AgentLaunch {
+    # -File, so --live and --approve-round reach the CLI's own argument parser; an agent session, as the crew runs it.
+    param([string]$Root)
+    $command = "`$env:CLAUDECODE = '1'; pwsh -NoProfile -File '$reviewCli' -ProjectPath '$Root' -FeatureId 001-fixture --live --approve-round; exit `$LASTEXITCODE"
+    $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
+    $text = $output -join "`n"
+    $runId = if ($text -match 'Run: (run-\S+)') { $Matches[1] } else { '' }
+    return [pscustomobject]@{ Text = $text; RunId = $runId }
+}
+function Write-TypedRoundApproval {
+    param([string]$Root, [string]$NowUtc, [string]$TurnIdentity)
+    $splat = @{ ProjectRoot = $Root; Response = 'approved for review round'; HostKind = 'claude'; SourceEvent = 'UserPromptSubmit'; NowUtc = $NowUtc }
+    Add-IfSupported -Splat $splat -Command 'Write-SpecrewReviewRoundApprovalAuthorization' -Name 'TurnIdentity' -Value $TurnIdentity
+    return Write-SpecrewReviewRoundApprovalAuthorization @splat
+}
+function Test-SameInstant { param($Value, [string]$Expected)
+    $instant = ConvertTo-SpecrewAuthorityInstant -Value $Value
+    return ($null -ne $instant -and ([DateTimeOffset]$instant).UtcDateTime -eq ([DateTimeOffset]::Parse($Expected)).UtcDateTime)
+}
+function Read-Captures { param([string]$Root)
+    $path = Join-Path $Root '.specrew/review/round-approval/captures.jsonl'
+    if (-not (Test-Path -LiteralPath $path)) { return @() }
+    return @(Get-Content -LiteralPath $path -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json -Depth 8 })
+}
+function Read-Pending { param([string]$Root)
+    return Get-Content -LiteralPath (Join-Path $Root '.specrew/review/round-approval/pending-round-approval.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8
+}
+
+Write-Host '--- case 2: the re-typed round approval (02:44 local, 2026-11-02; FR-021) ---'
+$older = '2026-11-01T19:47:39.0000000+00:00'   # 21:47:39 local
+$newer = '2026-11-02T00:44:14.0000000+00:00'   # 02:44:14 local
+$r2 = New-CampaignFixture
+$null = Write-TypedRoundApproval -Root $r2 -NowUtc $older -TurnIdentity 'turn-2147'
+$launch1 = Invoke-AgentLaunch -Root $r2
+$campaign = Join-Path $r2 '.specrew/review/authority/campaigns/cmp-001-fixture-i001'
+$roundRef = 'cmp-001-fixture-i001-round-1'
+$grants1 = @(Get-ChildItem -LiteralPath (Join-Path $campaign 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)
+Assert-True ($grants1.Count -eq 1 -and [string](Read-Pending -Root $r2).minted_ref -ceq $roundRef) 'setup: the 21:47 approval minted round 1 and its grant; the launch was released before invocation'
+
+$retyped = Write-TypedRoundApproval -Root $r2 -NowUtc $newer -TurnIdentity 'turn-0244'
+Assert-True ($null -ne $retyped -and (Test-SameInstant -Value $retyped.observed_at -Expected $newer)) 'the re-typed approval is its own capture, not the 21:47 record returned'
+$captures = @(Read-Captures -Root $r2)
+$approvalLines = @($captures | Where-Object { [string]$_.fact_type -ceq 'review-round-approval' })
+Assert-True (@($approvalLines | Where-Object { Test-SameInstant -Value $_.observed_at -Expected $newer }).Count -eq 1) 'the capture journal holds a line for the 02:44 approval'
+$supersession = @($captures | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-superseded' })
+Assert-True ($supersession.Count -eq 1 -and
+    $supersession[0].PSObject.Properties['superseded_observed_at'] -and (Test-SameInstant -Value $supersession[0].superseded_observed_at -Expected $older) -and
+    $supersession[0].PSObject.Properties['superseded_by_observed_at'] -and (Test-SameInstant -Value $supersession[0].superseded_by_observed_at -Expected $newer)) 'one immutable supersession fact retires the 21:47 approval in favour of the 02:44 one'
+$pending = Read-Pending -Root $r2
+Assert-True ((Test-SameInstant -Value $pending.observed_at -Expected $newer) -and [string]::IsNullOrWhiteSpace([string]$pending.minted_ref) -and [string]::IsNullOrWhiteSpace([string]$pending.spent_at)) 'the waiting slot holds the 02:44 approval, unminted and unspent'
+$standing = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r2
+Assert-True ($null -ne $standing -and (Test-SameInstant -Value $standing.observed_at -Expected $newer)) 'the spender sees only the newest approval'
+
+$launch2 = Invoke-AgentLaunch -Root $r2
+Assert-True ($launch2.Text -match [regex]::Escape("recorded it as $roundRef")) 'the relaunch keeps the same round number'
+$grants2 = @(Get-ChildItem -LiteralPath (Join-Path $campaign 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)
+$grantId = if ($grants2.Count -eq 1) { [IO.Path]::GetFileNameWithoutExtension($grants2[0].Name) } else { '' }
+$slots = @(if ($grantId) { Get-ChildItem -LiteralPath (Join-Path $campaign "reservations/$grantId") -Directory -ErrorAction SilentlyContinue })
+$generations = @(if ($slots.Count -eq 1) { Get-ChildItem -LiteralPath $slots[0].FullName -Filter 'generation-*.json' -File | Sort-Object Name })
+Assert-True ($grants2.Count -eq 1 -and $slots.Count -eq 1 -and $slots[0].Name -ceq 'slot-001') 'no second grant and no second slot'
+$gen2 = if ($generations.Count -eq 2) { Get-Content -LiteralPath $generations[1].FullName -Raw | ConvertFrom-Json } else { $null }
+Assert-True ($generations.Count -eq 2 -and $generations[1].Name -ceq 'generation-002.json' -and $null -ne $gen2 -and [string]$gen2.run_id -ceq $launch2.RunId -and $launch2.RunId) 'the relaunch reserves the same slot as its next generation'
+$pendingAfter = Read-Pending -Root $r2
+Assert-True ((Test-SameInstant -Value $pendingAfter.observed_at -Expected $newer) -and [string]$pendingAfter.minted_ref -ceq $roundRef) 'the round reference is stamped on the 02:44 approval'
+
+# The run is cited through the approval's own record: spending names the run (the CLI passes it at consumption).
+$completeSplat = @{ ProjectRoot = $r2; AuthorizationRef = $roundRef }
+Add-IfSupported -Splat $completeSplat -Command 'Complete-SpecrewReviewRoundApprovalAuthorization' -Name 'RunId' -Value $launch2.RunId
+$spent = Complete-SpecrewReviewRoundApprovalAuthorization @completeSplat
+$spentRecord = Read-Pending -Root $r2
+Assert-True ([bool]$spent.consumed -and (Test-SameInstant -Value $spentRecord.observed_at -Expected $newer) -and
+    $spentRecord.PSObject.Properties['run_id'] -and [string]$spentRecord.run_id -ceq $launch2.RunId) 'the spent 02:44 approval names the run it paid for'
+$citing = @(Read-Captures -Root $r2 | Where-Object { $_.PSObject.Properties['run_id'] -and [string]$_.run_id -ceq $launch2.RunId })
+Assert-True ($citing.Count -ge 1 -and @($citing | Where-Object { -not (Test-SameInstant -Value $_.observed_at -Expected $newer) }).Count -eq 0) 'no record ties the run to the superseded 21:47 approval'
+$cliSource = Get-Content -LiteralPath $reviewCli -Raw
+Assert-True ($cliSource -match 'Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -RunId') 'the review CLI passes the run to the consumption after a delivered round'
+
+foreach ($root in $script:roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+if ($script:failCount -gt 0) { Write-Host "typed-act-writer: $($script:failCount) failure(s)" -ForegroundColor Red; exit 1 }
+Write-Host 'typed-act-writer: all passed' -ForegroundColor Green
