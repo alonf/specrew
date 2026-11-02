@@ -136,6 +136,13 @@ try {
         . $liveEnginePath
         $liveEngine = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $projectRoot
     }
+    elseif (-not [string]::IsNullOrWhiteSpace($projectRoot) -and (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew/runtime/live-engine.json') -PathType Leaf)) {
+        # A pin record with the helper missing is a configured pin this provider cannot resolve, not "no pin"
+        # (T002 round 5, finding 3).
+        Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'refused' -Reason 'live-engine pin unusable: helper-unavailable'
+        if ($isStop) { Write-Output ("<<<SPECREW-STOP-BLOCK>>>`n" + 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The engine that ran is missing its pin helper (live-engine-resolution.ps1), so it cannot find the pinned copy. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?') }
+        exit 0
+    }
     if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
         if ([bool]$liveEngine.Refused) {
             Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'refused' -Reason ('live-engine pin unusable: ' + [string]$liveEngine.Pin.Reason)

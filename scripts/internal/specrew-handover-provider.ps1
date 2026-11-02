@@ -96,6 +96,13 @@ try {
             exit 0
         }
     }
+    elseif (-not [string]::IsNullOrWhiteSpace($root) -and (Test-Path -LiteralPath (Join-Path $root '.specrew/runtime/live-engine.json') -PathType Leaf)) {
+        # A pin record with the helper missing is a configured pin this provider cannot resolve, not "no pin": the
+        # fallback below would load the project's unreviewed authority stores (T002 round 5, finding 3).
+        [Console]::Error.WriteLine('[specrew-handover] WARN LIVE_ENGINE_REFUSED helper-unavailable')
+        Write-Output 'Specrew could not load its reviewed engine for this project, so it recorded nothing from this turn. The engine that ran is missing its pin helper (live-engine-resolution.ps1), so it cannot find the pinned copy. Your earlier approvals and answers are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1. Should it do that?'
+        exit 0
+    }
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if ($null -ne $liveEngine -and [bool]$liveEngine.Pin.Configured) {
         $bdir = Join-Path ([string]$liveEngine.Root) 'bootstrap'

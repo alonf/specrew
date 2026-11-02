@@ -122,8 +122,8 @@ exit 0
     # PART B — launcher generated for the user-level hosts
     # ============================================================================================
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $deploy -ProjectPath $proj -HostKind codex -UserHomeOverride $userHome | Out-Null
-    $launcher = Join-Path $userHome '.specrew/specrew-hook-launch.ps1'
-    Assert-True (Test-Path -LiteralPath $launcher) 'launcher: deploy generated the per-machine ~/.specrew/specrew-hook-launch.ps1'
+    $launcher = [string](@(Get-ChildItem -Path (Join-Path $userHome '.specrew/hooks') -Recurse -Filter 'specrew-hook-launch.ps1' -ErrorAction SilentlyContinue | ForEach-Object FullName) + '')[0]
+    Assert-True (-not [string]::IsNullOrWhiteSpace($launcher) -and (Test-Path -LiteralPath $launcher)) 'launcher: deploy generated the per-machine launcher in ~/.specrew/hooks/<content id>/'
     $codexCmd = [string]((Get-Content -LiteralPath (Join-Path $userHome '.codex/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).hooks.SessionStart[0].hooks[0].command)
     Assert-True ($codexCmd.Contains('specrew-hook-launch.ps1')) 'codex: command points at the launcher (so Test-IsSpecrewCommandText still recognizes ownership)'
 

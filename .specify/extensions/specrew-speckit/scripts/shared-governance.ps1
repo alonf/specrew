@@ -7,7 +7,11 @@ function Get-SpecrewEngineInternalRoot {
     # unusable pin -> $null, so callers load nothing rather than fall back to unreviewed project-tree code.
     param([Parameter(Mandatory)][string]$ProjectRoot)
     $helper = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
-    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return (Join-Path $ProjectRoot 'scripts/internal') }
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
+        # A pin record with the helper missing is a configured pin that cannot be resolved (T002 round 5, finding 3).
+        if (Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf) { return $null }
+        return (Join-Path $ProjectRoot 'scripts/internal')
+    }
     if (-not (Get-Command Resolve-SpecrewLiveEngineInternalRoot -ErrorAction SilentlyContinue)) { . $helper }
     $resolved = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot
     if ([bool]$resolved.Refused) { return $null }
@@ -8387,6 +8391,9 @@ function Resolve-SpecrewModuleInternalDirectory {
                 (Test-Path -LiteralPath (Join-Path $pinned 'feature-claims.ps1') -PathType Leaf)) { return $pinned }
             return $null
         }
+    }
+    elseif (Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf) {
+        return $null   # a pin record with the helper missing resolves nothing (T002 round 5, finding 3)
     }
 
     $candidates = [System.Collections.Generic.List[string]]::new()

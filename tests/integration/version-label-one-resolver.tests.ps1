@@ -17,7 +17,20 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $expected = Get-SpecrewModuleVersionInfo -ModuleRoot $repoRoot
 $priorModulePath = $env:SPECREW_MODULE_PATH
 $env:SPECREW_MODULE_PATH = $repoRoot
-
+# Init deploys every host's user-level hooks. Without a scratch home they land in the real profile and point at this
+# checkout, so a verification run rewrote the live hooks of the machine running it (203 T002 round 5, finding 4).
+$realHome = [Environment]::GetFolderPath('UserProfile')
+$hookHome = Join-Path ([IO.Path]::GetTempPath()) ('home-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Path $hookHome -Force | Out-Null
+$priorHookHome = $env:SPECREW_USER_HOME_OVERRIDE
+$env:SPECREW_USER_HOME_OVERRIDE = $hookHome
+function Get-RealHomeHookState {
+    # The user-level hook files init would write, with their content hashes.
+    $paths = @('.codex/hooks.json', '.copilot/hooks/specrew-refocus.json', '.cursor/hooks.json', '.specrew/specrew-hook-launch.ps1') | ForEach-Object { Join-Path $realHome $_ }
+    $paths += @('.specrew/hooks', '.specrew/hook-bindings') | ForEach-Object { Join-Path $realHome $_ } | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-ChildItem -LiteralPath $_ -Recurse -File -Force | ForEach-Object FullName }
+    return @($paths | Sort-Object -Unique | ForEach-Object { if (Test-Path -LiteralPath $_ -PathType Leaf) { '{0}|{1}' -f $_, (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash } else { "$_|absent" } })
+}
+$realHomeBefore = Get-RealHomeHookState
 Write-Host 'version-label-one-resolver'
 Assert-True ($expected.Source -eq 'manifest' -and $expected.Label -match '^\d+\.\d+\.\d+-[0-9A-Za-z]+$') ('the resolver reads this tree''s manifest: label {0} (base {1}, prerelease {2})' -f $expected.Label, $expected.Version, $expected.Prerelease)
 
@@ -48,11 +61,15 @@ try {
     $renderText = ($render -join "`n")
     Assert-True ([string]::IsNullOrWhiteSpace($renderText)) 'turn-end never renders another orientation; SessionStart owns the version label'
     Assert-True ($renderText -notmatch 'Specrew unknown') 'and never "Specrew unknown"'
-}
+    Write-Host '  --- the real home is untouched ---'
+    Assert-True ((Test-Path -LiteralPath (Join-Path $hookHome '.codex/hooks.json')) -and @(Get-ChildItem -LiteralPath (Join-Path $hookHome '.specrew/hooks') -Recurse -Filter 'specrew-hook-launch.ps1' -ErrorAction SilentlyContinue).Count -ge 1) 'init deployed the user-level hooks into the scratch home'
+    $realHomeChanged = @(Compare-Object -ReferenceObject $realHomeBefore -DifferenceObject @(Get-RealHomeHookState) | ForEach-Object { $_.InputObject })
+    Assert-True ($realHomeChanged.Count -eq 0) ('the real home''s hook files are unchanged (changed: ' + (($realHomeChanged | Select-Object -First 3) -join '; ') + ')')}
 finally {
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     if ($null -eq $priorModulePath) { Remove-Item Env:\SPECREW_MODULE_PATH -ErrorAction SilentlyContinue } else { $env:SPECREW_MODULE_PATH = $priorModulePath }
-}
+    if (Test-Path -LiteralPath $hookHome) { Remove-Item -LiteralPath $hookHome -Recurse -Force -ErrorAction SilentlyContinue }
+    if ($null -eq $priorHookHome) { Remove-Item Env:\SPECREW_USER_HOME_OVERRIDE -ErrorAction SilentlyContinue } else { $env:SPECREW_USER_HOME_OVERRIDE = $priorHookHome }}
 
 if ($script:Failures -gt 0) { Write-Host ("version-label-one-resolver: {0} FAILED" -f $script:Failures); exit 1 }
 Write-Host 'version-label-one-resolver: all cases passed'

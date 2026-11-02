@@ -286,8 +286,8 @@ $antiPreCmd = [string]$anti.'specrew-refocus'.PreInvocation[0].command
 $antiStopCmd = [string]$anti.'specrew-refocus'.Stop[0].command
 $antiPreDecoded = Decode-EncodedPwshCommand -Command $antiPreCmd
 $antiStopDecoded = Decode-EncodedPwshCommand -Command $antiStopCmd
-Assert-True (Test-Path -LiteralPath (Join-Path $antiHome '.specrew\specrew-hook-launch.ps1') -PathType Leaf) 'antigravity: cwd-robust per-machine launcher generated'
-Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity') -and -not $antiPreDecoded.Contains('-HostBinding') -and $antiPreDecoded -match '-BindingId ([0-9a-f]{32})' -and (Test-Path -LiteralPath (Join-Path $antiHome ('.specrew\hook-bindings\antigravity-{0}.binding' -f $Matches[1])) -PathType Leaf)) 'antigravity: PreInvocation command uses encoded cwd-robust launcher; the manifest runtime binding is in a file beside the launcher (203 DRIFT-016)'
+Assert-True (@(Get-ChildItem -Path (Join-Path $antiHome '.specrew\hooks') -Recurse -Filter 'specrew-hook-launch.ps1' -ErrorAction SilentlyContinue).Count -eq 1 -and $antiPreDecoded -match '\.specrew/hooks/[0-9a-f]{32}/specrew-hook-launch\.ps1') 'antigravity: cwd-robust per-machine launcher generated in the content-addressed store, and the command names it'
+Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity') -and -not $antiPreDecoded.Contains('-HostBinding') -and $antiPreDecoded -match '-BindingId ([0-9a-f]{32})' -and (Test-Path -LiteralPath (Join-Path $antiHome ('.specrew\hooks\bindings\antigravity-{0}.binding' -f $Matches[1])) -PathType Leaf)) 'antigravity: PreInvocation command uses encoded cwd-robust launcher; the manifest runtime binding is in a file beside the launcher (203 DRIFT-016)'
 Assert-True (-not $antiPreCmd.Contains('./.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1')) 'antigravity: PreInvocation command does not depend on project-root cwd'
 Assert-True ($antiStopCmd.Contains('-EncodedCommand') -and $antiStopDecoded.Contains('specrew-hook-launch.ps1') -and $antiStopDecoded.Contains("-Event 'Stop'") -and $antiStopDecoded.Contains('-HostKind antigravity') -and -not $antiStopDecoded.Contains('-HostBinding')) 'antigravity: Stop command dispatches through cwd-robust launcher; the binding is read from beside the launcher by its content id'
 $before = Get-Content -LiteralPath $antiPath -Raw
@@ -319,7 +319,7 @@ try {
     $overrideAnti = Get-Content -LiteralPath (Join-Path $projectRoot '.agents\hooks.json') -Raw | ConvertFrom-Json
     $overrideDecoded = Decode-EncodedPwshCommand -Command ([string]$overrideAnti.'specrew-refocus'.PreInvocation[0].command)
     Assert-True ($overrideDecoded.Contains('-ModulePath') -and $overrideDecoded.Contains($devModulePath)) 'antigravity: encoded launcher command carries dev-tree SPECREW_MODULE_PATH for host-spawned hooks'
-    $launcherText = Get-Content -LiteralPath (Join-Path $overrideHome '.specrew\specrew-hook-launch.ps1') -Raw
+    $launcherText = Get-Content -LiteralPath @(Get-ChildItem -Path (Join-Path $overrideHome '.specrew\hooks') -Recurse -Filter 'specrew-hook-launch.ps1')[0].FullName -Raw
     Assert-True ($launcherText.Contains('[string]$ModulePath') -and $launcherText.Contains('$env:SPECREW_MODULE_PATH = $ModulePath')) 'launcher: accepts ModulePath and exports it before invoking the project dispatcher'
 }
 finally {
@@ -459,7 +459,7 @@ Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.codex\hooks.json
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.copilot\hooks\specrew-refocus.json')) 'proactive: copilot USER-level config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.cursor\hooks.json')) 'proactive: cursor USER-level config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.agents\hooks.json')) 'proactive: antigravity PROJECT config written'
-Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.specrew\specrew-hook-launch.ps1')) 'proactive: per-machine launcher provisioned even with NO host binary present'
+Assert-True (@(Get-ChildItem -Path (Join-Path $proactiveHome '.specrew\hooks') -Recurse -Filter 'specrew-hook-launch.ps1' -ErrorAction SilentlyContinue).Count -ge 1) 'proactive: per-machine launcher provisioned even with NO host binary present'
 
 # --- 17b. (review-signoff P6-001) DETERMINISTIC PATH-independence guard. Case 17 above provisions all 5 hosts,
 # but on a PATH-COMPLETE machine (the common dev/CI case) the OLD PATH-gated code (Get-Command codex|copilot|

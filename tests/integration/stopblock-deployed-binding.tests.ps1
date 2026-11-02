@@ -127,7 +127,7 @@ try {
     # Codex production path uses the generated per-machine launcher, not the dispatcher directly. Cover that
     # wrapper too: an allowed Stop must still be valid Codex Stop JSON after all providers run.
     Copy-Item -LiteralPath $dispatcher -Destination (Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1') -Force
-    $launcherPath = Join-Path $home2 '.specrew/specrew-hook-launch.ps1'
+    $launcherPath = [string](@(Get-ChildItem -Path (Join-Path $home2 '.specrew/hooks') -Recurse -Filter 'specrew-hook-launch.ps1' -ErrorAction SilentlyContinue | ForEach-Object FullName) + '')[0]
     Assert-True (Test-Path -LiteralPath $launcherPath -PathType Leaf) 'codex deployer produced the per-machine hook launcher'
     $launcherOut = Join-Path $proj 'launcher-codex.out'
     $launcherErr = Join-Path $proj 'launcher-codex.err'

@@ -131,7 +131,7 @@ try {
     # Deploy the real hook commands: Claude's per-project command and the per-machine launcher (Codex's shape).
     & pwsh -NoProfile -File $deployer -ProjectPath $project -HostKind claude -UserHomeOverride $fakeHome | Out-Null
     & pwsh -NoProfile -File $deployer -ProjectPath $project -HostKind codex -UserHomeOverride $fakeHome | Out-Null
-    $launcher = Join-Path $fakeHome '.specrew/specrew-hook-launch.ps1'
+    $launcher = [string](@(Get-ChildItem -Path (Join-Path $fakeHome '.specrew/hooks') -Recurse -Filter 'specrew-hook-launch.ps1' -ErrorAction SilentlyContinue | ForEach-Object FullName) + '')[0]
     $claudeCommands = Get-ClaudeHookCommands
     Assert-True ($claudeCommands.Count -ge 4) ("the deployer wrote the Claude hook commands (got {0})" -f $claudeCommands.Count)
     Assert-True (Test-Path -LiteralPath $launcher -PathType Leaf) 'the deployer wrote the per-machine launcher'
@@ -222,6 +222,26 @@ try {
         Assert-True (@(Compare-Object -ReferenceObject $runtimeBefore -DifferenceObject $runtimeAfter).Count -eq 0) ("binding {0}: no pin code ran (nothing was recorded)" -f $case)
     }
     Set-Content -LiteralPath $bindingsPath -Value ($pinBindings | ConvertTo-Json -Depth 4)
+
+    # --- the pin's helper is missing: the providers refuse instead of loading the project's code (round 5, finding 3) ---
+    # The launcher accepts the pin (its HEAD, dispatcher and stamped binding are all in order); the pinned providers
+    # then cannot resolve the pin. Read as "no pin", their fallback would load the project's scripts/internal - the
+    # traps here, which record their name when they run.
+    $pinHelpers = @(Get-ChildItem -LiteralPath $pin -Recurse -File -Filter 'live-engine-resolution.ps1')
+    $helperBackup = Join-Path $work 'helper-backup'
+    New-Item -ItemType Directory -Path $helperBackup -Force | Out-Null
+    $saved = @(foreach ($h in $pinHelpers) { $copy = Join-Path $helperBackup ([guid]::NewGuid().ToString('N')); Copy-Item -LiteralPath $h.FullName -Destination $copy; [pscustomobject]@{ Path = $h.FullName; Copy = $copy } })
+    foreach ($h in $pinHelpers) { Remove-Item -LiteralPath $h.FullName -Force }
+    if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force }
+    $helperOutput = ''
+    foreach ($eventName in @('SessionStart', 'UserPromptSubmit', 'Stop')) {
+        $r = Invoke-Hook -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $claudeCommands[$eventName]) -Stdin (New-Payload -EventName $eventName -Session 'pinroot-helper') -Environment $hookEnv
+        $helperOutput += $r.StdOut
+    }
+    $ran = if (Test-Path -LiteralPath $marker) { (Get-Content -LiteralPath $marker) -join ', ' } else { '' }
+    Assert-True ($pinHelpers.Count -ge 1 -and [string]::IsNullOrEmpty($ran)) ("pin helper missing: none of the project's own engine copies ran (ran: '{0}')" -f $ran)
+    Assert-True ((ConvertTo-PlainStderr $helperOutput) -match 'missing its pin helper') 'pin helper missing: the hooks say in plain words that the reviewed engine could not be loaded'
+    foreach ($s in $saved) { Copy-Item -LiteralPath $s.Copy -Destination $s.Path -Force }
 
     # --- a pin moved off its recorded commit: the launcher refuses before any pin code runs ---
     # The launcher's own check, not the pin's: a dispatcher checking its own pin would be the unreviewed code deciding

@@ -437,6 +437,9 @@ function Resolve-ConformanceExtensionScriptPath {
     param([string]$ProjectRoot, [string]$Name)
     $liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
     if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Test-Path -LiteralPath $liveEnginePath -PathType Leaf)) {
+        # A pin record with the helper missing is a configured pin this provider cannot resolve (T002 round 5,
+        # finding 3): load nothing rather than the project's copy.
+        if (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and (Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf)) { return $null }
         return (Join-Path $ProjectRoot (Join-Path '.specify/extensions/specrew-speckit/scripts' $Name))
     }
     if (-not (Get-Command Resolve-SpecrewLiveEngineExtensionScript -ErrorAction SilentlyContinue)) { . $liveEnginePath }
@@ -457,6 +460,9 @@ function Resolve-SpecrewBootstrapDir {
             if ([bool]$liveEngine.Refused) { return $null }
             return (Join-Path ([string]$liveEngine.Root) 'bootstrap')
         }
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and (Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf)) {
+        return $null   # a pin record with the helper missing resolves nothing (T002 round 5, finding 3)
     }
     foreach ($base in @($ProjectRoot, $env:SPECREW_MODULE_PATH)) {
         if ([string]::IsNullOrWhiteSpace($base)) { continue }
