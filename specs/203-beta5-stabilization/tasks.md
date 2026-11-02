@@ -262,7 +262,9 @@ then T014.
     piped draft, and no shipped skill or refocus text asks for one.
     **Evidence added (DRIFT-018):** 22:07, 2026-11-01, a conversational reply carrying the declared question
     reworded was blocked with "your reply is missing these lines from the message you declared. Add them as
-    written", and the line was sent again verbatim.
+    written", and the line was sent again verbatim. **Again 2026-11-02 (T001's Copilot step):** the reply
+    carried the declared "What to look for" paragraph split into a bold lead and two bullets, word for word
+    otherwise; Stop blocked the same way and the paragraph was sent a second time.
   - **Trace:** FR-046.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`,
     `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `extensions/specrew-speckit/scripts/declare-turn-end.ps1`,

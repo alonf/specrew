@@ -45,6 +45,16 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
 - **Rationale**: holds on hosts that do not mark pastes, because a pasted document rarely starts with a bare
   approval phrase and is usually over the bound.
 - **Open (W0)**: capture a paste on Copilot and Codex; tighten the rule per host if either inlines a short paste.
+- **W0 result, Copilot (2026-11-02, Copilot 1.0.105 TUI, the maintainer pasting in a scratch folder):** no marker
+  on either channel. A 9-line paste (877 characters), a one-line paste and a typed line reach both hooks with the
+  same fields and only the text; nothing tells a paste from typing, and the maintainer saw both pastes shown in
+  full after Enter, like the typed line. So on Copilot the standalone rule (the phrase starts the message, outside
+  quotes and backticks, within the size bound) is the only guard: a multi-line paste is excluded by the one-line and
+  size rules, and a short one-line paste of a bare phrase is indistinguishable from typing it. There is no host
+  signal to tighten the rule with; that residual is stated, not closed. The three prompts also confirm R1 in the
+  TUI: each carried the same session id, text and instant to the millisecond on both channels. Fixtures with
+  provenance: `tests/fixtures/hook-payloads/copilot/tui-paste/` (all recognized by the deployed hooks; the Claude
+  hook copies stand down).
 
 ## R3. Visible line (FR-029, DA-4)
 

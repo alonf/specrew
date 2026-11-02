@@ -1,0 +1,140 @@
+{
+  "task": "T001 (feature 203, iteration 001)",
+  "host": "copilot",
+  "what": "One Copilot TUI session: a multi-line paste (9 lines, 877 characters), a one-line paste and a typed line, each as it reached both hook channels (Copilot's own hook and the Claude hook Copilot also runs), and the session's sessionStart.",
+  "method": "The maintainer ran Copilot interactively in a scratch git folder outside any repository, with a scratch COPILOT_HOME holding only a capture hook, and pasted from a prepared file with Ctrl+V. The capture hook copied raw stdin bytes. Environment values are not recorded.",
+  "redaction": "The user name in every profile path is replaced with probe-user. sha256 is the captured bytes; fixture_sha256 is the file.",
+  "finding": "Neither channel marks a paste: a pasted prompt arrives exactly as a typed one, with the same fields and the text only (line breaks as LF, though Notepad copies CRLF). The maintainer saw both pastes shown in full after Enter, like the typed line. Each prompt carries the same session id, text and instant to the millisecond on both channels. sessionStart fires when the first prompt is submitted and carries it as initialPrompt (initial_prompt on the Claude channel), as on earlier versions.",
+  "fixtures": [
+    {
+      "fixture": "native-userpromptsubmitted-paste-multiline.json",
+      "channel": "copilot",
+      "event": "userPromptSubmitted",
+      "hook_ran_utc": "2026-11-02T17:20:55.9336817Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 1128,
+      "sha256": "9735cf7e747d62dd132cd5750261def4e66158008d59b7a7d211086507d4e977",
+      "fixture_sha256": "c1bb48c0bb5d96cf28dd49a6b02dbc933527537c0181c1367e7eff6d37196612",
+      "field_names": [
+        "cwd",
+        "prompt",
+        "sessionId",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "native-userpromptsubmitted-paste-one-line.json",
+      "channel": "copilot",
+      "event": "userPromptSubmitted",
+      "hook_ran_utc": "2026-11-02T17:21:21.0434320Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 320,
+      "sha256": "94f653b4676232d31962def9ae3a3e0174e097f26cc75b8a2eeffea20e795168",
+      "fixture_sha256": "0af7dbcd1e7c2edd03022a3f46f1ec87673cfb077ae7f5c855d71545f8be09ba",
+      "field_names": [
+        "cwd",
+        "prompt",
+        "sessionId",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "native-userpromptsubmitted-typed-one-line.json",
+      "channel": "copilot",
+      "event": "userPromptSubmitted",
+      "hook_ran_utc": "2026-11-02T17:23:57.0835573Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 279,
+      "sha256": "66e26b34b53939ea7322260cf1aef74372332dd9ac3260d99317e6fdc71b945b",
+      "fixture_sha256": "8f9e46c18dda2608408b319fb06d4dc6df62686fbcd5d37acd2510766eb86be2",
+      "field_names": [
+        "cwd",
+        "prompt",
+        "sessionId",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "claude-hooks-userpromptsubmit-paste-multiline.json",
+      "channel": "copilot-claude-hooks",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T17:20:56.6252687Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 1179,
+      "sha256": "6440f5e245d916e5cac5eb23369ce90f9e32f8a73ab54aa3d0c62790199b1cbe",
+      "fixture_sha256": "b85b5537a474f20b1be93048fd702e80eac7a2ae8a1d6d46577acac8efde7724",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "prompt",
+        "session_id",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "claude-hooks-userpromptsubmit-paste-one-line.json",
+      "channel": "copilot-claude-hooks",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T17:21:21.7399236Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 371,
+      "sha256": "7933f3ed36bf908231a6d11fff810e9f10dbc3148c610bcbe32c9ad20df70561",
+      "fixture_sha256": "c8fd48f5a7aaa1c663d3a42f46724a77cb7978fe927e68d40d46d8cc1574ec93",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "prompt",
+        "session_id",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "claude-hooks-userpromptsubmit-typed-one-line.json",
+      "channel": "copilot-claude-hooks",
+      "event": "UserPromptSubmit",
+      "hook_ran_utc": "2026-11-02T17:23:57.7554121Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 330,
+      "sha256": "b10e0192721c871a713ff081e8060ee2071ee641fe0a5d533fffb52d194044a6",
+      "fixture_sha256": "365de2804960b70be0a4cf997db7d39d2a8c04d7fb6a4d3652256d24626504d8",
+      "field_names": [
+        "cwd",
+        "hook_event_name",
+        "prompt",
+        "session_id",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "native-sessionstart-initialprompt.json",
+      "channel": "copilot",
+      "event": "sessionStart",
+      "hook_ran_utc": "2026-11-02T17:20:55.9335387Z",
+      "host_version": "GitHub Copilot CLI 1.0.105",
+      "entrypoint": "cli (TUI)",
+      "stdin_bytes": 1150,
+      "sha256": "17060964273ea49a5f27e8abc39b944d906302077eb9dc12ad38289438228f43",
+      "fixture_sha256": "ead6139829adb457db53f5bb537f1a89f83923b57802391b17c1b3915c8467f2",
+      "field_names": [
+        "cwd",
+        "initialPrompt",
+        "sessionId",
+        "source",
+        "timestamp"
+      ],
+      "origin": "recorded"
+    }
+  ]
+}
