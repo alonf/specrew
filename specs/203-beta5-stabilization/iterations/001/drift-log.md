@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 19 (DRIFT-001 to DRIFT-019)
-**Resolution rate**: 19 of 19 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-019 carry an open product class
+**Total drift events**: 20 (DRIFT-001 to DRIFT-020)
+**Resolution rate**: 20 of 20 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-020 carry an open product class
 **Specification drift**: 0
 
 ## Events
@@ -442,3 +442,32 @@
   launch is checked against the approval the maintainer just typed.
 - **Class closure**: OPEN — T003 and T004 carry the re-typed approval (a newer typed approval supersedes an
   unspent one and is what the launch cites); T008 the Stop blocks; finding 1 blocks any release.
+
+### DRIFT-020 — round 4 finding 1 fixed after an allowance top-up; the lanes write the real home folder; the engine rewrote state.md from the task ledger (defect fix, observations)
+
+- **Allowance**: with 4 of 4 rounds used, the Stop hook asked for a coverage decision after the deploy commit
+  `48fc192a` (it counted the hook settings and the generated launcher as source). The maintainer typed
+  `approved for allowance reset` (2026-11-02, 11:10:05 local); `specrew review --remediate allowance-reset` ran with
+  the reason "finding 1 is release-blocking and must be fixed and reviewed in its own round".
+- **Fix** (`9d224109`): a launcher-encoded command's binding file is named by its content id (the first 32 hex
+  digits of its SHA-256), written once under `~/.specrew/hook-bindings/<host>-<id>.binding`, and the command names
+  the id with `-BindingId`; the per-machine launcher reads only that file and only when its content matches the
+  id. Deploy removes the shared `<host>.binding`. All three deployer copies.
+  `tests/unit/hook-binding-per-project.tests.ps1` (in `f203-i001-suites`) deploys two projects into one home from
+  engines with different Antigravity bindings and shows through the launcher's switched-off decision no-op that each
+  command loads its own binding, before and after a redeploy, and that a changed binding file is ignored; against
+  `7abcd180`'s deployer it fails, including "A's PreInvocation follows A's binding after B's deploy".
+  `refocus-deploy.tests.ps1` asserts the content-addressed file. Sweep of `9d224109` in a separate checkout, every
+  active lane under its own environment: governance 19 s, f203-i001-suites 90 s, f203-i001-carried 142 s,
+  f199-class-guards-a 77 s, -b 60 s, all green.
+- **Observation, the real home folder**: the sweep wrote this machine's `~/.specrew/hook-bindings/antigravity-<id>.binding`
+  at 11:21:09 and rewrote `~/.specrew/specrew-hook-launch.ps1` at 11:22:36; the stop's final check had rewritten
+  `antigravity.binding` at 11:00:28. A suite in the active lanes deploys without a scratch home, so the live
+  per-machine launcher Codex and Copilot run is whatever a test deployed last (DRIFT-016's open observation, now
+  within the five active lanes). Not yet traced to the suite.
+- **Observation, state.md**: at 11:14 local the engine rewrote `state.md`'s header from `tasks-progress.yml`, which
+  lists every task pending, undoing "T002 done, T001 in progress"; no documented command records a task in that
+  ledger (B5F-001's ownership gap). Committed as rewritten; plan.md keeps T002 done.
+- **Requirement**: FR-014; the clarify instruction (only reviewed code reaches the live hooks); the sweep rule.
+- **Class closure**: OPEN — the fix is reviewed in the next round; tracing the suite that writes the real home
+  folder is a follow-up.

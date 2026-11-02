@@ -84,7 +84,10 @@ then T014.
       `~/.specrew/hook-bindings/<host>.binding`, one file per machine, so deploying project B from a different module
       version or tree changes project A's typed-approval and stop rules, with or without a pin. Store the binding
       per project, or as an immutable content-addressed file the command names; a two-project test. Both deployer
-      copies. Fixed in its own commit and reviewed before any release.
+      copies. Fixed in its own commit and reviewed before any release. **Fixed in `9d224109` (DRIFT-020):** the
+      binding file is named by its content id and written once, the command names the id with `-BindingId`, and
+      the launcher reads only that file when its content matches; RED and acceptance:
+      `tests/unit/hook-binding-per-project.tests.ps1` (fails against `7abcd180`'s deployer). Review pending.
     - Finding 2: the per-machine launcher looks for the pin only after it finds the project's own dispatcher file,
       so a pinned project whose `.specify` dispatcher is missing runs ungoverned (exit 0, nothing recorded), or an
       ancestor project's dispatcher takes the event. Recognize the pin record during root discovery. Joins B5F-019.
