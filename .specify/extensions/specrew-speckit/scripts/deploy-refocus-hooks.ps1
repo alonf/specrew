@@ -397,8 +397,13 @@ function Get-SpecrewHookCommand {
                 $modulePathEncodedArg = " -ModulePath '" + ($launcherModulePath.Replace("'", "''")) + "'"
             }
             # The baked binding is not in this command: encoded, it alone took the command to about 7,350 characters
-            # (DRIFT-016). Install-HookLauncher writes it beside the launcher, which reads it for this host.
-            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(("& '{0}' -Event '{1}' -HostKind {2}{3}" -f $escapedLauncher, $escapedEvent, $HostKind, $modulePathEncodedArg)))
+            # (DRIFT-016). Install-HookLauncher writes it beside the launcher under its content id, and the command
+            # names that id, so every project keeps the binding it was deployed with (round 4, finding 1).
+            $bindingIdArg = ''
+            if (-not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
+                $bindingIdArg = ' -BindingId ' + (Get-HostBindingId -Binding $hostRuntimeBinding)
+            }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(("& '{0}' -Event '{1}' -HostKind {2}{3}{4}" -f $escapedLauncher, $escapedEvent, $HostKind, $modulePathEncodedArg, $bindingIdArg)))
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
         }
         default {
@@ -467,6 +472,15 @@ function ConvertTo-PowerShellStringArrayLiteral {
     return ('@({0})' -f ($items -join ', '))
 }
 
+function Get-HostBindingId {
+    # The content address of a baked binding: the first 32 hex digits of its SHA-256. Feature 203 T002 round 4,
+    # finding 1: a launcher-encoded command names the binding file by this id, so a deploy from another project or
+    # another engine writes a different file instead of changing the one this project's command reads.
+    param([string]$Binding)
+    $hash = [System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Binding.Trim()))
+    return ([Convert]::ToHexString($hash).Substring(0, 32).ToLowerInvariant())
+}
+
 function Install-HookLauncher {
     # Generate the per-machine launcher (~/.specrew/specrew-hook-launch.ps1) used by launcher command modes.
     # Idempotent: same bytes every deploy. The launcher is intentionally
@@ -492,16 +506,21 @@ param(
     [Parameter(Mandatory = $true)][string]$Event,
     [string]$HostKind = 'unknown',
     [string]$HostBinding,
+    [string]$BindingId,
     [string]$ModulePath,
     [int]$ProviderTimeoutSeconds = 20
 )
-# An encoded host command leaves the baked binding out (it alone would near the command-line limit); deploy writes
-# it beside this launcher, one file per host.
-if ([string]::IsNullOrWhiteSpace($HostBinding) -and $HostKind -match '^[A-Za-z0-9_.-]+$') {
-    $bindingFile = Join-Path $PSScriptRoot ("hook-bindings/{0}.binding" -f $HostKind)
-    if (Test-Path -LiteralPath $bindingFile -PathType Leaf) {
-        try { $HostBinding = ([IO.File]::ReadAllText($bindingFile)).Trim() } catch { $HostBinding = $null }
+# An encoded host command leaves the baked binding out (it alone would near the command-line limit) and names it by
+# content id instead; deploy writes it beside this launcher once and never rewrites it. Only the file the command
+# names is read, and only when its content still matches the id, so one project's deploy cannot change another's.
+if ([string]::IsNullOrWhiteSpace($HostBinding) -and $HostKind -match '^[A-Za-z0-9_.-]+$' -and $BindingId -match '^[0-9a-f]{32}$') {
+    $bindingFile = Join-Path $PSScriptRoot ("hook-bindings/{0}-{1}.binding" -f $HostKind, $BindingId)
+    try {
+        $bindingText = ([IO.File]::ReadAllText($bindingFile)).Trim()
+        $bindingHash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($bindingText)))
+        if ($bindingHash.Substring(0, 32).ToLowerInvariant() -eq $BindingId) { $HostBinding = $bindingText }
     }
+    catch { $HostBinding = $null }
 }
 function Test-LauncherDecisionOnlyEvent {
     param([string]$EventName, [string]$EncodedBinding)
@@ -628,9 +647,17 @@ exit 0
     New-Item -ItemType Directory -Path (Split-Path -Parent $launcherPath) -Force | Out-Null
     [System.IO.File]::WriteAllText($launcherPath, $launcherBody, [System.Text.UTF8Encoding]::new($false))
     if ($hookCommandMode -eq 'launcher-encoded' -and -not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
-        $bindingFile = Join-Path (Split-Path -Parent $launcherPath) ("hook-bindings/{0}.binding" -f $HostKind)
-        New-Item -ItemType Directory -Path (Split-Path -Parent $bindingFile) -Force | Out-Null
-        [System.IO.File]::WriteAllText($bindingFile, $hostRuntimeBinding, [System.Text.UTF8Encoding]::new($false))
+        # Content-addressed and written once: other projects' commands name their own ids, so no deploy here can
+        # change what they read. Files are small and accumulate one per distinct binding.
+        $bindingDir = Join-Path (Split-Path -Parent $launcherPath) 'hook-bindings'
+        $bindingText = $hostRuntimeBinding.Trim()
+        $bindingFile = Join-Path $bindingDir ("{0}-{1}.binding" -f $HostKind, (Get-HostBindingId -Binding $bindingText))
+        New-Item -ItemType Directory -Path $bindingDir -Force | Out-Null
+        $current = if (Test-Path -LiteralPath $bindingFile -PathType Leaf) { [System.IO.File]::ReadAllText($bindingFile) } else { $null }
+        if ($current -ne $bindingText) { [System.IO.File]::WriteAllText($bindingFile, $bindingText, [System.Text.UTF8Encoding]::new($false)) }
+        # The shared per-host file of 0999ff62 to 7abcd180 is no longer read; leaving it would invite the mistake back.
+        $legacyBindingFile = Join-Path $bindingDir ("{0}.binding" -f $HostKind)
+        if (Test-Path -LiteralPath $legacyBindingFile -PathType Leaf) { Remove-Item -LiteralPath $legacyBindingFile -Force }
     }
 }
 

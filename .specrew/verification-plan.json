@@ -47,7 +47,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$fail = 0; foreach ($s in @('tests/unit/live-engine-resolution.tests.ps1','tests/unit/live-engine-hook-root.tests.ps1','tests/unit/hook-command-length.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; foreach ($s in @('tests/unit/live-engine-resolution.tests.ps1','tests/unit/live-engine-hook-root.tests.ps1','tests/unit/hook-command-length.tests.ps1','tests/unit/hook-binding-per-project.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 200,
       "env_refs": [
