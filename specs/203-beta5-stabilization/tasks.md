@@ -226,6 +226,11 @@ then T014.
     approval through the approval's own record: the newer capture carries the round reference and, once spent, the
     run's id; no record ties the run to the superseded capture. The engine's record formats are unchanged; the run
     record naming the approval itself is T012's.
+  - **The round-7 shape (maintainer's finding on `dbc4cd3b`, 2026-11-03):** approval A minted a round and B was typed
+    while it ran; B takes the slot. When the round completes with A's reference, B stays unspent and the spent line
+    names A. The spend applies only to the approval whose `minted_ref` matches; when the slot has moved on it is
+    recorded against the superseded approval; a slot minted for another round is never stamped. The partial sign-off
+    spends the approval its accepted run was minted from.
   - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
     keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.

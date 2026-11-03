@@ -262,6 +262,43 @@ Assert-True ($citing.Count -ge 1 -and @($citing | Where-Object { -not (& $citesN
 $cliSource = Get-Content -LiteralPath $reviewCli -Raw
 Assert-True ($cliSource -match 'Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -RunId') 'the review CLI passes the run to the consumption after a delivered round'
 
+# ---------------------------------------------------------------------------------------------------
+# Case 3 (the round-7 shape; maintainer's finding on dbc4cd3b, 2026-11-03): approval A minted round 7, the maintainer
+# typed approval B while round 7 ran, and B took the waiting slot. When round 7 completes with A's reference, the spend
+# belongs to A: B stays unspent and usable, and the spent line names A, never B.
+Write-Host '--- case 3: an approval typed while the round runs (the round-7 shape) ---'
+$atA = '2026-11-02T12:30:00.0000000+00:00'   # 14:30 local
+$atB = '2026-11-02T12:45:00.0000000+00:00'   # 14:45 local, while round 7 runs
+$r3 = New-CampaignFixture
+$null = Write-TypedRoundApproval -Root $r3 -NowUtc $atA -TurnIdentity 'turn-A'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r3 -AuthorizationRef 'cmp-x-round-7'
+$null = Write-TypedRoundApproval -Root $r3 -NowUtc $atB -TurnIdentity 'turn-B'
+$completeA = @{ ProjectRoot = $r3; AuthorizationRef = 'cmp-x-round-7' }
+Add-IfSupported -Splat $completeA -Command 'Complete-SpecrewReviewRoundApprovalAuthorization' -Name 'RunId' -Value 'run-round-7'
+$spentA = Complete-SpecrewReviewRoundApprovalAuthorization @completeA
+$slot3 = Read-Pending -Root $r3
+Assert-True ((Test-SameInstant -Value $slot3.observed_at -Expected $atB) -and [string]::IsNullOrWhiteSpace([string]$slot3.spent_at) -and
+    [string]::IsNullOrWhiteSpace([string]$slot3.minted_ref) -and -not ($slot3.PSObject.Properties['run_id'] -and $slot3.run_id)) 'B, typed while round 7 ran, stays unspent and unminted when round 7 completes'
+$standing3 = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r3
+Assert-True ($null -ne $standing3 -and (Test-SameInstant -Value $standing3.observed_at -Expected $atB)) 'B is still the standing approval for the next round'
+$spentLines3 = @(Read-Captures -Root $r3 | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' })
+Assert-True ($spentLines3.Count -eq 1 -and [string]$spentLines3[0].run_id -ceq 'run-round-7' -and [string]$spentLines3[0].authorization_ref -ceq 'cmp-x-round-7' -and
+    (Test-SameInstant -Value $spentLines3[0].approval_observed_at -Expected $atA) -and [string]$spentLines3[0].approval_turn_identity -ceq 'turn-A') 'the spent line names A, the approval round 7 was minted from'
+Assert-True ([bool]$spentA.consumed) ("the spend of the superseded approval is reported as recorded (got {0})" -f $spentA.reason)
+$againA = Complete-SpecrewReviewRoundApprovalAuthorization @completeA
+Assert-True (@(Read-Captures -Root $r3 | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }).Count -eq 1 -and [bool]$againA.consumed) 'recording the same spend again adds no second line'
+
+# A reference that matches neither the waiting approval's round nor any superseded approval marks nothing spent.
+$r3b = New-CampaignFixture
+$null = Write-TypedRoundApproval -Root $r3b -NowUtc $atB -TurnIdentity 'turn-B'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r3b -AuthorizationRef 'cmp-x-round-8'
+$completeOther = @{ ProjectRoot = $r3b; AuthorizationRef = 'cmp-x-round-9' }
+Add-IfSupported -Splat $completeOther -Command 'Complete-SpecrewReviewRoundApprovalAuthorization' -Name 'RunId' -Value 'run-round-9'
+$spentOther = Complete-SpecrewReviewRoundApprovalAuthorization @completeOther
+$slot3b = Read-Pending -Root $r3b
+Assert-True (-not [bool]$spentOther.consumed -and [string]::IsNullOrWhiteSpace([string]$slot3b.spent_at) -and [string]$slot3b.minted_ref -ceq 'cmp-x-round-8' -and
+    @(Read-Captures -Root $r3b | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }).Count -eq 0) ("a round the waiting approval was not minted for marks nothing spent (got {0})" -f $spentOther.reason)
+
 foreach ($root in $script:roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 
 Write-Host '--- the real stores are unchanged ---'
