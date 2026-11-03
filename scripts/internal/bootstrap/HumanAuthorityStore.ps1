@@ -2648,13 +2648,16 @@ function Get-SpecrewCampaignRoundInFlight {
             if (-not $byGeneration.ContainsKey($generation)) { $byGeneration[$generation] = [Collections.Generic.List[object]]::new() }
             $byGeneration[$generation].Add($claim) | Out-Null
         }
-        foreach ($generation in @($byGeneration.Keys | Sort-Object -Descending)) {
-            $facts = @($byGeneration[$generation])
-            $held = @($facts | Where-Object { [string]$_.disposition -ceq 'held' })
-            $retired = @($facts | Where-Object { [string]$_.disposition -in @('released', 'abandoned') })
-            if ($held.Count -ge 1 -and $retired.Count -eq 0) {
-                return [pscustomobject]@{ run_id = [string]$held[0].run_id; since = [string]$held[0].observed_at; evidence = 'claim-held' }
-            }
+        # The newest generation only. The engine writes a generation only when no claim is active
+        # (Request-ReviewAuthorityClaim), so an older generation still held under a newer one is not a running round:
+        # read as one, it would refuse every launch for good.
+        if ($byGeneration.Count -eq 0) { continue }
+        $newest = @($byGeneration.Keys | Sort-Object -Descending)[0]
+        $facts = @($byGeneration[$newest])
+        $held = @($facts | Where-Object { [string]$_.disposition -ceq 'held' })
+        $retired = @($facts | Where-Object { [string]$_.disposition -in @('released', 'abandoned') })
+        if ($held.Count -ge 1 -and $retired.Count -eq 0) {
+            return [pscustomobject]@{ run_id = [string]$held[0].run_id; since = [string]$held[0].observed_at; evidence = 'claim-held' }
         }
     }
     foreach ($slot in @(Get-ChildItem -LiteralPath (Join-Path $campaignRoot 'reservations') -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'slot-*' })) {

@@ -399,6 +399,23 @@ Write-EngineFact -Path (Join-Path $campaign5b "reservations/$grantId4b/slot-001/
         reservation_id = 'res-0b0b0b0b0b0b0b0b0b0b'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
 Assert-True (-not (Test-PartialSignoffSpendsWaitingApproval -Root $r5b -RunId $runningRun)) 'accepting a partial of a run reserved before B leaves B unspent'
 
+# Only each lineage's newest claim generation says whether a round runs: an older generation left held under a newer,
+# retired one is not a running round, or it would refuse every launch for good.
+Write-Host '--- case 5c: a stale held claim under a newer, released generation ---'
+$r5c = New-CampaignFixture
+$claims5c = Join-Path $r5c ".specrew/review/authority/campaigns/$campaignId/claims/lin-001-fixture"
+$claimFact = { param([int]$Generation, [string]$Disposition, [string]$RunId)
+    [ordered]@{ campaign_id = $campaignId; disposition = $Disposition; fact_type = "claim-$Disposition"; generation = $Generation
+        observed_at = '2026-11-02T12:36:00.0000000+00:00'; run_id = $RunId; schema_version = '1.0'; target_lineage = 'lin-001-fixture' } }
+Write-EngineFact -Path (Join-Path $claims5c '00000001-held.json') -Fact (& $claimFact 1 'held' 'run-20261102-110000000-01010101')
+Write-EngineFact -Path (Join-Path $claims5c '00000002-held.json') -Fact (& $claimFact 2 'held' $runningRun)
+Write-EngineFact -Path (Join-Path $claims5c '00000002-released.json') -Fact (& $claimFact 2 'released' $runningRun)
+$stale = Get-SpecrewCampaignRoundInFlight -ProjectRoot $r5c -CampaignId $campaignId
+Assert-True ($null -eq $stale) ("an older held generation under a released newer one is not a round in flight (got {0})" -f $(if ($null -ne $stale) { $stale.run_id } else { 'none' }))
+Write-EngineFact -Path (Join-Path $claims5c '00000003-held.json') -Fact (& $claimFact 3 'held' 'run-20261102-130000000-03030303')
+$live = Get-SpecrewCampaignRoundInFlight -ProjectRoot $r5c -CampaignId $campaignId
+Assert-True ($null -ne $live -and [string]$live.run_id -ceq 'run-20261102-130000000-03030303' -and [string]$live.evidence -ceq 'claim-held') 'a held newest generation is the round in flight'
+
 # The automatic retry recomputes the round reference after an undelivered attempt. The waiting approval is re-stamped
 # with it, and only while the slot still holds the approval this launch minted; otherwise the delivered retry would find
 # the slot minted for another round and leave its approval unspent.
