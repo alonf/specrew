@@ -2148,6 +2148,9 @@ function Set-SpecrewReviewRoundApprovalMintedRef {
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][string]$AuthorizationRef,
+        # 203 T004: a re-stamp (the automatic retry's new round reference) applies only while the slot still holds the
+        # approval minted as this reference; a newer approval that took the slot meanwhile is not re-stamped.
+        [AllowNull()][AllowEmptyString()][string]$ExpectedMintedRef,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
@@ -2156,6 +2159,10 @@ function Set-SpecrewReviewRoundApprovalMintedRef {
     try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
     catch { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-unreadable' } }
     if ($null -eq $fact) { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-empty' } }
+    if ($PSBoundParameters.ContainsKey('ExpectedMintedRef')) {
+        $current = if ($fact.PSObject.Properties['minted_ref']) { [string]$fact.minted_ref } else { '' }
+        if ($current -cne [string]$ExpectedMintedRef) { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-moved' } }
+    }
     $fact | Add-Member -NotePropertyName 'minted_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
     $fact | Add-Member -NotePropertyName 'minted_at' -NotePropertyValue $NowUtc -Force
     $json = $fact | ConvertTo-Json -Depth 8
@@ -2189,9 +2196,13 @@ function Get-SpecrewDeliveredRoundForMintedRef {
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$AuthorizationRef
+        [Parameter(Mandatory)][AllowEmptyString()][string]$AuthorizationRef,
+        # 203 T004 (maintainer's finding on 50ffca8f): the capture asking. A run reserved before the capture was observed
+        # is not a round it paid for, whatever reference the capture carries.
+        [AllowNull()]$CaptureObservedAt
     )
     if ([string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($CampaignId)) { return $null }
+    $captureAt = if ($null -ne $CaptureObservedAt) { ConvertTo-SpecrewAuthorityInstant -Value $CaptureObservedAt } else { $null }
     $campaignRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) (".specrew/review/authority/campaigns/" + $CampaignId)
     if (-not (Test-Path -LiteralPath $campaignRoot -PathType Container)) { return $null }
     try {
@@ -2215,6 +2226,10 @@ function Get-SpecrewDeliveredRoundForMintedRef {
                 if ($null -eq $reservation -or -not $reservation.PSObject.Properties['run_id']) { continue }
                 $runId = [string]$reservation.run_id
                 if ([string]::IsNullOrWhiteSpace($runId)) { continue }
+                if ($null -ne $captureAt) {
+                    $reservedAt = if ($reservation.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $reservation.observed_at } else { $null }
+                    if ($null -ne $reservedAt -and $reservedAt -lt $captureAt) { continue }
+                }
                 $resultPath = Join-Path (Join-Path (Join-Path $campaignRoot 'runs') $runId) 'result.json'
                 if (-not [IO.File]::Exists($resultPath)) { continue }
                 $result = $null
@@ -2465,9 +2480,18 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
     # the slot has moved on, the spend is recorded against the superseded approval the round was minted from; and a
     # slot minted for another round is never stamped. A slot that never minted keeps the direct consumption every
     # caller used before minting existed.
+    #
+    # 203 T004 (maintainer's finding on 50ffca8f): A WAITING APPROVAL OBSERVED AFTER THE RUN WAS RESERVED NEVER PAID FOR
+    # IT. A reference match alone is not enough: a launch attempted while the round ran could stamp the newer approval
+    # with the running round's reference (rounds run + 1 leaves the running round out). And an approval that minted no
+    # round paid for no reserved run, so with a run named the slot-never-minted fallback does not apply - that fallback
+    # is what marked the newer approval spent when a partial sign-off's run resolved to no reference.
+    $reservedAt = if ([string]::IsNullOrWhiteSpace($RunId)) { $null } else { Get-SpecrewRunReservedAt -ProjectRoot $ProjectRoot -RunId $RunId }
     $slotMinted = if ($null -ne $fact -and $fact.PSObject.Properties['minted_ref']) { [string]$fact.minted_ref } else { '' }
-    if (-not ($null -ne $fact -and -not [string]::IsNullOrWhiteSpace($slotMinted) -and $slotMinted -ceq $spendFor)) {
-        $superseded = if ([string]::IsNullOrWhiteSpace($spendFor)) { $null } else { Get-SpecrewSupersededRoundApproval -ProjectRoot $ProjectRoot -MintedRef $spendFor }
+    $slotAt = if ($null -ne $fact -and $fact.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $fact.observed_at } else { $null }
+    $slotAfterReservation = $null -ne $reservedAt -and $null -ne $slotAt -and $slotAt -gt $reservedAt
+    if (-not ($null -ne $fact -and -not [string]::IsNullOrWhiteSpace($slotMinted) -and $slotMinted -ceq $spendFor -and -not $slotAfterReservation)) {
+        $superseded = if ([string]::IsNullOrWhiteSpace($spendFor)) { $null } else { Get-SpecrewSupersededRoundApproval -ProjectRoot $ProjectRoot -MintedRef $spendFor -ObservedNoLaterThan $reservedAt }
         if ($null -ne $superseded) {
             $line = Add-SpecrewRoundApprovalSpentLine -ProjectRoot $ProjectRoot -ApprovalObservedAt $superseded.superseded_observed_at `
                 -ApprovalTurnIdentity ([string]$superseded.superseded_turn_identity) -AuthorizationRef $AuthorizationRef -RunId $RunId -NowUtc $NowUtc -Superseded
@@ -2475,8 +2499,14 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
             return [pscustomobject]@{ consumed = $true; fact = $line; reason = 'consumed-superseded-approval' }
         }
         if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = $slotReason } }
+        if ($slotAfterReservation) {
+            return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-observed-after-reservation' }
+        }
         if (-not [string]::IsNullOrWhiteSpace($slotMinted)) {
             return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-minted-for-another-round' }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($RunId)) {
+            return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-minted-no-round' }
         }
     }
     $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
@@ -2547,8 +2577,10 @@ function Get-SpecrewMintedRefForRun {
 function Get-SpecrewSupersededRoundApproval {
     # 203 T004: the newest supersession fact that retired the approval minted as MintedRef, or $null. A torn journal line
     # is skipped: a missed supersession leaves the spend unrecorded and reported, never stamped on the wrong approval.
+    # With ObservedNoLaterThan (the run's reservation), only an approval observed by then: a newer approval stamped with the
+    # same reference by a mid-run launch and then superseded in turn did not pay for that run.
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$MintedRef)
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$MintedRef, [AllowNull()]$ObservedNoLaterThan)
     $journal = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'captures.jsonl'
     if (-not [IO.File]::Exists($journal)) { return $null }
     $found = $null
@@ -2558,9 +2590,84 @@ function Get-SpecrewSupersededRoundApproval {
         try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
         if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type'] -or [string]$entry.fact_type -cne 'review-round-approval-superseded') { continue }
         if (-not $entry.PSObject.Properties['superseded_minted_ref'] -or [string]$entry.superseded_minted_ref -cne $MintedRef) { continue }
+        if ($null -ne $ObservedNoLaterThan) {
+            $supersededAt = if ($entry.PSObject.Properties['superseded_observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $entry.superseded_observed_at } else { $null }
+            if ($null -ne $supersededAt -and $supersededAt -gt $ObservedNoLaterThan) { continue }
+        }
         $found = $entry
     }
     return $found
+}
+
+function Get-SpecrewRunReservedAt {
+    # 203 T004 (maintainer's finding on 50ffca8f): when the run's slot was reserved - the reservation generation naming
+    # the run, in any campaign of the project. $null when the store does not say.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][string]$RunId)
+    if ([string]::IsNullOrWhiteSpace($RunId)) { return $null }
+    $campaignsRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
+    $earliest = $null
+    try {
+        foreach ($campaign in @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue)) {
+            $reservationsRoot = Join-Path $campaign.FullName 'reservations'
+            if (-not (Test-Path -LiteralPath $reservationsRoot -PathType Container)) { continue }
+            foreach ($generation in @(Get-ChildItem -LiteralPath $reservationsRoot -Filter 'generation-*.json' -File -Recurse -ErrorAction SilentlyContinue)) {
+                $reservation = $null
+                try { $reservation = Get-Content -LiteralPath $generation.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+                if ($null -eq $reservation -or -not $reservation.PSObject.Properties['run_id'] -or [string]$reservation.run_id -cne $RunId) { continue }
+                $at = if ($reservation.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $reservation.observed_at } else { $null }
+                if ($null -ne $at -and ($null -eq $earliest -or $at -lt $earliest)) { $earliest = $at }
+            }
+        }
+    }
+    catch { return $null }
+    return $earliest
+}
+
+function Get-SpecrewCampaignRoundInFlight {
+    # 203 T004 (maintainer's finding on 50ffca8f): the round of this campaign that is running, or $null. A launch mints
+    # `<campaign>-round-<rounds run + 1>`, which leaves the running round out, so a launch attempted mid-run would stamp
+    # the waiting approval with the running round's reference. The launch refuses before minting instead.
+    #
+    # In flight is what the engine itself would refuse a second launch for: a held claim not yet released or abandoned,
+    # or a reserved slot (the engine reserves before it claims) with neither a release nor a result. An unreadable fact
+    # is skipped; the spend's own rule (an approval observed after the reservation never paid for it) still holds.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId)
+    if ([string]::IsNullOrWhiteSpace($CampaignId)) { return $null }
+    $campaignRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) (".specrew/review/authority/campaigns/" + $CampaignId)
+    if (-not (Test-Path -LiteralPath $campaignRoot -PathType Container)) { return $null }
+    $readFact = { param([string]$Path) try { Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $null } }
+    foreach ($lineage in @(Get-ChildItem -LiteralPath (Join-Path $campaignRoot 'claims') -Directory -ErrorAction SilentlyContinue)) {
+        $byGeneration = @{}
+        foreach ($file in @(Get-ChildItem -LiteralPath $lineage.FullName -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+            $claim = & $readFact $file.FullName
+            if ($null -eq $claim -or -not $claim.PSObject.Properties['generation'] -or -not $claim.PSObject.Properties['disposition']) { continue }
+            $generation = [int]$claim.generation
+            if (-not $byGeneration.ContainsKey($generation)) { $byGeneration[$generation] = [Collections.Generic.List[object]]::new() }
+            $byGeneration[$generation].Add($claim) | Out-Null
+        }
+        foreach ($generation in @($byGeneration.Keys | Sort-Object -Descending)) {
+            $facts = @($byGeneration[$generation])
+            $held = @($facts | Where-Object { [string]$_.disposition -ceq 'held' })
+            $retired = @($facts | Where-Object { [string]$_.disposition -in @('released', 'abandoned') })
+            if ($held.Count -ge 1 -and $retired.Count -eq 0) {
+                return [pscustomobject]@{ run_id = [string]$held[0].run_id; since = [string]$held[0].observed_at; evidence = 'claim-held' }
+            }
+        }
+    }
+    foreach ($slot in @(Get-ChildItem -LiteralPath (Join-Path $campaignRoot 'reservations') -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'slot-*' })) {
+        $latest = @(Get-ChildItem -LiteralPath $slot.FullName -Filter 'generation-*.json' -File -ErrorAction SilentlyContinue | Sort-Object Name) | Select-Object -Last 1
+        if ($null -eq $latest) { continue }
+        $reservation = & $readFact $latest.FullName
+        if ($null -eq $reservation -or -not $reservation.PSObject.Properties['run_id'] -or -not $reservation.PSObject.Properties['reservation_id']) { continue }
+        $runId = [string]$reservation.run_id
+        if ([IO.File]::Exists((Join-Path (Join-Path $campaignRoot 'releases') (([string]$reservation.reservation_id) + '.json')))) { continue }
+        if ([IO.File]::Exists((Join-Path (Join-Path (Join-Path $campaignRoot 'runs') $runId) 'result.json'))) { continue }
+        return [pscustomobject]@{ run_id = $runId; since = [string]$reservation.observed_at; evidence = 'reservation-open' }
+    }
+    return $null
 }
 
 function Add-SpecrewRoundApprovalSpentLine {

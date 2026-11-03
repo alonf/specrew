@@ -231,6 +231,15 @@ then T014.
     names A. The spend applies only to the approval whose `minted_ref` matches; when the slot has moved on it is
     recorded against the superseded approval; a slot minted for another round is never stamped. The partial sign-off
     spends the approval its accepted run was minted from.
+  - **Two more routes to it (maintainer's finding on `50ffca8f`, 2026-11-03):** (1) a launch attempted mid-run mints
+    `<campaign>-round-<rounds run + 1>`, which leaves the running round out, so B was stamped with the running round's
+    reference, the claim was refused, the stamp stayed, and the completion matched it; (2) a partial sign-off whose run
+    resolves to no reference fell back to stamping the never-minted B. Now a waiting approval observed after the run was
+    reserved never pays for it (at completion, at the partial sign-off, and when a later launch retires a delivered
+    round), an approval that minted no round pays for no named run, and a launch refuses before minting while a round of
+    the campaign is in flight (a held claim, or a reserved slot with neither a release nor a result). The automatic retry
+    re-stamps its new reference, only while the slot still holds the approval the launch minted; without it, 50ffca8f
+    left a delivered retry's approval unspent. RED cases 4-6 in `tests/unit/typed-act-writer.Tests.ps1`.
   - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
     keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.

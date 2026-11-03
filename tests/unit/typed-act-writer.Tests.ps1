@@ -299,6 +299,124 @@ $slot3b = Read-Pending -Root $r3b
 Assert-True (-not [bool]$spentOther.consumed -and [string]::IsNullOrWhiteSpace([string]$slot3b.spent_at) -and [string]$slot3b.minted_ref -ceq 'cmp-x-round-8' -and
     @(Read-Captures -Root $r3b | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }).Count -eq 0) ("a round the waiting approval was not minted for marks nothing spent (got {0})" -f $spentOther.reason)
 
+# ---------------------------------------------------------------------------------------------------
+# Cases 4-6 (maintainer's finding on 50ffca8f, 2026-11-03): two more routes to the round-7 outcome. The engine's facts a
+# running round leaves are written here in the engine's own shapes: a reservation generation naming the run, and the
+# campaign's held claim.
+function Write-EngineFact { param([string]$Path, [System.Collections.IDictionary]$Fact)
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
+    Set-Content -LiteralPath $Path -Value ([pscustomobject]$Fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -NoNewline
+}
+function Read-SpentLines { param([string]$Root) return @(Read-Captures -Root $Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }) }
+$campaignId = 'cmp-001-fixture-i001'
+$roundOne = 'cmp-001-fixture-i001-round-1'
+$runningRun = 'run-20261102-123500000-0a0a0a0a'   # reserved 14:35 local, between A (14:30) and B (14:45)
+$reservedAtRunning = '2026-11-02T12:35:00.0000000+00:00'
+
+# Route 1: B typed during the round, plus a launch attempt. The reference is rounds run + 1, which leaves out the
+# running round, so the launch would mint B the running round's reference; the claim is refused, the stamp stays, and
+# the finishing round matches the slot. The launch must refuse before minting.
+Write-Host '--- case 4: a launch attempt while the round runs (route 1) ---'
+$r4 = New-CampaignFixture
+$null = Write-TypedRoundApproval -Root $r4 -NowUtc $atA -TurnIdentity 'turn-A'
+$null = Invoke-AgentLaunch -Root $r4
+$campaign4 = Join-Path $r4 ".specrew/review/authority/campaigns/$campaignId"
+$grants4 = @(Get-ChildItem -LiteralPath (Join-Path $campaign4 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)
+$grantId4 = if ($grants4.Count -eq 1) { [IO.Path]::GetFileNameWithoutExtension($grants4[0].Name) } else { '' }
+Assert-True ($grantId4 -and [string](Read-Pending -Root $r4).minted_ref -ceq $roundOne) 'setup: A minted round 1 and its grant'
+# Round 1 is now running: its relaunch reserved the slot's next generation and holds the campaign's claim.
+Write-EngineFact -Path (Join-Path $campaign4 "reservations/$grantId4/slot-001/generation-002.json") -Fact ([ordered]@{
+        campaign_id = $campaignId; fact_type = 'reservation'; grant_id = $grantId4; observed_at = $reservedAtRunning
+        reservation_id = 'res-0a0a0a0a0a0a0a0a0a0a'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
+$claimDir = Join-Path $campaign4 'claims/lin-001-fixture'
+$nextClaim = 1 + @(Get-ChildItem -LiteralPath $claimDir -Filter '*-held.json' -File -ErrorAction SilentlyContinue).Count
+Write-EngineFact -Path (Join-Path $claimDir ('{0:d8}-held.json' -f $nextClaim)) -Fact ([ordered]@{
+        campaign_id = $campaignId; disposition = 'held'; fact_type = 'claim-held'; generation = $nextClaim
+        observed_at = '2026-11-02T12:36:00.0000000+00:00'; run_id = $runningRun; schema_version = '1.0'; target_lineage = 'lin-001-fixture' })
+$null = Write-TypedRoundApproval -Root $r4 -NowUtc $atB -TurnIdentity 'turn-B'
+$launchB = Invoke-AgentLaunch -Root $r4
+$slot4 = Read-Pending -Root $r4
+Assert-True ((Test-SameInstant -Value $slot4.observed_at -Expected $atB) -and [string]::IsNullOrWhiteSpace([string]$slot4.minted_ref)) ("a launch while round 1 runs mints nothing on B (minted_ref '{0}')" -f [string]$slot4.minted_ref)
+Assert-True ($launchB.Text -match [regex]::Escape($runningRun)) 'the refusal names the running round'
+$generations4 = @(Get-ChildItem -LiteralPath (Join-Path $campaign4 "reservations/$grantId4/slot-001") -Filter 'generation-*.json' -File)
+Assert-True ($generations4.Count -eq 2 -and @(Get-ChildItem -LiteralPath (Join-Path $campaign4 'grants') -Filter '*.json' -File).Count -eq 1) 'the refused launch reserved nothing and minted no grant'
+$complete4 = @{ ProjectRoot = $r4; AuthorizationRef = $roundOne; RunId = $runningRun }
+$spent4 = Complete-SpecrewReviewRoundApprovalAuthorization @complete4
+$slot4After = Read-Pending -Root $r4
+$spentLines4 = @(Read-SpentLines -Root $r4)
+Assert-True ([string]::IsNullOrWhiteSpace([string]$slot4After.spent_at)) 'round 1 completing leaves B unspent'
+Assert-True ($spentLines4.Count -eq 1 -and [string]$spentLines4[0].approval_turn_identity -ceq 'turn-A' -and [string]$spentLines4[0].run_id -ceq $runningRun) ("the spent line names A (got {0} line(s), {1})" -f $spentLines4.Count, $spent4.reason)
+
+# The same outcome when a stamp lands anyway (the engine reserves before it claims, and a stamp from an earlier build may
+# already be on the slot): B observed after the round's reservation is never the approval that paid for it, at
+# completion or when a later launch retires a delivered round.
+Write-Host '--- case 4b: a stamp left on B by a mid-run launch ---'
+$r4b = New-CampaignFixture
+$campaign4b = Join-Path $r4b ".specrew/review/authority/campaigns/$campaignId"
+$grantId4b = 'grant-0b0b0b0b0b0b0b0b0b0b'
+Write-EngineFact -Path (Join-Path $campaign4b "grants/$grantId4b.json") -Fact ([ordered]@{
+        authorization_ref = $roundOne; campaign_id = $campaignId; fact_type = 'grant'; grant_id = $grantId4b; observed_at = '2026-11-02T12:31:00.0000000+00:00'; schema_version = '1.0' })
+Write-EngineFact -Path (Join-Path $campaign4b "reservations/$grantId4b/slot-001/generation-001.json") -Fact ([ordered]@{
+        campaign_id = $campaignId; fact_type = 'reservation'; grant_id = $grantId4b; observed_at = $reservedAtRunning
+        reservation_id = 'res-0b0b0b0b0b0b0b0b0b0b'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
+$null = Write-TypedRoundApproval -Root $r4b -NowUtc $atA -TurnIdentity 'turn-A'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r4b -AuthorizationRef $roundOne
+$null = Write-TypedRoundApproval -Root $r4b -NowUtc $atB -TurnIdentity 'turn-B'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r4b -AuthorizationRef $roundOne
+Write-EngineFact -Path (Join-Path $campaign4b "runs/$runningRun/result.json") -Fact ([ordered]@{
+        campaign_id = $campaignId; run_id = $runningRun; runtime_outcome = 'completed'; started_at = $reservedAtRunning })
+$deliveredSplat = @{ ProjectRoot = $r4b; CampaignId = $campaignId; AuthorizationRef = $roundOne }
+Add-IfSupported -Splat $deliveredSplat -Command 'Get-SpecrewDeliveredRoundForMintedRef' -Name 'CaptureObservedAt' -Value $atB
+$delivered4b = Get-SpecrewDeliveredRoundForMintedRef @deliveredSplat
+Assert-True ($null -eq $delivered4b) 'a later launch does not take the round reserved before B as the round B paid for'
+$spent4b = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r4b -AuthorizationRef $roundOne -RunId $runningRun
+$slot4b = Read-Pending -Root $r4b
+$spentLines4b = @(Read-SpentLines -Root $r4b)
+Assert-True ([string]::IsNullOrWhiteSpace([string]$slot4b.spent_at)) ("B, stamped with the running round's reference, stays unspent when that round completes (got {0})" -f $spent4b.reason)
+Assert-True ($spentLines4b.Count -eq 1 -and [string]$spentLines4b[0].approval_turn_identity -ceq 'turn-A') 'the spent line names A'
+
+# Route 2: the partial sign-off of a run whose reservation the store does not name. Its round reference resolves empty,
+# and the waiting approval B never minted a round, so it paid for nothing.
+Write-Host '--- case 5: a partial sign-off with a waiting approval that minted nothing (route 2) ---'
+function Test-PartialSignoffSpendsWaitingApproval {
+    param([string]$Root, [string]$RunId)
+    $null = Write-TypedRoundApproval -Root $Root -NowUtc $atB -TurnIdentity 'turn-B'
+    $null = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $Root -TargetTreeId ('a' * 40) -CampaignId $campaignId -RunId $RunId
+    $null = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $Root -Response 'approved for partial review signoff - the uncovered files are docs only' `
+        -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-11-02T13:30:00.0000000+00:00' 2>$null
+    $slot = Read-Pending -Root $Root
+    return (-not [string]::IsNullOrWhiteSpace([string]$slot.spent_at)) -or @(Read-SpentLines -Root $Root | Where-Object { [string]$_.approval_turn_identity -ceq 'turn-B' }).Count -gt 0
+}
+$r5 = New-CampaignFixture
+Assert-True (-not (Test-PartialSignoffSpendsWaitingApproval -Root $r5 -RunId $runningRun)) 'accepting a partial of a run the store does not name leaves B unspent'
+# The same with the run's reservation and grant on record: B was typed after the run was reserved.
+$r5b = New-CampaignFixture
+$campaign5b = Join-Path $r5b ".specrew/review/authority/campaigns/$campaignId"
+Write-EngineFact -Path (Join-Path $campaign5b "grants/$grantId4b.json") -Fact ([ordered]@{
+        authorization_ref = $roundOne; campaign_id = $campaignId; fact_type = 'grant'; grant_id = $grantId4b; observed_at = '2026-11-02T12:31:00.0000000+00:00'; schema_version = '1.0' })
+Write-EngineFact -Path (Join-Path $campaign5b "reservations/$grantId4b/slot-001/generation-001.json") -Fact ([ordered]@{
+        campaign_id = $campaignId; fact_type = 'reservation'; grant_id = $grantId4b; observed_at = $reservedAtRunning
+        reservation_id = 'res-0b0b0b0b0b0b0b0b0b0b'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
+Assert-True (-not (Test-PartialSignoffSpendsWaitingApproval -Root $r5b -RunId $runningRun)) 'accepting a partial of a run reserved before B leaves B unspent'
+
+# The automatic retry recomputes the round reference after an undelivered attempt. The waiting approval is re-stamped
+# with it, and only while the slot still holds the approval this launch minted; otherwise the delivered retry would find
+# the slot minted for another round and leave its approval unspent.
+Write-Host '--- case 6: the automatic retry re-stamps the round it pays for ---'
+$r6 = New-CampaignFixture
+$null = Write-TypedRoundApproval -Root $r6 -NowUtc $atA -TurnIdentity 'turn-A'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r6 -AuthorizationRef $roundOne
+$moved = @{ ProjectRoot = $r6; AuthorizationRef = 'cmp-001-fixture-i001-round-2' }
+Add-IfSupported -Splat $moved -Command 'Set-SpecrewReviewRoundApprovalMintedRef' -Name 'ExpectedMintedRef' -Value 'cmp-001-fixture-i001-round-9'
+$movedStamp = Set-SpecrewReviewRoundApprovalMintedRef @moved
+Assert-True (-not [bool]$movedStamp.stamped -and [string](Read-Pending -Root $r6).minted_ref -ceq $roundOne) 'a re-stamp refuses when the slot no longer holds the expected round'
+$restampSplat = @{ ProjectRoot = $r6; AuthorizationRef = 'cmp-001-fixture-i001-round-2' }
+Add-IfSupported -Splat $restampSplat -Command 'Set-SpecrewReviewRoundApprovalMintedRef' -Name 'ExpectedMintedRef' -Value $roundOne
+$restamp = Set-SpecrewReviewRoundApprovalMintedRef @restampSplat
+$spent6 = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r6 -AuthorizationRef 'cmp-001-fixture-i001-round-2'
+Assert-True ([bool]$restamp.stamped -and [bool]$spent6.consumed) ("the delivered retry spends the re-stamped approval (got {0})" -f $spent6.reason)
+Assert-True ($cliSource -match 'Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -ExpectedMintedRef') 'the review CLI re-stamps before the automatic retry'
+
 foreach ($root in $script:roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 
 Write-Host '--- the real stores are unchanged ---'

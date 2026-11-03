@@ -1163,6 +1163,7 @@ if ($Live) {
                         'Test-SpecrewInsideAgentSession',
                         'Set-SpecrewReviewRoundApprovalMintedRef',
                         'Get-SpecrewDeliveredRoundForMintedRef',
+                        'Get-SpecrewCampaignRoundInFlight',
                         'Complete-SpecrewReviewRoundApprovalAuthorization',
                         'Resolve-SpecrewRoundEntitlementOutcome',
                         'Write-SpecrewRoundDeliveryJournal',
@@ -1380,8 +1381,11 @@ if ($Live) {
                     $alreadyDelivered = $null
                     if (-not [string]::IsNullOrWhiteSpace($mintedRef)) {
                         try {
+                            # 203 T004: a round reserved before this approval was typed is not one it paid for, even
+                            # when a launch attempted mid-run left that round's reference on it.
                             $alreadyDelivered = Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $resolvedProjectPath `
-                                -CampaignId ([string]$approvalIdentity.campaign_id) -AuthorizationRef $mintedRef
+                                -CampaignId ([string]$approvalIdentity.campaign_id) -AuthorizationRef $mintedRef `
+                                -CaptureObservedAt $(if ($capturedRoundApproval.PSObject.Properties['observed_at']) { $capturedRoundApproval.observed_at } else { $null })
                         }
                         catch { $alreadyDelivered = $null }
                     }
@@ -1407,6 +1411,26 @@ if ($Live) {
                         }
                         exit 1
                     }
+                }
+                # 203 T004 (maintainer's finding on 50ffca8f): NO MINT WHILE A ROUND OF THIS CAMPAIGN RUNS. The reference
+                # below is rounds run + 1, which leaves the running round out, so a launch attempted mid-run would stamp
+                # the waiting approval with the running round's reference; the engine then refuses the claim, the stamp
+                # stays, and the finishing round would read the newer approval as the one it was minted from. Refusing
+                # here costs nothing the engine would not refuse anyway.
+                $roundInFlight = $null
+                if ($null -ne $capturedRoundApproval) {
+                    try { $roundInFlight = Get-SpecrewCampaignRoundInFlight -ProjectRoot $resolvedProjectPath -CampaignId ([string]$approvalIdentity.campaign_id) }
+                    catch { $roundInFlight = $null }
+                }
+                if ($null -ne $roundInFlight) {
+                    $inFlightSince = ConvertTo-SpecrewAuthorityInstant -Value $roundInFlight.since
+                    Write-Host 'A review round of this campaign is still running, so Specrew will not start another one now.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host ('The running round is {0}{1}.' -f [string]$roundInFlight.run_id, $(if ($null -ne $inFlightSince) { ', started ' + ([DateTimeOffset]$inFlightSince).ToLocalTime().ToString('yyyy-MM-dd HH:mm') } else { '' }))
+                    Write-Host 'Nothing was spent: the human''s approval is untouched and still standing. Once that round finishes, run this command again and the approval pays for the next round.'
+                    Write-Host ('If that round is no longer running (its process ended before it finished), run:  specrew review --reconcile-run {0}' -f [string]$roundInFlight.run_id)
+                    [Console]::Error.WriteLine('[specrew-review] WARN ROUND_IN_FLIGHT ' + [string]$roundInFlight.run_id + ' ' + [string]$roundInFlight.evidence)
+                    exit 1
                 }
                 $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
                 $approvalMinted = $true
@@ -1824,6 +1848,7 @@ if ($Live) {
                 }
                 # The retry is a fresh attempt against the SAME standing entitlement: recompute the
                 # round reference so it does not collide with the failed attempt's spent slot.
+                $attemptedRef = $campaignGrantAuthorizationRef
                 try {
                     $retryRoundsRun = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
                             -CampaignId $approvalIdentity.campaign_id |
@@ -1831,6 +1856,22 @@ if ($Live) {
                     $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($retryRoundsRun + 1)
                 }
                 catch { break }
+                # 203 T004: the approval names the round it pays for, so the retry's new reference is stamped on it - only
+                # while the slot still holds the approval this launch minted. Without the stamp, the delivered retry would
+                # find the slot minted for the failed attempt's round and leave the approval unspent.
+                if ($null -ne $capturedRoundApproval) {
+                    $retryStamp = $null
+                    try { $retryStamp = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef -ExpectedMintedRef $attemptedRef }
+                    catch { $retryStamp = $null }
+                    if ($null -eq $retryStamp -or -not [bool]$retryStamp.stamped) {
+                        $retryStampReason = if ($null -ne $retryStamp) { [string]$retryStamp.reason } else { 'no-result' }
+                        if (-not $Json -and -not $Quiet) {
+                            Write-Host ('Specrew did not retry: it could not record which round the retry would pay for ({0}). The approval is not spent and still stands; run this command again to start the round.' -f $retryStampReason) -ForegroundColor Yellow
+                        }
+                        [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_RETRY_MINT_NOT_RECORDED ' + $retryStampReason)
+                        break
+                    }
+                }
             }
             if ($approvalMinted -and $null -ne $entitlementOutcome -and [string]$entitlementOutcome.outcome -ceq 'undelivered' -and $entitlementAttempt -ge 2 -and -not $Json -and -not $Quiet) {
                 # The plain-language ask, never a re-approval of the same decision.
