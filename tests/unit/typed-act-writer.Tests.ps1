@@ -434,6 +434,104 @@ $spent6 = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r6 -Aut
 Assert-True ([bool]$restamp.stamped -and [bool]$spent6.consumed) ("the delivered retry spends the re-stamped approval (got {0})" -f $spent6.reason)
 Assert-True ($cliSource -match 'Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -ExpectedMintedRef') 'the review CLI re-stamps before the automatic retry'
 
+# ---------------------------------------------------------------------------------------------------
+# Case 7 (maintainer's UX ruling, 2026-11-04, 19:05 local): A REPLY TYPED WHILE THE TURN IS STILL ENDING JUST WORKS. A
+# human answers a question when they see it, which is often while the Stop hook is still running. Claude hands that
+# queued reply to the prompt hook with the RUNNING turn's prompt id (DRIFT-006, measured on Claude Code 2.1.314), and
+# its transcript entry may carry the same id. Keyed on the id alone, the reply read as the running turn, already
+# recorded, and was dropped without a word. It must be recorded once as its own act, and the next turn acts on it: for
+# an option answer such as `1` and for `approved for review round`. Every step runs the real provider as its own
+# process, as the hooks do; the running turn's Stop runs while the reply's prompt hook runs.
+Write-Host '--- case 7: a reply typed while the turn is still ending is recorded once, as its own act ---'
+$handoverProvider = Join-Path $repoRoot 'scripts\internal\specrew-handover-provider.ps1'
+function New-QueuedReplyFixture {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('typed-act-queued-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
+    New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew') | Out-Null
+    Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "specrew_version: `"0.40.0`"`nbootstrap_mode: `"fixture`"" -Encoding UTF8
+    & git init -q -b 001-fixture $root 2>&1 | Out-Null
+    $script:roots.Add($root)
+    return [pscustomobject]@{ Root = $root; Transcript = (Join-Path $root 'transcript.jsonl') }
+}
+function Add-ClaudeEntry {
+    param($Fixture, [string]$Role, [string]$Text, [string]$PromptId)
+    $entry = if ($Role -eq 'user') {
+        @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = [DateTimeOffset]::UtcNow.ToString('o'); sessionId = 's1'; promptId = $PromptId
+            origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $Text } }
+    }
+    else { @{ type = 'assistant'; uuid = [guid]::NewGuid().ToString(); message = @{ role = 'assistant'; content = @(@{ type = 'text'; text = $Text }) } } }
+    Add-Content -LiteralPath $Fixture.Transcript -Value ($entry | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
+}
+function Get-PromptHookArgs {
+    param($Fixture, [string]$Text, [string]$PromptId)
+    return @('-NoProfile', '-File', $handoverProvider, '--project-root', $Fixture.Root, '--host-kind', 'claude', '--source-event', 'UserPromptSubmit',
+        '--transcript-path', $Fixture.Transcript, '--last-user-message', $Text, '--turn-origin', 'typed-user', '--session-id', 's1',
+        '--message-identity', 'declared', '--message-id', $PromptId)
+}
+function Get-StopHookArgs {
+    param($Fixture)
+    return @('-NoProfile', '-File', $handoverProvider, '--project-root', $Fixture.Root, '--host-kind', 'claude', '--source-event', 'Stop',
+        '--transcript-path', $Fixture.Transcript, '--session-id', 's1', '--message-identity', 'declared')
+}
+function Start-HookProcess {
+    param([string[]]$ArgList)
+    $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
+    foreach ($a in $ArgList) { $psi.ArgumentList.Add([string]$a) }
+    $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.CreateNoWindow = $true
+    $psi.Environment['SPECREW_MODULE_PATH'] = $repoRoot
+    return [Diagnostics.Process]::Start($psi)
+}
+function Wait-HookProcess { param($Process) [void]$Process.StandardOutput.ReadToEnd(); [void]$Process.StandardError.ReadToEnd(); $Process.WaitForExit() }
+function Get-ReplyKeys {
+    param($Fixture, [string]$Text)
+    $path = Join-Path $Fixture.Root '.specrew/authority/exhausted-turns.jsonl'
+    if (-not (Test-Path -LiteralPath $path)) { return @() }
+    $hash = Get-SpecrewHumanAuthorityHash -Text $Text.Trim()
+    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } |
+            Where-Object { $_.PSObject.Properties['content_hash'] -and [string]$_.content_hash -ceq $hash } | ForEach-Object { [string]$_.turn_id } | Sort-Object -Unique)
+}
+function Get-NotRecordedCount {
+    param($Fixture)
+    $path = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $Fixture.Root
+    if (-not (Test-Path -LiteralPath $path)) { return 0 }
+    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() }).Count
+}
+function Get-RoundCaptureCount {
+    param($Fixture)
+    $path = Join-Path $Fixture.Root '.specrew/review/round-approval/captures.jsonl'
+    if (-not (Test-Path -LiteralPath $path)) { return 0 }
+    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.fact_type -ceq 'review-round-approval' }).Count
+}
+
+foreach ($reply in @('1', 'approved for review round')) {
+    $f7 = New-QueuedReplyFixture
+    $running = 'prompt-running-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+    $first = 'which review host should run the next round? show me the options'
+    # The running turn: the human's message, recorded by the prompt hook, and the reply that asks the question.
+    Add-ClaudeEntry -Fixture $f7 -Role 'user' -Text $first -PromptId $running
+    $null = & pwsh @(Get-PromptHookArgs -Fixture $f7 -Text $first -PromptId $running) *> $null
+    Add-ClaudeEntry -Fixture $f7 -Role 'assistant' -Text 'Two hosts can run it. Type one: 1 - codex, 2 - copilot.'
+    # The turn is ending: its Stop hook runs, and the human answers now. The queued reply carries the running turn's id.
+    $stop = Start-HookProcess -ArgList (Get-StopHookArgs -Fixture $f7)
+    Add-ClaudeEntry -Fixture $f7 -Role 'user' -Text $reply -PromptId $running
+    $prompt = Start-HookProcess -ArgList (Get-PromptHookArgs -Fixture $f7 -Text $reply -PromptId $running)
+    Wait-HookProcess $stop; Wait-HookProcess $prompt
+    # The next turn acts on it, and ends.
+    Add-ClaudeEntry -Fixture $f7 -Role 'assistant' -Text 'Acting on your reply.'
+    $null = & pwsh @(Get-StopHookArgs -Fixture $f7) *> $null
+
+    $replyKeys = @(Get-ReplyKeys -Fixture $f7 -Text $reply)
+    $firstKeys = @(Get-ReplyKeys -Fixture $f7 -Text $first)
+    $ownKey = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $running; text = $reply })).Identity
+    Assert-True ($replyKeys.Count -eq 1 -and $replyKeys[0] -ceq $ownKey) ("[{0}] the queued reply is recorded once, under its own key (got {1} key(s))" -f $reply, $replyKeys.Count)
+    Assert-True ($firstKeys.Count -ge 1 -and @($firstKeys | Where-Object { $replyKeys -ccontains $_ }).Count -eq 0) ("[{0}] and not as the running turn's message" -f $reply)
+    Assert-True ((Get-NotRecordedCount -Fixture $f7) -eq 0) ("[{0}] nothing is reported as not recorded" -f $reply)
+    if ($reply -ne '1') {
+        $pending = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f7.Root
+        Assert-True ((Get-RoundCaptureCount -Fixture $f7) -eq 1) ("[{0}] one round approval is captured (got {1})" -f $reply, (Get-RoundCaptureCount -Fixture $f7))
+        Assert-True ($null -ne $pending -and [string]$pending.turn_identity -ceq $ownKey) ("[{0}] and the next turn finds it waiting, as the reply's own act" -f $reply)
+    }
+}
+
 foreach ($root in $script:roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 
 Write-Host '--- the real stores are unchanged ---'

@@ -192,7 +192,9 @@ then T014.
     approval path remains.
     **Added (maintainer's UX ruling, 2026-11-04 (19:05 local): a human answers a question when they see it, so a reply typed while the turn is still ending (Stop hook running) must just work):** a queued reply carrying the running turn's prompt id is recorded once as its own act, and the
     next turn acts on it, for an option answer such as `1` and for `approved for review round`. Failing case first,
-    in `tests/unit/typed-act-writer.Tests.ps1`. The live check: after the pin advances past T004, the maintainer
+    in `tests/unit/typed-act-writer.Tests.ps1` (case 7): run against `bb2d43f6`, the queued reply recorded nothing
+    and reported nothing, for both replies; green since `c0e3df13`, where the router keys a message by its act
+    identity (the prompt id with the text). The live check: after the pin advances past T004, the maintainer
     answers a question early, on purpose.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
