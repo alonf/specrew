@@ -185,6 +185,19 @@ try {
     Assert-True ($artifact13Content -match [regex]::Escape('Human approval phrase: approved for before-implement')) "13 PROMPT-SUBMIT: refreshed artifact uses approval phrase for the next boundary"
     Assert-True ($artifact13Content -notmatch [regex]::Escape('Boundary to ask for: plan -> tasks')) "13 PROMPT-SUBMIT: artifact no longer shows the already-authorized crossing"
 
+    # === Case 14 — PROMPT-SUBMIT (203 T004, DA-3): the phrase starts the message, or it is no verdict at all. ===
+    # The classifier and the boundary writer already refuse 'I approved for tasks yesterday'; the prompt-entry reader
+    # still lifted 'approved for tasks yesterday' out of it as a verdict, so the capture was attempted and failed with a
+    # warning about a verdict the human never gave.
+    $c14 = New-CaptureProject -LastAuth 'plan' -WorkingBoundary 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> What's your verdict?" }
+    ); $cases += $c14.Tmp
+    $out14 = (& pwsh -NoProfile -File $provider --project-root $c14.Proj --host-kind claude --source-event UserPromptSubmit --transcript-path $c14.Transcript `
+            --last-user-message 'I approved for tasks yesterday' --turn-origin typed-user --message-identity declared --message-id 'prompt-c14' 2>&1) -join "`n"
+    $e14 = Read-Enforcement -Proj $c14.Proj
+    Assert-True ([string]$e14.last_authorized_boundary -eq 'plan') "14 PROMPT-SUBMIT: 'I approved for tasks yesterday' authorizes nothing (got '$($e14.last_authorized_boundary)')"
+    Assert-True ($out14 -notmatch 'VERDICT_CAPTURE_FAILED') "14 PROMPT-SUBMIT: and it is not read as a verdict that failed to record"
+
     Write-Host "`n=== HookVerdictCapture.Tests.ps1: all assertions passed (the hook is the verdict authority AND advances one boundary at a time) ===" -ForegroundColor Green
 }
 finally {

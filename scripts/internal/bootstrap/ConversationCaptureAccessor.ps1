@@ -629,6 +629,13 @@ function Get-SpecrewPromptEntryBoundaryVerdict {
         $result.Reason = ("not-approval:{0}" -f $verdict.Action)
         return $result
     }
+    # Feature 203 T004 (DA-3): the phrase starts the message, as Resolve-SpecrewTypedAct requires. The token reader alone
+    # took 'I approved for tasks yesterday' as an approval of the waiting crossing; the boundary writer refused it, and
+    # the human was then told a verdict they never gave had failed to record.
+    if ($text.TrimStart() -notmatch '^(?i)approv(?:e|ed)\b') {
+        $result.Reason = 'not-standalone'
+        return $result
+    }
 
     # Contradiction cross-check against the ONE pending crossing - the same rule the marker path
     # applies. A human who named a different boundary makes the tie ambiguous -> un-authorized.
@@ -758,6 +765,12 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
         if (-not $verdict.IsApproval) {
             if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = ("not-approval:{0}" -f $verdict.Action) }
+            continue
+        }
+        # Feature 203 T004 (DA-3): the phrase starts the message, as Resolve-SpecrewTypedAct and the prompt-entry reader
+        # require; 'I approved for tasks yesterday' is no verdict, not a verdict that failed to record.
+        if ($humanText.TrimStart() -notmatch '^(?i)approv(?:e|ed)\b') {
+            if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = 'not-standalone' }
             continue
         }
 
