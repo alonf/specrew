@@ -1008,7 +1008,7 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         [Parameter()][AllowNull()][string] $TurnOrigin = $null,
         # Co-review round 8 (iteration 002, FR-029): the host, so a boundary approval takes the approval form there.
         [Parameter()][AllowNull()][string] $HostKind = $null,
-        # Feature 203 T004 (FR-022): the host's id for the prompt's message and its kind ('declared' | 'stand-in'), from the
+        # Feature 203 T004 (FR-022): the host's id for the prompt's message and its kind ('declared' | 'stand-in' | 'position-key'), from the
         # dispatcher; the citation of a verdict read from the prompt itself rather than from a transcript entry.
         [Parameter()][AllowNull()][string] $MessageId = $null,
         [Parameter()][AllowNull()][string] $MessageIdentity = $null
@@ -1235,7 +1235,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         # Co-review round 6 (iteration 002): where the dispatcher says the message came from (typed-user | host-injected |
         # unknown). Empty from a path that reads no origin (the turn end), which keeps its own checks.
         [AllowEmptyString()][AllowNull()][string]$TurnOrigin,
-        # Feature 203 T004: the kind of the message id ('declared' | 'stand-in'), from the dispatcher.
+        # Feature 203 T004: the kind of the message id ('declared' | 'stand-in' | 'position-key'), from the dispatcher.
         [AllowEmptyString()][AllowNull()][string]$MessageIdentity
     )
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
@@ -1405,7 +1405,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         $origin = if (-not [string]::IsNullOrWhiteSpace($TurnOrigin)) { $TurnOrigin.Trim() } elseif ((([string]$SourceEvent).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript')) { 'typed-user' } else { 'unknown' }
         $turnRecord = [pscustomobject]@{
             host = ([string]$HostKind).Trim().ToLowerInvariant(); message_id = [string]$MessageId
-            message_identity = $(if (([string]$MessageIdentity).Trim() -ceq 'stand-in') { 'stand-in' } else { 'declared' }); origin = $origin; text = $receivedResponse
+            message_identity = $(if (([string]$MessageIdentity).Trim() -cin @('stand-in', 'position-key')) { ([string]$MessageIdentity).Trim() } else { 'declared' }); origin = $origin; text = $receivedResponse
         }
         try {
             $act = Resolve-SpecrewTypedAct -Turn $turnRecord -Pending (Get-SpecrewTypedActPendingState -ProjectRoot $ProjectRoot) -RecordedIdentities (Get-SpecrewTypedActRecordedIdentities -ProjectRoot $ProjectRoot)
@@ -1592,6 +1592,26 @@ function Update-SpecrewRollingHandover {
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
 
     if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) {
+        # Feature 203 T004 (FR-016; maintainer's decision 2026-11-04, option 1): Cursor and Antigravity send no message id,
+        # and their bindings declare the prompt event's own position key from feature 202 as the substitute. It is
+        # computed once, here, so the router, the receipt and the verdict capture cite one key for this message. One
+        # prompt event per message is an unverified assumption on those hosts, so a second event with the same session
+        # and text inside the window is this message again and records nothing (Request-SpecrewPromptRepeatClaim).
+        if (([string]$MessageIdentity).Trim() -ceq 'position-key' -and [string]::IsNullOrWhiteSpace($MessageId) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage) -and (Get-Command Get-SpecrewTypedTurnIdentity -ErrorAction SilentlyContinue)) {
+            $firstEvent = $true
+            if (Get-Command Request-SpecrewPromptRepeatClaim -ErrorAction SilentlyContinue) {
+                $firstEvent = [bool](Request-SpecrewPromptRepeatClaim -ProjectRoot $ProjectRoot -SessionId $SessionId -Text $LastUserMessage -NowUtc $NowUtc)
+            }
+            if (-not $firstEvent) {
+                return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-repeat'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $null }
+            }
+            try {
+                $MessageId = [string](Get-SpecrewTypedTurnIdentity -Response $LastUserMessage -HostKind $fromHost -SourceEvent $Source `
+                        -TurnPosition 'prompt-entry' -TurnArrival $NowUtc)
+            }
+            catch { $MessageId = '' }
+        }
         # W66 / round-24 finding (DRIFT-199-I001-138): the six hand-written writer blocks that used to
         # stand here are one call now, because the Stop backstop's copy of the same list had drifted
         # from this one and nobody could see it from either side.

@@ -1419,7 +1419,10 @@ Describe 'W66 round 24: one routing table for typed authority, a durable mint, a
         function script:Invoke-StopCapture {
             param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$HumanText)
             $tp = Join-Path $Root 'transcript.jsonl'
-            $line = '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"' + $HumanText + '"}]}}'
+            # Feature 203 T004 (FR-015): Claude's human entry carries its promptId and origin, as Claude records them. The id is
+            # derived from the text, so re-reading the same text is the same message and a different text a new one.
+            $promptId = 'prompt-' + (Get-SpecrewHumanAuthorityHash -Text $HumanText).Substring(0, 12)
+            $line = '{"type":"user","promptId":"' + $promptId + '","origin":{"kind":"human"},"message":{"role":"user","content":[{"type":"text","text":"' + $HumanText + '"}]}}'
             [IO.File]::WriteAllLines($tp, [string[]]@($line), [Text.UTF8Encoding]::new($false))
             $repo = $script:RepoRoot
             # A CHILD process, so the writers one pass loads cannot leak into the next case.
@@ -1790,7 +1793,7 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.ToString('o')) `
-                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'precondition: the turn minted once, which is its whole entitlement'
 
@@ -1800,7 +1803,7 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
             # SAME turn: same position, same arrival, same text. A later Stop, nothing new from the human.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(5).ToString('o')) `
-                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'the human typed once; a turn mints at most once, ever'
         }
@@ -1814,13 +1817,13 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
             $path = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
             [IO.File]::Exists($path) | Should -BeTrue -Because 'precondition: there is a capture to spend'
             # Delete the slot entirely - the most extreme "no unspent record to match" state there is.
             [IO.File]::Delete($path)
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
             [IO.File]::Exists($path) | Should -BeFalse -Because 'the turn was already exhausted; the state of the slot is not what decides that'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -1832,13 +1835,13 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
 
             # The human types it again: a LATER turn in the transcript, its own arrival.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'two typed acts are two authorities; the rule bounds re-offers, not humans'
         }
@@ -1852,12 +1855,12 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'stop the review here' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z' -MessageId 'msg-4'
             $first = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
             $first | Should -Not -BeNullOrEmpty -Because 'precondition: the pause decision minted once'
             $null = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -AuthorizationRef 'landing-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'stop the review here' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z' -MessageId 'msg-4'
             Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' |
                 Should -BeNullOrEmpty -Because 'a re-minted pause decision is the same forgery in different clothes'
         }
@@ -1893,14 +1896,14 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $handle = $null
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             [IO.File]::Exists($ledger) | Should -BeTrue -Because 'precondition: a mint records its turn'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
 
             $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '5' -TurnArrival '2026-08-26T09:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '5' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-5'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'if it cannot tell whether this turn already minted, it must not mint'
         }
@@ -1915,7 +1918,8 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $router = [regex]::Match($handover, '(?s)function Invoke-SpecrewTypedAuthorityCapture.*?\r?\n\}').Value
         $router | Should -Not -BeNullOrEmpty
         $guardIndex = $router.IndexOf('Test-SpecrewTypedTurnExhausted')
-        $loopIndex = $router.IndexOf('foreach ($writerName in')
+        # 203 T004 (DA-1 option B): the writer loop is gone; the classifier's act reaches its one writer through the sink.
+        $loopIndex = $router.IndexOf('Invoke-SpecrewTypedActSink')
         $guardIndex | Should -BeGreaterThan -1 -Because 'the rule lives at the one place every writer passes through'
         $loopIndex | Should -BeGreaterThan -1
         $guardIndex | Should -BeLessThan $loopIndex -Because 'a turn already exhausted must not reach any writer at all'
@@ -1942,7 +1946,10 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         }
     }
 
-    It 'SUPERSEDED by W71: prompt-entry and Stop each mint, and the double mint is OBSERVED' {
+    It 'SUPERSEDED by 203 T004 (FR-022): with the host message id on both channels, one message is one act' {
+        # 203 T004: the residual W71 accepted is gone where the host gives the message its own id. Both channels key the
+        # message by it (202 T017), and the writer records only an act no path has recorded (FR-022), so the turn end's
+        # delivery of a message the prompt channel already minted mints nothing, and there is no double mint to observe.
         # This case asserted cross-channel SUPPRESSION. The maintainer's 2026-08-26 ruling removed it:
         # round 28 showed the match was not an identity (it wedged a genuine later retype forever and
         # still leaked when the ledger write failed), and the two findings contradicting each other
@@ -1953,16 +1960,18 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T15:40:45Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z'
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11' -TurnOrigin 'typed-user'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: the prompt channel minted the human act'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
-                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root `
-            | Should -Not -BeNullOrEmpty -Because 'the second channel mints - bounded at two, and a spend cost rather than a forgery'
+                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'one human message is one act however many channels deliver it'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
-            (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Match 'cross-channel-double-mint' `
-                -Because 'the residual must be measurable in the field'
+            (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Not -Match 'cross-channel-double-mint' `
+                -Because 'nothing minted twice, so there is nothing to observe'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -1987,7 +1996,7 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
             # The SAME utterance, delivered again at end-of-turn by the other channel.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
-                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z'
+                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'one human utterance is one act however many channels deliver it'
         }
@@ -2001,10 +2010,10 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         $root = New-ChannelRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'on a prompt-entry-less host the backstop is the only channel, and a retype is a new act'
         }
@@ -2023,15 +2032,17 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             New-Item -ItemType Directory -Path (Split-Path -Parent $ledger) -Force | Out-Null
             # What prompt-entry leaves behind when it sees a turn and captures nothing: a reservation
-            # with an EMPTY minted list.
+            # with an EMPTY minted list. 203 T004: written as today's prompt hook writes it, under that message's own
+            # key and with its identity, so it is a sighting of ANOTHER message, not pre-update history (which 202's
+            # legacy check matches on content and time, and would rightly take for this message).
             ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'typed-turn-exhausted'
                     turn_id = 'some-other-turn-id'; content_hash = $hash; host_kind = 'claude'
-                    source_event = 'UserPromptSubmit'; minted = ''
+                    source_event = 'UserPromptSubmit'; minted = ''; identity = 'typed-act'
                     observed_at = '2026-08-26T15:40:45Z' } | ConvertTo-Json -Compress) |
                 Set-Content -LiteralPath $ledger -Encoding UTF8
 
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T15:40:45Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-4'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the backstop exists for turns prompt-entry saw and did not capture'
         }
@@ -2056,7 +2067,7 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
             $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
 
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'if the one-turn limit cannot be recorded, the mint it is supposed to bound must not happen'
         }
@@ -2072,14 +2083,14 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         $root = New-ChannelRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             # An interrupted append: the tail of the file is half a record.
             Add-Content -LiteralPath $ledger -Value '{"schema_version":"1.0","fact_type":"typed-turn-exh' -Encoding UTF8
 
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-7'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 # W72 asserted -BeNullOrEmpty here. The maintainer reversed it on 2026-08-27, and round
                 # 31 is why: failing closed on "can this PROJECT ever be authorized again" is an
@@ -2166,21 +2177,23 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z'
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-prompt-1' -TurnOrigin 'typed-user'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
 
             # Hours later the human types it again, and prompt-entry misses that turn.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T14:00:00Z' `
-                -TurnPosition '31' -TurnArrival '2026-08-26T13:59:00Z'
+                -TurnPosition '31' -TurnArrival '2026-08-26T13:59:00Z' -MessageId 'msg-31'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the backstop must still work; a phrase the human can never make count is a wedge'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'RED-FIRST: a cross-channel double mint is OBSERVED in the ledger, not silently allowed' {
+    It 'SUPERSEDED by 203 T004 (FR-022): the second channel of one message mints nothing, so no double mint is recorded' {
+        # 203 T004: W71 observed the double mint because the two channels had no shared identity. With the host's message
+        # id on both they have one, and the second delivery of a minted message reaches no writer.
         # Visibility was the right answer to the exhaustion gap and to the picker gap, and it is the
         # right answer here: the ledger shows every double mint, so beta4 gets field data instead of
         # speculation about how often two channels deliver one utterance.
@@ -2188,18 +2201,19 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z'
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4' -TurnOrigin 'typed-user'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T10:05:00Z' `
-                -TurnPosition '4' -TurnArrival '2026-08-26T10:00:00Z'
+                -TurnPosition '4' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4'
 
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'the turn end delivered a message the prompt channel already minted'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             $observations = @(Get-Content -LiteralPath $ledger -Encoding UTF8 |
                     ForEach-Object { try { $_ | ConvertFrom-Json -Depth 6 } catch { $null } } |
                     Where-Object { $null -ne $_ -and [string]$_.fact_type -ceq 'cross-channel-double-mint' })
-            @($observations).Count | Should -BeGreaterThan 0 -Because 'the residual limit must be measurable in the field, not merely documented'
-            [string]$observations[0].host_kind | Should -Be 'claude'
+            @($observations).Count | Should -Be 0 -Because 'one message minted once leaves no double mint to observe'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -2208,10 +2222,10 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         $root = New-W71Root
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'one channel, one utterance, one mint - the attack the store actually recorded'
         }
@@ -2432,7 +2446,7 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         try {
             # A real, complete history: one turn minted and was spent.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2'
             $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             # Ctrl+C during an append.
@@ -2440,7 +2454,7 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
 
             # A DIFFERENT turn, typed afterwards. It must still be able to mint.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-27T09:30:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-27T09:30:00Z' -MessageId 'msg-9'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'one interrupted append must not leave a project that can never be authorized again'
         }
@@ -2453,12 +2467,12 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         $root = New-W75Root
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             Add-Content -LiteralPath $ledger -Value '{"fact_type":"typed-turn-exh' -Encoding UTF8
             $null = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '11' -TurnArrival '2026-08-27T10:00:00Z'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '11' -TurnArrival '2026-08-27T10:00:00Z' -MessageId 'msg-11'
             (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Match 'authority-ledger-damaged' `
                 -Because 'a ledger that lost a record must say so, or the hole is invisible'
         }
@@ -2707,7 +2721,7 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
             }
             Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse -Because 'no pending approval exists - the file the defect produced'
             $now = '2026-09-10T18:28:54.0000000+00:00'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now 2>$null
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now -MessageId 'msg-b4f065' -TurnOrigin 'typed-user' 2>$null
             Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse -Because 'the table, which is what the hooks call, mints nothing either'
             $drops = @(Read-B4F065Drops -Root $root)
             $drops.Count | Should -Be 1 -Because 'the refusal is disclosed ONCE for the turn, whichever writer refused it'
@@ -2745,7 +2759,7 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
             }
             Get-SpecrewAuthorityMultiLineRefusal -Text "What is the status of the tests directory?`nAnd the lanes?" | Should -BeNullOrEmpty -Because 'ordinary multi-line conversation is not a refused verdict; the sweep fires only when a phrase led'
             $now = '2026-09-10T18:28:54.0000000+00:00'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round - use the codex reviewer' -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now 2>$null
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round - use the codex reviewer' -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now -MessageId 'msg-b4f065' -TurnOrigin 'typed-user' 2>$null
             Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeTrue -Because 'the same-line instruction form mints through the table'
             @(Read-B4F065Drops -Root $root).Count | Should -Be 0 -Because 'a clean turn writes no drop row'
         }

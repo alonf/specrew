@@ -32,11 +32,12 @@ BeforeAll {
 
     function script:Invoke-Prompt {
         param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId = ('msg-' + [guid]::NewGuid().ToString('N').Substring(0, 8)), [string]$Origin = 'typed-user')
-        $identity = if ($HostKind -eq 'copilot') { 'none' } else { 'declared' }
+        # Feature 203 T003/T004 (FR-016): Copilot's prompt event carries the stand-in id its binding declares, as the
+        # deployed hook hands it over (tests/unit/turn-record-contract.tests.ps1).
+        $identity = if ($HostKind -eq 'copilot') { 'stand-in' } else { 'declared' }
         $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $Root, '--host-kind', $HostKind,
             '--source-event', 'UserPromptSubmit', '--last-user-message', $Text, '--turn-origin', $Origin, '--session-id', 's1',
-            '--message-identity', $identity)
-        if ($HostKind -ne 'copilot') { $a += @('--message-id', $MessageId) }
+            '--message-identity', $identity, '--message-id', $MessageId)
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         return (@(& pwsh @a 2>$null) -join "`n")
     }

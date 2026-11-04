@@ -64,6 +64,18 @@
                 Source         = @('source', 'trigger')
                 ToolName       = @('toolName', 'tool_name')
             }
+            # Feature 203 T004 (FR-016; maintainer's decision 2026-11-04, option 1): this host sends no message id, and
+            # research R1 decided an identity only for Claude, Codex and Copilot. The substitute is feature 202's position
+            # key of the prompt event (the event, the time the hook ran and the text), on the prompt path only, as Copilot's
+            # stand-in is; the turn end records nothing here and reports a message the prompt hook did not see. It is weaker
+            # than a host message id. UNVERIFIED ASSUMPTION: one prompt event per message. T001 probed only Claude, Codex
+            # and Copilot, and whether this host's prompt event can fire twice for one message (the shape that doubled
+            # every Copilot hook) was never measured. So a second prompt event with the same session and the same text
+            # within 5 seconds is taken as the same message and records nothing
+            # (Request-SpecrewPromptRepeatClaim; tests/unit/position-key-identity.Tests.ps1); a human retyping the same
+            # line inside that window is not recorded twice. A probe of this host (scratch folders only) is an open item
+            # before 0.40.0 stable (specs/203-beta5-stabilization/plan.md).
+            MessageIdentity         = @{ Kind = 'position-key'; From = @('SessionId', 'Prompt'); Assumption = 'unverified: one prompt event per message (not probed by T001)' }
             # Evaluated in order; the first matching rule decides. A prompt that matches no host-injected rule
             # is typed-user, and only typed-user can produce a receipt (FR-006). hook-output-journal: the prompt
             # equals text this dispatcher emitted (a replayed Stop reason). prompt-pattern: a host envelope or a

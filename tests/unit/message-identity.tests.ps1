@@ -85,15 +85,52 @@ BeforeAll {
     function script:Invoke-Prompt {
         param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$Text, [string]$MessageId,
             [string]$Session = 's1', [switch]$BeforeMessageIds)
-        $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
-            '--source-event', 'UserPromptSubmit', '--last-user-message', $Text, '--turn-origin', 'typed-user', '--session-id', $Session)
-        # -BeforeMessageIds replays the message hook as it ran before T017: no message ID, no declaration.
-        if (-not $BeforeMessageIds) { $a += @('--message-identity', (Get-Declaration $HostKind)) }
-        if (-not [string]::IsNullOrWhiteSpace($MessageId) -and -not $BeforeMessageIds) { $a += @('--message-id', $MessageId) }
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        # -BeforeMessageIds: the history the message hook left before T017, which keyed the message by the event's own
+        # position and arrival and recorded it with no identity. Feature 203 T004 (FR-015): today's hook records nothing
+        # for a message with no identity, so that history is written here as the old hook wrote it, not replayed.
+        if ($BeforeMessageIds) {
+            & pwsh -NoProfile -NonInteractive -File $script:PreUpdateWriter $P.Root $HostKind $Text $Session *> $null
+            return ''
+        }
+        # Feature 203 T003 (FR-016): Copilot's prompt event carries the stand-in id its binding declares, as the deployed
+        # hook hands it over (tests/unit/turn-record-contract.tests.ps1); its turn end still declares none.
+        $identity = if ($HostKind -eq 'copilot') { 'stand-in' } else { Get-Declaration $HostKind }
+        if ($HostKind -eq 'copilot' -and [string]::IsNullOrWhiteSpace($MessageId)) { $MessageId = 'standin-' + [guid]::NewGuid().ToString('N') }
+        $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
+            '--source-event', 'UserPromptSubmit', '--last-user-message', $Text, '--turn-origin', 'typed-user', '--session-id', $Session,
+            '--message-identity', $identity)
+        if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $a += @('--message-id', $MessageId) }
         $out = & pwsh @a 2>$null
         return (@($out) -join "`n")
     }
+
+    $script:PreUpdateWriter = Join-Path ([IO.Path]::GetTempPath()) ('f202-msgid-preupdate-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    [IO.File]::WriteAllText($script:PreUpdateWriter, @'
+param([string]$ProjectRoot, [string]$HostKind, [string]$Text, [string]$Session)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+$now = [DateTimeOffset]::UtcNow.ToString('o')
+$key = Get-SpecrewTypedTurnIdentity -Response $Text -HostKind $HostKind -SourceEvent 'UserPromptSubmit' -TurnPosition 'prompt-entry' -TurnArrival $now
+$hash = Get-SpecrewHumanAuthorityHash -Text $Text.Trim()
+$reserve = @{ ProjectRoot = $ProjectRoot; TurnId = $key; HostKind = $HostKind; SourceEvent = 'UserPromptSubmit'; ContentHash = $hash; SessionId = $Session; NowUtc = $now }
+[void](Register-SpecrewExhaustedTurn @reserve -MintedWriters '')
+$shape = Get-SpecrewTypedAuthorityShape -Text $Text
+$writer = if ($null -eq $shape) { '' } else {
+    switch ([string]$shape.Kind) {
+        'approval-withdrawal' { 'Write-SpecrewApprovalWithdrawal' }
+        'review-round-approval' { 'Write-SpecrewReviewRoundApprovalAuthorization' }
+        'allowance-reset' { 'Write-SpecrewAllowanceResetAuthorization' }
+        default { '' }
+    }
+}
+if (-not [string]::IsNullOrWhiteSpace($writer)) {
+    $call = @{ ProjectRoot = $ProjectRoot; Response = $Text; HostKind = $HostKind; SourceEvent = 'UserPromptSubmit' }
+    if ((Get-Command $writer).Parameters.ContainsKey('NowUtc')) { $call['NowUtc'] = $now }
+    $written = & $writer @call
+    if ($null -ne $written) { [void](Register-SpecrewExhaustedTurn @reserve -MintedWriters $writer) }
+}
+'@, [Text.UTF8Encoding]::new($false))
 
     function script:Invoke-TurnEnd {
         param([Parameter(Mandatory)]$P, [Parameter(Mandatory)][string]$HostKind, [string]$Session = 's1', [string]$Transcript)

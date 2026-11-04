@@ -253,6 +253,27 @@ then T014.
     no crossing declare out-of-band, and the capture fixtures carry the host's message id and origin as recorded. One
     test changed meaning on purpose: `verdict-capture-blocks` part 3 no longer expects a second verdict for a boundary
     already crossed to append (FR-019); the same cited turn is one authorization and a later one records nothing.
+  - **Cursor and Antigravity identity (maintainer's decision 2026-11-04, option 1):** both send no message id; their
+    bindings declare feature 202's position key of the prompt event as the substitute (`MessageIdentity Kind
+    'position-key'`), on the prompt path only, computed once per prompt event in `Update-SpecrewRollingHandover`; the
+    turn end stays `none`, records nothing and reports. "One prompt event per message" is recorded as an unverified
+    assumption in both bindings and in the plan (Risks and watch items). A second prompt event with the same session
+    and text within 5 seconds is the same message (`Request-SpecrewPromptRepeatClaim`, a file claim read and rewritten
+    under an exclusive handle, because two hooks for one message start before either has reserved anything). The
+    double-fire test (`tests/unit/position-key-identity.Tests.ps1`) also found that two hooks appending to the
+    exhausted-turn ledger at once made one append fail and that message record nothing without a word;
+    `Register-SpecrewExhaustedTurn` now retries a sharing violation for up to three seconds. The probe of both hosts
+    is open before 0.40.0 stable (B5F-028).
+  - **The router suites, migrated to a turn with an identity (FR-015):** `round-approval-typed-authority` called the
+    router with a transcript position and no message id, the shape from before 202; each call now carries the host's
+    id for that entry (the same position is a re-offer, a later one a retype), the prompt channel's calls carry the
+    dispatcher's origin, and the Stop fixture's Claude entry carries its `promptId` and origin. Two cases changed
+    meaning on purpose: W70's and W71's "the cross-channel double mint is OBSERVED" now assert FR-022's rule, one
+    message one act across both channels, with no double mint left to observe; and the "seeing is not capturing"
+    fixture writes its sighting as today's prompt hook does (with an identity), since 202's legacy check rightly takes
+    a pre-update record of the same text for the message. `message-identity` and `approval-form` give Copilot's prompt
+    the stand-in id its binding declares, and `message-identity` writes pre-update history as the old hook wrote it
+    instead of replaying a message with no identity, which now records nothing.
   - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
     keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.

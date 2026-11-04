@@ -46,7 +46,7 @@ hooks run from the pin, see "When 203's changes reach the live hooks"):
 
 | Component | Files |
 | --- | --- |
-| Host bindings (identity field, output shapes) | `hosts/{claude,codex,copilot}/host.psd1` |
+| Host bindings (identity field, output shapes) | `hosts/{claude,codex,copilot}/host.psd1`; for the position-key substitute (T004, option 1) also `hosts/{cursor,antigravity}/host.psd1` |
 | Dispatcher, turn record | `extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1` and its `scripts/internal` twin (`ConvertTo-SpecrewTurnRecord`) |
 | Classifier (new) and writer (new) | `scripts/internal/bootstrap/HumanAuthorityStore.ps1` (`Resolve-SpecrewApprovalForm` folded into `Resolve-SpecrewTypedAct`; `Write-SpecrewTypedAct`) |
 | User-prompt router, turn-end recovery, backstop | `scripts/internal/bootstrap/HandoverStore.ps1` (`Invoke-SpecrewTypedAuthority`, `Update-SpecrewRollingHandover`), `ConversationCaptureAccessor.ps1` |
@@ -204,5 +204,23 @@ implement, at the before-implement boundary.
   the deployment point; they are recorded as baseline evidence, not as defects of 203.
 - **Copilot identity.** If W0 shows the two firings do not share an instant, the identity replacement comes to
   the before-implement boundary.
+- **Cursor and Antigravity identity (decided 2026-11-04 at T004, option 1; weaker than a host message id).** Both
+  send no message id, and research R1 decided an identity only for Claude, Codex and Copilot. Their substitute is
+  feature 202's position key of the prompt event (the event, the time the hook ran and the text), on the prompt path
+  only, as Copilot's stand-in is; their turn end records nothing and reports a message the prompt hook did not see.
+  It rests on an **unverified assumption: one prompt event per message.** T001 probed only Claude, Codex and
+  Copilot, and Cursor can also run Claude Code hooks, the shape that doubled every Copilot hook. Because the key
+  carries the hook's run time, a doubled event would be two keys, so a second prompt event with the same session and
+  text within 5 seconds is taken as the same message and records nothing (`Request-SpecrewPromptRepeatClaim`); the
+  cost is that the human retyping the same line within 5 seconds is recorded once. Pinned by
+  `tests/unit/position-key-identity.Tests.ps1` (one message firing the prompt hook twice, together or in turn, and
+  once through Cursor's hook and once through a Claude-labelled one, records one act). The assumption is recorded
+  in both bindings.
+- **Open before 0.40.0 stable: probe Cursor and Antigravity (scratch folders only, never this worktree or the pin).**
+  For each: how many prompt events one typed message produces (Cursor's own hook and, with Claude Code hooks
+  present, the Claude one), whether the two carry the same session id, the gap between them, and whether the payload
+  carries a per-message id that could replace the position key. Then confirm or replace the assumption above and the
+  5-second window, and give Cursor's payload a signature so the Claude hook can stand down as it does under Copilot
+  (B4F-129).
 - **Twin copies.** The dispatcher and providers exist in two copies; the parity test keeps them aligned.
 - **Codex as reviewer.** The file-delivery quirk is not a review failure.

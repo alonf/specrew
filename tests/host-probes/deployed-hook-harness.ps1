@@ -59,6 +59,15 @@ function Get-DeployedHookCommand {
             $cfg = Get-Content -LiteralPath (Join-Path $Fixture.Home '.copilot\hooks\specrew-refocus.json') -Raw | ConvertFrom-Json
             return [string]$cfg.hooks.$NativeEvent[0].powershell
         }
+        # Feature 203 T004 (FR-016, option 1): the two hosts with no message id, for the position-key declaration.
+        'cursor' {
+            $cfg = Get-Content -LiteralPath (Join-Path $Fixture.Home '.cursor\hooks.json') -Raw | ConvertFrom-Json
+            return [string]$cfg.hooks.$NativeEvent[0].command
+        }
+        'antigravity' {
+            $cfg = Get-Content -LiteralPath (Join-Path $Fixture.Project '.agents\hooks.json') -Raw | ConvertFrom-Json
+            return [string]$cfg.'specrew-refocus'.$NativeEvent[0].command
+        }
     }
     throw "no deployed command reader for $($Fixture.HostKind)"
 }

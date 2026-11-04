@@ -49,7 +49,7 @@ function New-CaptureProject {
 }
 function Invoke-StopHook { param([string]$Proj, [string]$Tx) & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $Proj --host-kind claude --transcript-path $Tx 2>$null | Out-Null }
 function Invoke-PromptHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind claude --source-event UserPromptSubmit --transcript-path $Tx --last-user-message $Prompt --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>$null | Out-Null }
-function Invoke-PreInvocationHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind antigravity --source-event PreInvocation --transcript-path $Tx --last-user-message $Prompt 2>$null | Out-Null }
+function Invoke-PreInvocationHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind antigravity --source-event PreInvocation --transcript-path $Tx --last-user-message $Prompt --turn-origin typed-user --message-identity position-key 2>$null | Out-Null }
 function Read-Enforcement { param([string]$Proj) return (Get-Content -LiteralPath (Join-Path $Proj '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12).boundary_enforcement }
 function Packet { param([string]$From, [string]$To, [string]$Resp) return @(
         @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: $From -> $To --> What's your verdict?" },

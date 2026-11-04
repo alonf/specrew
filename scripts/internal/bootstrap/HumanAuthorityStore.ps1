@@ -1266,7 +1266,8 @@ function Get-SpecrewTypedActIdentity {
     $text = (& $prop 'text').Trim()
     if ([string]::IsNullOrWhiteSpace($messageId) -or [string]::IsNullOrWhiteSpace($text)) { return $none }
     $hostKind = (& $prop 'host').Trim().ToLowerInvariant()
-    $kind = if ((& $prop 'message_identity').Trim() -ceq 'stand-in') { 'stand-in' } else { 'host-message-id' }
+    # Feature 203 T004 (option 1): Cursor and Antigravity send no id; their substitute is the prompt event's position key.
+    $kind = switch -CaseSensitive ((& $prop 'message_identity').Trim()) { 'stand-in' { 'stand-in' } 'position-key' { 'position-key' } default { 'host-message-id' } }
     $identity = Get-SpecrewHumanAuthorityHash -Text (@('typed-act', $hostKind, $messageId, (Get-SpecrewHumanAuthorityHash -Text $text)) -join '|')
     return [pscustomobject]@{ Identity = $identity; Kind = $kind }
 }
@@ -1286,7 +1287,7 @@ function Get-SpecrewStopAnswerShape {
 }
 
 function Resolve-SpecrewTypedAct {
-    # Turn: host, message_id, message_identity ('declared' | 'stand-in' | 'none'), origin ('typed-user' | 'host-injected'
+    # Turn: host, message_id, message_identity ('declared' | 'stand-in' | 'position-key' | 'none'), origin ('typed-user' | 'host-injected'
     # | 'unknown'), text, and is_compact_summary when a transcript reader built it. Pending: Crossing { From; To;
     # StageEvidenceAbsent }, Pause { Kind ('a-budget-spent' | 'b-dispute-or-defer' | 'c-judgment' |
     # 'd-host-outside-order'); Id }, WorkshopQuestion { Id }, each $null when nothing waits. RecordedIdentities: the
@@ -1494,6 +1495,67 @@ function Test-SpecrewMessageKeyRecorded {
     return $false
 }
 
+function Request-SpecrewPromptRepeatClaim {
+    # Feature 203 T004 (FR-016; option 1, 2026-11-04): is this prompt event the first for its message, on a host whose
+    # binding declares the position key (Cursor, Antigravity)? That key carries the time the hook ran, so one message
+    # whose prompt hook fires twice would be two keys and two acts. "One prompt event per message" is an unverified
+    # assumption on those hosts (T001 probed neither, and Cursor can also run Claude Code hooks, the shape that doubled
+    # every Copilot hook), so a second event with the same session and the same text within the window is the same
+    # message. Returns $true for the first event (record it), $false for a repeat (record nothing).
+    #
+    # The ledger cannot answer it: two hooks fired for one message start together, and the second asks before the first
+    # has reserved anything (Copilot's two channels ran 727 ms apart, less than a hook's start-up). So the claim is a
+    # file per (session, text), read and rewritten under an exclusive handle: the hooks queue on it, and each reads
+    # the time the previous one claimed. A claim older than the window is a human typing the line again.
+    #
+    # FAILS OPEN, to "first": a false repeat drops the human's message without a word, while a false first leaves the
+    # position key's own once-per-key checks in force.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$SessionId,
+        [AllowNull()][AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory)][string]$NowUtc,
+        [int]$WindowSeconds = 5
+    )
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $true }
+    $fs = $null
+    try {
+        $now = [DateTimeOffset]::Parse($NowUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal)
+        $key = Get-SpecrewHumanAuthorityHash -Text (@('prompt-claim', ([string]$SessionId).Trim(), (Get-SpecrewHumanAuthorityHash -Text $Text.Trim())) -join '|')
+        $dir = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/prompt-claims'
+        [IO.Directory]::CreateDirectory($dir) | Out-Null
+        $path = Join-Path $dir ($key + '.json')
+        $deadline = [DateTime]::UtcNow.AddSeconds(3)
+        while ($null -eq $fs) {
+            try { $fs = [IO.File]::Open($path, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+            catch [IO.IOException] {
+                if ([DateTime]::UtcNow -gt $deadline) { return $true }
+                Start-Sleep -Milliseconds 25
+            }
+        }
+        $previous = $null
+        if ($fs.Length -gt 0) {
+            $buffer = [byte[]]::new([int]$fs.Length)
+            [void]$fs.Read($buffer, 0, $buffer.Length)
+            # Epoch milliseconds, not an ISO string: ConvertFrom-Json turns an ISO time into a local DateTime, whose
+            # string form drops the offset and read back as UTC was hours away, so no second event was ever a repeat.
+            try {
+                $claimed = [Text.Encoding]::UTF8.GetString($buffer) | ConvertFrom-Json -ErrorAction Stop
+                $previous = [DateTimeOffset]::FromUnixTimeMilliseconds([int64]$claimed.claimed_epoch_ms)
+            }
+            catch { $previous = $null }
+        }
+        if ($null -ne $previous -and [Math]::Abs(($now - $previous).TotalSeconds) -le $WindowSeconds) { return $false }
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes(([pscustomobject]@{ claimed_epoch_ms = $now.ToUnixTimeMilliseconds(); session_id = [string]$SessionId } | ConvertTo-Json -Compress))
+        $fs.SetLength(0); $fs.Position = 0
+        $fs.Write($bytes, 0, $bytes.Length)
+        return $true
+    }
+    catch { return $true }
+    finally { if ($null -ne $fs) { $fs.Dispose() } }
+}
+
 function Get-SpecrewTypedActPendingState {
     # What waits for a reply, in the classifier's shape, read from the stores: the waiting crossing, and the review pause
     # the navigator published (unanswered, scoped to the active feature). No workshop question: a workshop reply is the
@@ -1577,7 +1639,7 @@ function Read-SpecrewCitedTypedTurn {
     $hostKey = ([string]$HostKind).Trim().ToLowerInvariant()
     $cited = ([string]$TurnIdentity).Trim()
     if ([string]::IsNullOrWhiteSpace($cited)) { return [pscustomobject]@{ Turn = $null; Reason = 'no-citation' } }
-    $identityKind = if (([string]$MessageIdentity).Trim() -ceq 'stand-in') { 'stand-in' } else { 'declared' }
+    $identityKind = if (([string]$MessageIdentity).Trim() -cin @('stand-in', 'position-key')) { ([string]$MessageIdentity).Trim() } else { 'declared' }
     $hadRecord = $false
 
     if (-not [string]::IsNullOrWhiteSpace($TranscriptPath) -and [IO.File]::Exists($TranscriptPath)) {
@@ -2056,12 +2118,32 @@ function Register-SpecrewExhaustedTurn {
         # returned $true. A reservation that reports success it did not achieve is precisely the
         # failure the reservation exists to prevent, and it was found by the case that locks the ledger.
         $line = ($entry | ConvertTo-Json -Compress -Depth 6)
-        Add-Content -LiteralPath $path -Value $line -Encoding UTF8 -ErrorAction Stop
+        # Feature 203 T004 (measured 2026-11-04, tests/unit/position-key-identity.Tests.ps1): TWO HOOKS AT ONCE QUEUE, THEY
+        # DO NOT FAIL. One message reaching two hook registrations together (Copilot's shape, and Cursor's if it also runs
+        # the Claude Code hooks) appended to this ledger in the same instant; the second append or read-back met a sharing
+        # violation, this returned $false, and that message recorded nothing without a word. A sharing violation is
+        # retried for up to three seconds; any other failure still refuses, as before.
+        $deadline = [DateTime]::UtcNow.AddSeconds(3)
+        while ($true) {
+            try { Add-Content -LiteralPath $path -Value $line -Encoding UTF8 -ErrorAction Stop; break }
+            catch {
+                if (-not ($_.Exception -is [IO.IOException]) -or [DateTime]::UtcNow -gt $deadline) { throw }
+                Start-Sleep -Milliseconds 25
+            }
+        }
         # And READ IT BACK, because "the write did not throw" is not "the record is there" - the same
         # postcondition rule the round-approval and allowance-reset consumptions were corrected to.
+        $written = $null
+        while ($null -eq $written) {
+            try { $written = [IO.File]::ReadAllLines($path) }
+            catch [IO.IOException] {
+                if ([DateTime]::UtcNow -gt $deadline.AddSeconds(2)) { throw }
+                Start-Sleep -Milliseconds 25
+            }
+        }
         $confirmed = $false
-        foreach ($written in [IO.File]::ReadAllLines($path)) {
-            if ([string]$written -ceq [string]$line) { $confirmed = $true; break }
+        foreach ($writtenLine in $written) {
+            if ([string]$writtenLine -ceq [string]$line) { $confirmed = $true; break }
         }
         return $confirmed
     }
