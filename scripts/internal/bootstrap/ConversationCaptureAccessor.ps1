@@ -668,7 +668,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
         [int]$MaxTailLines = 500,
         [Parameter()][AllowNull()][string]$HostKind
     )
-    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null }
+    # Feature 203 T004 (FR-022): the captured human turn's own message id and text travel with the verdict, so the writer
+    # can cite that turn and re-read it; both are empty when the verdict came from the prompt this hook was handed.
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null; MessageId = ''; TurnText = '' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
     # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
@@ -740,6 +742,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         # that packet, not this one. Without the bound a forward scan could attribute a newer packet's approval
         # to an older crossing, which is the fabrication direction.
         $humanText = $null
+        $humanTurn = $null
         for ($j = $i + 1; $j -lt $turns.Count; $j++) {
             if ([string]$turns[$j].role -eq 'assistant' -and $markerRx.IsMatch([string]$turns[$j].text)) { break }
             if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j])) { continue }
@@ -747,6 +750,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
             $candidate = Test-SpecrewHumanVerdictToken -Text $candidateText
             if (-not $candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss) { continue }
             $humanText = $candidateText
+            $humanTurn = $turns[$j]
             break
         }
         if ([string]::IsNullOrWhiteSpace($humanText)) { $sawAwaiting = $true; continue }
@@ -787,6 +791,10 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $result.MarkerCrossingId = if ($mm.Groups[3].Success) { $mm.Groups[3].Value.ToLowerInvariant() } else { $null }
         $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $humanText -ToBoundary $mTo
         $result.HumanText = $humanText
+        if ($null -ne $humanTurn -and $humanTurn.PSObject.Properties['message_id']) {
+            $result.MessageId = [string]$humanTurn.message_id
+            $result.TurnText = [string]$humanTurn.text
+        }
         $result.Reason = 'captured'
         return $result
     }

@@ -1007,7 +1007,11 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         # Co-review round 6 (iteration 002): where the dispatcher says the prompt came from; empty at Stop.
         [Parameter()][AllowNull()][string] $TurnOrigin = $null,
         # Co-review round 8 (iteration 002, FR-029): the host, so a boundary approval takes the approval form there.
-        [Parameter()][AllowNull()][string] $HostKind = $null
+        [Parameter()][AllowNull()][string] $HostKind = $null,
+        # Feature 203 T004 (FR-022): the host's id for the prompt's message and its kind ('declared' | 'stand-in'), from the
+        # dispatcher; the citation of a verdict read from the prompt itself rather than from a transcript entry.
+        [Parameter()][AllowNull()][string] $MessageId = $null,
+        [Parameter()][AllowNull()][string] $MessageIdentity = $null
     )
 
     $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
@@ -1143,10 +1147,26 @@ function Invoke-SpecrewBoundaryVerdictCapture {
             # F-198 FR-005: an authorization for a boundary BEHIND the working crossing is a
             # reconciliation of already-done work - record it distinctly as retroactive.
             $authorizationKind = if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToBoundary)) -ne (Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.WorkingBoundary))) { 'retroactive' } else { 'standard' }
+            # Feature 203 T004 (FR-022): the writer records a captured verdict only from the turn it cites, which it reads
+            # back and classifies itself. A transcript entry is cited by its act identity, because Claude gives a queued
+            # message the running turn's promptId; a verdict read from the prompt is cited by the dispatcher's message id,
+            # and the prompt hook's reservation of that message is the record it is checked against.
+            $citation = @{ TurnIdentity = ''; TranscriptPath = $null; PromptText = $null; MessageIdentity = $MessageIdentity }
+            $capturedMessageId = if ($captured.PSObject.Properties['MessageId']) { [string]$captured.MessageId } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($capturedMessageId) -and (Get-Command Get-SpecrewTypedActIdentity -ErrorAction SilentlyContinue)) {
+                $citedTurn = [pscustomobject]@{ host = ([string]$HostKind).Trim().ToLowerInvariant(); message_id = $capturedMessageId; message_identity = 'declared'; text = [string]$captured.TurnText }
+                $citation.TurnIdentity = [string](Get-SpecrewTypedActIdentity -Turn $citedTurn).Identity
+                $citation.TranscriptPath = $TranscriptPath
+                $citation.MessageIdentity = 'declared'
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($MessageId)) {
+                $citation.TurnIdentity = [string]$MessageId
+                $citation.PromptText = $LastUserMessage
+            }
             Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
                 -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
                 -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
-                -EvidenceSource $evidenceSource -Kind $authorizationKind | Out-Null
+                -EvidenceSource $evidenceSource -Kind $authorizationKind -HostKind $HostKind @citation | Out-Null
             Sync-SpecrewPendingVerdictArtifactAfterAuthorization -ProjectRoot $ProjectRoot -NowUtc $NowUtc
             $result.authorized = $true
             $result.reason = 'authorized'
@@ -1336,7 +1356,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId `
                     -HostKind $HostKind -SourceEvent $SourceEvent -MintedWriters '' -ContentHash $contentHash `
-                    -SessionId $SessionId -Identity $identityKind -NowUtc $NowUtc)
+                    -SessionId $SessionId -Identity $identityKind -TurnOrigin $TurnOrigin -NowUtc $NowUtc)
         }
         catch { $reserved = $false }
         if (-not $reserved) { return }
@@ -1607,7 +1627,7 @@ function Update-SpecrewRollingHandover {
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost
+            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost -MessageId $MessageId -MessageIdentity $MessageIdentity
         # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
         # where the phrase first appears, and the alternative is the human learning it from a recap two
         # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).

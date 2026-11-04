@@ -4218,7 +4218,30 @@ function Add-SpecrewBoundaryAuthorization {
         # surface, or a capture that missed its original stop). Recorded on the entry so
         # retroactive approvals are auditably distinct.
         [AllowNull()]
-        [string]$Kind
+        [string]$Kind,
+
+        # Feature 203 T004 (FR-022): A CAPTURED LABEL IS HONOURED ONLY THROUGH THE TURN IT CITES. The 2026-08-12 ruling
+        # above made a non-capture caller declare itself, and left the captured labels on the caller's word: an agent
+        # that cited the maintainer's real `confirm` turn got a verdict recorded (spec US2 scenario 5). A captured
+        # source now needs the turn it came from: the host's id for it (or its act identity) and the host's record to
+        # read it back from - the transcript, or the prompt as the host delivered it, which the prompt hook's own
+        # reservation must vouch for. The turn is re-read and classified (Resolve-SpecrewCitedTypedAct), and only a
+        # boundary verdict for this crossing is recorded, with the verdict line the turn says. Write-SpecrewTypedAct is
+        # the writer that calls this; a direct call gets no further than it would.
+        [AllowNull()]
+        [string]$TurnIdentity,
+
+        [AllowNull()]
+        [string]$TranscriptPath,
+
+        [AllowNull()]
+        [string]$PromptText,
+
+        [AllowNull()]
+        [string]$HostKind,
+
+        [AllowNull()]
+        [string]$MessageIdentity
     )
 
     $currentCanonical = if ([string]::IsNullOrWhiteSpace($CurrentBoundary)) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary' }
@@ -4272,6 +4295,49 @@ function Add-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
+    $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
+    # The sources the capture path actually emits, read from HandoverStore.ps1 rather than composed.
+    # W45 added 'hook-captured-user-prompt': the prompt-entry event's own text, on hosts whose prompt
+    # event carries no transcript path - the same channel and label the partial-signoff, workshop-repair
+    # and round-approval writers use. It is captured provenance, not out-of-band: the hook saw the
+    # human's typed turn at the moment they submitted it.
+    $capturedEvidenceSources = @('hook-captured-from-transcript', 'hook-captured-from-transcript-pending-artifact', 'hook-captured-user-prompt')
+    $isCapturedProvenance = $capturedEvidenceSources -ccontains $effectiveEvidenceSource
+    # Feature 203 T004 (FR-022): the cited turn, re-derived before anything is read as a duplicate or written.
+    $citedTurnIdentity = $null
+    if ($isCapturedProvenance) {
+        if (-not (Get-Command Resolve-SpecrewCitedTypedAct -ErrorAction SilentlyContinue)) {
+            throw "A captured verdict is recorded only from the typed turn it came from, and the reader for that turn is not loaded; nothing was recorded."
+        }
+        if ([string]::IsNullOrWhiteSpace($TurnIdentity)) {
+            throw ("A captured verdict is recorded only from the typed turn it came from, and no turn was cited; nothing was recorded. " +
+                "Pass -TurnIdentity with the host's record of that turn, or, if a human approved out of band, -OutOfBandReason with a non-capture -EvidenceSource.")
+        }
+        $cited = Resolve-SpecrewCitedTypedAct -ProjectRoot $ProjectRoot -HostKind $HostKind -TurnIdentity $TurnIdentity -TranscriptPath $TranscriptPath -PromptText $PromptText -MessageIdentity $MessageIdentity
+        if ([string]$cited.Kind -ceq 'none' -and [string]$cited.Reason -ceq 'already-recorded') {
+            foreach ($recorded in @($enforcementState.EffectiveState['verdict_history'])) {
+                $recordedMap = if ($recorded -is [System.Collections.IDictionary]) { $recorded } else { $recorded | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+                if ($null -ne $recordedMap -and [string]$recordedMap['turn_identity'] -ceq [string]$cited.TurnIdentity) {
+                    return [pscustomobject]@{
+                        AuthorizedBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$recordedMap['to_boundary'])
+                        StoredVerdict      = [string]$recordedMap['verdict_text']
+                        RecordedAt         = [string]$recordedMap['recorded_at']
+                        DirectiveSentinel  = 'SPECREW_BOUNDARY_AUTHORIZED'
+                    }
+                }
+            }
+        }
+        if ([string]$cited.Kind -cne 'boundary-verdict') {
+            throw ("The cited turn is not a boundary verdict ({0}: {1}); nothing was recorded." -f [string]$cited.Kind, [string]$cited.Reason)
+        }
+        $expectedTarget = '{0}->{1}' -f [string]$currentCanonical, $authorizedCanonical
+        if ([string]$cited.Target -cne $expectedTarget) {
+            throw ("The cited verdict answers '{0}', not '{1}'; nothing was recorded." -f [string]$cited.Target, $expectedTarget)
+        }
+        $VerdictText = [string]$cited.VerdictText
+        $citedTurnIdentity = [string]$cited.TurnIdentity
+    }
+
     # IDEMPOTENCE ON (CROSSING + VERDICT TEXT) - T004/FR-010, maintainer constraint 2026-08-10.
     #
     # ONE human verdict reaches this writer TWICE BY DESIGN: Invoke-SpecrewBoundaryVerdictCapture is
@@ -4318,15 +4384,6 @@ function Add-SpecrewBoundaryAuthorization {
     foreach ($entry in @($enforcementState.State['verdict_history'])) {
         $verdictHistory.Add($entry) | Out-Null
     }
-    $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
-
-    # The sources the capture path actually emits, read from HandoverStore.ps1 rather than composed.
-    # W45 added 'hook-captured-user-prompt': the prompt-entry event's own text, on hosts whose prompt
-    # event carries no transcript path - the same channel and label the partial-signoff, workshop-repair
-    # and round-approval writers use. It is captured provenance, not out-of-band: the hook saw the
-    # human's typed turn at the moment they submitted it.
-    $capturedEvidenceSources = @('hook-captured-from-transcript', 'hook-captured-from-transcript-pending-artifact', 'hook-captured-user-prompt')
-    $isCapturedProvenance = $capturedEvidenceSources -ccontains $effectiveEvidenceSource
     $isOutOfBand = -not $isCapturedProvenance
     if ($isOutOfBand -and [string]::IsNullOrWhiteSpace($OutOfBandReason)) {
         throw ("This authorization was not recorded by Specrew's verdict capture, so it cannot be recorded as one. " +
@@ -4355,6 +4412,8 @@ function Add-SpecrewBoundaryAuthorization {
     # 202 T011 (FR-026): new entries name their feature. Added after the id, which hashes a fixed field list, so the
     # id derivation is unchanged; legacy entries are never rewritten.
     if (-not [string]::IsNullOrWhiteSpace($authorizationFeatureRef)) { $newAuthorization['feature_ref'] = $authorizationFeatureRef }
+    # Feature 203 T004 (FR-022, FR-023): a captured entry names the act identity it was re-derived from, never the text.
+    if (-not [string]::IsNullOrWhiteSpace($citedTurnIdentity)) { $newAuthorization['turn_identity'] = $citedTurnIdentity }
     $verdictHistory.Add($newAuthorization) | Out-Null
 
     # THE BYPASS RECORD IS THE POINT. Without this, a declared out-of-band authorization would still
