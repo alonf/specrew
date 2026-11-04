@@ -161,9 +161,11 @@ if ((@(Read-FeatureClaims -ProjectRoot $projectRoot)).Count -eq 0 -or (@(Read-Ac
 }
 Write-Pass 'Asking for the feature closeout leaves the claim and the session lock in place'
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 $pendingCrossing = (Get-Content -LiteralPath (Join-Path $projectRoot '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20).boundary_enforcement.pending_crossing
 $fromBoundary = if ($null -ne $pendingCrossing -and $pendingCrossing.from_boundary) { [string]$pendingCrossing.from_boundary } else { 'iteration-closeout' }
-$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $projectRoot -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+$oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: no recorded crossing waits for the closeout verdict; this suite tests the closeout call-site wiring an approval triggers'
+$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $projectRoot -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' @oob
 if ($null -eq $closeoutVerdict -or [string]$closeoutVerdict.AuthorizedBoundary -ne 'feature-closeout') {
     Write-Fail 'The feature-closeout approval was not recorded.'
     exit 1

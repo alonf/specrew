@@ -17,6 +17,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 . (Join-Path $repoRoot 'scripts\internal\gate-preflight.ps1')
 . (Join-Path $repoRoot 'scripts\internal\task-progress.ps1')
 $script:failCount = 0
@@ -84,7 +85,8 @@ Write-Host 'Case 1: DRIFT-199-I001-152 reproduced then green - authorizing revie
 $f1 = New-MirrorFixture -LastAuthorized 'before-implement' -WorkingBoundary 'review-signoff' -CurrentPhase 'before-implement' -PlanStatus 'executing' -Extra @('review.md')
 $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $f1.Root -WorkingBoundary 'review-signoff' -BoundaryCommitHash $f1.Head -RecordedAt '2026-08-29T00:00:01Z' 2>$null
 Assert-True ((Read-Meta $f1.StatePath 'Current Phase') -eq 'before-implement') 'before the verdict, state.md still says before-implement (the arrival is not the crossing)'
-$auth1 = Add-SpecrewBoundaryAuthorization -ProjectRoot $f1.Root -CurrentBoundary 'before-implement' -AuthorizedBoundary 'review-signoff' -AuthorizingHuman 'unattributed' -VerdictText 'approved for review-signoff' -EvidenceSource 'hook-captured-from-transcript' 2>$null
+$cite = New-SpecrewCitedVerdictTurn -Text 'approved for review-signoff'
+$auth1 = Add-SpecrewBoundaryAuthorization -ProjectRoot $f1.Root -CurrentBoundary 'before-implement' -AuthorizedBoundary 'review-signoff' -AuthorizingHuman 'unattributed' -VerdictText 'approved for review-signoff' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null
 Assert-True ((Read-Meta $f1.StatePath 'Current Phase') -eq 'review-signoff') 'state.md Current Phase is review-signoff the moment the crossing is recorded'
 Assert-True ((Read-Meta $f1.PlanPath 'Status') -eq 'reviewing') "plan.md Status is 'reviewing' - the validator's own word, mapped from the boundary"
 Assert-True ((Read-Meta $f1.StatePath 'Iteration Status') -eq 'executing') 'state.md Iteration Status is untouched (derived by its own writer, not a copy)'
@@ -93,7 +95,8 @@ Assert-True ($null -ne $auth1.Mirrors -and @($auth1.Mirrors.Wrote).Count -eq 2) 
 Write-Host 'Case 2: iteration-closeout authorized - Current Phase, plan Status and Iteration Status all read complete/closeout'
 $f2 = New-MirrorFixture -LastAuthorized 'retro' -WorkingBoundary 'iteration-closeout' -CurrentPhase 'retro' -IterationStatus 'ready-for-review' -PlanStatus 'retro' -Extra @('review.md', 'retro.md')
 $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $f2.Root -WorkingBoundary 'iteration-closeout' -BoundaryCommitHash $f2.Head -RecordedAt '2026-08-29T00:00:01Z' 2>$null
-$null = Add-SpecrewBoundaryAuthorization -ProjectRoot $f2.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'unattributed' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null
+$cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+$null = Add-SpecrewBoundaryAuthorization -ProjectRoot $f2.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'unattributed' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null
 Assert-True ((Read-Meta $f2.StatePath 'Current Phase') -eq 'iteration-closeout') 'state.md Current Phase is iteration-closeout'
 Assert-True ((Read-Meta $f2.StatePath 'Iteration Status') -eq 'complete') 'state.md Iteration Status is complete - the one boundary-driven value it has'
 Assert-True ((Read-Meta $f2.PlanPath 'Status') -eq 'complete') 'plan.md Status is complete'

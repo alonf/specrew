@@ -62,6 +62,7 @@ Write-Host '  --- preconditions ---'
 foreach ($f in @($governance, $scaffolder, $syncWrapper)) { Assert-True (Test-Path -LiteralPath $f -PathType Leaf) ('present: ' + (Split-Path -Leaf $f)) }
 if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE'; exit 1 }
 . $governance
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 
 function New-ClosedFirstIterationRepo {
     # A git project with one feature whose iteration 001 has ARRIVED at iteration-closeout (the cursor on
@@ -131,7 +132,8 @@ try {
     # ============ (a) the product's own order: verdict, scaffold, plan sync ============================
     Write-Host '  --- (a) 001 closed by its verdict, 002 scaffolded through the scaffolder, then the plan sync for 002 ---'
     $rootA = New-ClosedFirstIterationRepo; $roots.Add($rootA) | Out-Null
-    $verdictA = Add-SpecrewBoundaryAuthorization -ProjectRoot $rootA -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+    $verdictA = Add-SpecrewBoundaryAuthorization -ProjectRoot $rootA -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null
     Assert-True ($null -ne $verdictA -and [string]$verdictA.AuthorizedBoundary -ceq 'iteration-closeout') '(a) the closeout verdict is recorded'
     Assert-True (Test-SpecrewIterationSealed -IterationDirectory (Join-Path $rootA 'specs/001-fixture/iterations/001')) '(a) and 001 is sealed by it'
     $refusedAtVerdictA = @(Read-RefusedIterations -Root $rootA)
@@ -160,7 +162,8 @@ try {
     Write-Host '  --- (b) the router-skill shape: 002 scaffolded BEFORE the closeout verdict, then the plan sync for 002 ---'
     $rootB = New-ClosedFirstIterationRepo; $roots.Add($rootB) | Out-Null
     Invoke-Scaffold002 -Root $rootB
-    $verdictB = Add-SpecrewBoundaryAuthorization -ProjectRoot $rootB -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+    $verdictB = Add-SpecrewBoundaryAuthorization -ProjectRoot $rootB -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null
     Assert-True ($null -ne $verdictB) '(b) the closeout verdict is recorded'
     $crossingB0 = (Read-Enforcement -Root $rootB).pending_crossing
     Assert-True ($null -ne $crossingB0 -and [string]$crossingB0.to_boundary -eq 'plan' -and [string]$crossingB0.working_boundary -eq 'iteration-closeout') '(b) the rebind at authorization MINTS iteration-closeout -> plan (002/plan.md exists), working boundary still iteration-closeout'

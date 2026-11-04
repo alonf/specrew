@@ -140,10 +140,12 @@ if ([string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
     exit 1
 }
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 $closeoutContext = Get-Content -LiteralPath (Join-Path $orderedProject '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -AsHashtable
 $pendingCrossing = if ($closeoutContext.Contains('boundary_enforcement') -and $closeoutContext['boundary_enforcement'] -is [System.Collections.IDictionary] -and $closeoutContext['boundary_enforcement'].Contains('pending_crossing')) { $closeoutContext['boundary_enforcement']['pending_crossing'] } else { $null }
 $fromBoundary = if ($pendingCrossing -is [System.Collections.IDictionary] -and $pendingCrossing.Contains('from_boundary') -and $pendingCrossing['from_boundary']) { [string]$pendingCrossing['from_boundary'] } else { 'iteration-closeout' }
-$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $orderedProject -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+$oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: no recorded crossing waits for the closeout verdict; this suite tests the boundary sync ordering around an approval'
+$closeoutVerdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $orderedProject -CurrentBoundary $fromBoundary -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' @oob
 if ($null -eq $closeoutVerdict -or [string]$closeoutVerdict.AuthorizedBoundary -ne 'feature-closeout') {
     Write-Fail 'The feature-closeout approval was not recorded.'
     exit 1

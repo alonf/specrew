@@ -102,7 +102,9 @@ if ((Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8) -notmatch 'sessio
 Write-Pass 'While the feature closeout is pending, the identity and the prompt say the feature is still active'
 
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
-$verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $projectRoot -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript'
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
+$oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: the closeout scaffold runs with no boundary ledger, so no crossing is recorded for a capture to answer; this suite tests what the closeout approval writes to the identity and launch files'
+$verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $projectRoot -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Test User' -VerdictText 'approved for feature-closeout' @oob
 if ($null -eq $verdict -or [string]$verdict.AuthorizedBoundary -ne 'feature-closeout') {
     Write-Fail 'The feature-closeout approval was not recorded.'
     exit 1

@@ -13,6 +13,7 @@ $mirroredSharedGovernancePath = Join-Path $repoRoot '.specify\extensions\specrew
 $driftLogPath = Join-Path $repoRoot 'specs\039-launch-mode-boundary-enforcement\iterations\001\drift-log.md'
 
 . $sharedGovernancePath
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 
 function New-BoundaryFixture {
     param([string]$Name)
@@ -138,7 +139,8 @@ try {
     if (-not $approvedVerdict.Authorized -or $approvedVerdict.DirectiveSentinel -ne 'SPECREW_BOUNDARY_AUTHORIZED' -or $approvedVerdict.Boundaries.Count -ne 1 -or $approvedVerdict.Boundaries[0] -ne 'tasks') {
         Write-Fail 'Approved verdict parsing did not normalize to canonical tasks authorization.'
     }
-    Add-SpecrewBoundaryAuthorization -ProjectRoot $fixtureRoot -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'Alon Fliess' -VerdictText 'approved for tasks-boundary entry' -EvidenceSource 'hook-captured-from-transcript' | Out-Null
+    $oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: the boundary state is set by hand with no recorded crossing; this suite tests how a persisted authorization is honoured on re-check'
+    Add-SpecrewBoundaryAuthorization -ProjectRoot $fixtureRoot -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'Alon Fliess' -VerdictText 'approved for tasks-boundary entry' @oob | Out-Null
     $authorized = Test-SpecrewBoundaryAuthorization -ProjectRoot $fixtureRoot -CurrentBoundary 'plan' -RequestedBoundary 'tasks'
     if (-not $authorized.Authorized -or $authorized.DirectiveSentinel -ne 'SPECREW_BOUNDARY_AUTHORIZED') {
         Write-Fail 'Persisted plan -> tasks authorization was not honored on re-check.'
@@ -163,7 +165,8 @@ try {
         Write-Fail 'Compound review verdict did not normalize to canonical review-signoff authorization.'
     }
     Set-BoundaryFixtureState -FixtureRoot $fixtureRoot -Boundary 'before-implement' -LastAuthorizedBoundary 'before-implement'
-    Add-SpecrewBoundaryAuthorization -ProjectRoot $fixtureRoot -CurrentBoundary 'before-implement' -AuthorizedBoundary 'review-signoff' -AuthorizingHuman 'Alon Fliess' -VerdictText 'approved for review-boundary AND review-signoff' -EvidenceSource 'hook-captured-from-transcript' | Out-Null
+    $oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: the boundary state is set by hand with no recorded crossing; this suite tests how a persisted authorization is honoured on re-check'
+    Add-SpecrewBoundaryAuthorization -ProjectRoot $fixtureRoot -CurrentBoundary 'before-implement' -AuthorizedBoundary 'review-signoff' -AuthorizingHuman 'Alon Fliess' -VerdictText 'approved for review-boundary AND review-signoff' @oob | Out-Null
     $compoundContext = Get-BoundaryContext -FixtureRoot $fixtureRoot
     if ($compoundContext.boundary_enforcement.last_authorized_boundary -ne 'review-signoff') {
         Write-Fail 'Compound verdict persistence did not advance to review-signoff.'

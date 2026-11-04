@@ -21,6 +21,7 @@ BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $script:Validator = Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
     . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+    . (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 
     function script:Invoke-Git {
         param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$GitArgs)
@@ -109,9 +110,10 @@ Describe 'W47 ACCEPTANCE through the real validator' {
         try {
             Add-SourceCommit -Root $f.Root
             # The human's verdict, recorded through the REAL writer - not a hand-edited ledger.
+            $oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: the ledger is seeded with no recorded crossing; this suite tests what the before-implement approval licenses'
             $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $f.Root -CurrentBoundary 'tasks' -AuthorizedBoundary 'before-implement' `
                 -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' `
-                -EvidenceSource 'hook-captured-from-transcript'
+                @oob
             $run = Invoke-Validator -Root $f.Root
             $run.Text | Should -Not -Match 'source-without-implement-authorization' -Because 'the verdict is exactly what licenses the work'
         }
@@ -213,8 +215,9 @@ Describe 'W47 the shared detector, edge by edge' {
         $f = New-GovernedProjectAtTasks
         try {
             Add-SourceCommit -Root $f.Root
+            $oob = Get-SpecrewFixtureOutOfBandSplat -Reason 'fixture: the ledger is seeded with no recorded crossing; this suite tests what the before-implement approval licenses'
             $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $f.Root -CurrentBoundary 'tasks' -AuthorizedBoundary 'before-implement' `
-                -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' -EvidenceSource 'hook-captured-from-transcript'
+                -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' @oob
             $drift = Get-SpecrewUnauthorizedSourceDrift -ProjectRoot $f.Root
             $drift.checked | Should -BeTrue
             $drift.pre_implement | Should -BeFalse

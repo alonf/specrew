@@ -36,6 +36,7 @@ Write-Host '  --- preconditions ---'
 foreach ($f in @($governance, $taskProgress, $validator, $front)) { Assert-True (Test-Path -LiteralPath $f -PathType Leaf) ('present: ' + (Split-Path -Leaf $f)) }
 if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE'; exit 1 }
 . $governance
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 . $taskProgress
 
 if ($MutateSealAtArrival) {
@@ -150,7 +151,8 @@ try {
     $root = New-ClosedIterationProject -SealedAtArrival:$MutateSealAtArrival; $roots.Add($root) | Out-Null
     $iter = Join-Path $root 'specs/001-fixture/iterations/001'
     Assert-True ((Test-SpecrewIterationSealed -IterationDirectory $iter) -eq [bool]$MutateSealAtArrival) 'fixture: at arrival the iteration is NOT sealed (the sync seals nothing) - unless the mutation put the old ordering back'
-    $verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript'
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+    $verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite
     Assert-True ($null -ne $verdict -and [string]$verdict.AuthorizedBoundary -ceq 'iteration-closeout') 'the verdict is recorded'
     $stateText = Get-Content -LiteralPath (Join-Path $iter 'state.md') -Raw
     Assert-True ($stateText -match '\*\*Iteration Status\*\*:\s*complete') 'its advance wrote complete into state.md'
@@ -186,7 +188,8 @@ try {
     $root2 = New-ClosedIterationProject; $roots.Add($root2) | Out-Null
     $iter2 = Join-Path $root2 'specs/001-fixture/iterations/001'
     # sealed the way the verdict leaves it - by the verdict
-    $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $root2 -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript'
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+    $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $root2 -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite
     if ($MutateSealAtArrival) { $null = Write-SpecrewIterationSeal -IterationDirectory $iter2 -Feature '001-fixture' -Iteration '001' -Source 'iteration-closeout' }
     Assert-True (Test-SpecrewIterationSealed -IterationDirectory $iter2) 'fixture: sealed by the verdict'
     $hashesBefore = Get-FileHashes -Directory $iter2

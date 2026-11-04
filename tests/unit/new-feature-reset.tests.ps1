@@ -27,6 +27,7 @@ $moduleRoot = if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_T011_ROOT)) { $
 $syncWrapper = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
 $handover = Join-Path $moduleRoot 'scripts\internal\specrew-handover-provider.ps1'
 . (Join-Path $moduleRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 $savedModulePath = $env:SPECREW_MODULE_PATH
 $env:SPECREW_MODULE_PATH = $moduleRoot
 $script:failCount = 0
@@ -96,7 +97,8 @@ try {
     $transcript = Join-Path $root '.specrew\runtime\capture.jsonl'
     $lines = @(
         ([pscustomobject]@{ type = 'assistant'; message = [pscustomobject]@{ role = 'assistant'; content = @([pscustomobject]@{ type = 'text'; text = $packet }) } } | ConvertTo-Json -Depth 8 -Compress),
-        ([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'approved for specify' }) } } | ConvertTo-Json -Depth 8 -Compress)
+        # Feature 203 T004: the human entry in Claude's recorded shape (promptId, origin), so the writer can cite and re-read it.
+        ([pscustomobject]@{ type = 'user'; promptId = 'prompt-t011'; origin = [pscustomobject]@{ kind = 'human' }; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'approved for specify' }) } } | ConvertTo-Json -Depth 8 -Compress)
     )
     Write-Utf8 $transcript (($lines -join "`n") + "`n")
     $null = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $handover --project-root $root --host-kind claude --source-event UserPromptSubmit --session-id t011 --transcript-path $transcript --last-user-message 'approved for specify' --turn-origin typed-user 2>&1)
@@ -126,7 +128,8 @@ try {
     $ctx['session_state']['feature_ref'] = '002-new'
     Write-Utf8 (Join-Path $backward '.specrew\start-context.json') ($ctx | ConvertTo-Json -Depth 12)
     $refused = $false
-    try { $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $backward -CurrentBoundary 'plan' -AuthorizedBoundary 'specify' -AuthorizingHuman 'human' -VerdictText 'approved for specify' -EvidenceSource 'hook-captured-from-transcript' }
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for specify'
+    try { $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $backward -CurrentBoundary 'plan' -AuthorizedBoundary 'specify' -AuthorizingHuman 'human' -VerdictText 'approved for specify' -EvidenceSource 'hook-captured-from-transcript' @cite }
     catch { $refused = $_.Exception.Message -match 'moves backward' }
     Assert-True $refused 'a plain backward move (plan -> specify, no closeout) is still refused'
 

@@ -31,6 +31,7 @@ Write-Host '  --- preconditions ---'
 foreach ($f in @($governance, $syncWrapper)) { Assert-True (Test-Path -LiteralPath $f -PathType Leaf) ('present: ' + (Split-Path -Leaf $f)) }
 if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE'; exit 1 }
 . $governance
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 
 # The repository's own stores, before: nothing in this suite may write them.
 $guarded = @('.specrew/closed-iterations.yml', '.specrew/start-context.json', '.specify/feature.json', '.squad/decisions.md',
@@ -186,7 +187,8 @@ try {
     Assert-True ((Get-IndexEntryCount -Root $root) -eq 0) 'asking again still leaves iteration 001 out of the index'
 
     Write-Host '  --- 3: the human''s approval ---'
-    $verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+    $verdict = Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null
     Assert-True ($null -ne $verdict -and [string]$verdict.AuthorizedBoundary -ceq 'iteration-closeout') 'the approval is recorded'
     Assert-True ((Get-IndexEntryCount -Root $root) -eq 1) 'and the capture adds iteration 001 to the index, once'
     Assert-True (Test-SpecrewIterationClosed -ProjectRoot $root -Feature '001-fixture' -Iteration '001') 'Test-SpecrewIterationClosed now reads it as closed'
@@ -224,7 +226,8 @@ try {
     Assert-True (@(Invoke-ClosureRule -Root $root).Count -eq 0) ('the validator does not call the pending state a contradiction (got: {0})' -f (@(Invoke-ClosureRule -Root $root) -join ' | '))
 
     Write-Host '  --- 6: the human''s feature-closeout approval ---'
-    $verdict6 = Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null
+    $cite = New-SpecrewCitedVerdictTurn -Text 'approved for feature-closeout'
+    $verdict6 = Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'feature-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for feature-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null
     Assert-True ($null -ne $verdict6 -and [string]$verdict6.AuthorizedBoundary -ceq 'feature-closeout') 'the approval is recorded'
     Assert-True ((Read-SessionActive -Root $root) -eq $false) 'the session is now inactive'
     Assert-True ((Read-FrontmatterActive -Path (Join-Path $root '.specrew/last-start-prompt.md')) -eq 'false') 'and the launch prompt''s state says so'

@@ -22,6 +22,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
 $provider = (Join-Path $repoRoot 'scripts\internal\specrew-handover-provider.ps1')
 $script:failCount = 0
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
@@ -118,7 +119,8 @@ Write-Host 'Case 3a: the authorization writer''s rebind is the mechanism that mi
 $f3 = New-MintFixture -LastAuthorized 'retro' -WorkingBoundary 'iteration-closeout' -IterationFiles @('plan.md', 'state.md', 'quality/hardening-gate.md', 'review.md', 'retro.md')
 $pre3 = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $f3.Root -WorkingBoundary 'iteration-closeout' -BoundaryCommitHash $f3.Head -RecordedAt '2026-08-29T00:00:01Z' 2>$null
 Assert-True ($null -ne $pre3 -and [string]$pre3['to_boundary'] -eq 'iteration-closeout') 'retro -> iteration-closeout is minted (state.md is present)'
-Add-SpecrewBoundaryAuthorization -ProjectRoot $f3.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'unattributed' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null | Out-Null
+$cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+Add-SpecrewBoundaryAuthorization -ProjectRoot $f3.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'unattributed' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null | Out-Null
 $e3 = Read-Enforcement -Root $f3.Root
 Assert-True ([string]$e3.last_authorized_boundary -eq 'iteration-closeout') 'the closeout authorization itself is recorded'
 Assert-True ($null -eq $e3.pending_crossing -and [string]::IsNullOrWhiteSpace([string]$e3.pending_next_boundary)) 'iteration-closeout -> plan is NOT minted by the rebind while iterations/002 does not exist (the live ladder, refused)'
@@ -130,14 +132,16 @@ $f3b = New-MintFixture -LastAuthorized 'retro' -WorkingBoundary 'iteration-close
 New-Item -ItemType Directory -Force -Path (Join-Path $f3b.Feature 'iterations/002') | Out-Null
 Set-Content -LiteralPath (Join-Path $f3b.Feature 'iterations/002/plan.md') -Value "# Iteration Plan: 002`n`n**Status**: planning" -Encoding UTF8
 $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $f3b.Root -WorkingBoundary 'iteration-closeout' -BoundaryCommitHash $f3b.Head -RecordedAt '2026-08-29T00:00:01Z' 2>$null
-Add-SpecrewBoundaryAuthorization -ProjectRoot $f3b.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'unattributed' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' 2>$null | Out-Null
+$cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+Add-SpecrewBoundaryAuthorization -ProjectRoot $f3b.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'unattributed' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null | Out-Null
 $e3b = Read-Enforcement -Root $f3b.Root
 Assert-True ($null -ne $e3b.pending_crossing -and [string]$e3b.pending_crossing.to_boundary -eq 'plan' -and [string]$e3b.pending_crossing.from_boundary -eq 'iteration-closeout') 'iteration-closeout -> plan IS minted by the rebind when iterations/002/plan.md exists (permit side of the live mechanism)'
 
 Write-Host 'Case 3c: an ordinary authorization does not mint its successor at all (working == last authorized) - documented, not a refusal'
 $f3c = New-MintFixture -LastAuthorized 'tasks' -WorkingBoundary 'before-implement'
 $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $f3c.Root -WorkingBoundary 'before-implement' -BoundaryCommitHash $f3c.Head -RecordedAt '2026-08-29T00:00:01Z' 2>$null
-Add-SpecrewBoundaryAuthorization -ProjectRoot $f3c.Root -CurrentBoundary 'tasks' -AuthorizedBoundary 'before-implement' -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' -EvidenceSource 'hook-captured-from-transcript' 2>$null | Out-Null
+$cite = New-SpecrewCitedVerdictTurn -Text 'approved for before-implement'
+Add-SpecrewBoundaryAuthorization -ProjectRoot $f3c.Root -CurrentBoundary 'tasks' -AuthorizedBoundary 'before-implement' -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' -EvidenceSource 'hook-captured-from-transcript' @cite 2>$null | Out-Null
 $e3c = Read-Enforcement -Root $f3c.Root
 Assert-True ([string]$e3c.last_authorized_boundary -eq 'before-implement' -and $null -eq $e3c.pending_crossing) 'after an ordinary authorization nothing is pending until the next sync arrives with its artifacts'
 Assert-True (@(Read-Journal -Root $f3c.Root -Event 'crossing-not-minted-owed-artifacts-absent').Count -eq 0) 'and nothing is journaled as refused, because nothing was attempted'
@@ -149,7 +153,12 @@ function Write-Transcript { param([string]$Root, [string]$Marker, [string]$Reply
     $turns = @(
         @{ role = 'assistant'; text = ("boundary packet. {0} What's your verdict?" -f $Marker) },
         @{ role = 'user'; text = $Reply })
-    $lines = foreach ($t in $turns) { (@{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } } | ConvertTo-Json -Depth 8 -Compress) }
+    # Feature 203 T004: the human entry in Claude's recorded shape (promptId, origin), so the writer can cite and re-read it.
+    $lines = foreach ($t in $turns) {
+        $entry = @{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } }
+        if ($t.role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' } }
+        ($entry | ConvertTo-Json -Depth 8 -Compress)
+    }
     [System.IO.File]::WriteAllText($tx, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
     return $tx
 }
