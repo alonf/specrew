@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-02T12:18:51.9993307Z"
+updated_at: "2026-11-04T16:22:31.0004845Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -22,7 +22,7 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T004:
-    title: "Write-SpecrewTypedAct with re-derivation; rewire router, turn-end recovery, backstop, CLIs; remove per-path rules and --approve-round; supersession"
+    title: "Write-SpecrewTypedAct with re-derivation; rewire router, turn-end recovery, backstop, CLIs; remove per-path rules; supersession (the per-round approval stays until T008, DRIFT-027)"
     status: "pending"
     started_at: ""
     completed_at: ""
