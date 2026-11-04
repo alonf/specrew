@@ -270,6 +270,14 @@ then T014.
     exhausted-turn ledger at once made one append fail and that message record nothing without a word;
     `Register-SpecrewExhaustedTurn` now retries a sharing violation for up to three seconds. The probe of both hosts
     is open before 0.40.0 stable (B5F-028).
+  - **Supersession for the top-up, the coverage deferral and the partial sign-off (2026-11-04):** one rule,
+    `Resolve-SpecrewTypedActSupersession`, the round approval's: with the act's turn identity, the same message
+    re-offered returns the held record, an older one arriving late keeps the newer, and a different later message
+    journals an immutable `<kind>-superseded` fact (in that store's `supersessions.jsonl`) before taking the record;
+    a fact that cannot be journalled writes nothing. The top-up no longer folds a re-typed reset into the older
+    unspent one, the deferral no longer overwrites without a trace, and a later partial sign-off for the same request
+    replaces the earlier one instead of failing as a conflict (the conflict stays for a caller with no identity).
+    RED-then-green: `typed-act-writer` case 8.
   - **Writer CLIs cite the newest typed turn themselves (maintainer's decision 2026-11-04, option 1):** the agent never
     sees the host's message id, so no CLI takes one. `record-design-decision.ps1` records a decision only when
     `-HumanTurn` is the human's newest typed message as the prompt hook reserved it (same content hash, origin

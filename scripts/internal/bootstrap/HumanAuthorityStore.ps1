@@ -97,6 +97,8 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
         [Parameter(Mandatory)][string]$Response,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SourceEvent,
+        # 203 T004 (FR-021): the typed act's identity; a later sign-off for the same request supersedes, never conflicts.
+        [AllowNull()][string]$TurnIdentity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
@@ -165,6 +167,7 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
         source_event = $event
         host_kind = [string]$HostKind
         observed_at = $NowUtc
+        turn_identity = [string]$TurnIdentity
     }
     $root = Get-SpecrewReviewSignoffOverrideRoot -ProjectRoot $ProjectRoot
     $factsRoot = Join-Path $root 'override-authorizations'
@@ -174,6 +177,18 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
     if ([IO.File]::Exists($path)) {
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
         catch { throw 'review-signoff-override-authorization-json-invalid' }
+        # 203 T004 (FR-021): a later typed sign-off for the same request is the human's newer reason. It replaces the
+        # record, with the fact naming what it retired journalled first; the conflict below is for a writer with no
+        # turn identity to tell the two apart.
+        $succession = Resolve-SpecrewTypedActSupersession -Existing $existing -TurnIdentity $TurnIdentity -NowUtc $NowUtc `
+            -JournalPath (Join-Path $root 'supersessions.jsonl') -FactType 'review-signoff-partial-override'
+        if ($succession -cin @('same-act', 'keep-newer')) { return $existing }
+        if ($succession -ceq 'refused') { return $null }
+        if ($succession -ceq 'superseded') {
+            if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+            else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+            return $fact
+        }
         $sameAuthority =
             [string]$existing.schema_version -ceq [string]$fact.schema_version -and
             [string]$existing.fact_type -ceq [string]$fact.fact_type -and
@@ -755,6 +770,47 @@ function Test-SpecrewTypedActReplacesRecord {
     if ($Existing.PSObject.Properties['minted_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$Existing.minted_ref)) { return $false }
     $existingSource = if ($Existing.PSObject.Properties['evidence_source']) { [string]$Existing.evidence_source } else { '' }
     return ([string]$Fact.evidence_source -ceq 'hook-captured-user-prompt' -and $existingSource -cne 'hook-captured-user-prompt')
+}
+
+function Resolve-SpecrewTypedActSupersession {
+    # 203 T004 (FR-021; tasks.md: "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A
+    # NEWER TYPED ACT SUPERSEDES; IT NEVER FOLDS. The round approval's rule, for a writer that holds one record of its
+    # kind. Given the held record and the new act's turn identity:
+    #   legacy     - nothing to compare (no record, no identity, or the record is spent): the writer's own rule applies;
+    #   same-act   - the same message re-offered: return the held record;
+    #   keep-newer - an older message reaching the writer late (a recovery path): return the held record;
+    #   superseded - a different, later message: the fact naming what it retires is journalled; write the new record;
+    #   refused    - the fact could not be journalled, so the held record must not vanish unexplained: write nothing.
+    [OutputType([string])]
+    param(
+        [AllowNull()]$Existing,
+        [AllowNull()][AllowEmptyString()][string]$TurnIdentity,
+        [Parameter(Mandatory)][string]$NowUtc,
+        [Parameter(Mandatory)][string]$JournalPath,
+        [Parameter(Mandatory)][string]$FactType
+    )
+    if ($null -eq $Existing -or [string]::IsNullOrWhiteSpace($TurnIdentity)) { return 'legacy' }
+    if ($Existing.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$Existing.spent_at)) { return 'legacy' }
+    $existingTurn = if ($Existing.PSObject.Properties['turn_identity']) { [string]$Existing.turn_identity } else { '' }
+    if ($existingTurn -ceq $TurnIdentity) { return 'same-act' }
+    $existingAt = if ($Existing.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $Existing.observed_at } else { $null }
+    $newAt = ConvertTo-SpecrewAuthorityInstant -Value $NowUtc
+    if ($null -ne $existingAt -and $null -ne $newAt -and $newAt -lt $existingAt) { return 'keep-newer' }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = ($FactType + '-superseded'); authority_kind = 'human'
+        # The instant, rendered round-trip: a [string] cast of a parsed date drops its offset (W60).
+        superseded_observed_at = if ($null -ne $existingAt) { ([DateTimeOffset]$existingAt).ToUniversalTime().ToString('o') } else { '' }
+        superseded_turn_identity = $existingTurn
+        superseded_by_observed_at = $NowUtc
+        superseded_by_turn_identity = [string]$TurnIdentity
+        observed_at = $NowUtc
+    }
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($JournalPath)) | Out-Null
+        Add-Content -LiteralPath $JournalPath -Value ($fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop
+    }
+    catch { return 'refused' }
+    return 'superseded'
 }
 
 function Write-SpecrewReviewRoundApprovalAuthorization {
@@ -3314,6 +3370,8 @@ function Write-SpecrewAllowanceResetAuthorization {
         [Parameter(Mandatory)][string]$Response,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SourceEvent,
+        # 203 T004 (FR-021): the typed act's identity; a different message supersedes an unspent reset, never folds.
+        [AllowNull()][string]$TurnIdentity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
@@ -3332,12 +3390,17 @@ function Write-SpecrewAllowanceResetAuthorization {
         authorized_by = 'unattributed-human'; verdict_text = [string]$recognized.Phrase
         response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
         evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
-        observed_at = $NowUtc; spent_at = $null
+        observed_at = $NowUtc; spent_at = $null; turn_identity = [string]$TurnIdentity
     }
     if ([IO.File]::Exists($path)) {
         $existing = $null
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
-        if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
+        # 203 T004 (FR-021): with the act's identity, the same message is the same act and a later one supersedes.
+        $succession = Resolve-SpecrewTypedActSupersession -Existing $existing -TurnIdentity $TurnIdentity -NowUtc $NowUtc `
+            -JournalPath (Join-Path $root 'supersessions.jsonl') -FactType 'allowance-reset-approval'
+        if ($succession -cin @('same-act', 'keep-newer')) { Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot; return $existing }
+        if ($succession -ceq 'refused') { return $null }
+        if ($succession -ceq 'legacy' -and $null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
             [string]$existing.response_hash -ceq [string]$fact.response_hash -and
             -not (Test-SpecrewTypedActReplacesRecord -Existing $existing -Fact $fact)) {

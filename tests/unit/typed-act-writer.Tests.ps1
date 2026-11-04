@@ -532,6 +532,70 @@ foreach ($reply in @('1', 'approved for review round')) {
     }
 }
 
+# ---------------------------------------------------------------------------------------------------
+# Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER
+# TYPED ACT SUPERSEDES; IT NEVER FOLDS, for the three review acts beside the round approval. Today the top-up folds a
+# re-typed reset into the older unspent record, the deferral overwrites with no record of what it replaced, and a second
+# partial sign-off for the same request is refused as a conflict. After T004 each newer typed act (another turn
+# identity) takes the record with an immutable supersession fact naming what it retired; the same act re-offered changes
+# nothing; an older act arriving late never retires the newer one.
+Write-Host '--- case 8: the top-up, the coverage deferral and the partial sign-off supersede, never fold ---'
+$t0 = [DateTimeOffset]::Parse('2026-11-04T10:00:00Z')
+function Invoke-ReviewActWriter {
+    param([string]$Kind, [string]$Root, [string]$Text, [string]$TurnIdentity, [DateTimeOffset]$At)
+    $command = switch ($Kind) { 'top-up' { 'Write-SpecrewAllowanceResetAuthorization' } 'coverage-deferral' { 'Write-SpecrewCoverageDeferralAuthorization' } 'partial-signoff' { 'Write-SpecrewReviewSignoffOverrideAuthorization' } }
+    $splat = @{ ProjectRoot = $Root; Response = $Text; HostKind = 'claude'; SourceEvent = 'UserPromptSubmit'; NowUtc = $At.ToString('o') }
+    Add-IfSupported -Splat $splat -Command $command -Name 'TurnIdentity' -Value $TurnIdentity
+    try { return (& $command @splat) } catch { return $null }
+}
+function Read-ReviewActRecord {
+    param([string]$Kind, [string]$Root)
+    $path = switch ($Kind) {
+        'top-up' { Join-Path $Root '.specrew/review/allowance-reset/pending-allowance-reset.json' }
+        'coverage-deferral' { Join-Path $Root '.specrew/review/coverage-disposition/coverage-deferral.json' }
+        'partial-signoff' { @(Get-ChildItem -LiteralPath (Join-Path $Root '.specrew/review/signoff-gate/override-authorizations') -Filter 'override-*.json' -ErrorAction SilentlyContinue)[0].FullName }
+    }
+    if ([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path)) { return $null }
+    return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -Depth 8)
+}
+function Get-SupersessionFacts {
+    param([string]$Root)
+    return @(Get-ChildItem -LiteralPath (Join-Path $Root '.specrew/review') -Recurse -Filter 'supersessions.jsonl' -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-Content -LiteralPath $_.FullName } | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+}
+$reviewActs = @(
+    @{ Kind = 'top-up'; A = 'approved for allowance reset'; B = 'approved for allowance reset' }
+    @{ Kind = 'coverage-deferral'; A = 'continue without coverage until the review phase'; B = 'continue without coverage until the review phase' }
+    @{ Kind = 'partial-signoff'; A = 'approved for partial review signoff - the security checks are covered'; B = 'approved for partial review signoff - the remaining files are test data' }
+)
+foreach ($act in $reviewActs) {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('typed-act-supersede-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
+    New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew') | Out-Null
+    $script:roots.Add($root)
+    if ($act.Kind -eq 'partial-signoff') {
+        $tree = 'a' * 40; $campaign = 'cmp-001-fixture-i001'
+        $requestId = 'override-' + (Get-SpecrewHumanAuthorityHash -Text ($tree + '|' + $campaign)).Substring(0, 24)
+        $requestDir = Join-Path $root '.specrew/review/signoff-gate'
+        New-Item -ItemType Directory -Force -Path $requestDir | Out-Null
+        ([pscustomobject]@{ schema_version = '1.0'; request_id = $requestId; target_tree_id = $tree; campaign_id = $campaign; run_id = 'run-1'
+            required_phrase = 'approved for partial review signoff - <why accepting partial coverage is safe>'; created_at = $t0.AddMinutes(-5).ToString('o') } |
+            ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $requestDir 'pending-override.json') -Encoding UTF8
+    }
+    $k = $act.Kind
+    $null = Invoke-ReviewActWriter -Kind $k -Root $root -Text $act.A -TurnIdentity 'turn-A' -At $t0
+    $null = Invoke-ReviewActWriter -Kind $k -Root $root -Text $act.B -TurnIdentity 'turn-B' -At $t0.AddMinutes(10)
+    $record = Read-ReviewActRecord -Kind $k -Root $root
+    $heldTurn = if ($null -ne $record -and $record.PSObject.Properties['turn_identity']) { [string]$record.turn_identity } else { '' }
+    Assert-True ($heldTurn -ceq 'turn-B') ("[{0}] the newer typed act takes the record (holds '{1}')" -f $k, $heldTurn)
+    $facts = @(Get-SupersessionFacts -Root $root)
+    Assert-True ($facts.Count -eq 1 -and [string]$facts[0].superseded_turn_identity -ceq 'turn-A' -and [string]$facts[0].superseded_by_turn_identity -ceq 'turn-B') ("[{0}] and an immutable fact records that it retired the older one (got {1})" -f $k, $facts.Count)
+    $null = Invoke-ReviewActWriter -Kind $k -Root $root -Text $act.B -TurnIdentity 'turn-B' -At $t0.AddMinutes(15)
+    $null = Invoke-ReviewActWriter -Kind $k -Root $root -Text $act.A -TurnIdentity 'turn-old' -At $t0.AddMinutes(-30)
+    $after = Read-ReviewActRecord -Kind $k -Root $root
+    $afterTurn = if ($null -ne $after -and $after.PSObject.Properties['turn_identity']) { [string]$after.turn_identity } else { '' }
+    Assert-True ($afterTurn -ceq 'turn-B' -and @(Get-SupersessionFacts -Root $root).Count -eq 1) ("[{0}] the same act again, or an older act arriving late, changes nothing" -f $k)
+}
+
 foreach ($root in $script:roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 
 Write-Host '--- the real stores are unchanged ---'

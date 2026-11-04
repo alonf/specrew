@@ -8063,6 +8063,8 @@ function Write-SpecrewCoverageDeferralAuthorization {
         [Parameter(Mandatory)][string]$Response,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SourceEvent,
+        # 203 T004 (FR-021): the typed act's identity; a later deferral supersedes the held one with a recorded fact.
+        [AllowNull()][string]$TurnIdentity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     if (-not (Get-Command -Name 'ConvertTo-SpecrewHumanAuthoritySourceEvent' -ErrorAction SilentlyContinue)) { return $null }
@@ -8092,6 +8094,17 @@ function Write-SpecrewCoverageDeferralAuthorization {
         current_tree_at_deferral = $(if ($null -ne $coverage) { [string]$coverage.current_tree } else { '' })
         source_drift_at_deferral = $(if ($null -ne $coverage) { [int]$coverage.source_drift_count } else { 0 })
         observed_at = $NowUtc
+        turn_identity = [string]$TurnIdentity
+    }
+    # 203 T004 (FR-021): the deferral used to overwrite with no record of what it replaced. With the act's identity, the
+    # same message is the same act, an older one arriving late keeps the newer, and a later one journals what it retires.
+    if ([IO.File]::Exists($path) -and (Get-Command Resolve-SpecrewTypedActSupersession -ErrorAction SilentlyContinue)) {
+        $existing = $null
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
+        $succession = Resolve-SpecrewTypedActSupersession -Existing $existing -TurnIdentity $TurnIdentity -NowUtc $NowUtc `
+            -JournalPath (Join-Path $root 'supersessions.jsonl') -FactType 'coverage-deferral'
+        if ($succession -cin @('same-act', 'keep-newer')) { return $existing }
+        if ($succession -ceq 'refused') { return $null }
     }
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
