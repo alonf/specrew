@@ -23,8 +23,12 @@ $priorModule = $env:SPECREW_MODULE_PATH
 $priorProfile = $env:SPECREW_USER_PROFILE_PATH
 $env:SPECREW_MODULE_PATH = $ModuleRoot
 $script:token = ''
+# Feature 203 T004 (FR-022): a human entry carries the host's message id and origin as Claude records them, so the writer can cite and re-read it.
+$script:promptId = ''
 function Add-Turn([string]$Role, [string]$Text) {
-    @{ type=$Role; message=@{content=@(@{type='text';text=$Text})} } | ConvertTo-Json -Depth 6 -Compress | Add-Content -LiteralPath $transcript
+    $entry = @{ type=$Role; message=@{content=@(@{type='text';text=$Text})} }
+    if ($Role -eq 'user') { $script:promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['promptId'] = $script:promptId; $entry['origin'] = @{ kind = 'human' } }
+    $entry | ConvertTo-Json -Depth 6 -Compress | Add-Content -LiteralPath $transcript
 }
 function Invoke-Conformance([string]$Event) {
     Push-Location $root
@@ -38,7 +42,7 @@ function Prompt([string]$Text) {
     $match = [regex]::Match($start, '-Token (?<token>[a-f0-9]{32})')
     Check $match.Success 'prompt hands this turn its own token'
     $script:token = $match.Groups['token'].Value
-    return (@(& pwsh -NoProfile -File $handover --project-root $root --host-kind claude --source-event UserPromptSubmit --last-user-message $Text --transcript-path $transcript --session-id replay 2>&1) -join "`n")
+    return (@(& pwsh -NoProfile -File $handover --project-root $root --host-kind claude --source-event UserPromptSubmit --last-user-message $Text --transcript-path $transcript --session-id replay --turn-origin typed-user --message-identity declared --message-id $script:promptId 2>&1) -join "`n")
 }
 function Declare([string]$Text, [string]$Kind = 'conversational', [string[]]$Owed = @()) {
     Set-Content -LiteralPath $draft -Value $Text -Encoding UTF8

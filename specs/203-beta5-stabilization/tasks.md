@@ -240,6 +240,19 @@ then T014.
     the campaign is in flight (a held claim, or a reserved slot with neither a release nor a result). The automatic retry
     re-stamps its new reference, only while the slot still holds the approval the launch minted; without it, 50ffca8f
     left a delivered retry's approval unspent. RED cases 4-6 in `tests/unit/typed-act-writer.Tests.ps1`.
+  - **The cited turn (2026-11-04, case 1 green):** `Write-SpecrewTypedAct` re-reads the cited turn from the host's
+    record and writes only the act the classifier derives. The record is the transcript entry (cited by the host's
+    message id, or by the act identity when Claude gave a queued message the running turn's `promptId`), or, for a
+    prompt with no transcript entry yet, the prompt hook's own reservation of that message, which now carries the
+    dispatcher's origin (`turn_origin`). `Add-SpecrewBoundaryAuthorization` honours a captured label only by re-deriving
+    the cited turn itself, records the verdict line the turn says and the act identity (`turn_identity`), and a
+    citation already recorded returns the existing entry. The live capture (`Invoke-SpecrewBoundaryVerdictCapture`)
+    cites the turn it read; to do so the transcript verdict reader returns the captured entry's message id and text, a
+    two-field addition to `ConversationCaptureAccessor.ps1` (T005's file; T005's pairing change is untouched). The twelve
+    direct-caller suites: seven cite a typed turn (`tests/support/cited-typed-turn.ps1`), five whose fixtures record
+    no crossing declare out-of-band, and the capture fixtures carry the host's message id and origin as recorded. One
+    test changed meaning on purpose: `verdict-capture-blocks` part 3 no longer expects a second verdict for a boundary
+    already crossed to append (FR-019); the same cited turn is one authorization and a later one records nothing.
   - **Re-scoped (maintainer's instruction, 2026-11-02; DRIFT-027):** T004 does the rewiring and the supersession, and
     keeps the per-round approval: the `approved for review round` act, its capture and `--approve-round`. Their
     removal (FR-010) lands with T007/T008, once the budget grant replaces them, so every review stays launchable.

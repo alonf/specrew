@@ -38,12 +38,17 @@ function New-CaptureProject {
     }
     [System.IO.File]::WriteAllText((Join-Path $proj '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
     $tx = Join-Path $tmp 'transcript.jsonl'
-    $lines = foreach ($t in $Turns) { (@{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } } | ConvertTo-Json -Depth 8 -Compress) }
+    # Feature 203 T004 (FR-022): a human entry carries the host's message id and origin as Claude records them, so the writer can cite and re-read it.
+    $lines = foreach ($t in $Turns) {
+        $entry = @{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } }
+        if ($t.role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' } }
+        ($entry | ConvertTo-Json -Depth 8 -Compress)
+    }
     [System.IO.File]::WriteAllText($tx, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
     return [pscustomobject]@{ Tmp = $tmp; Proj = $proj; Transcript = $tx }
 }
 function Invoke-StopHook { param([string]$Proj, [string]$Tx) & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $Proj --host-kind claude --transcript-path $Tx 2>$null | Out-Null }
-function Invoke-PromptHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind claude --source-event UserPromptSubmit --transcript-path $Tx --last-user-message $Prompt 2>$null | Out-Null }
+function Invoke-PromptHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind claude --source-event UserPromptSubmit --transcript-path $Tx --last-user-message $Prompt --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>$null | Out-Null }
 function Invoke-PreInvocationHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind antigravity --source-event PreInvocation --transcript-path $Tx --last-user-message $Prompt 2>$null | Out-Null }
 function Read-Enforcement { param([string]$Proj) return (Get-Content -LiteralPath (Join-Path $Proj '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12).boundary_enforcement }
 function Packet { param([string]$From, [string]$To, [string]$Resp) return @(

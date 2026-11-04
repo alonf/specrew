@@ -1380,10 +1380,16 @@ function Resolve-SpecrewTypedAct {
             'workshop-repair' { return (& $route 'workshop-repair' '' '' '') }
             'coverage-deferral' { return (& $route 'coverage-deferral' '' '' '') }
             'allowance-reset' {
-                if ($null -eq $pause -or [string](& $prop $pause 'Kind') -cne 'a-budget-spent') { return (& $none 'no-pending-crossing' $true) }
+                # Feature 203 T004 (DRIFT-027): until T007's budget pause exists, today's reset is captured with no pause
+                # waiting and checked by the review CLI when it is spent; the pending state says so (PreBudgetReviewActs).
+                $preBudget = (& $prop $Pending 'PreBudgetReviewActs') -eq $true
+                if (($null -eq $pause -or [string](& $prop $pause 'Kind') -cne 'a-budget-spent') -and -not $preBudget) { return (& $none 'no-pending-crossing' $true) }
                 return (& $route 'top-up' $pauseId '' '')
             }
             'pause-decision' {
+                # Feature 203 T004 (DRIFT-027): today's pause decision is recorded even with no pause waiting, bound to none,
+                # and the review CLI refuses it for a run it does not answer; T008's stop answers replace it.
+                if ($null -eq $pause -and (& $prop $Pending 'PreBudgetReviewActs') -eq $true) { return (& $route 'stop-answer' '' $(if ([string]$shape.Choice -ceq 'abandon') { 'abandon' } else { 'stop-review' }) '') }
                 if ($null -eq $pause) { return (& $none 'no-pending-crossing' $true) }
                 return (& $route 'stop-answer' $pauseId $(if ([string]$shape.Choice -ceq 'abandon') { 'abandon' } else { 'stop-review' }) '')
             }
@@ -1427,7 +1433,9 @@ function Resolve-SpecrewTypedAct {
 #                            queued message); the act identity names one
 
 function Get-SpecrewTypedActRecordedIdentities {
-    # The act identities that already have an act: the boundary ledger's turn identities and the acts the writer marked.
+    # The act identities that already have an act: the boundary ledger's turn identities, and the typed-act entries of the
+    # turn ledger that minted something. The prompt hook's reservation of a message (nothing minted yet) is not an act:
+    # the router classifies the message after reserving it.
     [OutputType([string[]])]
     param([Parameter(Mandatory)][string]$ProjectRoot)
     $ids = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -1437,7 +1445,8 @@ function Get-SpecrewTypedActRecordedIdentities {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
             try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
-            if ($null -ne $entry -and $entry.PSObject.Properties['identity'] -and [string]$entry.identity -ceq 'typed-act' -and $entry.PSObject.Properties['turn_id']) {
+            if ($null -ne $entry -and $entry.PSObject.Properties['identity'] -and [string]$entry.identity -ceq 'typed-act' -and $entry.PSObject.Properties['turn_id'] -and
+                $entry.PSObject.Properties['minted'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.minted)) {
                 [void]$ids.Add([string]$entry.turn_id)
             }
         }
@@ -1458,10 +1467,47 @@ function Get-SpecrewTypedActRecordedIdentities {
     return [string[]]@($ids)
 }
 
+function Test-SpecrewMessageKeyRecorded {
+    # Feature 203 T004 (the update from 202): is this message recorded under the 202 key, the host's message id alone?
+    # Only with the same content hash: Claude gives a message queued while a turn runs that turn's prompt_id, so the 202
+    # key alone names both, and the queued one (whose text differs) is not the one recorded. Fails closed on an unreadable
+    # ledger, as the exhausted-turn check does.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$MessageKey,
+        [AllowNull()][AllowEmptyString()][string]$ContentHash
+    )
+    if ([string]::IsNullOrWhiteSpace($MessageKey) -or [string]::IsNullOrWhiteSpace($ContentHash)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -ne $entry -and $entry.PSObject.Properties['turn_id'] -and [string]$entry.turn_id -ceq $MessageKey -and
+                $entry.PSObject.Properties['content_hash'] -and [string]$entry.content_hash -ceq $ContentHash) { return $true }
+        }
+    }
+    catch { return $true }
+    return $false
+}
+
 function Get-SpecrewTypedActPendingState {
-    # What waits for a reply, in the classifier's shape, read from the stores. Only the waiting crossing so far.
+    # What waits for a reply, in the classifier's shape, read from the stores: the waiting crossing, and the review pause
+    # the navigator published (unanswered, scoped to the active feature). No workshop question: a workshop reply is the
+    # prompt hook's receipt, never a recovery path's act. PreBudgetReviewActs: today's review acts (the round approval,
+    # the allowance reset, the pause decision) are captured with nothing waiting and checked when the review CLI spends
+    # them; T007 and T008 replace them with the budget pause and the stop answers, and this flag goes with them.
     [OutputType([pscustomobject])]
     param([Parameter(Mandatory)][string]$ProjectRoot)
+    $pause = $null
+    try {
+        $published = Get-SpecrewPendingPauseIdentity -ProjectRoot $ProjectRoot
+        if ($null -ne $published -and -not [string]::IsNullOrWhiteSpace([string]$published.run_id)) { $pause = [pscustomobject]@{ Kind = 'b-dispute-or-defer'; Id = [string]$published.run_id } }
+    }
+    catch { $pause = $null }
     $crossing = $null
     if (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue) {
         $pv = $null
@@ -1472,7 +1518,46 @@ function Get-SpecrewTypedActPendingState {
             $crossing = [pscustomobject]@{ From = [string]$pv.PendingFromBoundary; To = [string]$pv.PendingToBoundary; StageEvidenceAbsent = $absent }
         }
     }
-    return [pscustomobject]@{ Crossing = $crossing; Pause = $null; WorkshopQuestion = $null }
+    return [pscustomobject]@{ Crossing = $crossing; Pause = $pause; WorkshopQuestion = $null; PreBudgetReviewActs = $true }
+}
+
+function Get-SpecrewTypedActWriterName {
+    # The one writer that records an act of this kind; '' when no writer records it yet (a workshop reply is the prompt
+    # hook's receipt; the stop answers other than stop-review and abandon are T008's).
+    [OutputType([string])]
+    param([Parameter(Mandatory)]$Act)
+    switch ([string]$Act.Kind) {
+        'withdrawal' { return 'Write-SpecrewApprovalWithdrawal' }
+        'round-approval' { return 'Write-SpecrewReviewRoundApprovalAuthorization' }
+        'top-up' { return 'Write-SpecrewAllowanceResetAuthorization' }
+        'coverage-deferral' { return 'Write-SpecrewCoverageDeferralAuthorization' }
+        'partial-signoff' { return 'Write-SpecrewReviewSignoffOverrideAuthorization' }
+        'workshop-repair' { return 'Write-SpecrewWorkshopRepairAuthorization' }
+        'stop-answer' { if ([string]$Act.Answer -cin @('stop-review', 'abandon')) { return 'Write-SpecrewPauseDecisionAuthorization' } }
+    }
+    return ''
+}
+
+function Invoke-SpecrewTypedActSink {
+    # Records a derived act (not a boundary verdict) through the one writer for its kind, with the human's own text, and
+    # returns what that writer returned ($null when it recorded nothing). Throws when the writer throws, so the caller can
+    # tell a failure from an act no writer takes.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)]$Act,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Text,
+        [AllowNull()][AllowEmptyString()][string]$HostKind,
+        [AllowNull()][AllowEmptyString()][string]$SourceEvent,
+        [AllowNull()][AllowEmptyString()][string]$NowUtc
+    )
+    $writerName = Get-SpecrewTypedActWriterName -Act $Act
+    if ([string]::IsNullOrWhiteSpace($writerName)) { return $null }
+    $writer = Get-Command $writerName -ErrorAction SilentlyContinue
+    if ($null -eq $writer) { throw "the writer for '$([string]$Act.Kind)' is not loaded" }
+    $splat = @{ ProjectRoot = $ProjectRoot; Response = $Text; HostKind = $HostKind; SourceEvent = $SourceEvent }
+    if ($writer.Parameters.ContainsKey('NowUtc') -and -not [string]::IsNullOrWhiteSpace($NowUtc)) { $splat['NowUtc'] = $NowUtc }
+    if ($writer.Parameters.ContainsKey('TurnIdentity') -and -not [string]::IsNullOrWhiteSpace([string]$Act.TurnIdentity)) { $splat['TurnIdentity'] = [string]$Act.TurnIdentity }
+    return (& $writer @splat)
 }
 
 function Read-SpecrewCitedTypedTurn {
@@ -1541,7 +1626,11 @@ function Read-SpecrewCitedTypedTurn {
             if ($null -ne $form -and -not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $formText = [string]$form.Text }
         }
         catch { $formText = [string]$PromptText }
-        $reservationKey = Get-SpecrewTypedTurnIdentity -Response $formText -HostKind $hostKey -MessageId $cited
+        # The router keys a message with an id by its act identity; one reserved before 203 by the 202 key.
+        $reservationKeys = @(
+            [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $hostKey; message_id = $cited; text = [string]$PromptText })).Identity
+            [string](Get-SpecrewTypedTurnIdentity -Response $formText -HostKind $hostKey -MessageId $cited)
+        )
         $contentHash = Get-SpecrewHumanAuthorityHash -Text $formText.Trim()
         $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
         $reservation = $null
@@ -1550,7 +1639,7 @@ function Read-SpecrewCitedTypedTurn {
                 if ([string]::IsNullOrWhiteSpace($line)) { continue }
                 $entry = $null
                 try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
-                if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or [string]$entry.turn_id -cne $reservationKey) { continue }
+                if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or $reservationKeys -cnotcontains [string]$entry.turn_id) { continue }
                 if (-not $entry.PSObject.Properties['content_hash'] -or [string]$entry.content_hash -cne $contentHash) { continue }
                 $event = if ($entry.PSObject.Properties['source_event']) { ([string]$entry.source_event).Trim().ToLowerInvariant() } else { '' }
                 if ($event -in @('', 'stop', 'stop-transcript', 'agentstop')) { continue }
@@ -1569,7 +1658,8 @@ function Read-SpecrewCitedTypedTurn {
 
 function Resolve-SpecrewCitedTypedAct {
     # The act a cited turn IS: re-read from the host's record and classified against what waits now. Pure apart from
-    # reading the stores. A boundary verdict carries VerdictText, the verdict line the ledger records.
+    # reading the stores. Text is the human's own line (outside any paste the host marks), for the act's writer; a
+    # boundary verdict also carries VerdictText, the verdict line the ledger records. Neither is stored by this.
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
@@ -1584,22 +1674,24 @@ function Resolve-SpecrewCitedTypedAct {
     if ($null -eq $read.Turn) {
         $act = [pscustomobject]@{ Kind = 'none'; Reason = [string]$read.Reason; Report = $false; TurnIdentity = ''; IdentityKind = 'none'; Target = ''; Answer = ''; Argument = ''; Shape = '' }
         $act | Add-Member -NotePropertyName VerdictText -NotePropertyValue ''
+        $act | Add-Member -NotePropertyName Text -NotePropertyValue ''
         return $act
     }
     if ($null -eq $Pending) { $Pending = Get-SpecrewTypedActPendingState -ProjectRoot $ProjectRoot }
     $act = Resolve-SpecrewTypedAct -Turn $read.Turn -Pending $Pending -RecordedIdentities (Get-SpecrewTypedActRecordedIdentities -ProjectRoot $ProjectRoot)
+    $own = [string]$read.Turn.text
+    try {
+        $form = Resolve-SpecrewApprovalForm -Text $own -HostKind ([string]$read.Turn.host)
+        if ($null -ne $form -and -not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $own = [string]$form.Text }
+    }
+    catch { $own = [string]$read.Turn.text }
     $verdictText = ''
     if ([string]$act.Kind -ceq 'boundary-verdict') {
-        $own = [string]$read.Turn.text
-        try {
-            $form = Resolve-SpecrewApprovalForm -Text $own -HostKind ([string]$read.Turn.host)
-            if ($null -ne $form -and -not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $own = [string]$form.Text }
-        }
-        catch { $own = [string]$read.Turn.text }
         $to = ([string]$act.Target -split '->', 2)[-1]
         $verdictText = Get-SpecrewCapturedVerdictText -HumanText $own -ToBoundary $to
     }
     $act | Add-Member -NotePropertyName VerdictText -NotePropertyValue $verdictText -Force
+    $act | Add-Member -NotePropertyName Text -NotePropertyValue $(if ([string]$act.Kind -ceq 'none') { '' } else { $own }) -Force
     return $act
 }
 
@@ -1616,11 +1708,44 @@ function Write-SpecrewTypedAct {
         [AllowNull()][AllowEmptyString()][string]$PromptText,
         [AllowNull()][AllowEmptyString()][string]$MessageIdentity,
         [AllowNull()][AllowEmptyString()][string]$SourceEvent,
+        [AllowNull()][AllowEmptyString()][string]$SessionId,
+        # A turn end citing a transcript entry passes the entry's position and arrival, so a message recorded before the
+        # message-id key existed (Test-SpecrewLegacyTurnRecorded) is not recorded again on an upgraded project.
+        [AllowNull()][AllowEmptyString()][string]$LegacyTurnPosition,
+        [AllowNull()][AllowEmptyString()][string]$LegacyTurnArrival,
+        # The turn end's verdict capture owns a boundary verdict at the same turn end (paired with the packet marker
+        # until T005 pairs it with the pending crossing), so the backstop leaves one to it.
+        [switch]$ExceptBoundaryVerdict,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    if ([string]::IsNullOrWhiteSpace($SourceEvent)) { $SourceEvent = if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) { 'stop-transcript' } else { 'UserPromptSubmit' } }
     $act = Resolve-SpecrewCitedTypedAct -ProjectRoot $ProjectRoot -HostKind $HostKind -TurnIdentity $TurnIdentity -TranscriptPath $TranscriptPath -PromptText $PromptText -MessageIdentity $MessageIdentity
     $result = [pscustomobject]@{ Act = $act; Written = $false }
     if ([string]$act.Kind -ceq 'none') { return $result }
+    if ($ExceptBoundaryVerdict -and [string]$act.Kind -ceq 'boundary-verdict') { return $result }
+    # The same message under the keys recorded before the act identity: the prompt hook's reservation under the 202
+    # message-id key, matched with its content hash (Claude gives a queued message the running turn's promptId, so the id
+    # alone would take the queued approval for the turn already recorded), and the pre-202 position key. Not for a boundary
+    # verdict: the router reserves every message it sees but records no verdict (the verdict capture does, keyed on the
+    # ledger's turn identity), so its reservation says nothing about one.
+    $hostKey = ([string]$HostKind).Trim().ToLowerInvariant()
+    $read = Read-SpecrewCitedTypedTurn -ProjectRoot $ProjectRoot -HostKind $HostKind -TurnIdentity $TurnIdentity -TranscriptPath $TranscriptPath -PromptText $PromptText -MessageIdentity $MessageIdentity
+    $contentHash = Get-SpecrewHumanAuthorityHash -Text ([string]$act.Text).Trim()
+    $legacyKey = if ($null -ne $read.Turn) { Get-SpecrewTypedTurnIdentity -Response ([string]$act.Text) -HostKind $hostKey -MessageId ([string]$read.Turn.message_id) } else { '' }
+    $alreadyRecorded = $false
+    if ([string]$act.Kind -cne 'boundary-verdict') {
+        # The prompt hook saw this message: it reserved it under the act identity (or, before 203, under the 202 key).
+        # The turn end recovers only a message the hook missed (FR-014).
+        $alreadyRecorded = (Test-SpecrewTypedTurnExhausted -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity)) -or
+            (Test-SpecrewMessageKeyRecorded -ProjectRoot $ProjectRoot -MessageKey $legacyKey -ContentHash $contentHash)
+    }
+    if (-not $alreadyRecorded -and -not [string]::IsNullOrWhiteSpace($LegacyTurnPosition) -and [string]$act.Kind -cne 'boundary-verdict') {
+        $positionKey = Get-SpecrewTypedTurnIdentity -Response ([string]$act.Text) -HostKind $HostKind -SourceEvent $SourceEvent -TurnPosition $LegacyTurnPosition -TurnArrival $LegacyTurnArrival
+        $alreadyRecorded = $true
+        try { $alreadyRecorded = [bool](Test-SpecrewLegacyTurnRecorded -ProjectRoot $ProjectRoot -LegacyTurnId $positionKey -ContentHash $contentHash -HostKind $HostKind -SinceUtc $LegacyTurnArrival -ExpectedWriter (Get-SpecrewTypedActWriterName -Act $act)) }
+        catch { $alreadyRecorded = $true }
+    }
+    if ($alreadyRecorded) { $act.Kind = 'none'; $act.Reason = 'already-recorded'; $act.Report = $false; return $result }
     switch ([string]$act.Kind) {
         'boundary-verdict' {
             if (-not (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue)) { $act.Kind = 'none'; $act.Reason = 'form-unreadable'; $act.Report = $true; return $result }
@@ -1637,13 +1762,13 @@ function Write-SpecrewTypedAct {
             $result.Written = $true
         }
         default {
-            # The other kinds keep their own writers until the rewiring routes them here.
-            return $result
+            $written = Invoke-SpecrewTypedActSink -ProjectRoot $ProjectRoot -Act $act -Text ([string]$act.Text) -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc
+            $result.Written = ($null -ne $written)
         }
     }
     if ($result.Written) {
         $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity) -HostKind $HostKind -SourceEvent $SourceEvent `
-            -MintedWriters ([string]$act.Kind) -Identity 'typed-act' -NowUtc $NowUtc
+            -MintedWriters ([string]$act.Kind) -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -NowUtc $NowUtc
     }
     return $result
 }

@@ -110,14 +110,14 @@ Assert-True ([string]::IsNullOrWhiteSpace($d3c)) 'a send-back without the phrase
 Write-Host 'Case 4: end to end - the provider surfaces the disclosure into the turn, and captures nothing'
 $f4 = New-DisclosureFixture
 $before4 = (Read-Enforcement -Root $f4.Root).last_authorized_boundary
-$out4 = ((& pwsh -NoProfile -File $provider --project-root $f4.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $barText 2>&1) -join "`n")
+$out4 = ((& pwsh -NoProfile -File $provider --project-root $f4.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $barText --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 $after4 = (Read-Enforcement -Root $f4.Root).last_authorized_boundary
 Assert-True ($out4 -match 'NOT recorded as a verdict' -and $out4 -match 'FIRST characters are: approved for before-implement') 'the provider writes the disclosure to its inject stdout, so it reaches the same turn'
 Assert-True ([string]$before4 -eq 'tasks' -and [string]$after4 -eq 'tasks') 'and the recognizer is NOT widened: the crossing stays un-authorized'
 
 Write-Host 'Case 5: the same provider path with a clean verdict captures, and says nothing extra'
 $f5 = New-DisclosureFixture
-$out5 = ((& pwsh -NoProfile -File $provider --project-root $f5.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' 2>&1) -join "`n")
+$out5 = ((& pwsh -NoProfile -File $provider --project-root $f5.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 $after5 = (Read-Enforcement -Root $f5.Root).last_authorized_boundary
 Assert-True ([string]$after5 -eq 'before-implement') 'a clean phrase at prompt entry authorizes the crossing (the path this disclosure sits beside)'
 Assert-True ($out5 -notmatch 'NOT recorded as a verdict') 'and nothing is disclosed when there is nothing to disclose'
@@ -137,7 +137,7 @@ Assert-True ($d6 -match "exactly one line: 'approved for before-implement' or 'a
 Assert-True ($d6 -notmatch 'what comes FIRST in the message') 'and it does NOT blame the first line, which was right - the diagnosis is the continuation'
 $j6 = @(Read-Journal -Root $f6.Root -Event 'verdict-not-captured-disclosed')
 Assert-True ($j6.Count -eq 1 -and [string]$j6[0].action -eq 'refused-multi-line') 'the non-capture is journaled with its reason'
-$out6 = ((& pwsh -NoProfile -File $provider --project-root $f6.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $pasteText 2>&1) -join "`n")
+$out6 = ((& pwsh -NoProfile -File $provider --project-root $f6.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $pasteText --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 $after6 = (Read-Enforcement -Root $f6.Root).last_authorized_boundary
 Assert-True ($out6 -match 'a verdict is ONE line') 'the provider puts the disclosure in the turn'
 Assert-True ([string]$after6 -eq 'tasks') 'and the crossing stays un-authorized: the paste minted nothing'
@@ -145,7 +145,7 @@ Assert-True ([string]$after6 -eq 'tasks') 'and the crossing stays un-authorized:
 Write-Host 'Case 7 (PRED-BETA4-022): a typed ROUND approval with a transcript under it, at prompt entry - disclosed in the turn beside the verdict path'
 $f7 = New-DisclosureFixture
 $roundPaste = 'approved for review round' + "`n" + (($pasteLines | Select-Object -Skip 1) -join "`n")
-$out7 = ((& pwsh -NoProfile -File $provider --project-root $f7.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $roundPaste 2>&1) -join "`n")
+$out7 = ((& pwsh -NoProfile -File $provider --project-root $f7.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $roundPaste --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 Assert-True ($out7 -match 'NOT recorded as a review-round-approval' -and $out7 -match "exactly one line: 'approved for review round'") 'the typed-authority refusal is said in the turn with the retype'
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $f7.Root '.specrew/review/round-approval/pending-round-approval.json'))) 'no pending round approval was minted from the paste'
 Assert-True ((Test-Path -LiteralPath (Join-Path $f7.Root '.specrew/runtime/authority-capture-drops.jsonl')) -and ((Get-Content -LiteralPath (Join-Path $f7.Root '.specrew/runtime/authority-capture-drops.jsonl') -Raw) -match '"reason":"multi-line"')) 'the drop is journaled where the partial-signoff drops already live'
@@ -159,7 +159,7 @@ Assert-True ($d8 -match 'send the phrase again: approved for before-implement') 
 $j8 = @(Read-Journal -Root $f8.Root -Event 'verdict-not-captured-disclosed')
 Assert-True ($j8.Count -eq 1 -and [string]$j8[0].action -eq 'no-pending-crossing' -and [string]$j8[0].to -eq 'before-implement') 'journaled with its reason'
 Assert-True ([string](Read-Enforcement -Root $f8.Root).last_authorized_boundary -eq 'tasks') 'and the ledger is unchanged'
-$out8 = ((& pwsh -NoProfile -File $provider --project-root $f8.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' 2>&1) -join "`n")
+$out8 = ((& pwsh -NoProfile -File $provider --project-root $f8.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 Assert-True ($out8 -match 'NO crossing is pending') 'the provider puts it in the turn'
 $d8b = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f8.Root -HumanText 'What is the status of the tests directory?' -NowUtc '2026-09-11T00:00:01Z' -Source 'UserPromptSubmit'
 Assert-True ([string]::IsNullOrWhiteSpace($d8b)) 'ordinary conversation with nothing pending still discloses nothing'
@@ -179,7 +179,7 @@ foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6, $f7, $f8, $f9)) { try { Remove-It
 # ---------------------------------------------------------------------------------------------------
 Write-Host 'Case 10 (PRED-BETA4-042, B4F-086): approved for specify, captured - the turn is told the clarify stage begins now'
 $f10 = New-DisclosureFixture -From 'specify' -To 'clarify'
-$out10 = ((& pwsh -NoProfile -File $provider --project-root $f10.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for clarify' 2>&1) -join "`n")
+$out10 = ((& pwsh -NoProfile -File $provider --project-root $f10.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for clarify' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 $after10 = (Read-Enforcement -Root $f10.Root).last_authorized_boundary
 Assert-True ([string]$after10 -eq 'clarify') 'the clean phrase authorizes the clarify crossing'
 $expected10 = 'Verdict captured: approved for clarify. The plan stage begins in this turn: /speckit.specrew-speckit.before-plan, then /speckit.plan, then /speckit.specrew-speckit.sync-plan. Do not ask the human to start it; the approval was the instruction.'
@@ -187,7 +187,7 @@ Assert-True ($out10.Contains($expected10)) ("and the provider's inject stdout ca
 
 Write-Host 'Case 11 (PRED-BETA4-042): approved for specify - the clarify stage, /speckit.clarify then its sync'
 $f11 = New-DisclosureFixture -From 'intake' -To 'specify'
-$out11 = ((& pwsh -NoProfile -File $provider --project-root $f11.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for specify' 2>&1) -join "`n")
+$out11 = ((& pwsh -NoProfile -File $provider --project-root $f11.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for specify' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 $after11 = (Read-Enforcement -Root $f11.Root).last_authorized_boundary
 Assert-True ([string]$after11 -eq 'specify') 'the clean phrase authorizes the specify crossing'
 $expected11 = 'Verdict captured: approved for specify. The clarify stage begins in this turn: /speckit.clarify, then /speckit.specrew-speckit.sync-clarify. Do not ask the human to start it; the approval was the instruction.'
@@ -195,14 +195,14 @@ Assert-True ($out11.Contains($expected11)) 'and the directive for specify -> cla
 
 Write-Host 'Case 12 (PRED-BETA4-042): approved for before-implement (the original fixture) - implementation begins, /speckit.implement'
 $f12 = New-DisclosureFixture
-$out12 = ((& pwsh -NoProfile -File $provider --project-root $f12.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' 2>&1) -join "`n")
+$out12 = ((& pwsh -NoProfile -File $provider --project-root $f12.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 Assert-True ($out12.Contains('Verdict captured: approved for before-implement. The implementation stage begins in this turn: /speckit.implement.')) 'the before-implement capture names implementation and /speckit.implement'
 Assert-True ($out12 -notmatch '\?') 'and asks nothing - no question mark anywhere in the injected text'
 
 Write-Host 'Case 13 (PRED-BETA4-042): approved for iteration-closeout - both exits named, the record decides, no ask'
 $f13 = New-DisclosureFixture -From 'retro' -To 'iteration-closeout'
 Set-Content -LiteralPath (Join-Path $f13.Root 'specs/001-feat/iterations/001/retro.md') -Value "# Retro`n`ndone" -Encoding UTF8
-$out13 = ((& pwsh -NoProfile -File $provider --project-root $f13.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for iteration-closeout' 2>&1) -join "`n")
+$out13 = ((& pwsh -NoProfile -File $provider --project-root $f13.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for iteration-closeout' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
 $after13 = (Read-Enforcement -Root $f13.Root).last_authorized_boundary
 Assert-True ([string]$after13 -eq 'iteration-closeout') 'the clean phrase authorizes the iteration-closeout crossing'
 Assert-True ($out13.Contains('Verdict captured: approved for iteration-closeout. Two exits follow and the record decides:') -and $out13.Contains('/speckit.specrew-speckit.before-plan') -and $out13.Contains('/speckit.specrew-speckit.sync-feature-closeout')) 'both exits are named: the next iteration''s plan and feature closeout'
