@@ -1729,7 +1729,7 @@ function Read-SpecrewCitedTypedTurn {
             $actIdentity = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity
             if ($messageId -ceq $cited -or $actIdentity -ceq $cited) { $matched.Add([pscustomobject]@{ Turn = $turn; Identity = $actIdentity }) | Out-Null }
         }
-        $distinct = @($matched | ForEach-Object { $_.Identity } | Sort-Object -Unique -CaseSensitive)
+        $distinct = @($matched | ForEach-Object { $_.Identity } | Sort-Object -Unique)  # specrew-dedup-not-a-path: act identities are lowercase SHA-256 hex
         if ($distinct.Count -gt 1) { return [pscustomobject]@{ Turn = $null; Reason = 'ambiguous-citation' } }
         if ($matched.Count -ge 1) { return [pscustomobject]@{ Turn = $matched[$matched.Count - 1].Turn; Reason = '' } }
     }
