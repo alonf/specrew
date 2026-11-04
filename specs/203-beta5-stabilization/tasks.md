@@ -190,6 +190,10 @@ then T014.
     through a writer; a re-typed approval folds into an older unspent one.
   - **Acceptance:** the cited-turn case mints nothing; supersession retires, never reuses; no script or `!`
     approval path remains.
+    **Added (maintainer's UX ruling, 2026-11-04 (19:05 local): a human answers a question when they see it, so a reply typed while the turn is still ending (Stop hook running) must just work):** a queued reply carrying the running turn's prompt id is recorded once as its own act, and the
+    next turn acts on it, for an option answer such as `1` and for `approved for review round`. Failing case first,
+    in `tests/unit/typed-act-writer.Tests.ps1`. The live check: after the pin advances past T004, the maintainer
+    answers a question early, on purpose.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
@@ -264,6 +268,15 @@ then T014.
     exhausted-turn ledger at once made one append fail and that message record nothing without a word;
     `Register-SpecrewExhaustedTurn` now retries a sharing violation for up to three seconds. The probe of both hosts
     is open before 0.40.0 stable (B5F-028).
+  - **Writer CLIs cite the newest typed turn themselves (maintainer's decision 2026-11-04, option 1):** the agent never
+    sees the host's message id, so no CLI takes one. `record-design-decision.ps1` records a decision only when
+    `-HumanTurn` is the human's newest typed message as the prompt hook reserved it (same content hash, origin
+    `typed-user`; `Find-SpecrewNewestTypedTurn` in `design-decision-store.ps1`), and the record carries that turn's
+    identity, host and time; otherwise nothing is recorded and the refusal says which message it read
+    (`tests/unit/design-decision-cited-turn.Tests.ps1`). The `confirmation` value stays, so recorded decisions stay
+    valid. The review CLI writes no typed act: `--approve-round` spends the capture the prompt hook recorded, which
+    carries its turn identity; its out-of-session and out-of-band forms are T008's. The tracked `.specify` copies of
+    the decision scripts, like the dispatcher's, already lagged the source before T004 and are left to deployment.
   - **The router suites, migrated to a turn with an identity (FR-015):** `round-approval-typed-authority` called the
     router with a transcript position and no message id, the shape from before 202; each call now carries the host's
     id for that entry (the same position is a re-offer, a later one a retype), the prompt channel's calls carry the
@@ -326,6 +339,8 @@ then T014.
   - **RED:** `tests/unit/not-recorded-report.Tests.ps1`: an unreadable approval form records nothing and says
     nothing today (B4F-151).
   - **Acceptance:** each branch reports with its reason; a recorded approval never reports.
+    **Added (maintainer's UX ruling, 2026-11-04 (19:05 local): a human answers a question when they see it, so a reply typed while the turn is still ending (Stop hook running) must just work):** when a reply cannot be used, the notice shown only to the human says so and asks them to type
+    it again.
     **Added after T002's review (DRIFT-014):** a recorded round approval never gets the "nothing was recorded"
     notice (it got one 4 times on 2026-11-01).
     **Added after T002's round 4 checks (DRIFT-018), the refusal-visibility follow-up from T002 round 1 finding 1:**
@@ -388,6 +403,8 @@ then T014.
     `declare-turn-end` requires a piped draft for a boundary declaration today.
   - **Acceptance:** a reworded line passes; a missing marker or option blocks; a boundary declaration needs no
     piped draft, and no shipped skill or refocus text asks for one.
+    **Added (maintainer's UX ruling, 2026-11-04 (19:05 local): a human answers a question when they see it, so a reply typed while the turn is still ending (Stop hook running) must just work):** the turn-end check never forces a re-render of a question already shown; a human may already be
+    answering it.
     **Evidence added (DRIFT-018):** 22:07, 2026-11-01, a conversational reply carrying the declared question
     reworded was blocked with "your reply is missing these lines from the message you declared. Add them as
     written", and the line was sent again verbatim. **Again 2026-11-02 (T001's Copilot step):** the reply

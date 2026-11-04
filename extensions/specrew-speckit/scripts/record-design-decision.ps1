@@ -72,6 +72,21 @@ if (-not (Test-SpecrewDesignDecisionPhrase -Text $HumanTurn)) {
         "`"design decision: option 2 - the concerns are testable on their own`". An 'approved for <boundary>' reply is a " +
         'boundary verdict and authorizes proceeding, not a choice between designs; the two are recorded separately on purpose.')
 }
+# Feature 203 T004 (FR-014, FR-022; maintainer's decision 2026-11-04, option 1): -HumanTurn counts only when it is the
+# human's newest typed message as the prompt hook recorded it. The agent supplies the text; the host's record vouches for
+# it. Nothing else is accepted as the human's word, so the decision is recorded in the same turn as their reply.
+$turn = Find-SpecrewNewestTypedTurn -ProjectRoot $root -Text $HumanTurn
+if (-not $turn.Found -or -not [string]::IsNullOrWhiteSpace([string]$turn.Reason)) {
+    $when = if ($null -ne $turn.ObservedAt) { ([DateTimeOffset]$turn.ObservedAt).ToLocalTime().ToString('HH:mm') } else { '' }
+    $why = switch ([string]$turn.Reason) {
+        'no-typed-turn' { 'no message from the human has been recorded in this project yet, so there is nothing to tie it to' }
+        'host-record-unreadable' { "the record of the human's messages could not be read, so their newest message cannot be known" }
+        'newest-turn-differs' { "the newest message the human sent (at $when) is not this text, so the decision cannot be tied to their reply" }
+        'not-typed-by-human' { "the newest message (at $when) was not typed by the human, so it is not their decision" }
+        default { 'the human reply it names could not be confirmed' }
+    }
+    throw ("This design decision was not recorded: {0}. Nothing else has changed. Record it in the same turn as the human's reply, with -HumanTurn exactly as they typed it, or ask them to type the decision again ('design decision: option <n> - <why>')." -f $why)
+}
 if ($Key -cnotmatch '^[a-z][a-z0-9-]{1,63}$') {
     throw "The decision key must be a short lowercase slug (letters, digits and hyphens), for example 'decomposition-style'. Got '$Key'."
 }
@@ -89,6 +104,10 @@ $record = [pscustomobject][ordered]@{
     confirmation       = 'crew-declared-human-reply'
     confirmation_scope = 'design-decision'
     human_turn         = $HumanTurn.Trim()
+    # 203 T004: the typed turn the prompt hook recorded, which vouches for human_turn.
+    turn_identity      = [string]$turn.TurnIdentity
+    turn_host          = [string]$turn.HostKind
+    turn_observed_at   = ([DateTimeOffset]$turn.ObservedAt).ToUniversalTime().ToString('o')
     recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
 }
 
