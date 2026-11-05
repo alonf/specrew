@@ -1324,7 +1324,16 @@ function Get-SpecrewTypedActIdentity {
     $hostKind = (& $prop 'host').Trim().ToLowerInvariant()
     # Feature 203 T004 (option 1): Cursor and Antigravity send no id; their substitute is the prompt event's position key.
     $kind = switch -CaseSensitive ((& $prop 'message_identity').Trim()) { 'stand-in' { 'stand-in' } 'position-key' { 'position-key' } default { 'host-message-id' } }
-    $identity = Get-SpecrewHumanAuthorityHash -Text (@('typed-act', $hostKind, $messageId, (Get-SpecrewHumanAuthorityHash -Text $text)) -join '|')
+    # Co-review round 8 (T004): the id and the text are not one key per message either. Two messages with the same text
+    # can reach the hook under one running prompt_id (the human retypes the approval while the turn ends), so a reader
+    # that has told them apart by the host's own record of each one (Read-SpecrewCitedTypedTurn) hands the key it
+    # resolved as act_identity, and the prompt hook keys a second such message by its own prompt event (occurrence).
+    $resolved = (& $prop 'act_identity').Trim()
+    if (-not [string]::IsNullOrWhiteSpace($resolved)) { return [pscustomobject]@{ Identity = $resolved; Kind = $kind } }
+    $parts = @('typed-act', $hostKind, $messageId, (Get-SpecrewHumanAuthorityHash -Text $text))
+    $occurrence = (& $prop 'occurrence').Trim()
+    if (-not [string]::IsNullOrWhiteSpace($occurrence)) { $parts += $occurrence }
+    $identity = Get-SpecrewHumanAuthorityHash -Text ($parts -join '|')
     return [pscustomobject]@{ Identity = $identity; Kind = $kind }
 }
 
@@ -1678,6 +1687,119 @@ function Invoke-SpecrewTypedActSink {
     return (& $writer @splat)
 }
 
+function Test-SpecrewPromptEventKeyTaken {
+    # Co-review round 8 (T004): has a prompt event already reserved this key? On a host that fires one prompt event per
+    # message (Claude, measured by T001), such a row is ANOTHER message with the same id and text (a reply retyped while the
+    # turn ends, which Claude hands the running turn's prompt_id), never this one again. A turn end's row is not one.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()][AllowEmptyString()][string]$TurnId)
+    if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    foreach ($line in [IO.File]::ReadAllLines($path)) {
+        if ([string]::IsNullOrWhiteSpace($line) -or -not $line.Contains($TurnId)) { continue }
+        $row = $null
+        try { $row = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+        if ($null -eq $row -or -not $row.PSObject.Properties['turn_id'] -or [string]$row.turn_id -cne $TurnId) { continue }
+        $event = if ($row.PSObject.Properties['source_event']) { ([string]$row.source_event).Trim().ToLowerInvariant() } else { '' }
+        if ($event -notin @('', 'stop', 'stop-transcript', 'agentstop')) { return $true }
+    }
+    return $false
+}
+
+function Resolve-SpecrewTranscriptEntryActIdentity {
+    # Co-review round 8 (T004): each transcript entry's act identity, set on its turn as act_identity, from the host's own
+    # record of that message. Entries: { Turn (record_uuid, text); Base (the id-and-text key); Session }, oldest first.
+    #   1 bound   - the hook's output for this prompt event sits under the entry's own record: the key the hook recorded;
+    #   2 pending - the hook has reserved a message with this text whose output is under no record yet (it is still being
+    #               written): that reservation. Each one stands for one entry, newest first. Only rows after the newest row
+    #               that IS under a record can be pending, so an older message's row never stands in for a newer one;
+    #   3 history - a row under the id-and-text key from before the hook printed its prompt event: that key;
+    #   4 missed  - the hook did not record it: the key of its own record ('record:<uuid>'), which no other message has.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[object]]$Entries,
+        [Parameter(Mandatory)][hashtable]$ParentOf,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.HashSet[string]]$Records,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[object]]$HookEvents
+    )
+    if ($Entries.Count -eq 0) { return }
+    # Which prompt events sit under which record: an attachment's parent may be another attachment of the same message.
+    $boundTo = @{}
+    $boundEvents = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($hookEvent in $HookEvents) {
+        $node = [string]$hookEvent.Parent
+        for ($step = 0; $step -lt 32 -and -not [string]::IsNullOrWhiteSpace($node) -and -not $Records.Contains($node) -and $ParentOf.ContainsKey($node); $step++) { $node = [string]$ParentOf[$node] }
+        if ([string]::IsNullOrWhiteSpace($node) -or -not $Records.Contains($node)) { continue }
+        if (-not $boundTo.ContainsKey($node)) { $boundTo[$node] = [System.Collections.Generic.List[string]]::new() }
+        $boundTo[$node].Add([string]$hookEvent.PromptEvent) | Out-Null
+        [void]$boundEvents.Add([string]$hookEvent.PromptEvent)
+    }
+    $rows = [System.Collections.Generic.List[object]]::new()
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if ([IO.File]::Exists($path)) {
+        $index = 0
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            $index++
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $row = $null
+            try { $row = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $row -or -not $row.PSObject.Properties['turn_id']) { continue }
+            $get = { param($n) if ($row.PSObject.Properties[$n]) { [string]$row.$n } else { '' } }
+            $rows.Add([pscustomobject]@{ Index = $index; TurnId = [string]$row.turn_id; PromptEvent = (& $get 'prompt_event'); ContentHash = (& $get 'content_hash')
+                    Session = (& $get 'session_id'); Event = (& $get 'source_event').Trim().ToLowerInvariant() }) | Out-Null
+        }
+    }
+    $byEvent = @{}
+    foreach ($row in $rows) { if (-not [string]::IsNullOrWhiteSpace($row.PromptEvent) -and -not $byEvent.ContainsKey($row.PromptEvent)) { $byEvent[$row.PromptEvent] = $row } }
+    $lastBound = 0
+    foreach ($row in $rows) { if (-not [string]::IsNullOrWhiteSpace($row.PromptEvent) -and $boundEvents.Contains($row.PromptEvent) -and $row.Index -gt $lastBound) { $lastBound = $row.Index } }
+    $pending = [System.Collections.Generic.List[object]]::new()
+    $pendingSeen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($row in $rows) {
+        if ([string]::IsNullOrWhiteSpace($row.PromptEvent) -or $boundEvents.Contains($row.PromptEvent) -or $row.Index -le $lastBound) { continue }
+        if ($row.Event -in @('', 'stop', 'stop-transcript', 'agentstop')) { continue }
+        if ($pendingSeen.Add($row.PromptEvent)) { $pending.Add($row) | Out-Null }
+    }
+    $history = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($row in $rows) { if ([string]::IsNullOrWhiteSpace($row.PromptEvent)) { [void]$history.Add($row.TurnId) } }
+    for ($i = $Entries.Count - 1; $i -ge 0; $i--) {
+        $entry = $Entries[$i]
+        $turn = $entry.Turn
+        $uuid = [string]$turn.record_uuid
+        $resolved = ''
+        if (-not [string]::IsNullOrWhiteSpace($uuid) -and $boundTo.ContainsKey($uuid)) {
+            foreach ($promptEvent in $boundTo[$uuid]) { if ($byEvent.ContainsKey($promptEvent)) { $resolved = [string]$byEvent[$promptEvent].TurnId; break } }
+        }
+        elseif ($pending.Count -gt 0) {
+            $text = ([string]$turn.text).Trim()
+            $hashes = @((Get-SpecrewHumanAuthorityHash -Text $text))
+            try {
+                $form = Resolve-SpecrewApprovalForm -Text $text -HostKind ([string]$turn.host)
+                if ($null -ne $form -and -not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $hashes += Get-SpecrewHumanAuthorityHash -Text ([string]$form.Text).Trim() }
+            }
+            catch { $null = $_ }
+            for ($p = $pending.Count - 1; $p -ge 0; $p--) {
+                $row = $pending[$p]
+                if ($hashes -cnotcontains $row.ContentHash) { continue }
+                if (-not [string]::IsNullOrWhiteSpace($row.Session) -and -not [string]::IsNullOrWhiteSpace([string]$entry.Session) -and $row.Session -cne [string]$entry.Session) { continue }
+                $resolved = $row.TurnId
+                $pending.RemoveAt($p)
+                break
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($resolved) -and $history.Contains([string]$entry.Base)) { $resolved = [string]$entry.Base }
+        if ([string]::IsNullOrWhiteSpace($resolved)) {
+            $resolved = if ([string]::IsNullOrWhiteSpace($uuid)) { [string]$entry.Base }
+            else {
+                $own = [pscustomobject]@{ host = $turn.host; message_id = $turn.message_id; text = $turn.text; occurrence = ('record:' + $uuid) }
+                [string](Get-SpecrewTypedActIdentity -Turn $own).Identity
+            }
+        }
+        $turn | Add-Member -NotePropertyName act_identity -NotePropertyValue $resolved -Force
+    }
+}
+
 function Read-SpecrewCitedTypedTurn {
     # The cited turn from the host's record, in the classifier's turn shape. Returns { Turn; Reason } with Turn $null when
     # the record holds no such turn.
@@ -1701,20 +1823,46 @@ function Read-SpecrewCitedTypedTurn {
     if (-not [string]::IsNullOrWhiteSpace($TranscriptPath) -and [IO.File]::Exists($TranscriptPath)) {
         $hadRecord = $true
         $prop = { param($o, $n) if ($null -ne $o -and $o.PSObject.Properties[$n]) { $o.$n } else { $null } }
-        $matched = [System.Collections.Generic.List[object]]::new()
+        $entries = [System.Collections.Generic.List[object]]::new()
+        # Co-review round 8 (T004): THE HOST'S OWN RECORD TELLS TWO MESSAGES APART, never a time window. Claude can hand two
+        # messages with the same text to the prompt hook under one running prompt_id, so neither the id nor the text says
+        # which message a ledger row is. What does: Claude stores the hook's output for each message as an attachment
+        # under that message's own record (the user entry, or the queued_command attachment of a message absorbed into a
+        # running turn; measured on this project's transcript, Claude Code 2.1.31x: all 132 prompt-hook outputs). The hook
+        # prints its prompt event's id there and keeps it on its reservation (Register-SpecrewExhaustedTurn -PromptEvent),
+        # so each entry resolves, by its own uuid, to the key the hook recorded it under.
+        $parentOf = @{}
+        $records = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $hookEvents = [System.Collections.Generic.List[object]]::new()
         $codexTurnId = ''
         foreach ($line in @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $o = $null
             try { $o = $line | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { continue }
             if ($null -eq $o) { continue }
-            if ([string](& $prop $o 'type') -ceq 'turn_context') { $codexTurnId = [string](& $prop (& $prop $o 'payload') 'turn_id'); continue }
+            $entryType = [string](& $prop $o 'type')
+            if ($entryType -ceq 'turn_context') { $codexTurnId = [string](& $prop (& $prop $o 'payload') 'turn_id'); continue }
+            $uuid = [string](& $prop $o 'uuid')
+            if ($entryType -ceq 'attachment') {
+                $attachment = & $prop $o 'attachment'
+                $attachmentType = [string](& $prop $attachment 'type')
+                if ($attachmentType -ceq 'queued_command') { if (-not [string]::IsNullOrWhiteSpace($uuid)) { [void]$records.Add($uuid) } }
+                elseif (-not [string]::IsNullOrWhiteSpace($uuid)) { $parentOf[$uuid] = [string](& $prop $o 'parentUuid') }
+                if ($attachmentType -ceq 'hook_additional_context' -and [string](& $prop $attachment 'hookEvent') -ceq 'UserPromptSubmit') {
+                    $content = (@(& $prop $attachment 'content') | ForEach-Object { [string]$_ }) -join "`n"
+                    foreach ($m in [regex]::Matches($content, 'specrew-prompt-event:\s*([0-9a-f]{32})')) {
+                        $hookEvents.Add([pscustomobject]@{ Parent = [string](& $prop $o 'parentUuid'); PromptEvent = $m.Groups[1].Value }) | Out-Null
+                    }
+                }
+                continue
+            }
+            if ($entryType -ceq 'user' -and -not [string]::IsNullOrWhiteSpace($uuid)) { [void]$records.Add($uuid) }
             $rp = Get-SpecrewConversationTurnRolePartsFromObject -Object $o
             if ($null -eq $rp -or [string]$rp.role -cne 'user') { continue }
             $formatted = Format-SpecrewConversationTurnText -Turn $rp -Raw
             if ($null -eq $formatted) { continue }
             $messageId = [string](& $prop $o 'promptId')
-            if ([string]::IsNullOrWhiteSpace($messageId) -and [string](& $prop $o 'type') -ceq 'response_item') { $messageId = $codexTurnId }
+            if ([string]::IsNullOrWhiteSpace($messageId) -and $entryType -ceq 'response_item') { $messageId = $codexTurnId }
             if ([string]::IsNullOrWhiteSpace($messageId)) { continue }
             # Who wrote it, from the entry itself: Claude records origin.kind ('human', 'task-notification', ...) and marks
             # a sub-agent's entries isSidechain; the role/parts reader marks metadata and host envelopes as machinery.
@@ -1724,14 +1872,25 @@ function Read-SpecrewCitedTypedTurn {
             if ($side -eq $true -or [string]$side -match '(?i)^\s*true\s*$') { $origin = 'host-injected' }
             $entryOrigin = & $prop $o 'origin'
             if ($null -ne $entryOrigin -and $null -ne (& $prop $entryOrigin 'kind') -and [string](& $prop $entryOrigin 'kind') -cne 'human') { $origin = 'host-injected' }
-            $turn = [pscustomobject]@{ host = $hostKey; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text }
+            # When the human typed it, as the host recorded it: the act is ordered by this, never by when a recovery ran.
+            $entryTime = & $prop $o 'timestamp'
+            $observedAt = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } elseif ($null -ne $entryTime) { [string]$entryTime } else { '' }
+            $turn = [pscustomobject]@{ host = $hostKey; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text; record_uuid = $uuid; observed_at = $observedAt }
             if (Test-SpecrewConversationMetaFlag -Object $o) { $turn | Add-Member -NotePropertyName is_compact_summary -NotePropertyValue $true }
-            $actIdentity = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity
-            if ($messageId -ceq $cited -or $actIdentity -ceq $cited) { $matched.Add([pscustomobject]@{ Turn = $turn; Identity = $actIdentity }) | Out-Null }
+            $entries.Add([pscustomobject]@{ Turn = $turn; Base = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity; Session = [string](& $prop $o 'sessionId') }) | Out-Null
         }
-        $distinct = @($matched | ForEach-Object { $_.Identity } | Sort-Object -Unique)  # specrew-dedup-not-a-path: act identities are lowercase SHA-256 hex
+        Resolve-SpecrewTranscriptEntryActIdentity -ProjectRoot $ProjectRoot -Entries $entries -ParentOf $parentOf -Records $records -HookEvents $hookEvents
+        # The citation names an entry by the act identity it resolved to, or by its record ('entry:<uuid>'). A message id,
+        # or the id-and-text key from before the record resolved it, still names the newest entry it fits; a message id
+        # fitting entries with different texts is ambiguous.
+        $exact = @($entries | Where-Object { [string]$_.Turn.act_identity -ceq $cited -or ('entry:' + [string]$_.Turn.record_uuid) -ceq $cited })
+        if ($exact.Count -ge 1) { return [pscustomobject]@{ Turn = $exact[$exact.Count - 1].Turn; Reason = '' } }
+        $byKey = @($entries | Where-Object { [string]$_.Base -ceq $cited })
+        if ($byKey.Count -ge 1) { return [pscustomobject]@{ Turn = $byKey[$byKey.Count - 1].Turn; Reason = '' } }
+        $byId = @($entries | Where-Object { [string]$_.Turn.message_id -ceq $cited })
+        $distinct = @($byId | ForEach-Object { $_.Base } | Sort-Object -Unique)  # specrew-dedup-not-a-path: act identities are lowercase SHA-256 hex
         if ($distinct.Count -gt 1) { return [pscustomobject]@{ Turn = $null; Reason = 'ambiguous-citation' } }
-        if ($matched.Count -ge 1) { return [pscustomobject]@{ Turn = $matched[$matched.Count - 1].Turn; Reason = '' } }
+        if ($byId.Count -ge 1) { return [pscustomobject]@{ Turn = $byId[$byId.Count - 1].Turn; Reason = '' } }
     }
 
     if (-not [string]::IsNullOrWhiteSpace($PromptText)) {
@@ -1745,13 +1904,17 @@ function Read-SpecrewCitedTypedTurn {
         }
         catch { $formText = [string]$PromptText }
         # The router keys a message with an id by its act identity; one reserved before 203 by the 202 key.
+        # Co-review round 8: or the router's own key for this prompt event, cited as it is (a second message with the same
+        # text under the same prompt id is keyed by its prompt event).
         $reservationKeys = @(
+            $cited
             [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $hostKey; message_id = $cited; text = [string]$PromptText })).Identity
             [string](Get-SpecrewTypedTurnIdentity -Response $formText -HostKind $hostKey -MessageId $cited)
         )
         $contentHash = Get-SpecrewHumanAuthorityHash -Text $formText.Trim()
         $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
         $reservation = $null
+        $reservationAt = ''
         if ([IO.File]::Exists($path)) {
             foreach ($line in [IO.File]::ReadAllLines($path)) {
                 if ([string]::IsNullOrWhiteSpace($line)) { continue }
@@ -1762,12 +1925,17 @@ function Read-SpecrewCitedTypedTurn {
                 $event = if ($entry.PSObject.Properties['source_event']) { ([string]$entry.source_event).Trim().ToLowerInvariant() } else { '' }
                 if ($event -in @('', 'stop', 'stop-transcript', 'agentstop')) { continue }
                 $reservation = $entry
+                # The time as written: ConvertFrom-Json would hand it back as a local [datetime].
+                $atMatch = [regex]::Match($line, '"observed_at"\s*:\s*"([^"]+)"')
+                $reservationAt = if ($atMatch.Success) { $atMatch.Groups[1].Value } else { '' }
                 break
             }
         }
         if ($null -ne $reservation) {
             $origin = if ($reservation.PSObject.Properties['turn_origin'] -and -not [string]::IsNullOrWhiteSpace([string]$reservation.turn_origin)) { [string]$reservation.turn_origin } else { 'unknown' }
-            $turn = [pscustomobject]@{ host = $hostKey; message_id = $cited; message_identity = $identityKind; origin = $origin; text = [string]$PromptText }
+            # The key the router recorded it under, unless that is the 202 key (history), which is no act identity.
+            $actIdentity = if ([string]$reservation.turn_id -ceq $reservationKeys[2]) { '' } else { [string]$reservation.turn_id }
+            $turn = [pscustomobject]@{ host = $hostKey; message_id = $cited; message_identity = $identityKind; origin = $origin; text = [string]$PromptText; act_identity = $actIdentity; observed_at = $reservationAt }
             return [pscustomobject]@{ Turn = $turn; Reason = '' }
         }
     }
@@ -1880,7 +2048,31 @@ function Write-SpecrewTypedAct {
             $result.Written = $true
         }
         default {
-            $written = Invoke-SpecrewTypedActSink -ProjectRoot $ProjectRoot -Act $act -Text ([string]$act.Text) -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc
+            # Co-review round 8 (T004): RESERVE BEFORE MINTING, as the router does (W70). The turn used to be registered after
+            # the writer, its result discarded, so a ledger that could not be appended left a spendable approval with no
+            # record that its turn had minted, and once that approval was spent the next turn end recovered the same entry
+            # into a fresh one. No reservation, no mint.
+            $reserved = $false
+            try {
+                $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity) -HostKind $HostKind -SourceEvent $SourceEvent `
+                        -MintedWriters '' -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -NowUtc $NowUtc)
+            }
+            catch { $reserved = $false }
+            if (-not $reserved) { $act.Kind = 'none'; $act.Reason = 'not-reserved'; $act.Report = $true; return $result }
+            # Co-review round 8: the act is dated by when the human typed it, as the host recorded it, so supersession
+            # orders recovered acts by that and not by when this recovery ran.
+            $actAt = $NowUtc
+            $typedAt = if ($null -ne $read.Turn -and $read.Turn.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $read.Turn.observed_at } else { $null }
+            if ($null -ne $typedAt) { $actAt = ([DateTimeOffset]$typedAt).ToUniversalTime().ToString('o') }
+            $written = $null
+            try { $written = Invoke-SpecrewTypedActSink -ProjectRoot $ProjectRoot -Act $act -Text ([string]$act.Text) -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $actAt }
+            catch {
+                # Reserved and not saved: said at the human's next message, as the router says it (received is not saved).
+                $shape = Get-SpecrewTypedAuthorityShape -Text ([string]$act.Text)
+                if ($null -ne $shape) { $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey ([string]$act.TurnIdentity) -HostKind $HostKind -SessionId $SessionId -Reason 'not-saved' -NowUtc $NowUtc }
+                $act.Kind = 'none'; $act.Reason = 'not-saved'; $act.Report = $true
+                return $result
+            }
             $result.Written = ($null -ne $written)
         }
     }
@@ -2156,6 +2348,9 @@ function Register-SpecrewExhaustedTurn {
         # Feature 203 T004 (FR-022): the dispatcher's origin for a prompt (typed-user | host-injected | unknown), so the
         # reservation is the host's record of that message for Read-SpecrewCitedTypedTurn. Empty from the turn end.
         [AllowEmptyString()][AllowNull()][string]$TurnOrigin,
+        # Co-review round 8 (T004): the id the prompt hook gave this prompt event and printed in its output, which Claude
+        # records under the message's own transcript record. It is how the turn end finds which message this row is.
+        [AllowEmptyString()][AllowNull()][string]$PromptEvent,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
@@ -2169,6 +2364,7 @@ function Register-SpecrewExhaustedTurn {
             minted = [string]$MintedWriters; session_id = [string]$SessionId; identity = [string]$Identity; observed_at = $NowUtc
         }
         if (-not [string]::IsNullOrWhiteSpace($TurnOrigin)) { $entry | Add-Member -NotePropertyName turn_origin -NotePropertyValue ([string]$TurnOrigin).Trim() }
+        if (-not [string]::IsNullOrWhiteSpace($PromptEvent)) { $entry | Add-Member -NotePropertyName prompt_event -NotePropertyValue ([string]$PromptEvent).Trim() }
         # -ErrorAction Stop, and it is load-bearing. Add-Content raises a NON-TERMINATING error, so a
         # plain try/catch around it never fires: the append failed, the catch was skipped, and this
         # returned $true. A reservation that reports success it did not achieve is precisely the

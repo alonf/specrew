@@ -112,6 +112,18 @@ function Test-SpecrewDesignDecisionPhrase {
     return ($Text -imatch '^\s*design\s+decision\b')
 }
 
+function Get-SpecrewDesignDecisionChoice {
+    # Co-review round 8 (T004): THE OPTION THE HUMAN'S OWN SENTENCE NAMES, read from it: `design decision: option 2 - ...`,
+    # `design decision: 2`, `design decision - option B because ...`. '' when it names none. The record's `chosen` must be
+    # this, so a valid turn citation can never carry a choice the human did not make.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string] $Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+    $m = [regex]::Match($Text, '^\s*design\s+decision\b\s*[:\-\u2013\u2014]?\s*(?:option\s+)?(?<id>[^\s,;:.!?\-\u2013\u2014]+)', 'IgnoreCase')
+    if (-not $m.Success) { return '' }
+    return $m.Groups['id'].Value.Trim()
+}
+
 function Test-SpecrewDesignDecisionRecord {
     # THE GATE'S VIEW. Returns a result object rather than a bare boolean so a refusal can name which rule
     # failed - the standard this batch keeps rediscovering: a check that reports only "invalid" makes the
@@ -188,6 +200,17 @@ function Test-SpecrewDesignDecisionRecord {
     # was never shown, which is the same defect as handing options down, arriving one step later.
     if (-not $ids.Contains(([string]$Record.chosen).Trim())) {
         return (New-Result -Valid $false -Reason 'design-decision-chosen-not-among-options')
+    }
+    # Co-review round 8 (T004): AND IT MUST BE THE OPTION THE HUMAN'S SENTENCE NAMES. The choice used to be a separate
+    # parameter, so a real reply choosing option 2 could carry a record of option 1. A sentence that names no option
+    # recorded is no decision between them.
+    $named = Get-SpecrewDesignDecisionChoice -Text ([string]$Record.human_turn)
+    $namedId = @($ids | Where-Object { [string]::Equals($_, $named, [StringComparison]::OrdinalIgnoreCase) })
+    if ($namedId.Count -ne 1) {
+        return (New-Result -Valid $false -Reason 'design-decision-human-turn-names-no-option')
+    }
+    if ([string]$namedId[0] -cne ([string]$Record.chosen).Trim()) {
+        return (New-Result -Valid $false -Reason 'design-decision-chosen-not-the-human-choice')
     }
     return (New-Result -Valid $true -Reason 'design-decision-valid')
 }

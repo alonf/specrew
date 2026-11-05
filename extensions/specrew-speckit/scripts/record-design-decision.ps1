@@ -125,6 +125,12 @@ if (-not $validation.valid) {
             ("The chosen option '{0}' is not one of the options recorded ({1}). Record the options the human actually saw, then the one they picked." -f $record.chosen, (($options | ForEach-Object { $_.id }) -join ', '))
         }
         'design-decision-option-ids-not-unique' { 'Two options share an id, so the choice would be ambiguous.' }
+        'design-decision-human-turn-names-no-option' {
+            ("The human's reply does not name one of the options recorded ({0}), so it does not say which one they chose. Ask them to type the decision with its option, for example 'design decision: option {1} - <why>'." -f (($options | ForEach-Object { $_.id }) -join ', '), [string]$options[0].id)
+        }
+        'design-decision-chosen-not-the-human-choice' {
+            ("The human's reply chose option '{0}', not '{1}'. Record the option they named." -f (Get-SpecrewDesignDecisionChoice -Text $record.human_turn), $record.chosen)
+        }
         default { 'The decision could not be recorded in a form the gate can read.' }
     }
     throw ("This design decision was not recorded, and nothing else has changed. {0}" -f $guidance)

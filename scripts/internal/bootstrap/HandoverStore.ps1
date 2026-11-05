@@ -1011,7 +1011,9 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         # Feature 203 T004 (FR-022): the host's id for the prompt's message and its kind ('declared' | 'stand-in' | 'position-key'), from the
         # dispatcher; the citation of a verdict read from the prompt itself rather than from a transcript entry.
         [Parameter()][AllowNull()][string] $MessageId = $null,
-        [Parameter()][AllowNull()][string] $MessageIdentity = $null
+        [Parameter()][AllowNull()][string] $MessageIdentity = $null,
+        # Co-review round 8 (T004): the key the router reserved this prompt's message under, cited as it is.
+        [Parameter()][AllowNull()][string] $PromptActIdentity = $null
     )
 
     $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
@@ -1153,11 +1155,19 @@ function Invoke-SpecrewBoundaryVerdictCapture {
             # and the prompt hook's reservation of that message is the record it is checked against.
             $citation = @{ TurnIdentity = ''; TranscriptPath = $null; PromptText = $null; MessageIdentity = $MessageIdentity }
             $capturedMessageId = if ($captured.PSObject.Properties['MessageId']) { [string]$captured.MessageId } else { '' }
+            $capturedEntryId = if ($captured.PSObject.Properties['EntryId']) { [string]$captured.EntryId } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($capturedMessageId) -and (Get-Command Get-SpecrewTypedActIdentity -ErrorAction SilentlyContinue)) {
-                $citedTurn = [pscustomobject]@{ host = ([string]$HostKind).Trim().ToLowerInvariant(); message_id = $capturedMessageId; message_identity = 'declared'; text = [string]$captured.TurnText }
-                $citation.TurnIdentity = [string](Get-SpecrewTypedActIdentity -Turn $citedTurn).Identity
+                # Co-review round 8: the entry is cited by its own record when the host gives one, so two messages with the
+                # same id and text are never taken for each other.
+                $citation.TurnIdentity = if (-not [string]::IsNullOrWhiteSpace($capturedEntryId)) { 'entry:' + $capturedEntryId } else {
+                    [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = ([string]$HostKind).Trim().ToLowerInvariant(); message_id = $capturedMessageId; message_identity = 'declared'; text = [string]$captured.TurnText })).Identity
+                }
                 $citation.TranscriptPath = $TranscriptPath
                 $citation.MessageIdentity = 'declared'
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($PromptActIdentity)) {
+                $citation.TurnIdentity = [string]$PromptActIdentity
+                $citation.PromptText = $LastUserMessage
             }
             elseif (-not [string]::IsNullOrWhiteSpace($MessageId)) {
                 $citation.TurnIdentity = [string]$MessageId
@@ -1236,8 +1246,13 @@ function Invoke-SpecrewTypedAuthorityCapture {
         # unknown). Empty from a path that reads no origin (the turn end), which keeps its own checks.
         [AllowEmptyString()][AllowNull()][string]$TurnOrigin,
         # Feature 203 T004: the kind of the message id ('declared' | 'stand-in' | 'position-key'), from the dispatcher.
-        [AllowEmptyString()][AllowNull()][string]$MessageIdentity
+        [AllowEmptyString()][AllowNull()][string]$MessageIdentity,
+        # Co-review round 8 (T004): this prompt event's own id, which the hook prints and the host records under the
+        # message's own transcript record (Claude). Empty from the turn end and from hosts that keep no such record.
+        [AllowEmptyString()][AllowNull()][string]$PromptEvent
     )
+    # The key this message was reserved under, for the prompt path's verdict capture to cite (one key per message).
+    $script:SpecrewTypedAuthorityLastKey = ''
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
     # Co-review round 6 (iteration 002): ONLY A MESSAGE THE HUMAN TYPED RECORDS AN APPROVAL. The dispatcher labels a replay
     # of the hook's own output 'host-injected', and a message whose records it could not read 'unknown', and the workshop
@@ -1312,11 +1327,23 @@ function Invoke-SpecrewTypedAuthorityCapture {
             $keyTurn = [pscustomobject]@{ host = ([string]$HostKind).Trim().ToLowerInvariant(); message_id = [string]$MessageId; text = $receivedResponse }
             $turnId = [string](Get-SpecrewTypedActIdentity -Turn $keyTurn).Identity
             $identityKind = 'typed-act'
+            # Co-review round 8 (T004): THE SAME TEXT UNDER THE SAME ID IS STILL ANOTHER MESSAGE. The human retypes
+            # 'approved for review round' while the turn that carried it ends; Claude hands the retype the running turn's
+            # prompt_id, so the id-and-text key is the first message's, and the retype was dropped as already recorded.
+            # A prompt event that finds that key reserved by another prompt event keys this message by its own event.
+            # Only where the host records each message (the prompt event's id is printed and stored under it), and never
+            # on a stand-in or position key, whose hosts may fire one message twice.
+            if (-not [string]::IsNullOrWhiteSpace($PromptEvent) -and ([string]$MessageIdentity).Trim() -cnotin @('stand-in', 'position-key') -and
+                (Test-SpecrewPromptEventKeyTaken -ProjectRoot $ProjectRoot -TurnId $turnId)) {
+                $keyTurn | Add-Member -NotePropertyName occurrence -NotePropertyValue ('prompt-event:' + $PromptEvent.Trim())
+                $turnId = [string](Get-SpecrewTypedActIdentity -Turn $keyTurn).Identity
+            }
             $messageKeyRecorded = [bool](Test-SpecrewMessageKeyRecorded -ProjectRoot $ProjectRoot -MessageKey $messageKey -ContentHash $contentHash)
         }
         catch { $turnId = ''; $messageKeyRecorded = $true }
         if ($messageKeyRecorded) { return }
     }
+    $script:SpecrewTypedAuthorityLastKey = $turnId
     if (-not [string]::IsNullOrWhiteSpace($turnId) -and (Get-Command Test-SpecrewTypedTurnExhausted -ErrorAction SilentlyContinue)) {
         $exhausted = $true
         try {
@@ -1376,7 +1403,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId `
                     -HostKind $HostKind -SourceEvent $SourceEvent -MintedWriters '' -ContentHash $contentHash `
-                    -SessionId $SessionId -Identity $identityKind -TurnOrigin $TurnOrigin -NowUtc $NowUtc)
+                    -SessionId $SessionId -Identity $identityKind -TurnOrigin $TurnOrigin -PromptEvent $PromptEvent -NowUtc $NowUtc)
         }
         catch { $reserved = $false }
         if (-not $reserved) { return }
@@ -1407,6 +1434,9 @@ function Invoke-SpecrewTypedAuthorityCapture {
             host = ([string]$HostKind).Trim().ToLowerInvariant(); message_id = [string]$MessageId
             message_identity = $(if (([string]$MessageIdentity).Trim() -cin @('stand-in', 'position-key')) { ([string]$MessageIdentity).Trim() } else { 'declared' }); origin = $origin; text = $receivedResponse
         }
+        # Co-review round 8: the classifier keys the act as this router reserved it (a second message with the same id and
+        # text is keyed by its own prompt event).
+        if ($identityKind -ceq 'typed-act' -and -not [string]::IsNullOrWhiteSpace($turnId)) { $turnRecord | Add-Member -NotePropertyName act_identity -NotePropertyValue $turnId }
         try {
             $act = Resolve-SpecrewTypedAct -Turn $turnRecord -Pending (Get-SpecrewTypedActPendingState -ProjectRoot $ProjectRoot) -RecordedIdentities (Get-SpecrewTypedActRecordedIdentities -ProjectRoot $ProjectRoot)
             if ([string]$act.Kind -cnotin @('none', 'boundary-verdict', 'workshop-reply', 'withdrawal')) {
@@ -1484,7 +1514,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind `
                 -SourceEvent $SourceEvent -MintedWriters ($mintedBy -join ',') -ContentHash $contentHash `
-                -SessionId $SessionId -Identity $identityKind -NowUtc $NowUtc | Out-Null
+                -SessionId $SessionId -Identity $identityKind -PromptEvent $PromptEvent -NowUtc $NowUtc | Out-Null
         }
         catch { $null = $_ }
     }
@@ -1515,7 +1545,9 @@ function Update-SpecrewRollingHandover {
         # Feature 202 iteration 002, T017 (FR-027, DA-2): the host's ID for the prompt's message (prompt events only),
         # and whether the host binding declares one at all: 'declared', 'none', or empty from a caller that predates it.
         [Parameter()][AllowNull()][string] $MessageId = $null,
-        [Parameter()][AllowNull()][string] $MessageIdentity = $null
+        [Parameter()][AllowNull()][string] $MessageIdentity = $null,
+        # Co-review round 8 (T004): this prompt event's own id, printed in the hook's output (prompt events only).
+        [Parameter()][AllowNull()][string] $PromptEvent = $null
     )
 
     $getProp = {
@@ -1620,7 +1652,8 @@ function Update-SpecrewRollingHandover {
         # which is a second act - correctly.
         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
             -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc `
-            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId -TurnOrigin $TurnOrigin -MessageIdentity $MessageIdentity
+            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId -TurnOrigin $TurnOrigin -MessageIdentity $MessageIdentity -PromptEvent $PromptEvent
+        $promptActKey = [string]$script:SpecrewTypedAuthorityLastKey
         # T017 (DA-2 condition 2): an approval an earlier turn end found not recorded on this host is said here,
         # once, in the turn the human reads.
         $notRecordedDisclosure = $null
@@ -1677,7 +1710,7 @@ function Update-SpecrewRollingHandover {
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost -MessageId $MessageId -MessageIdentity $MessageIdentity
+            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost -MessageId $MessageId -MessageIdentity $MessageIdentity -PromptActIdentity $promptActKey
         # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
         # where the phrase first appears, and the alternative is the human learning it from a recap two
         # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).
@@ -2039,7 +2072,9 @@ function Update-SpecrewRollingHandover {
                     $recovered = $null
                     if (-not [string]::IsNullOrWhiteSpace($ratMessageId) -and (Get-Command Write-SpecrewTypedAct -ErrorAction SilentlyContinue)) {
                         $citedTurn = [pscustomobject]@{ host = ([string]$fromHost).Trim().ToLowerInvariant(); message_id = $ratMessageId; message_identity = 'declared'; text = $ratText }
-                        $citation = [string](Get-SpecrewTypedActIdentity -Turn $citedTurn).Identity
+                        # Co-review round 8: by its own record when the host gives one (two messages may share id and text).
+                        $ratEntryId = if ($roundApprovalTurns[$rat].PSObject.Properties['entry_id']) { [string]$roundApprovalTurns[$rat].entry_id } else { '' }
+                        $citation = if (-not [string]::IsNullOrWhiteSpace($ratEntryId)) { 'entry:' + $ratEntryId } else { [string](Get-SpecrewTypedActIdentity -Turn $citedTurn).Identity }
                         try {
                             $recovered = Write-SpecrewTypedAct -ProjectRoot $ProjectRoot -HostKind $fromHost -TurnIdentity $citation -TranscriptPath $TranscriptPath `
                                 -SourceEvent 'stop-transcript' -SessionId $SessionId -LegacyTurnPosition ([string]$rat) -LegacyTurnArrival $ratArrival -ExceptBoundaryVerdict -NowUtc $NowUtc
@@ -2051,7 +2086,7 @@ function Update-SpecrewRollingHandover {
                         try { $isWithdrawal = [bool](Test-SpecrewApprovalWithdrawalPhrase -Text $ratText).Matched } catch { $isWithdrawal = $false }
                     }
                     if ($null -eq $recovered -or ($isWithdrawal -and -not [bool]$recovered.Written)) {
-                        Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
+                        $null = Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
                             -Response $ratText -HostKind $fromHost `
                             -SourceEvent 'stop-transcript' -NowUtc $NowUtc `
                             -TurnPosition ([string]$rat) -TurnArrival $ratArrival -MessageId $ratMessageId -SessionId $SessionId

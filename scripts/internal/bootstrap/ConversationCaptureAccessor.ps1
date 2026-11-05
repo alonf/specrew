@@ -677,7 +677,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
     )
     # Feature 203 T004 (FR-022): the captured human turn's own message id and text travel with the verdict, so the writer
     # can cite that turn and re-read it; both are empty when the verdict came from the prompt this hook was handed.
-    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null; MessageId = ''; TurnText = '' }
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null; MessageId = ''; TurnText = ''; EntryId = '' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
     # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
@@ -807,6 +807,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
         if ($null -ne $humanTurn -and $humanTurn.PSObject.Properties['message_id']) {
             $result.MessageId = [string]$humanTurn.message_id
             $result.TurnText = [string]$humanTurn.text
+            # Co-review round 8 (T004): the entry's own record, by which the writer tells it from another message with
+            # the same id and text.
+            if ($humanTurn.PSObject.Properties['entry_id']) { $result.EntryId = [string]$humanTurn.entry_id }
         }
         $result.Reason = 'captured'
         return $result

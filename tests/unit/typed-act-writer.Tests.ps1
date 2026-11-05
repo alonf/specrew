@@ -453,13 +453,38 @@ function New-QueuedReplyFixture {
     return [pscustomobject]@{ Root = $root; Transcript = (Join-Path $root 'transcript.jsonl') }
 }
 function Add-ClaudeEntry {
+    # Returns the entry's own uuid, the record Claude keeps the hook's output under.
     param($Fixture, [string]$Role, [string]$Text, [string]$PromptId)
+    $uuid = [guid]::NewGuid().ToString()
     $entry = if ($Role -eq 'user') {
-        @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = [DateTimeOffset]::UtcNow.ToString('o'); sessionId = 's1'; promptId = $PromptId
+        @{ type = 'user'; uuid = $uuid; timestamp = [DateTimeOffset]::UtcNow.ToString('o'); sessionId = 's1'; promptId = $PromptId
             origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $Text } }
     }
-    else { @{ type = 'assistant'; uuid = [guid]::NewGuid().ToString(); message = @{ role = 'assistant'; content = @(@{ type = 'text'; text = $Text }) } } }
+    else { @{ type = 'assistant'; uuid = $uuid; message = @{ role = 'assistant'; content = @(@{ type = 'text'; text = $Text }) } } }
     Add-Content -LiteralPath $Fixture.Transcript -Value ($entry | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
+    return $uuid
+}
+function Add-HookAttachment {
+    # Claude stores the prompt hook's output as an attachment under the message's own record (measured on this project's
+    # transcript, Claude Code 2.1.31x: every UserPromptSubmit output sits under the user entry, or under the queued_command
+    # attachment of a message absorbed into a running turn).
+    param($Fixture, [string]$ParentUuid, [AllowNull()][string[]]$Output)
+    $entry = @{ type = 'attachment'; uuid = [guid]::NewGuid().ToString(); parentUuid = $ParentUuid; sessionId = 's1'; timestamp = [DateTimeOffset]::UtcNow.ToString('o')
+        attachment = @{ type = 'hook_additional_context'; content = @((@($Output) | Where-Object { $_ }) -join "`n"); hookName = 'UserPromptSubmit'; hookEvent = 'UserPromptSubmit' } }
+    Add-Content -LiteralPath $Fixture.Transcript -Value ($entry | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
+}
+function Invoke-PromptHook {
+    # The prompt hook as its own process; returns what it printed (the hook's output Claude records).
+    param($Fixture, [string]$Text, [string]$PromptId)
+    $process = Start-HookProcess -ArgList (Get-PromptHookArgs -Fixture $Fixture -Text $Text -PromptId $PromptId)
+    return (Wait-HookProcess $process)
+}
+function Send-ClaudeMessage {
+    # A typed message as Claude handles it: the prompt hook runs, then the entry and the hook's output under it.
+    param($Fixture, [string]$Text, [string]$PromptId)
+    $out = Invoke-PromptHook -Fixture $Fixture -Text $Text -PromptId $PromptId
+    $uuid = Add-ClaudeEntry -Fixture $Fixture -Role 'user' -Text $Text -PromptId $PromptId
+    Add-HookAttachment -Fixture $Fixture -ParentUuid $uuid -Output $out
 }
 function Get-PromptHookArgs {
     param($Fixture, [string]$Text, [string]$PromptId)
@@ -480,7 +505,11 @@ function Start-HookProcess {
     $psi.Environment['SPECREW_MODULE_PATH'] = $repoRoot
     return [Diagnostics.Process]::Start($psi)
 }
-function Wait-HookProcess { param($Process) [void]$Process.StandardOutput.ReadToEnd(); [void]$Process.StandardError.ReadToEnd(); $Process.WaitForExit() }
+function Wait-HookProcess {
+    param($Process)
+    $stdout = $Process.StandardOutput.ReadToEnd(); [void]$Process.StandardError.ReadToEnd(); $Process.WaitForExit()
+    return [string[]]@($stdout -split "`r?`n" | Where-Object { $_ })
+}
 function Get-ReplyKeys {
     param($Fixture, [string]$Text)
     $path = Join-Path $Fixture.Root '.specrew/authority/exhausted-turns.jsonl'
@@ -507,16 +536,17 @@ foreach ($reply in @('1', 'approved for review round')) {
     $running = 'prompt-running-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     $first = 'which review host should run the next round? show me the options'
     # The running turn: the human's message, recorded by the prompt hook, and the reply that asks the question.
-    Add-ClaudeEntry -Fixture $f7 -Role 'user' -Text $first -PromptId $running
-    $null = & pwsh @(Get-PromptHookArgs -Fixture $f7 -Text $first -PromptId $running) *> $null
-    Add-ClaudeEntry -Fixture $f7 -Role 'assistant' -Text 'Two hosts can run it. Type one: 1 - codex, 2 - copilot.'
-    # The turn is ending: its Stop hook runs, and the human answers now. The queued reply carries the running turn's id.
+    Send-ClaudeMessage -Fixture $f7 -Text $first -PromptId $running
+    $null = Add-ClaudeEntry -Fixture $f7 -Role 'assistant' -Text 'Two hosts can run it. Type one: 1 - codex, 2 - copilot.'
+    # The turn is ending: its Stop hook runs, and the human answers now. The queued reply carries the running turn's id;
+    # its hook runs when it is sent, and Claude records it, with the hook's output under it, when it is dequeued.
     $stop = Start-HookProcess -ArgList (Get-StopHookArgs -Fixture $f7)
-    Add-ClaudeEntry -Fixture $f7 -Role 'user' -Text $reply -PromptId $running
-    $prompt = Start-HookProcess -ArgList (Get-PromptHookArgs -Fixture $f7 -Text $reply -PromptId $running)
-    Wait-HookProcess $stop; Wait-HookProcess $prompt
+    $promptOut = Invoke-PromptHook -Fixture $f7 -Text $reply -PromptId $running
+    $replyUuid = Add-ClaudeEntry -Fixture $f7 -Role 'user' -Text $reply -PromptId $running
+    Add-HookAttachment -Fixture $f7 -ParentUuid $replyUuid -Output $promptOut
+    $null = Wait-HookProcess $stop
     # The next turn acts on it, and ends.
-    Add-ClaudeEntry -Fixture $f7 -Role 'assistant' -Text 'Acting on your reply.'
+    $null = Add-ClaudeEntry -Fixture $f7 -Role 'assistant' -Text 'Acting on your reply.'
     $null = & pwsh @(Get-StopHookArgs -Fixture $f7) *> $null
 
     $replyKeys = @(Get-ReplyKeys -Fixture $f7 -Text $reply)
@@ -531,6 +561,98 @@ foreach ($reply in @('1', 'approved for review round')) {
         Assert-True ($null -ne $pending -and [string]$pending.turn_identity -ceq $ownKey) ("[{0}] and the next turn finds it waiting, as the reply's own act" -f $reply)
     }
 }
+
+function Get-PendingRoundTurn {
+    param($Fixture)
+    $pending = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $Fixture.Root
+    if ($null -eq $pending -or -not $pending.PSObject.Properties['turn_identity']) { return '' }
+    return [string]$pending.turn_identity
+}
+function Get-RoundSupersessionCount {
+    param($Fixture)
+    $path = Join-Path $Fixture.Root '.specrew/review/round-approval/captures.jsonl'
+    if (-not (Test-Path -LiteralPath $path)) { return 0 }
+    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-superseded' }).Count
+}
+$approval = 'approved for review round'
+
+# Case 7b (co-review round 8, finding 2; maintainer's instruction 2026-11-05): THE SAME LINE RETYPED UNDER THE SAME PROMPT ID
+# IS A SECOND MESSAGE. The running turn's message was itself `approved for review round`, and the human types it again
+# while the turn ends: Claude hands the retype the running turn's prompt_id, so id and text are the first message's. The
+# discriminator is the host's own record of each message, never a time window: Claude stores each prompt hook's output
+# under that message's own transcript record, and the hook names its prompt event there.
+Write-Host '--- case 7b: the same approval retyped while the turn ends, under the running prompt id, is its own act ---'
+$f7b = New-QueuedReplyFixture
+$running7b = 'prompt-running-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+Send-ClaudeMessage -Fixture $f7b -Text $approval -PromptId $running7b
+$firstTurn7b = Get-PendingRoundTurn -Fixture $f7b
+$null = Add-ClaudeEntry -Fixture $f7b -Role 'assistant' -Text 'Launching the round.'
+$stop7b = Start-HookProcess -ArgList (Get-StopHookArgs -Fixture $f7b)
+$out7b = Invoke-PromptHook -Fixture $f7b -Text $approval -PromptId $running7b
+$retype7b = Add-ClaudeEntry -Fixture $f7b -Role 'user' -Text $approval -PromptId $running7b
+Add-HookAttachment -Fixture $f7b -ParentUuid $retype7b -Output $out7b
+$null = Wait-HookProcess $stop7b
+$null = Add-ClaudeEntry -Fixture $f7b -Role 'assistant' -Text 'Acting on your reply.'
+$null = & pwsh @(Get-StopHookArgs -Fixture $f7b) *> $null
+$keys7b = @(Get-ReplyKeys -Fixture $f7b -Text $approval)
+$held7b = Get-PendingRoundTurn -Fixture $f7b
+Assert-True ($keys7b.Count -eq 2) ("the retyped approval is recorded as a second act (got {0} key(s))" -f $keys7b.Count)
+Assert-True ((Get-RoundCaptureCount -Fixture $f7b) -eq 2 -and -not [string]::IsNullOrWhiteSpace($held7b) -and $held7b -cne $firstTurn7b -and $keys7b -ccontains $held7b) ("and the next turn finds the retype waiting, not the first approval (captures {0})" -f (Get-RoundCaptureCount -Fixture $f7b))
+Assert-True ((Get-RoundSupersessionCount -Fixture $f7b) -eq 1 -and (Get-NotRecordedCount -Fixture $f7b) -eq 0) 'with one fact naming the approval it retired, and nothing reported as not recorded'
+
+# Case 7c: the entry is in the transcript before the hook's output is (Claude writes a typed entry first). The hook's
+# reservation of a message with that text, under no record yet, stands for it; the turn end recovers nothing twice.
+Write-Host '--- case 7c: an entry whose hook output is not written yet is not recovered a second time ---'
+$f7c = New-QueuedReplyFixture
+$id7c = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$out7c = Invoke-PromptHook -Fixture $f7c -Text $approval -PromptId $id7c
+$entry7c = Add-ClaudeEntry -Fixture $f7c -Role 'user' -Text $approval -PromptId $id7c
+$null = & pwsh @(Get-StopHookArgs -Fixture $f7c) *> $null
+Add-HookAttachment -Fixture $f7c -ParentUuid $entry7c -Output $out7c
+$null = & pwsh @(Get-StopHookArgs -Fixture $f7c) *> $null
+Assert-True (@(Get-ReplyKeys -Fixture $f7c -Text $approval).Count -eq 1 -and (Get-RoundCaptureCount -Fixture $f7c) -eq 1) ("one key and one capture (got {0} key(s), {1} capture(s))" -f @(Get-ReplyKeys -Fixture $f7c -Text $approval).Count, (Get-RoundCaptureCount -Fixture $f7c))
+
+# Case 7d (maintainer's instruction 2026-11-05): no double-fire tolerance folds a real retype on Claude. The approval typed
+# twice as two messages a second apart is two acts.
+Write-Host '--- case 7d: the same approval typed twice within a few seconds on Claude is two acts ---'
+$f7d = New-QueuedReplyFixture
+Send-ClaudeMessage -Fixture $f7d -Text $approval -PromptId ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$first7d = Get-PendingRoundTurn -Fixture $f7d
+Send-ClaudeMessage -Fixture $f7d -Text $approval -PromptId ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$null = & pwsh @(Get-StopHookArgs -Fixture $f7d) *> $null
+$held7d = Get-PendingRoundTurn -Fixture $f7d
+Assert-True (@(Get-ReplyKeys -Fixture $f7d -Text $approval).Count -eq 2 -and (Get-RoundCaptureCount -Fixture $f7d) -eq 2 -and $held7d -cne $first7d) ("two keys, two captures, the second waiting (got {0} key(s))" -f @(Get-ReplyKeys -Fixture $f7d -Text $approval).Count)
+
+# ---------------------------------------------------------------------------------------------------
+# Case 9 (co-review round 8, finding 1): RESERVE BEFORE MINTING, on the recovery path too. A ledger that can be read but not
+# appended: the recovery writer wrote the approval and then failed to register the turn, so after the approval was spent
+# the next turn end recovered the same entry into a fresh one. No reservation, no approval.
+Write-Host '--- case 9: a turn the ledger cannot record mints nothing on the recovery path ---'
+$f9 = New-QueuedReplyFixture
+$id9 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$null = Add-ClaudeEntry -Fixture $f9 -Role 'user' -Text $approval -PromptId $id9
+$ledger9 = Join-Path $f9.Root '.specrew/authority/exhausted-turns.jsonl'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ledger9) | Out-Null
+Set-Content -LiteralPath $ledger9 -Value '{"schema_version":"1.0","fact_type":"typed-turn-exhausted","turn_id":"unrelated"}' -Encoding UTF8
+(Get-Item -LiteralPath $ledger9).IsReadOnly = $true
+try {
+    $cite9 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id9; text = $approval })).Identity
+    $r9 = Write-SpecrewTypedAct -ProjectRoot $f9.Root -HostKind 'claude' -TurnIdentity $cite9 -TranscriptPath $f9.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
+}
+finally { (Get-Item -LiteralPath $ledger9).IsReadOnly = $false }
+Assert-True (-not [bool]$r9.Written -and $null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f9.Root)) ("no approval is written when its turn cannot be reserved (written={0})" -f [bool]$r9.Written)
+
+# Case 10 (co-review round 8, finding 3): A RECOVERED ACT IS DATED BY WHEN IT WAS TYPED. Approval B was captured at 10:10;
+# an older missed approval A, typed at 10:00, is recovered at 10:20. A must not retire B.
+Write-Host '--- case 10: an older approval recovered late does not retire a newer one ---'
+$f10 = New-QueuedReplyFixture
+$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+$id10 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$entry10 = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = '2026-11-04T10:00:00.000Z'; sessionId = 's1'; promptId = $id10; origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $approval } }
+Add-Content -LiteralPath $f10.Transcript -Value ($entry10 | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
+$cite10 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id10; text = $approval })).Identity
+$null = Write-SpecrewTypedAct -ProjectRoot $f10.Root -HostKind 'claude' -TurnIdentity $cite10 -TranscriptPath $f10.Transcript -SourceEvent 'stop-transcript' -SessionId 's1' -NowUtc '2026-11-04T10:20:00.0000000Z'
+Assert-True ((Get-PendingRoundTurn -Fixture $f10) -ceq 'turn-B' -and (Get-RoundSupersessionCount -Fixture $f10) -eq 0) ("B stays waiting and no fact says A retired it (holds '{0}')" -f (Get-PendingRoundTurn -Fixture $f10))
 
 # ---------------------------------------------------------------------------------------------------
 # Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER

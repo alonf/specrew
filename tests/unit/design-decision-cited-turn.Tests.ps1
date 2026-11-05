@@ -38,10 +38,10 @@ function Send-TypedMessage {
 }
 
 function Invoke-RecordDecision {
-    param([string]$Root, [string]$HumanTurn)
+    param([string]$Root, [string]$HumanTurn, [string]$Chosen = '2')
     try {
         $out = & $cli -ProjectRoot $Root -FeatureRef '001-feat' -Key 'decomposition-style' -Question 'How is the checker decomposed?' `
-            -OptionId '1', '2' -OptionSummary 'one script', 'a module per concern' -Chosen '2' `
+            -OptionId '1', '2' -OptionSummary 'one script', 'a module per concern' -Chosen $Chosen `
             -Rationale 'the concerns are tested separately' -HumanTurn $HumanTurn -AsJson
         return [pscustomobject]@{ Recorded = $true; Message = (@($out) -join "`n") }
     }
@@ -89,6 +89,20 @@ try {
     Send-TypedMessage -Root $r4 -Text $decision -Origin 'host-injected'
     $o4 = Invoke-RecordDecision -Root $r4 -HumanTurn $decision
     Assert-True (-not $o4.Recorded -and $null -eq (Get-Decision -Root $r4)) "4 a decision the human did not type is not recorded ($($o4.Message))"
+
+    # 5 (co-review round 8, finding 4): the reply is cited, but the record names another option. The human chose option 2.
+    $r5 = New-DecisionProject; $roots.Add($r5)
+    Send-TypedMessage -Root $r5 -Text $decision
+    $o5 = Invoke-RecordDecision -Root $r5 -HumanTurn $decision -Chosen '1'
+    Assert-True (-not $o5.Recorded -and $null -eq (Get-Decision -Root $r5)) '5 a record of option 1 from a reply that chose option 2 is not recorded'
+    Assert-True ($o5.Message -match "chose option '2'") "5 and the refusal names the option the reply chose ($($o5.Message))"
+
+    # 6: a reply in the family that names no option is no decision between them.
+    $r6 = New-DecisionProject; $roots.Add($r6)
+    $undecided = 'design decision: let me think about it first'
+    Send-TypedMessage -Root $r6 -Text $undecided
+    $o6 = Invoke-RecordDecision -Root $r6 -HumanTurn $undecided
+    Assert-True (-not $o6.Recorded -and $null -eq (Get-Decision -Root $r6)) "6 a reply that names no option records no decision ($($o6.Message))"
 }
 finally {
     foreach ($root in $roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }

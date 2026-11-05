@@ -195,9 +195,18 @@ try {
     # SINGLE save path (F-174 iter-9.1): every trigger - this Stop/PostToolUse hook AND the workshop skill -
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
+    # Co-review round 8 (T004): A PROMPT EVENT NAMES ITSELF. Claude stores this hook's output under the message's own
+    # transcript record, so an id printed here and kept on the message's reservation lets the turn end find which message
+    # that reservation is, even when two messages share the prompt id and the text. Only on Claude, the host measured to
+    # keep that record (this project's transcript, Claude Code 2.1.31x).
+    $promptEvent = ''
+    if ($source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit') -and ([string]$hostKindArg).Trim().ToLowerInvariant() -eq 'claude' -and
+        -not [string]::IsNullOrWhiteSpace($messageIdArg)) {
+        $promptEvent = [guid]::NewGuid().ToString('N')
+    }
     $handoverResult = Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
         -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser -TurnOrigin $turnOriginArg -SessionId $sessionIdArg `
-        -MessageId $messageIdArg -MessageIdentity $messageIdentityArg
+        -MessageId $messageIdArg -MessageIdentity $messageIdentityArg -PromptEvent $promptEvent
     # FR-010 (T024): this provider is registered as an INJECT provider, so its stdout reaches the turn.
     # The one thing it has to say is when a verdict-shaped reply was NOT captured - said at prompt entry,
     # in the same turn the human typed it, instead of in a recap after two retries.
@@ -205,6 +214,7 @@ try {
         -not [string]::IsNullOrWhiteSpace([string]$handoverResult.disclosure)) {
         Write-Output ([string]$handoverResult.disclosure)
     }
+    if (-not [string]::IsNullOrWhiteSpace($promptEvent)) { Write-Output ('<!-- specrew-prompt-event: {0} -->' -f $promptEvent) }
     exit 0
 }
 catch {
