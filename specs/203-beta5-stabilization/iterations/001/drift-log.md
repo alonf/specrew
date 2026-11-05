@@ -659,3 +659,48 @@
   (`--authorization-ref ... --ack-reason`); both move to T008 with the per-round approval.
 - **Requirement**: FR-022, FR-025; tasks.md T004, T008.
 - **Class closure**: OPEN until a pinned review launch loads its review engine from the pin (T008).
+
+### DRIFT-029 — T004 review round 8: four findings, all demoted, all real; fixed before the next round (review outcome, maintainer ruling)
+
+- **Round 8**: run `run-20261104-212505080-d1d1ab00`, reviewer Codex, on `bf3ec079`, launched from the pin's
+  `specrew-review.ps1` at 23:25 local (UTC+2) on the maintainer's typed approval captured at 23:24; terminal at 23:41
+  (971 s). Round 4 of the topped-up 4, so the budget is spent. Four findings, each reported major and demoted to a
+  note for "no concrete failure scenario", although each stated one (B5F-017, the sixth time):
+  1. the recovery writer (`Write-SpecrewTypedAct`) wrote the approval before reserving its turn and discarded the
+     reservation's result, so a ledger that cannot be appended let a spent approval be recovered again;
+  2. two messages with the same text under one prompt id (Claude hands a reply typed while the turn ends the running
+     turn's `prompt_id`) had one act identity, so the retype was dropped;
+  3. a recovered act was dated by when the recovery ran, so an older missed approval could retire a newer one;
+  4. `record-design-decision` checked that the reply was the newest typed turn, not that the recorded option was the
+     one the reply chose.
+- **Ruling**: the maintainer typed `fix now` (2026-11-05, 16:57 local). Then, for finding 2: the discriminator must
+  come from the host's own record of each message (the queued entry's own transcript uuid or timestamp), not from a
+  time window; and the 5-second double-fire tolerance must never fold a real retyped approval on Claude.
+- **Host evidence for finding 2 (this project's transcript, Claude Code 2.1.31x)**: Claude stores each
+  UserPromptSubmit hook's output as a `hook_additional_context` attachment under the message's own record: the user
+  entry (`promptSource` typed, queued or system), or the `queued_command` attachment of a message absorbed into a
+  running turn (`queue-operation` `remove`, reason `absorbed_mid_turn`, with its `commandUuid`). All 132 prompt-hook
+  outputs in the transcript sit under such a record (two through another attachment of the same message). The hook
+  payload carries no per-message id of its own.
+- **Resolution** (`fcb93ce3`):
+  1. the recovery writer reserves first; no reservation, no approval; a writer that throws after it is reported
+     not-saved;
+  2. on Claude the prompt hook prints `<!-- specrew-prompt-event: <id> -->` and keeps the id on its reservation; the
+     turn end resolves each transcript entry by its own uuid: bound (the hook's output is under it), pending (the hook
+     reserved a message with that text whose output is under no record yet; only rows after the newest bound row,
+     each standing for one entry), history (a row from before the prompt event was printed), or missed (the key of
+     its own record). A prompt event that finds the id-and-text key taken by another prompt event keys the message by
+     its own event. The position-key repeat claim stays on Cursor and Antigravity; Claude never reaches it;
+  3. an act's time is the transcript entry's (or the prompt reservation's) time;
+  4. the chosen option must be the one the reply names; a reply naming none records nothing, in the writer and in
+     the gate's validator.
+- **Failing cases first**: `typed-act-writer` 7b (the retype under the running prompt id), 9 (a ledger that cannot
+  be appended) and 10 (an older approval recovered late), and `design-decision-cited-turn` 5 and 6, each fail on
+  `bf3ec079` and pass on `fcb93ce3`. Case 7c (an entry whose hook output is not written yet) and 7d (the same
+  approval typed twice within a second on Claude) pass on both and guard the binding.
+- **Residual, stated**: the turn end reads user entries only, so a message absorbed into a running turn that the
+  prompt hook missed is not recovered (its record is a `queued_command` attachment). The pin's hook (`063e233a`,
+  before T004) dropped the maintainer's mid-turn message of 16:59 local on 2026-11-05 without a reservation, the
+  DRIFT-006 shape, which T004 fixes once the pin advances.
+- **Requirement**: FR-014, FR-016, FR-021, FR-022; T004's acceptance (the early-reply ruling).
+- **Class closure**: OPEN until the next round on the fixes signs off; B5F-017 carries the demotion.

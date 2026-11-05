@@ -196,6 +196,10 @@ then T014.
     and reported nothing, for both replies; green since `c0e3df13`, where the router keys a message by its act
     identity (the prompt id with the text). The live check: after the pin advances past T004, the maintainer
     answers a question early, on purpose.
+    **Added (maintainer's instruction, 2026-11-05, round 8 finding 2; DRIFT-029):** the same text retyped under the
+    running prompt id is a second act. The discriminator is the host's own record of each message (on Claude, the
+    prompt hook's output stored under the message's own transcript record), never a time window, and no double-fire
+    tolerance folds a real retype on Claude. Cases 7b to 7d; red for 7b on `bf3ec079`, green on `fcb93ce3`.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
