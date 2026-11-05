@@ -827,9 +827,11 @@
      the reviewer found it in the code past the pin too).
 - **Reading against the stopping rule**: all three narrow; the recommendation was to stop with them as follow-ups. The
   maintainer typed `fix now` (2026-11-06, after 00:00 local).
-- **Resolution** (`ef0b9e23`):
+- **Resolution** (`ef0b9e23`, `a2d29d03`):
   1. each transcript entry's host comes from its own shape (a Codex `response_item`, a Claude `promptId`), and an entry
-     whose shape is another host's than the caller names is not read;
+     whose shape is another host's than the caller names is not read. A citation computed with no host label (the
+     verdict capture's, when its caller names none; caught by the lane sweep on `a5cd96d3`) still finds its entry, and
+     the turn returned, and so its act identity, keeps the entry's own host;
   2. the decision is the decision alone, `design decision: option <n>`: any text after the option is refused, and the
      reason is the record's rationale. Three rounds each found a new way for free text to refuse the option in the same
      sentence; no reading of free text proves assent;
