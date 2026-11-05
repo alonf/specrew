@@ -1930,10 +1930,11 @@ function Read-SpecrewCitedTypedTurn {
             # Co-review round 11 (finding 1): THE ENTRY'S HOST IS THE RECORD'S, NOT THE CALLER'S. The host is part of the act
             # identity, and the reader labelled each entry with the host it was told, so one Claude approval cited again as
             # codex (or with no host) had a second identity, and once spent it was recorded again. The entry's own shape
-            # names its host (a Codex rollout's response_item, a Claude entry's promptId); an entry whose shape is another
-            # host's than the caller names is not this caller's message.
+            # names its host (a Codex rollout's response_item, a Claude entry's promptId); an entry whose shape is the other
+            # of those two hosts than the caller names is not this caller's message. A caller naming neither (no host, or the
+            # handover's 'host' when nothing named one) reads every entry under its own host.
             $entryHost = if ($entryType -ceq 'response_item') { 'codex' } else { 'claude' }
-            if (-not [string]::IsNullOrWhiteSpace($hostKey) -and $hostKey -cne $entryHost) { continue }
+            if ($hostKey -cin @('claude', 'codex') -and $hostKey -cne $entryHost) { continue }
             # Who wrote it, from the entry itself: Claude records origin.kind ('human', 'task-notification', ...) and marks
             # a sub-agent's entries isSidechain; the role/parts reader marks metadata and host envelopes as machinery.
             $origin = 'typed-user'
