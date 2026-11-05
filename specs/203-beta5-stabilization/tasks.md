@@ -200,6 +200,11 @@ then T014.
     running prompt id is a second act. The discriminator is the host's own record of each message (on Claude, the
     prompt hook's output stored under the message's own transcript record), never a time window, and no double-fire
     tolerance folds a real retype on Claude. Cases 7b to 7d; red for 7b on `bf3ec079`, green on `fcb93ce3`.
+    **Added (maintainer's instruction, 2026-11-05, round 9; DRIFT-030):** both recording paths key, hash and classify
+    the message in one text form on every host; an older act never replaces a newer one, spent or not; a design
+    decision is a sentence that chooses its option, never one that asks, negates, conditions or deliberates; and every
+    nonempty prompt reserves, so the newest reservation is the human's newest message. Red on `cf5bd736`, green on
+    `9db6cc0b`.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`

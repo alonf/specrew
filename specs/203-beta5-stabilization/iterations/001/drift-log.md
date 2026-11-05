@@ -704,3 +704,49 @@
   DRIFT-006 shape, which T004 fixes once the pin advances.
 - **Requirement**: FR-014, FR-016, FR-021, FR-022; T004's acceptance (the early-reply ruling).
 - **Class closure**: OPEN until the next round on the fixes signs off; B5F-017 carries the demotion.
+
+### DRIFT-030 — T004 review round 9: four findings, all demoted, all real; fixed before the next round (review outcome, maintainer ruling)
+
+- **Round 9**: run `run-20261105-163356873-bb15721d` (`cmp-203-beta5-stabilization-i001-round-9`), reviewer Codex, on
+  `cf5bd736`, launched from the pin's `specrew-review.ps1` at 18:34 local (UTC+2) on the allowance reset the maintainer
+  typed at 18:33, which also counted as the round approval (B4F-125b); terminal at 18:55 (1,254 s). Round 1 of the reset
+  4. Four findings, each reported major and demoted to a note for "no concrete failure scenario", although each stated
+  one (B5F-017, the seventh time):
+  1. the prompt router keyed the text it received and the transcript reader keyed `Format-SpecrewConversationTurnText`'s
+     output, which removes `[REDACTED]`, `<user_query>` and `<environment_details>`; on Codex
+     `approved for review round - replace secrets with [REDACTED]` had two keys, and once spent the turn end recorded it
+     again as a fresh approval;
+  2. the older-never-retires-newer check ran only while the held approval was unspent, so approval A (typed 10:00,
+     missed) recovered after B (10:10) had paid for a round overwrote the spent B as a fresh one;
+     `Resolve-SpecrewTypedActSupersession` returned early for a spent record too, which reached the allowance reset;
+  3. a design decision that named an option in a question, a negation or a condition (`option 2?`,
+     `option 2 is not acceptable`) was recorded as choosing it;
+  4. a message with nothing typed outside its pastes returned before its reservation, so `Find-SpecrewNewestTypedTurn`
+     took the decision before it for the human's newest message.
+- **Ruling** (2026-11-05): fix all four first, each with its failing case first: the grammar refuses questions,
+  negation and deliberation; the order holds when the newer approval is already spent; both paths hash the same text
+  form on every host; the newest-message check counts messages that do not reserve, or refuses when it cannot tell.
+  Then re-sweep on a committed tree, push the branch, and ask for the round. Stopping rule: if round 10 finds only
+  narrow cases like 3 and 4, the review stops there.
+- **Resolution** (`9db6cc0b`):
+  1. one text form: `ConvertTo-SpecrewTypedActText` (the wrapper removals the transcript reader made) is read by the
+     prompt router before it keys, hashes or classifies, by `Get-SpecrewTypedActIdentity`, by the cited-turn reader's
+     prompt branch, and by `Format-SpecrewConversationTurnText`; a message that is nothing but a wrapper keeps its own
+     text, so it still has a key;
+  2. the round approval writer and `Resolve-SpecrewTypedActSupersession` compare the times whatever the held record's
+     state: an older act reaching a spent newer record changes nothing;
+  3. `Get-SpecrewDesignDecisionReading`: the option must be followed by the end of the sentence or a separator before a
+     reason, and the sentence may not contain a question mark or a negation, condition or deliberation word; otherwise
+     `design-decision-human-turn-not-a-decision`, in the writer and in the gate's validator;
+  4. the router reserves a message whose approval form is empty (a paste and no typed text) under its own text, and it
+     reaches no writer, the withdrawal included.
+- **Failing cases first**: `message-identity` (the cleaned-text approval, codex and claude), `typed-act-writer` 10b (the
+  round approval) and 10c (the allowance reset), and `design-decision-cited-turn` 7 (six undecided forms) and 8 (the
+  paste-only message), each fail on `cf5bd736` and pass on `9db6cc0b`; case 7's three plain forms pass on both.
+- **Residual, stated**: (a) the decision grammar reads the whole sentence, so a reason that uses a negation
+  (`option 2 - it does not share state`) refuses too; the refusal asks for the decision on its own and the reason goes in
+  `-Rationale`. A record written before this change whose `human_turn` reads that way no longer validates at the gate.
+  (b) `Find-SpecrewNewestTypedTurn` hashes the text the agent passes, trimmed, not in the cleaned form, so a decision
+  typed with a wrapper is refused as not the newest message (fails closed).
+- **Requirement**: FR-014, FR-016, FR-021, FR-022.
+- **Class closure**: OPEN until round 10 on the fixes; B5F-017 carries the demotion.
