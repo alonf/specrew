@@ -112,16 +112,41 @@ function Test-SpecrewDesignDecisionPhrase {
     return ($Text -imatch '^\s*design\s+decision\b')
 }
 
-function Get-SpecrewDesignDecisionChoice {
+# Co-review round 9 (T004): words that make a sentence naming an option something other than choosing it: a negation, a
+# condition, or still deciding. Read anywhere in the sentence, so a reason that uses one refuses too; the human's sentence
+# can be the decision alone ('design decision: option 2'), and the reason goes in the record's rationale.
+$script:SpecrewDesignDecisionUndecidedPattern = '(?i)\b(?:not|no|never|neither|nor|undecided|maybe|perhaps|possibly|unsure|if|unless|whether|provided|assuming|depends|depending|tentatively|let\s+me\s+think|think\s+about)\b|n[''\u2019]t\b'
+
+function Get-SpecrewDesignDecisionReading {
     # Co-review round 8 (T004): THE OPTION THE HUMAN'S OWN SENTENCE NAMES, read from it: `design decision: option 2 - ...`,
-    # `design decision: 2`, `design decision - option B because ...`. '' when it names none. The record's `chosen` must be
-    # this, so a valid turn citation can never carry a choice the human did not make.
+    # `design decision: 2`, `design decision - option B because ...`. The record's `chosen` must be this, so a valid turn
+    # citation can never carry a choice the human did not make.
+    # Co-review round 9: AND ONLY WHEN THE SENTENCE CHOOSES IT. `option 2?`, `option 2 is not acceptable` and `option 2 - not
+    # decided` named option 2 and were recorded as choosing it. The option must be followed by the end of the sentence or a
+    # separator before the reason, and the sentence may not ask, negate, set a condition or deliberate.
+    # Returns { Choice; Reason }: Reason '' (Choice is the option), 'names-no-option', or 'not-a-decision'.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string] $Text)
+    $reading = [pscustomobject]@{ Choice = ''; Reason = 'names-no-option' }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $reading }
+    $m = [regex]::Match($Text, '^\s*design\s+decision\b\s*[:\-\u2013\u2014]?\s*(?:option\s+)?(?<id>[^\s,;:.!?\-\u2013\u2014]+)(?<after>.*)$', 'IgnoreCase, Singleline')
+    if (-not $m.Success) { return $reading }
+    $after = $m.Groups['after'].Value
+    if ($Text.Contains('?') -or $Text -match $script:SpecrewDesignDecisionUndecidedPattern -or
+        $after -notmatch '(?i)^\s*(?:$|[,;:.!(\-\u2013\u2014]|(?:because|since|as|so)\b)') {
+        $reading.Reason = 'not-a-decision'
+        return $reading
+    }
+    $reading.Choice = $m.Groups['id'].Value.Trim()
+    $reading.Reason = ''
+    return $reading
+}
+
+function Get-SpecrewDesignDecisionChoice {
+    # The option the sentence chooses (Get-SpecrewDesignDecisionReading); '' when it chooses none.
     [OutputType([string])]
     param([AllowNull()][AllowEmptyString()][string] $Text)
-    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
-    $m = [regex]::Match($Text, '^\s*design\s+decision\b\s*[:\-\u2013\u2014]?\s*(?:option\s+)?(?<id>[^\s,;:.!?\-\u2013\u2014]+)', 'IgnoreCase')
-    if (-not $m.Success) { return '' }
-    return $m.Groups['id'].Value.Trim()
+    return [string](Get-SpecrewDesignDecisionReading -Text $Text).Choice
 }
 
 function Test-SpecrewDesignDecisionRecord {
@@ -204,7 +229,12 @@ function Test-SpecrewDesignDecisionRecord {
     # Co-review round 8 (T004): AND IT MUST BE THE OPTION THE HUMAN'S SENTENCE NAMES. The choice used to be a separate
     # parameter, so a real reply choosing option 2 could carry a record of option 1. A sentence that names no option
     # recorded is no decision between them.
-    $named = Get-SpecrewDesignDecisionChoice -Text ([string]$Record.human_turn)
+    # Co-review round 9: a sentence that asks, negates, conditions or deliberates chooses nothing, whatever it names.
+    $reading = Get-SpecrewDesignDecisionReading -Text ([string]$Record.human_turn)
+    if ([string]$reading.Reason -ceq 'not-a-decision') {
+        return (New-Result -Valid $false -Reason 'design-decision-human-turn-not-a-decision')
+    }
+    $named = [string]$reading.Choice
     $namedId = @($ids | Where-Object { [string]::Equals($_, $named, [StringComparison]::OrdinalIgnoreCase) })
     if ($namedId.Count -ne 1) {
         return (New-Result -Valid $false -Reason 'design-decision-human-turn-names-no-option')

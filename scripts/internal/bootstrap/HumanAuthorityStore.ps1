@@ -790,12 +790,18 @@ function Resolve-SpecrewTypedActSupersession {
         [Parameter(Mandatory)][string]$FactType
     )
     if ($null -eq $Existing -or [string]::IsNullOrWhiteSpace($TurnIdentity)) { return 'legacy' }
-    if ($Existing.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$Existing.spent_at)) { return 'legacy' }
     $existingTurn = if ($Existing.PSObject.Properties['turn_identity']) { [string]$Existing.turn_identity } else { '' }
-    if ($existingTurn -ceq $TurnIdentity) { return 'same-act' }
     $existingAt = if ($Existing.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $Existing.observed_at } else { $null }
     $newAt = ConvertTo-SpecrewAuthorityInstant -Value $NowUtc
-    if ($null -ne $existingAt -and $null -ne $newAt -and $newAt -lt $existingAt) { return 'keep-newer' }
+    $olderThanHeld = ($existingTurn -cne $TurnIdentity -and $null -ne $existingAt -and $null -ne $newAt -and $newAt -lt $existingAt)
+    # Co-review round 9 (finding 2): THE ORDER HOLDS WHATEVER THE HELD RECORD'S STATE. Checked only for an unspent record,
+    # an older message recovered after the newer one was spent replaced it as a fresh, unspent approval.
+    if ($Existing.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$Existing.spent_at)) {
+        if ($olderThanHeld) { return 'keep-newer' }
+        return 'legacy'
+    }
+    if ($existingTurn -ceq $TurnIdentity) { return 'same-act' }
+    if ($olderThanHeld) { return 'keep-newer' }
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = ($FactType + '-superseded'); authority_kind = 'human'
         # The instant, rendered round-trip: a [string] cast of a parsed date drops its offset (W60).
@@ -875,6 +881,16 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         $existing = $null
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
         catch { $existing = $null }
+        # Co-review round 9 (finding 2): AN OLDER MESSAGE NEVER REPLACES A NEWER ONE, SPENT OR NOT. The order was checked
+        # only inside the unspent branch below, so approval A (typed 10:00, missed) recovered at 10:20 after B (10:10) had
+        # paid for a round overwrote the spent B as a fresh, unspent approval that could fund the next round.
+        if ($null -ne $existing -and -not [string]::IsNullOrWhiteSpace($TurnIdentity) -and
+            $existing.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$existing.spent_at)) {
+            $heldTurn = if ($existing.PSObject.Properties['turn_identity']) { [string]$existing.turn_identity } else { '' }
+            $heldAt = if ($existing.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $existing.observed_at } else { $null }
+            $actAt = ConvertTo-SpecrewAuthorityInstant -Value $NowUtc
+            if ($heldTurn -cne $TurnIdentity -and $null -ne $heldAt -and $null -ne $actAt -and $actAt -lt $heldAt) { return $existing }
+        }
         # 203 T004 (FR-021; the 02:44 case, DRIFT-019): A NEWER TYPED ACT SUPERSEDES; IT NEVER FOLDS.
         #
         # The 21:47 approval had minted round 4 and its reservation was released before invocation. The maintainer
@@ -1320,6 +1336,10 @@ function Get-SpecrewTypedActIdentity {
     $prop = { param($name) if ($Turn.PSObject.Properties[$name]) { [string]$Turn.$name } else { '' } }
     $messageId = (& $prop 'message_id').Trim()
     $text = (& $prop 'text').Trim()
+    # Co-review round 9: the text in the one form both recording paths read (ConvertTo-SpecrewTypedActText); a message that
+    # is nothing but a wrapper keeps its own text, so it still has a key.
+    $cleaned = (ConvertTo-SpecrewTypedActText -Text $text).Trim()
+    if (-not [string]::IsNullOrWhiteSpace($cleaned)) { $text = $cleaned }
     if ([string]::IsNullOrWhiteSpace($messageId) -or [string]::IsNullOrWhiteSpace($text)) { return $none }
     $hostKind = (& $prop 'host').Trim().ToLowerInvariant()
     # Feature 203 T004 (option 1): Cursor and Antigravity send no id; their substitute is the prompt event's position key.
@@ -1895,6 +1915,9 @@ function Read-SpecrewCitedTypedTurn {
 
     if (-not [string]::IsNullOrWhiteSpace($PromptText)) {
         $hadRecord = $true
+        # Co-review round 9: the text in the form the prompt router keyed it (ConvertTo-SpecrewTypedActText, trimmed).
+        $cleanedPrompt = (ConvertTo-SpecrewTypedActText -Text $PromptText).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($cleanedPrompt)) { $PromptText = $cleanedPrompt }
         # The reservation the prompt hook wrote for this message (Invoke-SpecrewTypedAuthorityCapture), under the key and
         # content hash it computes: the message id's key, and the hash of the approval form's text, trimmed.
         $formText = [string]$PromptText

@@ -654,6 +654,32 @@ $cite10 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 
 $null = Write-SpecrewTypedAct -ProjectRoot $f10.Root -HostKind 'claude' -TurnIdentity $cite10 -TranscriptPath $f10.Transcript -SourceEvent 'stop-transcript' -SessionId 's1' -NowUtc '2026-11-04T10:20:00.0000000Z'
 Assert-True ((Get-PendingRoundTurn -Fixture $f10) -ceq 'turn-B' -and (Get-RoundSupersessionCount -Fixture $f10) -eq 0) ("B stays waiting and no fact says A retired it (holds '{0}')" -f (Get-PendingRoundTurn -Fixture $f10))
 
+# Case 10b (co-review round 9, finding 2): THE ORDER HOLDS WHEN THE NEWER APPROVAL IS ALREADY SPENT. Case 10 with B delivered
+# and spent before A is recovered: the writer compared the times only while B was unspent, so A overwrote the spent B as a
+# fresh, unspent approval that could fund the next round.
+Write-Host '--- case 10b: an older approval recovered late does not replace a newer one already spent ---'
+$f10b = New-QueuedReplyFixture
+$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10b.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f10b.Root -AuthorizationRef 'cmp-x-round-3'
+$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10b.Root -AuthorizationRef 'cmp-x-round-3' -RunId 'run-round-3'
+$id10b = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$entry10b = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = '2026-11-04T10:00:00.000Z'; sessionId = 's1'; promptId = $id10b; origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $approval } }
+Add-Content -LiteralPath $f10b.Transcript -Value ($entry10b | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
+$cite10b = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id10b; text = $approval })).Identity
+$null = Write-SpecrewTypedAct -ProjectRoot $f10b.Root -HostKind 'claude' -TurnIdentity $cite10b -TranscriptPath $f10b.Transcript -SourceEvent 'stop-transcript' -SessionId 's1' -NowUtc '2026-11-04T10:20:00.0000000Z'
+$slot10b = Read-Pending -Root $f10b.Root
+Assert-True ($null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10b.Root) -and [string]$slot10b.turn_identity -ceq 'turn-B' -and -not [string]::IsNullOrWhiteSpace([string]$slot10b.spent_at)) ("no approval is spendable and the slot still holds the spent B (holds '{0}')" -f [string]$slot10b.turn_identity)
+
+# Case 10c: the same for the allowance reset, through the supersession rule the top-up, the deferral and the partial
+# sign-off share: a reset typed at 10:10 and spent, then an older reset typed at 10:00 arriving late.
+Write-Host '--- case 10c: an older allowance reset arriving late does not replace a newer one already spent ---'
+$f10c = New-QueuedReplyFixture
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f10c.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+$null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $f10c.Root -Reference 'reset-1'
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f10c.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
+$reset10c = Get-Content -LiteralPath (Join-Path $f10c.Root '.specrew/review/allowance-reset/pending-allowance-reset.json') -Raw | ConvertFrom-Json
+Assert-True ($null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f10c.Root) -and [string]$reset10c.turn_identity -ceq 'turn-B') ("no reset is spendable and the record still holds the spent B (holds '{0}')" -f [string]$reset10c.turn_identity)
+
 # ---------------------------------------------------------------------------------------------------
 # Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER
 # TYPED ACT SUPERSEDES; IT NEVER FOLDS, for the three review acts beside the round approval. Today the top-up folds a

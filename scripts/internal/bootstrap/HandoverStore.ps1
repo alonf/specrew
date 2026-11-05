@@ -1254,6 +1254,15 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # The key this message was reserved under, for the prompt path's verdict capture to cite (one key per message).
     $script:SpecrewTypedAuthorityLastKey = ''
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
+    # Co-review round 9 (T004, finding 1): THE MESSAGE IN THE FORM THE TRANSCRIPT READER GIVES IT. The turn end reads the
+    # text with the host's and the redaction's wrappers removed and trimmed, and this path keyed it as received, so a
+    # message carrying '[REDACTED]' or '<user_query>' had two keys and was recorded again by the turn end once spent. Both
+    # paths now key, hash and classify the same text. A message that is nothing but a wrapper keeps its own text.
+    if (Get-Command ConvertTo-SpecrewTypedActText -ErrorAction SilentlyContinue) {
+        $cleaned = ''
+        try { $cleaned = ([string](ConvertTo-SpecrewTypedActText -Text $Response)).Trim() } catch { $cleaned = '' }
+        if (-not [string]::IsNullOrWhiteSpace($cleaned)) { $Response = $cleaned }
+    }
     # Co-review round 6 (iteration 002): ONLY A MESSAGE THE HUMAN TYPED RECORDS AN APPROVAL. The dispatcher labels a replay
     # of the hook's own output 'host-injected', and a message whose records it could not read 'unknown', and the workshop
     # receipt refused both while every writer here still ran - so 'approved for review round' arriving as a replay was a
@@ -1279,13 +1288,20 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # writer again. Unlike the boundary readers, these writers have no refusal of their own to fall back on. The
     # withdrawal still runs on the raw message.
     $formRefused = $true
+    # Co-review round 9 (T004, finding 4): A MESSAGE WITH NOTHING TYPED OUTSIDE ITS PASTES IS STILL A MESSAGE. It used to
+    # return here before its reservation, so the ledger's newest prompt reservation was the message before it, and a writer
+    # CLI citing the newest typed turn (record-design-decision) took that earlier reply for the newest. It is reserved
+    # under its own text like any other, and reaches no writer.
+    $formEmpty = $false
     if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
         $form = $null
         try { $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind } catch { $form = $null }
         if ($null -ne $form) {
-            if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { return }
-            $Response = [string]$form.Text
-            $formRefused = ([string]$form.Reason -cin @('quoted-menu', 'qualified', 'machinery-envelope'))
+            if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { $formEmpty = $true }
+            else {
+                $Response = [string]$form.Text
+                $formRefused = ([string]$form.Reason -cin @('quoted-menu', 'qualified', 'machinery-envelope'))
+            }
         }
     }
     # W69 (maintainer ruling, 2026-08-26): A TURN MINTS AT MOST ONCE, EVER.
@@ -1408,6 +1424,8 @@ function Invoke-SpecrewTypedAuthorityCapture {
         catch { $reserved = $false }
         if (-not $reserved) { return }
     }
+    # A message with nothing typed outside its pastes is reserved and records nothing, the withdrawal included.
+    if ($formEmpty) { return }
     $mintedBy = [System.Collections.Generic.List[string]]::new()
     $writerFailed = $false
     # The withdrawal is offered the turn first and on every path, as before: it removes authority, so refusing it on a

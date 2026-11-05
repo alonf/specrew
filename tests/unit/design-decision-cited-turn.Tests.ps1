@@ -103,6 +103,40 @@ try {
     Send-TypedMessage -Root $r6 -Text $undecided
     $o6 = Invoke-RecordDecision -Root $r6 -HumanTurn $undecided
     Assert-True (-not $o6.Recorded -and $null -eq (Get-Decision -Root $r6)) "6 a reply that names no option records no decision ($($o6.Message))"
+
+    # 7 (co-review round 9, finding 3): a reply that names an option but asks, rejects, conditions or is still deciding is
+    # no decision. Each was recorded as option 2.
+    foreach ($notDecided in @(
+            'design decision: option 2?'
+            'design decision: option 2? I have not decided yet'
+            'design decision: option 2 is not acceptable'
+            'design decision: option 2 - not decided'
+            'design decision: option 2 if the tests stay fast'
+            'design decision: maybe option 2'
+        )) {
+        $r7 = New-DecisionProject; $roots.Add($r7)
+        Send-TypedMessage -Root $r7 -Text $notDecided
+        $o7 = Invoke-RecordDecision -Root $r7 -HumanTurn $notDecided
+        Assert-True (-not $o7.Recorded -and $null -eq (Get-Decision -Root $r7)) "7 '$notDecided' records no decision ($($o7.Message))"
+        Assert-True ($o7.Message -match '(?i)not a decision') "7 and the refusal says the reply is not a decision"
+    }
+    # The plain forms still decide.
+    foreach ($decided in @('design decision: 2', 'design decision - option 2, because the concerns are tested apart', 'design decision: option 2.')) {
+        $r7b = New-DecisionProject; $roots.Add($r7b)
+        Send-TypedMessage -Root $r7b -Text $decided
+        $o7b = Invoke-RecordDecision -Root $r7b -HumanTurn $decided
+        Assert-True ($o7b.Recorded -and $null -ne (Get-Decision -Root $r7b)) "7 '$decided' is recorded ($($o7b.Message))"
+    }
+
+    # 8 (co-review round 9, finding 4): a later message that the authority capture reduces to nothing (a paste and no typed
+    # text) is still the human's newest message. It reserved nothing, so the decision before it read as the newest.
+    $r8 = New-DecisionProject; $roots.Add($r8)
+    Send-TypedMessage -Root $r8 -Text $decision
+    Start-Sleep -Milliseconds 50
+    Send-TypedMessage -Root $r8 -Text "<pasted_content id=`"1`">`nerror: build failed at step 4`n</pasted_content id=`"1`">"
+    $o8 = Invoke-RecordDecision -Root $r8 -HumanTurn $decision
+    Assert-True (-not $o8.Recorded -and $null -eq (Get-Decision -Root $r8)) "8 after a paste-only message, the earlier decision is not recorded ($($o8.Message))"
+    Assert-True ($o8.Message -match '(?i)newest message') "8 and the refusal says which message it read"
 }
 finally {
     foreach ($root in $roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }

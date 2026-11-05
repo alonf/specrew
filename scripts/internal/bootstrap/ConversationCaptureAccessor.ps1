@@ -967,6 +967,20 @@ function Get-SpecrewConversationTurnRolePartsFromObject {
     return [pscustomobject]@{ role = $role; parts = @($parts); verdict_evidence = $verdictEvidence }
 }
 
+function ConvertTo-SpecrewTypedActText {
+    # The wrappers a host or a redaction leaves in a message (query and environment wrappers, '[REDACTED]', a task
+    # notification, an aborted-turn marker), removed. Feature 203 T004 (co-review round 9, finding 1): ONE TEXT FORM FOR
+    # BOTH RECORDING PATHS. The transcript reader removed these and the prompt hook keyed the text as received, so a message
+    # carrying one had two keys and, once spent, was recorded again by the turn end. The prompt router and the act identity
+    # read the message through this too. Not trimmed: the caller trims, as each path did.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return '' }
+    $text = $Text -replace '</?user_query>', '' -replace '</?environment_details>', '' -replace '\[REDACTED\]', ''
+    $text = $text -replace '<task-notification>[\s\S]*?</task-notification>', '[task-notification]'
+    return ($text -replace '<turn_aborted>[\s\S]*?</turn_aborted>', '[turn aborted]')
+}
+
 function Format-SpecrewConversationTurnText {
     # The FINALIZE step: turn a shared {role; parts} extract into the final {role; text} a consumer needs, with
     # its OWN -Raw flag. -Raw (T002) preserves the message text VERBATIM (newlines + '## ' structure intact) for
@@ -988,9 +1002,7 @@ function Format-SpecrewConversationTurnText {
     }
     # strip query/redaction wrappers + the most obvious system-injected blocks (keep a short marker so the
     # signal survives without the bulk). These are targeted removals; they do not touch '## ' packet structure.
-    $text = $text -replace '</?user_query>', '' -replace '</?environment_details>', '' -replace '\[REDACTED\]', ''
-    $text = $text -replace '<task-notification>[\s\S]*?</task-notification>', '[task-notification]'
-    $text = $text -replace '<turn_aborted>[\s\S]*?</turn_aborted>', '[turn aborted]'
+    $text = ConvertTo-SpecrewTypedActText -Text $text
     # -Raw preserves internal whitespace (newlines + the markdown structure the packet round-trip needs); the
     # default flattens it for the bounded tail. Both trim the outer edges.
     $text = if ($Raw) { $text.Trim() } else { ($text -replace '\s+', ' ').Trim() }

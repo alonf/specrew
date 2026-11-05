@@ -214,6 +214,23 @@ Describe 'One typed approval, both recording paths, N turn ends: exactly one rec
         Test-RoundUnspent -P $p | Should -BeFalse
     }
 
+    # Feature 203 T004 (co-review round 9, finding 1): THE TWO PATHS KEY THE SAME TEXT. The transcript reader removes the
+    # wrappers a host or a redaction leaves in a message ('[REDACTED]', '<user_query>'), and the prompt hook keyed the text
+    # it received, so a message carrying one had two keys: spent, the turn end recorded it again as a fresh approval.
+    It '<HostKind>: an approval whose text the transcript reader cleans is one key on both paths, and spent stays spent' -ForEach @(
+        @{ HostKind = 'codex' }, @{ HostKind = 'claude' }
+    ) {
+        $p = New-Project
+        $text = 'approved for review round - replace secrets with [REDACTED]'
+        Add-Human -P $p -HostKind $HostKind -Text $text -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind $HostKind -Text $text -MessageId 'msg-1' | Out-Null
+        Set-RoundSpent -P $p
+        for ($i = 0; $i -lt 2; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
+        Get-RoundCaptures -P $p | Should -Be 1
+        Test-RoundUnspent -P $p | Should -BeFalse
+        Get-ReservedTurns -P $p | Should -Be 1
+    }
+
     It '<Phrase>: one message reserves one turn across the message hook and 3 turn ends (claude, long transcript)' -ForEach @(
         @{ Phrase = 'approved for allowance reset' }, @{ Phrase = 'stop the review here' },
         @{ Phrase = 'continue without coverage until the review phase' }

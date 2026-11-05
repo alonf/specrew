@@ -128,6 +128,9 @@ if (-not $validation.valid) {
         'design-decision-human-turn-names-no-option' {
             ("The human's reply does not name one of the options recorded ({0}), so it does not say which one they chose. Ask them to type the decision with its option, for example 'design decision: option {1} - <why>'." -f (($options | ForEach-Object { $_.id }) -join ', '), [string]$options[0].id)
         }
+        'design-decision-human-turn-not-a-decision' {
+            ("The human's reply is not a decision: it asks, rejects, sets a condition or is still deciding ('{0}'). Ask them to type the decision on its own, for example 'design decision: option {1}'; the reason goes in -Rationale." -f $record.human_turn, [string]$options[0].id)
+        }
         'design-decision-chosen-not-the-human-choice' {
             ("The human's reply chose option '{0}', not '{1}'. Record the option they named." -f (Get-SpecrewDesignDecisionChoice -Text $record.human_turn), $record.chosen)
         }
