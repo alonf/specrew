@@ -26,7 +26,7 @@
       -OptionId '1','2','3' `
       -OptionSummary 'one script, three functions','a module per concern','a pipeline of filters' `
       -Chosen 2 -Rationale 'the concerns are tested separately and the team already works this way' `
-      -HumanTurn 'design decision: option 2 because I want the concerns testable on their own'
+      -HumanTurn 'design decision: option 2'
 #>
 [CmdletBinding(PositionalBinding = $false)]
 param(
@@ -69,7 +69,7 @@ if ($OptionId.Count -ne $OptionSummary.Count) {
 }
 if (-not (Test-SpecrewDesignDecisionPhrase -Text $HumanTurn)) {
     throw ("The human's reply is not a design decision. A design decision starts with 'design decision' - for example: " +
-        "`"design decision: option 2 because the concerns are testable on their own`". An 'approved for <boundary>' reply is a " +
+        "`"design decision: option 2`". An 'approved for <boundary>' reply is a " +
         'boundary verdict and authorizes proceeding, not a choice between designs; the two are recorded separately on purpose.')
 }
 # Feature 203 T004 (FR-014, FR-022; maintainer's decision 2026-11-04, option 1): -HumanTurn counts only when it is the
@@ -85,7 +85,7 @@ if (-not $turn.Found -or -not [string]::IsNullOrWhiteSpace([string]$turn.Reason)
         'not-typed-by-human' { "the newest message (at $when) was not typed by the human, so it is not their decision" }
         default { 'the human reply it names could not be confirmed' }
     }
-    throw ("This design decision was not recorded: {0}. Nothing else has changed. Record it in the same turn as the human's reply, with -HumanTurn exactly as they typed it, or ask them to type the decision again ('design decision: option <n> because <why>')." -f $why)
+    throw ("This design decision was not recorded: {0}. Nothing else has changed. Record it in the same turn as the human's reply, with -HumanTurn exactly as they typed it, or ask them to type the decision again ('design decision: option <n>')." -f $why)
 }
 if ($Key -cnotmatch '^[a-z][a-z0-9-]{1,63}$') {
     throw "The decision key must be a short lowercase slug (letters, digits and hyphens), for example 'decomposition-style'. Got '$Key'."
@@ -126,10 +126,10 @@ if (-not $validation.valid) {
         }
         'design-decision-option-ids-not-unique' { 'Two options share an id, so the choice would be ambiguous.' }
         'design-decision-human-turn-names-no-option' {
-            ("The human's reply does not name one of the options recorded ({0}), so it does not say which one they chose. Ask them to type the decision with its option, for example 'design decision: option {1} because <why>'." -f (($options | ForEach-Object { $_.id }) -join ', '), [string]$options[0].id)
+            ("The human's reply does not name one of the options recorded ({0}), so it does not say which one they chose. Ask them to type the decision with its option, for example 'design decision: option {1}'." -f (($options | ForEach-Object { $_.id }) -join ', '), [string]$options[0].id)
         }
         'design-decision-human-turn-not-a-decision' {
-            ("The human's reply is not a decision in the form that records one ('{0}'): a decision is the option alone, or the option and then a reason starting with 'because', and it does not ask, reject, set a condition or still deliberate. Ask them to type it in that form, for example 'design decision: option {1}' or 'design decision: option {1} because <why>'." -f $record.human_turn, [string]$options[0].id)
+            ("The human's reply is not a decision in the form that records one ('{0}'): a decision is the option alone, with nothing after it, so nothing in the same sentence can ask, reject or set a condition. Ask them to type it in that form, for example 'design decision: option {1}'; their reason goes in -Rationale." -f $record.human_turn, [string]$options[0].id)
         }
         'design-decision-chosen-not-the-human-choice' {
             ("The human's reply chose option '{0}', not '{1}'. Record the option they named." -f (Get-SpecrewDesignDecisionChoice -Text $record.human_turn), $record.chosen)

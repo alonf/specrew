@@ -128,6 +128,10 @@ function Get-SpecrewDesignDecisionReading {
     # I reject this option` passed the round-9 list, and no list names every way to refuse. A sentence decides only as the
     # option alone, or the option and then a reason introduced as one (`because`, `since`, `as`, `so`); any other text after
     # the option is not read as assent. The list still applies to that reason, so it cannot ask, negate or condition.
+    # Co-review round 11: NOR IS A CONNECTOR. `option 2, so reject this option` passed as a reason, and no reading of free
+    # text proves it agrees with the choice: three rounds found a new way to refuse in the same sentence. So the sentence is
+    # the decision alone, `design decision: option <n>`, and the reason is the record's rationale. Anything after the
+    # option is refused, and the refusal says so.
     # Returns { Choice; Reason }: Reason '' (Choice is the option), 'names-no-option', or 'not-a-decision'.
     [OutputType([pscustomobject])]
     param([AllowNull()][AllowEmptyString()][string] $Text)
@@ -137,7 +141,7 @@ function Get-SpecrewDesignDecisionReading {
     if (-not $m.Success) { return $reading }
     $after = $m.Groups['after'].Value
     if ($Text.Contains('?') -or $Text -match $script:SpecrewDesignDecisionUndecidedPattern -or
-        $after -notmatch '(?i)^\s*(?:[.!]?\s*$|[,;:\-\u2013\u2014]?\s*(?:because|since|as|so)\s+\S)') {
+        $after -notmatch '^\s*[.!]?\s*$') {
         $reading.Reason = 'not-a-decision'
         return $reading
     }

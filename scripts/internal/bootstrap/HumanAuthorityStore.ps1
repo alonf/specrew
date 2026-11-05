@@ -1927,6 +1927,13 @@ function Read-SpecrewCitedTypedTurn {
             $messageId = [string](& $prop $o 'promptId')
             if ([string]::IsNullOrWhiteSpace($messageId) -and $entryType -ceq 'response_item') { $messageId = $codexTurnId }
             if ([string]::IsNullOrWhiteSpace($messageId)) { continue }
+            # Co-review round 11 (finding 1): THE ENTRY'S HOST IS THE RECORD'S, NOT THE CALLER'S. The host is part of the act
+            # identity, and the reader labelled each entry with the host it was told, so one Claude approval cited again as
+            # codex (or with no host) had a second identity, and once spent it was recorded again. The entry's own shape
+            # names its host (a Codex rollout's response_item, a Claude entry's promptId); an entry whose shape is another
+            # host's than the caller names is not this caller's message.
+            $entryHost = if ($entryType -ceq 'response_item') { 'codex' } else { 'claude' }
+            if (-not [string]::IsNullOrWhiteSpace($hostKey) -and $hostKey -cne $entryHost) { continue }
             # Who wrote it, from the entry itself: Claude records origin.kind ('human', 'task-notification', ...) and marks
             # a sub-agent's entries isSidechain; the role/parts reader marks metadata and host envelopes as machinery.
             $origin = 'typed-user'
@@ -1938,7 +1945,7 @@ function Read-SpecrewCitedTypedTurn {
             # When the human typed it, as the host recorded it: the act is ordered by this, never by when a recovery ran.
             $entryTime = & $prop $o 'timestamp'
             $observedAt = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } elseif ($null -ne $entryTime) { [string]$entryTime } else { '' }
-            $turn = [pscustomobject]@{ host = $hostKey; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text; record_uuid = $uuid; observed_at = $observedAt }
+            $turn = [pscustomobject]@{ host = $entryHost; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text; record_uuid = $uuid; observed_at = $observedAt }
             if (Test-SpecrewConversationMetaFlag -Object $o) { $turn | Add-Member -NotePropertyName is_compact_summary -NotePropertyValue $true }
             $entries.Add([pscustomobject]@{ Turn = $turn; Base = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity; Session = [string](& $prop $o 'sessionId') }) | Out-Null
         }

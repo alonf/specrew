@@ -838,6 +838,16 @@ function Get-SpecrewVerdictCaptureDisclosure {
         [AllowNull()][string]$Source
     )
     if ([string]::IsNullOrWhiteSpace($HumanText)) { return $null }
+    # 203 T004 (co-review round 11, finding 3): AN ACT OF ANOTHER FAMILY IS NOT A BOUNDARY VERDICT. `approved for review
+    # round` was captured as a round approval, and this line then told the human nothing was recorded and to send
+    # `approved for review` (twice on 2026-11-05, at 21:53 and 23:40 local): the boundary token reads 'review' in it. The
+    # authority table recognizes the round approval, the reset, the pause decisions and the rest; their own writers and the
+    # not-recorded report speak for them.
+    if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) {
+        $otherFamily = $null
+        try { $otherFamily = Get-SpecrewTypedAuthorityShape -Text ([string]$HumanText).Trim() } catch { $otherFamily = $null }
+        if ($null -ne $otherFamily) { return $null }
+    }
     if (-not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $null }
     if (-not (Get-Command Test-SpecrewHumanVerdictToken -ErrorAction SilentlyContinue)) { return $null }
     $pending = $null

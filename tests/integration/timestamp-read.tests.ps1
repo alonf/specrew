@@ -110,7 +110,7 @@ $decisionRecord = [ordered]@{
     schema_version = $script:SpecrewDesignDecisionSchemaVersion; feature_ref = '001-x'; key = 'k'
     question = 'q'; options = @(@{ id = '1'; summary = 'a' }, @{ id = '2'; summary = 'b' }); chosen = '1'; rationale = 'r'
     confirmation = $script:SpecrewDesignDecisionConfirmation; confirmation_scope = $script:SpecrewDesignDecisionScope
-    human_turn = 'design decision: option 1 because it composes'; recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
+    human_turn = 'design decision: option 1'; recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
 }
 $roundTripped = ($decisionRecord | ConvertTo-Json -Depth 6 -Compress | ConvertFrom-Json)
 Assert-True ($roundTripped.recorded_at -is [datetime]) 'the fixture is real: recorded_at came back as a [datetime]'

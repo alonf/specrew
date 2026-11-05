@@ -737,6 +737,25 @@ $approvalLines12 = @(Read-Captures -Root $f12.Root | Where-Object { [string]$_.f
 # In either order, A paid for round 5 and B waits, unspent.
 Assert-True ($approvalLines12.Count -eq 1 -and $spentLines12.Count -eq 1 -and (Get-PendingRoundTurn -Fixture $f12) -ceq 'turn-B') ("once released, both complete: A spent for round 5, B waiting (B captured {0}, A's spend lines {1}, waiting '{2}')" -f $approvalLines12.Count, $spentLines12.Count, (Get-PendingRoundTurn -Fixture $f12))
 
+# Case 13 (co-review round 11, finding 1): A TRANSCRIPT ENTRY'S IDENTITY DOES NOT MOVE WITH THE CALLER'S HOST LABEL. A Claude
+# approval the prompt hook missed was recovered and spent; cited again with HostKind codex (or none), the reader labelled the
+# same entry with the caller's host, the identity changed with it, and the round writer took it for a new, unspent approval.
+Write-Host '--- case 13: the same entry cited under another host label records nothing new ---'
+$f13 = New-QueuedReplyFixture
+$id13 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$entry13 = Add-ClaudeEntry -Fixture $f13 -Role 'user' -Text $approval -PromptId $id13
+$cite13 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id13; text = $approval })).Identity
+$first13 = Write-SpecrewTypedAct -ProjectRoot $f13.Root -HostKind 'claude' -TurnIdentity $cite13 -TranscriptPath $f13.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f13.Root -AuthorizationRef 'cmp-x-round-1'
+$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root -AuthorizationRef 'cmp-x-round-1' -RunId 'run-round-1'
+Assert-True ([bool]$first13.Written -and $null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root)) 'setup: the missed approval is recovered once and spent'
+foreach ($label in @('codex', '')) {
+    foreach ($citation in @(('entry:' + $entry13), [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $label; message_id = $id13; text = $approval })).Identity)) {
+        $null = Write-SpecrewTypedAct -ProjectRoot $f13.Root -HostKind $label -TurnIdentity $citation -TranscriptPath $f13.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
+    }
+}
+Assert-True ($null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root) -and (Get-RoundCaptureCount -Fixture $f13) -eq 1) ("no approval is spendable and one capture exists (captures {0})" -f (Get-RoundCaptureCount -Fixture $f13))
+
 # ---------------------------------------------------------------------------------------------------
 # Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER
 # TYPED ACT SUPERSEDES; IT NEVER FOLDS, for the three review acts beside the round approval. Today the top-up folds a

@@ -166,6 +166,19 @@ Assert-True ([string]::IsNullOrWhiteSpace($d8b)) 'ordinary conversation with not
 $d8c = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f8.Root -HumanText 'changes needed: rework the plan table' -NowUtc '2026-09-11T00:00:02Z' -Source 'UserPromptSubmit'
 Assert-True ([string]::IsNullOrWhiteSpace($d8c)) 'a send-back with nothing pending discloses nothing - it is not a lost approval'
 
+Write-Host 'Case 8b (203 T004, co-review round 11, finding 3): an approval of another family is not read as a boundary verdict'
+# The maintainer typed `approved for review round` twice on 2026-11-05 (21:53 and 23:40 local). The prompt hook captured
+# the round approval both times, and the boundary disclosure told them nothing was recorded and to send `approved for
+# review` instead: the word 'review' read as a boundary.
+$f8r = New-DisclosureFixture -NoPendingCrossing
+foreach ($other in @('approved for review round', 'approved for allowance reset', 'stop the review here')) {
+    $d8r = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f8r.Root -HumanText $other -NowUtc '2026-11-05T21:53:00Z' -Source 'UserPromptSubmit'
+    Assert-True ([string]::IsNullOrWhiteSpace($d8r)) ("'{0}' with no crossing pending gets no boundary-verdict line ('{1}')" -f $other, $d8r)
+}
+$out8r = ((& pwsh -NoProfile -File $provider --project-root $f8r.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for review round' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
+Assert-True ($out8r -notmatch 'NO crossing is pending' -and (Test-Path -LiteralPath (Join-Path $f8r.Root '.specrew/review/round-approval/pending-round-approval.json'))) 'through the provider: the round approval is captured and the turn carries no boundary notice'
+Remove-Item -LiteralPath $f8r.Root -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host 'Case 9 (PRED-BETA4-026): a verdict naming ANOTHER boundary than the pending crossing gets one line back naming the pending one'
 $f9 = New-DisclosureFixture
 $d9 = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f9.Root -HumanText 'approved for plan' -NowUtc '2026-09-11T00:00:03Z' -Source 'UserPromptSubmit'

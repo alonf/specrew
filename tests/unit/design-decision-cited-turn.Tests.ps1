@@ -19,8 +19,8 @@ function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -Foreg
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
-# Co-review round 10: the affirmative form, the option and then the reason introduced as one ('because', 'since', 'as', 'so').
-$decision = 'design decision: option 2 because I want the concerns testable on their own'
+# Co-review round 11: the decision alone. The reason is the record's rationale, never free text in the human's sentence.
+$decision = 'design decision: option 2'
 
 function New-DecisionProject {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('specrew-ddcite-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
@@ -120,6 +120,9 @@ try {
             'design decision: option 2, over my objection to it'
             # Text after the option that is not introduced as a reason is not read as assent, whatever it says.
             'design decision: option 2 - the concerns are testable on their own'
+            # Co-review round 11, finding 2: a reason connector proves nothing; the sentence is the decision alone.
+            'design decision: option 2, so reject this option'
+            'design decision: option 2 because the concerns are tested apart'
         )) {
         $r7 = New-DecisionProject; $roots.Add($r7)
         Send-TypedMessage -Root $r7 -Text $notDecided
@@ -128,8 +131,7 @@ try {
         Assert-True ($o7.Message -match '(?i)not a decision') "7 and the refusal says the reply is not a decision"
     }
     # The plain forms still decide.
-    foreach ($decided in @('design decision: 2', 'design decision - option 2, because the concerns are tested apart', 'design decision: option 2.',
-        'design decision: option 2 - because the concerns are tested apart', 'design decision: option 2 since it composes', 'Design decision: Option 2')) {
+    foreach ($decided in @('design decision: 2', 'design decision: option 2.', 'design decision - option 2', 'Design decision: Option 2', '  design decision:option 2!  ')) {
         $r7b = New-DecisionProject; $roots.Add($r7b)
         Send-TypedMessage -Root $r7b -Text $decided
         $o7b = Invoke-RecordDecision -Root $r7b -HumanTurn $decided
