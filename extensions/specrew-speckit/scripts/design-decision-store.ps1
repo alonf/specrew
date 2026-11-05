@@ -118,12 +118,16 @@ function Test-SpecrewDesignDecisionPhrase {
 $script:SpecrewDesignDecisionUndecidedPattern = '(?i)\b(?:not|no|never|neither|nor|undecided|maybe|perhaps|possibly|unsure|if|unless|whether|provided|assuming|depends|depending|tentatively|let\s+me\s+think|think\s+about)\b|n[''\u2019]t\b'
 
 function Get-SpecrewDesignDecisionReading {
-    # Co-review round 8 (T004): THE OPTION THE HUMAN'S OWN SENTENCE NAMES, read from it: `design decision: option 2 - ...`,
+    # Co-review round 8 (T004): THE OPTION THE HUMAN'S OWN SENTENCE NAMES, read from it: `design decision: option 2`,
     # `design decision: 2`, `design decision - option B because ...`. The record's `chosen` must be this, so a valid turn
     # citation can never carry a choice the human did not make.
     # Co-review round 9: AND ONLY WHEN THE SENTENCE CHOOSES IT. `option 2?`, `option 2 is not acceptable` and `option 2 - not
     # decided` named option 2 and were recorded as choosing it. The option must be followed by the end of the sentence or a
     # separator before the reason, and the sentence may not ask, negate, set a condition or deliberate.
+    # Co-review round 10: THE AFFIRMATIVE FORM, NOT A LIST OF WORDS IT MAY NOT CONTAIN. `option 2 - rejected` and `option 2 -
+    # I reject this option` passed the round-9 list, and no list names every way to refuse. A sentence decides only as the
+    # option alone, or the option and then a reason introduced as one (`because`, `since`, `as`, `so`); any other text after
+    # the option is not read as assent. The list still applies to that reason, so it cannot ask, negate or condition.
     # Returns { Choice; Reason }: Reason '' (Choice is the option), 'names-no-option', or 'not-a-decision'.
     [OutputType([pscustomobject])]
     param([AllowNull()][AllowEmptyString()][string] $Text)
@@ -133,7 +137,7 @@ function Get-SpecrewDesignDecisionReading {
     if (-not $m.Success) { return $reading }
     $after = $m.Groups['after'].Value
     if ($Text.Contains('?') -or $Text -match $script:SpecrewDesignDecisionUndecidedPattern -or
-        $after -notmatch '(?i)^\s*(?:$|[,;:.!(\-\u2013\u2014]|(?:because|since|as|so)\b)') {
+        $after -notmatch '(?i)^\s*(?:[.!]?\s*$|[,;:\-\u2013\u2014]?\s*(?:because|since|as|so)\s+\S)') {
         $reading.Reason = 'not-a-decision'
         return $reading
     }

@@ -598,6 +598,43 @@ function Get-SpecrewReviewRoundApprovalRoot {
     return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/round-approval'
 }
 
+# Co-review round 10 (T004, finding 2): ONE PROCESS AT A TIME ON THE WAITING SLOT. The capture, the mint stamp and the
+# spend each read pending-round-approval.json, decide on what they read, and write it back. With nothing serializing them,
+# a round finishing read approval A, the prompt hook then captured the newer B, and the spend wrote its spent A over B:
+# B was lost, and its turn was already in the exhausted-turn ledger, so no turn end restored it. An atomic write prevents
+# a torn file, not a lost update. Each of those functions runs its whole read, decision and write under this lock; one
+# called from another already holding it runs inside the same hold.
+$script:SpecrewRoundApprovalSlotLockDepth = 0
+
+function Invoke-SpecrewRoundApprovalSlotLocked {
+    # Runs Body holding the slot's lock file open exclusively, waiting up to TimeoutSeconds for another process to let go.
+    # Throws 'round-approval-slot-busy' when it cannot take it; the callers say what that means for their own result.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][scriptblock]$Body,
+        [int]$TimeoutSeconds = 15
+    )
+    if ($script:SpecrewRoundApprovalSlotLockDepth -gt 0) { return (& $Body) }
+    $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $lockPath = Join-Path $root 'pending-round-approval.lock'
+    $stream = $null
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        try { $stream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+        catch {
+            if ([DateTimeOffset]::UtcNow -ge $deadline) { throw 'round-approval-slot-busy' }
+            Start-Sleep -Milliseconds 25
+        }
+    } until ($null -ne $stream)
+    $script:SpecrewRoundApprovalSlotLockDepth++
+    try { return (& $Body) }
+    finally {
+        $script:SpecrewRoundApprovalSlotLockDepth--
+        $stream.Dispose()
+    }
+}
+
 function Get-SpecrewQuestionUiObservationPath {
     # W54: lives BESIDE the round-approval store because it is that family's diagnostic - never
     # authority. The directory is already review runtime evidence (untracked by ruling).
@@ -834,6 +871,12 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         [AllowNull()][string]$TurnIdentity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    # Co-review round 10: the read, the decision and the write, under the slot's lock (a busy slot throws, and the router
+    # reports the approval as received but not saved).
+    if ($script:SpecrewRoundApprovalSlotLockDepth -lt 1) {
+        $bound = $PSBoundParameters
+        return (Invoke-SpecrewRoundApprovalSlotLocked -ProjectRoot $ProjectRoot -Body { Write-SpecrewReviewRoundApprovalAuthorization @bound })
+    }
     $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
     $evidenceSource = 'hook-captured-user-prompt'
     if ($null -eq $event) {
@@ -2097,6 +2140,16 @@ function Write-SpecrewTypedAct {
                 return $result
             }
             $result.Written = ($null -ne $written)
+            # Co-review round 10 (finding 1): AN ACT NO WRITER TAKES IS SAID, NEVER DROPPED. The partial sign-off and the
+            # workshop repair are recorded only as the human sends them (their writers take a prompt event alone), so one the
+            # prompt hook missed was derived here, reserved, and recorded by nothing, without a word; the reservation then
+            # made every later attempt already-recorded. Reserved and not recorded is reported, and said at the human's next
+            # message with the phrase to type again, as a message the hook never received is.
+            if (-not $result.Written) {
+                $shape = Get-SpecrewTypedAuthorityShape -Text ([string]$act.Text)
+                if ($null -ne $shape) { $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey ([string]$act.TurnIdentity) -HostKind $HostKind -SessionId $SessionId -Reason 'not-taken' -NowUtc $NowUtc }
+                $act.Reason = 'not-taken'; $act.Report = $true
+            }
         }
     }
     if ($result.Written) {
@@ -2341,6 +2394,9 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
             if ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-saved') {
                 ("Specrew: your earlier '{0}' was received but could not be saved, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
             }
+            elseif ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-taken') {
+                ("Specrew: your earlier '{0}' was not recorded - it is recorded only as you send it, and Specrew did not receive it then, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
+            }
             elseif ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'origin-unconfirmed') {
                 ("Specrew: your '{0}' was received but not recorded - Specrew could not confirm it was typed in this conversation, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
             }
@@ -2440,6 +2496,12 @@ function Write-SpecrewReviewRoundApprovalFromReset {
         [Parameter(Mandatory)]$ResetApproval,
         [Parameter(Mandatory)][string]$ResetId
     )
+    # Co-review round 10: under the slot's lock; a busy slot writes nothing, so no round is approved by the reset.
+    if ($script:SpecrewRoundApprovalSlotLockDepth -lt 1) {
+        $bound = $PSBoundParameters
+        try { return (Invoke-SpecrewRoundApprovalSlotLocked -ProjectRoot $ProjectRoot -Body { Write-SpecrewReviewRoundApprovalFromReset @bound }) }
+        catch { if ([string]$_.Exception.Message -ceq 'round-approval-slot-busy') { return $null }; throw }
+    }
     if ($null -eq $ResetApproval -or -not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$ResetApproval.verdict_text)).Matched) { return $null }
     $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
     [IO.Directory]::CreateDirectory($root) | Out-Null
@@ -2878,6 +2940,12 @@ function Set-SpecrewReviewRoundApprovalMintedRef {
         [AllowNull()][AllowEmptyString()][string]$ExpectedMintedRef,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    # Co-review round 10: under the slot's lock; a busy slot is not stamped, and says so.
+    if ($script:SpecrewRoundApprovalSlotLockDepth -lt 1) {
+        $bound = $PSBoundParameters
+        try { return (Invoke-SpecrewRoundApprovalSlotLocked -ProjectRoot $ProjectRoot -Body { Set-SpecrewReviewRoundApprovalMintedRef @bound }) }
+        catch { if ([string]$_.Exception.Message -ceq 'round-approval-slot-busy') { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-busy' } }; throw }
+    }
     $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
     if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ stamped = $false; reason = 'no-pending-capture' } }
     $fact = $null
@@ -3185,6 +3253,13 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
         [AllowNull()][string]$RoundRef,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    # Co-review round 10 (finding 2): the read, the ownership check and the stamp, under the slot's lock, so an approval
+    # captured while a round finishes is never overwritten by the spent one. A busy slot is not consumed, and says so.
+    if ($script:SpecrewRoundApprovalSlotLockDepth -lt 1) {
+        $bound = $PSBoundParameters
+        try { return (Invoke-SpecrewRoundApprovalSlotLocked -ProjectRoot $ProjectRoot -Body { Complete-SpecrewReviewRoundApprovalAuthorization @bound }) }
+        catch { if ([string]$_.Exception.Message -ceq 'round-approval-slot-busy') { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-busy' } }; throw }
+    }
     $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
     $spendFor = if ([string]::IsNullOrWhiteSpace($RoundRef)) { [string]$AuthorizationRef } else { [string]$RoundRef }
     # W57: EVERY exit returns the same shape. The old early returns handed back $null, which the

@@ -680,6 +680,63 @@ $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f10c.Root -Respon
 $reset10c = Get-Content -LiteralPath (Join-Path $f10c.Root '.specrew/review/allowance-reset/pending-allowance-reset.json') -Raw | ConvertFrom-Json
 Assert-True ($null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f10c.Root) -and [string]$reset10c.turn_identity -ceq 'turn-B') ("no reset is spendable and the record still holds the spent B (holds '{0}')" -f [string]$reset10c.turn_identity)
 
+# Case 11 (co-review round 10, finding 1): AN ACT THE RECOVERY PATH DERIVES BUT NO WRITER TAKES IS SAID, NEVER DROPPED. The
+# partial sign-off and the workshop repair are recorded only as the human sends them (their writers take a prompt event
+# alone). Missed by the prompt hook, the turn end derived the sign-off, reserved the turn, and its writer recorded nothing:
+# no report, and the reservation made every later attempt already-recorded. The human hears it at their next message, with
+# the phrase to type again.
+Write-Host '--- case 11: a derived act no writer records at the turn end is reported, with the phrase to retype ---'
+$f11 = New-QueuedReplyFixture
+$tree11 = 'b' * 40; $campaign11 = 'cmp-001-fixture-i001'
+$request11 = 'override-' + (Get-SpecrewHumanAuthorityHash -Text ($tree11 + '|' + $campaign11)).Substring(0, 24)
+$requestDir11 = Join-Path $f11.Root '.specrew/review/signoff-gate'
+New-Item -ItemType Directory -Force -Path $requestDir11 | Out-Null
+([pscustomobject]@{ schema_version = '1.0'; request_id = $request11; target_tree_id = $tree11; campaign_id = $campaign11; run_id = 'run-1'
+    required_phrase = 'approved for partial review signoff - <why accepting partial coverage is safe>'; created_at = [DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o') } |
+    ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $requestDir11 'pending-override.json') -Encoding UTF8
+$signoff11 = 'approved for partial review signoff - the remaining files are test data'
+$id11 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$null = Add-ClaudeEntry -Fixture $f11 -Role 'user' -Text $signoff11 -PromptId $id11
+$cite11 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id11; text = $signoff11 })).Identity
+$r11 = Write-SpecrewTypedAct -ProjectRoot $f11.Root -HostKind 'claude' -TurnIdentity $cite11 -TranscriptPath $f11.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
+$reports11 = Get-NotRecordedCount -Fixture $f11
+Assert-True (-not [bool]$r11.Written -and $reports11 -eq 1) ("the sign-off the turn end could not record is reported (written={0}, reports={1})" -f [bool]$r11.Written, $reports11)
+$said11 = [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $f11.Root -HostKind 'claude' -SessionId 's1')
+Assert-True ($said11 -match [regex]::Escape('approved for partial review signoff') -and $said11 -match '(?i)type it again') ("and the human's next message says it, with the phrase to type again ('{0}')" -f $said11)
+
+# Case 12 (co-review round 10, finding 2): THE CAPTURE, THE MINT STAMP AND THE SPEND TAKE TURNS ON THE SLOT. The spend read
+# the waiting approval, checked it, and wrote it back with no lock, so an approval B captured in between was overwritten by
+# the spent A and lost. While another process holds the slot, neither the capture nor the spend writes it; each completes
+# once it is released.
+Write-Host '--- case 12: the capture and the spend wait for the slot another process holds ---'
+$store12 = Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1'
+function Start-SlotChild {
+    param([string]$Command)
+    $psi = [Diagnostics.ProcessStartInfo]::new('pwsh')
+    foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', (". '$store12'; " + $Command))) { $psi.ArgumentList.Add($a) }
+    $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.CreateNoWindow = $true
+    return [Diagnostics.Process]::Start($psi)
+}
+function Wait-SlotChild { param($Process) [void]$Process.StandardOutput.ReadToEnd(); [void]$Process.StandardError.ReadToEnd(); $Process.WaitForExit() }
+$f12 = New-QueuedReplyFixture
+$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f12.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f12.Root -AuthorizationRef 'cmp-x-round-5'
+$lockPath12 = Join-Path $f12.Root '.specrew/review/round-approval/pending-round-approval.lock'
+$held12 = [IO.File]::Open($lockPath12, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+try {
+    $spend12 = Start-SlotChild "`$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot '$($f12.Root)' -AuthorizationRef 'cmp-x-round-5' -RunId 'run-round-5'"
+    $capture12 = Start-SlotChild "`$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot '$($f12.Root)' -Response '$approval' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B'"
+    Start-Sleep -Seconds 4
+    $while12 = Read-Pending -Root $f12.Root
+    Assert-True ([string]$while12.turn_identity -ceq 'turn-A' -and [string]::IsNullOrWhiteSpace([string]$while12.spent_at)) ("while the slot is held, neither the spend nor the capture writes it (holds '{0}', spent '{1}')" -f [string]$while12.turn_identity, [string]$while12.spent_at)
+}
+finally { $held12.Dispose() }
+Wait-SlotChild $spend12; Wait-SlotChild $capture12
+$spentLines12 = @(Read-Captures -Root $f12.Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' -and [string]$_.approval_turn_identity -ceq 'turn-A' })
+$approvalLines12 = @(Read-Captures -Root $f12.Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval' -and [string]$_.turn_identity -ceq 'turn-B' })
+# In either order, A paid for round 5 and B waits, unspent.
+Assert-True ($approvalLines12.Count -eq 1 -and $spentLines12.Count -eq 1 -and (Get-PendingRoundTurn -Fixture $f12) -ceq 'turn-B') ("once released, both complete: A spent for round 5, B waiting (B captured {0}, A's spend lines {1}, waiting '{2}')" -f $approvalLines12.Count, $spentLines12.Count, (Get-PendingRoundTurn -Fixture $f12))
+
 # ---------------------------------------------------------------------------------------------------
 # Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER
 # TYPED ACT SUPERSEDES; IT NEVER FOLDS, for the three review acts beside the round approval. Today the top-up folds a

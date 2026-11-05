@@ -92,6 +92,6 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/record-design-decision.ps
     -Chosen <id> -Rationale '<why>' -HumanTurn '<the human''s reply, verbatim>'
 ```
 
-The human's reply opens with **`design decision`** — for example `design decision: option 3 - filters
+The human's reply opens with **`design decision`** — for example `design decision: option 3 because filters
 compose and each is testable alone`. It needs at least two options as they were presented, and the chosen
 one must be among them: a choice between one thing is a hand-down wearing a choice's clothes.
