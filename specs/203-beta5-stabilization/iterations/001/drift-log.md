@@ -750,3 +750,44 @@
   typed with a wrapper is refused as not the newest message (fails closed).
 - **Requirement**: FR-014, FR-016, FR-021, FR-022.
 - **Class closure**: OPEN until round 10 on the fixes; B5F-017 carries the demotion.
+
+### DRIFT-031 — T004 review round 10: three findings, all demoted, all real; fixed before the next round (review outcome, maintainer ruling)
+
+- **Round 10**: run `run-20261105-195345090-89f672fc` (`cmp-203-beta5-stabilization-i001-round-10`), reviewer Codex, on
+  `4e78a0ed`, launched from the pin's `specrew-review.ps1` at 21:53 local (UTC+2) on the maintainer's typed approval
+  captured by the prompt hook at 21:53; terminal at 22:12 (1,116 s). Round 2 of the reset 4. Three findings, each reported
+  major and demoted to a note for "no concrete failure scenario", although each stated one (B5F-017, the eighth time):
+  1. a partial sign-off or a workshop repair the prompt hook missed was derived and reserved by the turn end's recovery
+     writer, and its writer (which takes a prompt event alone) recorded nothing: no report, and the reservation made every
+     later attempt already-recorded;
+  2. `Complete-SpecrewReviewRoundApprovalAuthorization` read the waiting approval, checked it and wrote it back with no
+     lock, so an approval B captured while a round finished was overwritten by the spent A and lost;
+  3. the round-9 decision grammar refused a list of words, and `design decision: option 2 - rejected` was not on it.
+- **Reading against the stopping rule**: finding 3 is the narrow kind (round 9's finding 3 again); findings 1 and 2 are
+  not: a recovery path for two acts that drops silently, and a lost update of the approval T004 exists to keep. The pin's
+  hook also told the maintainer their `approved for review round` read as a verdict for 'review' with no crossing pending
+  (the DRIFT-006 shape, fixed by T004 once the pin advances); it recorded nothing and the round approval was captured.
+- **Ruling**: the maintainer typed `fix now` (2026-11-05, after 22:12 local).
+- **Resolution** (`6741cfd1`, `c8a8a786`):
+  1. the partial sign-off and the workshop repair stay recorded only as the human sends them (their writers' contract:
+     "capture only from a genuine prompt-entry event"); the recovery writer reports a reserved act no writer recorded
+     (`not-taken`), and the human's next message says it with the phrase to type again;
+  2. `Invoke-SpecrewRoundApprovalSlotLocked`: the capture, the reset's round approval, the mint stamp and the spend each
+     run their read, decision and write holding `pending-round-approval.lock` exclusively (re-entrant within a process,
+     15 s wait). A busy slot throws for the capture (reported not saved), stamps nothing and consumes nothing, and says
+     so (`pending-capture-busy`). The withdrawal stays outside: it journals before it deletes, and a lock it could not
+     take must never leave an approval the human retracted spendable;
+  3. the affirmative form: the option alone, or the option and then a reason introduced as one (`because`, `since`, `as`,
+     `so`); any other text after the option is not read as assent, and the round-9 list still applies to the reason.
+- **Failing cases first**: `typed-act-writer` 11 (a missed sign-off recovered at the turn end is reported, and said with
+  the phrase) and 12 (while another process holds the slot, neither the spend nor the capture writes it; released, A is
+  spent for its round and B waits), and `design-decision-cited-turn` 7 (`- rejected`, `- I reject this option`,
+  `, over my objection to it`, and a reason not introduced as one), each fail on `4e78a0ed` and pass on `6741cfd1`.
+- **Changed for the human, stated**: the reply form for a design decision is now `design decision: option <n>` or
+  `design decision: option <n> because <why>`. The example in the turn-end skill (its template and the four deployed
+  copies) and the CLI's examples and refusals say so; the old `option <n> - <why>` form is refused with that guidance.
+  `timestamp-read`'s fixture (`option 1 - because`, a connector with no reason) now states its reason.
+- **Residual, stated**: the lock serializes this checkout's code only; the pin (`063e233a`) spends without it until it
+  advances past T004.
+- **Requirement**: FR-014, FR-021, FR-022.
+- **Class closure**: OPEN until the next round on the fixes; B5F-017 carries the demotion.

@@ -205,6 +205,10 @@ then T014.
     decision is a sentence that chooses its option, never one that asks, negates, conditions or deliberates; and every
     nonempty prompt reserves, so the newest reservation is the human's newest message. Red on `cf5bd736`, green on
     `9db6cc0b`.
+    **Added (maintainer's instruction, 2026-11-05, round 10; DRIFT-031):** an act the turn end derives and no writer
+    records is reported and said with the phrase to retype; the capture, the mint stamp and the spend take turns on the
+    waiting slot; and a design decision is the affirmative form (`option <n>` or `option <n> because <why>`). Red on
+    `4e78a0ed`, green on `6741cfd1`.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
