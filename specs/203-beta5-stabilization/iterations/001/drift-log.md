@@ -791,3 +791,58 @@
   advances past T004.
 - **Requirement**: FR-014, FR-021, FR-022.
 - **Class closure**: OPEN until the next round on the fixes; B5F-017 carries the demotion.
+
+### DRIFT-032 — Maintainer input for T008: a floor of 2 rounds, a reset is one fix-and-verify cycle, T009 back if possible, B5F-017 first (maintainer ruling)
+
+- **Input** (2026-11-05, while round 11 ran), for T008 (FR-003, FR-004, FR-005, FR-010):
+  1. the planned round budget has a floor of 2, one review plus one fix-verification round, approved once with the plan;
+  2. `approved for allowance reset` grants exactly one "fix + verify the fix" cycle, not a separate round approval;
+  3. bring T009's scoped fix round (FR-013) back into this iteration if possible, since an unscoped verification round
+     keeps finding new rare cases in unchanged code (rounds 8 and 9);
+  4. B5F-017 (findings with concrete scenarios demoted to notes) must be fixed before the automatic cycle is trusted,
+     or it signs off unfixed findings.
+- **Recorded**: T008 (input and acceptance), T007 (the floor at the snapshot), T009 (back after T008, if possible), the
+  iteration plan's notes (capacity 30.5 against 20 with T009).
+- **Differs from the spec as written**: FR-001 ("a number of rounds (0 or more)") and FR-008 (no stated budget gets
+  `budget_total = 0`) against item 1; FR-007 (a reset grants "another `budget_total` rounds") against item 2. Item 4 is
+  not in T008's trace today; B5F-017 was a named backlog item for iteration 002 or later.
+- **Requirement**: FR-001, FR-003, FR-004, FR-005, FR-007, FR-008, FR-010, FR-013.
+- **Class closure**: OPEN until the spec text is aligned or the maintainer rules it stays as written.
+
+### DRIFT-033 — T004 review round 11: three findings, two demoted, all real; fixed before the next round (review outcome, maintainer ruling)
+
+- **Round 11**: run `run-20261105-214103428-69c51ec1` (`cmp-203-beta5-stabilization-i001-round-11`), reviewer Codex, on
+  `941c76b5`, launched from the pin's `specrew-review.ps1` at 23:41 local (UTC+2) on the maintainer's typed approval
+  captured by the prompt hook at 23:40; terminal at 00:00 on 2026-11-06 (1,144 s). Round 3 of the reset 4. Three
+  findings, all notes; two reported major and demoted for "no concrete failure scenario", although each stated one
+  (B5F-017, the ninth time):
+  1. the transcript reader labelled each recovered entry with the caller's host, and the host is part of the act
+     identity: a Claude approval the prompt hook missed, recovered and spent, cited again as codex (or with no host) had
+     a second identity and was recorded again as an unspent approval, with the same time, so the older-than-held guard
+     did not refuse it;
+  2. the round-10 affirmative form took a reason connector as assent: `design decision: option 2, so reject this option`
+     recorded option 2;
+  3. after the prompt hook captured `approved for review round`, the boundary disclosure read 'review' in it and told
+     the human nothing was recorded and to send `approved for review` (seen live at 21:53 and 23:40 local, from the pin;
+     the reviewer found it in the code past the pin too).
+- **Reading against the stopping rule**: all three narrow; the recommendation was to stop with them as follow-ups. The
+  maintainer typed `fix now` (2026-11-06, after 00:00 local).
+- **Resolution** (`ef0b9e23`):
+  1. each transcript entry's host comes from its own shape (a Codex `response_item`, a Claude `promptId`), and an entry
+     whose shape is another host's than the caller names is not read;
+  2. the decision is the decision alone, `design decision: option <n>`: any text after the option is refused, and the
+     reason is the record's rationale. Three rounds each found a new way for free text to refuse the option in the same
+     sentence; no reading of free text proves assent;
+  3. `Get-SpecrewVerdictCaptureDisclosure` says nothing for a reply the authority table recognizes as another family's
+     act (round approval, reset, pause decisions, deferral, sign-off, repair, withdrawal).
+- **Failing cases first**: `typed-act-writer` 13 (the same entry cited as codex and with no host after it was spent:
+  three captures on `941c76b5`, one on `ef0b9e23`), `design-decision-cited-turn` 7 (`, so reject this option` and a
+  `because` reason), `capture-disclosure` 8b (three phrases of other families, and the provider's turn), each fail on
+  `941c76b5` and pass on `ef0b9e23`.
+- **Changed for the human, stated**: the design-decision reply is `design decision: option <n>` and nothing else; the
+  refusal says so and that the reason goes in the record's rationale. The turn-end skill (template and four deployed
+  copies) and the CLI's examples say the same. `timestamp-read`'s fixture is the decision alone.
+- **Residual, stated**: an entry from a host whose transcript shape the reader does not know is not read (fails
+  closed), as before.
+- **Requirement**: FR-014, FR-015, FR-022.
+- **Class closure**: OPEN until the next round on the fixes; B5F-017 carries the demotion.

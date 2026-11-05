@@ -209,6 +209,9 @@ then T014.
     records is reported and said with the phrase to retype; the capture, the mint stamp and the spend take turns on the
     waiting slot; and a design decision is the affirmative form (`option <n>` or `option <n> because <why>`). Red on
     `4e78a0ed`, green on `6741cfd1`.
+    **Added (maintainer's instruction, 2026-11-06, round 11; DRIFT-033):** a transcript entry's host is the record's,
+    never the caller's; a design decision is the decision alone (`design decision: option <n>`); and a reply of another
+    authority family gets no boundary-verdict notice. Red on `941c76b5`, green on `ef0b9e23`.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
@@ -383,6 +386,8 @@ then T014.
     before-implement verdict, citing the verdict entry; zero rounds when no budget is stated.
   - **RED:** `tests/unit/review-budget-snapshot.Tests.ps1`: the grant is one slot per authorization today.
   - **Acceptance:** a plan edit after the verdict does not change the grant; above-ceiling refused at both points.
+    **Maintainer input (2026-11-05; DRIFT-032):** the snapshot's floor is 2 rounds (one review, one fix
+    verification), so "zero rounds when no budget is stated" becomes 2; see T008.
   - **Trace:** FR-001, FR-002, FR-003, FR-008.
   - **Depends:** T004.
   - **Owns:** `scripts/internal/sync-boundary-state.ps1`,
@@ -409,7 +414,18 @@ then T014.
     **Evidence added 2026-11-02 (T003):** after T003's commit, mid-iteration with the review planned after T013,
     Stop blocked the turn with "your last review no longer covers these files" and asked the crew to request
     `approved for review round`: a stop whose only purpose was a round (FR-006).
-  - **Trace:** FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-043.
+  - **Maintainer input (2026-11-05; DRIFT-032):**
+    1. The planned round budget has a floor of 2: one review round plus one fix-verification round, approved once
+       with the plan. A plan that states fewer, or none, gets 2 (T007 snapshots it).
+    2. `approved for allowance reset` grants exactly one "fix + verify the fix" cycle, and is not a separate round
+       approval.
+    3. The scoped fix round (T009, FR-013) comes back into this iteration if possible: an unscoped verification
+       round keeps finding new rare cases in code the fix did not change (rounds 8 and 9).
+    4. B5F-017 (findings that state a concrete failure scenario demoted to notes for having none) is fixed before the
+       automatic cycle is trusted; otherwise the cycle signs off on unfixed findings.
+    **Acceptance added:** a plan budget below 2 snapshots as 2; a reset grants one fix round and one verification
+    round; a finding that states its failure scenario keeps its severity, so the loop does not end clean on it.
+  - **Trace:** FR-003, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-043.
   - **Depends:** T007.
   - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/unit/review-budget-loop.Tests.ps1`.
 
@@ -459,7 +475,9 @@ then T014.
 
 ## Moved to iteration 002 (plan verdict, 2026-10-31)
 
-- [ ] T009 [owner: Implementer] [sp: 2.0] [US1] **Scoped late-fix round (DA-7).** The reviewer receives only the
+- [ ] T009 [owner: Implementer] [sp: 2.0] [US1] **Scoped late-fix round (DA-7).** **Maintainer input (2026-11-05;
+  DRIFT-032): back into iteration 001 if possible, after T008**, because an unscoped verification round keeps finding
+  new rare cases in unchanged code (rounds 8 and 9). The reviewer receives only the
   listed paths (sparse checkout), labelled `scoped`; coverage rule. Trace: FR-013. Owns:
   `scripts/internal/continuous-co-review/worktree-*.ps1`, `review-target-port.ps1`, `tests/unit/scoped-round.Tests.ps1`.
 - [ ] T010 [owner: Implementer] [sp: 1.5] [US1] **Host-reported token usage.** Per round and at sign-off; "not
