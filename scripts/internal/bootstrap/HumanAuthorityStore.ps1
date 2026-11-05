@@ -1947,7 +1947,10 @@ function Read-SpecrewCitedTypedTurn {
             $observedAt = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } elseif ($null -ne $entryTime) { [string]$entryTime } else { '' }
             $turn = [pscustomobject]@{ host = $entryHost; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text; record_uuid = $uuid; observed_at = $observedAt }
             if (Test-SpecrewConversationMetaFlag -Object $o) { $turn | Add-Member -NotePropertyName is_compact_summary -NotePropertyValue $true }
-            $entries.Add([pscustomobject]@{ Turn = $turn; Base = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity; Session = [string](& $prop $o 'sessionId') }) | Out-Null
+            # The id-and-text key a caller with no host label computed, so its citation still finds the entry; the turn and
+            # its identity keep the entry's own host.
+            $asCited = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $hostKey; message_id = $messageId; text = [string]$formatted.text })).Identity
+            $entries.Add([pscustomobject]@{ Turn = $turn; Base = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity; AsCited = $asCited; Session = [string](& $prop $o 'sessionId') }) | Out-Null
         }
         Resolve-SpecrewTranscriptEntryActIdentity -ProjectRoot $ProjectRoot -Entries $entries -ParentOf $parentOf -Records $records -HookEvents $hookEvents
         # The citation names an entry by the act identity it resolved to, or by its record ('entry:<uuid>'). A message id,
@@ -1955,7 +1958,7 @@ function Read-SpecrewCitedTypedTurn {
         # fitting entries with different texts is ambiguous.
         $exact = @($entries | Where-Object { [string]$_.Turn.act_identity -ceq $cited -or ('entry:' + [string]$_.Turn.record_uuid) -ceq $cited })
         if ($exact.Count -ge 1) { return [pscustomobject]@{ Turn = $exact[$exact.Count - 1].Turn; Reason = '' } }
-        $byKey = @($entries | Where-Object { [string]$_.Base -ceq $cited })
+        $byKey = @($entries | Where-Object { [string]$_.Base -ceq $cited -or [string]$_.AsCited -ceq $cited })
         if ($byKey.Count -ge 1) { return [pscustomobject]@{ Turn = $byKey[$byKey.Count - 1].Turn; Reason = '' } }
         $byId = @($entries | Where-Object { [string]$_.Turn.message_id -ceq $cited })
         $distinct = @($byId | ForEach-Object { $_.Base } | Sort-Object -Unique)  # specrew-dedup-not-a-path: act identities are lowercase SHA-256 hex
