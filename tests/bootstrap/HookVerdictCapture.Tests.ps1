@@ -198,6 +198,28 @@ try {
     Assert-True ([string]$e14.last_authorized_boundary -eq 'plan') "14 PROMPT-SUBMIT: 'I approved for tasks yesterday' authorizes nothing (got '$($e14.last_authorized_boundary)')"
     Assert-True ($out14 -notmatch 'VERDICT_CAPTURE_FAILED') "14 PROMPT-SUBMIT: and it is not read as a verdict that failed to record"
 
+    # === Case 15 — STOP (203 T004 round 12): a mention that is not a verdict does not take the packet's window. ===
+    # The transcript reader chose the first turn its token reader called an approval and applied the standalone rule only
+    # after, so 'I approved for tasks yesterday' took the window and the human's real approval two turns later was never read.
+    $c15 = New-CaptureProject -LastAuth 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement --> What's your verdict?" },
+        @{ role = 'user'; text = 'I approved for tasks yesterday' },
+        @{ role = 'assistant'; text = 'Yes, tasks was approved yesterday; this packet asks about before-implement.' },
+        @{ role = 'user'; text = 'approved for before-implement' }
+    ); $cases += $c15.Tmp
+    Invoke-StopHook -Proj $c15.Proj -Tx $c15.Transcript
+    $e15 = Read-Enforcement -Proj $c15.Proj
+    Assert-True ([string]$e15.last_authorized_boundary -eq 'before-implement') "15 STOP: a mention before the real approval is scanned past (got '$($e15.last_authorized_boundary)')"
+    # A send-back that is not standalone is still a verdict, and still blocks the approval behind it.
+    $c15b = New-CaptureProject -LastAuth 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement --> What's your verdict?" },
+        @{ role = 'user'; text = 'Send back: needs a rollback path' },
+        @{ role = 'assistant'; text = 'Understood.' },
+        @{ role = 'user'; text = 'approved for before-implement' }
+    ); $cases += $c15b.Tmp
+    Invoke-StopHook -Proj $c15b.Proj -Tx $c15b.Transcript
+    Assert-True ([string](Read-Enforcement -Proj $c15b.Proj).last_authorized_boundary -eq 'tasks') "15 STOP: a send-back still wins the window over a later approval"
+
     Write-Host "`n=== HookVerdictCapture.Tests.ps1: all assertions passed (the hook is the verdict authority AND advances one boundary at a time) ===" -ForegroundColor Green
 }
 finally {

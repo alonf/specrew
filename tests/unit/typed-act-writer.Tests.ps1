@@ -756,6 +756,63 @@ foreach ($label in @('codex', '')) {
 }
 Assert-True ($null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root) -and (Get-RoundCaptureCount -Fixture $f13) -eq 1) ("no approval is spendable and one capture exists (captures {0})" -f (Get-RoundCaptureCount -Fixture $f13))
 
+# Case 14 (co-review round 12, finding 2): THE RESET'S SLOT HAS THE ROUND SLOT'S RULE. The consumption read reset A and wrote
+# its spent A back with no lock, so a newer B saved in between was lost, its turn already reserved; and it stamped whatever
+# the slot held, so a reset applied from A spent B. While another process holds the slot the consumption waits; and a
+# consumption told which capture it used leaves a newer act waiting, which the landed-reset guard does not take as paid.
+Write-Host '--- case 14: the reset consumption waits for the slot, and spends only the capture it used ---'
+function Read-PendingReset { param([string]$Root) return Get-Content -LiteralPath (Join-Path $Root '.specrew/review/allowance-reset/pending-allowance-reset.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 }
+$f14 = New-QueuedReplyFixture
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
+$lockPath14 = Join-Path $f14.Root '.specrew/review/allowance-reset/pending-allowance-reset.lock'
+$held14 = [IO.File]::Open($lockPath14, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+try {
+    $spend14 = Start-SlotChild "`$null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot '$($f14.Root)' -Reference 'reset-1'"
+    Start-Sleep -Seconds 4
+    Assert-True ([string]::IsNullOrWhiteSpace([string](Read-PendingReset -Root $f14.Root).spent_at)) 'while the reset slot is held, the consumption does not write it'
+}
+finally { $held14.Dispose() }
+Wait-SlotChild $spend14
+Assert-True (-not [string]::IsNullOrWhiteSpace([string](Read-PendingReset -Root $f14.Root).spent_at)) 'once released, the consumption completes'
+$f14b = New-QueuedReplyFixture
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
+$used14b = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+Write-EngineFact -Path (Join-Path $f14b.Root ".specrew/review/authority/campaigns/$campaignId/budget-resets/reset-1.json") -Fact ([ordered]@{
+        campaign_id = $campaignId; fact_type = 'budget-reset'; reset_id = 'reset-1'; observed_at = '2026-11-04T10:15:00.0000000+00:00'; schema_version = '1.0' })
+$complete14b = @{ ProjectRoot = $f14b.Root; Reference = 'reset-1' }
+Add-IfSupported -Splat $complete14b -Command 'Complete-SpecrewAllowanceResetAuthorization' -Name 'Approval' -Value $used14b
+$null = Complete-SpecrewAllowanceResetAuthorization @complete14b
+$waiting14b = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root
+Assert-True ($null -ne $waiting14b -and [string]$waiting14b.turn_identity -ceq 'turn-B') ("the reset applied from A leaves B waiting, unspent (waiting '{0}')" -f $(if ($null -ne $waiting14b) { [string]$waiting14b.turn_identity } else { '' }))
+$landed14b = if ($null -ne $waiting14b) { Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $f14b.Root -CampaignId $campaignId -CaptureObservedAt $waiting14b.observed_at } else { 'no B' }
+Assert-True ($null -eq $landed14b) 'and the reset A paid for is not taken as the one B paid for'
+
+# Case 15 (co-review round 12, finding 3): A RESET NEVER OVERWRITES A NEWER ROUND APPROVAL. The human typed reset A, then
+# round approval B; the CLI then applied A while a round waited on the allowance, and the round approval derived from A
+# replaced B, dated at A, with no fact naming what it retired. The ordinary writer's order rule applies, spent or not.
+Write-Host '--- case 15: a round approval derived from an older reset does not replace a newer typed one ---'
+function Get-Field { param($Record, [string]$Name) if ($null -ne $Record -and $Record.PSObject.Properties[$Name]) { return [string]$Record.$Name }; return '' }
+$f15 = New-QueuedReplyFixture
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f15.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
+$reset15 = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f15.Root
+$null = Write-TypedRoundApproval -Root $f15.Root -NowUtc '2026-11-04T10:10:00.0000000Z' -TurnIdentity 'turn-B'
+$null = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $f15.Root -ResetApproval $reset15 -ResetId 'reset-1'
+$slot15 = Read-Pending -Root $f15.Root
+Assert-True ((Get-Field $slot15 'turn_identity') -ceq 'turn-B' -and (Get-Field $slot15 'derived_from') -eq '') ("the waiting B stays (holds '{0}', derived from '{1}')" -f (Get-Field $slot15 'turn_identity'), (Get-Field $slot15 'derived_from'))
+$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f15.Root -AuthorizationRef 'cmp-x-round-2'
+$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f15.Root -AuthorizationRef 'cmp-x-round-2' -RunId 'run-round-2'
+$derived15b = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $f15.Root -ResetApproval $reset15 -ResetId 'reset-1'
+Assert-True ($null -eq $derived15b -and $null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f15.Root) -and (Get-Field (Read-Pending -Root $f15.Root) 'turn_identity') -ceq 'turn-B') 'and once B is spent, the older reset approves no further round'
+# A reset newer than the waiting approval does take the slot, with its own identity and the fact naming what it retired.
+$f15c = New-QueuedReplyFixture
+$null = Write-TypedRoundApproval -Root $f15c.Root -NowUtc '2026-11-04T10:00:00.0000000Z' -TurnIdentity 'turn-A'
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f15c.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-R' -NowUtc '2026-11-04T10:10:00.0000000Z'
+$null = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $f15c.Root -ResetApproval (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f15c.Root) -ResetId 'reset-2'
+$slot15c = Read-Pending -Root $f15c.Root
+$retired15c = @(Read-Captures -Root $f15c.Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-superseded' -and [string]$_.superseded_turn_identity -ceq 'turn-A' })
+Assert-True ((Get-Field $slot15c 'derived_from') -ceq 'allowance-reset:reset-2' -and (Get-Field $slot15c 'turn_identity') -ceq 'turn-R' -and $retired15c.Count -eq 1) ("a newer reset takes the slot as itself, and the retired A is on record (holds '{0}', facts {1})" -f (Get-Field $slot15c 'turn_identity'), $retired15c.Count)
+
 # ---------------------------------------------------------------------------------------------------
 # Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER
 # TYPED ACT SUPERSEDES; IT NEVER FOLDS, for the three review acts beside the round approval. Today the top-up folds a

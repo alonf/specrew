@@ -950,7 +950,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                         catch { $landedReset = $null }
                         if ($null -ne $landedReset) {
                             $landedRef = if ($landedReset.PSObject.Properties['reset_id']) { [string]$landedReset.reset_id } else { 'already-landed' }
-                            try { Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference $landedRef | Out-Null } catch { $null = $_ }
+                            try { Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference $landedRef -Approval $capturedAllowanceReset | Out-Null } catch { $null = $_ }
                             $capturedAllowanceReset = $null
                         }
                     }
@@ -1014,7 +1014,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 # unstamped capture harmless.
                 $resetConsumed = $null
                 if ($null -ne $capturedAllowanceReset -and (Get-Command -Name 'Complete-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
-                    try { $resetConsumed = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference ([string]$resetFact.reset_id) } catch { $resetConsumed = $null }
+                    try { $resetConsumed = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference ([string]$resetFact.reset_id) -Approval $capturedAllowanceReset } catch { $resetConsumed = $null }
                 }
                 $resetStampLost = ($null -ne $capturedAllowanceReset -and ($null -eq $resetConsumed -or -not [bool]$resetConsumed.consumed))
                 if ($resetStampLost) {

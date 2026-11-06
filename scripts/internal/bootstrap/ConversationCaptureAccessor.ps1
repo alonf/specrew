@@ -756,6 +756,10 @@ function Get-SpecrewCapturedBoundaryVerdict {
             $candidateText = Resolve-SpecrewBoundaryVerdictText -Text ([string]$turns[$j].text) -HostKind $HostKind
             $candidate = Test-SpecrewHumanVerdictToken -Text $candidateText
             if (-not $candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss) { continue }
+            # Feature 203 T004 (round 12): an approval that does not start the message is a mention, not a verdict, so it
+            # is scanned past here like any other non-verdict turn; a send-back or discuss request still wins the window.
+            if ($candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss -and
+                $candidateText.TrimStart() -notmatch '^(?i)approv(?:e|ed)\b') { continue }
             $humanText = $candidateText
             $humanTurn = $turns[$j]
             break

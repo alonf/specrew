@@ -868,7 +868,7 @@ Describe 'W61 round 19: ownership is joined through the grant, and the recovery 
 
         function script:New-JoinFixture {
             # A campaign store shaped exactly like the live one: grant -> reservation -> run result.
-            param([string]$AuthorizationRef, [string]$RunOutcome = 'completed', [string]$GrantId = 'grant-aaaa1111')
+            param([string]$AuthorizationRef, [string]$RunOutcome = 'completed', [string]$GrantId = 'grant-aaaa1111', [string]$Completion = 'complete')
             $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
             $campaign = 'cmp-fixture-i001'
             $base = Join-Path $root ".specrew/review/authority/campaigns/$campaign"
@@ -880,7 +880,7 @@ Describe 'W61 round 19: ownership is joined through the grant, and the recovery 
                 ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $base "grants/$GrantId.json") -Encoding UTF8
             ([pscustomobject]@{ grant_id = $GrantId; run_id = 'run-joined'; schema_version = '1.0' } | ConvertTo-Json -Compress) |
                 Set-Content -LiteralPath (Join-Path $base "reservations/$GrantId/slot-001/generation-001.json") -Encoding UTF8
-            ([pscustomobject]@{ campaign_id = $campaign; run_id = 'run-joined'; runtime_outcome = $RunOutcome
+            ([pscustomobject]@{ campaign_id = $campaign; run_id = 'run-joined'; runtime_outcome = $RunOutcome; completion = $Completion
                     started_at = '2026-08-25T10:05:00.0000000+00:00'; schema_version = '1.0' } | ConvertTo-Json -Compress) |
                 Set-Content -LiteralPath (Join-Path $base 'runs/run-joined/result.json') -Encoding UTF8
             return [pscustomobject]@{ Root = $root; CampaignId = $campaign }
@@ -900,6 +900,17 @@ Describe 'W61 round 19: ownership is joined through the grant, and the recovery 
                 Should -BeNullOrEmpty -Because 'a DIFFERENT round completing is not this approval being spent - the round-19 major'
             Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef '' |
                 Should -BeNullOrEmpty -Because 'a capture that never minted a grant owns no round'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a run that completed with partial coverage is not a delivered round (co-review round 12, finding 4)' {
+        # The ingestor records runtime_outcome completed with completion partial; the post-run path counts that undelivered,
+        # and this join took it as delivered, so the next --approve-round marked the standing approval spent.
+        $f = New-JoinFixture -AuthorizationRef 'cmp-fixture-i001-round-7' -Completion 'partial'
+        try {
+            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-7' |
+                Should -BeNullOrEmpty -Because 'a partial is spent only when the human accepts it'
         }
         finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
     }

@@ -2521,6 +2521,38 @@ function Write-SpecrewReviewRoundApprovalFromReset {
     # the fraction and, for a `+00:00` value, prints local time (round 9, after DRIFT-004).
     $resetAt = ConvertTo-SpecrewAuthorityInstant -Value $ResetApproval.observed_at
     $observedAt = if ($null -ne $resetAt) { $resetAt.ToUniversalTime().ToString('o') } else { [string]$ResetApproval.observed_at }
+    $resetTurn = if ($ResetApproval.PSObject.Properties['turn_identity']) { [string]$ResetApproval.turn_identity } else { '' }
+    # Co-review round 12 (finding 3): THE ORDINARY WRITER'S ORDER RULE. A round approval the human typed after this reset is
+    # the newer act, spent or not; the reset dated earlier never overwrites it.
+    if ([IO.File]::Exists($path)) {
+        $existing = $null
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
+        if ($null -ne $existing) {
+            $heldTurn = if ($existing.PSObject.Properties['turn_identity']) { [string]$existing.turn_identity } else { '' }
+            $heldAt = if ($existing.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $existing.observed_at } else { $null }
+            $heldSpent = ($existing.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$existing.spent_at))
+            $sameAct = (-not [string]::IsNullOrWhiteSpace($resetTurn) -and $heldTurn -ceq $resetTurn)
+            $heldIsNewer = (-not $sameAct -and $null -ne $heldAt -and $null -ne $resetAt -and $resetAt -lt $heldAt)
+            # The newer approval, waiting, authorizes the round itself; spent, it leaves nothing for the reset to approve.
+            if ($sameAct -or $heldIsNewer) {
+                if ($heldSpent) { return $null }
+                return $existing
+            }
+            if (-not $heldSpent) {
+                # An older unspent approval is retired as the round writer retires one: the fact first, or nothing.
+                $supersession = [pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'review-round-approval-superseded'; authority_kind = 'human'
+                    superseded_observed_at = if ($null -ne $heldAt) { ([DateTimeOffset]$heldAt).ToUniversalTime().ToString('o') } else { '' }
+                    superseded_turn_identity = $heldTurn
+                    superseded_minted_ref = if ($existing.PSObject.Properties['minted_ref']) { [string]$existing.minted_ref } else { '' }
+                    superseded_by_observed_at = $observedAt; superseded_by_turn_identity = $resetTurn
+                    observed_at = ([DateTimeOffset]::UtcNow.ToString('o'))
+                }
+                try { Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Value ($supersession | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop }
+                catch { return $null }
+            }
+        }
+    }
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'review-round-approval'; authority_kind = 'human'
         authorized_by = [string]$ResetApproval.authorized_by; approval_kind = 'typed-phrase'
@@ -2528,7 +2560,7 @@ function Write-SpecrewReviewRoundApprovalFromReset {
         evidence_source = [string]$ResetApproval.evidence_source; source_event = [string]$ResetApproval.source_event
         host_kind = [string]$ResetApproval.host_kind; observed_at = $observedAt
         derived_from = ('allowance-reset:' + $ResetId)
-        spent_at = $null; authorization_ref = $null; minted_ref = ''; minted_at = ''
+        spent_at = $null; authorization_ref = $null; minted_ref = ''; minted_at = ''; turn_identity = $resetTurn
     }
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
@@ -3039,8 +3071,11 @@ function Get-SpecrewDeliveredRoundForMintedRef {
                 $result = $null
                 try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -ErrorAction Stop } catch { continue }
                 if ($null -eq $result -or -not $result.PSObject.Properties['runtime_outcome']) { continue }
-                # DELIVERED only: an attempt that never reached a reviewer spends nothing (W50).
-                if ([string]$result.runtime_outcome -ceq 'completed') { return $result }
+                # DELIVERED only: an attempt that never reached a reviewer spends nothing (W50). Co-review round 12 (finding 4):
+                # delivered as the post-run path classifies it, so a run that completed with partial coverage is not a
+                # delivered round; a partial is spent only when the human accepts it, and that acceptance spends the approval.
+                $classified = Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = $result; run_id = $runId })
+                if ([string]$classified.outcome -ceq 'delivered') { return $result }
             }
         }
     }
@@ -3667,6 +3702,39 @@ function Test-SpecrewAllowanceResetPhrase {
     return $r
 }
 
+# Co-review round 12 (T004, finding 2): the round slot's rule, for the reset's slot. The capture and the consumption each
+# read pending-allowance-reset.json, decide, and write it back; unserialized, a consumption that read reset A wrote its
+# spent A over a newer B the prompt hook had just saved, and B's turn was already reserved, so nothing restored it.
+$script:SpecrewAllowanceResetSlotLockDepth = 0
+
+function Invoke-SpecrewAllowanceResetSlotLocked {
+    # Runs Body holding the reset slot's lock file open exclusively; throws 'allowance-reset-slot-busy' when it cannot take it.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][scriptblock]$Body,
+        [int]$TimeoutSeconds = 15
+    )
+    if ($script:SpecrewAllowanceResetSlotLockDepth -gt 0) { return (& $Body) }
+    $root = Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $lockPath = Join-Path $root 'pending-allowance-reset.lock'
+    $stream = $null
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        try { $stream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+        catch {
+            if ([DateTimeOffset]::UtcNow -ge $deadline) { throw 'allowance-reset-slot-busy' }
+            Start-Sleep -Milliseconds 25
+        }
+    } until ($null -ne $stream)
+    $script:SpecrewAllowanceResetSlotLockDepth++
+    try { return (& $Body) }
+    finally {
+        $script:SpecrewAllowanceResetSlotLockDepth--
+        $stream.Dispose()
+    }
+}
+
 function Write-SpecrewAllowanceResetAuthorization {
     # SPECREW-AUTHORITY-CONTROL: allowance-reset
     [CmdletBinding()]
@@ -3679,6 +3747,11 @@ function Write-SpecrewAllowanceResetAuthorization {
         [AllowNull()][string]$TurnIdentity,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    # Co-review round 12: under the reset slot's lock (a busy slot throws, and the router reports the reset as not recorded).
+    if ($script:SpecrewAllowanceResetSlotLockDepth -lt 1) {
+        $bound = $PSBoundParameters
+        return (Invoke-SpecrewAllowanceResetSlotLocked -ProjectRoot $ProjectRoot -Body { Write-SpecrewAllowanceResetAuthorization @bound })
+    }
     $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
     $evidenceSource = 'hook-captured-user-prompt'
     if ($null -eq $event) {
@@ -3740,13 +3813,36 @@ function Get-SpecrewAllowanceResetAuthorization {
     return $fact
 }
 
+function Test-SpecrewAllowanceResetSameCapture {
+    # Whether the held reset record is the capture the caller read: the same turn when both carry one, else the same text
+    # observed at the same instant.
+    [OutputType([bool])]
+    param([AllowNull()]$Held, [AllowNull()]$Approval)
+    if ($null -eq $Held -or $null -eq $Approval) { return $false }
+    $heldTurn = if ($Held.PSObject.Properties['turn_identity']) { [string]$Held.turn_identity } else { '' }
+    $approvalTurn = if ($Approval.PSObject.Properties['turn_identity']) { [string]$Approval.turn_identity } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace($heldTurn) -and -not [string]::IsNullOrWhiteSpace($approvalTurn)) { return ($heldTurn -ceq $approvalTurn) }
+    $heldAt = if ($Held.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $Held.observed_at } else { $null }
+    $approvalAt = if ($Approval.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $Approval.observed_at } else { $null }
+    if ($null -eq $heldAt -or $null -eq $approvalAt) { return $false }
+    return ([string]$Held.response_hash -ceq [string]$Approval.response_hash -and ([DateTimeOffset]$heldAt).UtcDateTime -eq ([DateTimeOffset]$approvalAt).UtcDateTime)
+}
+
 function Complete-SpecrewAllowanceResetAuthorization {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][string]$Reference,
+        # Co-review round 12 (finding 2): the capture the reset was applied from. When the slot now holds a different, newer
+        # act, that act is left waiting, and the reset is bound to the capture it used instead.
+        [AllowNull()]$Approval,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    if ($script:SpecrewAllowanceResetSlotLockDepth -lt 1) {
+        $bound = $PSBoundParameters
+        try { return (Invoke-SpecrewAllowanceResetSlotLocked -ProjectRoot $ProjectRoot -Body { Complete-SpecrewAllowanceResetAuthorization @bound }) }
+        catch { if ([string]$_.Exception.Message -ceq 'allowance-reset-slot-busy') { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-busy' } }; throw }
+    }
     # W66 / round-24 finding (DRIFT-199-I001-138): SAY WHAT HAPPENED, AND VERIFY IT.
     #
     # The caller swallowed every error here, discarded the result, printed success and exited 0 - so a
@@ -3762,6 +3858,20 @@ function Complete-SpecrewAllowanceResetAuthorization {
     try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
     catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-unreadable' } }
     if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-empty' } }
+    if ($null -ne $Approval -and -not (Test-SpecrewAllowanceResetSameCapture -Held $fact -Approval $Approval)) {
+        # A newer act took the slot after the reset read its capture. It stays waiting; the binding says which capture this
+        # reset paid for, so the landed-reset guard does not take the newer act as already paid.
+        $approvalAt = ConvertTo-SpecrewAuthorityInstant -Value $Approval.observed_at
+        $binding = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'allowance-reset-binding'; reset_reference = [string]$Reference
+            approval_turn_identity = if ($Approval.PSObject.Properties['turn_identity']) { [string]$Approval.turn_identity } else { '' }
+            approval_observed_at = if ($null -ne $approvalAt) { ([DateTimeOffset]$approvalAt).ToUniversalTime().ToString('o') } else { [string]$Approval.observed_at }
+            observed_at = $NowUtc
+        }
+        try { Add-Content -LiteralPath (Join-Path (Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot) 'reset-bindings.jsonl') -Value ($binding | ConvertTo-Json -Compress -Depth 6) -Encoding UTF8 -ErrorAction Stop }
+        catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('binding-write-failed:' + $_.Exception.Message) } }
+        return [pscustomobject]@{ consumed = $true; fact = $Approval; reason = 'superseded-by-newer' }
+    }
     $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
     $fact | Add-Member -NotePropertyName 'reset_reference' -NotePropertyValue ([string]$Reference) -Force
     $json = $fact | ConvertTo-Json -Depth 8
@@ -3804,6 +3914,19 @@ function Get-SpecrewLandedResetForAllowanceCapture {
     $capturedAt = $null
     try { $capturedAt = ConvertTo-SpecrewAuthorityInstant -Value $CaptureObservedAt } catch { return $null }
     if ($null -eq $capturedAt) { return $null }
+    # Co-review round 12 (finding 2): a reset bound to a capture observed before this one paid for that capture, not this.
+    $paidForEarlier = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $bindingsPath = Join-Path (Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot) 'reset-bindings.jsonl'
+    if ([IO.File]::Exists($bindingsPath)) {
+        foreach ($line in @(Get-Content -LiteralPath $bindingsPath -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+            if ([string]::IsNullOrWhiteSpace([string]$line)) { continue }
+            $binding = $null
+            try { $binding = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            $boundAt = $null
+            try { $boundAt = ConvertTo-SpecrewAuthorityInstant -Value $binding.approval_observed_at } catch { $boundAt = $null }
+            if ($null -ne $boundAt -and $boundAt -lt $capturedAt) { [void]$paidForEarlier.Add([string]$binding.reset_reference) }
+        }
+    }
     $landed = $null
     $landedAt = $null
     try {
@@ -3811,6 +3934,7 @@ function Get-SpecrewLandedResetForAllowanceCapture {
             $reset = $null
             try { $reset = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
             if ($null -eq $reset -or -not $reset.PSObject.Properties['observed_at']) { continue }
+            if ($reset.PSObject.Properties['reset_id'] -and $paidForEarlier.Contains([string]$reset.reset_id)) { continue }
             $resetAt = $null
             try { $resetAt = ConvertTo-SpecrewAuthorityInstant -Value $reset.observed_at } catch { continue }
             if ($null -eq $resetAt -or $resetAt -lt $capturedAt) { continue }

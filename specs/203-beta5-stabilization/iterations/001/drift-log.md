@@ -850,3 +850,46 @@
   closed), as before.
 - **Requirement**: FR-014, FR-015, FR-022.
 - **Class closure**: OPEN until the next round on the fixes; B5F-017 carries the demotion.
+
+### DRIFT-034 — T004 review round 12, the last round: four findings, all demoted, all real; the maintainer had them fixed (review outcome, maintainer ruling)
+
+- **Round 12**: run `run-20261105-234954268-ad6770c8` (`cmp-203-beta5-stabilization-i001-round-12`), reviewer Codex, on
+  `c80e44b1`, launched from the pin's `specrew-review.ps1` on the maintainer's typed approval; 1,135 s. Round 4 of the
+  reset's 4, so the allowance is spent. Four findings, all reported major and demoted for "no concrete failure
+  scenario", although each stated one (B5F-017, the tenth time):
+  1. the transcript verdict reader chose the first turn its token reader called an approval and applied the
+     standalone rule only after leaving the scan, so `I approved for tasks yesterday` took the packet's window and
+     the human's real `approved for before-implement` two turns later was never read, at the prompt and at Stop;
+  2. `Complete-SpecrewAllowanceResetAuthorization` read and wrote the reset slot with no lock, so a newer reset B the
+     prompt hook saved in between was overwritten by the spent A; and it stamped whatever the slot held, so a reset
+     applied from A could spend B;
+  3. `Write-SpecrewReviewRoundApprovalFromReset` overwrote the waiting round approval without the order check: reset A,
+     then round approval B, then the CLI applying A replaced B with an approval dated at A, and B's turn was already
+     reserved;
+  4. `Get-SpecrewDeliveredRoundForMintedRef` took a run with runtime `completed` and completion `partial` as a
+     delivered round, so the next `--approve-round` marked the standing approval spent without a complete review or
+     the human's acceptance of the partial.
+- **The maintainer's ruling before the round**: the last round, and the review stops there whatever it finds; anything
+  new is carried as a follow-up. After the round the maintainer typed `fix the findings` (2026-11-06). The tree moved
+  after the last round, so the stop's final check on `c80e44b1` no longer describes the tree; the campaign closes on
+  the maintainer's next decision, with these fixes unreviewed by a round.
+- **Resolution**:
+  1. the candidate scan passes over an approval that does not start the message, as over any other non-verdict turn;
+     a send-back or discuss request still wins the window over a later approval;
+  2. the reset slot has the round slot's lock (`pending-allowance-reset.lock`, the capture and the consumption under
+     it; a busy capture throws and is reported as not recorded, a busy consumption returns `pending-capture-busy`);
+     the consumption is told the capture it used (`-Approval`, passed by the CLI) and, when the slot holds a newer act,
+     leaves it waiting and journals which capture the reset paid for (`reset-bindings.jsonl`), which the landed-reset
+     guard reads so the newer act is not taken as already paid;
+  3. the derived approval follows the round writer's order rule: a newer round approval, spent or not, is kept; an
+     older unspent one is retired with the round writer's supersession fact first; the derived record carries the
+     reset's turn identity;
+  4. the join classifies the run with `Resolve-SpecrewRoundEntitlementOutcome`, the post-run path's own rule.
+- **Failing cases first**: `HookVerdictCapture` 15 (and 15b, the send-back barrier), `typed-act-writer` 14 (the held
+  reset slot; B left waiting and not taken as paid) and 15 (B kept, unspent and spent; a newer reset retires A on
+  record), `round-approval-typed-authority` "a run that completed with partial coverage is not a delivered round":
+  each fails on `c80e44b1` and passes on the fix.
+- **Residual, stated**: a reset applied from A after a newer B arrived leaves B waiting; if the binding cannot be
+  written the consumption reports the stamp lost, as before, and the landed-reset guard may then retire B.
+- **Requirement**: FR-014, FR-021, FR-022.
+- **Class closure**: OPEN; no round has reviewed these fixes. B5F-017 carries the demotion.

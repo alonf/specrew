@@ -212,6 +212,9 @@ then T014.
     **Added (maintainer's instruction, 2026-11-06, round 11; DRIFT-033):** a transcript entry's host is the record's,
     never the caller's; a design decision is the decision alone (`design decision: option <n>`); and a reply of another
     authority family gets no boundary-verdict notice. Red on `941c76b5`, green on `ef0b9e23`.
+    **Added (maintainer's instruction, 2026-11-06, after round 12; DRIFT-034):** a mention of an approval does not take a
+    packet's window; the reset slot is locked and its consumption spends only the capture it used; a round approval
+    derived from a reset never overwrites a newer one; a partial run is not a delivered round. Red on `c80e44b1`.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
