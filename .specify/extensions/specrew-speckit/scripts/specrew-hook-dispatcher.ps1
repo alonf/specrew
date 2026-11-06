@@ -1016,6 +1016,11 @@ function ConvertTo-SpecrewTurnRecord {
     if ($isPromptEvent -and $messageIdPaths.Count -eq 0) {
         $standIn = Get-DispatcherStandInMessageId -Payload $Payload -Binding $Binding -SessionId ([string]$sessionId) -TypedText ([string]$typedText)
         if (-not [string]::IsNullOrWhiteSpace($standIn)) { $messageId = $standIn; $messageIdentity = 'stand-in' }
+        # Feature 203 T004 (FR-016; option 1, 2026-11-04): a binding may declare the prompt event's own position key
+        # instead (Cursor, Antigravity). The provider builds it from the event; the turn end stays 'none'.
+        $declaredIdentity = Get-DispatcherMapValue -Map $Binding -Key 'MessageIdentity'
+        if ([string]::IsNullOrWhiteSpace([string]$messageId) -and $null -ne $declaredIdentity -and
+            [string](Get-DispatcherMapValue -Map $declaredIdentity -Key 'Kind' -Default '') -ceq 'position-key') { $messageIdentity = 'position-key' }
     }
     return [ordered]@{
         schema           = 'specrew-turn-record/v1'

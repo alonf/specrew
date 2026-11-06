@@ -53,6 +53,55 @@ function Get-SpecrewDesignDecisionPath {
     return (Join-Path (Join-Path (Join-Path $ProjectRoot 'specs') (Split-Path -Leaf $FeatureRef)) 'design-decisions.json')
 }
 
+function Find-SpecrewNewestTypedTurn {
+    # Feature 203 T004 (FR-014, FR-022; maintainer's decision 2026-11-04, option 1): A WRITER CLI CITES THE NEWEST TYPED
+    # TURN ITSELF. The agent never sees the host's message id, so it cannot be asked for one, and its word for what the
+    # human typed is not the human's word. The prompt hook reserves every typed message in the exhausted-turn ledger
+    # before anything else (its act identity, the hash of its trimmed text, the dispatcher's origin), so the newest
+    # reservation from a prompt event IS the human's newest message. The text the CLI was given counts only when its
+    # hash is that message's; the turn end's own lines are not prompt events and are never read here.
+    # Returns { Found; Matches; TurnIdentity; HostKind; Origin; ObservedAt; Reason }.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string] $Text
+    )
+    $result = [pscustomobject]@{ Found = $false; Matches = $false; TurnIdentity = ''; HostKind = ''; Origin = ''; ObservedAt = $null; Reason = 'no-typed-turn' }
+    $path = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/exhausted-turns.jsonl'
+    if (-not [IO.File]::Exists($path)) { return $result }
+    $lines = $null
+    try { $lines = [IO.File]::ReadAllLines($path) } catch { $result.Reason = 'host-record-unreadable'; return $result }
+    $newest = $null; $newestAt = $null
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $entry = $null
+        # A line it cannot read may be the newest message, so the newest cannot be known: it fails closed.
+        try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { $result.Reason = 'host-record-unreadable'; return $result }
+        if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or [string]::IsNullOrWhiteSpace([string]$entry.turn_id)) { continue }
+        if ($entry.PSObject.Properties['fact_type'] -and [string]$entry.fact_type -cne 'typed-turn-exhausted') { continue }
+        $event = if ($entry.PSObject.Properties['source_event']) { ([string]$entry.source_event).Trim().ToLowerInvariant() } else { '' }
+        if ($event -in @('', 'stop', 'stop-transcript', 'agentstop')) { continue }
+        # The time as the line holds it: ConvertFrom-Json turns an ISO time into a local DateTime, whose string form
+        # drops the offset.
+        $at = $null
+        $m = [regex]::Match($line, '"observed_at"\s*:\s*"([^"]+)"')
+        $parsed = [DateTimeOffset]::MinValue
+        if ($m.Success -and [DateTimeOffset]::TryParse($m.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { $at = $parsed }
+        if ($null -eq $at) { continue }
+        if ($null -eq $newestAt -or $at -gt $newestAt) { $newest = $entry; $newestAt = $at }
+    }
+    if ($null -eq $newest) { return $result }
+    $result.Found = $true
+    $result.TurnIdentity = [string]$newest.turn_id
+    $result.HostKind = if ($newest.PSObject.Properties['host_kind']) { [string]$newest.host_kind } else { '' }
+    $result.Origin = if ($newest.PSObject.Properties['turn_origin']) { [string]$newest.turn_origin } else { '' }
+    $result.ObservedAt = $newestAt
+    $hash = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(([string]$Text).Trim())))).ToLowerInvariant()
+    $result.Matches = ($newest.PSObject.Properties['content_hash'] -and [string]$newest.content_hash -ceq $hash)
+    $result.Reason = if (-not $result.Matches) { 'newest-turn-differs' } elseif ($result.Origin -cne 'typed-user') { 'not-typed-by-human' } else { '' }
+    return $result
+}
+
 function Test-SpecrewDesignDecisionPhrase {
     # THE PHRASE FAMILY. It opens with `design decision`, which the boundary anchor - built around the verb
     # `approv(e|ed|es)` - cannot match under any input. That is the entire collision-avoidance mechanism, and
@@ -61,6 +110,51 @@ function Test-SpecrewDesignDecisionPhrase {
     param([AllowNull()][AllowEmptyString()][string] $Text)
     if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
     return ($Text -imatch '^\s*design\s+decision\b')
+}
+
+# Co-review round 9 (T004): words that make a sentence naming an option something other than choosing it: a negation, a
+# condition, or still deciding. Read anywhere in the sentence, so a reason that uses one refuses too; the human's sentence
+# can be the decision alone ('design decision: option 2'), and the reason goes in the record's rationale.
+$script:SpecrewDesignDecisionUndecidedPattern = '(?i)\b(?:not|no|never|neither|nor|undecided|maybe|perhaps|possibly|unsure|if|unless|whether|provided|assuming|depends|depending|tentatively|let\s+me\s+think|think\s+about)\b|n[''\u2019]t\b'
+
+function Get-SpecrewDesignDecisionReading {
+    # Co-review round 8 (T004): THE OPTION THE HUMAN'S OWN SENTENCE NAMES, read from it: `design decision: option 2`,
+    # `design decision: 2`, `design decision - option B because ...`. The record's `chosen` must be this, so a valid turn
+    # citation can never carry a choice the human did not make.
+    # Co-review round 9: AND ONLY WHEN THE SENTENCE CHOOSES IT. `option 2?`, `option 2 is not acceptable` and `option 2 - not
+    # decided` named option 2 and were recorded as choosing it. The option must be followed by the end of the sentence or a
+    # separator before the reason, and the sentence may not ask, negate, set a condition or deliberate.
+    # Co-review round 10: THE AFFIRMATIVE FORM, NOT A LIST OF WORDS IT MAY NOT CONTAIN. `option 2 - rejected` and `option 2 -
+    # I reject this option` passed the round-9 list, and no list names every way to refuse. A sentence decides only as the
+    # option alone, or the option and then a reason introduced as one (`because`, `since`, `as`, `so`); any other text after
+    # the option is not read as assent. The list still applies to that reason, so it cannot ask, negate or condition.
+    # Co-review round 11: NOR IS A CONNECTOR. `option 2, so reject this option` passed as a reason, and no reading of free
+    # text proves it agrees with the choice: three rounds found a new way to refuse in the same sentence. So the sentence is
+    # the decision alone, `design decision: option <n>`, and the reason is the record's rationale. Anything after the
+    # option is refused, and the refusal says so.
+    # Returns { Choice; Reason }: Reason '' (Choice is the option), 'names-no-option', or 'not-a-decision'.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string] $Text)
+    $reading = [pscustomobject]@{ Choice = ''; Reason = 'names-no-option' }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $reading }
+    $m = [regex]::Match($Text, '^\s*design\s+decision\b\s*[:\-\u2013\u2014]?\s*(?:option\s+)?(?<id>[^\s,;:.!?\-\u2013\u2014]+)(?<after>.*)$', 'IgnoreCase, Singleline')
+    if (-not $m.Success) { return $reading }
+    $after = $m.Groups['after'].Value
+    if ($Text.Contains('?') -or $Text -match $script:SpecrewDesignDecisionUndecidedPattern -or
+        $after -notmatch '^\s*[.!]?\s*$') {
+        $reading.Reason = 'not-a-decision'
+        return $reading
+    }
+    $reading.Choice = $m.Groups['id'].Value.Trim()
+    $reading.Reason = ''
+    return $reading
+}
+
+function Get-SpecrewDesignDecisionChoice {
+    # The option the sentence chooses (Get-SpecrewDesignDecisionReading); '' when it chooses none.
+    [OutputType([string])]
+    param([AllowNull()][AllowEmptyString()][string] $Text)
+    return [string](Get-SpecrewDesignDecisionReading -Text $Text).Choice
 }
 
 function Test-SpecrewDesignDecisionRecord {
@@ -139,6 +233,22 @@ function Test-SpecrewDesignDecisionRecord {
     # was never shown, which is the same defect as handing options down, arriving one step later.
     if (-not $ids.Contains(([string]$Record.chosen).Trim())) {
         return (New-Result -Valid $false -Reason 'design-decision-chosen-not-among-options')
+    }
+    # Co-review round 8 (T004): AND IT MUST BE THE OPTION THE HUMAN'S SENTENCE NAMES. The choice used to be a separate
+    # parameter, so a real reply choosing option 2 could carry a record of option 1. A sentence that names no option
+    # recorded is no decision between them.
+    # Co-review round 9: a sentence that asks, negates, conditions or deliberates chooses nothing, whatever it names.
+    $reading = Get-SpecrewDesignDecisionReading -Text ([string]$Record.human_turn)
+    if ([string]$reading.Reason -ceq 'not-a-decision') {
+        return (New-Result -Valid $false -Reason 'design-decision-human-turn-not-a-decision')
+    }
+    $named = [string]$reading.Choice
+    $namedId = @($ids | Where-Object { [string]::Equals($_, $named, [StringComparison]::OrdinalIgnoreCase) })
+    if ($namedId.Count -ne 1) {
+        return (New-Result -Valid $false -Reason 'design-decision-human-turn-names-no-option')
+    }
+    if ([string]$namedId[0] -cne ([string]$Record.chosen).Trim()) {
+        return (New-Result -Valid $false -Reason 'design-decision-chosen-not-the-human-choice')
     }
     return (New-Result -Valid $true -Reason 'design-decision-valid')
 }
