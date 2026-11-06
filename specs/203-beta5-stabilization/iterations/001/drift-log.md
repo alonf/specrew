@@ -934,3 +934,24 @@
   records what was decided then.
 - **Requirement**: FR-001, FR-005, FR-007, FR-008, FR-013.
 - **Class closure**: CLOSED; DRIFT-032 closed with it.
+
+### DRIFT-037 — The pin advanced past T004 before T005, not at T014; the `.specify` mirror was three files behind (maintainer ruling, observation)
+
+- **Ruling**: the iteration plan deployed T002 alone and everything else at T014, while T004's own text assumes an advance
+  past T004 for its live checks (the first approval of each kind, a reply typed early). The maintainer typed
+  `advance the pin now` (2026-11-07): advance after the spec commit and before T005, then run those checks.
+- **Found before the advance**: `.specify/extensions/specrew-speckit` was behind `extensions/specrew-speckit` in
+  `design-decision-store.ps1`, `record-design-decision.ps1` and `specrew-hook-dispatcher.ps1` (T004 commits from
+  `0ddef94f` to `ef0b9e23` changed the extension copy only), against the plan's rule that every extension change syncs
+  its mirror in the same commit. The pinned hooks run the mirror's dispatcher, and the crew runs the mirror's
+  design-decision CLI, so a pin at `a00595f5` would not have deployed those T004 changes. `twin-copy-parity` covers the
+  `scripts/internal` twins, not the `.specify` mirror, so no lane caught it.
+- **Done**: the three files copied byte for byte from `extensions/`, which is unchanged since the signed-off `6210e2ab`
+  (`a489e6c0`); the nine suites that load the mirror copies pass on it. `live-engine-pin.ps1 -Action Advance -Commit
+  a489e6c0`: the pin is usable, the bindings restamped, the Claude hooks ran through it; no home or project hook file
+  changed, so the Claude hooks were not redeployed (the deployer's change since `063e233a` is the binding encoding,
+  which the advance restamps).
+- **Rollback, stated to the maintainer before the advance**: the same command with `-Commit 063e233a`, runnable from any
+  terminal and needing no typed approval; `-Action Remove` if the pin itself breaks.
+- **Requirement**: FR-045 (the deployment point), FR-014, FR-022.
+- **Class closure**: OPEN; a mirror parity check for `.specify` against `extensions/` is not in any lane.

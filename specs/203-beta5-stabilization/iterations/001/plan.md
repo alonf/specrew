@@ -123,6 +123,7 @@ Iteration 001 is the authority core: US1 (review budget), US2 (capture), US3 (sa
   trusted, or the cycle signs off on unfixed findings. The spec's FR-001, FR-005, FR-007 and FR-008 were aligned
   with this input on 2026-11-07 (DRIFT-036).
 - **Live hooks:** see the feature plan's section on when 203's changes reach the live hooks. T002 is deployed
-  alone after its own review; everything else reaches the live hooks at T014.
+  alone after its own review; everything else reaches the live hooks at T014. T004 was deployed after its sign-off,
+  before T005, on the maintainer's ruling (2026-11-07; pin at `a489e6c0`, DRIFT-037).
 - **Design:** see design-analysis.md (Co-Design Record) and the feature plan.md work breakdown W0 to W13, which
   maps to T001 to T014 (W1 is T002, W0 is T001; the rest in order).
