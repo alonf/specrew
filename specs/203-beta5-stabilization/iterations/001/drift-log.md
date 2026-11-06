@@ -807,7 +807,7 @@
   `budget_total = 0`) against item 1; FR-007 (a reset grants "another `budget_total` rounds") against item 2. Item 4 is
   not in T008's trace today; B5F-017 was a named backlog item for iteration 002 or later.
 - **Requirement**: FR-001, FR-003, FR-004, FR-005, FR-007, FR-008, FR-010, FR-013.
-- **Class closure**: OPEN until the spec text is aligned or the maintainer rules it stays as written.
+- **Class closure**: CLOSED by DRIFT-036 (the spec text aligned on the maintainer's instruction).
 
 ### DRIFT-033 — T004 review round 11: three findings, two demoted, all real; fixed before the next round (review outcome, maintainer ruling)
 
@@ -920,3 +920,17 @@
 - **Follow-ups**: the three findings go to B5F-029, finding 1 marked as an incomplete DRIFT-034 fix.
 - **Requirement**: FR-014, FR-021, FR-022.
 - **Class closure**: OPEN; B5F-029 carries the three findings, B5F-017 the demotion.
+
+### DRIFT-036 — The spec aligned with the maintainer's T008 input (maintainer ruling)
+
+- **Instruction**: the maintainer typed `align the spec now` (2026-11-07), choosing to update the spec text over leaving
+  it until T008 starts.
+- **Changed in `spec.md`**: FR-001 states the floor of 2 (one review, one fix verification, approved once with the plan;
+  fewer becomes 2); FR-005 keeps a finding's reported severity when it states a concrete failure scenario, before the
+  automatic cycle is trusted (B5F-017, item 4); FR-007 makes a reset one "fix + verify the fix" cycle, not another
+  `budget_total` rounds and not a separate round approval; FR-008 gives a plan with no stated budget 2, not 0; the US1
+  trace row puts FR-013 back in iteration 001 if possible, after T008.
+- **Not changed**: the design-workshop record (`workshop/architecture-core.md`, its "`budget_total = 0`" case), which
+  records what was decided then.
+- **Requirement**: FR-001, FR-005, FR-007, FR-008, FR-013.
+- **Class closure**: CLOSED; DRIFT-032 closed with it.

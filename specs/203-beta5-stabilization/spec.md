@@ -281,8 +281,9 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
 
 **A. Review budget (US1)**
 
-- **FR-001**: The plan MUST state a review budget: a number of rounds (0 or more) and an ordered list of
-  reviewer hosts.
+- **FR-001**: The plan MUST state a review budget: a number of rounds and an ordered list of reviewer hosts.
+  The budget has a floor of 2, one review round plus one fix-verification round, approved once with the plan;
+  a plan that states fewer gets 2 (maintainer input 2026-11-05, DRIFT-032).
 - **FR-002**: A plan budget above the configured ceiling MUST be refused when the plan states it and when the
   before-implement verdict snapshots it. The refusal MUST name the ceiling and where it is set.
 - **FR-003**: Recording the before-implement verdict MUST snapshot the plan's rounds and host order into the
@@ -292,15 +293,18 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   MUST be reserved before the reviewer is invoked; no reservation, no invocation. A reservation released
   before invocation MUST spend nothing.
 - **FR-005**: Within the budget, a clean round MUST end the review and a fix-needed round MUST lead to a fix
-  within the approved tasks and the next round, with no human stop.
+  within the approved tasks and the next round, with no human stop. A finding that states a concrete failure
+  scenario MUST keep the severity the reviewer reported, so the cycle does not end clean on it; this holds before
+  the automatic cycle is trusted (B5F-017; maintainer input 2026-11-05, DRIFT-032).
 - **FR-006**: The review MUST stop the human only for (a) budget spent, (b) a dispute or deferral, (c) a
   judgment call, (d) a next host outside the approved order, including an exhausted order. No stop MUST ask
   for a round. No review stop MUST occur outside implement. No block MUST exist whose only purpose is to make
   the crew run the next round.
-- **FR-007**: `approved for allowance reset` MUST record the existing budget-reset fact, grant another
-  `budget_total` rounds and start the next round. The hook MUST mint it from the typed turn; its reason MUST
-  be the human's own text or none.
-- **FR-008**: A plan with no stated budget MUST get `budget_total = 0`.
+- **FR-007**: `approved for allowance reset` MUST record the existing budget-reset fact, grant exactly one
+  "fix + verify the fix" cycle (one fix round and one verification round) and start it. It is not a separate
+  round approval. The hook MUST mint it from the typed turn; its reason MUST be the human's own text or none
+  (maintainer input 2026-11-05, DRIFT-032).
+- **FR-008**: A plan with no stated budget MUST get `budget_total = 2`, the floor (FR-001).
 - **FR-009**: An infrastructure failure MUST NOT spend a round. After N consecutive infrastructure failures on
   a host (N a named configuration value set in the plan), the cycle MUST move to the next host in the
   approved order; when the order is exhausted it MUST stop at (d).
@@ -525,7 +529,7 @@ the Windows shards replace none of them; the 12 script-style suites join the cen
 
 | Story | Findings | Requirements | Owner roles | Iteration (proposed) |
 |---|---|---|---|---|
-| US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1; FR-012 and FR-013 in 2 (plan verdict) |
+| US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1; FR-012 in 2 (plan verdict); FR-013 back in 1 if possible, after T008 (DRIFT-032) |
 | US2 | B4F-112, B4F-116/150, B4F-117, B4F-140/137 | FR-014 to FR-025, FR-042, FR-045 | Implementer; Reviewer (codex); maintainer for the Claude capture check | 1 |
 | US3 | B4F-151, B4F-112 | FR-026, FR-027 | Implementer; Reviewer | 1 |
 | US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032 | Implementer; maintainer rules the audit table | 2 |

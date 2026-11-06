@@ -120,8 +120,8 @@ Iteration 001 is the authority core: US1 (review budget), US2 (capture), US3 (sa
   one "fix + verify the fix" cycle, not a separate round approval; (3) T009 (the scoped fix round, FR-013) comes back
   into this iteration if possible, after T008, since an unscoped verification round keeps finding new rare cases in
   unchanged code (rounds 8 and 9): +2.0 SP, 30.5 planned against 20; (4) B5F-017 is fixed before the automatic cycle is
-  trusted, or the cycle signs off on unfixed findings. Items (1) and (2) differ from the spec's FR-001, FR-007 and
-  FR-008 as written; see DRIFT-032.
+  trusted, or the cycle signs off on unfixed findings. The spec's FR-001, FR-005, FR-007 and FR-008 were aligned
+  with this input on 2026-11-07 (DRIFT-036).
 - **Live hooks:** see the feature plan's section on when 203's changes reach the live hooks. T002 is deployed
   alone after its own review; everything else reaches the live hooks at T014.
 - **Design:** see design-analysis.md (Co-Design Record) and the feature plan.md work breakdown W0 to W13, which
