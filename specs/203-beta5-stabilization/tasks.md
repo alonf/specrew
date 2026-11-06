@@ -214,7 +214,13 @@ then T014.
     authority family gets no boundary-verdict notice. Red on `941c76b5`, green on `ef0b9e23`.
     **Added (maintainer's instruction, 2026-11-06, after round 12; DRIFT-034):** a mention of an approval does not take a
     packet's window; the reset slot is locked and its consumption spends only the capture it used; a round approval
-    derived from a reset never overwrites a newer one; a partial run is not a delivered round. Red on `c80e44b1`.
+    derived from a reset never overwrites a newer one; a partial run is not a delivered round. Red on `c80e44b1`,
+    green on `6210e2ab`.
+  - **Round 13 (Codex, on `6210e2ab`; DRIFT-035); signed off on `6210e2ab`.** The maintainer's allowance reset bought
+    one verification round of the round-12 fixes. Three findings, all reported major and demoted: another authority
+    family's phrase still takes a boundary packet's window (DRIFT-034's fix 1 is incomplete), the approval withdrawal
+    bypasses the round slot lock, and a superseding partial sign-off skips the round-approval consumption. The
+    maintainer stopped the review; all three go to B5F-029.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`

@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-11-02T13:08:16Z",
+  "recorded_at": "2026-11-06T16:53:45Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
     "reason": "complete-current-findings-human-accepted",
     "message": "The exact current result has an explicit identity-bound human disposition accepting its findings.",
-    "current_tree_id": "17ba005a5928c8ac13d0520399bdb803d7a3ef0a",
-    "matched_run_id": "run-20261102-123751219-4d7497f3",
+    "current_tree_id": "96cd9671e6977efeaa71184ae7a7d788763b6a41",
+    "matched_run_id": "run-20261106-094450974-3a55017d",
     "anchor_ref": "",
     "override": null,
     "evidence_labels": null,

@@ -893,3 +893,30 @@
   written the consumption reports the stamp lost, as before, and the landed-reset guard may then retire B.
 - **Requirement**: FR-014, FR-021, FR-022.
 - **Class closure**: OPEN; no round has reviewed these fixes. B5F-017 carries the demotion.
+
+### DRIFT-035 — T004 review round 13, the reset's one verification round: three findings, all demoted; stopped and signed off on 6210e2ab (review outcome, maintainer ruling)
+
+- **Reset**: the maintainer typed `approved for allowance reset` (2026-11-06), choosing one verification round of the
+  round-12 fixes over stopping on a tree no round had reviewed. Applied with `--remediate allowance-reset` from the pin;
+  the engine counted the reset as the waiting round's approval. Under the maintainer's T008 input (DRIFT-032) a reset
+  grants one fix + verify cycle; this round was its verify half.
+- **Round 13**: run `run-20261106-094450974-3a55017d`, reviewer Codex, on `6210e2ab`, launched from the pin's
+  `specrew-review.ps1 --live --approve-round` at 11:44 local (UTC+2); 1,245 s. Completion complete, currentness
+  current. Three findings, all reported major and demoted for "no concrete failure scenario", although each stated
+  one (B5F-017, the eleventh time):
+  1. the verdict reader commits to an approval before checking its family, so another act's own phrase that starts
+     the message (`approved for allowance reset` after a tasks -> before-implement packet) takes the packet's window,
+     the boundary writer rejects it, and the later `approved for before-implement` is never recorded until the packet
+     is rendered again; DRIFT-034's fix 1 closed the mention, not the other families;
+  2. `Write-SpecrewApprovalWithdrawal` reads, rewrites and deletes `pending-round-approval.json` without the round slot
+     lock, so a withdrawal racing a newer typed round approval can overwrite and delete it, and its turn is already
+     reserved, so transcript recovery does not restore it;
+  3. the superseded branch of the partial sign-off writer returns before the round-approval consumption step, so a
+     replacement sign-off after a failed first consumption leaves the round approval spendable, and since a partial run
+     is no longer a delivered round (DRIFT-034 fix 4) nothing else retires it.
+- **Close**: the maintainer typed `stop the review here`. The pause choice needed `--feature 203-beta5-stabilization`
+  (the bare form refused: it could not tell which feature was answered). The final check passed and sign-off completed
+  at 18:53 local (`.specrew/review/signoff-gate/latest.json`, matched to the round 13 run, tree `96cd9671`).
+- **Follow-ups**: the three findings go to B5F-029, finding 1 marked as an incomplete DRIFT-034 fix.
+- **Requirement**: FR-014, FR-021, FR-022.
+- **Class closure**: OPEN; B5F-029 carries the three findings, B5F-017 the demotion.
