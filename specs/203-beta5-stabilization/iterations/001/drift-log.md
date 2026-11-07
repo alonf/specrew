@@ -1120,3 +1120,29 @@
   `c988b849`; it closed for the suites that fix touched.
 - **Requirement**: the maintainer's real-home instruction.
 - **Class closure**: OPEN (B5F-032).
+
+### DRIFT-045 — Four maintainer items before T006: the sweep report, the runner's home, a re-serialized decision record, task status (maintainer input; crew error)
+
+- **Input** (2026-11-07): (1) the T005 report said the sweep changed nothing in the real home hook files, while the
+  sweep of `1782a5a8` in the same task had rewritten them (DRIFT-044); that event belongs in the report itself.
+  (2) Set the home override once in the sweep runner for every suite, now; the per-suite fixes stay in T013.
+  (3) Recording option 4 re-serialized B5F-029's decision record; log it with DRIFT-041 item 3's date fix in T008.
+  (4) Record the status of the finished tasks where the tooling reads it, or say why not (B5F-001).
+- **Crew error on (1)**: the report gave only the final sweep's result and mentioned the 05:46:59 rewrite in passing.
+  Each sweep report now names every real-home hook file changed during the sweep and since the previous sweep, with
+  its local write time, and every report covering a sweep carries any such change.
+- **(2)**: the crew's sweep runner (scratch tooling, not in the repo) sets `SPECREW_USER_HOME_OVERRIDE` once, to one
+  temporary folder, for every suite and lane it starts; the lane runner passes it explicitly because a lane's
+  environment is cleared to its `env_refs`. The real-home check stays, and the report counts what the suites wrote
+  to the redirected home. Lanes the review engine runs do not get it (B5F-032). Per-suite fixes: T013.
+- **(3)**: `1782a5a8` changed B5F-029's record (`b5f029-fix-timing`, option 3): `turn_observed_at` and `recorded_at` went
+  from `+00:00` to `+02:00`, the same instant in local time. To T008 with the ISO date fix; acceptance: recording a
+  new decision leaves every earlier record byte-identical. The record is not restored now; T008's fix decides how.
+- **(4)**: B5F-001 splits the record. The plan table's Status, Agent, Actual and Verdict are the implementer's, and
+  terminal-state validation reads them; `tasks-progress.yml` and the summary in `state.md` belong to the task-progress
+  writer, which never writes the plan table. Before this entry, T001 to T003 were `done` in the plan table only, T004
+  and T005 were `planned`, and the ledger had all twelve `pending`: the crew had not called the writer for any task.
+  Now T004 and T005 are `done` in the plan table, the writer marks T001 to T005 complete (its `completed_at` is the
+  time it was called, not when each task finished; the commits carry that), and `tasks.md` ticks the five.
+- **Requirement**: the maintainer's real-home instruction; FR-013 (status for review); B5F-001.
+- **Class closure**: (1), (2) and (4) CLOSED; (3) OPEN, carried by T008.

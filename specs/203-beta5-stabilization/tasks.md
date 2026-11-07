@@ -36,7 +36,7 @@ then T014.
 
 ## Phase 1: Setup (live engine pin and host facts)
 
-- [ ] T002 [owner: Implementer] [sp: 2.0] **Live engine pin (DA-8).**
+- [X] T002 [owner: Implementer] [sp: 2.0] **Live engine pin (DA-8).**
   - **Work:** the handover, navigator and bootstrap providers and the dispatcher's provider-command resolution
     let an explicitly set `SPECREW_MODULE_PATH` win over the self-host tree; add
     `scripts/internal/live-engine-pin.ps1` (create, advance, show) for a detached `git worktree` at
@@ -132,7 +132,7 @@ then T014.
     `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`, `scripts/internal/live-engine-pin.ps1`, the `.specify`
     mirror of each, `.specrew/verification-plan.json`, `tests/unit/live-engine-resolution.tests.ps1`,
     `tests/unit/live-engine-hook-root.tests.ps1`.
-- [ ] T001 [owner: Implementer] [sp: 2.0] **Host facts in scratch directories (W0).**
+- [X] T001 [owner: Implementer] [sp: 2.0] **Host facts in scratch directories (W0).**
   - **Work:** in scratch directories only (rule `feature-203.rule.scratch-probes-only`): both Copilot firings
     (native and Claude-hook) for one prompt; a paste on Copilot and on Codex; a Claude hook emitting
     `systemMessage` (the maintainer observes whether it is shown); a real Claude compaction entry.
@@ -156,7 +156,7 @@ then T014.
 
 ## Phase 2: Foundational (blocks US1 to US3)
 
-- [ ] T003 [owner: Implementer] [sp: 4.0] **Resolve-SpecrewTypedAct (DA-1 Option B).**
+- [X] T003 [owner: Implementer] [sp: 4.0] **Resolve-SpecrewTypedAct (DA-1 Option B).**
   - **Work:** one pure function: turn record plus pending state in, exactly one act or none with a reason out
     (data-model.md); identity per binding including the Copilot stand-in; the standalone rule (DA-3); routing to
     verdict, top-up, stop answer or workshop reply; a mismatched boundary yields none.
@@ -182,7 +182,7 @@ then T014.
     the way: Claude reuses the running turn's `prompt_id` for a queued message, the cause of DRIFT-006 and
     DRIFT-012; and the live prompt-entry verdict path takes `I approved for tasks yesterday` as approval of a waiting
     crossing. The classifier refuses both; the live paths change in T004.
-- [ ] T004 [owner: Implementer] [sp: 4.0] **Write-SpecrewTypedAct and the rewiring.**
+- [X] T004 [owner: Implementer] [sp: 4.0] **Write-SpecrewTypedAct and the rewiring.**
   - **Work:** the only writer for recovery paths: re-reads the cited turn and re-derives through T003, writes only
     if unrecorded; rewire the user-prompt router, turn-end recovery, transcript backstop and writer CLIs; remove
     the per-path rules and `--approve-round`; immutable supersession fact.
@@ -341,7 +341,7 @@ then T014.
 
 ## Phase 3: US2, nothing recorded that I did not give, recorded the first time (P1)
 
-- [ ] T005 [owner: Implementer] [sp: 1.5] [US2] **Verdict pairing across a compaction.**
+- [X] T005 [owner: Implementer] [sp: 1.5] [US2] **Verdict pairing across a compaction.**
   - **Work:** pair a verdict-shaped reply with the durable pending-crossing record; remove the fallback to an
     older pair; a mismatched boundary is reported and records nothing.
     **Maintainer's design decision (2026-11-07, `verdict-pairing-out-of-tail`, option 4; DRIFT-043):** with the waiting
@@ -459,11 +459,18 @@ then T014.
     revokes only its capture; a superseding partial sign-off reaches the round-approval consumption step. The same
     withdrawal writer records `withdrew_observed_at` as ISO 8601 with its offset, not the `[string]` of a parsed date
     (`11/07/2026 00:05:09` reads as 7 November or 11 July; DRIFT-041).
+    **Added (maintainer, 2026-11-07; DRIFT-045):** recording one design decision rewrote another's dates. Recording
+    `verdict-pairing-out-of-tail` (`1782a5a8`) changed B5F-029's record in `design-decisions.json`:
+    `turn_observed_at` and `recorded_at` went from `...+00:00` to `...+02:00`, the same instant in local time.
+    `record-design-decision.ps1` writes a new record in UTC; the earlier one came back in local time. Fixed with
+    the date above: a date is written once, ISO 8601 with its offset, and kept as written.
     **Acceptance added:** a plan budget below 2 snapshots as 2; a reset grants one fix round and one verification
     round; a finding that states its failure scenario keeps its severity, so the loop does not end clean on it.
+    Recording a new design decision leaves every earlier record byte-identical.
   - **Trace:** FR-003, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-043.
   - **Depends:** T007.
-  - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/unit/review-budget-loop.Tests.ps1`.
+  - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/unit/review-budget-loop.Tests.ps1`,
+    `extensions/specrew-speckit/scripts/record-design-decision.ps1` (and its `.specify` copy).
 
 ## Phase 6: US4 part, the Stop check verifies the reply (P1 for iteration 001)
 
@@ -500,7 +507,12 @@ then T014.
     records. `verdict-pairing` case 13 proves the provider reads the rollout format; it does not prove a real Codex has
     the reply in its rollout when Stop fires. If it does not, the shown record is not written and Codex refuses in this
     case and the human retypes; measure it on the iteration-002 three-host walk.
-  - **Acceptance:** the suites run green in the census selection and a PR lane.
+    **Added (maintainer, 2026-11-07; DRIFT-045, B5F-032):** the per-suite home fixes. Each suite that runs init or update
+    sets its own redirected home, as `crew-charter-ownership` does. The crew's sweep runner sets one home for every
+    suite and lane it starts, so a sweep no longer depends on these fixes; lanes the review engine runs pass only
+    their `env_refs` and do not get it.
+  - **Acceptance:** the suites run green in the census selection and a PR lane. With no home override set, a run of
+    the suites that run init or update leaves the real home's hook files byte-unchanged.
   - **Trace:** FR-042, FR-043.
   - **Depends:** T003 to T008, T011, T012.
   - **Owns:** `tests/unit/**`, `tests/integration/**`.
