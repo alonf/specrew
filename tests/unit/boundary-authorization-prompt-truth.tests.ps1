@@ -4,6 +4,12 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# This suite runs the real specrew-init, which deploys the user-level hooks of every hook-capable host. Without this it
+# wrote the real home (203 DRIFT-044): GetFolderPath ignores USERPROFILE, so only the deployer's own seam redirects it.
+$hookHome = Join-Path ([IO.Path]::GetTempPath()) ('home-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Path $hookHome -Force | Out-Null
+$env:SPECREW_USER_HOME_OVERRIDE = $hookHome
+
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; exit 1 }
 function Assert-True {
@@ -482,6 +488,7 @@ finally {
 Write-Pass 'Boundary sync rejects invalid visible packet text before state advancement'
 
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
+if (Test-Path -LiteralPath $hookHome) { Remove-Item -LiteralPath $hookHome -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host ''
 Write-Host 'Boundary authorization prompt truth unit assertions: all pass'
 exit 0

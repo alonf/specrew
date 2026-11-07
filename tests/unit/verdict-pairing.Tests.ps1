@@ -13,7 +13,7 @@
 # without the marker, and reports what it did not record. No marker but the waiting crossing's is ever used.
 #
 # Mutations that turn this file red: restore the walk to an older marker (case 2); drop the out-of-tail path (case 1); let
-# the turn end pair without a marker (cases 1b and 3); accept the "from" boundary (case 4b); drop the mismatch report (case
+# the disabled markerless fallback run again, DEC-198-GOV-003's shape (cases 1b and 3); accept the "from" boundary (case 4b); drop the mismatch report (case
 # 4); drop the prompt-time line for a bare approval (case 5); drop the turn end's report (case 6); drop the shown check
 # (cases 7, 8, 9); read the compact SessionStart as clearing the shown record (case 1) or any other as keeping it (case 11);
 # read a raw boundary name instead of its canonical one (case 10); drop the artifact comparison (case 12).
@@ -197,8 +197,8 @@ try {
     # boundary while the second never reached the prompt hook. Nothing records, and the human has to be told so.
     Write-Host 'Case 5: a bare approval with the packet out of the tail records nothing and is reported in that turn'
     $r5 = New-PairingFixture -From 'tasks' -To 'before-implement'
-    $tx5 = Write-Transcript -Root $r5 -Lines (@(New-Packet -From 'tasks' -To 'before-implement' -At '2026-08-29T00:01:00Z') + (New-ToolChatter) + $compaction +
-        @(New-Line -Role user -At '2026-08-29T00:21:00Z' -Text 'approved'))
+    $tx5 = Show-Packet -Root $r5 -Session 'sess-c5' -From 'tasks' -To 'before-implement'
+    Add-TranscriptLines -Tx $tx5 -Lines ((New-ToolChatter) + $compaction + @(New-Line -Role user -At '2026-08-29T00:21:00Z' -Text 'approved'))
     $out5 = (& pwsh -NoProfile -File $provider --project-root $r5 --host-kind claude --session-id 'sess-c5' --source-event UserPromptSubmit --transcript-path $tx5 --last-user-message 'approved' `
             --turn-origin typed-user --message-identity declared --message-id 'prompt-c5' 2>$null) -join "`n"
     Assert-True ((Get-VerdictCount -Root $r5) -eq 0) "a bare 'approved' whose packet left the tail records nothing (got $(Get-VerdictCount -Root $r5))"
@@ -219,6 +219,8 @@ try {
     Write-Host 'Case 4b: naming the boundary already approved does not cross the next one (FR-020), on every path'
     $r4b = New-PairingFixture -From 'tasks' -To 'before-implement'
     $tx4b = Write-Transcript -Root $r4b -Lines @((New-Packet -From 'tasks' -To 'before-implement' -At '2026-08-29T00:01:00Z'), (New-Line -Role user -At '2026-08-29T00:02:00Z' -Text 'approved for tasks'))
+    $marker4b = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $tx4b -ProjectRoot $r4b -HostKind claude
+    Assert-True (-not [bool]$marker4b.Found) "the marker reader refuses it, not only the writer behind it (got $($marker4b.Reason))"
     $out4b = Send-Prompt -Root $r4b -Session 'sess-c4b' -Tx $tx4b -Text 'approved for tasks'
     Invoke-Stop -Root $r4b -Tx $tx4b
     Assert-True ((Get-VerdictCount -Root $r4b) -eq 0) "'approved for tasks' with the marker in the tail records nothing (got $(Get-VerdictCount -Root $r4b))"

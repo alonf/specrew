@@ -1098,3 +1098,25 @@
   advance, and the pin stays at `a489e6c0` until then.
 - **Requirement**: FR-019, FR-020.
 - **Class closure**: OPEN until the iteration review and T014's real out-of-tail run.
+
+### DRIFT-044 — T005's sweep rewrote the real Codex, Cursor and Copilot hook files; DRIFT-024's "class closed" was wrong (defect, in the verification method)
+
+- **Observed**: the sweep of `1782a5a8` reported real home hook files changed, after a run of sweeps reporting 0. At 05:46:59
+  local on 2026-11-07, within about 100 ms, `~/.codex/hooks.json`, `~/.cursor/hooks.json` and
+  `~/.copilot/hooks/specrew-refocus.json` were rewritten. The maintainer's standing instruction is not to change those files
+  without asking.
+- **Writer**: `tests/unit/boundary-authorization-prompt-truth.tests.ps1` runs the real `specrew-init.ps1` with no home override,
+  and init deploys every hook-capable host. Run with the home redirected, it writes those same three files and the same
+  launcher. Timing fits: it was running in that sweep's neighbour phase.
+- **Why it was 0 before, not established**: the suite was in every earlier sweep, and neither the hosts' files nor the
+  deployer changed between `8308d468` and `1782a5a8`. So those runs probably rewrote identical bytes, and something else had
+  changed the real files since the last clean sweep. The sweep kept only hashes in memory, so what they held before is lost.
+  It now keeps copies.
+- **State of the files**: equal to what the reviewed pin's deployer (`a489e6c0`) produces from them; the launcher is the
+  signed-off `b958cbe1...`; no command names a temporary path, a module path or the worktree. Nothing was restored or
+  redeployed. Codex may ask for its hooks to be trusted again.
+- **Fix**: the suite redirects the home through the deployer's seam, as `crew-charter-ownership` does.
+- **Still open**: about 25 other suites run init or update without an override (B5F-032). DRIFT-024 said the class closed in
+  `c988b849`; it closed for the suites that fix touched.
+- **Requirement**: the maintainer's real-home instruction.
+- **Class closure**: OPEN (B5F-032).
