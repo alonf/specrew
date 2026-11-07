@@ -135,6 +135,7 @@ This proposal ships after F-039 / Proposal 065 lands so the verdict-parser surfa
 | **Proposal 063** (Substantive Intake Questioning, F-040 next) | Composes. 063's intake catalog includes a "review cadence preference" category that maps to this proposal's friction setting. The intake question becomes a single canonical question rather than 12 separate ones. |
 | **Proposal 033** (Specrew Governance CLI, draft) | Composes. The `specrew config friction <mode>` command lives on the 033 CLI surface. |
 | **Proposal 098** (Launch Posture Visibility, candidate) | Composes. 098's launch banner surfaces the active friction mode; this proposal provides the mode value. |
+| **Proposal 217** (Companion Reviewer Session and Bounded Delegated Driving, candidate) | Sibling. 217 leaves verdict acceptance unchanged and delegates only in-phase decisions to a companion under a scoped grant. If both ship, this proposal's `autonomous` mode should be re-expressed as a 217 grant. |
 | **Proposal 030** (Quality Hardening Bundle, draft) | Composes. The form-vs-meaning verification pillar of 030 likely tightens at higher friction modes; this proposal exposes the dial axis. |
 
 ## Acceptance Signals

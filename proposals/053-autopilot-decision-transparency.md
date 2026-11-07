@@ -129,8 +129,10 @@ This pillar is the bridge to Proposal 038 — it pre-establishes the human-judgm
 - **Proposal 004 (Validator Hardening)** — could add a "N+ auto-resolutions in spec" rule
 - **Proposal 024 (Multi-Host CORE)** — marker pattern must be host-neutral
 - **Proposal 015 (Expertise-Aware Adaptive Interaction)** — composes; expert users may opt for more autopilot, novice users opt for less
+- **Proposal 217 (Companion Reviewer Session and Bounded Delegated Driving)** - reuses this proposal's marker and ledger flag for decisions delegated to a companion, distinguishing `delegated` from `auto-resolved`
 - **WSL trial 2026-05-18** — the empirical observation that motivated this proposal; 50-ball max + appearance-scope decisions silently baked into specs
 
 ## Status history
 
 - 2026-05-18: candidate captured after WSL trial on fresh-project (Moment20 physics simulation) silently auto-resolved two substantive scope decisions during clarify. Squad's "best guess on autopilot" pattern is sometimes correct, but invisible auto-resolutions hide product/scope decisions from human review. This proposal makes them visible without (yet) preventing them.
+- 2026-11-07: cross-referenced from Proposal 217, whose delegated decisions reuse this proposal's marker and ledger flag.

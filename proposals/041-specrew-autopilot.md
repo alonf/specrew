@@ -78,9 +78,11 @@ High article/talk value: an empirical autopilot study is a strong July 1 talk to
 - Composes with [038](038-adaptive-boundary-discipline.md) (boundary-class progression rules)
 - Composes with [030](030-quality-hardening-bundle.md) (catches form-correct/meaning-wrong autopilot failures)
 - Composes with [017](017-learning-loop-closure.md) (autopilot findings feed back into corpus)
+- Alternative route: [217](217-companion-reviewer-and-bounded-driving.md) (a companion session drives a granted in-phase segment while every boundary stays human; candidate first rung for this experiment)
 
 ## Status history
 
 - 2026-05-13: initial idea capture
 - 2026-05-16: hard prerequisites identified (Token Economy + Multi-Host CORE)
 - 2026-05-18: promoted to candidate proposal during memory→proposals consolidation
+- 2026-11-07: cross-referenced from Proposal 217 (Companion Reviewer Session and Bounded Delegated Driving), which approaches autonomy by delegating in-phase work to a companion rather than auto-progressing boundaries

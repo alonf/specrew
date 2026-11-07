@@ -204,6 +204,9 @@ already. The agent-initiated path can ship independently of automatic detection.
   mode."* Same shape, previously recorded, previously treated as an instance.
 - **DRIFT-199-I001-035** — the consent-gate principle the authority boundary protects: *consent given
   against false information is not consent.*
+- **Proposal 217 (Companion Reviewer Session and Bounded Delegated Driving)** - the same
+  conflict-of-interest argument and authority rule (an advisory agent never writes a consent
+  artifact), applied to a whole session instead of one stuck gate.
 - **Proposal 210 (Search-Before-Create)** — same underlying observation one layer down: the
   countermeasures are rule-shaped while the failure is retrieval-shaped.
 
