@@ -13,8 +13,9 @@ discussion: tbd
 > Boundary auto-progression becomes delegated crossings: a companion session signs only the
 > boundaries a typed, budgeted grant names, on the human's behalf, with provenance that says so.
 > This proposal's experiment becomes 217's Slice C (pass rate by grant scope rather than by fixed
-> autopilot level), and its safety-critical list becomes 217's never-delegable list. The body below
-> is kept unchanged as the audit record.
+> autopilot level), and its safety-critical list (hardening gates, security/auth review verdicts,
+> production deploys, destructive git operations, public API changes) is carried forward in full into
+> 217's never-delegable list. The body below is kept unchanged as the audit record.
 
 ## Why
 

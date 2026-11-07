@@ -125,7 +125,9 @@ Three levels, each a prerequisite for the next:
   never load into it. No code has to filter companion sessions out of verdict capture. As defense in
   depth, the capture readers also refuse a prompt event whose session is a registered companion.
 - The companion reads the project by path and writes no project file except through the signing
-  command of Pillar 5. Its notes and drafts live in its own folder.
+  command of Pillar 5. Its notes and drafts live in its own folder. That folder is the companion's
+  workspace and is the one place outside the project it may write; the protected home-directory
+  surfaces of Pillar 5 (host hooks, settings, profiles, launchers) are everything else in the home.
 
 ### Pillar 2 - Read-only crew feed and repository access
 
@@ -170,9 +172,12 @@ The companion charter makes two duties explicit:
 ### Pillar 5 - Driving grant and delegated crossings (Level 3)
 
 - The human types a grant in the crew session, for example
-  `grant companion drive specify to before-implement, budget 3M tokens, stop at review-signoff`. The
-  grant is a typed act (same capture rules as a verdict), scoped to one feature, and stored with its
-  stages, the boundaries the driver may sign, its budget and its stop point. It rides Feature 203's
+  `grant companion drive to review-signoff, sign plan, tasks and before-implement, budget 3M tokens`.
+  The stop point is a boundary the driver does not sign, and the granted stretch is every stage
+  before it; here the driver signs the three named crossings, drives implementation, and stops at the
+  review-signoff packet for the human. The grant is a typed act (same capture rules as a verdict),
+  scoped to one feature, and stored with its stretch, the boundaries the driver may sign, its budget
+  and its stop point. It rides Feature 203's
   single-grant budget model (T007/T008) rather than adding a second budget system.
 - Within the grant the companion answers the crew's in-phase questions directly, through a
   sanctioned channel (not by typing into the crew console), and every answer is logged.
@@ -188,10 +193,14 @@ The companion charter makes two duties explicit:
      human, the companion as signer, the grant id and a link to the stored review. Every reader
      (validators, packets, the end review) can tell a delegated crossing from a typed one, and none
      presents a delegated crossing as typed by the human.
-  4. **Never delegable.** Feature closeout, merge to `main`, opening a PR, publish or release, and
-     any write into the human's home (hooks, profiles) are never signed by the driver, whatever the
-     grant says. Review sign-off is the default stop point; a grant can include it only by naming
-     it.
+  4. **Never delegable.** Whatever the grant says, the driver never signs or performs: feature
+     closeout; merge to `main`, opening a PR, publish, release or a production deploy; a write to the
+     protected home-directory surfaces (host hooks, settings, profiles, launchers; the companion's own
+     workspace excepted); a destructive git operation (force push, history rewrite, branch or tag
+     deletion); a public API or contract change; a crossing whose packet touches security,
+     authentication or authorization surfaces; and a hardening-gate disposition that needs a human
+     deferral approval. This carries Proposal 041's safety-critical list forward in full. Review
+     sign-off is the default stop point; a grant can include it only by naming it.
   5. **Reversible.** At the end review the human can reverse any delegated crossing, which reopens
      that stage through the existing correction history.
 - **Takeover:** any message the human types in either session pauses the driver at the next safe
@@ -223,9 +232,11 @@ Suggested slicing, each slice shippable alone:
    `delegate: companion` provenance; the digest. Proven by a workshop run where a delegated lens is
    answered by the companion and appears in the digest.
 3. **Slice C - Level 3 (18-28 SP):** the grant typed act; the sanctioned companion-to-crew answer
-   channel; the signing command and a `delegated` evidence source that the verdict readers and
-   boundary-sync scripts accept only with a live grant naming that boundary and a stored companion
-   review; the one-sentence addition to the crew's launch contract and `CLAUDE.md` (the next stage
+   channel; the signing command, which signs only under a live grant naming that boundary and with a
+   stored companion review; a `delegated` evidence source that the verdict readers and boundary-sync
+   scripts validate against the grant record as it stood at signing time (in scope, unexpired, budget
+   remaining at the signing timestamp), so a grant's later expiry blocks new signatures without
+   invalidating crossings already signed; the one-sentence addition to the crew's launch contract and `CLAUDE.md` (the next stage
    begins after the human's typed approval **or a delegated crossing recorded under the human's
    grant**); takeover, the disengage list, reversal through the correction history; the decision
    log and the stop-point review. Run first as a controlled experiment on a small feature: one
@@ -259,6 +270,7 @@ recorded as evidence for this proposal.
 - **AC7** A delegated crossing is recorded with `kind: delegated`, the authorizing human, the
   companion as signer, the grant id and the review link; no packet, validator or report presents it
   as a typed human approval.
+  A crossing signed while its grant was live and in scope stays valid after the grant expires.
 - **AC8** The signing command refuses a boundary the grant does not name, a never-delegable
   boundary or action, a crossing whose gate checks fail, and a crossing with no stored companion
   review; one test per refusal.
@@ -273,9 +285,9 @@ recorded as evidence for this proposal.
 
 ## Out of scope
 
-- Delegating feature closeout, merge to `main`, PRs, publish or release, or home-directory writes.
-- Project-wide or standing autonomy settings: every delegation is a typed grant for one feature, with
-  a budget and a stop point. (Proposal 100's `autonomous` mode is re-expressed as a grant.)
+- Delegating anything on Pillar 5's never-delegable list.
+- Project-wide or standing autonomy settings: every Level 3 driving grant is typed for one feature,
+  with a budget and a stop point. (Level 2 delegation of a single decision needs no grant.) (Proposal 100's `autonomous` mode is re-expressed as a grant.)
 - The companion typing into the crew console or editing project files other than through the
   signing command.
 - Multi-human teams (one human, one crew, one companion).
@@ -302,8 +314,9 @@ recorded as evidence for this proposal.
 
 - **A delegated crossing read as a human approval.** Specrew has fabricated approvals before
   (DEC-198-GOV-003, the disabled markerless fallback). Mitigation: a distinct `delegated` evidence
-  source accepted only with a live grant and a stored review (AC7, AC8), and every human-facing
-  surface labels delegated crossings.
+  source that is signed only under a live grant with a stored review and validated against the
+  grant as it stood at signing time (AC7, AC8), and every human-facing surface labels delegated
+  crossings.
 - **Rubber-stamp drift.** A human who trusts the companion stops reading. Mitigation: digests list
   each delegated crossing and decision with reversal cost; review sign-off is the default stop point.
 - **Shared blind spots.** Two agents can agree on a wrong premise (the companion's incomplete T005
