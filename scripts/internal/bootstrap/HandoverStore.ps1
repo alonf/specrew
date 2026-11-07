@@ -835,7 +835,9 @@ function Get-SpecrewVerdictCaptureDisclosure {
         [Parameter(Mandatory)][string]$ProjectRoot,
         [AllowNull()][string]$HumanText,
         [AllowNull()][string]$NowUtc,
-        [AllowNull()][string]$Source
+        [AllowNull()][string]$Source,
+        # Feature 203 T005 (FR-019): the capture's refusal of a verdict whose packet has left the tail, when it made one.
+        [AllowNull()][string]$CaptureReason
     )
     if ([string]::IsNullOrWhiteSpace($HumanText)) { return $null }
     # 203 T004 (co-review round 11, finding 3): AN ACT OF ANOTHER FAMILY IS NOT A BOUNDARY VERDICT. `approved for review
@@ -875,6 +877,18 @@ function Get-SpecrewVerdictCaptureDisclosure {
     $from = [string]$pending.PendingFromMarkerBoundary
     if ([string]::IsNullOrWhiteSpace($to)) { return $null }
     $phrase = ('approved for {0}' -f $to)
+    # Feature 203 T005 (FR-019): the verdict's packet has left the tail, and the reply could not pair without it.
+    $outOfTailBecause = switch ([string]$CaptureReason) {
+        'no-named-target' { 'its packet is no longer in view and the reply does not name the boundary'; break }
+        'packet-not-shown' { 'this session has no record of showing you that decision''s packet'; break }
+        'reviewed-artifacts-changed' { 'the files its packet linked have changed since it was shown'; break }
+        default { $null }
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$outOfTailBecause)) {
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action ([string]$CaptureReason) -From $from -To $to -LeadingText '' -NowUtc $NowUtc -Source $Source
+        $nextStep = if ([string]$CaptureReason -ceq 'no-named-target') { ('To authorize this crossing, send: {0}' -f $phrase) } else { ('The packet will be shown again. To authorize this crossing after reading it, send: {0}' -f $phrase) }
+        return ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}', because {2}. Nothing you wrote is lost and no approval was changed. {3}" -f $from, $to, $outOfTailBecause, $nextStep)
+    }
     $idx = $text.IndexOf($phrase, [StringComparison]::OrdinalIgnoreCase)
     if ($idx -lt 0) {
         # The pending crossing's phrase is absent. If the reply is still a verdict naming SOME boundary, it
@@ -882,7 +896,8 @@ function Get-SpecrewVerdictCaptureDisclosure {
         $shape = $null
         try { $shape = Test-SpecrewHumanVerdictToken -Text $text } catch { $shape = $null }
         if ($null -eq $shape -or -not [bool]$shape.IsApproval) { return $null }
-        $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and [string]$_ -cne $to })
+        # Feature 203 T005 (FR-020): `review` is `review-signoff` by another name, not a verdict for another crossing.
+        $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and -not (Test-SpecrewVerdictNamesBoundary -Named @([string]$_) -Boundary @($to)) })
         if ($named.Count -eq 0) { return $null }
         $message = ("Specrew: your reply reads as a verdict for '{0}', but the crossing pending right now is '{1} -> {2}', so nothing was recorded. Nothing you wrote is lost and no approval was changed. To authorize the pending crossing, send: {3}" -f [string]$named[0], $from, $to, $phrase)
         Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'other-boundary-named' -From $from -To $to -LeadingText ([string]$named[0]) -NowUtc $NowUtc -Source $Source
@@ -1000,6 +1015,85 @@ function Write-SpecrewVerdictDisclosureJournal {
     catch { $null = $_ }
 }
 
+function Get-SpecrewOutOfTailPromptVerdict {
+    # Feature 203 T005 (FR-019; maintainer's design decision verdict-pairing-out-of-tail, option 4): THE WAITING CROSSING'S
+    # PACKET HAS LEFT THE TRANSCRIPT TAIL, AND THE HUMAN IS TYPING THEIR VERDICT NOW.
+    #
+    # The live prompt is the evidence, as on a host with no transcript, and the durable crossing is the pair. This is not
+    # the disabled fallback (DEC-198-GOV-003), which paired stale or machinery turns from the transcript during the agent's
+    # own stop cycle: no transcript turn is read here, and the turn end never comes here. With no packet in view the reply
+    # has to say which boundary it approves, and the crossing's packet must be one this session verifiably showed, with
+    # what it linked unchanged; a marker missing from the tail cannot tell "left the tail" from "never shown" alone.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$LastUserMessage,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId
+    )
+    $verdict = Get-SpecrewPromptEntryBoundaryVerdict -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind -RequireNamedTarget
+    if (-not [bool]$verdict.Found) { return $verdict }
+    $reason = 'packet-not-shown'
+    if ((Get-Command Get-SpecrewShownCrossingDecision -ErrorAction SilentlyContinue) -and (Get-Command Get-SpecrewTurnEndPaths -ErrorAction SilentlyContinue)) {
+        try {
+            $paths = Get-SpecrewTurnEndPaths -ProjectRoot $ProjectRoot -HostKind $HostKind -SessionId $SessionId
+            # Only for a session the host identified: without one, another session's presentation would vouch for this one.
+            if ([bool]$paths.Anchored) {
+                $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+                $reason = [string](Get-SpecrewShownCrossingDecision -TurnEndRoot ([string]$paths.TurnEndRoot) -CrossingId (Get-SpecrewPresentedCrossingKey -Pending $pending)).reason
+            }
+        }
+        catch { $reason = 'packet-not-shown' }
+    }
+    if ($reason -ceq 'shown') { return $verdict }
+    $verdict.Found = $false
+    $verdict.Reason = $reason
+    return $verdict
+}
+
+function Write-SpecrewOutOfTailVerdictReport {
+    # Feature 203 T005 (FR-019): the turn end never pairs without the waiting crossing's marker, so a verdict the prompt
+    # hook never received is not recorded, and it says so at the human's next message. Only the newest human turn: this
+    # reports, it grants nothing. A message the prompt hook did see was answered at its prompt event.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$TranscriptPath,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId,
+        [AllowNull()][string]$NowUtc
+    )
+    $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $false }
+    $to = [string]$pending.PendingToMarkerBoundary
+    $humans = @(@(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath) | ForEach-Object { Format-SpecrewConversationTurnText -Turn $_ -Raw } |
+            Where-Object { $null -ne $_ -and (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $_) })
+    if ($humans.Count -eq 0) { return $false }
+    $newest = $humans[$humans.Count - 1]
+    $raw = [string]$newest.text
+    $text = Resolve-SpecrewBoundaryVerdictText -Text $raw -HostKind $HostKind
+    $token = Test-SpecrewHumanVerdictToken -Text $text
+    if (-not [bool]$token.IsApproval -or $text.TrimStart() -notmatch '^(?i)approv(?:e|ed)\b') { return $false }
+    if ($null -ne (Get-SpecrewTypedAuthorityShape -Text $text)) { return $false }
+    $named = @($token.NamedBoundaries)
+    if ($named.Count -gt 0 -and -not (Test-SpecrewVerdictNamesBoundary -Named $named -Boundary @($to, [string]$pending.PendingToBoundary))) { return $false }
+    $hash = Get-SpecrewHumanAuthorityHash -Text $raw.Trim()
+    $times = [System.Collections.Generic.List[string]]::new()
+    $sameText = 0
+    foreach ($human in $humans) {
+        if ((Get-SpecrewHumanAuthorityHash -Text ([string]$human.text).Trim()) -cne $hash) { continue }
+        $sameText++
+        if ($human.PSObject.Properties['timestamp'] -and -not [string]::IsNullOrWhiteSpace([string]$human.timestamp)) { $times.Add([string]$human.timestamp) | Out-Null }
+    }
+    $when = if ($newest.PSObject.Properties['timestamp']) { [string]$newest.timestamp } else { '' }
+    $earliest = if ($times.Count -gt 0) { $times[0] } else { $when }
+    $pairTimes = if ($times.Count -eq $sameText -and $sameText -gt 0) { [string[]]$times.ToArray() } else { $null }
+    if (Test-SpecrewPromptChannelSawContent -ProjectRoot $ProjectRoot -ContentHash $hash -HostKind $HostKind -SinceUtc $earliest -SessionId $SessionId -ExpectedCount $sameText -MessageTimesUtc $pairTimes) { return $false }
+    $key = if ($newest.PSObject.Properties['entry_id'] -and -not [string]::IsNullOrWhiteSpace([string]$newest.entry_id)) { [string]$newest.entry_id } else { ($hash + '|' + $when) }
+    $shape = [pscustomobject]@{ Kind = 'boundary-verdict'; Retype = ('approved for {0}' -f $to) }
+    return (Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey $key -HostKind $HostKind -SessionId $SessionId -NowUtc $NowUtc)
+}
+
 function Invoke-SpecrewBoundaryVerdictCapture {
     # THE verdict-authority write path, shared by Stop and prompt-entry hooks. Stop is still the backstop, but
     # UserPromptSubmit/PreInvocation captures immediately after the human types the verdict so a weak host cannot
@@ -1023,10 +1117,12 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         [Parameter()][AllowNull()][string] $MessageId = $null,
         [Parameter()][AllowNull()][string] $MessageIdentity = $null,
         # Co-review round 8 (T004): the key the router reserved this prompt's message under, cited as it is.
-        [Parameter()][AllowNull()][string] $PromptActIdentity = $null
+        [Parameter()][AllowNull()][string] $PromptActIdentity = $null,
+        # Feature 203 T005 (FR-019): the session a shown packet is looked up in, when the packet has left the tail.
+        [Parameter()][AllowNull()][string] $SessionId = $null
     )
 
-    $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
+    $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source; waiting_marker_in_tail = $null }
     # Co-review round 6 (iteration 002): a prompt the dispatcher did not find typed by the human - a replay of the hook's own
     # output, or a message whose records it could not read - authorizes no boundary, as it records no other approval.
     if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation') -and
@@ -1039,8 +1135,9 @@ function Invoke-SpecrewBoundaryVerdictCapture {
     # turn that was processing the verdict - so a mid-turn controller read told the session the crossing
     # was unauthorized while the human's approval sat one hook away, and the session re-asked. The
     # prompt text itself is the evidence (the W44 round-approval shape); the boundary tie comes from the
-    # deterministic pending state. A transcript-bearing call never takes this branch, so every
-    # transcript-path conservatism - including refusing to scan past a send-back - is untouched.
+    # deterministic pending state. A transcript-bearing call takes the marker reader first, with every
+    # transcript-path conservatism, including refusing to scan past a send-back; it reaches the prompt text
+    # only when the waiting crossing's marker is not in the tail (Get-SpecrewOutOfTailPromptVerdict).
     $promptEntrySources = @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')
     $promptOnlyEligible = ([string]::IsNullOrWhiteSpace($TranscriptPath) -and
         ($Source -in $promptEntrySources) -and
@@ -1062,6 +1159,12 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         }
         else {
             Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind
+        }
+        if ($captured.PSObject.Properties['WaitingMarkerInTail']) { $result.waiting_marker_in_tail = $captured.WaitingMarkerInTail }
+        # Feature 203 T005 (FR-019): only at this message's own prompt event, only a message the dispatcher found typed.
+        if (-not [bool]$captured.Found -and $result.waiting_marker_in_tail -eq $false -and $Source -in $promptEntrySources -and
+            $TurnOrigin -ceq 'typed-user' -and -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            $captured = Get-SpecrewOutOfTailPromptVerdict -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage -HostKind $HostKind -SessionId $SessionId
         }
         if (-not $captured.Found) { $result.reason = $captured.Reason; return $result }
 
@@ -1738,13 +1841,14 @@ function Update-SpecrewRollingHandover {
         }
         $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost -MessageId $MessageId -MessageIdentity $MessageIdentity -PromptActIdentity $promptActKey
+            -Source $Source -NowUtc $NowUtc -TurnOrigin $TurnOrigin -HostKind $fromHost -MessageId $MessageId -MessageIdentity $MessageIdentity -PromptActIdentity $promptActKey -SessionId $SessionId
         # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
         # where the phrase first appears, and the alternative is the human learning it from a recap two
         # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).
         $disclosure = $null
         if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
-            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source
+            $captureReason = if ($null -ne $captureOutcome) { [string]$captureOutcome.reason } else { '' }
+            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source -CaptureReason $captureReason
         }
         elseif ((Get-Command Get-SpecrewVerdictCapturedDirective -ErrorAction SilentlyContinue)) {
             # B4F-086 / PRED-BETA4-042: a CAPTURED verdict says so in the turn and names the stage it began. The
@@ -1961,10 +2065,10 @@ function Update-SpecrewRollingHandover {
 
     # F-174 iteration 011 (T004, FR-026 / decision f174-i011-verdict-authority-stop-hook): THE HOOK IS THE
     # VERDICT AUTHORITY. On an end-of-turn stop, read the transcript for the human's verdict on the most recently
-    # rendered boundary packet. The preferred tie is the packet marker; if a weak host drops/mis-targets that
-    # invisible marker, Get-SpecrewCapturedBoundaryVerdict may fall back to the deterministic pending-verdict state
-    # for the single unpaid crossing. In both paths, a CLEAR human approval is still required before recording an
-    # authorization. This is what replaces boundary-sync's DELETED fabrication (T005): the gate advances ONLY on a
+    # rendered boundary packet. The only tie here is the waiting crossing's packet marker (Feature 203 T005): the turn
+    # end never pairs without one, and a verdict it could not pair is reported at the next message. A CLEAR human
+    # approval is still required before recording an authorization.
+    # This is what replaces boundary-sync's DELETED fabrication (T005): the gate advances ONLY on a
     # real, captured human verdict - never invented. Guarded: runs only when
     # BOTH the reader and the writer are loaded (the Stop-hook handover provider co-loads shared-governance; the
     # design-workshop-refresh / test paths do not and correctly skip the authorization). Identity is left
@@ -1973,8 +2077,13 @@ function Update-SpecrewRollingHandover {
     # gate Found); fully fail-open - a capture failure degrades to "un-authorized", surfaced by the resume (T006),
     # and NEVER blocks the stop.
     if ($isEndOfTurn) {
-        Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
-            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc -HostKind $fromHost | Out-Null
+        $stopCapture = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
+            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc -HostKind $fromHost
+        # Feature 203 T005 (FR-019): the waiting crossing's marker is out of the tail, so this turn end paired nothing.
+        if ($null -ne $stopCapture -and -not [bool]$stopCapture.authorized -and $stopCapture.waiting_marker_in_tail -eq $false -and
+            -not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
+            try { $null = Write-SpecrewOutOfTailVerdictReport -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc } catch { $null = $_ }
+        }
         # W44 Stop backstop for round approval: on hosts where prompt-entry does not deliver the prompt
         # text (observed on claude - verdict capture lands at Stop), read the MOST RECENT genuine human
         # turn from the transcript and offer it to the same writer. One turn only, verified human, every

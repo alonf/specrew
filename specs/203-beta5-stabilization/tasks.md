@@ -344,14 +344,26 @@ then T014.
 - [ ] T005 [owner: Implementer] [sp: 1.5] [US2] **Verdict pairing across a compaction.**
   - **Work:** pair a verdict-shaped reply with the durable pending-crossing record; remove the fallback to an
     older pair; a mismatched boundary is reported and records nothing.
+    **Maintainer's design decision (2026-11-07, `verdict-pairing-out-of-tail`, option 4; DRIFT-043):** with the waiting
+    crossing's marker in the tail, the marker pairs. Without it, the reply pairs only at its own prompt event, naming the
+    target boundary, for a packet verified as shown in this session (`shown-crossing.json`: a compact SessionStart keeps
+    it, any other clears it; for capture only) whose linked files are unchanged. A turn end never pairs without the
+    marker and reports what it did not record. A verdict names the crossing's target, read through boundary aliases.
   - **RED:** `tests/unit/verdict-pairing.Tests.ps1`: packet, compaction, verdict returns the older pair today
-    (B4F-112).
+    (B4F-112). Red on `8308d468`: a packet past the tail records nothing; a send-back walks back to the older pair
+    with no project; `approved for tasks` crosses `before-implement`; a bare approval and a verdict the prompt hook
+    never received are silent.
   - **Acceptance:** the verdict records once against the waiting boundary; `approved for tasks` while plan waits
-    records nothing and is reported.
+    records nothing and is reported. A second session with no marker in its transcript, a shown record for another
+    crossing, a packet never shown and a changed review target each record nothing and are reported.
   - **Trace:** FR-019, FR-020.
   - **Depends:** T003, T004.
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`,
-    `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`, `tests/unit/verdict-pairing.Tests.ps1`.
+    `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`
+    (the classifier's target check), `extensions/specrew-speckit/scripts/turn-end-store.ps1`,
+    `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` (the crossing key),
+    `scripts/internal/specrew-handover-provider.ps1` and its extension twin (loading the turn-end store), their
+    `.specify` copies, `tests/unit/verdict-pairing.Tests.ps1`.
 - [ ] T012 [owner: Implementer] [sp: 1.5] [US2] **Audit and correlation.**
   - **Work:** an audit joining every authority record to a typed human turn; reservations cite the grant and the
     latest reset; turn identity on every record and campaign id on review records.
@@ -483,6 +495,11 @@ then T014.
 - [ ] T013 [owner: Implementer] [sp: 1.5] **Test evidence suite.**
   - **Work:** no-human-turn fixtures for every mint path; non-approval phrase fixtures; cross-host replay with
     recorded payloads, including a compaction; budget economics fixtures; all census-selected and in a PR lane.
+    **Added (maintainer, 2026-11-07; DRIFT-043):** the Codex replay covers T005's out-of-tail path: a recorded Codex
+    Stop payload over a rollout transcript writes the shown record, and a verdict with the packet out of the tail
+    records. `verdict-pairing` case 13 proves the provider reads the rollout format; it does not prove a real Codex has
+    the reply in its rollout when Stop fires. If it does not, the shown record is not written and Codex refuses in this
+    case and the human retypes; measure it on the iteration-002 three-host walk.
   - **Acceptance:** the suites run green in the census selection and a PR lane.
   - **Trace:** FR-042, FR-043.
   - **Depends:** T003 to T008, T011, T012.
@@ -491,8 +508,12 @@ then T014.
   - **Work:** after the iteration's review sign-off: advance the pin to the signed-off commit and sync the
     `.specify` mirror from it in one commit; then the maintainer's check (a verdict after a compaction, a quoted
     phrase, a pasted phrase), recorded.
+    **Added (maintainer, 2026-11-07; DRIFT-043):** a real compaction normally leaves the marker in the tail, so that
+    check can pass through the marker path. Record which path captured the verdict (the ledger's `evidence_source`:
+    `hook-captured-from-transcript` is the marker, `hook-captured-user-prompt` is the out-of-tail path on Claude), and add
+    one real run with the packet more than 500 transcript lines back when the verdict is typed.
   - **Acceptance:** `iterations/001/capture-check.md` records the verdict once in its own turn and nothing for the
-    other two.
+    other two. T005's out-of-tail path counts as verified only when the real run records `hook-captured-user-prompt`.
   - **Trace:** FR-045.
   - **Depends:** the review sign-off.
   - **Owns:** `specs/203-beta5-stabilization/iterations/001/**`, `.specify/extensions/specrew-speckit/**`.

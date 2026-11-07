@@ -571,6 +571,28 @@ function Resolve-SpecrewBoundaryVerdictText {
     return [string]$form.Text
 }
 
+function Test-SpecrewVerdictNamesBoundary {
+    # Feature 203 T005 (FR-020): does a verdict's named boundary list include this boundary, reading aliases as one
+    # boundary (`review` is `review-signoff`)? A verdict approves the boundary it is going TO. Accepting the "from" end
+    # too let `approved for tasks`, retyped while tasks -> before-implement waits, cross before-implement.
+    [OutputType([bool])]
+    param([AllowNull()][string[]]$Named, [AllowNull()][string[]]$Boundary)
+    $canon = {
+        param([string]$b)
+        $v = ([string]$b).Trim().ToLowerInvariant()
+        if (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue) {
+            try { $v = [string](Normalize-SpecrewCanonicalBoundaryType -Boundary $v) } catch { $null = $_ }
+        }
+        $v
+    }
+    $targets = @(@($Boundary) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { & $canon ([string]$_) })
+    foreach ($name in @($Named)) {
+        if ([string]::IsNullOrWhiteSpace([string]$name)) { continue }
+        if ($targets -ccontains (& $canon ([string]$name))) { return $true }
+    }
+    return $false
+}
+
 function Get-SpecrewPromptEntryBoundaryVerdict {
     # W45 (2026-08-22): CAPTURE THE VERDICT BEFORE THE TURN STARTS, EVEN WITH NO TRANSCRIPT.
     #
@@ -591,13 +613,16 @@ function Get-SpecrewPromptEntryBoundaryVerdict {
     # fabrications it produced both fired ~37s after a packet render, on machinery turns. Here the text
     # is the live prompt: it cannot be stale, cannot be the agent's, and cannot be a re-read of an
     # earlier turn, because the host hands it over exactly once, when the human submits it. Every
-    # conservatism the tokenizer enforces still applies, and a transcript-bearing host never reaches
-    # this path at all.
+    # conservatism the tokenizer enforces still applies. A transcript-bearing host reaches this path only
+    # when the waiting crossing's packet has left the tail (Feature 203 T005, Get-SpecrewOutOfTailPromptVerdict),
+    # and then with -RequireNamedTarget and only for a packet this session verifiably showed.
     [OutputType([pscustomobject])]
     param(
         [Parameter()][AllowNull()][string]$ProjectRoot,
         [Parameter()][AllowNull()][string]$LastUserMessage,
-        [Parameter()][AllowNull()][string]$HostKind
+        [Parameter()][AllowNull()][string]$HostKind,
+        # Feature 203 T005 (FR-019): the reply must name the crossing's target boundary, because no packet is in view.
+        [switch]$RequireNamedTarget
     )
 
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-prompt' }
@@ -637,16 +662,29 @@ function Get-SpecrewPromptEntryBoundaryVerdict {
         return $result
     }
 
+    # Feature 203 T005 (FR-020): another authority family's act answers its own writer, not this crossing: `approved for
+    # review round` reads the boundary `review`, and `approved for allowance reset` names none.
+    if (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) {
+        $otherFamily = $null
+        try { $otherFamily = Get-SpecrewTypedAuthorityShape -Text $text } catch { $otherFamily = $null }
+        if ($null -ne $otherFamily) {
+            $result.Reason = 'other-authority-family'
+            return $result
+        }
+    }
+
     # Contradiction cross-check against the ONE pending crossing - the same rule the marker path
     # applies. A human who named a different boundary makes the tie ambiguous -> un-authorized.
     $named = @($verdict.NamedBoundaries)
     if ($named.Count -gt 0) {
-        $pendingSet = @($pendingFromMarker, $pendingToMarker, [string]$pending.PendingFromBoundary, [string]$pending.PendingToBoundary) |
-            Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
-        if (@($named | Where-Object { $pendingSet -contains $_ }).Count -eq 0) {
+        if (-not (Test-SpecrewVerdictNamesBoundary -Named $named -Boundary @($pendingToMarker, [string]$pending.PendingToBoundary))) {
             $result.Reason = 'named-boundary-contradicts-pending'
             return $result
         }
+    }
+    elseif ($RequireNamedTarget) {
+        $result.Reason = 'no-named-target'
+        return $result
     }
 
     $result.Found = $true
@@ -677,7 +715,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
     )
     # Feature 203 T004 (FR-022): the captured human turn's own message id and text travel with the verdict, so the writer
     # can cite that turn and re-read it; both are empty when the verdict came from the prompt this hook was handed.
-    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null; MessageId = ''; TurnText = ''; EntryId = '' }
+    # Feature 203 T005 (FR-019): WaitingMarkerInTail says whether the waiting crossing's own packet marker is in the tail
+    # this reader read; $null when no crossing waits or it could not tell.
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null; MessageId = ''; TurnText = ''; EntryId = ''; WaitingMarkerInTail = $null }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
     # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
@@ -707,6 +747,24 @@ function Get-SpecrewCapturedBoundaryVerdict {
     # capture reads it so a marker rendered against one crossing cannot capture against a successor.
     $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)(?:\s*@\s*(crossing-[0-9a-f]{8,}))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
+    # Feature 203 T005 (FR-019): the crossing that waits, read once. Only its own marker can pair a reply here.
+    $waitingFrom = ''; $waitingTo = ''
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
+        $waiting = $null
+        try { $waiting = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $waiting = $null }
+        if ($null -ne $waiting -and [bool]$waiting.HasPendingVerdict) {
+            $waitingFrom = ([string]$waiting.PendingFromMarkerBoundary).ToLowerInvariant()
+            $waitingTo = ([string]$waiting.PendingToMarkerBoundary).ToLowerInvariant()
+            $result.WaitingMarkerInTail = $false
+            foreach ($turn in $turns) {
+                if ([string]$turn.role -ne 'assistant') { continue }
+                foreach ($found in $markerRx.Matches([string]$turn.text)) {
+                    if ($found.Groups[1].Value.ToLowerInvariant() -ceq $waitingFrom -and $found.Groups[2].Value.ToLowerInvariant() -ceq $waitingTo) { $result.WaitingMarkerInTail = $true }
+                }
+            }
+        }
+    }
+
     # Newest marker/response pair with a CLEAR approval wins. A newer marker with no response yet is just awaiting
     # the next user turn and must not mask an earlier approved marker that the hook has not had a chance to record.
     $sawMarker = $false
@@ -731,6 +789,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
 
         $mFrom = $mm.Groups[1].Value.ToLowerInvariant()
         $mTo = $mm.Groups[2].Value.ToLowerInvariant()
+        # Feature 203 T005 (FR-019): the packet that was answered is the answer. A marker that is not the waiting crossing's
+        # is passed over; this one's refusal ends the read, where it used to walk back to an older answered pair.
+        $markerIsWaiting = ([string]::IsNullOrEmpty($waitingTo) -or ($mFrom -ceq $waitingFrom -and $mTo -ceq $waitingTo))
 
         # T004 / FR-010: the first VERDICT-BEARING human turn after that packet wins, and non-verdict turns in
         # between are scanned PAST rather than treated as the answer.
@@ -778,6 +839,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
         if (-not $verdict.IsApproval) {
             if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = ("not-approval:{0}" -f $verdict.Action) }
+            if ($markerIsWaiting) { return $result }
             continue
         }
         # Feature 203 T004 (DA-3): the phrase starts the message, as Resolve-SpecrewTypedAct and the prompt-entry reader
@@ -787,13 +849,13 @@ function Get-SpecrewCapturedBoundaryVerdict {
             continue
         }
 
-        # Contradiction cross-check: if the human NAMED boundaries, at least one must match the marker's from/to;
+        # Contradiction cross-check: if the human NAMED boundaries, one must be the marker's target (FR-020, T005);
         # a human who named a DIFFERENT boundary makes the tie ambiguous -> un-authorized (safety rule).
         $named = @($verdict.NamedBoundaries)
         if ($named.Count -gt 0) {
-            $markerSet = @($mFrom, $mTo)
-            if (@($named | Where-Object { $markerSet -contains $_ }).Count -eq 0) {
+            if (-not (Test-SpecrewVerdictNamesBoundary -Named $named -Boundary @($mTo))) {
                 if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = 'named-boundary-contradicts-marker' }
+                if ($markerIsWaiting) { return $result }
                 continue
             }
         }

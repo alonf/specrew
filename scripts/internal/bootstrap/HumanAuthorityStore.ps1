@@ -1538,7 +1538,8 @@ function Resolve-SpecrewTypedAct {
     $from = & $canon ([string](& $prop $crossing 'From'))
     $to = & $canon ([string](& $prop $crossing 'To'))
     $named = @(@($verdict.NamedBoundaries) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { & $canon ([string]$_) })
-    if ($named.Count -gt 0 -and @($named | Where-Object { $_ -ceq $to -or $_ -ceq $from }).Count -eq 0) { return (& $none 'boundary-mismatch' $true) }
+    # Feature 203 T005 (FR-020): a verdict approves the boundary it goes TO; naming the "from" end is the approval already given.
+    if ($named.Count -gt 0 -and @($named | Where-Object { $_ -ceq $to }).Count -eq 0) { return (& $none 'boundary-mismatch' $true) }
     $absent = & $prop $crossing 'StageEvidenceAbsent'
     if ($absent -eq $true) { return (& $none 'stage-evidence-absent' $true) }
     return (& $route 'boundary-verdict' ('{0}->{1}' -f $from, $to) '' '')

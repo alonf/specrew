@@ -1434,8 +1434,7 @@ try {
     $presentedReason = ''
     if ($hasPending -and $null -ne $turnEndPaths -and [bool]$turnEndPaths.Anchored -and (Get-Command Get-SpecrewPresentedCrossingDecision -ErrorAction SilentlyContinue)) {
         try {
-            $presentedCrossingId = if (-not [string]::IsNullOrWhiteSpace([string]$pending.CrossingId)) { [string]$pending.CrossingId }
-                                   else { ('{0}->{1}|{2}|{3}' -f [string]$pending.PendingFromMarkerBoundary, [string]$pending.PendingToMarkerBoundary, [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary) }
+            $presentedCrossingId = Get-SpecrewPresentedCrossingKey -Pending $pending
             if ($markerForPendingCrossing) {
                 $presentedWritten = Write-SpecrewPresentedCrossing -TurnEndRoot ([string]$turnEndPaths.TurnEndRoot) -CrossingId $presentedCrossingId `
                     -ApprovalPhrase ([string]$turnEndRecord.approval_phrase) -Marker ([string]$turnEndRecord.marker) -Message $declaredMessage

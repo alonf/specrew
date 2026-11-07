@@ -25,8 +25,38 @@
       "human_turn": "design decision: option 3",
       "turn_identity": "d63b24f3ae61b4c85944aa2336a67077c3d1d90662f19aed1bd58daef5def048",
       "turn_host": "claude",
-      "turn_observed_at": "2026-11-07T00:10:24.2686599+00:00",
-      "recorded_at": "2026-11-07T00:10:47.0766825+00:00"
+      "turn_observed_at": "2026-11-07T02:10:24.2686599+02:00",
+      "recorded_at": "2026-11-07T02:10:47.0766825+02:00"
+    },
+    "verdict-pairing-out-of-tail": {
+      "question": "How does a verdict pair when its packet has left the transcript tail?",
+      "options": [
+        {
+          "id": "1",
+          "summary": "pair by time at Stop: the first typed verdict after the crossing recorded_at"
+        },
+        {
+          "id": "2",
+          "summary": "stay marker-bound and read the whole transcript"
+        },
+        {
+          "id": "3",
+          "summary": "stay marker-bound and report; the human retypes after the packet is shown again"
+        },
+        {
+          "id": "4",
+          "summary": "at the message own prompt event, a reply naming the target boundary pairs with the durable crossing if its packet was verified as shown in this session (a compaction keeps shown; new, resume and clear do not) and the linked files are unchanged; Stop never pairs without the waiting crossing marker and reports what it did not record"
+        }
+      ],
+      "chosen": "4",
+      "rationale": "an approval can only come from the message being sent or from a reply to a visible marker, so DEC-198-GOV-003 stays disabled with no redesign; the cost is one retype if the prompt hook misses",
+      "confirmation": "crew-declared-human-reply",
+      "confirmation_scope": "design-decision",
+      "human_turn": "design decision: option 4",
+      "turn_identity": "cd972a478e4659f0c424504b849999bc7084aa5ef912e6e45a5a476ba58fcc73",
+      "turn_host": "claude",
+      "turn_observed_at": "2026-11-07T03:21:58.5054366+00:00",
+      "recorded_at": "2026-11-07T03:24:40.3627152+00:00"
     }
   }
 }

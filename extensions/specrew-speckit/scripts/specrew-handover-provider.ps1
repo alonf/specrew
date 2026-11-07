@@ -138,6 +138,10 @@ try {
         $sgModuleRoot = Split-Path (Split-Path (Split-Path $bdir -Parent))
         $sgPath = Join-Path (Join-Path $sgModuleRoot 'extensions/specrew-speckit/scripts') 'shared-governance.ps1'
         if (Test-Path -LiteralPath $sgPath -PathType Leaf) { . $sgPath }
+        # Feature 203 T005 (FR-019): the session's record that a packet was shown, read at prompt time. Beside
+        # shared-governance, so a pin loads its own. If it cannot be loaded, the capture finds no such record and refuses.
+        $turnEndStorePath = Join-Path (Join-Path $sgModuleRoot 'extensions/specrew-speckit/scripts') 'turn-end-store.ps1'
+        if (Test-Path -LiteralPath $turnEndStorePath -PathType Leaf) { . $turnEndStorePath }
     }
     catch { $null = $_ }
 

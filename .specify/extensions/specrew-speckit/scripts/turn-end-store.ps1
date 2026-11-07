@@ -905,10 +905,32 @@ $script:SpecrewSessionStartFileName = 'session-start.json'
 $script:SpecrewPresentedArtifactLimit = 32
 $script:SpecrewPresentedArtifactMaxBytes = 8MB
 
+# THE SHOWN RECORD (Feature 203 T005, FR-019; maintainer's design decision verdict-pairing-out-of-tail, option 4). A
+# capture-only fact: this session's Stop verified that this crossing's packet reached the reply. A verdict whose packet
+# has left the transcript tail pairs with the crossing at its own prompt event only if this says the packet was seen.
+# The presented record cannot say so: every SessionStart clears it, on purpose, so that a compaction owes a repaint, and a
+# packet, a compaction and a verdict would then refuse (US2 scenario 3). So a compaction leaves this record in place;
+# startup, resume, clear and an unknown source clear it. Nothing that decides a repaint reads it.
+$script:SpecrewShownCrossingFileName = 'shown-crossing.json'
+
 function Get-SpecrewPresentedCrossingPath {
     [OutputType([string])]
     param([Parameter(Mandatory)][string] $TurnEndRoot)
     return (Join-Path $TurnEndRoot $script:SpecrewPresentedCrossingFileName)
+}
+
+function Get-SpecrewShownCrossingPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot)
+    return (Join-Path $TurnEndRoot $script:SpecrewShownCrossingFileName)
+}
+
+function Get-SpecrewPresentedCrossingKey {
+    # The crossing's identity in the session's records; a legacy unscoped crossing has no id, so its label stands in.
+    [OutputType([string])]
+    param([Parameter(Mandatory)]$Pending)
+    if (-not [string]::IsNullOrWhiteSpace([string]$Pending.CrossingId)) { return [string]$Pending.CrossingId }
+    return ('{0}->{1}|{2}|{3}' -f [string]$Pending.PendingFromMarkerBoundary, [string]$Pending.PendingToMarkerBoundary, [string]$Pending.WorkingBoundary, [string]$Pending.LastAuthorizedBoundary)
 }
 
 function Write-SpecrewTurnEndJsonFile {
@@ -970,6 +992,11 @@ function Write-SpecrewSessionStart {
 
     $kind = if ([string]::IsNullOrWhiteSpace($Source)) { 'unknown' } else { $Source.Trim().ToLowerInvariant() }
     $null = Clear-SpecrewPresentedCrossing -TurnEndRoot $TurnEndRoot
+    # Feature 203 T005: a compaction owes the repaint, but what the human saw stays seen. Any other start ends that.
+    if ($kind -cne 'compact') {
+        $shownPath = Get-SpecrewShownCrossingPath -TurnEndRoot $TurnEndRoot
+        try { if (Test-Path -LiteralPath $shownPath -PathType Leaf) { Remove-Item -LiteralPath $shownPath -Force -ErrorAction Stop } } catch { $null = $_ }
+    }
     return (Write-SpecrewTurnEndJsonFile -Path (Join-Path $TurnEndRoot $script:SpecrewSessionStartFileName) -Value ([pscustomobject][ordered]@{
                 kind  = $kind
                 at    = [DateTimeOffset]::UtcNow.ToString('o')
@@ -1039,13 +1066,22 @@ function Write-SpecrewPresentedCrossing {
 
     $sessionStart = Read-SpecrewTurnEndJsonFile -Path (Join-Path $TurnEndRoot $script:SpecrewSessionStartFileName)
     $sessionStartKind = if ($null -ne $sessionStart -and $sessionStart.PSObject.Properties['kind']) { [string]$sessionStart.kind } else { 'none-observed' }
+    $artifactState = @(Get-SpecrewReviewedArtifactState -Message $Message)
+    $presentedAt = [DateTimeOffset]::UtcNow.ToString('o')
+    # Feature 203 T005: the same verified presentation, kept for capture (the shown record above).
+    $null = Write-SpecrewTurnEndJsonFile -Path (Get-SpecrewShownCrossingPath -TurnEndRoot $TurnEndRoot) -Value ([pscustomobject][ordered]@{
+            schema_version          = '1.0'
+            crossing_id             = $CrossingId
+            reviewed_artifact_state = $artifactState
+            shown_at                = $presentedAt
+        })
     return (Write-SpecrewTurnEndJsonFile -Path (Get-SpecrewPresentedCrossingPath -TurnEndRoot $TurnEndRoot) -Value ([pscustomobject][ordered]@{
                 schema_version          = '1.0'
                 crossing_id             = $CrossingId
                 approval_phrase         = [string]$ApprovalPhrase
                 marker                  = [string]$Marker
-                reviewed_artifact_state = @(Get-SpecrewReviewedArtifactState -Message $Message)
-                presented_at            = [DateTimeOffset]::UtcNow.ToString('o')
+                reviewed_artifact_state = $artifactState
+                presented_at            = $presentedAt
                 presented_ms            = Get-SpecrewUtcNowMilliseconds
                 session_start_kind      = $sessionStartKind
                 verdict_reply_at        = $null
@@ -1140,15 +1176,37 @@ function Get-SpecrewPresentedCrossingDecision {
     if (($nowValue - [DateTimeOffset]$presentedAt).TotalHours -ge $script:SpecrewPresentedCrossingLongGapHours) {
         return [pscustomobject]@{ suppress = $false; reason = 'long-gap' }
     }
-    foreach ($entry in @($record.reviewed_artifact_state)) {
+    if (Test-SpecrewReviewedArtifactsChanged -State $record.reviewed_artifact_state) {
+        return [pscustomobject]@{ suppress = $false; reason = 'reviewed-artifacts-changed' }
+    }
+    return [pscustomobject]@{ suppress = $true; reason = 'presented-unchanged' }
+}
+
+function Test-SpecrewReviewedArtifactsChanged {
+    # Has any file the presented packet linked changed since? A linked directory is a pointer, not an artifact.
+    [OutputType([bool])]
+    param([AllowNull()]$State)
+    foreach ($entry in @($State)) {
         if ($null -eq $entry -or -not $entry.PSObject.Properties['path']) { continue }
         if ([string]$entry.kind -eq 'directory') { continue }
         $current = Get-SpecrewArtifactFingerprint -Path ([string]$entry.path)
-        if ([string]$current.kind -cne [string]$entry.kind -or [string]$current.sha256 -cne [string]$entry.sha256) {
-            return [pscustomobject]@{ suppress = $false; reason = 'reviewed-artifacts-changed' }
-        }
+        if ([string]$current.kind -cne [string]$entry.kind -or [string]$current.sha256 -cne [string]$entry.sha256) { return $true }
     }
-    return [pscustomobject]@{ suppress = $true; reason = 'presented-unchanged' }
+    return $false
+}
+
+function Get-SpecrewShownCrossingDecision {
+    # Feature 203 T005 (FR-019): did this session see this crossing's packet, and is what it linked unchanged? For
+    # capture only: the 8-hour gap decides a repaint, and is no reason to refuse a verdict typed after a long break.
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $TurnEndRoot, [Parameter(Mandatory)][string] $CrossingId)
+
+    $record = Read-SpecrewTurnEndJsonFile -Path (Get-SpecrewShownCrossingPath -TurnEndRoot $TurnEndRoot)
+    if ($null -eq $record -or -not $record.PSObject.Properties['crossing_id']) { return [pscustomobject]@{ shown = $false; reason = 'packet-not-shown' } }
+    if ([string]$record.crossing_id -cne $CrossingId) { return [pscustomobject]@{ shown = $false; reason = 'packet-not-shown' } }
+    $state = if ($record.PSObject.Properties['reviewed_artifact_state']) { $record.reviewed_artifact_state } else { $null }
+    if (Test-SpecrewReviewedArtifactsChanged -State $state) { return [pscustomobject]@{ shown = $false; reason = 'reviewed-artifacts-changed' } }
+    return [pscustomobject]@{ shown = $true; reason = 'shown' }
 }
 
 # THE MEANING-LINE SET (Feature 202 T007, FR-012, FR-015, B4F-100). "The draft reached the reply" is checked over the

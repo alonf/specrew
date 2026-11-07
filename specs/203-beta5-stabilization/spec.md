@@ -347,8 +347,16 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
 - **FR-019**: A verdict-shaped reply MUST be paired with the durable pending-crossing record, not with a marker
   reached by walking the transcript; a compaction summary MUST NOT count as a human turn; the fallback to an
   older pair MUST be removed.
+  **Maintainer ruling (2026-11-07, T005; spec clarification DRIFT-043):** A marker still pairs a reply when the waiting
+  crossing's own marker is in the transcript tail. When it is not, a reply pairs with the durable pending-crossing
+  record only at that message's own prompt event, and only if it names the crossing's target boundary, the crossing's
+  packet was verified as shown in this session, and the files that packet linked are unchanged. A compaction does not
+  undo "shown"; a new, resumed or cleared session does. A turn end never pairs without the waiting crossing's marker
+  and reports a typed verdict it did not record. No other marker is ever used, so the fallback to an older pair is
+  removed. The disabled markerless capture (DEC-198-GOV-003) stays disabled.
 - **FR-020**: A verdict-shaped reply naming a different boundary than the one waiting MUST be reported and MUST
-  record nothing.
+  record nothing. The boundary waiting is the crossing's target: naming only its "from" end, the approval already
+  given, is a different boundary (DRIFT-043).
 - **FR-021**: The newest typed act of a kind MUST supersede an older unspent one through an immutable
   supersession fact; the older one MUST NOT be reused.
 - **FR-022**: A writer given a turn identity MUST re-read that turn, mint only the act the classifier derives

@@ -1054,6 +1054,7 @@
   family's act, as `Get-SpecrewTypedAuthorityShape` (the shared shape table) names it: `approved for allowance reset`,
   `approved for review round`, a partial sign-off, a workshop repair. A send-back or discuss request still wins the
   window. The prompt-entry reader is unchanged: the router classifies a prompt before it reaches the boundary writer.
+  **Corrected by DRIFT-043:** the prompt reader did take `approved for allowance reset`, and the writer then refused it.
 - **Failing case first**: `HookVerdictCapture` 16 (a reset and a round approval between the packet and the real
   approval, each scanned past; the reset alone authorizes nothing): red on `013a6b0d` (`approved for allowance reset`
   took the window, the boundary stayed at `tasks`), green on the fix.
@@ -1063,3 +1064,37 @@
   pending.
 - **Requirement**: FR-014, FR-021, FR-022.
 - **Class closure**: OPEN until the iteration review covers it.
+
+### DRIFT-043 — T005 pairs a verdict without its marker only at its own prompt event (maintainer's design decision; FR-019 clarified, FR-020 sharpened)
+
+- **Decision**: `verdict-pairing-out-of-tail`, option 4, typed by the maintainer on 2026-11-07, who wrote the option and
+  had it checked against the code before choosing. The four options and the check are in the decision's record.
+- **Spec**: FR-019 carries the maintainer's ruling; FR-020 says the boundary waiting is the crossing's target.
+- **What the checks changed**:
+  (1) The prompt reader did not require a named boundary; `-RequireNamedTarget` adds it on the new path only. Copilot's path
+  still takes a bare `approved`, and records with no packet shown (B5F-028).
+  (2) A marker missing from the tail looks the same as a packet never shown, so the reply needs a record that it was shown.
+  (3) That record could not be `presented-crossings.json`: every SessionStart clears it, including compact, so packet,
+  compaction, verdict would have refused, which is US2 scenario 3. The maintainer caught this; a real compact SessionStart
+  through the dispatcher confirmed it. `shown-crossing.json` is written by the same verifying Stop, kept by compact, cleared
+  by startup, resume, clear and an unknown source, and read only by capture. The repaint is unchanged.
+- **Live bug found and fixed (FR-020)**: all three target checks accepted the crossing's "from" end, so `approved for tasks`
+  while `tasks -> before-implement` waits recorded `before-implement`, on Claude with the marker in the tail too. It is the
+  closest live match to DEC-198-GOV-003's shape: an old approval retyped, a new boundary crossed. Case 4b; red on `8308d468`.
+- **Also fixed**: the walk back to an older pair (case 2b); the disclosure called `review` a verdict for another crossing when
+  it is `review-signoff`'s alias, and the marker and prompt readers compared raw names where the classifier read aliases
+  (case 10); a bare approval and a verdict the prompt hook never received were silent (cases 5 and 6).
+- **Corrections to what I told the maintainer**: I said a verdict whose packet left the tail "says nothing", having run only
+  the handover hook; the conformance Stop already raises a capture miss when the prompt hook saw the phrase and the record
+  stands. After a compaction the record is gone and the repaint does not say the approval failed; the prompt-time notice
+  now does. DRIFT-042 said the router stops other families before the boundary writer; the prompt reader took
+  `approved for allowance reset` and the writer refused it (`already-recorded`). The reader now refuses it itself.
+- **Maintainer's additions**: `CrossingRecordedAt` removed, nothing uses it (it served option 1); cases for a second session, a
+  shown record for another crossing and aliases; T005's Owns updated; T014 records which path captured the verdict and adds
+  a real out-of-tail run; Codex's Stop writes the record over a rollout (case 13), real timing measured on the three-host
+  walk, with T013's replay covering it.
+- **Left open**: with the marker in the tail, a verdict still records if the linked files changed (B5F-031).
+- **Review and deployment**: the iteration review after T013 is this change's round (FR-013); it goes live at T014's pin
+  advance, and the pin stays at `a489e6c0` until then.
+- **Requirement**: FR-019, FR-020.
+- **Class closure**: OPEN until the iteration review and T014's real out-of-tail run.

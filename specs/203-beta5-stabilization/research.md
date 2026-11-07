@@ -107,6 +107,8 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
   So a reader that keys a turn on `promptId`, or takes the latest `user` entry, finds the summary as that turn
   unless it checks `isCompactSummary` first. Fixture (shortened and redacted, provenance there):
   `tests/fixtures/hook-payloads/claude/compaction/`. Feeds T003 (a compaction summary yields no act) and T005.
+- **Refined at T005 (maintainer's design decision, 2026-11-07; DRIFT-043):** the marker still pairs when the waiting
+  crossing's marker is in the tail; only a reply at its own prompt event pairs without one. See FR-019's ruling.
 
 ## R5. Reviewer token usage (FR-012)
 
