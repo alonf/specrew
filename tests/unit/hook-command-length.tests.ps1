@@ -86,7 +86,7 @@ try {
     # The real path: through cmd.exe, Claude's Stop command decodes and runs its generated launcher. This scratch
     # project has no dispatcher, so the launcher's own "not found" refusal is the proof that pwsh ran it.
     $r = Invoke-ThroughCmd -Command $claudeStop -Environment @{ CLAUDE_PROJECT_DIR = $claudeProject; SPECREW_MODULE_PATH = $null }
-    Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Text -match 'Specrew dispatcher not found') ("claude: the Stop command runs through cmd.exe and reaches its launcher (exit {0})" -f $r.Exit)
+    Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Text -match 'could not find its hook dispatcher') ("claude: the Stop command runs through cmd.exe and reaches its launcher (exit {0})" -f $r.Exit)
     $r = Invoke-ThroughCmd -Command $encodedLauncher -Environment @{ USERPROFILE = $antigravityHome; HOME = $antigravityHome; SPECREW_MODULE_PATH = $null }
     Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Exit -eq 0) ("antigravity: the encoded launcher command runs through cmd.exe (exit {0})" -f $r.Exit)
 

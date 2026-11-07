@@ -868,7 +868,7 @@ function Get-SpecrewVerdictCaptureDisclosure {
         if (@($approvedBoundaries) -cnotcontains (& $canonicalOf $Named)) { return $null }
         $next = if ([bool]$pending.HasPendingVerdict -and -not [string]::IsNullOrWhiteSpace([string]$pending.PendingToMarkerBoundary)) { (" The crossing waiting now is '{0} -> {1}'; to authorize it, send: approved for {1}" -f [string]$pending.PendingFromMarkerBoundary, [string]$pending.PendingToMarkerBoundary) } else { ' Nothing is waiting for your approval now.' }
         Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'already-approved' -From ([string]$pending.LastAuthorizedBoundary) -To $Named -LeadingText '' -NowUtc $NowUtc -Source $Source
-        return ("Specrew: '{0}' is already approved, so nothing more is needed from you for it and nothing was changed.{1}" -f $Named, $next)
+        return ("Specrew: '{0}' is already approved, so nothing was recorded from this reply and nothing more is needed from you for it.{1}" -f $Named, $next)
     }
     # B4F-043, THIRD CONSUMER INSTANCE (PRED-BETA4-026): a verdict-shaped reply with NO crossing pending, or
     # naming a boundary OTHER than the pending crossing's, used to vanish here - `return $null` on both. The
