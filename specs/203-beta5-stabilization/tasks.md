@@ -398,7 +398,7 @@ then T014.
 
 ## Phase 4: US3, told in the same turn (P1)
 
-- [ ] T006 [owner: Implementer] [sp: 2.0] [US3] **Not-recorded reporter.**
+- [X] T006 [owner: Implementer] [sp: 2.0] [US3] **Not-recorded reporter.**
   - **Work:** every none-reason except `already-recorded` and `not-standalone` reports in the same turn with its
     own reason (form unreadable, writer failed, origin unconfirmed, no pending crossing, boundary mismatch, stage
     evidence absent); the report checks the store when it speaks; Claude visible line, justified stop elsewhere;
