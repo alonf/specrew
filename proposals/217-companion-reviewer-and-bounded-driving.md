@@ -43,7 +43,9 @@ stuck gate; this proposal makes it for the whole session.
   suite and the validator are unchanged but three engine scripts the validator loads are not. The
   companion found this with three git commands and no rerun, before the placement was approved. The
   crew had honestly marked the comparison "not established"; the error was in an unstated premise,
-  and the builder had no reason to doubt a premise that cleared its own work.
+  and the builder had no reason to doubt a premise that cleared its own work. Rerun on `df1141a8`,
+  the suite passed: B5F-033 is a 203 regression, which the stale baseline would have filed as
+  pre-existing breakage under an unrelated task.
 - **A weaker option was caught before it was chosen.** On T005 (verdict pairing) the crew offered
   three options; the companion checked them against
   `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1` and proposed a fourth (pair the prompt
@@ -320,8 +322,8 @@ recorded as evidence for this proposal.
   with the companion practice of that feature as the evidence. The same day the maintainer ruled
   that a driver may sign boundaries on the human's behalf under a typed grant, and that the
   companion runs from its own folder with its own instructions; Proposal 041 withdrawn as absorbed
-  and Proposal 100's `autonomous` mode re-expressed as a grant. The B5F-033 baseline rerun on
-  `df1141a8` was still pending at drafting time.
+  and Proposal 100's `autonomous` mode re-expressed as a grant. The B5F-033 rerun on `df1141a8`
+  passed, confirming the regression the companion's premise check exposed.
 
 ## Cross-references
 
