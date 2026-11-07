@@ -976,3 +976,39 @@
 - **Recorded**: T009 (work and acceptance), DA-7 (a revisit note), this entry.
 - **Requirement**: FR-013.
 - **Class closure**: OPEN until FR-013 and the plan's performance goal are aligned or the maintainer rules they stay.
+
+### DRIFT-039 — The live check after the pin advance: the first typed act of each kind against the stores; B5F-029 split (observation, maintainer decision)
+
+- **Setting**: pin at `a489e6c0` (DRIFT-037); no boundary packet pending (`pending_crossing` null) throughout; no
+  allowance reset asked, per the maintainer (B5F-029 finding 1). Each phrase typed alone; the stores read after each.
+  Times local (UTC+2), 2026-11-07.
+- **1. `approved for before-implement` (01:57)**, a boundary phrase with no crossing pending: nothing recorded
+  (`verdict_history` 5 before and after, `pending_crossing` null); one reservation in `exhausted-turns.jsonl` (143 to
+  144) under its own prompt event, hash equal to the text's; the drop journal absent. **Defect**: the prompt notice says
+  the crossing to 'before-implement' "has not been reached" and asks for the phrase again "when the crossing is
+  presented", for a boundary authorized long ago that will never be presented; it should say the boundary is already
+  approved and nothing is needed (T006, the refusal states what happened).
+- **2. `approved for review round` (02:05:09)**, typed while the crew's turn was still running: a new unspent record
+  in `pending-round-approval.json` with `turn_identity` equal to its reservation's `turn_id`, replacing round 13's
+  spent record; `captures.jsonl` 11 to 12; the reservation plus its mint line. Nothing launched. A reply that arrives
+  mid-turn records under its own identity. **Crew error**: the DRIFT-038 commit (`6206f791`) landed at 02:05:25, 16 s
+  after this approval, against the standing rule of no commit between an approval and its step; the approval had no
+  spending step (step 3 withdrew it) and its record was unchanged.
+- **3. `withdraw the approval` (02:07:40)**: the pending slot removed; the withdrawal journalled in both
+  `round-approval/captures.jsonl` (13) and `.specrew/authority/withdrawals.jsonl`, `withdrew_observed_at` naming
+  step 2's capture (rendered `11/07/2026 00:05:09`, informational by design; revocation is by time, failing closed).
+- **4. `design decision: option 3` (02:10:24)**, the B5F-029 timing question: reserved under its own prompt event;
+  `record-design-decision.ps1 -HumanTurn` from the mirror found it as the newest typed turn and wrote
+  `design-decisions.json` (`b5f029-fix-timing`, `turn_identity` equal to the reservation's). Not an early reply: it
+  arrived 58 s after the turn end (00:09:26Z); step 2 is the reply that arrived while the turn ran. **Defect**: the CLI
+  says "with the reason you gave", but the rationale was the crew's; the maintainer typed only the option.
+- **Observation, false positive**: at the end of the step-2 turn the Stop hook wrote `question-ui-observation.json`
+  (`allowance-reset`), the picker diagnosis, although no question UI was used. The W54 detector matches a short quoted
+  phrase inside any tool result; the crew's own `cat` of `pending-round-approval.json` had printed
+  `"verdict_text": "approved for allowance reset"`. Nothing reads it as approval; a later review CLI refusal would blame
+  a picker.
+- **Decision**: option 3 of the B5F-029 timing question: finding 1 is fixed now, before T005; findings 2 and 3 go to
+  T008, which removes or changes the round-approval slot.
+- **Requirement**: FR-014, FR-021, FR-022, FR-045.
+- **Class closure**: OPEN; the notice wording and the design-decision wording go to T006, the W54 false positive to
+  B5F-030.

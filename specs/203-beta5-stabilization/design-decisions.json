@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "feature_ref": "203-beta5-stabilization",
+  "decisions": {
+    "b5f029-fix-timing": {
+      "question": "When are B5F-029's three round-13 findings fixed?",
+      "options": [
+        {
+          "id": "1",
+          "summary": "all three now, before T005, T004 code only, each with its failing case first"
+        },
+        {
+          "id": "2",
+          "summary": "all three inside T008, which reworks the review authority and removes the per-round approval (FR-010)"
+        },
+        {
+          "id": "3",
+          "summary": "split: finding 1 (another family's phrase takes a boundary packet's window) now; findings 2 and 3 (withdrawal lock, partial sign-off spend) with T008, which removes or changes the round-approval slot"
+        }
+      ],
+      "chosen": "3",
+      "rationale": "finding 1 affects every boundary verdict and survives T008; findings 2 and 3 concern the round-approval slot that T008 removes or changes",
+      "confirmation": "crew-declared-human-reply",
+      "confirmation_scope": "design-decision",
+      "human_turn": "design decision: option 3",
+      "turn_identity": "d63b24f3ae61b4c85944aa2336a67077c3d1d90662f19aed1bd58daef5def048",
+      "turn_host": "claude",
+      "turn_observed_at": "2026-11-07T00:10:24.2686599+00:00",
+      "recorded_at": "2026-11-07T00:10:47.0766825+00:00"
+    }
+  }
+}

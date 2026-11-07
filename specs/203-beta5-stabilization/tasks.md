@@ -221,6 +221,9 @@ then T014.
     family's phrase still takes a boundary packet's window (DRIFT-034's fix 1 is incomplete), the approval withdrawal
     bypasses the round slot lock, and a superseding partial sign-off skips the round-approval consumption. The
     maintainer stopped the review; all three go to B5F-029.
+  - **B5F-029 split (maintainer's design decision, 2026-11-07, option 3; DRIFT-039):** finding 1 (another authority
+    family's phrase takes a boundary packet's window) is fixed in T004 now, before T005, failing case first; findings 2
+    and 3 go to T008.
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`
@@ -432,6 +435,8 @@ then T014.
        round keeps finding new rare cases in code the fix did not change (rounds 8 and 9).
     4. B5F-017 (findings that state a concrete failure scenario demoted to notes for having none) is fixed before the
        automatic cycle is trusted; otherwise the cycle signs off on unfixed findings.
+    **Carried from T004 (B5F-029 findings 2 and 3; DRIFT-039):** the approval withdrawal takes the round slot lock and
+    revokes only its capture; a superseding partial sign-off reaches the round-approval consumption step.
     **Acceptance added:** a plan budget below 2 snapshots as 2; a reset grants one fix round and one verification
     round; a finding that states its failure scenario keeps its severity, so the loop does not end clean on it.
   - **Trace:** FR-003, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-043.
