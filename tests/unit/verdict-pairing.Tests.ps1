@@ -13,7 +13,7 @@
 # without the marker, and reports what it did not record. No marker but the waiting crossing's is ever used.
 #
 # Mutations that turn this file red: restore the walk to an older marker (case 2); drop the out-of-tail path (case 1); let
-# the disabled markerless fallback run again, DEC-198-GOV-003's shape (cases 1b and 3); accept the "from" boundary (case 4b); drop the mismatch report (case
+# the disabled markerless fallback run again, DEC-198-GOV-003's shape (case 3b; `verdict-capture-blocks` C10-C17 pin it too); accept the "from" boundary (case 4b); drop the mismatch report (case
 # 4); drop the prompt-time line for a bare approval (case 5); drop the turn end's report (case 6); drop the shown check
 # (cases 7, 8, 9); read the compact SessionStart as clearing the shown record (case 1) or any other as keeping it (case 11);
 # read a raw boundary name instead of its canonical one (case 10); drop the artifact comparison (case 12).
@@ -180,6 +180,15 @@ try {
         @(New-Line -Role assistant -At '2026-08-29T00:20:00Z' -Text 'The before-implement crossing is open; waiting for your verdict.'))
     Invoke-Stop -Root $r3 -Tx $tx3
     Assert-True ((Get-VerdictCount -Root $r3) -eq 0) "an approval older than the crossing records nothing (got $(Get-VerdictCount -Root $r3))"
+
+    Write-Host 'Case 3b (the fallback that fabricated in July): a packet whose marker was dropped, then an approval, read at the turn end, pairs with nothing'
+    $r3b = New-PairingFixture -From 'tasks' -To 'before-implement'
+    $unmarked = (New-PacketText -From 'tasks' -To 'before-implement' -Linked (Join-Path $r3b 'specs\001-feat\spec.md')) -replace '<!-- SPECREW-VERDICT-BOUNDARY:.*?-->', ''
+    $tx3b = Write-Transcript -Root $r3b -Lines @((New-Line -Role assistant -At '2026-08-29T00:01:00Z' -Text $unmarked), (New-Line -Role user -At '2026-08-29T00:02:00Z' -Text 'approved for before-implement'))
+    $c3b = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $tx3b -ProjectRoot $r3b -HostKind claude
+    Assert-True (-not [bool]$c3b.Found) "the reader finds no verdict at the turn end (got Found=$($c3b.Found) $($c3b.Reason))"
+    Invoke-Stop -Root $r3b -Tx $tx3b
+    Assert-True ((Get-VerdictCount -Root $r3b) -eq 0) "and the turn end records nothing (got $(Get-VerdictCount -Root $r3b))"
 
     Write-Host 'Case 4: a verdict naming another boundary records nothing and is reported (FR-020)'
     $r4 = New-PairingFixture -From 'clarify' -To 'plan'
