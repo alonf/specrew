@@ -1,13 +1,20 @@
 ---
 proposal: 041
 title: Specrew Autopilot (Experiment + Production Feature)
-status: candidate
+status: withdrawn
 phase: phase-4
 estimated-sp: 28
 discussion: tbd
 ---
 
 # Specrew Autopilot (Experiment + Production Feature)
+
+> **Withdrawn 2026-11-07 - absorbed into [Proposal 217](217-companion-reviewer-and-bounded-driving.md).**
+> Boundary auto-progression becomes delegated crossings: a companion session signs only the
+> boundaries a typed, budgeted grant names, on the human's behalf, with provenance that says so.
+> This proposal's experiment becomes 217's Slice C (pass rate by grant scope rather than by fixed
+> autopilot level), and its safety-critical list becomes 217's never-delegable list. The body below
+> is kept unchanged as the audit record.
 
 ## Why
 
@@ -78,11 +85,11 @@ High article/talk value: an empirical autopilot study is a strong July 1 talk to
 - Composes with [038](038-adaptive-boundary-discipline.md) (boundary-class progression rules)
 - Composes with [030](030-quality-hardening-bundle.md) (catches form-correct/meaning-wrong autopilot failures)
 - Composes with [017](017-learning-loop-closure.md) (autopilot findings feed back into corpus)
-- Alternative route: [217](217-companion-reviewer-and-bounded-driving.md) (a companion session drives a granted in-phase segment while every boundary stays human; candidate first rung for this experiment)
+- Absorbed into: [217](217-companion-reviewer-and-bounded-driving.md) (Companion Reviewer Session and Bounded Delegated Driving)
 
 ## Status history
 
 - 2026-05-13: initial idea capture
 - 2026-05-16: hard prerequisites identified (Token Economy + Multi-Host CORE)
 - 2026-05-18: promoted to candidate proposal during memory→proposals consolidation
-- 2026-11-07: cross-referenced from Proposal 217 (Companion Reviewer Session and Bounded Delegated Driving), which approaches autonomy by delegating in-phase work to a companion rather than auto-progressing boundaries
+- 2026-11-07: `candidate` -> `withdrawn`, absorbed into Proposal 217 (maintainer ruling in the Feature 203 design conversation: a driver may sign boundaries on the human's behalf only under a typed, scoped grant, never by a project-wide autopilot level). Landed with Proposal 217's docs PR.

@@ -44,6 +44,17 @@ That observation is the structural prompt for this proposal. Proposal 099 docume
 - NOT a "remove all friction" proposal. The dial's lowest setting still preserves audit-trail completeness and the bypass-with-mandatory-reason emergency escape.
 - NOT scope expansion of Proposal 015 / 047 / 066. This proposal explicitly composes them; it does not re-invent any of their surfaces.
 
+## Amendment - 2026-11-07: `autonomous` becomes a Proposal 217 grant
+
+Proposal [217](217-companion-reviewer-and-bounded-driving.md) introduces delegated crossings: a
+companion session signs a boundary on the human's behalf only when a typed, budgeted, per-feature
+grant names that boundary, with `kind: delegated` provenance and a stored review. To keep one
+autonomy mechanism in Specrew, this proposal's `autonomous` mode no longer batches verdicts to
+iteration-closeout on its own authority. Selecting `autonomous` (config, `--friction autonomous`,
+or the `--autonomous` alias) means "accept delegated crossings under a 217 grant"; without a live
+grant it behaves as `default`. Where the body below describes `autonomous` as batching verdicts,
+this amendment takes precedence. The `strict` and `default` modes are unchanged.
+
 ## What (Four Pillars)
 
 ### Pillar 1 — Three canonical strictness modes
@@ -135,7 +146,7 @@ This proposal ships after F-039 / Proposal 065 lands so the verdict-parser surfa
 | **Proposal 063** (Substantive Intake Questioning, F-040 next) | Composes. 063's intake catalog includes a "review cadence preference" category that maps to this proposal's friction setting. The intake question becomes a single canonical question rather than 12 separate ones. |
 | **Proposal 033** (Specrew Governance CLI, draft) | Composes. The `specrew config friction <mode>` command lives on the 033 CLI surface. |
 | **Proposal 098** (Launch Posture Visibility, candidate) | Composes. 098's launch banner surfaces the active friction mode; this proposal provides the mode value. |
-| **Proposal 217** (Companion Reviewer Session and Bounded Delegated Driving, candidate) | Sibling. 217 leaves verdict acceptance unchanged and delegates only in-phase decisions to a companion under a scoped grant. If both ship, this proposal's `autonomous` mode should be re-expressed as a 217 grant. |
+| **Proposal 217** (Companion Reviewer Session and Bounded Delegated Driving, candidate) | Supplies the autonomy mechanism. Per the 2026-11-07 amendment, this proposal's `autonomous` mode is re-expressed as a 217 grant; `strict` and `default` are unaffected. |
 | **Proposal 030** (Quality Hardening Bundle, draft) | Composes. The form-vs-meaning verification pillar of 030 likely tightens at higher friction modes; this proposal exposes the dial axis. |
 
 ## Acceptance Signals
@@ -182,3 +193,8 @@ This proposal ships after F-039 / Proposal 065 lands so the verdict-parser surfa
   - `feedback-verdict-boundary-naming-2026-05-22` (verdict shape rule — applies to strict mode)
   - `project-f024-boundary-compaction-breach-2026-05-20` (incident that exposed the binary 066 dial as insufficient)
 - **INDEX**: file:///C:/Dev/Specrew/proposals/INDEX.md
+
+## Status history
+
+- 2026-05-22: candidate captured in an ad-hoc session.
+- 2026-11-07: amended - the `autonomous` mode is re-expressed as a Proposal 217 grant (maintainer ruling in the Feature 203 design conversation). Landed with Proposal 217's docs PR.
