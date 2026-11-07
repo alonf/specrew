@@ -443,7 +443,10 @@ then T014.
   - **Depends:** T004.
   - **Owns:** `scripts/internal/sync-boundary-state.ps1`,
     `scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1`,
-    `tests/unit/review-budget-snapshot.Tests.ps1`.
+    `tests/unit/review-budget-snapshot.Tests.ps1`. **Widened by the build (DRIFT-048):** the snapshot runs in the one
+    verdict writer, `Add-SpecrewBoundaryAuthorization`, so `extensions/specrew-speckit/scripts/shared-governance.ps1` and
+    its `.specify` copy; the grant is a new store fact, so `review-authority-core.ps1` and `review-authority-store.ps1`;
+    the hook says why a verdict was refused for its budget, so `scripts/internal/bootstrap/HandoverStore.ps1`.
 - [ ] T008 [owner: Implementer] [sp: 5.0] [US1] **Orchestrator loop on the budget.**
   - **Carries from T004 (DRIFT-027):** removing the per-round approval (FR-010): the `approved for review round` act
     in the classifier, its capture writer and `--approve-round`, in the same change that makes the grant the only

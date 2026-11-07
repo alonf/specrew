@@ -702,7 +702,7 @@ function Test-ReviewAuthorityContractObject {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -719,6 +719,11 @@ function Test-ReviewAuthorityContractObject {
         'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths') }
         'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths') }
         'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at') }
+        # Feature 203 T007 (FR-003): the review budget, snapshotted from the plan when the before-implement verdict is recorded.
+        'BudgetGrantFact' { @(
+            'schema_version', 'fact_type', 'campaign_id', 'grant_id', 'budget_total', 'host_order', 'host_order_stated',
+            'infra_failure_cap', 'budget_source', 'ceiling', 'plan_path', 'plan_hash', 'verdict_entry', 'authority_kind', 'observed_at'
+        ) }
         'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at') }
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
         'ReleaseFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'reason', 'observed_at') }
@@ -809,6 +814,31 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorization_ref' -Errors $errors -MaxLength 256
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+        }
+        'BudgetGrantFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('budget-grant')
+            Test-ReviewAuthorityIdField -Object $InputObject -Name 'grant_id' -Kind grant -Errors $errors
+            # The floor is 2 (FR-001); the ceiling is co_review_max_rounds, which may be set below the floor.
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'budget_total' -Errors $errors -Minimum 2 -Maximum 100
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'ceiling' -Errors $errors -Minimum 1 -Maximum 100
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'infra_failure_cap' -Errors $errors -Minimum 1 -Maximum 10
+            Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'host_order_stated' -Errors $errors
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'budget_source' -Errors $errors -MaxLength 32 -Enum @('plan', 'floor-raised', 'floor-not-stated')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'plan_path' -Errors $errors -MaxLength 512
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'plan_hash' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'verdict_entry' -Errors $errors -MaxLength 128
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+            $order = Get-ReviewAuthorityProperty -Object $InputObject -Name 'host_order'
+            if ($null -ne $order -and $order -isnot [System.Collections.IEnumerable]) { Add-ReviewAuthorityError -Errors $errors -Message 'invalid-type:host_order' }
+            elseif (@($order).Count -gt 16) { Add-ReviewAuthorityError -Errors $errors -Message 'too-many:host_order' }
+            else {
+                foreach ($hostName in @($order)) {
+                    if ($hostName -isnot [string] -or $hostName -cnotmatch '^[a-z][a-z0-9-]{0,31}$') { Add-ReviewAuthorityError -Errors $errors -Message 'invalid-value:host_order'; break }
+                }
+            }
+            $planHash = [string](Get-ReviewAuthorityProperty -Object $InputObject -Name 'plan_hash')
+            if (-not [string]::IsNullOrEmpty($planHash) -and $planHash -cnotmatch '^[0-9a-f]{64}$') { Add-ReviewAuthorityError -Errors $errors -Message 'invalid-value:plan_hash' }
         }
         'ReservationFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('reservation')

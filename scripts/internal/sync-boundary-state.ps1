@@ -1778,6 +1778,9 @@ function Invoke-SpecrewBoundaryStateSync {
             -ProjectRoot $paths.ProjectRoot `
             -FeatureRef $effectiveFeatureRef `
             -IterationNumber $effectiveIterationNumber | Out-Null
+        # Feature 203 T007 (FR-002): a review budget above co_review_max_rounds, naming an unknown reviewer, or unreadable
+        # is refused here, before any state write, and again when the before-implement verdict snapshots it.
+        Invoke-SpecrewReviewBudgetPlanGate -ProjectRoot $paths.ProjectRoot -FeatureRef $effectiveFeatureRef | Out-Null
     }
 
     # Beta3 class closure for the "reviewer cannot catch the packet's own structural defect" class:

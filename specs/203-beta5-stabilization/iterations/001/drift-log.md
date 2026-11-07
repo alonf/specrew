@@ -1208,3 +1208,38 @@
 - **Requirement**: FR-014.
 - **Class closure**: CLOSED for this repository when the new lane is green on the committed tree; OPEN as a class while
   any fixture copies a tree whose record nobody maintains.
+
+### DRIFT-048 — T007 built: the review budget snapshot and its ceiling (implementation record)
+
+- **Before**: the engine had no budget of its own. Each `approved for review round` minted a one-slot grant, and the cap
+  was `co_review_max_rounds`, read from `.specrew/config.yml` at every round. Nothing read the plan's `## Review budget`.
+- **Built**: the feature plan's `## Review budget` section (a fenced YAML block, one `iteration-NNN:` entry per
+  iteration or one flat entry for all; `rounds`, `host_order`, `infra_failure_cap`, and `model` as a description) is read
+  without a YAML library. Recording the before-implement verdict snapshots this iteration's entry into a single grant
+  fact, `BudgetGrantFact` under the campaign's `budget-grants/`: budget, host order, infrastructure-failure cap, ceiling,
+  plan path and hash, and the verdict entry it cites. The engine reads it with `Get-ReviewCampaignBudgetGrant`; T008
+  spends it. The floor is 2 (a plan that states fewer, or none, gets 2; FR-001, FR-008). `co_review_max_rounds` is the
+  ceiling (`Get-ReviewBudgetCeiling`, the fuse's own reader). The plan sync refuses a budget above the ceiling, naming an
+  unknown reviewer, or unreadable, for every entry the plan states; the snapshot refuses the same for its iteration.
+- **Decisions taken in the build** (the maintainer may overrule any):
+  1. *A refused snapshot refuses the verdict.* The snapshot runs in `Add-SpecrewBoundaryAuthorization` before the verdict
+     is saved, so a refused budget records neither: no approved implementation without a usable grant. The refusal names
+     the ceiling and `.specrew/config.yml`, says nothing else changed, and ends with the way on (lower `rounds` or raise
+     `co_review_max_rounds`, then `approved for before-implement`). The hook reports it as `review-budget-refused` and
+     shows that sentence as written.
+  2. *An unstated host order snapshots as empty* (`host_order_stated: false`): the engine picks a reviewer other than the
+     code's writer, so no fixed default order exists. T008 decides what an empty order does at an infrastructure failure.
+  3. *No feature or iteration on the approval, or no loadable review engine*: the verdict is recorded with a warning and
+     no grant. The human's approval is not refused for the machinery's absence; T008's loop refuses to spend without a
+     grant.
+  4. *A second before-implement verdict for the same iteration* writes a second grant (its own verdict entry); the reader
+     takes the newest. A verdict read twice (prompt hook and Stop) writes one.
+- **Owns widened**: `shared-governance.ps1` and its `.specify` copy (the snapshot in the verdict writer, the plan gate),
+  `review-authority-core.ps1` and `review-authority-store.ps1` (the new fact's contract), `HandoverStore.ps1` (the
+  refusal's capture reason and disclosure). Campaign ids now come from one derivation (`Get-ReviewCampaignIdForIteration`).
+- **Not in T007**: the plan template does not yet carry a `## Review budget` section, so a new plan states none and gets
+  the floor; FR-001's "the plan MUST state" reaches planners only when the template and planner guidance say so.
+- **Tests**: `tests/unit/review-budget-snapshot.Tests.ps1` (10 cases, RED before: no grant), in `f203-i001-suites`.
+- **Live**: none yet. The pin keeps the hooks on the reviewed engine until T014, and nothing spends the grant until T008.
+- **Requirement**: FR-001, FR-002, FR-003, FR-008.
+- **Class closure**: OPEN until the iteration review.

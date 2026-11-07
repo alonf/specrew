@@ -726,6 +726,289 @@ function Get-ReviewCampaignRoundBudgetState {
     }
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Feature 203 T007 (FR-001, FR-002, FR-003, FR-008): THE REVIEW BUDGET, DECLARED ONCE IN THE PLAN AND SNAPSHOTTED ONCE.
+#
+# Before 203 the engine had no budget of its own: each `approved for review round` minted a one-slot grant, and the cap
+# was `co_review_max_rounds`, read from `.specrew/config.yml` at every round. Now the feature plan states the budget in
+# a `## Review budget` section, a fenced YAML block with one entry per iteration (or one flat entry for all of them):
+#
+#     iteration-002:
+#       rounds: 4
+#       host_order: [codex, copilot, claude]
+#       infra_failure_cap: 2
+#
+# Recording the before-implement verdict snapshots that iteration's entry into a single grant fact, which cites the
+# verdict entry it was recorded with; the engine reads the grant, never the plan, after that (T008 spends it). The floor
+# is 2 rounds, one review and one fix verification: a plan that states fewer, or none, gets 2. `co_review_max_rounds`
+# becomes the ceiling, and a budget above it is refused at the plan sync and again at the snapshot.
+# ---------------------------------------------------------------------------------------------------------------------
+$script:ReviewBudgetFloor = 2
+$script:ReviewBudgetDefaultInfraFailureCap = 2
+$script:ReviewBudgetSettings = @('rounds', 'host_order', 'infra_failure_cap', 'model')
+
+function Get-ReviewBudgetCeiling {
+    # The ceiling is the runaway fuse's own reader, so the two can never disagree about the configured value.
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$RepoRoot = '')
+    $value = [int](Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot)
+    $isSet = $false
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        $configPath = Join-Path $RepoRoot '.specrew/config.yml'
+        if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+            $isSet = @(Get-Content -LiteralPath $configPath -Encoding UTF8 | Where-Object { $_ -match '^\s*co_review_max_rounds:\s*[''"]?[1-9]\d*[''"]?\s*(?:#.*)?$' }).Count -gt 0
+        }
+    }
+    $where = if ($isSet) { 'co_review_max_rounds in .specrew/config.yml' } else { 'co_review_max_rounds in .specrew/config.yml, which is not set, so the default applies' }
+    return [pscustomobject][ordered]@{ value = $value; is_set = $isSet; where = $where }
+}
+
+function Get-ReviewBudgetIterationKey {
+    param([Parameter(Mandatory)][string]$IterationNumber)
+    $digits = ([string]$IterationNumber).Trim()
+    if ($digits -notmatch '^\d+$') { throw "review-budget-invalid-iteration:$IterationNumber" }
+    return ('iteration-{0:000}' -f [int]$digits)
+}
+
+function Get-ReviewCampaignIdForIteration {
+    # The one derivation of a campaign id from its feature and iteration (Resolve-ReviewCampaignPublicIdentity uses it).
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$FeatureId, [Parameter(Mandatory)][string]$IterationNumber)
+    $featureSlug = ConvertTo-ReviewCampaignSlug -Value $FeatureId -MaximumLength 44
+    return "cmp-$featureSlug-i$IterationNumber"
+}
+
+function Read-ReviewBudgetPlanBlock {
+    # The plan's `## Review budget` section, read without a YAML library (the stance is no new dependency): one fenced
+    # block of `iteration-NNN:` entries with indented settings, or flat settings for every iteration. Settings are
+    # rounds, host_order ([a, b] or a `- a` list), infra_failure_cap, and model (descriptive, not used). Anything else in
+    # the block is a problem, never skipped: a misspelt setting would otherwise leave the floor in place unnoticed.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$PlanPath)
+    $problems = [System.Collections.Generic.List[string]]::new()
+    $entries = [ordered]@{}
+    $result = [ordered]@{ found = $false; block_text = ''; entries = $entries; problems = $problems }
+    if (-not (Test-Path -LiteralPath $PlanPath -PathType Leaf)) { return [pscustomobject]$result }
+    $lines = @(([IO.File]::ReadAllText($PlanPath)) -split '\r?\n')
+    $start = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Review budget\s*$') { $start = $i; break } }
+    if ($start -lt 0) { return [pscustomobject]$result }
+    $result.found = $true
+    $end = $lines.Count
+    for ($i = $start + 1; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^#{1,2}\s') { $end = $i; break } }
+    $open = -1; $close = -1
+    for ($i = $start + 1; $i -lt $end; $i++) {
+        if ($open -lt 0) { if ($lines[$i] -match '^\s*(```|~~~)') { $open = $i }; continue }
+        if ($lines[$i] -match '^\s*(```|~~~)\s*$') { $close = $i; break }
+    }
+    if ($open -lt 0 -or $close -lt 0) {
+        $problems.Add('the Review budget section has no complete fenced YAML block') | Out-Null
+        return [pscustomobject]$result
+    }
+    $body = if ($close -gt $open + 1) { @($lines[($open + 1)..($close - 1)]) } else { @() }
+    $result.block_text = (($body | ForEach-Object { $_.TrimEnd() }) -join "`n").Trim()
+
+    $newEntry = { [ordered]@{ rounds = $null; host_order = [System.Collections.Generic.List[string]]::new(); host_order_stated = $false; infra_failure_cap = $null } }
+    $current = $null      # the iteration-NNN entry being read, or $null for the flat entry
+    $listOpen = $false    # host_order: with its items on the following `- item` lines
+    foreach ($raw in $body) {
+        $line = $raw -replace '(^|\s)#.*$', ''
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $indent = $line.Length - $line.TrimStart().Length
+        $text = $line.Trim()
+        $entryKey = if ($indent -gt 0 -and $null -ne $current) { $current } else { '*' }
+        $label = if ($entryKey -ceq '*') { 'the budget' } else { $entryKey }
+        if ($text -match '^-\s*(?<item>\S.*)$') {
+            if (-not $listOpen) { $problems.Add(("{0}: the list item '{1}' does not belong to host_order" -f $label, $text)) | Out-Null; continue }
+            $entries[$entryKey].host_order.Add(([string]$Matches['item']).Trim().Trim('"', "'")) | Out-Null
+            continue
+        }
+        $listOpen = $false
+        if ($indent -eq 0 -and $text -match '^(?<key>iteration-\d{3,}):\s*$') {
+            $current = [string]$Matches['key']
+            if ($entries.Contains($current)) { $problems.Add(("{0} is stated twice" -f $current)) | Out-Null }
+            else { $entries[$current] = & $newEntry }
+            continue
+        }
+        if ($indent -eq 0) { $current = $null; $entryKey = '*'; $label = 'the budget' }
+        if ($text -notmatch '^(?<key>[A-Za-z_][A-Za-z0-9_-]*):\s*(?<value>.*)$') {
+            $problems.Add(("{0}: the line '{1}' is not a setting" -f $label, $text)) | Out-Null
+            continue
+        }
+        $key = [string]$Matches['key']; $value = ([string]$Matches['value']).Trim()
+        if (-not $entries.Contains($entryKey)) { $entries[$entryKey] = & $newEntry }
+        $entry = $entries[$entryKey]
+        switch -CaseSensitive ($key) {
+            'rounds' {
+                if ($value -match '^\d+$') { $entry.rounds = [int]$value }
+                else { $problems.Add(("{0}: rounds is '{1}', not a whole number" -f $label, $value)) | Out-Null }
+            }
+            'infra_failure_cap' {
+                if ($value -match '^\d+$' -and [int]$value -ge 1 -and [int]$value -le 10) { $entry.infra_failure_cap = [int]$value }
+                else { $problems.Add(("{0}: infra_failure_cap is '{1}', not a whole number from 1 to 10" -f $label, $value)) | Out-Null }
+            }
+            'host_order' {
+                $entry.host_order_stated = $true
+                if ([string]::IsNullOrEmpty($value)) { $listOpen = $true }
+                elseif ($value -match '^\[(?<items>.*)\]$') {
+                    foreach ($item in @(([string]$Matches['items']) -split ',')) {
+                        $name = $item.Trim().Trim('"', "'")
+                        if (-not [string]::IsNullOrWhiteSpace($name)) { $entry.host_order.Add($name) | Out-Null }
+                    }
+                }
+                else { $problems.Add(("{0}: host_order is '{1}'; write it as [codex, copilot]" -f $label, $value)) | Out-Null }
+            }
+            'model' { }
+            default { $problems.Add(("{0}: '{1}' is not a review budget setting (rounds, host_order, infra_failure_cap)" -f $label, $key)) | Out-Null }
+        }
+    }
+    return [pscustomobject]$result
+}
+
+function Get-ReviewBudgetEntryProblems {
+    # The checks one entry must pass wherever it is read: known reviewers, no repeats, and within the ceiling.
+    param([Parameter(Mandatory)][string]$Label, [Parameter(Mandatory)]$Entry, [Parameter(Mandatory)]$Ceiling, [string[]]$KnownHosts = @())
+    $problems = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($hostName in @($Entry.host_order)) {
+        $name = ([string]$hostName).ToLowerInvariant()
+        if (@($KnownHosts).Count -gt 0 -and @($KnownHosts) -cnotcontains $name) {
+            $problems.Add(("{0} names the reviewer '{1}', which Specrew does not know (it knows {2})" -f $Label, $hostName, ($KnownHosts -join ', '))) | Out-Null
+        }
+        elseif (-not $seen.Add($name)) { $problems.Add(("{0} names the reviewer '{1}' twice" -f $Label, $hostName)) | Out-Null }
+    }
+    $stated = $Entry.rounds
+    $total = if ($null -eq $stated -or [int]$stated -lt $script:ReviewBudgetFloor) { $script:ReviewBudgetFloor } else { [int]$stated }
+    if ($total -gt [int]$Ceiling.value) {
+        $asks = if ($null -ne $stated -and [int]$stated -ge $script:ReviewBudgetFloor) { "asks for $total rounds" } else { "gets the floor of $total rounds" }
+        $problems.Add(("{0} {1}, and this project allows at most {2} ({3})" -f $Label, $asks, [int]$Ceiling.value, [string]$Ceiling.where)) | Out-Null
+    }
+    return @($problems)
+}
+
+function Get-ReviewBudgetKnownHosts {
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewerHostRows' -ErrorAction SilentlyContinue)) { return @() }
+    try { return @(Get-ContinuousCoReviewReviewerHostRows | ForEach-Object { ([string]$_.host).ToLowerInvariant() } | Where-Object { $_ } | Sort-Object -Unique) }
+    catch { return @() }
+}
+
+function Format-ReviewBudgetRefusal {
+    # The refusal standard: what was not done, that nothing else changed, and the one action that unblocks it.
+    param([Parameter(Mandatory)][ValidateSet('before-implement', 'plan')][string]$Point, [Parameter(Mandatory)][string]$PlanPath, [Parameter(Mandatory)][string[]]$Problems)
+    $overCeiling = @($Problems | Where-Object { $_ -match 'allows at most' }).Count -gt 0
+    $fix = if ($overCeiling) { "Lower rounds in the plan's Review budget section, or raise co_review_max_rounds in .specrew/config.yml" } else { "Correct the plan's Review budget section" }
+    $what = if ($Point -ceq 'before-implement') { 'Specrew did not record the before-implement approval' } else { 'The plan boundary was not synced' }
+    $then = if ($Point -ceq 'before-implement') { 'then send: approved for before-implement' } else { 'then run the plan sync again' }
+    return ("{0}, because the review budget in {1} cannot be used: {2}. Nothing else was changed. {3}, {4}" -f $what, $PlanPath, ($Problems -join '; '), $fix, $then)
+}
+
+function Resolve-ReviewBudgetForIteration {
+    # This iteration's budget as the snapshot takes it: its own entry, else the flat entry, else the floor.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$FeatureId, [Parameter(Mandatory)][string]$IterationNumber)
+    $planPath = "specs/$FeatureId/plan.md"
+    $block = Read-ReviewBudgetPlanBlock -PlanPath (Join-Path $RepoRoot $planPath)
+    $ceiling = Get-ReviewBudgetCeiling -RepoRoot $RepoRoot
+    $key = Get-ReviewBudgetIterationKey -IterationNumber $IterationNumber
+    $problems = [System.Collections.Generic.List[string]]::new()
+    foreach ($p in @($block.problems)) { $problems.Add($p) | Out-Null }
+    $entry = if ($block.entries.Contains($key)) { $block.entries[$key] } elseif ($block.entries.Contains('*')) { $block.entries['*'] } else { $null }
+    $label = if ($block.entries.Contains($key)) { $key } else { 'the budget' }
+    if ($null -eq $entry) { $entry = [ordered]@{ rounds = $null; host_order = @(); host_order_stated = $false; infra_failure_cap = $null } }
+    foreach ($p in @(Get-ReviewBudgetEntryProblems -Label $label -Entry $entry -Ceiling $ceiling -KnownHosts @(Get-ReviewBudgetKnownHosts))) { $problems.Add($p) | Out-Null }
+    $stated = $entry.rounds
+    $source = if ($null -eq $stated) { 'floor-not-stated' } elseif ([int]$stated -lt $script:ReviewBudgetFloor) { 'floor-raised' } else { 'plan' }
+    $total = if ($source -ceq 'plan') { [int]$stated } else { $script:ReviewBudgetFloor }
+    $cap = if ($null -ne $entry.infra_failure_cap) { [int]$entry.infra_failure_cap } else { $script:ReviewBudgetDefaultInfraFailureCap }
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes([string]$block.block_text))).ToLowerInvariant()
+    return [pscustomobject][ordered]@{
+        ok                = ($problems.Count -eq 0)
+        problems          = @($problems)
+        refusal           = $(if ($problems.Count -gt 0) { Format-ReviewBudgetRefusal -Point 'before-implement' -PlanPath $planPath -Problems @($problems) } else { $null })
+        iteration_key     = $key
+        budget_total      = $total
+        budget_source     = $source
+        host_order        = @($entry.host_order | ForEach-Object { ([string]$_).ToLowerInvariant() })
+        host_order_stated = [bool]$entry.host_order_stated
+        infra_failure_cap = $cap
+        ceiling           = [int]$ceiling.value
+        plan_path         = $planPath
+        plan_hash         = $hash
+    }
+}
+
+function Test-ReviewBudgetPlan {
+    # FR-002 at the plan sync: every entry the plan states, not only the iteration being planned, since the plan states
+    # them all at once. A plan with no Review budget section passes: it gets the floor at the snapshot (FR-008).
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$FeatureId)
+    $planPath = "specs/$FeatureId/plan.md"
+    $block = Read-ReviewBudgetPlanBlock -PlanPath (Join-Path $RepoRoot $planPath)
+    $problems = [System.Collections.Generic.List[string]]::new()
+    foreach ($p in @($block.problems)) { $problems.Add($p) | Out-Null }
+    if ($block.found) {
+        $ceiling = Get-ReviewBudgetCeiling -RepoRoot $RepoRoot
+        $known = @(Get-ReviewBudgetKnownHosts)
+        foreach ($entryKey in @($block.entries.Keys)) {
+            $label = if ($entryKey -ceq '*') { 'the budget' } else { $entryKey }
+            foreach ($p in @(Get-ReviewBudgetEntryProblems -Label $label -Entry $block.entries[$entryKey] -Ceiling $ceiling -KnownHosts $known)) { $problems.Add($p) | Out-Null }
+        }
+    }
+    return [pscustomobject][ordered]@{
+        ok       = ($problems.Count -eq 0)
+        found    = [bool]$block.found
+        problems = @($problems)
+        refusal  = $(if ($problems.Count -gt 0) { Format-ReviewBudgetRefusal -Point 'plan' -PlanPath $planPath -Problems @($problems) } else { $null })
+    }
+}
+
+function New-ReviewBudgetGrantFact {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)]$Resolution, [Parameter(Mandatory)][string]$VerdictEntry, [Parameter(Mandatory)][string]$ObservedAt)
+    return [pscustomobject][ordered]@{
+        schema_version    = '1.0'
+        fact_type         = 'budget-grant'
+        campaign_id       = $CampaignId
+        grant_id          = ('grant-' + (Get-ReviewCampaignStableToken -Value "$CampaignId/budget/$VerdictEntry" -Length 20))
+        budget_total      = [int]$Resolution.budget_total
+        host_order        = @($Resolution.host_order)
+        host_order_stated = [bool]$Resolution.host_order_stated
+        infra_failure_cap = [int]$Resolution.infra_failure_cap
+        budget_source     = [string]$Resolution.budget_source
+        ceiling           = [int]$Resolution.ceiling
+        plan_path         = [string]$Resolution.plan_path
+        plan_hash         = [string]$Resolution.plan_hash
+        verdict_entry     = $VerdictEntry
+        authority_kind    = 'human'
+        observed_at       = $ObservedAt
+    }
+}
+
+function Add-ReviewCampaignBudgetGrantFact {
+    # Immutable: an identical fact is idempotent success, a conflicting one fails closed (the store's CreateNew rule).
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $grantId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'grant_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/budget-grants/$grantId.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName BudgetGrantFact -ExpectedCampaignId $campaignId
+}
+
+function Get-ReviewCampaignBudgetGrant {
+    # The campaign's budget grant: the newest, when a later before-implement verdict for the same iteration wrote another.
+    # $null when there is none. A malformed grant throws, so a caller refuses rather than spends on a guess.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/budget-grants'
+    $path = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [System.IO.Directory]::Exists($path)) { return $null }
+    $grants = foreach ($file in [System.IO.Directory]::EnumerateFiles($path, '*.json', [System.IO.SearchOption]::TopDirectoryOnly)) {
+        Read-ReviewAuthorityFactFile -Path $file -ContractName BudgetGrantFact -ExpectedCampaignId $CampaignId
+    }
+    $newest = @($grants | Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'budget-grant.observed_at' }) | Select-Object -Last 1
+    return $newest
+}
+
 function New-ReviewCampaignAuthorityStoreRefusal {
     # SPECREW-AUTHORITY-CONSUMER: authority-store-read-failure
     [CmdletBinding()]
@@ -1342,7 +1625,7 @@ function Resolve-ReviewCampaignPublicIdentity {
     if (-not (Test-ReviewCampaignIterationIdentity -Value $iteration)) { throw 'review-campaign-active-iteration-unresolved' }
 
     $featureSlug = ConvertTo-ReviewCampaignSlug -Value $feature -MaximumLength 44
-    $campaignId = "cmp-$featureSlug-i$iteration"
+    $campaignId = Get-ReviewCampaignIdForIteration -FeatureId $feature -IterationNumber ([string]$iteration)
     $lineageId = "lin-$featureSlug"
     if ([string]::IsNullOrWhiteSpace($RunId)) {
         # DRIFT-199-I001-007: the stamp separator must stay LOWERCASE-SAFE. Run ids become

@@ -837,7 +837,9 @@ function Get-SpecrewVerdictCaptureDisclosure {
         [AllowNull()][string]$NowUtc,
         [AllowNull()][string]$Source,
         # Feature 203 T005 (FR-019): the capture's refusal of a verdict whose packet has left the tail, when it made one.
-        [AllowNull()][string]$CaptureReason
+        [AllowNull()][string]$CaptureReason,
+        # Feature 203 T007 (FR-002): the refusal's own sentence, for a reason that carries one.
+        [AllowNull()][string]$CaptureDetail
     )
     if ([string]::IsNullOrWhiteSpace($HumanText)) { return $null }
     # 203 T004 (co-review round 11, finding 3): AN ACT OF ANOTHER FAMILY IS NOT A BOUNDARY VERDICT. `approved for review
@@ -856,6 +858,13 @@ function Get-SpecrewVerdictCaptureDisclosure {
     try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { return $null }
     if ($null -eq $pending) { return $null }
     $text = [string]$HumanText
+    # Feature 203 T007 (FR-002): the verdict was refused for its review budget. The refusal is complete as written (what was
+    # not recorded, the ceiling and where it is set, the way on), so it is said as it stands, before any reading of what is
+    # pending: the verdict matched its crossing and was refused for the budget alone.
+    if ([string]$CaptureReason -ceq 'review-budget-refused' -and -not [string]::IsNullOrWhiteSpace($CaptureDetail)) {
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'review-budget-refused' -From ([string]$pending.LastAuthorizedBoundary) -To 'before-implement' -LeadingText '' -NowUtc $NowUtc -Source $Source
+        return [string]$CaptureDetail
+    }
     # Feature 203 T006 (DRIFT-039 item a): A BOUNDARY ALREADY APPROVED IS SAID TO BE APPROVED. `approved for tasks` typed after
     # tasks was authorized was told that no crossing was pending and to send the phrase again when the crossing is presented,
     # a crossing that will never come back.
@@ -1332,6 +1341,20 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         return $result
     }
     catch {
+        # Feature 203 T007 (FR-002): a before-implement verdict whose review budget the snapshot refused is not recorded,
+        # and the human is told why in the refusal's own words, with the way on.
+        $failure = $_.Exception
+        $budgetRefused = $false
+        while ($null -ne $failure) {
+            if ($null -ne $failure.Data -and [string]$failure.Data['specrew_reason'] -ceq 'review-budget-refused') { $budgetRefused = $true; break }
+            $failure = $failure.InnerException
+        }
+        if ($budgetRefused) {
+            [Console]::Error.WriteLine("[specrew-handover] WARN VERDICT_NOT_RECORDED_REVIEW_BUDGET $($failure.Message)")
+            $result.reason = 'review-budget-refused'
+            $result | Add-Member -NotePropertyName 'reason_detail' -NotePropertyValue ([string]$failure.Message) -Force
+            return $result
+        }
         [Console]::Error.WriteLine("[specrew-handover] WARN VERDICT_CAPTURE_FAILED $($_.Exception.Message)")
         $result.reason = 'capture-failed'
         return $result
@@ -1906,7 +1929,8 @@ function Update-SpecrewRollingHandover {
         $typedDisclosure = $null
         if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
             $captureReason = if ($null -ne $captureOutcome) { [string]$captureOutcome.reason } else { '' }
-            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source -CaptureReason $captureReason
+            $captureDetail = if ($null -ne $captureOutcome -and $captureOutcome.PSObject.Properties['reason_detail']) { [string]$captureOutcome.reason_detail } else { '' }
+            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source -CaptureReason $captureReason -CaptureDetail $captureDetail
             $verdictNotCaptured = $disclosure
         }
         elseif ((Get-Command Get-SpecrewVerdictCapturedDirective -ErrorAction SilentlyContinue)) {
