@@ -1185,13 +1185,19 @@
   the mirror in every commit; nothing refreshed `.specrew-extension-runtime.json`. First red at `040fb169`; its parent
   `9f81fb52` and `fca9067e` green. By `147603af` eleven deployed files differed from the record.
 - **This worktree**: `validate-governance` passes here, auto-scoped and in the governance lane's form, with no integrity
-  error, though the integrity check called directly reports the eleven files; the validator does not apply W43 in this
-  tree. So the mismatch did not block 203's own sign-off through those runs.
+  error, though the integrity check called directly reports the eleven files. **Corrected (maintainer):** W43 runs only
+  inside the validator's review-artifact check, for an iteration in reviewing, retro or complete status with a
+  review.md; iteration 001 is executing with none, so neither run reached it. The crew's first reading (the check is not
+  applied in this tree, so sign-off was not blocked) was wrong: without the fix, 203's own review sign-off would have
+  failed on the eleven files. Shown by `self-repo-review-integrity`: red on a copy of `c3eb7aa0` in reviewing status,
+  green on `94205372`.
 - **Fixed (maintainer's conditions)**: `scripts/internal/refresh-specify-mirror-record.ps1` writes the record with
   `Write-SpecrewDeployedExtensionMarker`, only after confirming each deployed file is byte-identical to its source in
   `extensions/`; it never re-hashes `.specify` as it stands, so a hand edit there is refused and W43 still catches it.
   Run in every commit that syncs the mirror; `-CheckOnly` is the lane's check.
-- **Tests**: `tests/unit/specify-mirror-record.Tests.ps1` (in `f203-i001-suites`); the changed-only suite gains a case,
+- **Tests**: `tests/unit/specify-mirror-record.Tests.ps1` and `tests/integration/self-repo-review-integrity.tests.ps1`
+  (this tree validated with iteration 001 in reviewing status, plus a hand-edit control), both in `f203-i001-suites`;
+  the changed-only suite gains a case,
   a hand edit to the deployed validator with its source unchanged still fails validation naming that file, and runs in
   its own lane `f203-i001-validator-scope` (900 s).
 - **Requirement**: FR-014.

@@ -130,7 +130,9 @@ then T014.
     (`Write-SpecrewDeployedExtensionMarker`) only after confirming every deployed file is byte-identical to its source
     in `extensions/`, with no file on one side only; otherwise it refuses and leaves the record. Every commit that syncs
     the mirror runs it. Acceptance: `tests/unit/specify-mirror-record.Tests.ps1` (a hand edit in `.specify` is refused
-    and W43 still names it; the committed mirror and record match) in `f203-i001-suites`; the changed-only suite green,
+    and W43 still names it; the committed mirror and record match) and `self-repo-review-integrity.tests.ps1` (this tree
+    validated with iteration 001 in reviewing status, where W43 runs, reports no integrity error; a hand-edit control
+    does) in `f203-i001-suites`; the changed-only suite green,
     with a case proving a hand edit to a deployed file still fails the validator, in its own lane
     `f203-i001-validator-scope` (900 s).
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
@@ -143,7 +145,7 @@ then T014.
     mirror of each, `.specrew/verification-plan.json`, `tests/unit/live-engine-resolution.tests.ps1`,
     `tests/unit/live-engine-hook-root.tests.ps1`; follow-up: `scripts/internal/refresh-specify-mirror-record.ps1`,
     `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json`, `tests/unit/specify-mirror-record.Tests.ps1`,
-    `tests/integration/validate-governance-changed-only.tests.ps1`.
+    `tests/integration/validate-governance-changed-only.tests.ps1`, `tests/integration/self-repo-review-integrity.tests.ps1`.
 - [X] T001 [owner: Implementer] [sp: 2.0] **Host facts in scratch directories (W0).**
   - **Work:** in scratch directories only (rule `feature-203.rule.scratch-probes-only`): both Copilot firings
     (native and Claude-hook) for one prompt; a paste on Copilot and on Codex; a Claude hook emitting
