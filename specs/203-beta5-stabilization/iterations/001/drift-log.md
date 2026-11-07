@@ -1025,3 +1025,23 @@
   the revisit note (DRIFT-038).
 - **Requirement**: FR-013.
 - **Class closure**: CLOSED; DRIFT-038 closed with it.
+
+### DRIFT-041 — The maintainer's additions to the live check; how B5F-029 finding 1's fix is reviewed (maintainer input, proposal)
+
+- **Input** (2026-11-07): (1) the design-decision record still says `"confirmation": "crew-declared-human-reply"`,
+  although under T004 it is verified against the reserved typed turn; name that evidence (to T006, acceptance (c)).
+  (2) Finding 1's fix changes T004 code after its sign-off: say how it is reviewed (FR-013), with T005's round or its
+  own, and note that the pin must advance again before it is live. (3) `withdrew_observed_at` is a locale date
+  (`11/07/2026` reads as 7 November or 11 July); log it for an ISO fix (to T008, with the same writer's lock fix).
+- **On (2), the facts**: T005 has no round of its own; after T004 the plan's next review is the iteration review after
+  T013. FR-013's scoped round does not exist until T009 (after T008); today's engine can run a full round, or a
+  prompt-narrowed one labelled `partial`, which since DRIFT-034 fix 4 is not a delivered round and needs a partial
+  sign-off. The fix is not live until the pin advances past it; the live bug is contained meanwhile by the
+  maintainer's rule that an allowance reset is never asked while a boundary packet is pending.
+- **Proposal, awaiting the maintainer's decision**: the fix rides the iteration review after T013 (its "next round",
+  FR-013) and goes live at T014's pin advance; or it gets its own full round now, on a per-round approval, and the pin
+  advances after that round signs off.
+- **Crew error**: the commit `f09809bf` landed without this entry (a shell heredoc collapsed a path's backslashes in
+  the patch script) and without the governance check; this entry and the check follow in the next commit.
+- **Requirement**: FR-013, FR-014, FR-045.
+- **Class closure**: OPEN until the maintainer decides (2).
