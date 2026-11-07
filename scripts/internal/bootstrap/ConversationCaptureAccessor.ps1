@@ -760,6 +760,15 @@ function Get-SpecrewCapturedBoundaryVerdict {
             # is scanned past here like any other non-verdict turn; a send-back or discuss request still wins the window.
             if ($candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss -and
                 $candidateText.TrimStart() -notmatch '^(?i)approv(?:e|ed)\b') { continue }
+            # Feature 203 T004 (B5F-029 finding 1): another authority family's act (`approved for allowance reset`,
+            # `approved for review round`, a partial sign-off) does start the message, but it answers its own writer, not
+            # this packet, so it is scanned past too; the shared shape table is the one that says which family a text is.
+            if ($candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss -and
+                (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue)) {
+                $otherFamily = $null
+                try { $otherFamily = Get-SpecrewTypedAuthorityShape -Text $candidateText } catch { $otherFamily = $null }
+                if ($null -ne $otherFamily) { continue }
+            }
             $humanText = $candidateText
             $humanTurn = $turns[$j]
             break

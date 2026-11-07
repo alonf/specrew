@@ -224,6 +224,9 @@ then T014.
   - **B5F-029 split (maintainer's design decision, 2026-11-07, option 3; DRIFT-039):** finding 1 (another authority
     family's phrase takes a boundary packet's window) is fixed in T004 now, before T005, failing case first; findings 2
     and 3 go to T008.
+    **Fixed (DRIFT-042):** the transcript reader passes over another authority family's act as it passes over a
+    mention. Red on `013a6b0d` (`HookVerdictCapture` 16). Reviewed by the iteration review after T013, live at T014
+    (maintainer's decision, DRIFT-041).
   - **Trace:** FR-021, FR-022, FR-025 (FR-010 moved to T008, DRIFT-027).
   - **Owns:** `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
     `scripts/specrew-review.ps1` (its writer CLIs), `extensions/specrew-speckit/scripts/record-design-decision.ps1`

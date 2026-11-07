@@ -1044,4 +1044,22 @@
 - **Crew error**: the commit `f09809bf` landed without this entry (a shell heredoc collapsed a path's backslashes in
   the patch script) and without the governance check; this entry and the check follow in the next commit.
 - **Requirement**: FR-013, FR-014, FR-045.
-- **Class closure**: OPEN until the maintainer decides (2).
+- **Decision on (2)**: the maintainer typed `review the fix with the iteration review` (2026-11-07). The fix is
+  reviewed by the iteration review after T013 and goes live at T014's pin advance (DRIFT-042).
+- **Class closure**: CLOSED for (2); (1) and (3) are carried by T006 and T008.
+
+### DRIFT-042 — B5F-029 finding 1 fixed in T004 after its sign-off; reviewed with the iteration review, live at T014 (maintainer decision)
+
+- **Fix**: `Get-SpecrewCapturedBoundaryVerdict`'s candidate scan passes over an approval that is another authority
+  family's act, as `Get-SpecrewTypedAuthorityShape` (the shared shape table) names it: `approved for allowance reset`,
+  `approved for review round`, a partial sign-off, a workshop repair. A send-back or discuss request still wins the
+  window. The prompt-entry reader is unchanged: the router classifies a prompt before it reaches the boundary writer.
+- **Failing case first**: `HookVerdictCapture` 16 (a reset and a round approval between the packet and the real
+  approval, each scanned past; the reset alone authorizes nothing): red on `013a6b0d` (`approved for allowance reset`
+  took the window, the boundary stayed at `tasks`), green on the fix.
+- **Review and deployment (maintainer's decision, DRIFT-041)**: no round now. The iteration review after T013 is this
+  fix's next round (FR-013) and covers it with T005 to T013; the pin stays at `a489e6c0` until T014, so the live
+  hooks still carry the bug, contained by the rule that an allowance reset is never asked while a boundary packet is
+  pending.
+- **Requirement**: FR-014, FR-021, FR-022.
+- **Class closure**: OPEN until the iteration review covers it.

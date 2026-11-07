@@ -220,6 +220,29 @@ try {
     Invoke-StopHook -Proj $c15b.Proj -Tx $c15b.Transcript
     Assert-True ([string](Read-Enforcement -Proj $c15b.Proj).last_authorized_boundary -eq 'tasks') "15 STOP: a send-back still wins the window over a later approval"
 
+    # === Case 16 — STOP (203 T004, B5F-029 finding 1): another authority family's phrase does not take the window. ===
+    # Round 12's fix passed over an approval that does not start the message, but `approved for allowance reset` and
+    # `approved for review round` do start it: the reset took the packet's window, the boundary writer rejected it, and the
+    # human's real `approved for before-implement` after it was never read.
+    foreach ($other in @('approved for allowance reset', 'approved for review round')) {
+        $c16 = New-CaptureProject -LastAuth 'tasks' -Turns @(
+            @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement --> What's your verdict?" },
+            @{ role = 'user'; text = $other },
+            @{ role = 'assistant'; text = 'That is a review act; this packet asks about before-implement.' },
+            @{ role = 'user'; text = 'approved for before-implement' }
+        ); $cases += $c16.Tmp
+        Invoke-StopHook -Proj $c16.Proj -Tx $c16.Transcript
+        $e16 = Read-Enforcement -Proj $c16.Proj
+        Assert-True ([string]$e16.last_authorized_boundary -eq 'before-implement') "16 STOP: '$other' before the real approval is scanned past (got '$($e16.last_authorized_boundary)')"
+    }
+    # The other family alone answers nothing: the crossing stays unauthorized.
+    $c16b = New-CaptureProject -LastAuth 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement --> What's your verdict?" },
+        @{ role = 'user'; text = 'approved for allowance reset' }
+    ); $cases += $c16b.Tmp
+    Invoke-StopHook -Proj $c16b.Proj -Tx $c16b.Transcript
+    Assert-True ([string](Read-Enforcement -Proj $c16b.Proj).last_authorized_boundary -eq 'tasks') "16 STOP: another family's phrase alone authorizes no boundary"
+
     Write-Host "`n=== HookVerdictCapture.Tests.ps1: all assertions passed (the hook is the verdict authority AND advances one boundary at a time) ===" -ForegroundColor Green
 }
 finally {
