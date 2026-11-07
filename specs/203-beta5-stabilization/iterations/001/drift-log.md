@@ -955,3 +955,24 @@
   terminal and needing no typed approval; `-Action Remove` if the pin itself breaks.
 - **Requirement**: FR-045 (the deployment point), FR-014, FR-022.
 - **Class closure**: OPEN; a mirror parity check for `.specify` against `extensions/` is not in any lane.
+
+### DRIFT-038 — Maintainer input for T009/FR-013: scope what the verify round judges, not what the reviewer sees; DA-7 revisited (maintainer ruling)
+
+- **Input** (2026-11-07, during the T004 live checks), verbatim in substance: scope what the verify round judges, not
+  what the reviewer can see. No sparse checkout: the reviewer reads the whole tree and is told to judge only the fix
+  (the changed lines and any code that relies on what changed). Findings in that zone gate; findings in unrelated
+  unchanged code are recorded as non-gating follow-ups.
+- **Reason given**: a sparse checkout hides breakage the fix causes in files it did not touch. The example: round 13's
+  finding 2, the round slot lock (added in round 10's fix, `6741cfd1`) with the withdrawal writer still bypassing it.
+  The withdrawal writer sits in `HumanAuthorityStore.ps1`, a file the fixes changed, in lines they did not change; under
+  the new rule it is in the zone as code that relies on what changed (the slot's locking contract), and under a
+  line-only scope it would have been missed.
+- **Supersedes**: the 2026-10-31 co-design amendment to DA-7 (the scope MUST restrict the files the reviewer receives,
+  for token cost; a sparse checkout of the frozen target). The scoped round now pays for the whole tree's context and
+  narrows the judgment instead.
+- **Differs from the spec as written**: FR-013 ("scoped to the files the fix changed, through the engine's existing
+  narrow-scope path, so a late fix costs a small round"); the feature plan's performance goal ("a scoped round must
+  receive only its listed files"). Not changed yet.
+- **Recorded**: T009 (work and acceptance), DA-7 (a revisit note), this entry.
+- **Requirement**: FR-013.
+- **Class closure**: OPEN until FR-013 and the plan's performance goal are aligned or the maintainer rules they stay.

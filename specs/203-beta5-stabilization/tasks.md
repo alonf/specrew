@@ -486,8 +486,13 @@ then T014.
 
 - [ ] T009 [owner: Implementer] [sp: 2.0] [US1] **Scoped late-fix round (DA-7).** **Maintainer input (2026-11-05;
   DRIFT-032): back into iteration 001 if possible, after T008**, because an unscoped verification round keeps finding
-  new rare cases in unchanged code (rounds 8 and 9). The reviewer receives only the
-  listed paths (sparse checkout), labelled `scoped`; coverage rule. Trace: FR-013. Owns:
+  new rare cases in unchanged code (rounds 8 and 9). **Maintainer input (2026-11-07; DRIFT-038), replacing "the
+  reviewer receives only the listed paths (sparse checkout)":** scope what the round
+  judges, not what the reviewer sees. The reviewer reads the whole tree and is told to judge only the fix (the
+  changed lines and any code that relies on what changed); findings in that zone gate, findings in unrelated
+  unchanged code are recorded as non-gating follow-ups. Labelled `scoped`; coverage rule. **Acceptance added:** a
+  fix whose break lands in an untouched caller is reported as gating (round 13's finding 2 as the shape); a
+  finding in unrelated unchanged code is a non-gating follow-up. Trace: FR-013. Owns:
   `scripts/internal/continuous-co-review/worktree-*.ps1`, `review-target-port.ps1`, `tests/unit/scoped-round.Tests.ps1`.
 - [ ] T010 [owner: Implementer] [sp: 1.5] [US1] **Host-reported token usage.** Per round and at sign-off; "not
   reported by <host>" otherwise. Trace: FR-012. Owns: `scripts/internal/continuous-co-review/review-*-harness-port.ps1`,

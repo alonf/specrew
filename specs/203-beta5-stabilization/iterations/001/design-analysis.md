@@ -206,6 +206,10 @@ flowchart LR
   of scoping is token cost. Today's narrow-scope path narrows the prompt only; the scoped target materializes
   the disposable review worktree with only the listed paths (a sparse checkout of the frozen target commit),
   and the run records the path list it received.
+  **Revisited (maintainer input, 2026-11-07; DRIFT-038):** the amendment above is superseded. No sparse
+  checkout: the reviewer reads the whole tree and is told to judge only the fix (the changed lines and any code
+  that relies on what changed); findings in that zone gate, findings in unrelated unchanged code are non-gating
+  follow-ups. A sparse checkout hides breakage the fix causes in files it did not touch.
 - **DA-8 Live engine pin.** The live hooks must not load engine code from this worktree. **Co-design
   amendment:** no checkout inside the worktree. A nested checkout under `.specrew/` is counted as source (a
   nested worktree tripped the coverage stop this week), and census selection and lint would pick up its
