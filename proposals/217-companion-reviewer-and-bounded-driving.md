@@ -3,9 +3,9 @@ proposal: 217
 title: Companion Reviewer Session and Bounded Delegated Driving
 status: candidate
 phase: phase-3
-estimated-sp: 31-48
+estimated-sp: 34-52
 priority-tier: 2
-discussion: maintainer design conversation 2026-11-07 during Feature 203 (beta5 stabilization) - "when I develop Specrew I always use another agent as assistant and reviewer... how can I have it as a built in option or a methodology of Specrew?"; extended the same day - "the assistant has to be the one that always sees the big picture, while the crew sees the task at hand", "the assistant needs to explain to the human more about the status, process, decisions and implications", bounded autonomy - "have a reviewer, and then give it a period of auto driving mode, should be the correct way", and delegated crossings - "the boundary is signed by the driver on behalf of the human with the consent the user gave".
+discussion: maintainer design conversation 2026-11-07 during Feature 203 (beta5 stabilization) - "when I develop Specrew I always use another agent as assistant and reviewer... how can I have it as a built in option or a methodology of Specrew?"; extended the same day - "the assistant has to be the one that always sees the big picture, while the crew sees the task at hand", "the assistant needs to explain to the human more about the status, process, decisions and implications", bounded autonomy - "have a reviewer, and then give it a period of auto driving mode, should be the correct way", and delegated crossings - "the boundary is signed by the driver on behalf of the human with the consent the user gave"; amended the same evening after a stalled crew run - "another reason to have assistance and driver".
 ---
 
 # Companion Reviewer Session and Bounded Delegated Driving
@@ -24,7 +24,7 @@ The two sessions see the work at different distances, and that difference is the
 
 | | Crew | Companion |
 |---|---|---|
-| Sees | The task at hand: the files, tests and commands of the current task | The big picture: spec, plan, ledger, drift, standing rules, other features and branches, release gates |
+| Sees | The task at hand: the files, tests and commands of the current task | The big picture: spec, plan, ledger, drift, standing rules, other features and branches, release gates, and whether the crew's running work is still moving |
 | Optimises | Getting the task done | Keeping the feature, the process and the human's decisions sound |
 | Talks to the human about | What it did and what it needs | What the position is, what it means, what each option leads to |
 | Holds authority | None beyond its task | None of its own. It advises, and acts only on authority the human delegated |
@@ -55,6 +55,19 @@ stuck gate; this proposal makes it for the whole session.
 - **A compaction hole was found in a correction.** The crew's third correction relied on
   `presented-crossings.json`, which is cleared on every SessionStart, including compaction. The
   companion found it; the crew fixed it with a capture-only `shown-crossing.json` that survives one.
+- **A stall nobody saw.** After committing the B5F-033 fix (`94205372`) at 17:48 local time, the
+  crew started its neighbour suites and four lanes as one background run and waited for it to
+  report. Its runner script did not enforce the lanes' 600-second limit, and one suite
+  (`validate-governance-changed-only`) hung in a `git init --quiet` child process. That process used 4
+  seconds of CPU in three hours. The neighbour suites had already finished at 17:49, with one new
+  failure caused by the fix itself: `module-packaging-identity` found that the new
+  `scripts/internal/refresh-specify-mirror-record.ps1` dot-sources a file the module package does not
+  ship. The crew reported the run as "still running" at 18:34, and at 19:30 it compacted while idle,
+  still waiting for a notice that would never come. Nothing went wrong in its reasoning. It lost
+  track of time. A waiting or compacted session cannot watch itself, and reports a background task
+  only once the task finishes. When the human asked for the status at 20:46, the companion found both
+  problems in a few minutes from the process tree and the run's output files. This is the second
+  kind of evidence: alongside the wrong premise, work that silently stopped moving.
 - **The companion also missed things.** The from-boundary bug in `HumanAuthorityStore.ps1`
   (`$_ -ceq $to -or $_ -ceq $from`) was the crew's catch, not the companion's. The value is two
   independent readings, not an infallible reviewer.
@@ -138,12 +151,17 @@ Three levels, each a prerequisite for the next:
   every host, with an optional host-native notification where the host supports one.
 - Read access to the repository itself (git history, the working tree, other branches), because
   premise checks such as a merge base cannot be done from a feed.
+- The crew's running work: each background task with its start time, its output file as it grows,
+  the time limit that applies to it (for a verification lane, the lane's own limit), and whether
+  its process tree is alive and using CPU. The feed also reports the crew session's idle time and
+  the last thing the crew said was in flight, so a session that claims work is running while
+  nothing runs can be seen.
 - No write path from the companion into the crew session. The human remains the only relay at
   Level 1 and Level 2.
 
 ### Pillar 3 - The big picture and the human briefing
 
-The companion charter makes two duties explicit:
+The companion charter makes three duties explicit:
 
 - **Hold the big picture.** For every crew report the companion checks the claims against disk and
   git, and checks the report against the whole feature: the spec and its FRs, recorded design
@@ -156,6 +174,18 @@ The companion charter makes two duties explicit:
   recommendation; and, when the human should reply, the exact message to send. Process mechanics
   (why a hook fired, why a phrase must be typed in a certain place) are explained in plain words
   when they come up, matched to the human's profile dials.
+- **Watch the running work.** The companion checks the crew's running work from the feed, on its
+  own cadence rather than only when a report is relayed. It flags:
+  - a task past its time limit;
+  - a process tree with no CPU and no new output for a set period;
+  - a crew session idle while it says work is in flight;
+  - a partial result that contradicts the crew's last report ("you said running; this suite already
+    failed").
+
+  Each flag names what is stuck or wrong, the evidence (process, output file, times), and one
+  recommended action. The companion never stops a process itself. At Level 1 and Level 2 the flag
+  goes to the human with the message to send. Under a grant (Pillar 5) the companion sends it to the
+  crew directly as advice, and the crew acts on it.
 
 ### Pillar 4 - Delegated decisions (Level 2)
 
@@ -180,7 +210,8 @@ The companion charter makes two duties explicit:
   and its stop point. It rides Feature 203's
   single-grant budget model (T007/T008) rather than adding a second budget system.
 - Within the grant the companion answers the crew's in-phase questions directly, through a
-  sanctioned channel (not by typing into the crew console), and every answer is logged.
+  sanctioned channel (not by typing into the crew console), and every answer is logged. Stall
+  flags (Pillar 3) go to the crew through the same channel.
 - **Delegated crossings.** At a boundary the grant names, the driver signs the crossing on the
   human's behalf, under five rules:
   1. **Named in advance.** The driver may sign only a boundary the grant lists.
@@ -197,7 +228,7 @@ The companion charter makes two duties explicit:
      closeout; merge to `main`, opening a PR, publish, release or a production deploy; a write to the
      protected home-directory surfaces (host hooks, settings, profiles, launchers; the companion's own
      workspace excepted); a destructive git operation (force push, history rewrite, branch or tag
-     deletion); a public API or contract change; a crossing whose packet touches security,
+     deletion); stopping or killing a crew process or session; a public API or contract change; a crossing whose packet touches security,
      authentication or authorization surfaces; and a hardening-gate disposition that needs a human
      deferral approval. This carries Proposal 041's safety-critical list forward in full. Review
      sign-off is the default stop point; a grant can include it only by naming it.
@@ -207,7 +238,8 @@ The companion charter makes two duties explicit:
   point (the end of the current task step) and reports where it stopped.
 - **Automatic disengage** on any of: budget spent; the same gate failing twice; a request for a
   never-delegable action; a decision outside the granted scope; a contradiction with the spec or a
-  recorded design decision; the companion and the crew disagreeing twice on the same question.
+  recorded design decision; the companion and the crew disagreeing twice on the same question; a
+  stall flag the crew has not cleared by the companion's next check.
 - A grant expires at its stop point, on disengage, or at session end. It never renews itself.
 
 ### Pillar 6 - Digest and decision log
@@ -224,10 +256,11 @@ The companion charter makes two duties explicit:
 
 Suggested slicing, each slice shippable alone:
 
-1. **Slice A - Level 1 (8-12 SP):** the companion folder, launcher and charter (big picture and
-   briefing duties); the defense-in-depth refusal in the capture readers; the read-only feed.
-   Proven by a test that a verdict typed in a companion session records nothing and says why, and by
-   walk scenarios (Proposal 213) where the companion must catch a seeded false premise.
+1. **Slice A - Level 1 (11-16 SP):** the companion folder, launcher and charter (big picture,
+   briefing and watch duties); the defense-in-depth refusal in the capture readers; the read-only
+   feed, including the crew's running work. Proven by a test that a verdict typed in a companion
+   session records nothing and says why, and by walk scenarios (Proposal 213) where the companion
+   must catch a seeded false premise and a seeded stall.
 2. **Slice B - Level 2 (5-8 SP):** delegation routing for workshop lenses and design decisions;
    `delegate: companion` provenance; the digest. Proven by a workshop run where a delegated lens is
    answered by the companion and appears in the digest.
@@ -282,6 +315,11 @@ recorded as evidence for this proposal.
   through the correction history.
 - **AC12** The decision log lists every decision and crossing made under a grant, and the stop-point
   packet links it.
+- **AC13** In walk scenarios with a seeded stall, the companion flags each one with its evidence by
+  its next check after the threshold passes, and stops no process. The stalls are: a background
+  process past its lane limit with no CPU or output; a crew session idle while it reports work in
+  flight; and a partial red result that the crew's last report calls "running". `specrew companion
+  feed` shows each background task's start time, time limit, liveness and output so far.
 
 ## Out of scope
 
@@ -324,6 +362,9 @@ recorded as evidence for this proposal.
   not something either side resolves alone.
 - **Over-explaining.** A briefing longer than the crew report defeats its purpose. Mitigation: the
   briefing follows the human's profile dials and leads with whether anything is asked.
+- **False stall alarms.** A long suite looks like a hung one. Mitigation: the thresholds come from
+  the task's own time limit and from CPU and output together, never from elapsed time alone, and a
+  flag only recommends.
 - **Budget overrun.** Mitigation: the grant budget is enforced by the 203 budget model, not by the
   companion's own accounting.
 - **Scope creep in grants.** Mitigation: grants are scoped to one feature, name their boundaries and
@@ -337,6 +378,12 @@ recorded as evidence for this proposal.
   companion runs from its own folder with its own instructions; Proposal 041 withdrawn as absorbed
   and Proposal 100's `autonomous` mode re-expressed as a grant. The B5F-033 rerun on `df1141a8`
   passed, confirming the regression the companion's premise check exposed.
+- 2026-11-07 (evening) - amended, still `candidate`. A crew background run hung for three hours
+  while the crew waited and a failure already on disk went unreported; the companion found both.
+  This adds the watch duty (Pillar 3), the crew's running work in the feed (Pillar 2), stall flags
+  through the grant channel, a stall disengage trigger, stopping a crew process on the
+  never-delegable list (Pillar 5), AC13 and the false-alarm risk. Slice A grows to 11-16 SP and
+  the total to 34-52 SP.
 
 ## Cross-references
 
