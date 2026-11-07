@@ -32,7 +32,8 @@ capture code judges the maintainer's approvals.
 - **Testing**: Pester, RED-first through shipped entry points; cross-host replay with recorded real payloads
   (`tests/fixtures/hook-payloads/<host>/`); fault fixtures for every mint path.
 - **Target Platform**: the Specrew module and its hooks on Claude, Codex and Copilot (validated tier).
-- **Performance Goals**: none new; a scoped round must receive only its listed files (DA-7, token cost).
+- **Performance Goals**: none new; a scoped round reads the whole tree and narrows only what it judges (DA-7
+  revisited, DRIFT-038), so a late fix's round is smaller in judgment, not in context.
 - **Constraints**: authority rules live once (DA-1); stores keep ids and hashes; no script or `!` approval path;
   no checkout inside the worktree (DA-8); the live engine advances only after an iteration's review.
 - **Scale/Scope**: iteration 001 covers FR-001 to FR-011, FR-014 to FR-027, FR-041 (correlation), FR-042, FR-043, FR-045, FR-046; FR-012 and FR-013 moved to iteration 002 by the plan verdict.
@@ -79,7 +80,7 @@ iteration-002:
   and today's default cap of 4 per allowance. The before-implement snapshot does not apply to it.
 - Iteration 002 is the first review on the budget model. 202's iterations ran 6, 10 and 8 review rounds under
   per-round approvals, most of them re-reviews of fixes. Under 203 a late fix costs a scoped round (DA-7), which
-  is small. A budget of 4 keeps the plan inside the configured ceiling (`co_review_max_rounds`, default 4, in
+  judges only the fix and what relies on it. A budget of 4 keeps the plan inside the configured ceiling (`co_review_max_rounds`, default 4, in
   `.specrew/config.yml`, not set there today), so no ceiling change is needed; one expected top-up gives
   measure (f) a cost of 2 authorizations for the boundary against the baseline of 6.
 - `infra_failure_cap: 2`: two consecutive infrastructure failures on a host move to the next host in the order.
@@ -151,7 +152,7 @@ then the fix turns it green.
 | W5 | Not-recorded reporter: every branch with its own reason (incl. stage evidence absent), store checked when speaking, Claude visible line, justified stop elsewhere | FR-026, FR-027, FR-032 (touched refusals) | 2.0 | `not-recorded-report.Tests.ps1`: each branch reports; a recorded approval never reports |
 | W6 | Budget declaration and snapshot: `## Review budget` parser, ceiling validation at plan sync and snapshot (refusal names the ceiling and `.specrew/config.yml`), grant fact citing the verdict; zero rounds when absent | FR-001, FR-002, FR-003, FR-008 | 2.5 | `review-budget-snapshot.Tests.ps1`: a plan edit after the verdict does not change the grant; above-ceiling refused at both points |
 | W7 | Orchestrator loop: single grant, reservation before invocation, top-up starts the next round, infra-failure cap and host advance, pause facts (a)-(d), navigator reads pause facts only, stop layout and phrases | FR-004 to FR-007, FR-009, FR-011 | 5.0 | `review-budget-loop.Tests.ps1`: no reviewer invoked past `budget_total` (the July shape); 2 infra failures advance codex to copilot; exhausted order pauses (d) |
-| W8 (iteration 002) | Scoped late-fix round: sparse materialization of the listed paths, `scoped` label, coverage rule | FR-013 | 2.0 | `scoped-round.Tests.ps1`: the reviewer worktree contains only the listed paths; coverage complete only when every changed file is covered |
+| W8 (iteration 002) | Scoped late-fix round: the whole tree, the judgment scoped to the fix and the code that relies on it, `scoped` label, coverage rule (DRIFT-038) | FR-013 | 2.0 | `scoped-round.Tests.ps1`: a break the fix causes in an untouched caller gates; a finding in unrelated unchanged code is a non-gating follow-up; coverage complete only when every changed file is covered |
 | W9 (iteration 002) | Token usage: parse host-reported usage (Claude, Codex from its delivery file, Copilot if reported), round result and sign-off total | FR-012 | 1.5 | `review-usage.Tests.ps1`: recorded reviewer outputs yield tokens or "not reported by <host>" |
 | W10 | FR-046: the Stop check verifies the reply's decision parts; the word-for-word declared-vs-reply comparison goes | FR-046 | 1.5 | `presented-check.Tests.ps1`: a reworded content line passes; a missing marker or option blocks |
 | W11 | Audit and correlation: record-to-typed-turn join audit; reservations cite grant and reset; turn identity and campaign id on records | FR-024, FR-041 (part) | 1.5 | `authority-audit.Tests.ps1`: a record with no joined typed turn fails the audit |

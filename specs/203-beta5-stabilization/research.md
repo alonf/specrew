@@ -121,6 +121,10 @@ Copilot running Claude's hooks sends snake_case with an ISO `timestamp` and no `
   `partial` (`worktree-review-orchestrator.ps1:887`); no file filter exists in `review-target-port.ps1`.
 - **Decision**: a crew-directed scope materializes the disposable worktree with only the listed paths (sparse
   checkout of the frozen target commit), labelled `scoped`.
+- **Revisited (maintainer input, 2026-11-07; DRIFT-038)**: no sparse checkout. The reviewer reads the whole tree
+  and is told to judge only the fix and the code that relies on it; the prompt narrowing this path already does
+  is the mechanism, with the gating rule (findings outside that zone are non-gating follow-ups) and the `scoped`
+  label added.
 
 ## R7. Live engine resolution (clarify instruction, DA-8)
 

@@ -318,8 +318,11 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   sign-off MUST show the total. Usage MUST NOT be estimated or enforced.
 - **FR-013**: A fix made after the last clean round, including a fix that touches only tests, MUST get the
   next round within the budget; there is no test-only exemption (B4F-054 residue, maintainer ruling
-  2026-10-31). That round MUST be scoped to the files the fix changed, through the engine's existing
-  narrow-scope path, so a late fix costs a small round, not a full one. When the budget is spent, stop (a)
+  2026-10-31). That round MUST scope what it judges, not what the reviewer sees: the reviewer reads the whole
+  tree and is told to judge only the fix (the changed lines and any code that relies on what changed). Findings
+  in that zone gate; findings in unrelated unchanged code are recorded as non-gating follow-ups. No sparse
+  checkout: it would hide breakage the fix causes in files it did not touch (maintainer input 2026-11-07,
+  DRIFT-038). When the budget is spent, stop (a)
   applies and `stop the review here` lists the fix as unreviewed. Tests are reviewed because a weakened
   assertion is how measure (b) would silently stop being proven.
 

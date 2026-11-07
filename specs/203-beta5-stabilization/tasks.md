@@ -385,6 +385,11 @@ then T014.
     a hook refusal is written as plain text. Today a launcher refusal is a `throw` and reaches the host in pwsh's
     error view: a source excerpt, the message wrapped behind a `|` gutter, ANSI color codes, or CLIXML from
     `-EncodedCommand`.
+    **Logged from the T004 live check (DRIFT-039, DRIFT-041):** (a) a boundary phrase for a boundary already
+    authorized is told it is already approved and nothing is needed, never "send it again when the crossing is
+    presented"; (b) the design-decision CLI never says "with the reason you gave" for a rationale the crew wrote;
+    (c) the design-decision record names its evidence: it is verified against the reserved typed turn
+    (`turn_identity`), so `confirmation` no longer reads `crew-declared-human-reply`.
   - **Trace:** FR-026, FR-027, FR-032 (touched refusals).
   - **Depends:** T001, T003.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `scripts/internal/bootstrap/HandoverStore.ps1`,
@@ -436,7 +441,9 @@ then T014.
     4. B5F-017 (findings that state a concrete failure scenario demoted to notes for having none) is fixed before the
        automatic cycle is trusted; otherwise the cycle signs off on unfixed findings.
     **Carried from T004 (B5F-029 findings 2 and 3; DRIFT-039):** the approval withdrawal takes the round slot lock and
-    revokes only its capture; a superseding partial sign-off reaches the round-approval consumption step.
+    revokes only its capture; a superseding partial sign-off reaches the round-approval consumption step. The same
+    withdrawal writer records `withdrew_observed_at` as ISO 8601 with its offset, not the `[string]` of a parsed date
+    (`11/07/2026 00:05:09` reads as 7 November or 11 July; DRIFT-041).
     **Acceptance added:** a plan budget below 2 snapshots as 2; a reset grants one fix round and one verification
     round; a finding that states its failure scenario keeps its severity, so the loop does not end clean on it.
   - **Trace:** FR-003, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-043.

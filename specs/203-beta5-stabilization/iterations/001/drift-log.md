@@ -975,7 +975,7 @@
   receive only its listed files"). Not changed yet.
 - **Recorded**: T009 (work and acceptance), DA-7 (a revisit note), this entry.
 - **Requirement**: FR-013.
-- **Class closure**: OPEN until FR-013 and the plan's performance goal are aligned or the maintainer rules they stay.
+- **Class closure**: CLOSED by DRIFT-040 (FR-013 and the plan aligned on the maintainer's instruction).
 
 ### DRIFT-039 — The live check after the pin advance: the first typed act of each kind against the stores; B5F-029 split (observation, maintainer decision)
 
@@ -1012,3 +1012,16 @@
 - **Requirement**: FR-014, FR-021, FR-022, FR-045.
 - **Class closure**: OPEN; the notice wording and the design-decision wording go to T006, the W54 false positive to
   B5F-030.
+
+### DRIFT-040 — FR-013 and the plan aligned with the maintainer's T009 input (maintainer ruling)
+
+- **Instruction**: the maintainer typed `align FR-013 now` (2026-11-07).
+- **Changed**: `spec.md` FR-013 (the round scopes what it judges, not what the reviewer sees; whole tree; findings in
+  the fix's zone gate, others are non-gating follow-ups; no sparse checkout, with the reason); `plan.md` (the
+  performance goal, the iteration 002 cost note, the W8 row and its acceptance); `research.md` R6 (a revisit line under
+  the decision).
+- **Not changed**: the clarification record at the top of `spec.md` ("the round is scoped to the files the fix
+  changed") and the design-analysis co-design record, which record what was answered and agreed then; DA-7 carries
+  the revisit note (DRIFT-038).
+- **Requirement**: FR-013.
+- **Class closure**: CLOSED; DRIFT-038 closed with it.
