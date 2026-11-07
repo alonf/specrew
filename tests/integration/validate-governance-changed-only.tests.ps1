@@ -395,6 +395,23 @@ if ($originHeadFallbackChecksPassed) {
     Write-Pass 'Auto-scoped validation falls back from missing origin/HEAD to origin/main.'
 }
 
+# Feature 203 T002 follow-up (B5F-033): the three cases above were red from 040fb169 because this repository's
+# `.specify` mirror no longer matched its install record, which the fixture copies. The record is now refreshed by
+# scripts/internal/refresh-specify-mirror-record.ps1, only from an exact copy of extensions/. This case proves the
+# refresh did not weaken W43: a hand edit to a deployed file, with its source unchanged, still fails the validator.
+$handEditWorkspace = New-Workspace -WorkspaceName 'deployed-hand-edit'
+Initialize-GitWorkspace -WorkspaceRoot $handEditWorkspace
+Touch-IterationForDiff -WorkspaceRoot $handEditWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
+Remove-UntouchedStateArtifact -WorkspaceRoot $handEditWorkspace
+Add-Content -LiteralPath (Join-Path $handEditWorkspace '.specify\extensions\specrew-speckit\scripts\validate-governance.ps1') -Value '# hand-patched to clear a blocker; extensions/ unchanged' -Encoding UTF8
+$handEditResult = Invoke-Validator -ProjectPath $handEditWorkspace -ChangedOnly -BaseBranch 'main'
+$handEditChecksPassed = $true
+if (-not (Assert-True -Condition ($handEditResult.ExitCode -ne 0) -FailureMessage 'A hand edit to a deployed file with its source unchanged should still fail validation.')) { $allChecksPassed = $false; $handEditChecksPassed = $false }
+if (-not (Assert-Match -Text $handEditResult.Text -Pattern 'does not match what was installed \(modified: scripts/validate-governance\.ps1\)' -FailureMessage 'The hand-edited deployed file should be named as modified, and only it.')) { $allChecksPassed = $false; $handEditChecksPassed = $false }
+if ($handEditChecksPassed) {
+    Write-Pass 'A hand edit to a deployed file with its source unchanged still fails validation, naming the file.'
+}
+
 $fullRunWorkspace = New-Workspace -WorkspaceName 'full-run-override'
 Initialize-GitWorkspace -WorkspaceRoot $fullRunWorkspace
 Touch-IterationForDiff -WorkspaceRoot $fullRunWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'

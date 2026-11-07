@@ -360,6 +360,7 @@
         'scripts/internal/product-domain-lens.ps1',
         'scripts/internal/refocus-deploy-integration.ps1',
         'scripts/internal/refocus.ps1',
+        'scripts/internal/refresh-specify-mirror-record.ps1',
         'scripts/internal/review-engine-resolution.ps1',
         'scripts/internal/session-config.ps1',
         'scripts/internal/session-management.ps1',
