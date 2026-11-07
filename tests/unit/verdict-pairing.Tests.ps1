@@ -213,17 +213,15 @@ try {
     Assert-True ((Get-VerdictCount -Root $r5) -eq 0) "a bare 'approved' whose packet left the tail records nothing (got $(Get-VerdictCount -Root $r5))"
     Assert-True ($out5 -match '(?i)not\s+recorded' -and $out5 -match 'approved for before-implement') "and that turn tells the human to type 'approved for before-implement' (got '$out5')"
 
-    Write-Host 'Case 6: a verdict the prompt hook never received is reported at the next message'
+    Write-Host 'Case 6: a verdict the prompt hook never received is reported by that turn end (T006: the same turn)'
     $r6 = New-PairingFixture -From 'tasks' -To 'before-implement'
     # The packet left the tail, the verdict reached the transcript, and no prompt event ran for it (the Stop that
     # verified the packet reads 'presented-unchanged', so the conformance Stop raises nothing either).
     $tx6 = Write-Transcript -Root $r6 -Lines (@(New-Packet -From 'tasks' -To 'before-implement' -At '2026-08-29T00:01:00Z') + (New-ToolChatter) + $compaction +
         @(New-Line -Role user -At '2026-08-29T00:21:00Z' -Text 'approved for before-implement'))
-    & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $r6 --host-kind claude --session-id 'sess-c6' --transcript-path $tx6 2>$null | Out-Null
+    $out6 = (& pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $r6 --host-kind claude --session-id 'sess-c6' --transcript-path $tx6 2>$null) -join "`n"
     Assert-True ((Get-VerdictCount -Root $r6) -eq 0) "the turn end does not record a verdict with no marker in the tail (got $(Get-VerdictCount -Root $r6))"
-    $out6 = (& pwsh -NoProfile -File $provider --project-root $r6 --host-kind claude --session-id 'sess-c6' --source-event UserPromptSubmit --transcript-path $tx6 --last-user-message 'Continue.' `
-            --turn-origin typed-user --message-identity declared --message-id 'prompt-c6' 2>$null) -join "`n"
-    Assert-True ($out6 -match '(?i)not\s+recorded' -and $out6 -match 'approved for before-implement') "and the next message tells the human it was not recorded (got '$out6')"
+    Assert-True ($out6 -match '(?i)<<<SPECREW-VISIBLE-LINE>>>.*not\s+recorded' -and $out6 -match 'approved for before-implement') "and that turn end tells the human it was not recorded (got '$out6')"
 
     Write-Host 'Case 4b: naming the boundary already approved does not cross the next one (FR-020), on every path'
     $r4b = New-PairingFixture -From 'tasks' -To 'before-implement'

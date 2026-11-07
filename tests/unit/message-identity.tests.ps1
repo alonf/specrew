@@ -139,7 +139,8 @@ if (-not [string]::IsNullOrWhiteSpace($writer)) {
         $a = @('-NoProfile', '-NonInteractive', '-File', $script:Provider, '--project-root', $P.Root, '--host-kind', $HostKind,
             '--source-event', $event, '--transcript-path', $tp, '--session-id', $Session, '--message-identity', (Get-Declaration $HostKind))
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
-        & pwsh @a *> $null
+        # Feature 203 T006: the turn end's own report is said by that turn end; its output is returned so a case can read it.
+        return ((& pwsh @a 2>$null) -join "`n")
     }
 
     function script:Get-RoundCaptures {
@@ -298,17 +299,17 @@ Describe 'Copilot: the message hook is the only recording path, and a miss is re
         @(Get-NotRecordedReports -P $p).Count | Should -Be 0
     }
 
-    It 'an approval the message hook missed is not recorded by the turn end, is reported once, and the next message shows one line' {
+    It 'an approval the message hook missed is not recorded by the turn end, is reported once, and that turn end says it once' {
+        # Feature 203 T006 (FR-026): said in the same turn, by the turn end that found it, not at the next message.
         $p = New-Project
         Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
-        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot' }
+        $ends = @(); for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot' | Out-Null; $ends += , [string](Invoke-TurnEnd -P $p -HostKind 'copilot') }
         Get-RoundCaptures -P $p | Should -Be 0
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
-        $shown = Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?'
-        $shown | Should -Match 'was not recorded'
-        $shown | Should -Match 'approved for review round'
-        $again = Invoke-Prompt -P $p -HostKind 'copilot' -Text 'and now?'
-        $again | Should -Not -Match 'was not recorded'
+        $ends[0] | Should -Match '<<<SPECREW-VISIBLE-LINE>>>.*was not recorded'
+        $ends[0] | Should -Match 'approved for review round'
+        $ends[1] | Should -Not -Match 'was not recorded'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' | Should -Not -Match 'was not recorded'
     }
 }
 
@@ -387,21 +388,23 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
         $t2 = Join-Path $p.Root 'transcript-s2.jsonl'
         Add-Content -LiteralPath $t2 -Value ((@{ type = 'user.message'; id = 'e-s2'; timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = 'approved for review round'; messageId = 'm-s2' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
         Add-Content -LiteralPath $t2 -Value ((@{ type = 'assistant.message'; id = 'a-s2'; data = @{ content = 'Working on it.' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
-        Invoke-TurnEnd -P $p -HostKind 'copilot' -Session 's2' -Transcript $t2
+        $end2 = Invoke-TurnEnd -P $p -HostKind 'copilot' -Session 's2' -Transcript $t2
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
+        # Feature 203 T006: said by s2's own turn end; never in s1.
+        $end2 | Should -Match 'was not recorded'
+        Invoke-TurnEnd -P $p -HostKind 'copilot' -Session 's1' | Should -Not -Match 'was not recorded'
         Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' -Session 's1' | Should -Not -Match 'was not recorded'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' -Session 's2' | Should -Match 'was not recorded'
     }
 
     It 'finding 5, copilot: a missed abandon is reported with its own retype, never stop-here' {
         $p = New-Project
         Add-Human -P $p -HostKind 'copilot' -Text 'abandon this review campaign'
-        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
+        Add-AssistantTurn -P $p -HostKind 'copilot'; $end5 = Invoke-TurnEnd -P $p -HostKind 'copilot'
         $r = @(Get-NotRecordedReports -P $p)
         $r.Count | Should -Be 1
         [string]$r[0].retype | Should -Be 'abandon this review campaign'
         [string]$r[0].choice | Should -Be 'abandon'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' | Should -Match 'abandon this review campaign'
+        $end5 | Should -Match 'abandon this review campaign'
     }
 
     It 'finding 6, copilot: an approval recorded with a trailing space is not reported as missing' {

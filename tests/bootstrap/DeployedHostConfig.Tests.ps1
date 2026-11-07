@@ -14,6 +14,17 @@ function Assert-True {
     if (-not $Condition) { throw "FAIL: $Message" }
     Write-Host "PASS: $Message" -ForegroundColor Green
 }
+# Feature 203 T002 follow-up (DRIFT-016): the deployed command runs the project's generated launcher, which holds the
+# dispatcher call, so the command line no longer names the dispatcher. Found by T006's sweep (DRIFT-046): this check had
+# been red since then, outside every lane. What the hook runs is the command plus the launcher it names.
+function Get-HookDispatch {
+    param([string]$Decoded)
+    $launcher = [regex]::Match($Decoded, 'Join-Path \$projectRoot ''([^'']+specrew-hook-launch\.ps1)''')
+    if (-not $launcher.Success) { return $Decoded }
+    $path = Join-Path $repoRoot $launcher.Groups[1].Value
+    Assert-True (Test-Path -LiteralPath $path -PathType Leaf) ("the launcher the hook names is on disk: {0}" -f $launcher.Groups[1].Value)
+    return ($Decoded + "`n" + (Get-Content -LiteralPath $path -Raw))
+}
 
 Assert-True (Test-Path -LiteralPath $claudeCfg) 'self-host .claude/settings.local.json exists on disk'
 $cfg = Get-Content -LiteralPath $claudeCfg -Raw | ConvertFrom-Json
@@ -31,7 +42,7 @@ if ($encoded.Success) {
     $stopDispatch = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded.Groups[1].Value))
 }
 Assert-True ($stopDispatch -match "-Event\s+'?Stop'?\b") 'deployed Stop command dispatches -Event Stop'
-Assert-True ($stopDispatch.Contains('specrew-hook-dispatcher.ps1')) 'deployed Stop command points at the dispatcher'
+Assert-True ((Get-HookDispatch $stopDispatch).Contains('specrew-hook-dispatcher.ps1')) 'deployed Stop command points at the dispatcher'
 
 # iter-9.1/iter-10 closure: the PostToolUse hook (mid-turn handover refresh during picker phases like the
 # design workshop, where no end-of-turn Stop fires) must be live ON DISK, not just in the deployer code. The
@@ -44,6 +55,6 @@ if ($postEncoded.Success) {
     $postDispatch = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($postEncoded.Groups[1].Value))
 }
 Assert-True ($postDispatch -match "-Event\s+'?PostToolUse'?\b") 'deployed PostToolUse command dispatches -Event PostToolUse'
-Assert-True ($postDispatch.Contains('specrew-hook-dispatcher.ps1')) 'deployed PostToolUse command points at the dispatcher'
+Assert-True ((Get-HookDispatch $postDispatch).Contains('specrew-hook-dispatcher.ps1')) 'deployed PostToolUse command points at the dispatcher'
 
 Write-Host 'DeployedHostConfig: all tests passed.' -ForegroundColor Green

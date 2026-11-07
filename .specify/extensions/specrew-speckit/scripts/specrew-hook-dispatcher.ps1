@@ -1492,7 +1492,7 @@ function Write-InjectionOutput {
     }
     $renderedOutput = ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding
     $visibleField = [string](Get-DispatcherMapValue -Map $Binding -Key 'VisibleLineField' -Default '')
-    $renderedOutput = Add-DispatcherVisibleLineField -Rendered $renderedOutput -Field $visibleField -Lines $VisibleLines
+    if (-not [string]::IsNullOrWhiteSpace($visibleField) -and @($VisibleLines).Count -gt 0) { $renderedOutput = Add-DispatcherVisibleLineField -Rendered $renderedOutput -Field $visibleField -Lines $VisibleLines }
     $decisionOnly = Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())
     $script:DispatcherRecordingDegradedThisFire = $false
     $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
@@ -1506,7 +1506,8 @@ function Write-InjectionOutput {
         $disclosure = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot
         if (-not [string]::IsNullOrWhiteSpace($disclosure)) {
             $Payload = ([string]$Payload).TrimEnd() + "`n`n" + $disclosure
-            $renderedOutput = Add-DispatcherVisibleLineField -Rendered (ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding) -Field $visibleField -Lines $VisibleLines
+            $renderedOutput = ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding
+            if (-not [string]::IsNullOrWhiteSpace($visibleField) -and @($VisibleLines).Count -gt 0) { $renderedOutput = Add-DispatcherVisibleLineField -Rendered $renderedOutput -Field $visibleField -Lines $VisibleLines }
             $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
             if ($recorded -and ([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
                 $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
@@ -1554,7 +1555,9 @@ function Write-StopBlockOutput {
         [AllowEmptyString()][string]$VisibleField = '',
         [string[]]$VisibleLines = @()
     )
-    $renderedOutput = Add-DispatcherVisibleLineField -Rendered (ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason) -Field $VisibleField -Lines $VisibleLines
+    $renderedOutput = ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason
+    $showField = (-not [string]::IsNullOrWhiteSpace($VisibleField) -and @($VisibleLines).Count -gt 0)
+    if ($showField) { $renderedOutput = Add-DispatcherVisibleLineField -Rendered $renderedOutput -Field $VisibleField -Lines $VisibleLines }
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
         $script:DispatcherRecordingDegradedThisFire = $false
         $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
@@ -1565,7 +1568,8 @@ function Write-StopBlockOutput {
             $disclosure = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot
             if (-not [string]::IsNullOrWhiteSpace($disclosure)) {
                 $Reason = ([string]$Reason).TrimEnd() + "`n`n" + $disclosure
-                $renderedOutput = Add-DispatcherVisibleLineField -Rendered (ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason) -Field $VisibleField -Lines $VisibleLines
+                $renderedOutput = ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason
+                if ($showField) { $renderedOutput = Add-DispatcherVisibleLineField -Rendered $renderedOutput -Field $VisibleField -Lines $VisibleLines }
                 $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
                 if ($recorded) { $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope' }
             }
