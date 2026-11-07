@@ -1204,7 +1204,7 @@
   (this tree validated with iteration 001 in reviewing status, plus a hand-edit control), both in `f203-i001-suites`;
   the changed-only suite gains a case,
   a hand edit to the deployed validator with its source unchanged still fails validation naming that file, and runs in
-  its own lane `f203-i001-validator-scope` (900 s).
+  its own lane `f203-i001-validator-scope` (1200 s; first 900 s, raised on 2026-11-07 after a run of 872 s).
 - **Requirement**: FR-014.
 - **Class closure**: CLOSED for this repository when the new lane is green on the committed tree; OPEN as a class while
   any fixture copies a tree whose record nobody maintains.

@@ -134,7 +134,7 @@ then T014.
     validated with iteration 001 in reviewing status, where W43 runs, reports no integrity error; a hand-edit control
     does) in `f203-i001-suites`; the changed-only suite green,
     with a case proving a hand edit to a deployed file still fails the validator, in its own lane
-    `f203-i001-validator-scope` (900 s).
+    `f203-i001-validator-scope` (1200 s; first 900 s, raised on 2026-11-07 after a run of 872 s).
   - **Trace:** FR-014; clarify instruction (live hooks only after review).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1`,
     `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`,
