@@ -12,6 +12,11 @@
 #
 # Run it in the same commit as each mirror sync. `-CheckOnly` writes nothing and also requires the record to match the
 # mirror, which is what the f203 lane checks on every committed tree.
+#
+# It lives in tools/, which is not packaged, on purpose: it needs both the `extensions/` source tree and the `.specify`
+# mirror, and only this repository has both. Installed, its default root is the module folder (no `.specify`), and a
+# consumer project has no `extensions/` source, so it could only refuse; consumers get their record from the
+# installer's writer during init and update. Packaged under scripts/internal it also failed module-packaging-identity.
 [CmdletBinding()]
 param(
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
@@ -81,7 +86,7 @@ if ($CheckOnly) {
         foreach ($p in @($state.drifted)) { [Console]::Error.WriteLine('  recorded with another hash: ' + $p) }
         foreach ($p in @($state.missing)) { [Console]::Error.WriteLine('  recorded but not deployed: ' + $p) }
         foreach ($p in $unlisted) { [Console]::Error.WriteLine('  deployed but not recorded: ' + $p) }
-        [Console]::Error.WriteLine('Run scripts/internal/refresh-specify-mirror-record.ps1 in the commit that syncs the mirror.')
+        [Console]::Error.WriteLine('Run tools/maintenance/refresh-specify-mirror-record.ps1 in the commit that syncs the mirror.')
         exit 1
     }
     'The .specify mirror is an exact copy of extensions/ ({0} files) and its install record matches it.' -f $deployed.Count

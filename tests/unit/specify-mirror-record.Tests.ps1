@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-    $script:Refresh = Join-Path $script:RepoRoot 'scripts\internal\refresh-specify-mirror-record.ps1'
+    $script:Refresh = Join-Path $script:RepoRoot 'tools\maintenance\refresh-specify-mirror-record.ps1'
     . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
 
     function script:New-MirrorProject {

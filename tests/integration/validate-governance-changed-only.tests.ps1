@@ -397,7 +397,7 @@ if ($originHeadFallbackChecksPassed) {
 
 # Feature 203 T002 follow-up (B5F-033): the three cases above were red from 040fb169 because this repository's
 # `.specify` mirror no longer matched its install record, which the fixture copies. The record is now refreshed by
-# scripts/internal/refresh-specify-mirror-record.ps1, only from an exact copy of extensions/. This case proves the
+# tools/maintenance/refresh-specify-mirror-record.ps1, only from an exact copy of extensions/. This case proves the
 # refresh did not weaken W43: a hand edit to a deployed file, with its source unchanged, still fails the validator.
 $handEditWorkspace = New-Workspace -WorkspaceName 'deployed-hand-edit'
 Initialize-GitWorkspace -WorkspaceRoot $handEditWorkspace

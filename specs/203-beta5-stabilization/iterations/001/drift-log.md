@@ -1191,10 +1191,15 @@
   applied in this tree, so sign-off was not blocked) was wrong: without the fix, 203's own review sign-off would have
   failed on the eleven files. Shown by `self-repo-review-integrity`: red on a copy of `c3eb7aa0` in reviewing status,
   green on `94205372`.
-- **Fixed (maintainer's conditions)**: `scripts/internal/refresh-specify-mirror-record.ps1` writes the record with
+- **Fixed (maintainer's conditions)**: `tools/maintenance/refresh-specify-mirror-record.ps1` writes the record with
   `Write-SpecrewDeployedExtensionMarker`, only after confirming each deployed file is byte-identical to its source in
   `extensions/`; it never re-hashes `.specify` as it stands, so a hand edit there is refused and W43 still catches it.
   Run in every commit that syncs the mirror; `-CheckOnly` is the lane's check.
+- **Not packaged** (2026-11-07): first added under `scripts/internal/` and to the FileList, where
+  module-packaging-identity failed on it (its guard joins the script's folder with `../../extensions/...` without
+  resolving `..`; `shared-governance.ps1` itself is packaged). Moved to `tools/maintenance/` instead of fixing the
+  guard: the script needs both `extensions/` and the `.specify` mirror, which only this repository has, so installed it
+  could only refuse, and consumers get their record from the installer's writer.
 - **Tests**: `tests/unit/specify-mirror-record.Tests.ps1` and `tests/integration/self-repo-review-integrity.tests.ps1`
   (this tree validated with iteration 001 in reviewing status, plus a hand-edit control), both in `f203-i001-suites`;
   the changed-only suite gains a case,

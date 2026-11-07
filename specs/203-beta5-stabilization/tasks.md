@@ -126,7 +126,7 @@ then T014.
   - **Follow-up (maintainer, 2026-11-07; B5F-033, DRIFT-047):** syncing the mirror in every commit (the implement ruling
     above) never refreshed its install record, `.specrew-extension-runtime.json`, so from `040fb169` the deployed files
     did not match it and `validate-governance-changed-only`, whose fixture copies this `.specify`, failed W43; it was in
-    no lane. `scripts/internal/refresh-specify-mirror-record.ps1` writes the record with the installer's writer
+    no lane. `tools/maintenance/refresh-specify-mirror-record.ps1` writes the record with the installer's writer
     (`Write-SpecrewDeployedExtensionMarker`) only after confirming every deployed file is byte-identical to its source
     in `extensions/`, with no file on one side only; otherwise it refuses and leaves the record. Every commit that syncs
     the mirror runs it. Acceptance: `tests/unit/specify-mirror-record.Tests.ps1` (a hand edit in `.specify` is refused
@@ -143,7 +143,7 @@ then T014.
     `extensions/specrew-speckit/scripts/live-engine-resolution.ps1`, `shared-governance.ps1`,
     `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`, `scripts/internal/live-engine-pin.ps1`, the `.specify`
     mirror of each, `.specrew/verification-plan.json`, `tests/unit/live-engine-resolution.tests.ps1`,
-    `tests/unit/live-engine-hook-root.tests.ps1`; follow-up: `scripts/internal/refresh-specify-mirror-record.ps1`,
+    `tests/unit/live-engine-hook-root.tests.ps1`; follow-up: `tools/maintenance/refresh-specify-mirror-record.ps1`,
     `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json`, `tests/unit/specify-mirror-record.Tests.ps1`,
     `tests/integration/validate-governance-changed-only.tests.ps1`, `tests/integration/self-repo-review-integrity.tests.ps1`.
 - [X] T001 [owner: Implementer] [sp: 2.0] **Host facts in scratch directories (W0).**
