@@ -74,6 +74,9 @@
             # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Claude Stop
             # supports {"decision":"block","reason":...} + a built-in stop_hook_active / 8-block loop cap.
             StopBlockShape          = 'decision-block'
+            # Feature 203 T006 (FR-027, DA-4; research.md R3, verified 2026-11-02 with the maintainer observing): a hook's
+            # systemMessage is shown to the human and not to the model.
+            VisibleLineField        = 'systemMessage'
             BootstrapDeliveryMode   = 'pointer'
             # Feature 202 T002 (DA-1, option B): this host's INPUT contract is data. The dispatcher's single
             # normalizer (ConvertTo-SpecrewTurnRecord) reads it; shared code names no host. Field paths may be

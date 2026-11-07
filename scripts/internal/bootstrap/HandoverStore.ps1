@@ -1406,9 +1406,11 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # CLI citing the newest typed turn (record-design-decision) took that earlier reply for the newest. It is reserved
     # under its own text like any other, and reaches no writer.
     $formEmpty = $false
+    # Feature 203 T006 (B4F-151): a form reader that throws is a form that cannot be read, and that is said below.
+    $formUnreadable = $false
     if (Get-Command Resolve-SpecrewApprovalForm -ErrorAction SilentlyContinue) {
         $form = $null
-        try { $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind } catch { $form = $null }
+        try { $form = Resolve-SpecrewApprovalForm -Text $Response -HostKind $HostKind } catch { $form = $null; $formUnreadable = $true }
         if ($null -ne $form) {
             if ([string]::IsNullOrWhiteSpace([string]$form.Text)) { $formEmpty = $true }
             else {
@@ -1577,6 +1579,41 @@ function Invoke-SpecrewTypedAuthorityCapture {
             }
         }
         catch { $writerFailed = $true }
+    }
+    # Feature 203 T006 (FR-026; B4F-151): A STANDALONE PHRASE THAT RECORDED NOTHING IS SAID, WITH ITS OWN REASON, IN THIS TURN.
+    # The classifier names why (its Report flag); nothing read it here, so a stop answer with no review stop waiting, a
+    # deferral with no destination, an answer no writer records yet and a form that could not be read all went unsaid. The
+    # boundary verdict is the verdict capture's to report (Get-SpecrewVerdictCaptureDisclosure), `not-standalone` has its own
+    # one-line refusal below, `already-recorded` is not a loss, and an unconfirmed origin and a failed writer are reported
+    # by their own blocks.
+    if ($mintedBy.Count -eq 0 -and -not $writerFailed -and -not $originRefused -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
+        try {
+            $typedLine = ((([string]$receivedResponse).Trim()) -split '\r?\n')[0].Trim()
+            $rawShape = Get-SpecrewTypedAuthorityShape -Text ([string]$receivedResponse).Trim()
+            $rawStop = if (Get-Command Get-SpecrewStopAnswerShape -ErrorAction SilentlyContinue) { Get-SpecrewStopAnswerShape -Text ([string]$receivedResponse).Trim() } else { $null }
+            $nrReason = ''; $nrShape = $null
+            if ($formUnreadable) {
+                if ($null -ne $rawShape -and [string]$rawShape.Kind -cne 'approval-withdrawal') { $nrReason = 'form-unreadable'; $nrShape = $rawShape }
+                elseif ($null -ne $rawStop) { $nrReason = 'form-unreadable'; $nrShape = [pscustomobject]@{ Kind = 'stop-answer'; Retype = $typedLine } }
+            }
+            elseif ($null -ne $act -and [string]$act.Kind -ceq 'none' -and [bool]$act.Report -and [string]$act.Shape -cne 'boundary-verdict' -and
+                [string]$act.Reason -cnotin @('not-standalone', 'already-recorded', 'origin-unconfirmed')) {
+                $nrReason = [string]$act.Reason
+                $nrShape = if ($null -ne $rawShape) { $rawShape } else { [pscustomobject]@{ Kind = $(if ([string]::IsNullOrWhiteSpace([string]$act.Shape)) { 'stop-answer' } else { [string]$act.Shape }); Retype = $typedLine } }
+                if ($nrReason -ceq 'missing-destination') { $nrShape = [pscustomobject]@{ Kind = 'stop-answer'; Retype = ('{0} to <destination>' -f $typedLine.TrimEnd('.').Trim()) } }
+            }
+            elseif ($null -ne $act -and [string]$act.Kind -cnotin @('none', 'boundary-verdict', 'workshop-reply', 'withdrawal') -and [string]$act.Answer -cne 'judgment' -and
+                [string]::IsNullOrWhiteSpace((Get-SpecrewTypedActWriterName -Act $act))) {
+                # Routed to what waits, and no writer records that kind yet (the review stop answers are T008's).
+                $nrReason = 'no-writer'; $nrShape = [pscustomobject]@{ Kind = [string]$act.Kind; Retype = $typedLine }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($nrReason)) {
+                $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $nrShape -EntryKey $turnId -HostKind $HostKind -SessionId $SessionId `
+                    -Reason $nrReason -Typed $(if ($nrReason -ceq 'missing-destination') { $typedLine } else { '' }) -NowUtc $NowUtc
+            }
+        }
+        catch { $null = $_ }
     }
     if ($originRefused -and $TurnOrigin -ceq 'unknown' -and $mintedBy.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
         (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) -and (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
@@ -1846,9 +1883,13 @@ function Update-SpecrewRollingHandover {
         # where the phrase first appears, and the alternative is the human learning it from a recap two
         # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).
         $disclosure = $null
+        # Feature 203 T006 (FR-027): the lines the human must read in this turn, apart from what the crew is told.
+        $verdictNotCaptured = $null
+        $typedDisclosure = $null
         if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
             $captureReason = if ($null -ne $captureOutcome) { [string]$captureOutcome.reason } else { '' }
             $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source -CaptureReason $captureReason
+            $verdictNotCaptured = $disclosure
         }
         elseif ((Get-Command Get-SpecrewVerdictCapturedDirective -ErrorAction SilentlyContinue)) {
             # B4F-086 / PRED-BETA4-042: a CAPTURED verdict says so in the turn and names the stage it began. The
@@ -1888,7 +1929,8 @@ function Update-SpecrewRollingHandover {
         if (-not [string]::IsNullOrWhiteSpace([string]$notRecordedDisclosure)) {
             $disclosure = if ([string]::IsNullOrWhiteSpace([string]$disclosure)) { $notRecordedDisclosure } else { ([string]$disclosure + "`n" + $notRecordedDisclosure) }
         }
-        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure }
+        $visible = @(@([string]$verdictNotCaptured, [string]$typedDisclosure, [string]$notRecordedDisclosure) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join "`n"
+        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure; visible = $visible }
     }
 
     # T003: the workshop phase, surfaced ONLY while in-flight (the pre-specify intake window); quiet otherwise.
@@ -2255,5 +2297,10 @@ function Update-SpecrewRollingHandover {
         catch { $null = $_ }
     }
 
-    return [pscustomobject]@{ wrote = $true; reason = $mc.reason; source = $Source; feature = $feature; boundary = $boundary; from_host = $fromHost; hollow = $hollow }
+    # Feature 203 T006 (FR-026, FR-027): what this turn end found not recorded is said in this turn, not at the next message.
+    $visibleAtEnd = $null
+    if ($isEndOfTurn -and (Get-Command Get-SpecrewAuthorityNotRecordedDisclosure -ErrorAction SilentlyContinue)) {
+        try { $visibleAtEnd = Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $ProjectRoot -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc } catch { $visibleAtEnd = $null }
+    }
+    return [pscustomobject]@{ wrote = $true; reason = $mc.reason; source = $Source; feature = $feature; boundary = $boundary; from_host = $fromHost; hollow = $hollow; visible = $visibleAtEnd }
 }

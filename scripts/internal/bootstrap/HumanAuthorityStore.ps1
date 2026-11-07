@@ -2342,6 +2342,9 @@ function Write-SpecrewAuthorityNotRecordedReport {
         # Co-review round 2 (iteration 002): 'not-saved' when the message hook received the act but its writer could not
         # store it; the default when the message never reached the hook.
         [string]$Reason = 'message-hook-did-not-record',
+        # Feature 203 T006: what the human typed, when it is not the phrase to type again (`defer finding F1` is retyped with
+        # its destination). Empty means the retype phrase is what they typed.
+        [AllowEmptyString()][string]$Typed = '',
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $journal = Get-SpecrewAuthorityNotRecordedJournalPath -ProjectRoot $ProjectRoot
@@ -2358,13 +2361,42 @@ function Write-SpecrewAuthorityNotRecordedReport {
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($journal)) | Out-Null
         (([pscustomobject][ordered]@{
                 event = 'authority-phrase-not-recorded'; phrase = [string]$Shape.Kind; reason = $Reason
-                retype = [string]$Shape.Retype; choice = $shapeChoice; entry_key = $EntryKey; host_kind = [string]$HostKind
+                retype = [string]$Shape.Retype; typed = [string]$Typed; choice = $shapeChoice; entry_key = $EntryKey; host_kind = [string]$HostKind
                 session_id = [string]$SessionId; recorded_at = $NowUtc
             }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
         [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED: the message reached the conversation but not Specrew. Type it again, alone: '{1}'." -f ([string]$Shape.Kind).ToUpperInvariant().Replace('-', ' '), [string]$Shape.Retype))
         return $true
     }
     catch { return $false }
+}
+
+function Test-SpecrewNotRecordedReportSettled {
+    # Feature 203 T006 (FR-026: the report checks the store when it speaks). A message another path recorded after its report
+    # was written (the turn end recovering what the prompt hook could not, a host firing twice) is not reported: the line
+    # would tell the human an approval they hold was lost. A typed act: its turn has a writer's mark in the turn ledger. A
+    # boundary verdict: the crossing it was for no longer waits. Fails open to speaking: a line said in error costs a retype,
+    # a line withheld in error costs an approval the human believes they gave.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)]$Row)
+    try {
+        if ([string]$Row.phrase -ceq 'boundary-verdict') {
+            if (-not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $false }
+            $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+            $target = ([string]$Row.retype -replace '^(?i)\s*approved\s+for\s+', '').Trim()
+            return (-not [bool]$pending.HasPendingVerdict -or [string]$pending.PendingToMarkerBoundary -cne $target)
+        }
+        $ledger = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+        if (-not [IO.File]::Exists($ledger)) { return $false }
+        $key = [string]$Row.entry_key
+        foreach ($line in [IO.File]::ReadAllLines($ledger)) {
+            if (-not $line.Contains($key)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ([string]$entry.turn_id -ceq $key -and $entry.PSObject.Properties['minted'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.minted)) { return $true }
+        }
+    }
+    catch { return $false }
+    return $false
 }
 
 function Get-SpecrewAuthorityNotRecordedDisclosure {
@@ -2393,6 +2425,7 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
             if (-not [string]::IsNullOrWhiteSpace($rowSession) -and $rowSession -cne $session) { continue }
             $key = [string]$row.entry_key
             if ([string]$row.event -ceq 'authority-phrase-not-recorded') { $pending[$key] = $row; $reports[$key] = $row }
+            elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-settled') { $pending.Remove($key) }
             elseif ([string]$row.event -ceq 'authority-phrase-not-recorded-disclosed') { $pending.Remove($key) }
             # Co-review round 2 (iteration 002): the dispatcher withheld the output that carried the line, so it was never
             # shown; it is pending again and the next message says it.
@@ -2401,9 +2434,33 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
         if ($pending.Count -eq 0) { return $null }
         $lines = foreach ($key in @($pending.Keys)) {
             $row = $pending[$key]
+            if (Test-SpecrewNotRecordedReportSettled -ProjectRoot $ProjectRoot -Row $row) {
+                (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-settled'; entry_key = $key; host_kind = [string]$HostKind; session_id = $session; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
+                    Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
+                continue
+            }
             (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = $key; host_kind = [string]$HostKind; session_id = $session; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) |
                 Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
-            if ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-saved') {
+            $reason = if ($row.PSObject.Properties['reason']) { [string]$row.reason } else { '' }
+            $typed = if ($row.PSObject.Properties['typed'] -and -not [string]::IsNullOrWhiteSpace([string]$row.typed)) { [string]$row.typed } else { [string]$row.retype }
+            # Feature 203 T006 (FR-026): each reason in its own words - what Specrew looked for, and what it took the message for.
+            $readsAs = if ([string]$row.phrase -ceq 'allowance-reset') { 'a reset of a spent review allowance, and no review is paused waiting for one' } else { 'an answer to a review stop, and no review stop is waiting for one' }
+            if ($reason -ceq 'form-unreadable') {
+                ("Specrew: your '{0}' was received but not recorded - Specrew could not read the message to tell what it approves, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f $typed)
+            }
+            elseif ($reason -ceq 'no-pending-crossing') {
+                ("Specrew: your '{0}' was received but not recorded - it reads as {1} now, so it changed nothing. Nothing you wrote is lost. Send it again when Specrew asks for it." -f $typed, $readsAs)
+            }
+            elseif ($reason -ceq 'missing-destination') {
+                ("Specrew: your '{0}' was received but not recorded - deferring a finding needs a destination, so it changed nothing. Nothing you wrote is lost. To defer it, type: '{1}'." -f $typed, [string]$row.retype)
+            }
+            elseif ($reason -ceq 'no-writer') {
+                ("Specrew: your '{0}' was received but not recorded - this version of Specrew cannot record that answer yet, so it changed nothing. Nothing you wrote is lost. Tell the crew in your own words what you want done, and they will carry it out." -f $typed)
+            }
+            elseif ($reason -ceq 'no-identity') {
+                ("Specrew: your '{0}' was received but not recorded - Specrew could not tell which message it came from, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f $typed)
+            }
+            elseif ($reason -ceq 'not-saved') {
                 ("Specrew: your earlier '{0}' was received but could not be saved, so it approved nothing. Nothing you wrote is lost. To record it, type it again on its own: '{0}'." -f [string]$row.retype)
             }
             elseif ($row.PSObject.Properties['reason'] -and [string]$row.reason -ceq 'not-taken') {

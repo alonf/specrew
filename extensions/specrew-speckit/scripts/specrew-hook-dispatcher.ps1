@@ -551,6 +551,9 @@ function ConvertFrom-DispatcherRuntimeBinding {
         #   followup-message  -> {"followup_message":...}              (cursor - best-effort re-triggered turn, NOT a hard same-turn block)
         #   none              -> cannot block; degrades to the cooperative instruction only
         StopBlockShape          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'StopBlockShape' -Default 'none')
+        # Feature 203 T006 (FR-027, DA-4): the output field a host shows to the human and not to the model ('' when the host has
+        # none verified). A line a provider marks for the human goes there; on a host with none it is the turn end's stop.
+        VisibleLineField        = [string](Get-DispatcherMapValue -Map $Runtime -Key 'VisibleLineField' -Default '')
         # Feature 202 T002 (DA-1, option B): the host's declared input contract (host.psd1). $null when the
         # binding predates it; ConvertTo-SpecrewTurnRecord then uses the host-neutral defaults below.
         InputFieldMap           = Get-DispatcherMapValue -Map $Runtime -Key 'InputFieldMap'
@@ -1475,7 +1478,7 @@ function Get-DispatcherRecordingDisclosure {
 }
 
 function Write-InjectionOutput {
-    param([string]$EventName, [string]$Payload, $Binding, [AllowNull()][string]$ProjectRoot)
+    param([string]$EventName, [string]$Payload, $Binding, [AllowNull()][string]$ProjectRoot, [string[]]$VisibleLines = @())
     # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
     # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
     # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
@@ -1488,6 +1491,8 @@ function Write-InjectionOutput {
         Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("assembled {0} payload is {1} chars (> the 10000 host hook-output cap); the host will drop it to a file + preview and the directive may not reach the model - a provider's inlined content needs tightening (F-174 P2)" -f $EventName, $Payload.Length)
     }
     $renderedOutput = ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding
+    $visibleField = [string](Get-DispatcherMapValue -Map $Binding -Key 'VisibleLineField' -Default '')
+    $renderedOutput = Add-DispatcherVisibleLineField -Rendered $renderedOutput -Field $visibleField -Lines $VisibleLines
     $decisionOnly = Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())
     $script:DispatcherRecordingDegradedThisFire = $false
     $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
@@ -1501,7 +1506,7 @@ function Write-InjectionOutput {
         $disclosure = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot
         if (-not [string]::IsNullOrWhiteSpace($disclosure)) {
             $Payload = ([string]$Payload).TrimEnd() + "`n`n" + $disclosure
-            $renderedOutput = ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding
+            $renderedOutput = Add-DispatcherVisibleLineField -Rendered (ConvertTo-DispatcherInjectionOutput -EventName $EventName -Payload $Payload -Binding $Binding) -Field $visibleField -Lines $VisibleLines
             $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
             if ($recorded -and ([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
                 $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
@@ -1545,9 +1550,11 @@ function Write-StopBlockOutput {
         [string]$Shape,
         [string]$Reason,
         [AllowNull()][string]$ProjectRoot,
-        [string]$EventName = 'Stop'
+        [string]$EventName = 'Stop',
+        [AllowEmptyString()][string]$VisibleField = '',
+        [string[]]$VisibleLines = @()
     )
-    $renderedOutput = ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason
+    $renderedOutput = Add-DispatcherVisibleLineField -Rendered (ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason) -Field $VisibleField -Lines $VisibleLines
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
         $script:DispatcherRecordingDegradedThisFire = $false
         $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
@@ -1558,7 +1565,7 @@ function Write-StopBlockOutput {
             $disclosure = Get-DispatcherRecordingDisclosure -ProjectRoot $ProjectRoot
             if (-not [string]::IsNullOrWhiteSpace($disclosure)) {
                 $Reason = ([string]$Reason).TrimEnd() + "`n`n" + $disclosure
-                $renderedOutput = ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason
+                $renderedOutput = Add-DispatcherVisibleLineField -Rendered (ConvertTo-DispatcherStopBlockOutput -Shape $Shape -Reason $Reason) -Field $VisibleField -Lines $VisibleLines
                 $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
                 if ($recorded) { $recorded = Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope' }
             }
@@ -1657,7 +1664,9 @@ function Restore-DispatcherUndeliveredNotRecordedLine {
             $at = if ($row.PSObject.Properties['recorded_at']) { ConvertTo-DispatcherInstant -Value $row.recorded_at } else { $null }
             if ($null -eq $at -or $at -lt $script:DispatcherStartedUtc) { continue }
             $retype = if ($retypes.ContainsKey([string]$row.entry_key)) { [string]$retypes[[string]$row.entry_key] } else { '' }
-            if (-not [string]::IsNullOrWhiteSpace($retype) -and $delivered.Contains(("your earlier '{0}'" -f $retype))) { continue }
+            # Feature 203 T006: every reason's line quotes the phrase; the 202 check matched only "your earlier '<phrase>'", so the
+            # origin-unconfirmed line ("your '<phrase>' was received") read as undelivered and was said again at every message.
+            if (-not [string]::IsNullOrWhiteSpace($retype) -and $delivered.Contains(("'{0}'" -f $retype))) { continue }
             (([pscustomobject][ordered]@{ event = 'authority-phrase-not-recorded-undelivered'; entry_key = [string]$row.entry_key; host_kind = [string]$row.host_kind; session_id = $rowSession; recorded_at = [DateTimeOffset]::UtcNow.ToString('o') }) | ConvertTo-Json -Compress) |
                 Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
             $restored++
@@ -1665,6 +1674,70 @@ function Restore-DispatcherUndeliveredNotRecordedLine {
         if ($restored -gt 0) { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message 'the not-recorded approval line marked during this prompt did not reach the human, so it is said again at the next prompt' }
     }
     catch { Write-DispatcherWarn -Code 'NOT_RECORDED_LINE_UNDELIVERED' -Message ("could not restore the undelivered not-recorded line: {0}" -f $_.Exception.Message) }
+}
+
+# Feature 203 T006 (FR-027, DA-4): A LINE FOR THE HUMAN. A provider prefixes a line with this marker when the human must read
+# it in this turn (a typed approval that recorded nothing). The marker is removed and the line stays in what the model gets;
+# a host whose binding names a VisibleLineField also shows it to the human there (Claude: systemMessage, research.md R3).
+# A host with none verified gets it as the turn end's stop, once: the model is told to say it (FR-027, a keep in B5F-004).
+$script:SpecrewVisibleLineMarker = '<<<SPECREW-VISIBLE-LINE>>>'
+
+function Split-DispatcherVisibleLines {
+    param([AllowEmptyString()][string]$Text)
+    $visible = [System.Collections.Generic.List[string]]::new()
+    $kept = foreach ($line in ([string]$Text -split '\r?\n')) {
+        if ($line.StartsWith($script:SpecrewVisibleLineMarker)) {
+            $said = $line.Substring($script:SpecrewVisibleLineMarker.Length).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($said) -and -not $visible.Contains($said)) { $visible.Add($said) }
+            $said
+        }
+        else { $line }
+    }
+    return [pscustomobject]@{ Text = ((@($kept) -join "`n").Trim()); Visible = [string[]]$visible.ToArray() }
+}
+
+function Add-DispatcherVisibleLineField {
+    # The host's visible field on the JSON it is sent; output that is not a JSON object becomes one, since the human-facing
+    # field is the only part of a plain Stop output any host shows.
+    param([AllowNull()][AllowEmptyString()][string]$Rendered, [AllowNull()][AllowEmptyString()][string]$Field, [string[]]$Lines = @())
+    $said = @(@($Lines) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+    if ([string]::IsNullOrWhiteSpace($Field) -or $said.Count -eq 0) { return $Rendered }
+    $object = $null
+    if (([string]$Rendered).TrimStart().StartsWith('{')) { try { $object = [string]$Rendered | ConvertFrom-Json -AsHashtable -ErrorAction Stop } catch { $object = $null } }
+    if ($null -eq $object) { $object = @{} }
+    $object[$Field] = ($said -join "`n")
+    return ($object | ConvertTo-Json -Depth 10 -Compress)
+}
+
+function Get-DispatcherVisiblePendingPath {
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$HostKind, [AllowNull()][string]$SessionId)
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    $key = -join ([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(('{0}|{1}' -f ([string]$HostKind).ToLowerInvariant(), [string]$SessionId))) | Select-Object -First 8 | ForEach-Object { $_.ToString('x2') })
+    return (Join-Path $ProjectRoot (".specrew/runtime/visible-line-pending/{0}.txt" -f $key))
+}
+
+function Save-DispatcherVisiblePending {
+    # A host with no visible field: the lines the prompt event gave the model are owed to the human at this turn's end.
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$HostKind, [AllowNull()][string]$SessionId, [string[]]$Lines = @())
+    $path = Get-DispatcherVisiblePendingPath -ProjectRoot $ProjectRoot -HostKind $HostKind -SessionId $SessionId
+    if ($null -eq $path -or @($Lines).Count -eq 0) { return }
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        [IO.File]::AppendAllLines($path, [string[]]@($Lines), [Text.UTF8Encoding]::new($false))
+    }
+    catch { Write-DispatcherWarn -Code 'VISIBLE_LINE_PENDING' -Message ("could not keep the human's line for the turn end: {0}" -f $_.Exception.Message) }
+}
+
+function Pop-DispatcherVisiblePending {
+    param([AllowNull()][string]$ProjectRoot, [AllowNull()][string]$HostKind, [AllowNull()][string]$SessionId)
+    $path = Get-DispatcherVisiblePendingPath -ProjectRoot $ProjectRoot -HostKind $HostKind -SessionId $SessionId
+    if ($null -eq $path -or -not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
+    try {
+        $lines = @([IO.File]::ReadAllLines($path) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        Remove-Item -LiteralPath $path -Force
+        return $lines
+    }
+    catch { return @() }
 }
 
 function ConvertTo-DispatcherStopBlockOutput {
@@ -1917,6 +1990,8 @@ try {
     # dropping one directive. Collect distinct reasons here and MERGE them below so BOTH survive. A single
     # blocking provider collapses to a 1-element list = identical output to the old single-reason path.
     $stopBlockReasons = New-Object System.Collections.Generic.List[string]
+    # Feature 203 T006: the lines providers marked for the human (Split-DispatcherVisibleLines).
+    $visibleLines = New-Object System.Collections.Generic.List[string]
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
         $providerId = [string]$provider.id
@@ -2112,7 +2187,9 @@ try {
                 }
             }
             else {
-                $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $stdoutTrim -Order $providerOrder)) | Out-Null
+                $split = Split-DispatcherVisibleLines -Text $stdoutTrim
+                foreach ($said in $split.Visible) { if (-not $visibleLines.Contains($said)) { $visibleLines.Add($said) | Out-Null } }
+                if (-not [string]::IsNullOrWhiteSpace($split.Text)) { $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $split.Text -Order $providerOrder)) | Out-Null }
                 if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
                     $facts = Get-BannerFacts -Payload $result.StdOut
                     $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
@@ -2141,6 +2218,30 @@ try {
         }
     }
 
+    # Feature 203 T006 (FR-027): on a host with no visible field, a line for the human is owed to this turn's end: the prompt
+    # event gives it to the model and keeps it; the turn end stops once with it, so the model says it. A host that cannot block
+    # keeps it as context only, which is all it has. A turn end already continuing from a block keeps it for the next one.
+    $visibleField = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'VisibleLineField' -Default '')
+    $isStopEvent = $Event -in @('Stop', 'agentStop', 'stop')
+    if ([string]::IsNullOrWhiteSpace($visibleField)) {
+        if ($isStopEvent) {
+            $owed = @(@(Pop-DispatcherVisiblePending -ProjectRoot $projectRoot -HostKind $HostKind -SessionId $sessionId) + @($visibleLines.ToArray()) | Select-Object -Unique)
+            if ($owed.Count -gt 0) {
+                $owedShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
+                if ($owedShape -in $script:SpecrewStopBlockShapes -and -not [bool]$turnRecord.stop_hook_active) {
+                    $stopBlockReasons.Add(("Specrew: the human must see the following, and this host cannot show it to them directly. Say it to them in your reply, word for word, and add nothing else to it:`n`n{0}" -f ($owed -join "`n"))) | Out-Null
+                }
+                elseif ($owedShape -in $script:SpecrewStopBlockShapes) { Save-DispatcherVisiblePending -ProjectRoot $projectRoot -HostKind $HostKind -SessionId $sessionId -Lines $owed }
+                else {
+                    $kept = @($owed | Where-Object { $_ -notin $visibleLines })
+                    if ($kept.Count -gt 0) { $fragments.Add((New-DispatcherFragment -ProviderId 'visible-line' -Text ($kept -join "`n") -Order 1000)) | Out-Null }
+                }
+            }
+        }
+        elseif ($visibleLines.Count -gt 0) { Save-DispatcherVisiblePending -ProjectRoot $projectRoot -HostKind $HostKind -SessionId $sessionId -Lines $visibleLines.ToArray() }
+        $visibleLines.Clear()
+    }
+
     # STOP-BLOCK short-circuit (FR-004/FR-005/FR-015): a Stop-class consumer asked to force-continue the turn so
     # the 6-section re-entry packet renders AT the stop (not as a too-late next-turn nudge). Honor it via the
     # host's declared StopBlockShape - UNLESS the host is already continuing from a prior stop-block
@@ -2162,9 +2263,9 @@ try {
         $alreadyContinuing = [bool]$turnRecord.stop_hook_active
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
-            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot -EventName $Event
-            if ($Event -eq 'UserPromptSubmit') {
-                Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId -DeliveredPayload $mergedStopBlockReason
+            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot -EventName $Event -VisibleField $visibleField -VisibleLines $visibleLines.ToArray()
+            if ($Event -eq 'UserPromptSubmit' -or $isStopEvent) {
+                Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId -DeliveredPayload ($mergedStopBlockReason + "`n" + ($visibleLines -join "`n"))
             }
             exit 0
         }
@@ -2174,7 +2275,7 @@ try {
     $deliveredPayload = ''
     if ($fragments.Count -gt 0) {
         $deliveredPayload = Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event
-        Write-InjectionOutput -EventName $Event -Payload $deliveredPayload -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
+        Write-InjectionOutput -EventName $Event -Payload $deliveredPayload -Binding $hostRuntimeBinding -ProjectRoot $projectRoot -VisibleLines $visibleLines.ToArray()
         $script:DispatcherDeliveredPayload = $deliveredPayload
         if ($Event -eq 'UserPromptSubmit') {
             Clear-DispatcherUndeliveredOrientationStamp -ProjectRoot $projectRoot -SessionId $sessionId
@@ -2184,7 +2285,7 @@ try {
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
         Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
     }
-    if ($Event -eq 'UserPromptSubmit') {
+    if ($Event -eq 'UserPromptSubmit' -or $isStopEvent) {
         Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId -DeliveredPayload $deliveredPayload
     }
     exit 0

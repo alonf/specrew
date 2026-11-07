@@ -214,10 +214,21 @@ try {
     # FR-010 (T024): this provider is registered as an INJECT provider, so its stdout reaches the turn.
     # The one thing it has to say is when a verdict-shaped reply was NOT captured - said at prompt entry,
     # in the same turn the human typed it, instead of in a recap after two retries.
+    # Feature 203 T006 (FR-027, DA-4): each line the human must read is marked; the dispatcher shows it where the host shows a
+    # hook's line to the human (Claude: systemMessage) and keeps it, unmarked, in what the model gets.
+    $marker = '<<<SPECREW-VISIBLE-LINE>>>'
+    $visibleLines = @()
+    if ($null -ne $handoverResult -and ($handoverResult.PSObject.Properties.Name -contains 'visible') -and -not [string]::IsNullOrWhiteSpace([string]$handoverResult.visible)) {
+        $visibleLines = @(([string]$handoverResult.visible) -split '\r?\n' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+    $disclosureLines = @()
     if ($null -ne $handoverResult -and ($handoverResult.PSObject.Properties.Name -contains 'disclosure') -and
         -not [string]::IsNullOrWhiteSpace([string]$handoverResult.disclosure)) {
-        Write-Output ([string]$handoverResult.disclosure)
+        $disclosureLines = @(([string]$handoverResult.disclosure) -split '\r?\n')
+        Write-Output ((@($disclosureLines | ForEach-Object { if ($visibleLines -ccontains $_.Trim()) { $marker + $_.Trim() } else { $_ } })) -join "`n")
     }
+    $unsaid = @($visibleLines | Where-Object { @($disclosureLines | ForEach-Object { $_.Trim() }) -cnotcontains $_ })
+    if ($unsaid.Count -gt 0) { Write-Output ((@($unsaid | ForEach-Object { $marker + $_ })) -join "`n") }
     if (-not [string]::IsNullOrWhiteSpace($promptEvent)) { Write-Output ('<!-- specrew-prompt-event: {0} -->' -f $promptEvent) }
     exit 0
 }
