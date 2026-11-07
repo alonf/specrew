@@ -408,7 +408,12 @@ then T014.
   - **Trace:** FR-026, FR-027, FR-032 (touched refusals).
   - **Depends:** T001, T003.
   - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `scripts/internal/bootstrap/HandoverStore.ps1`,
-    `tests/unit/not-recorded-report.Tests.ps1`.
+    `tests/unit/not-recorded-report.Tests.ps1`. **Widened by the build (DRIFT-046):** the visible line needs the hook
+    output, so also `scripts/internal/specrew-handover-provider.ps1` and the dispatcher
+    (`extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`), each with its twins, and `hosts/claude/host.psd1`
+    (`VisibleLineField`); item (DRIFT-018) needs the launcher generator `scripts/internal/deploy-refocus-hooks.ps1` and its
+    twin; items (b) and (c) need `record-design-decision.ps1` and `design-decision-store.ps1` with their `.specify` copies;
+    `tests/integration/timestamp-read.tests.ps1` gains the turn identity a verified decision now needs.
 
 ## Phase 5: US1, approve a review budget once (P1)
 
@@ -524,6 +529,11 @@ then T014.
     check can pass through the marker path. Record which path captured the verdict (the ledger's `evidence_source`:
     `hook-captured-from-transcript` is the marker, `hook-captured-user-prompt` is the out-of-tail path on Claude), and add
     one real run with the packet more than 500 transcript lines back when the verdict is typed.
+    **Added (T006, DRIFT-046):** the visible line (Claude `systemMessage`) reaches the live hooks with the pin's host
+    bindings, so the pin advance carries it. The plain-text launcher refusals change the launcher's bytes, so they reach
+    the hooks only when the hooks are redeployed, and that rewrites the real home's per-machine launcher and hook files:
+    the maintainer is asked before that redeploy. Check: one typed `drop finding F1` with no review stop waiting shows
+    the not-recorded line under the prompt.
   - **Acceptance:** `iterations/001/capture-check.md` records the verdict once in its own turn and nothing for the
     other two. T005's out-of-tail path counts as verified only when the real run records `hook-captured-user-prompt`.
   - **Trace:** FR-045.

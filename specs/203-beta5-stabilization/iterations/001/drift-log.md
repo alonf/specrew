@@ -1146,3 +1146,31 @@
   time it was called, not when each task finished; the commits carry that), and `tasks.md` ticks the five.
 - **Requirement**: the maintainer's real-home instruction; FR-013 (status for review); B5F-001.
 - **Class closure**: (1), (2) and (4) CLOSED; (3) OPEN, carried by T008.
+
+### DRIFT-046 — T006 built: the not-recorded report, the visible line, and the logged items (implementation record)
+
+- **What was silent**: the classifier named why a standalone phrase recorded nothing (its `Report` flag), and the prompt
+  hook read it nowhere. A stop answer with no review stop waiting, a `defer` with no destination, an answer no writer
+  records yet, and a message whose form reader threw (B4F-151) were dropped without a word. What was said went to the
+  model only: no adapter emitted Claude's `systemMessage`, the one hook field the human sees (research.md R3).
+- **Built**: the prompt router reports each of those reasons with its own words; the report checks the turn ledger (or,
+  for a verdict, the waiting crossing) when it speaks, so a message recorded since is not reported; the handover provider
+  marks the lines the human must read; the dispatcher shows them in the host binding's `VisibleLineField` (Claude:
+  `systemMessage`) and keeps them in the model's context. A host with none verified gets them as the turn end's stop,
+  once per line (a keep, added to the B5F-004 table). The turn end's own reports (a verdict out of the tail, the
+  backstop) are now said at that turn end, not at the next message.
+- **Found on the way**: the dispatcher's undelivered-line check matched only the 202 wording ("your earlier '<phrase>'"),
+  so the origin-unconfirmed line ("your '<phrase>' was received") always read as undelivered and was said again at every
+  message. It now matches the quoted phrase.
+- **Logged items**: (a) a phrase for the boundary last approved is told it is already approved, with the crossing that
+  waits now if any; (b) the design-decision writer no longer says "with the reason you gave" for the crew's rationale;
+  (c) a new decision record says `typed-turn-verified` and is valid only with its `turn_identity`; records written
+  before stay valid and are not rewritten. DRIFT-018's follow-up: the launcher's refusals are plain text on stderr and
+  exit 1, not a thrown error.
+- **Not in T006**: converting the `boundary-capture-miss` stop on Claude now that a visible line exists is one of the
+  stop-reason conversions moved to iteration 002. The UX ruling's case (a reply typed while the turn ends) is T004's
+  prompt-event key; when that reply cannot be used, the line above asks for it again.
+- **Live**: the visible line arrives with the pin's host bindings at T014's pin advance. The launcher change reaches the
+  hooks only through a redeploy, which rewrites the real home's launcher, so T014 asks the maintainer first.
+- **Requirement**: FR-026, FR-027, FR-032.
+- **Class closure**: OPEN until the iteration review and T014's live check.

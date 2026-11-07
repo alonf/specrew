@@ -300,6 +300,9 @@ function Get-LiveEnginePinLauncherText {
     # run): its HEAD, read from its git files without starting git, must be the recorded commit. A record whose pin
     # cannot be found or is not at that commit refuses in plain words; nothing falls back to this project's copy.
     #
+    # Feature 203 T006 (DRIFT-018): each refusal is written as plain text and exits 1. A throw reached the host in pwsh's
+    # error view: a source excerpt, the message wrapped behind a '|' gutter, ANSI color codes, or CLIXML.
+    #
     # The host binding comes from the pin too (review round 3, finding 1): it holds the rules for what counts as a typed
     # approval, so the one baked into this launcher by whatever deploy ran last does not apply. The pin script writes
     # the pin's bindings stamped with its commit; a stamp that is not the pin's commit refuses, before any pin code
@@ -321,10 +324,10 @@ if (Test-Path -LiteralPath $pinRecord -PathType Leaf) {
         } catch { $pinHead = '' }
     };
     $pinned = if ([string]::IsNullOrWhiteSpace($pinRoot)) { '' } else { Join-Path $pinRoot '__DISPATCHER__' };
-    if ([string]::IsNullOrWhiteSpace($pinned) -or $pinCommit -notmatch '^[0-9a-f]{40}$' -or $pinHead -ne $pinCommit -or -not (Test-Path -LiteralPath $pinned -PathType Leaf)) { throw '__REFUSAL__' };
+    if ([string]::IsNullOrWhiteSpace($pinned) -or $pinCommit -notmatch '^[0-9a-f]{40}$' -or $pinHead -ne $pinCommit -or -not (Test-Path -LiteralPath $pinned -PathType Leaf)) { [Console]::Error.WriteLine('__REFUSAL__'); exit 1 };
     $pinBinding = '';
     try { $pinBindings = Get-Content -LiteralPath (Join-Path $projectRoot '.specrew/runtime/live-engine-bindings.json') -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop; if (([string]$pinBindings.commit).ToLowerInvariant() -eq $pinCommit -and $null -ne $pinBindings.bindings.PSObject.Properties[$HostKind]) { $pinBinding = [string]$pinBindings.bindings.$HostKind } } catch { $pinBinding = '' };
-    if ([string]::IsNullOrWhiteSpace($pinBinding)) { throw '__BINDING_REFUSAL__' };
+    if ([string]::IsNullOrWhiteSpace($pinBinding)) { [Console]::Error.WriteLine('__BINDING_REFUSAL__'); exit 1 };
     $dispatcher = $pinned; $HostBinding = $pinBinding; $pinArgs['ProjectRoot'] = $projectRoot
 };
 '@
@@ -361,7 +364,8 @@ function Install-ProjectHookLauncher {
         ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}' -f $escapedVariable)
         ('$dispatcher = Join-Path $projectRoot ''{0}''' -f $escapedDispatcher)
         (Get-LiveEnginePinLauncherText -DispatcherRelPath $escapedDispatcher).Trim()
-        'if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) { throw "Specrew dispatcher not found at ''$dispatcher''." }'
+        # Feature 203 T006 (DRIFT-018): a refusal is plain text; a throw reached the host in pwsh's error view.
+        'if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) { [Console]::Error.WriteLine("Specrew could not find its hook dispatcher at ''$dispatcher'', so it recorded nothing from this turn. Your earlier approvals and answers are unchanged. To fix it, the crew can redeploy this project''s hooks with specrew update. Should it do that?"); exit 1 }'
         'if ([string]::IsNullOrWhiteSpace($HostBinding)) { & $dispatcher -Event $Event -HostKind $HostKind @pinArgs } else { & $dispatcher -Event $Event -HostKind $HostKind -HostBinding $HostBinding @pinArgs }'
     ) -join "`n"
     New-Item -ItemType Directory -Path (Split-Path -Parent $projectLauncherPath) -Force | Out-Null

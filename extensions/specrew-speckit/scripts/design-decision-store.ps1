@@ -40,11 +40,14 @@ if (-not (Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinu
 # `human-confirmed` receipts were minted for a workshop question that had never been asked, and the record
 # could not tell them from real ones because both validated identically.
 #
-# So the value is `crew-declared-human-reply`, which a reader can weigh correctly without being told.
-# BETA5 closes the gap: `design decision - option N` becomes a reserved phrase in the handover store, the
-# hook mints a receipt for it like any other typed turn, and this record cites that receipt - at which
-# point the value can honestly become a confirmation.
-$script:SpecrewDesignDecisionConfirmation = 'crew-declared-human-reply'
+# So the value was `crew-declared-human-reply`, which a reader can weigh correctly without being told.
+#
+# Feature 203 T006 (DRIFT-041 item 1): the gap is closed. Since T004 the writer records a decision only when its human
+# turn is the human's newest typed message as the prompt hook reserved it, and keeps that turn's identity
+# (`turn_identity`), so the value names that evidence: `typed-turn-verified`, valid only with the turn identity it
+# rests on. A record written before T004 keeps the old value and stays valid; earlier records are never rewritten.
+$script:SpecrewDesignDecisionConfirmation = 'typed-turn-verified'
+$script:SpecrewDesignDecisionLegacyConfirmation = 'crew-declared-human-reply'
 $script:SpecrewDesignDecisionScope = 'design-decision'
 
 function Get-SpecrewDesignDecisionPath {
@@ -191,7 +194,13 @@ function Test-SpecrewDesignDecisionRecord {
         $null -eq (ConvertTo-SpecrewUtcTimestamp -Value $recordedAtProperty.Value)) {
         return (New-Result -Valid $false -Reason 'design-decision-recorded-at-unreadable')
     }
-    if ([string]$Record.confirmation -cne $script:SpecrewDesignDecisionConfirmation) {
+    if ([string]$Record.confirmation -ceq $script:SpecrewDesignDecisionConfirmation) {
+        $turnIdentity = $Record.PSObject.Properties['turn_identity']
+        if (-not $turnIdentity -or [string]::IsNullOrWhiteSpace([string]$turnIdentity.Value)) {
+            return (New-Result -Valid $false -Reason 'design-decision-confirmation-without-turn')
+        }
+    }
+    elseif ([string]$Record.confirmation -cne $script:SpecrewDesignDecisionLegacyConfirmation) {
         return (New-Result -Valid $false -Reason 'design-decision-confirmation-invalid')
     }
     if ([string]$Record.confirmation_scope -cne $script:SpecrewDesignDecisionScope) {

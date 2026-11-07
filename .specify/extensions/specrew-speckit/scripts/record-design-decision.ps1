@@ -101,7 +101,8 @@ $record = [pscustomobject][ordered]@{
     options            = @($options)
     chosen             = $Chosen.Trim()
     rationale          = $Rationale.Trim()
-    confirmation       = 'crew-declared-human-reply'
+    # 203 T006: verified against the typed turn below, which the record names (design-decision-store.ps1).
+    confirmation       = $script:SpecrewDesignDecisionConfirmation
     confirmation_scope = 'design-decision'
     human_turn         = $HumanTurn.Trim()
     # 203 T004: the typed turn the prompt hook recorded, which vouches for human_turn.
@@ -180,5 +181,6 @@ if ($AsJson) {
     return
 }
 
-Write-Output ("Recorded the '{0}' design decision for {1}: option {2} of {3}, with the reason you gave. The gate reads it from {4}." -f
-    $Key, (Split-Path -Leaf $FeatureRef), $record.chosen, (($options | ForEach-Object { $_.id }) -join '/'), $path)
+# Feature 203 T006 (DRIFT-039 item b): the rationale is the crew's words (-Rationale), so this never says it is the human's.
+Write-Output ("Recorded the '{0}' design decision for {1}: option {2} of {3}, from the human's reply '{5}'. The rationale recorded with it is the crew's summary. The gate reads it from {4}." -f
+    $Key, (Split-Path -Leaf $FeatureRef), $record.chosen, (($options | ForEach-Object { $_.id }) -join '/'), $path, $record.human_turn)

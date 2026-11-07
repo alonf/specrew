@@ -856,6 +856,20 @@ function Get-SpecrewVerdictCaptureDisclosure {
     try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { return $null }
     if ($null -eq $pending) { return $null }
     $text = [string]$HumanText
+    # Feature 203 T006 (DRIFT-039 item a): A BOUNDARY ALREADY APPROVED IS SAID TO BE APPROVED. `approved for tasks` typed after
+    # tasks was authorized was told that no crossing was pending and to send the phrase again when the crossing is presented,
+    # a crossing that will never come back.
+    $canonicalOf = { param([string]$b) $v = ([string]$b).Trim().ToLowerInvariant(); if (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue) { try { $v = [string](Normalize-SpecrewCanonicalBoundaryType -Boundary $v) } catch { $null = $_ } }; $v }
+    # The last authorized boundary only: an older one may be crossed again in a later iteration.
+    $approvedBoundaries = @(& $canonicalOf ([string]$pending.LastAuthorizedBoundary))
+    $approvedBoundaries = @($approvedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $alreadyApproved = {
+        param([string]$Named)
+        if (@($approvedBoundaries) -cnotcontains (& $canonicalOf $Named)) { return $null }
+        $next = if ([bool]$pending.HasPendingVerdict -and -not [string]::IsNullOrWhiteSpace([string]$pending.PendingToMarkerBoundary)) { (" The crossing waiting now is '{0} -> {1}'; to authorize it, send: approved for {1}" -f [string]$pending.PendingFromMarkerBoundary, [string]$pending.PendingToMarkerBoundary) } else { ' Nothing is waiting for your approval now.' }
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'already-approved' -From ([string]$pending.LastAuthorizedBoundary) -To $Named -LeadingText '' -NowUtc $NowUtc -Source $Source
+        return ("Specrew: '{0}' is already approved, so nothing more is needed from you for it and nothing was changed.{1}" -f $Named, $next)
+    }
     # B4F-043, THIRD CONSUMER INSTANCE (PRED-BETA4-026): a verdict-shaped reply with NO crossing pending, or
     # naming a boundary OTHER than the pending crossing's, used to vanish here - `return $null` on both. The
     # audible standard one file over (the partial-signoff override: "a phrase that matched and was then
@@ -867,6 +881,8 @@ function Get-SpecrewVerdictCaptureDisclosure {
         if ($null -eq $shape -or -not [bool]$shape.IsApproval) { return $null }
         $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
         if ($named.Count -eq 0) { return $null }
+        $approvedLine = & $alreadyApproved ([string]$named[0])
+        if (-not [string]::IsNullOrWhiteSpace([string]$approvedLine)) { return $approvedLine }
         $lastAuth = [string]$pending.LastAuthorizedBoundary
         $lastAuthText = if ([string]::IsNullOrWhiteSpace($lastAuth)) { 'no boundary has been authorized yet' } else { ("the last authorized boundary is '{0}'" -f $lastAuth) }
         $message = ("Specrew: your reply reads as a verdict for '{0}', but NO crossing is pending right now, so nothing was recorded - {1}, and the crossing to '{0}' has not been reached (it is recorded when the crew runs that boundary's sync and presents the packet). Nothing you wrote is lost and no approval was changed. When the '{0}' crossing is presented, send the phrase again: approved for {0}" -f [string]$named[0], $lastAuthText)
@@ -899,6 +915,8 @@ function Get-SpecrewVerdictCaptureDisclosure {
         # Feature 203 T005 (FR-020): `review` is `review-signoff` by another name, not a verdict for another crossing.
         $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and -not (Test-SpecrewVerdictNamesBoundary -Named @([string]$_) -Boundary @($to)) })
         if ($named.Count -eq 0) { return $null }
+        $approvedLine = & $alreadyApproved ([string]$named[0])
+        if (-not [string]::IsNullOrWhiteSpace([string]$approvedLine)) { return $approvedLine }
         $message = ("Specrew: your reply reads as a verdict for '{0}', but the crossing pending right now is '{1} -> {2}', so nothing was recorded. Nothing you wrote is lost and no approval was changed. To authorize the pending crossing, send: {3}" -f [string]$named[0], $from, $to, $phrase)
         Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'other-boundary-named' -From $from -To $to -LeadingText ([string]$named[0]) -NowUtc $NowUtc -Source $Source
         return $message

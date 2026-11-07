@@ -464,6 +464,7 @@ visible line for the human, or a drift entry; the refusal at the writer stays.
 |---|---|---|---|
 | boundary | a crossing waits and the reply carries no packet for it | keep | the human's verdict is the decision |
 | boundary-capture-miss | the human typed the approval phrase and it was not recorded | keep where no visible line; else convert | FR-026/FR-027: the human must re-type |
+| visible-line-owed (added by T006, DRIFT-046) | a typed phrase recorded nothing and the host shows no hook line to the human (all but Claude) | keep, once per line, on those hosts only | FR-027: the report must reach the human; the turn end blocks once and the model says it |
 | evidence-absent (checked and absent) | a crossing waits and the bound tree lacks the stage's artifacts | convert | the verdict writer already refuses; its refusal joins FR-026 |
 | evidence-absent (unverifiable) | the stage's evidence cannot be checked against the bound tree | keep | the writer does not refuse this case, so the block is the only guard |
 | boundary-unrecordable | a boundary was reached and could not be recorded | keep | authority integrity; the human must know |

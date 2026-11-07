@@ -14,7 +14,8 @@
 # Mutations that turn this file red: drop the router's report (cases 1 to 4); drop a reason's own words (cases 1 to 4);
 # drop the store check (case 5); report `already-recorded` (case 6); stop marking the visible lines (case 7); drop the
 # dispatcher's visible field (case 8); keep the line as context only on a host with no visible field (case 9); block more
-# than once for one line (case 9).
+# than once for one line (case 9); tell a boundary already approved to send it again (case 10); write the old confirmation or
+# accept the new one without its turn (case 11); say "the reason you gave" (case 11); throw a launcher refusal (case 12).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -162,6 +163,32 @@ try {
     $s9b = Invoke-Dispatcher -Root $r9 -Event 'Stop' -HostKind 'codex' -Payload '{"session_id":"nrd-s","turn_id":"t10","hook_event_name":"Stop","stop_hook_active":false,"permission_mode":"default","cwd":"x","model":"m","transcript_path":null,"last_assistant_message":"done"}'
     Assert-True ($s9a -match '"decision"\s*:\s*"block"' -and $s9a.Contains('drop finding F1')) "the turn end stops with the line (got '$s9a')"
     Assert-True ($s9b -notmatch '"decision"\s*:\s*"block"') "and only once (got '$s9b')"
+
+    Write-Host 'Case 10 (DRIFT-039 a): a phrase for the boundary already approved is told so, never to send it again later'
+    $r10 = New-ReportFixture
+    $v10 = Get-Visible (Send-Prompt -Root $r10 -Text 'approved for tasks')
+    Assert-True ($v10 -match 'already approved' -and $v10 -notmatch '(?i)send the phrase again|when the .* crossing is presented') "already approved, nothing needed (got '$v10')"
+
+    Write-Host 'Case 11 (DRIFT-039 b, DRIFT-041 c): a design decision names its evidence, and the rationale is not called the human''s'
+    $store = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\design-decision-store.ps1'
+    . $store
+    $base = [ordered]@{ question = 'q'; options = @([pscustomobject]@{ id = '1'; summary = 'a' }, [pscustomobject]@{ id = '2'; summary = 'b' }); chosen = '1'; rationale = 'r'
+        confirmation_scope = 'design-decision'; human_turn = 'design decision: option 1'; recorded_at = '2026-11-07T00:00:00Z' }
+    function New-Decision { param([hashtable]$Extra) $h = [ordered]@{}; foreach ($k in $base.Keys) { $h[$k] = $base[$k] }; foreach ($k in $Extra.Keys) { $h[$k] = $Extra[$k] }; return [pscustomobject]$h }
+    $verified = New-Decision @{ confirmation = 'typed-turn-verified'; turn_identity = 'turn-1' }
+    $unverified = New-Decision @{ confirmation = 'typed-turn-verified' }
+    $legacy = New-Decision @{ confirmation = 'crew-declared-human-reply' }
+    Assert-True ([bool](Test-SpecrewDesignDecisionRecord -Record $verified).valid -and -not [bool](Test-SpecrewDesignDecisionRecord -Record $unverified).valid) 'typed-turn-verified is valid only with the turn it rests on'
+    Assert-True ([bool](Test-SpecrewDesignDecisionRecord -Record $legacy).valid) 'a record written before T004 stays valid'
+    $writer = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\record-design-decision.ps1') -Raw
+    Assert-True ($writer -notmatch 'reason you gave' -and $writer -match 'confirmation\s*=\s*\$script:SpecrewDesignDecisionConfirmation') 'the writer records the new value and never calls the rationale the human''s'
+
+    Write-Host 'Case 12 (DRIFT-018): the launcher''s refusals are plain text, not a thrown error'
+    $deploy = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1') -Raw
+    $pinText = [regex]::Match($deploy, '(?s)function Get-LiveEnginePinLauncherText \{.*?\n\}').Value
+    $launcher = [regex]::Match($deploy, '(?s)function Install-ProjectHookLauncher \{.*?\n\}').Value
+    Assert-True ($pinText -match '__REFUSAL__' -and $pinText -notmatch 'throw ''__' -and $pinText -match '\[Console\]::Error\.WriteLine\(''__REFUSAL__''\); exit 1') 'the pin refusals write plain text and exit 1'
+    Assert-True ($launcher -match 'could not find its hook dispatcher' -and $launcher -notmatch 'throw "Specrew dispatcher not found') 'the project launcher''s missing-dispatcher refusal too'
 }
 finally {
     ${function:Resolve-SpecrewApprovalForm} = $originalForm
