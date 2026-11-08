@@ -1334,7 +1334,10 @@
   files is not established.
 - **The bytes before**: the copies the earlier driver kept before the `ed7cd1b5` sweep (2026-11-07 13:37) have exactly
   the hashes the files had at the last recorded check (2026-11-07 14:00, written 05:46:59, unchanged since DRIFT-044),
-  and no later check reported a change. Nothing has been restored or removed; that is the maintainer's decision.
+  and no later check reported a change. **Restored on the maintainer's instruction** ("restore the home files",
+  2026-11-08): the three copies were copied back; each file's hash now equals its copy (`B3A87829...`, `877C30CD...`,
+  `148C192D...`) and every command names the signed-off launcher `b958cbe1...` again. The new launcher folder
+  `9b2b4eb9...` is left in place, named by nothing; removing it is a separate change.
 - **Also in this sweep**: `f199-class-guards-b` failed through `path-identity.Tests.ps1`: T007's
   `Get-ReviewBudgetKnownHosts` deduplicated with `Sort-Object -Unique` without saying it is not a path. Fixed: the line
   carries the `specrew-dedup-not-a-path` marker (reviewer host ids, lowercased). Every other neighbour suite (129 of 131)
@@ -1342,5 +1345,4 @@
 - **Rule from here**: every sweep goes through the driver that sets the home override for everything it starts and
   keeps copies of the home files; a driver that does not is not used.
 - **Requirement**: the maintainer's real-home instruction ("Don't change them without asking"); B5F-032.
-- **Class closure**: OPEN until the files are dealt with as the maintainer decides and a sweep through the right driver
-  reports no change.
+- **Class closure**: OPEN until a sweep through the right driver reports no change to the real home.
