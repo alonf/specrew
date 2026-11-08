@@ -899,7 +899,7 @@ function Read-ReviewBudgetPlanBlock {
                         if (-not [string]::IsNullOrWhiteSpace($name)) { $entry.host_order.Add($name) | Out-Null }
                     }
                 }
-                else { $problems.Add(("{0}: host_order is '{1}'; write it as [codex, copilot]" -f $label, $value)) | Out-Null }
+                else { $problems.Add(("{0}: host_order is '{1}'; write it as a bracketed list of reviewer names, such as [first-reviewer, second-reviewer]" -f $label, $value)) | Out-Null }
             }
             'model' { }
             default { $problems.Add(("{0}: '{1}' is not a review budget setting (rounds, host_order, infra_failure_cap)" -f $label, $key)) | Out-Null }
