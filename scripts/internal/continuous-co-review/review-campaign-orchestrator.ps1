@@ -888,7 +888,7 @@ function Get-ReviewBudgetEntryProblems {
 
 function Get-ReviewBudgetKnownHosts {
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewerHostRows' -ErrorAction SilentlyContinue)) { return @() }
-    try { return @(Get-ContinuousCoReviewReviewerHostRows | ForEach-Object { ([string]$_.host).ToLowerInvariant() } | Where-Object { $_ } | Sort-Object -Unique) }
+    try { return @(Get-ContinuousCoReviewReviewerHostRows | ForEach-Object { ([string]$_.host).ToLowerInvariant() } | Where-Object { $_ } | Sort-Object -Unique) } # specrew-dedup-not-a-path: reviewer host ids, ASCII and lowercased first
     catch { return @() }
 }
 

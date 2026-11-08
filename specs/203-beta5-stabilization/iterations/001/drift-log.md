@@ -1315,3 +1315,32 @@
 - **Requirement**: none; an incident in the crew's own tooling. Finding B5F-035.
 - **Class closure**: restore complete (pin rebuilt, hooks run from it); the losses above are permanent. B5F-035 stays OPEN
   until Specrew's own worktree-removing helpers hold its three checks.
+
+### DRIFT-050 — The `c2059046` sweep rewrote the real Codex, Copilot and Cursor hook files: the crew's new sweep driver had no home override (crew error)
+
+- **Observed**: at 03:28:03 local on 2026-11-08, during the neighbour phase of the sweep of `c2059046`, `~/.codex/hooks.json`,
+  `~/.copilot/hooks/specrew-refocus.json` and `~/.cursor/hooks.json` were rewritten, and at 03:22:45 a new user-level
+  launcher was written to `~/.specrew/hooks/9b2b4eb94cb52621b2041c509642f2fb/`. `crew-charter-ownership` caught it.
+  Nothing else in the real home changed in that window apart from the running hosts' own logs. The files now point their
+  commands at the new launcher, which is the `c2059046` deployer's output; it differs from the signed-off
+  `b958cbe1...` launcher only in its refusal path, which writes to stderr where the signed-off one throws. No command
+  names a temporary path or this worktree. Codex (two processes) and Copilot (one), running since 2026-11-07 04:30, read
+  these files.
+- **Cause (crew error)**: after the worktree loss (DRIFT-049) the crew wrote a new sweep driver instead of using the
+  one built for the maintainer's DRIFT-045 item 2, which sets `SPECREW_USER_HOME_OVERRIDE` once for every suite and lane
+  and keeps copies of the home files before each sweep. The new driver set it only for the lanes, so the neighbour
+  suites that run `specrew init` or `update` without an override of their own (B5F-032) deployed to the real home. This
+  sweep also added such suites to the neighbour list (the ones that read the plan template). Which suite wrote the
+  files is not established.
+- **The bytes before**: the copies the earlier driver kept before the `ed7cd1b5` sweep (2026-11-07 13:37) have exactly
+  the hashes the files had at the last recorded check (2026-11-07 14:00, written 05:46:59, unchanged since DRIFT-044),
+  and no later check reported a change. Nothing has been restored or removed; that is the maintainer's decision.
+- **Also in this sweep**: `f199-class-guards-b` failed through `path-identity.Tests.ps1`: T007's
+  `Get-ReviewBudgetKnownHosts` deduplicated with `Sort-Object -Unique` without saying it is not a path. Fixed: the line
+  carries the `specrew-dedup-not-a-path` marker (reviewer host ids, lowercased). Every other neighbour suite (129 of 131)
+  and the other five lanes passed; the lanes, which had the override, wrote nothing to the real home.
+- **Rule from here**: every sweep goes through the driver that sets the home override for everything it starts and
+  keeps copies of the home files; a driver that does not is not used.
+- **Requirement**: the maintainer's real-home instruction ("Don't change them without asking"); B5F-032.
+- **Class closure**: OPEN until the files are dealt with as the maintainer decides and a sweep through the right driver
+  reports no change.
