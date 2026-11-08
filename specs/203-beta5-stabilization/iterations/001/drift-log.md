@@ -1345,4 +1345,8 @@
 - **Rule from here**: every sweep goes through the driver that sets the home override for everything it starts and
   keeps copies of the home files; a driver that does not is not used.
 - **Requirement**: the maintainer's real-home instruction ("Don't change them without asking"); B5F-032.
-- **Class closure**: OPEN until a sweep through the right driver reports no change to the real home.
+- **Re-sweep of `7f10cdd5` through the right driver**: 131 of 131 neighbour suites and all six lanes pass; no real home
+  hook file changed before or during it. The suites wrote the same three host files, the `9b2b4eb9...` launcher and one
+  Antigravity binding to the redirected home instead, which confirms the neighbour suites as the writer.
+- **Class closure**: CLOSED for this incident. The suites that deploy without their own override stay open under
+  B5F-032 (T013).
