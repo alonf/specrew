@@ -194,6 +194,48 @@ Describe 'the review loop spends the budget grant, and nothing else (FR-003, FR-
     }
 }
 
+Describe 'the typed per-round approval is retired: it records nothing and the human is told why (FR-010)' {
+    BeforeAll {
+        # The hook's own capture router, in its own process as the hooks run it, against a fixture project.
+        $script:CaptureRunner = Join-Path $TestDrive 'capture-runner.ps1'
+        $runner = @'
+param([string]$RepoRoot, [string]$Root, [string]$Text, [string]$HostKind)
+$ErrorActionPreference = 'Stop'
+foreach ($dependency in @('HumanAuthorityStore', 'ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+    . (Join-Path $RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+}
+Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind $HostKind -SourceEvent 'UserPromptSubmit' `
+    -MessageId ('msg-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) -SessionId 's1' -TurnOrigin 'typed-user' | Out-Null
+'DISCLOSURE:' + [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $Root -HostKind $HostKind -SessionId 's1')
+'@
+        [IO.File]::WriteAllText($script:CaptureRunner, $runner, [Text.UTF8Encoding]::new($false))
+
+        function script:Invoke-TypedCapture([string]$Text, [string]$HostKind) {
+            $root = Join-Path $TestDrive ('typed-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "specrew_version: `"0.40.0`"`nbootstrap_mode: `"fixture`"" -Encoding UTF8
+            $null = & git init -q -b 001-fixture $root 2>&1
+            $output = @(& pwsh -NoProfile -NonInteractive -File $script:CaptureRunner -RepoRoot $script:RepoRoot -Root $root -Text $Text -HostKind $HostKind 2>&1 | ForEach-Object { [string]$_ })
+            $disclosure = (@($output | Where-Object { $_ -like 'DISCLOSURE:*' }) | Select-Object -Last 1)
+            return [pscustomobject]@{
+                Root = $root
+                Disclosure = $(if ($disclosure) { $disclosure.Substring('DISCLOSURE:'.Length) } else { '' })
+                RoundApprovalStore = (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json')
+            }
+        }
+    }
+
+    It '<HostKind>: "<Text>" records no approval, and the next message says it changed nothing' -ForEach @(
+        @{ HostKind = 'claude'; Text = 'approved for review round' }
+        @{ HostKind = 'codex'; Text = 'approved for review round' }
+        @{ HostKind = 'claude'; Text = 'withdraw the approval' }
+    ) {
+        $capture = script:Invoke-TypedCapture -Text $Text -HostKind $HostKind
+        Test-Path -LiteralPath $capture.RoundApprovalStore | Should -BeFalse -Because 'there is no per-round approval to record'
+        $capture.Disclosure | Should -BeLike '*changed nothing - review rounds no longer need an approval of their own*'
+    }
+}
+
 Describe 'a campaign with no budget grant gets the FR-008 floor, citing its before-implement verdict (DRIFT-052 item 2)' {
     It 'records the floor grant: 2 rounds, the engine''s pick, the default cap, the verdict it cites, and why' {
         $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'floor')

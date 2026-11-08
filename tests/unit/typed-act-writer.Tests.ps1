@@ -6,17 +6,12 @@
 #     verdict. After T004 a captured label is honoured only by re-reading the cited turn and re-deriving its act through
 #     the classifier (Resolve-SpecrewTypedAct): `confirm` is no verdict, so nothing is recorded; the real typed verdict
 #     is recorded once and a second citation of it is already-recorded.
-#   2 THE RE-TYPED ROUND APPROVAL (02:44 local, 2026-11-02; DRIFT-019, DRIFT-023; FR-021). The 21:47 approval had minted
-#     round 4 and its reservation was released before invocation. The maintainer typed the approval again; the capture
-#     writer returned the older record and wrote nothing, and the relaunch ran on the 21:47 approval. After T004 the
-#     newer typed act writes its own capture and an immutable supersession fact retires the older one. The relaunch
-#     (maintainer's instruction, 2026-11-03, option 1) keeps the same round number, reuses the grant's slot as its next
-#     reservation generation (no second grant, no second slot), and the run is cited through the newer approval's own
-#     record: it carries the round reference and, once spent, the run's id. The engine's record formats are unchanged;
-#     the run record naming the approval itself is T012's.
+#   2 THE RE-TYPED ROUND APPROVAL (02:44 local, 2026-11-02; DRIFT-019, DRIFT-023; FR-021): removed with the per-round
+#     approval by feature 203 T008 (FR-010; DRIFT-052), together with cases 3 to 6, 10b, 12 and 15, which were about
+#     its slot. The cases that proved a general rule through it (a reply typed while the turn ends, a retype, recovery,
+#     the ledger, the date a recovered act carries) now prove it through the allowance reset, the typed act that remains.
 #
-# Each case runs in a temporary project root; the launches run the real review CLI from this checkout in a fixture
-# with no commit, so preflight refuses before any reviewer is invoked (an undelivered round, released). Never the
+# Each case runs in a temporary project root. Never the
 # repository's own stores: a host's project-root variables are cleared in this process and in every child launch (run
 # inside a Claude session, CLAUDE_PROJECT_DIR names the real worktree), and the suite fails if the real worktree's
 # round-approval store or the real ~/.specrew changed during the run.
@@ -172,267 +167,14 @@ if ($hasWriter) {
 }
 
 # ---------------------------------------------------------------------------------------------------
-# Case 2 fixture: a review campaign with no commit, so every launch is released before invocation.
-function New-CampaignFixture {
-    $root = Join-Path ([System.IO.Path]::GetTempPath()) ('t004-round-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
-    $script:roots.Add($root)
-    New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-fixture/iterations/001') -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "specrew_version: `"0.40.0`"`nbootstrap_mode: `"fixture`"" -Encoding UTF8
-    & git init -q -b 001-fixture $root 2>&1 | Out-Null
-    return $root
-}
-function Invoke-AgentLaunch {
-    # -File, so --live and --approve-round reach the CLI's own argument parser; an agent session, as the crew runs it.
-    param([string]$Root)
-    # The child clears the host project-root variables itself as well, so nothing it inherits names the real worktree.
-    $command = "Get-ChildItem Env: | Where-Object { `$_.Name -match '$($script:hostRootVariablePattern)' } | ForEach-Object { Remove-Item -LiteralPath ('Env:' + `$_.Name) }; " +
-        "`$env:CLAUDECODE = '1'; pwsh -NoProfile -File '$reviewCli' -ProjectPath '$Root' -FeatureId 001-fixture --live --approve-round; exit `$LASTEXITCODE"
-    $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
-    $text = $output -join "`n"
-    $runId = if ($text -match 'Run: (run-\S+)') { $Matches[1] } else { '' }
-    return [pscustomobject]@{ Text = $text; RunId = $runId }
-}
-function Write-TypedRoundApproval {
-    param([string]$Root, [string]$NowUtc, [string]$TurnIdentity)
-    $splat = @{ ProjectRoot = $Root; Response = 'approved for review round'; HostKind = 'claude'; SourceEvent = 'UserPromptSubmit'; NowUtc = $NowUtc }
-    Add-IfSupported -Splat $splat -Command 'Write-SpecrewReviewRoundApprovalAuthorization' -Name 'TurnIdentity' -Value $TurnIdentity
-    return Write-SpecrewReviewRoundApprovalAuthorization @splat
-}
-function Test-SameInstant { param($Value, [string]$Expected)
-    $instant = ConvertTo-SpecrewAuthorityInstant -Value $Value
-    return ($null -ne $instant -and ([DateTimeOffset]$instant).UtcDateTime -eq ([DateTimeOffset]::Parse($Expected)).UtcDateTime)
-}
-function Read-Captures { param([string]$Root)
-    $path = Join-Path $Root '.specrew/review/round-approval/captures.jsonl'
-    if (-not (Test-Path -LiteralPath $path)) { return @() }
-    return @(Get-Content -LiteralPath $path -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json -Depth 8 })
-}
-function Read-Pending { param([string]$Root)
-    return Get-Content -LiteralPath (Join-Path $Root '.specrew/review/round-approval/pending-round-approval.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8
-}
-
-Write-Host '--- case 2: the re-typed round approval (02:44 local, 2026-11-02; FR-021) ---'
-$older = '2026-11-01T19:47:39.0000000+00:00'   # 21:47:39 local
-$newer = '2026-11-02T00:44:14.0000000+00:00'   # 02:44:14 local
-$r2 = New-CampaignFixture
-$null = Write-TypedRoundApproval -Root $r2 -NowUtc $older -TurnIdentity 'turn-2147'
-$launch1 = Invoke-AgentLaunch -Root $r2
-$campaign = Join-Path $r2 '.specrew/review/authority/campaigns/cmp-001-fixture-i001'
-$roundRef = 'cmp-001-fixture-i001-round-1'
-$grants1 = @(Get-ChildItem -LiteralPath (Join-Path $campaign 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)
-Assert-True ($grants1.Count -eq 1 -and [string](Read-Pending -Root $r2).minted_ref -ceq $roundRef) 'setup: the 21:47 approval minted round 1 and its grant; the launch was released before invocation'
-
-$retyped = Write-TypedRoundApproval -Root $r2 -NowUtc $newer -TurnIdentity 'turn-0244'
-Assert-True ($null -ne $retyped -and (Test-SameInstant -Value $retyped.observed_at -Expected $newer)) 'the re-typed approval is its own capture, not the 21:47 record returned'
-$captures = @(Read-Captures -Root $r2)
-$approvalLines = @($captures | Where-Object { [string]$_.fact_type -ceq 'review-round-approval' })
-Assert-True (@($approvalLines | Where-Object { Test-SameInstant -Value $_.observed_at -Expected $newer }).Count -eq 1) 'the capture journal holds a line for the 02:44 approval'
-$supersession = @($captures | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-superseded' })
-Assert-True ($supersession.Count -eq 1 -and
-    $supersession[0].PSObject.Properties['superseded_observed_at'] -and (Test-SameInstant -Value $supersession[0].superseded_observed_at -Expected $older) -and
-    $supersession[0].PSObject.Properties['superseded_by_observed_at'] -and (Test-SameInstant -Value $supersession[0].superseded_by_observed_at -Expected $newer)) 'one immutable supersession fact retires the 21:47 approval in favour of the 02:44 one'
-$pending = Read-Pending -Root $r2
-Assert-True ((Test-SameInstant -Value $pending.observed_at -Expected $newer) -and [string]::IsNullOrWhiteSpace([string]$pending.minted_ref) -and [string]::IsNullOrWhiteSpace([string]$pending.spent_at)) 'the waiting slot holds the 02:44 approval, unminted and unspent'
-$standing = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r2
-Assert-True ($null -ne $standing -and (Test-SameInstant -Value $standing.observed_at -Expected $newer)) 'the spender sees only the newest approval'
-
-$launch2 = Invoke-AgentLaunch -Root $r2
-Assert-True ($launch2.Text -match [regex]::Escape("recorded it as $roundRef")) 'the relaunch keeps the same round number'
-$grants2 = @(Get-ChildItem -LiteralPath (Join-Path $campaign 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)
-$grantId = if ($grants2.Count -eq 1) { [IO.Path]::GetFileNameWithoutExtension($grants2[0].Name) } else { '' }
-$slots = @(if ($grantId) { Get-ChildItem -LiteralPath (Join-Path $campaign "reservations/$grantId") -Directory -ErrorAction SilentlyContinue })
-$generations = @(if ($slots.Count -eq 1) { Get-ChildItem -LiteralPath $slots[0].FullName -Filter 'generation-*.json' -File | Sort-Object Name })
-Assert-True ($grants2.Count -eq 1 -and $slots.Count -eq 1 -and $slots[0].Name -ceq 'slot-001') 'no second grant and no second slot'
-$gen2 = if ($generations.Count -eq 2) { Get-Content -LiteralPath $generations[1].FullName -Raw | ConvertFrom-Json } else { $null }
-Assert-True ($generations.Count -eq 2 -and $generations[1].Name -ceq 'generation-002.json' -and $null -ne $gen2 -and [string]$gen2.run_id -ceq $launch2.RunId -and $launch2.RunId) 'the relaunch reserves the same slot as its next generation'
-$pendingAfter = Read-Pending -Root $r2
-Assert-True ((Test-SameInstant -Value $pendingAfter.observed_at -Expected $newer) -and [string]$pendingAfter.minted_ref -ceq $roundRef) 'the round reference is stamped on the 02:44 approval'
-
-# The run is cited through the approval's own record: spending names the run (the CLI passes it at consumption).
-$completeSplat = @{ ProjectRoot = $r2; AuthorizationRef = $roundRef }
-Add-IfSupported -Splat $completeSplat -Command 'Complete-SpecrewReviewRoundApprovalAuthorization' -Name 'RunId' -Value $launch2.RunId
-$spent = Complete-SpecrewReviewRoundApprovalAuthorization @completeSplat
-$spentRecord = Read-Pending -Root $r2
-Assert-True ([bool]$spent.consumed -and (Test-SameInstant -Value $spentRecord.observed_at -Expected $newer) -and
-    $spentRecord.PSObject.Properties['run_id'] -and [string]$spentRecord.run_id -ceq $launch2.RunId) 'the spent 02:44 approval names the run it paid for'
-$citing = @(Read-Captures -Root $r2 | Where-Object { $_.PSObject.Properties['run_id'] -and [string]$_.run_id -ceq $launch2.RunId })
-$citesNewer = { param($line) if ($line.PSObject.Properties['approval_observed_at']) { Test-SameInstant -Value $line.approval_observed_at -Expected $newer } else { Test-SameInstant -Value $line.observed_at -Expected $newer } }
-Assert-True ($citing.Count -ge 1 -and @($citing | Where-Object { -not (& $citesNewer $_) }).Count -eq 0) 'no record ties the run to the superseded 21:47 approval'
-$cliSource = Get-Content -LiteralPath $reviewCli -Raw
-Assert-True ($cliSource -match 'Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -RunId') 'the review CLI passes the run to the consumption after a delivered round'
-
 # ---------------------------------------------------------------------------------------------------
-# Case 3 (the round-7 shape; maintainer's finding on dbc4cd3b, 2026-11-03): approval A minted round 7, the maintainer
-# typed approval B while round 7 ran, and B took the waiting slot. When round 7 completes with A's reference, the spend
-# belongs to A: B stays unspent and usable, and the spent line names A, never B.
-Write-Host '--- case 3: an approval typed while the round runs (the round-7 shape) ---'
-$atA = '2026-11-02T12:30:00.0000000+00:00'   # 14:30 local
-$atB = '2026-11-02T12:45:00.0000000+00:00'   # 14:45 local, while round 7 runs
-$r3 = New-CampaignFixture
-$null = Write-TypedRoundApproval -Root $r3 -NowUtc $atA -TurnIdentity 'turn-A'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r3 -AuthorizationRef 'cmp-x-round-7'
-$null = Write-TypedRoundApproval -Root $r3 -NowUtc $atB -TurnIdentity 'turn-B'
-$completeA = @{ ProjectRoot = $r3; AuthorizationRef = 'cmp-x-round-7' }
-Add-IfSupported -Splat $completeA -Command 'Complete-SpecrewReviewRoundApprovalAuthorization' -Name 'RunId' -Value 'run-round-7'
-$spentA = Complete-SpecrewReviewRoundApprovalAuthorization @completeA
-$slot3 = Read-Pending -Root $r3
-Assert-True ((Test-SameInstant -Value $slot3.observed_at -Expected $atB) -and [string]::IsNullOrWhiteSpace([string]$slot3.spent_at) -and
-    [string]::IsNullOrWhiteSpace([string]$slot3.minted_ref) -and -not ($slot3.PSObject.Properties['run_id'] -and $slot3.run_id)) 'B, typed while round 7 ran, stays unspent and unminted when round 7 completes'
-$standing3 = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r3
-Assert-True ($null -ne $standing3 -and (Test-SameInstant -Value $standing3.observed_at -Expected $atB)) 'B is still the standing approval for the next round'
-$spentLines3 = @(Read-Captures -Root $r3 | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' })
-Assert-True ($spentLines3.Count -eq 1 -and [string]$spentLines3[0].run_id -ceq 'run-round-7' -and [string]$spentLines3[0].authorization_ref -ceq 'cmp-x-round-7' -and
-    (Test-SameInstant -Value $spentLines3[0].approval_observed_at -Expected $atA) -and [string]$spentLines3[0].approval_turn_identity -ceq 'turn-A') 'the spent line names A, the approval round 7 was minted from'
-Assert-True ([bool]$spentA.consumed) ("the spend of the superseded approval is reported as recorded (got {0})" -f $spentA.reason)
-$againA = Complete-SpecrewReviewRoundApprovalAuthorization @completeA
-Assert-True (@(Read-Captures -Root $r3 | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }).Count -eq 1 -and [bool]$againA.consumed) 'recording the same spend again adds no second line'
-
-# A reference that matches neither the waiting approval's round nor any superseded approval marks nothing spent.
-$r3b = New-CampaignFixture
-$null = Write-TypedRoundApproval -Root $r3b -NowUtc $atB -TurnIdentity 'turn-B'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r3b -AuthorizationRef 'cmp-x-round-8'
-$completeOther = @{ ProjectRoot = $r3b; AuthorizationRef = 'cmp-x-round-9' }
-Add-IfSupported -Splat $completeOther -Command 'Complete-SpecrewReviewRoundApprovalAuthorization' -Name 'RunId' -Value 'run-round-9'
-$spentOther = Complete-SpecrewReviewRoundApprovalAuthorization @completeOther
-$slot3b = Read-Pending -Root $r3b
-Assert-True (-not [bool]$spentOther.consumed -and [string]::IsNullOrWhiteSpace([string]$slot3b.spent_at) -and [string]$slot3b.minted_ref -ceq 'cmp-x-round-8' -and
-    @(Read-Captures -Root $r3b | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }).Count -eq 0) ("a round the waiting approval was not minted for marks nothing spent (got {0})" -f $spentOther.reason)
-
-# ---------------------------------------------------------------------------------------------------
-# Cases 4-6 (maintainer's finding on 50ffca8f, 2026-11-03): two more routes to the round-7 outcome. The engine's facts a
-# running round leaves are written here in the engine's own shapes: a reservation generation naming the run, and the
-# campaign's held claim.
+# The engine's facts are written here in the engine's own shapes (case 14 uses them). Feature 203 T008 removed the
+# per-round approval, and with it cases 2 to 6 (the re-typed round approval, the round-7 shape and its routes).
 function Write-EngineFact { param([string]$Path, [System.Collections.IDictionary]$Fact)
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
     Set-Content -LiteralPath $Path -Value ([pscustomobject]$Fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -NoNewline
 }
-function Read-SpentLines { param([string]$Root) return @(Read-Captures -Root $Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' }) }
 $campaignId = 'cmp-001-fixture-i001'
-$roundOne = 'cmp-001-fixture-i001-round-1'
-$runningRun = 'run-20261102-123500000-0a0a0a0a'   # reserved 14:35 local, between A (14:30) and B (14:45)
-$reservedAtRunning = '2026-11-02T12:35:00.0000000+00:00'
-
-# Route 1: B typed during the round, plus a launch attempt. The reference is rounds run + 1, which leaves out the
-# running round, so the launch would mint B the running round's reference; the claim is refused, the stamp stays, and
-# the finishing round matches the slot. The launch must refuse before minting.
-Write-Host '--- case 4: a launch attempt while the round runs (route 1) ---'
-$r4 = New-CampaignFixture
-$null = Write-TypedRoundApproval -Root $r4 -NowUtc $atA -TurnIdentity 'turn-A'
-$null = Invoke-AgentLaunch -Root $r4
-$campaign4 = Join-Path $r4 ".specrew/review/authority/campaigns/$campaignId"
-$grants4 = @(Get-ChildItem -LiteralPath (Join-Path $campaign4 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)
-$grantId4 = if ($grants4.Count -eq 1) { [IO.Path]::GetFileNameWithoutExtension($grants4[0].Name) } else { '' }
-Assert-True ($grantId4 -and [string](Read-Pending -Root $r4).minted_ref -ceq $roundOne) 'setup: A minted round 1 and its grant'
-# Round 1 is now running: its relaunch reserved the slot's next generation and holds the campaign's claim.
-Write-EngineFact -Path (Join-Path $campaign4 "reservations/$grantId4/slot-001/generation-002.json") -Fact ([ordered]@{
-        campaign_id = $campaignId; fact_type = 'reservation'; grant_id = $grantId4; observed_at = $reservedAtRunning
-        reservation_id = 'res-0a0a0a0a0a0a0a0a0a0a'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
-$claimDir = Join-Path $campaign4 'claims/lin-001-fixture'
-$nextClaim = 1 + @(Get-ChildItem -LiteralPath $claimDir -Filter '*-held.json' -File -ErrorAction SilentlyContinue).Count
-Write-EngineFact -Path (Join-Path $claimDir ('{0:d8}-held.json' -f $nextClaim)) -Fact ([ordered]@{
-        campaign_id = $campaignId; disposition = 'held'; fact_type = 'claim-held'; generation = $nextClaim
-        observed_at = '2026-11-02T12:36:00.0000000+00:00'; run_id = $runningRun; schema_version = '1.0'; target_lineage = 'lin-001-fixture' })
-$null = Write-TypedRoundApproval -Root $r4 -NowUtc $atB -TurnIdentity 'turn-B'
-$launchB = Invoke-AgentLaunch -Root $r4
-$slot4 = Read-Pending -Root $r4
-Assert-True ((Test-SameInstant -Value $slot4.observed_at -Expected $atB) -and [string]::IsNullOrWhiteSpace([string]$slot4.minted_ref)) ("a launch while round 1 runs mints nothing on B (minted_ref '{0}')" -f [string]$slot4.minted_ref)
-Assert-True ($launchB.Text -match [regex]::Escape($runningRun)) 'the refusal names the running round'
-$generations4 = @(Get-ChildItem -LiteralPath (Join-Path $campaign4 "reservations/$grantId4/slot-001") -Filter 'generation-*.json' -File)
-Assert-True ($generations4.Count -eq 2 -and @(Get-ChildItem -LiteralPath (Join-Path $campaign4 'grants') -Filter '*.json' -File).Count -eq 1) 'the refused launch reserved nothing and minted no grant'
-$complete4 = @{ ProjectRoot = $r4; AuthorizationRef = $roundOne; RunId = $runningRun }
-$spent4 = Complete-SpecrewReviewRoundApprovalAuthorization @complete4
-$slot4After = Read-Pending -Root $r4
-$spentLines4 = @(Read-SpentLines -Root $r4)
-Assert-True ([string]::IsNullOrWhiteSpace([string]$slot4After.spent_at)) 'round 1 completing leaves B unspent'
-Assert-True ($spentLines4.Count -eq 1 -and [string]$spentLines4[0].approval_turn_identity -ceq 'turn-A' -and [string]$spentLines4[0].run_id -ceq $runningRun) ("the spent line names A (got {0} line(s), {1})" -f $spentLines4.Count, $spent4.reason)
-
-# The same outcome when a stamp lands anyway (the engine reserves before it claims, and a stamp from an earlier build may
-# already be on the slot): B observed after the round's reservation is never the approval that paid for it, at
-# completion or when a later launch retires a delivered round.
-Write-Host '--- case 4b: a stamp left on B by a mid-run launch ---'
-$r4b = New-CampaignFixture
-$campaign4b = Join-Path $r4b ".specrew/review/authority/campaigns/$campaignId"
-$grantId4b = 'grant-0b0b0b0b0b0b0b0b0b0b'
-Write-EngineFact -Path (Join-Path $campaign4b "grants/$grantId4b.json") -Fact ([ordered]@{
-        authorization_ref = $roundOne; campaign_id = $campaignId; fact_type = 'grant'; grant_id = $grantId4b; observed_at = '2026-11-02T12:31:00.0000000+00:00'; schema_version = '1.0' })
-Write-EngineFact -Path (Join-Path $campaign4b "reservations/$grantId4b/slot-001/generation-001.json") -Fact ([ordered]@{
-        campaign_id = $campaignId; fact_type = 'reservation'; grant_id = $grantId4b; observed_at = $reservedAtRunning
-        reservation_id = 'res-0b0b0b0b0b0b0b0b0b0b'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
-$null = Write-TypedRoundApproval -Root $r4b -NowUtc $atA -TurnIdentity 'turn-A'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r4b -AuthorizationRef $roundOne
-$null = Write-TypedRoundApproval -Root $r4b -NowUtc $atB -TurnIdentity 'turn-B'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r4b -AuthorizationRef $roundOne
-Write-EngineFact -Path (Join-Path $campaign4b "runs/$runningRun/result.json") -Fact ([ordered]@{
-        campaign_id = $campaignId; run_id = $runningRun; runtime_outcome = 'completed'; started_at = $reservedAtRunning })
-$deliveredSplat = @{ ProjectRoot = $r4b; CampaignId = $campaignId; AuthorizationRef = $roundOne }
-Add-IfSupported -Splat $deliveredSplat -Command 'Get-SpecrewDeliveredRoundForMintedRef' -Name 'CaptureObservedAt' -Value $atB
-$delivered4b = Get-SpecrewDeliveredRoundForMintedRef @deliveredSplat
-Assert-True ($null -eq $delivered4b) 'a later launch does not take the round reserved before B as the round B paid for'
-$spent4b = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r4b -AuthorizationRef $roundOne -RunId $runningRun
-$slot4b = Read-Pending -Root $r4b
-$spentLines4b = @(Read-SpentLines -Root $r4b)
-Assert-True ([string]::IsNullOrWhiteSpace([string]$slot4b.spent_at)) ("B, stamped with the running round's reference, stays unspent when that round completes (got {0})" -f $spent4b.reason)
-Assert-True ($spentLines4b.Count -eq 1 -and [string]$spentLines4b[0].approval_turn_identity -ceq 'turn-A') 'the spent line names A'
-
-# Route 2: the partial sign-off of a run whose reservation the store does not name. Its round reference resolves empty,
-# and the waiting approval B never minted a round, so it paid for nothing.
-Write-Host '--- case 5: a partial sign-off with a waiting approval that minted nothing (route 2) ---'
-function Test-PartialSignoffSpendsWaitingApproval {
-    param([string]$Root, [string]$RunId)
-    $null = Write-TypedRoundApproval -Root $Root -NowUtc $atB -TurnIdentity 'turn-B'
-    $null = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $Root -TargetTreeId ('a' * 40) -CampaignId $campaignId -RunId $RunId
-    $null = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $Root -Response 'approved for partial review signoff - the uncovered files are docs only' `
-        -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-11-02T13:30:00.0000000+00:00' 2>$null
-    $slot = Read-Pending -Root $Root
-    return (-not [string]::IsNullOrWhiteSpace([string]$slot.spent_at)) -or @(Read-SpentLines -Root $Root | Where-Object { [string]$_.approval_turn_identity -ceq 'turn-B' }).Count -gt 0
-}
-$r5 = New-CampaignFixture
-Assert-True (-not (Test-PartialSignoffSpendsWaitingApproval -Root $r5 -RunId $runningRun)) 'accepting a partial of a run the store does not name leaves B unspent'
-# The same with the run's reservation and grant on record: B was typed after the run was reserved.
-$r5b = New-CampaignFixture
-$campaign5b = Join-Path $r5b ".specrew/review/authority/campaigns/$campaignId"
-Write-EngineFact -Path (Join-Path $campaign5b "grants/$grantId4b.json") -Fact ([ordered]@{
-        authorization_ref = $roundOne; campaign_id = $campaignId; fact_type = 'grant'; grant_id = $grantId4b; observed_at = '2026-11-02T12:31:00.0000000+00:00'; schema_version = '1.0' })
-Write-EngineFact -Path (Join-Path $campaign5b "reservations/$grantId4b/slot-001/generation-001.json") -Fact ([ordered]@{
-        campaign_id = $campaignId; fact_type = 'reservation'; grant_id = $grantId4b; observed_at = $reservedAtRunning
-        reservation_id = 'res-0b0b0b0b0b0b0b0b0b0b'; run_id = $runningRun; schema_version = '1.0'; slot = 1 })
-Assert-True (-not (Test-PartialSignoffSpendsWaitingApproval -Root $r5b -RunId $runningRun)) 'accepting a partial of a run reserved before B leaves B unspent'
-
-# Only each lineage's newest claim generation says whether a round runs: an older generation left held under a newer,
-# retired one is not a running round, or it would refuse every launch for good.
-Write-Host '--- case 5c: a stale held claim under a newer, released generation ---'
-$r5c = New-CampaignFixture
-$claims5c = Join-Path $r5c ".specrew/review/authority/campaigns/$campaignId/claims/lin-001-fixture"
-$claimFact = { param([int]$Generation, [string]$Disposition, [string]$RunId)
-    [ordered]@{ campaign_id = $campaignId; disposition = $Disposition; fact_type = "claim-$Disposition"; generation = $Generation
-        observed_at = '2026-11-02T12:36:00.0000000+00:00'; run_id = $RunId; schema_version = '1.0'; target_lineage = 'lin-001-fixture' } }
-Write-EngineFact -Path (Join-Path $claims5c '00000001-held.json') -Fact (& $claimFact 1 'held' 'run-20261102-110000000-01010101')
-Write-EngineFact -Path (Join-Path $claims5c '00000002-held.json') -Fact (& $claimFact 2 'held' $runningRun)
-Write-EngineFact -Path (Join-Path $claims5c '00000002-released.json') -Fact (& $claimFact 2 'released' $runningRun)
-$stale = Get-SpecrewCampaignRoundInFlight -ProjectRoot $r5c -CampaignId $campaignId
-Assert-True ($null -eq $stale) ("an older held generation under a released newer one is not a round in flight (got {0})" -f $(if ($null -ne $stale) { $stale.run_id } else { 'none' }))
-Write-EngineFact -Path (Join-Path $claims5c '00000003-held.json') -Fact (& $claimFact 3 'held' 'run-20261102-130000000-03030303')
-$live = Get-SpecrewCampaignRoundInFlight -ProjectRoot $r5c -CampaignId $campaignId
-Assert-True ($null -ne $live -and [string]$live.run_id -ceq 'run-20261102-130000000-03030303' -and [string]$live.evidence -ceq 'claim-held') 'a held newest generation is the round in flight'
-
-# The automatic retry recomputes the round reference after an undelivered attempt. The waiting approval is re-stamped
-# with it, and only while the slot still holds the approval this launch minted; otherwise the delivered retry would find
-# the slot minted for another round and leave its approval unspent.
-Write-Host '--- case 6: the automatic retry re-stamps the round it pays for ---'
-$r6 = New-CampaignFixture
-$null = Write-TypedRoundApproval -Root $r6 -NowUtc $atA -TurnIdentity 'turn-A'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $r6 -AuthorizationRef $roundOne
-$moved = @{ ProjectRoot = $r6; AuthorizationRef = 'cmp-001-fixture-i001-round-2' }
-Add-IfSupported -Splat $moved -Command 'Set-SpecrewReviewRoundApprovalMintedRef' -Name 'ExpectedMintedRef' -Value 'cmp-001-fixture-i001-round-9'
-$movedStamp = Set-SpecrewReviewRoundApprovalMintedRef @moved
-Assert-True (-not [bool]$movedStamp.stamped -and [string](Read-Pending -Root $r6).minted_ref -ceq $roundOne) 'a re-stamp refuses when the slot no longer holds the expected round'
-$restampSplat = @{ ProjectRoot = $r6; AuthorizationRef = 'cmp-001-fixture-i001-round-2' }
-Add-IfSupported -Splat $restampSplat -Command 'Set-SpecrewReviewRoundApprovalMintedRef' -Name 'ExpectedMintedRef' -Value $roundOne
-$restamp = Set-SpecrewReviewRoundApprovalMintedRef @restampSplat
-$spent6 = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $r6 -AuthorizationRef 'cmp-001-fixture-i001-round-2'
-Assert-True ([bool]$restamp.stamped -and [bool]$spent6.consumed) ("the delivered retry spends the re-stamped approval (got {0})" -f $spent6.reason)
-Assert-True ($cliSource -match 'Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot \$resolvedProjectPath -AuthorizationRef \$campaignGrantAuthorizationRef -ExpectedMintedRef') 'the review CLI re-stamps before the automatic retry'
 
 # ---------------------------------------------------------------------------------------------------
 # Case 7 (maintainer's UX ruling, 2026-11-04, 19:05 local): A REPLY TYPED WHILE THE TURN IS STILL ENDING JUST WORKS. A
@@ -440,7 +182,7 @@ Assert-True ($cliSource -match 'Set-SpecrewReviewRoundApprovalMintedRef -Project
 # queued reply to the prompt hook with the RUNNING turn's prompt id (DRIFT-006, measured on Claude Code 2.1.314), and
 # its transcript entry may carry the same id. Keyed on the id alone, the reply read as the running turn, already
 # recorded, and was dropped without a word. It must be recorded once as its own act, and the next turn acts on it: for
-# an option answer such as `1` and for `approved for review round`. Every step runs the real provider as its own
+# an option answer such as `1` and for `approved for allowance reset`. Every step runs the real provider as its own
 # process, as the hooks do; the running turn's Stop runs while the reply's prompt hook runs.
 Write-Host '--- case 7: a reply typed while the turn is still ending is recorded once, as its own act ---'
 $handoverProvider = Join-Path $repoRoot 'scripts\internal\specrew-handover-provider.ps1'
@@ -524,14 +266,18 @@ function Get-NotRecordedCount {
     if (-not (Test-Path -LiteralPath $path)) { return 0 }
     return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() }).Count
 }
+# Feature 203 T008: how many messages recorded the sample act (the allowance reset), read from the authority ledger: one
+# line per turn that minted, naming the writer (the prompt hook) or the act (`top-up`, the turn end's re-deriving writer).
 function Get-RoundCaptureCount {
     param($Fixture)
-    $path = Join-Path $Fixture.Root '.specrew/review/round-approval/captures.jsonl'
+    $path = Join-Path $Fixture.Root '.specrew/authority/exhausted-turns.jsonl'
     if (-not (Test-Path -LiteralPath $path)) { return 0 }
-    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.fact_type -ceq 'review-round-approval' }).Count
+    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } |
+            Where-Object { $_.PSObject.Properties['minted'] -and [string]$_.minted -match 'Write-SpecrewAllowanceResetAuthorization|top-up' } |
+            ForEach-Object { [string]$_.turn_id } | Sort-Object -Unique).Count
 }
 
-foreach ($reply in @('1', 'approved for review round')) {
+foreach ($reply in @('1', 'approved for allowance reset')) {
     $f7 = New-QueuedReplyFixture
     $running = 'prompt-running-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     $first = 'which review host should run the next round? show me the options'
@@ -556,7 +302,7 @@ foreach ($reply in @('1', 'approved for review round')) {
     Assert-True ($firstKeys.Count -ge 1 -and @($firstKeys | Where-Object { $replyKeys -ccontains $_ }).Count -eq 0) ("[{0}] and not as the running turn's message" -f $reply)
     Assert-True ((Get-NotRecordedCount -Fixture $f7) -eq 0) ("[{0}] nothing is reported as not recorded" -f $reply)
     if ($reply -ne '1') {
-        $pending = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f7.Root
+        $pending = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f7.Root
         Assert-True ((Get-RoundCaptureCount -Fixture $f7) -eq 1) ("[{0}] one round approval is captured (got {1})" -f $reply, (Get-RoundCaptureCount -Fixture $f7))
         Assert-True ($null -ne $pending -and [string]$pending.turn_identity -ceq $ownKey) ("[{0}] and the next turn finds it waiting, as the reply's own act" -f $reply)
     }
@@ -564,20 +310,20 @@ foreach ($reply in @('1', 'approved for review round')) {
 
 function Get-PendingRoundTurn {
     param($Fixture)
-    $pending = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $Fixture.Root
+    $pending = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $Fixture.Root
     if ($null -eq $pending -or -not $pending.PSObject.Properties['turn_identity']) { return '' }
     return [string]$pending.turn_identity
 }
 function Get-RoundSupersessionCount {
     param($Fixture)
-    $path = Join-Path $Fixture.Root '.specrew/review/round-approval/captures.jsonl'
+    $path = Join-Path $Fixture.Root '.specrew/review/allowance-reset/supersessions.jsonl'
     if (-not (Test-Path -LiteralPath $path)) { return 0 }
-    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-superseded' }).Count
+    return @(Get-Content -LiteralPath $path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.fact_type -ceq 'allowance-reset-approval-superseded' }).Count
 }
-$approval = 'approved for review round'
+$approval = 'approved for allowance reset'
 
 # Case 7b (co-review round 8, finding 2; maintainer's instruction 2026-11-05): THE SAME LINE RETYPED UNDER THE SAME PROMPT ID
-# IS A SECOND MESSAGE. The running turn's message was itself `approved for review round`, and the human types it again
+# IS A SECOND MESSAGE. The running turn's message was itself `approved for allowance reset`, and the human types it again
 # while the turn ends: Claude hands the retype the running turn's prompt_id, so id and text are the first message's. The
 # discriminator is the host's own record of each message, never a time window: Claude stores each prompt hook's output
 # under that message's own transcript record, and the hook names its prompt event there.
@@ -640,35 +386,19 @@ try {
     $r9 = Write-SpecrewTypedAct -ProjectRoot $f9.Root -HostKind 'claude' -TurnIdentity $cite9 -TranscriptPath $f9.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
 }
 finally { (Get-Item -LiteralPath $ledger9).IsReadOnly = $false }
-Assert-True (-not [bool]$r9.Written -and $null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f9.Root)) ("no approval is written when its turn cannot be reserved (written={0})" -f [bool]$r9.Written)
+Assert-True (-not [bool]$r9.Written -and $null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f9.Root)) ("no approval is written when its turn cannot be reserved (written={0})" -f [bool]$r9.Written)
 
 # Case 10 (co-review round 8, finding 3): A RECOVERED ACT IS DATED BY WHEN IT WAS TYPED. Approval B was captured at 10:10;
 # an older missed approval A, typed at 10:00, is recovered at 10:20. A must not retire B.
 Write-Host '--- case 10: an older approval recovered late does not retire a newer one ---'
 $f10 = New-QueuedReplyFixture
-$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f10.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
 $id10 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
 $entry10 = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = '2026-11-04T10:00:00.000Z'; sessionId = 's1'; promptId = $id10; origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $approval } }
 Add-Content -LiteralPath $f10.Transcript -Value ($entry10 | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
 $cite10 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id10; text = $approval })).Identity
 $null = Write-SpecrewTypedAct -ProjectRoot $f10.Root -HostKind 'claude' -TurnIdentity $cite10 -TranscriptPath $f10.Transcript -SourceEvent 'stop-transcript' -SessionId 's1' -NowUtc '2026-11-04T10:20:00.0000000Z'
 Assert-True ((Get-PendingRoundTurn -Fixture $f10) -ceq 'turn-B' -and (Get-RoundSupersessionCount -Fixture $f10) -eq 0) ("B stays waiting and no fact says A retired it (holds '{0}')" -f (Get-PendingRoundTurn -Fixture $f10))
-
-# Case 10b (co-review round 9, finding 2): THE ORDER HOLDS WHEN THE NEWER APPROVAL IS ALREADY SPENT. Case 10 with B delivered
-# and spent before A is recovered: the writer compared the times only while B was unspent, so A overwrote the spent B as a
-# fresh, unspent approval that could fund the next round.
-Write-Host '--- case 10b: an older approval recovered late does not replace a newer one already spent ---'
-$f10b = New-QueuedReplyFixture
-$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10b.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f10b.Root -AuthorizationRef 'cmp-x-round-3'
-$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10b.Root -AuthorizationRef 'cmp-x-round-3' -RunId 'run-round-3'
-$id10b = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
-$entry10b = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = '2026-11-04T10:00:00.000Z'; sessionId = 's1'; promptId = $id10b; origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $approval } }
-Add-Content -LiteralPath $f10b.Transcript -Value ($entry10b | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
-$cite10b = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id10b; text = $approval })).Identity
-$null = Write-SpecrewTypedAct -ProjectRoot $f10b.Root -HostKind 'claude' -TurnIdentity $cite10b -TranscriptPath $f10b.Transcript -SourceEvent 'stop-transcript' -SessionId 's1' -NowUtc '2026-11-04T10:20:00.0000000Z'
-$slot10b = Read-Pending -Root $f10b.Root
-Assert-True ($null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f10b.Root) -and [string]$slot10b.turn_identity -ceq 'turn-B' -and -not [string]::IsNullOrWhiteSpace([string]$slot10b.spent_at)) ("no approval is spendable and the slot still holds the spent B (holds '{0}')" -f [string]$slot10b.turn_identity)
 
 # Case 10c: the same for the allowance reset, through the supersession rule the top-up, the deferral and the partial
 # sign-off share: a reset typed at 10:10 and spent, then an older reset typed at 10:00 arriving late.
@@ -704,11 +434,7 @@ Assert-True (-not [bool]$r11.Written -and $reports11 -eq 1) ("the sign-off the t
 $said11 = [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $f11.Root -HostKind 'claude' -SessionId 's1')
 Assert-True ($said11 -match [regex]::Escape('approved for partial review signoff') -and $said11 -match '(?i)type it again') ("and the human's next message says it, with the phrase to type again ('{0}')" -f $said11)
 
-# Case 12 (co-review round 10, finding 2): THE CAPTURE, THE MINT STAMP AND THE SPEND TAKE TURNS ON THE SLOT. The spend read
-# the waiting approval, checked it, and wrote it back with no lock, so an approval B captured in between was overwritten by
-# the spent A and lost. While another process holds the slot, neither the capture nor the spend writes it; each completes
-# once it is released.
-Write-Host '--- case 12: the capture and the spend wait for the slot another process holds ---'
+# The slot helpers case 14 uses (case 12, the round slot, went with the per-round approval in feature 203 T008).
 $store12 = Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1'
 function Start-SlotChild {
     param([string]$Command)
@@ -718,24 +444,6 @@ function Start-SlotChild {
     return [Diagnostics.Process]::Start($psi)
 }
 function Wait-SlotChild { param($Process) [void]$Process.StandardOutput.ReadToEnd(); [void]$Process.StandardError.ReadToEnd(); $Process.WaitForExit() }
-$f12 = New-QueuedReplyFixture
-$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f12.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f12.Root -AuthorizationRef 'cmp-x-round-5'
-$lockPath12 = Join-Path $f12.Root '.specrew/review/round-approval/pending-round-approval.lock'
-$held12 = [IO.File]::Open($lockPath12, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-try {
-    $spend12 = Start-SlotChild "`$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot '$($f12.Root)' -AuthorizationRef 'cmp-x-round-5' -RunId 'run-round-5'"
-    $capture12 = Start-SlotChild "`$null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot '$($f12.Root)' -Response '$approval' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B'"
-    Start-Sleep -Seconds 4
-    $while12 = Read-Pending -Root $f12.Root
-    Assert-True ([string]$while12.turn_identity -ceq 'turn-A' -and [string]::IsNullOrWhiteSpace([string]$while12.spent_at)) ("while the slot is held, neither the spend nor the capture writes it (holds '{0}', spent '{1}')" -f [string]$while12.turn_identity, [string]$while12.spent_at)
-}
-finally { $held12.Dispose() }
-Wait-SlotChild $spend12; Wait-SlotChild $capture12
-$spentLines12 = @(Read-Captures -Root $f12.Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-spent' -and [string]$_.approval_turn_identity -ceq 'turn-A' })
-$approvalLines12 = @(Read-Captures -Root $f12.Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval' -and [string]$_.turn_identity -ceq 'turn-B' })
-# In either order, A paid for round 5 and B waits, unspent.
-Assert-True ($approvalLines12.Count -eq 1 -and $spentLines12.Count -eq 1 -and (Get-PendingRoundTurn -Fixture $f12) -ceq 'turn-B') ("once released, both complete: A spent for round 5, B waiting (B captured {0}, A's spend lines {1}, waiting '{2}')" -f $approvalLines12.Count, $spentLines12.Count, (Get-PendingRoundTurn -Fixture $f12))
 
 # Case 13 (co-review round 11, finding 1): A TRANSCRIPT ENTRY'S IDENTITY DOES NOT MOVE WITH THE CALLER'S HOST LABEL. A Claude
 # approval the prompt hook missed was recovered and spent; cited again with HostKind codex (or none), the reader labelled the
@@ -746,15 +454,14 @@ $id13 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
 $entry13 = Add-ClaudeEntry -Fixture $f13 -Role 'user' -Text $approval -PromptId $id13
 $cite13 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id13; text = $approval })).Identity
 $first13 = Write-SpecrewTypedAct -ProjectRoot $f13.Root -HostKind 'claude' -TurnIdentity $cite13 -TranscriptPath $f13.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f13.Root -AuthorizationRef 'cmp-x-round-1'
-$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root -AuthorizationRef 'cmp-x-round-1' -RunId 'run-round-1'
-Assert-True ([bool]$first13.Written -and $null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root)) 'setup: the missed approval is recovered once and spent'
+$null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $f13.Root -Reference 'cmp-x-round-1'
+Assert-True ([bool]$first13.Written -and $null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f13.Root)) 'setup: the missed approval is recovered once and spent'
 foreach ($label in @('codex', '')) {
     foreach ($citation in @(('entry:' + $entry13), [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $label; message_id = $id13; text = $approval })).Identity)) {
         $null = Write-SpecrewTypedAct -ProjectRoot $f13.Root -HostKind $label -TurnIdentity $citation -TranscriptPath $f13.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
     }
 }
-Assert-True ($null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f13.Root) -and (Get-RoundCaptureCount -Fixture $f13) -eq 1) ("no approval is spendable and one capture exists (captures {0})" -f (Get-RoundCaptureCount -Fixture $f13))
+Assert-True ($null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f13.Root) -and (Get-RoundCaptureCount -Fixture $f13) -eq 1) ("no approval is spendable and one capture exists (captures {0})" -f (Get-RoundCaptureCount -Fixture $f13))
 
 # Case 14 (co-review round 12, finding 2): THE RESET'S SLOT HAS THE ROUND SLOT'S RULE. The consumption read reset A and wrote
 # its spent A back with no lock, so a newer B saved in between was lost, its turn already reserved; and it stamped whatever
@@ -788,32 +495,6 @@ Assert-True ($null -ne $waiting14b -and [string]$waiting14b.turn_identity -ceq '
 $landed14b = if ($null -ne $waiting14b) { Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $f14b.Root -CampaignId $campaignId -CaptureObservedAt $waiting14b.observed_at } else { 'no B' }
 Assert-True ($null -eq $landed14b) 'and the reset A paid for is not taken as the one B paid for'
 
-# Case 15 (co-review round 12, finding 3): A RESET NEVER OVERWRITES A NEWER ROUND APPROVAL. The human typed reset A, then
-# round approval B; the CLI then applied A while a round waited on the allowance, and the round approval derived from A
-# replaced B, dated at A, with no fact naming what it retired. The ordinary writer's order rule applies, spent or not.
-Write-Host '--- case 15: a round approval derived from an older reset does not replace a newer typed one ---'
-function Get-Field { param($Record, [string]$Name) if ($null -ne $Record -and $Record.PSObject.Properties[$Name]) { return [string]$Record.$Name }; return '' }
-$f15 = New-QueuedReplyFixture
-$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f15.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
-$reset15 = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f15.Root
-$null = Write-TypedRoundApproval -Root $f15.Root -NowUtc '2026-11-04T10:10:00.0000000Z' -TurnIdentity 'turn-B'
-$null = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $f15.Root -ResetApproval $reset15 -ResetId 'reset-1'
-$slot15 = Read-Pending -Root $f15.Root
-Assert-True ((Get-Field $slot15 'turn_identity') -ceq 'turn-B' -and (Get-Field $slot15 'derived_from') -eq '') ("the waiting B stays (holds '{0}', derived from '{1}')" -f (Get-Field $slot15 'turn_identity'), (Get-Field $slot15 'derived_from'))
-$null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $f15.Root -AuthorizationRef 'cmp-x-round-2'
-$null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f15.Root -AuthorizationRef 'cmp-x-round-2' -RunId 'run-round-2'
-$derived15b = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $f15.Root -ResetApproval $reset15 -ResetId 'reset-1'
-Assert-True ($null -eq $derived15b -and $null -eq (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $f15.Root) -and (Get-Field (Read-Pending -Root $f15.Root) 'turn_identity') -ceq 'turn-B') 'and once B is spent, the older reset approves no further round'
-# A reset newer than the waiting approval does take the slot, with its own identity and the fact naming what it retired.
-$f15c = New-QueuedReplyFixture
-$null = Write-TypedRoundApproval -Root $f15c.Root -NowUtc '2026-11-04T10:00:00.0000000Z' -TurnIdentity 'turn-A'
-$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f15c.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-R' -NowUtc '2026-11-04T10:10:00.0000000Z'
-$null = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $f15c.Root -ResetApproval (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f15c.Root) -ResetId 'reset-2'
-$slot15c = Read-Pending -Root $f15c.Root
-$retired15c = @(Read-Captures -Root $f15c.Root | Where-Object { [string]$_.fact_type -ceq 'review-round-approval-superseded' -and [string]$_.superseded_turn_identity -ceq 'turn-A' })
-Assert-True ((Get-Field $slot15c 'derived_from') -ceq 'allowance-reset:reset-2' -and (Get-Field $slot15c 'turn_identity') -ceq 'turn-R' -and $retired15c.Count -eq 1) ("a newer reset takes the slot as itself, and the retired A is on record (holds '{0}', facts {1})" -f (Get-Field $slot15c 'turn_identity'), $retired15c.Count)
-
-# ---------------------------------------------------------------------------------------------------
 # Case 8 (FR-021; tasks.md, "the same rule covers the top-up, the coverage deferral and the partial sign-off"): A NEWER
 # TYPED ACT SUPERSEDES; IT NEVER FOLDS, for the three review acts beside the round approval. Today the top-up folds a
 # re-typed reset into the older unspent record, the deferral overwrites with no record of what it replaced, and a second

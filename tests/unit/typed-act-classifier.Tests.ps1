@@ -67,7 +67,8 @@ $runningId = (Get-SpecrewTypedActIdentity -Turn $runningTurn).Identity
 $queuedId = (Get-SpecrewTypedActIdentity -Turn $queuedTurn).Identity
 Assert-True (-not [string]::IsNullOrWhiteSpace($queuedId) -and $queuedId -cne $runningId) 'a queued message sharing the running turn''s prompt_id has its own identity'
 $act = Resolve-SpecrewTypedAct -Turn $queuedTurn -Pending $nothing -RecordedIdentities @($runningId)
-Assert-Act $act 'round-approval' '' $false 'the queued approval is an act although the running turn is recorded'
+# Feature 203 T008: the recorded queued message is the retired round approval, so its own reading is retired-act, reported.
+Assert-Act $act 'none' 'retired-act' $true 'the queued message is read as its own turn although the running turn is recorded'
 $again = Resolve-SpecrewTypedAct -Turn $queuedTurn -Pending $nothing -RecordedIdentities @($runningId, $queuedId)
 Assert-Act $again 'none' 'already-recorded' $false 'the same queued approval seen again is already recorded, silently'
 
@@ -110,7 +111,7 @@ Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for implemen
 Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for tasks') -Pending $nothing) 'none' 'no-pending-crossing' $true 'a verdict with no crossing waiting is reported'
 Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for tasks') -Pending (New-Pending -From 'plan' -To 'tasks' -EvidenceAbsent)) 'none' 'stage-evidence-absent' $true 'a verdict for a stage that owes its artifacts is reported'
 $reviewWaiting = New-Pending -From 'implement' -To 'review'
-Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for review round') -Pending $reviewWaiting) 'round-approval' '' $false 'approved for review round is never a verdict for the review boundary (B4F-116/150)'
+Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for review round') -Pending $reviewWaiting) 'none' 'retired-act' $true 'approved for review round is never a verdict for the review boundary; it is the retired round approval (B4F-116/150)'
 Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for review') -Pending $reviewWaiting) 'boundary-verdict' '' $false 'approved for review is the verdict when implement -> review waits'
 
 Write-Host '--- top-up and stop answers (FR-007, FR-011) ---'
@@ -143,7 +144,7 @@ Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'approved for review r
 $copilotTurn = New-Turn -HostKind 'copilot' -Identity 'stand-in' -Id ('0' * 64) -Text 'approved for review round'
 $ci = Get-SpecrewTypedActIdentity -Turn $copilotTurn
 Assert-True ([string]$ci.Kind -ceq 'stand-in') 'a Copilot turn carries the declared stand-in identity'
-Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'withdraw the approval') -Pending $nothing) 'withdrawal' '' $false 'a withdrawal is its own act'
+Assert-Act (Resolve-SpecrewTypedAct -Turn (New-Turn -Text 'withdraw the approval') -Pending $nothing) 'none' 'retired-act' $true 'a withdrawal is retired with the per-round approval, and reported (T008)'
 
 if ($script:failCount -gt 0) { Write-Host "typed-act-classifier: $($script:failCount) failure(s)" -ForegroundColor Red; exit 1 }
 Write-Host 'typed-act-classifier: all passed' -ForegroundColor Green

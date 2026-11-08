@@ -226,7 +226,7 @@ $registry = @(
     @{ area = 'Beta3 manual-walk hook isolation - Claude project hooks stay silent on Copilot and still dispatch under Claude'; path = 'tests/integration/refocus-deploy.tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'Beta3 workshop-before-spec preflight - exact gate, no state mutation, malformed bindings refuse'; path = 'tests/integration/specify-workshop-routing.tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'Beta3 code-lens artifact floor - valid manifest plus command-written reviewer authorization required before specify'; path = 'tests/unit/design-gate-code-implementation-artifact.tests.ps1'; kind = 'script' }
-    @{ area = 'Beta3 review authorization UX - concrete setup labels and --approve-round guidance, never generic authorization-ref placeholders'; path = 'tests/unit/authorization-ref-not-the-advice.tests.ps1'; kind = 'script' }
+    @{ area = 'Beta3 review authorization UX - concrete setup labels, never generic authorization-ref placeholders (203 T008: no --approve-round)'; path = 'tests/unit/authorization-ref-not-the-advice.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 installed module wrapper - GNU equals form preserves Windows drive paths across pwsh -File'; path = 'tests/unit/module-wrapper-windows-drive-equals.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 Windows init preflight - disposable Spec Kit probe stays short and outside long consumer paths'; path = 'tests/unit/spec-kit-preflight-path.Tests.ps1'; kind = 'pester' }
     @{ area = 'Beta3 project-rules register - host-neutral launch path carries no coordinator persona assignment'; path = 'tests/integration/multi-host-launch-path.tests.ps1'; kind = 'script' }

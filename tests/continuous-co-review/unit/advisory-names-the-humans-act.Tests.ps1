@@ -2,25 +2,16 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# W36 (2026-08-21), REWRITTEN BY W44 (2026-08-22, maintainer ruling): the advisory names a DECISION for
-# the human and an EXECUTION for the agent, matching their roles.
+# W36 (2026-08-21), REWRITTEN BY W44 (2026-08-22) AND BY FEATURE 203 T008 (2026-11-08; FR-010, DRIFT-052).
 #
-# W36 drew the ownership line in the wrong place. It made the COMMAND the human's to run - the one role
-# this system never gives the human anywhere else. Boundary verdicts, partial signoff and workshop
-# repair are all typed phrases captured from conversation, with the agent operating the machinery
-# afterwards; round approval alone demanded the human execute a CLI command, and it failed as UX on day
-# one (the bash-PATH seam): the human is in a conversation, not a terminal.
-#
-# The model now: the human's typed reply `approved for review round` is the approval, captured by the
-# hooks; the agent runs `specrew review --live --approve-round` carrying that captured phrase as its
-# authority, and the CLI refuses an agent invocation that has none. So the advisory must name BOTH
-# halves - the phrase to ask for (the decision) and the command to run afterwards (the execution) -
-# and must never tell the agent the command is forbidden, because with a captured approval it is the
-# agent's job.
+# W36 made the review COMMAND the human's to run; W44 made the decision the human's typed phrase
+# (`approved for review round`) and the execution the agent's. T008 removed the per-round approval: the
+# review budget approved with the implementation pays for every round, so there is no round decision left to
+# ask for. The advisory now names the command and asks the human for nothing; the agent channel says running
+# the review within the budget is the agent's job and that it never asks the human for a round.
 #
 # What survives from W36 unchanged: discoverability (the command stays named - deleting it is what
-# produced two invented authorizations), and the prohibition on the agent RECORDING or fabricating an
-# approval on the human's behalf.
+# produced two invented authorizations), and the human is never told to run the command as their own act.
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
@@ -44,29 +35,19 @@ BeforeAll {
     }
 }
 
-Describe 'W44 the review-request advisories split decision from execution' {
-    It 'request-current-digest-review names the phrase to ask for AND the command to run after' {
-        $sentence = Get-ReviewCampaignActionSentence -Action 'request-current-digest-review'
+Describe 'T008 the review-request advisories name the command and ask for no round approval' {
+    It '<Action> names the review command and the budget that pays for it, and asks for no approval' -ForEach @(
+        @{ Action = 'request-current-digest-review' }, @{ Action = 'request-authorized-review' }
+    ) {
+        $sentence = [string](Get-ReviewCampaignActionSentence -Action $Action)
         $sentence | Should -Not -BeNullOrEmpty
-        Test-NamesTheDecision -Text $sentence | Should -BeTrue -Because 'the typed phrase is the decision, and the reader must be able to relay it verbatim'
-        Test-NamesTheExecution -Text $sentence | Should -BeTrue -Because 'the command stays discoverable - removing it produced two invented authorizations'
-    }
-
-    It 'request-authorized-review names both halves too' {
-        $sentence = Get-ReviewCampaignActionSentence -Action 'request-authorized-review'
-        Test-NamesTheDecision -Text $sentence | Should -BeTrue
-        Test-NamesTheExecution -Text $sentence | Should -BeTrue
-    }
-
-    It 'offers the manual review as the alternative that spends nothing' {
-        # The human reading the artifacts is a legitimate ask; the human operating the CLI is not.
-        $sentence = Get-ReviewCampaignActionSentence -Action 'request-current-digest-review'
-        $sentence.ToLowerInvariant().Contains('review the artifacts themselves') | Should -BeTrue
+        $sentence | Should -Match ([regex]::Escape('specrew review --live')) -Because 'the command stays discoverable - removing it produced two invented authorizations'
+        $sentence | Should -Match 'review budget approved with the implementation'
+        $sentence.Contains($script:ApprovalFlag) | Should -BeFalse -Because 'the per-round approval flag no longer exists'
+        $sentence.ToLowerInvariant().Contains($script:TypedPhrase) | Should -BeFalse -Because 'there is no round approval to ask the human for'
     }
 
     It 'does not tell the human to run the command as their own act' {
-        # The W36 wording this suite used to REQUIRE. A human in a conversation is not at a terminal,
-        # and operating the machinery is the one role this system gives the agent everywhere else.
         foreach ($action in @('request-current-digest-review', 'request-authorized-review')) {
             $sentence = [string](Get-ReviewCampaignActionSentence -Action $action)
             $sentence.ToLowerInvariant().Contains('ask the human to run') | Should -BeFalse -Because 'the human decides; the agent operates'
@@ -84,16 +65,16 @@ Describe 'W44 the review-request advisories split decision from execution' {
     }
 }
 
-Describe 'W44 the agent channel states the split, not a prohibition on the command' {
-    It 'tells the agent to ask for the phrase, never fabricate, and then run the command itself' {
+Describe 'T008 the agent channel runs the review within the budget and never asks for a round' {
+    It 'says running the review is the agent''s job and that the human is never asked for a round' {
         $decision = [pscustomobject]@{ ask_narrow_question = $false; route = 'review-required'; message = 'x'; run_id = ''; implementer_action = 'request-authorized-review' }
         $directive = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $decision -PendingCrossing $null
         $directive | Should -Not -BeNullOrEmpty
         $lower = $directive.ToLowerInvariant()
-        Test-NamesTheDecision -Text $directive | Should -BeTrue
-        $lower.Contains('never record or fabricate') | Should -BeTrue -Because 'what survives from W36 is the prohibition on inventing the approval'
         $lower.Contains('your job') | Should -BeTrue -Because 'execution is the agent role, stated in the agent channel'
-        $lower.Contains('do not run it') | Should -BeFalse -Because 'the W36 prohibition is the ruling this suite was rewritten to retire'
+        $lower.Contains('never ask the human for a round') | Should -BeTrue
+        $lower.Contains($script:TypedPhrase) | Should -BeFalse
+        $directive.Contains($script:ApprovalFlag) | Should -BeFalse
     }
 }
 

@@ -176,7 +176,7 @@ foreach ($other in @('approved for review round', 'approved for allowance reset'
     Assert-True ([string]::IsNullOrWhiteSpace($d8r)) ("'{0}' with no crossing pending gets no boundary-verdict line ('{1}')" -f $other, $d8r)
 }
 $out8r = ((& pwsh -NoProfile -File $provider --project-root $f8r.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for review round' --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
-Assert-True ($out8r -notmatch 'NO crossing is pending' -and (Test-Path -LiteralPath (Join-Path $f8r.Root '.specrew/review/round-approval/pending-round-approval.json'))) 'through the provider: the round approval is captured and the turn carries no boundary notice'
+Assert-True ($out8r -notmatch 'NO crossing is pending' -and -not (Test-Path -LiteralPath (Join-Path $f8r.Root '.specrew/review/round-approval/pending-round-approval.json'))) 'through the provider: the retired round approval records nothing (feature 203 T008), and the turn carries no boundary notice'
 Remove-Item -LiteralPath $f8r.Root -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host 'Case 9 (PRED-BETA4-026): a verdict naming ANOTHER boundary than the pending crossing gets one line back naming the pending one'

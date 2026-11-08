@@ -305,7 +305,7 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $config = Join-Path $origin 'authority.json'
         [IO.File]::WriteAllText($config, '{"schema_version":"1.0","mode":"campaign"}', [Text.UTF8Encoding]::new($false))
         $store = Join-Path $origin 'store'
-        { Invoke-ReviewCampaignCommand -RepoRoot $origin -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-one' -GrantAuthorizationRef 'human-slot' -AuthorityConfigPath $config -StoreRoot $store -StagingRoot (Join-Path $origin 'staging') } |
+        { Invoke-ReviewCampaignCommand -RepoRoot $origin -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-one' -AuthorityConfigPath $config -StoreRoot $store -StagingRoot (Join-Path $origin 'staging') } |
             Should -Throw '*review-campaign-staging-root-inside-origin*'
         Test-Path -LiteralPath $store | Should -BeFalse
     }

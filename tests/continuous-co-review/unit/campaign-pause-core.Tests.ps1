@@ -330,17 +330,40 @@ Describe 'Campaign pause core (T001)' {
         }
 
         It 'counts this round against the campaign budget, so cost accumulates across rounds' {
+            # Feature 203 T008 (DRIFT-052 item 3): a round is the terminal of a run that collected a complete review. Each
+            # round is published the way the orchestrator publishes it, then paused, so the counter reads the store.
             $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-term-' + [Guid]::NewGuid().ToString('N'))
+            $publish = {
+                param([string]$RunId, [bool]$Collected, [string]$StartedAt)
+                $result = [pscustomobject][ordered]@{
+                    schema_version = '1.0'; campaign_id = 'cmp-199-x-i001'; run_id = $RunId; target_digest = ('f' * 40); harness_id = 'fixture'
+                    completion = $(if ($Collected) { 'complete' } else { 'partial' }); verdict = $(if ($Collected) { 'pass' } else { 'incomplete' })
+                    runtime_outcome = $(if ($Collected) { 'completed' } else { 'timed-out' }); termination_verified = $true; containment = 'verified'
+                    currentness = 'current'; validation = 'valid'; can_approve_current = $Collected; summary = 'fixture'; findings = @()
+                    started_at = $StartedAt; ended_at = $StartedAt; duration_ms = 60000; examined_paths = @(); review_collected = $Collected
+                }
+                Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId $RunId -TargetLineage 'lin-term' -ObservedAt $StartedAt | Out-Null
+                Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId $RunId -Fact $result | Out-Null
+                Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId $RunId -TargetLineage 'lin-term' -Disposition released -ObservedAt $StartedAt | Out-Null
+                return $result
+            }
             try {
-                $result = [pscustomobject]@{ findings = @(); duration_ms = 60000 }
+                $r1 = & $publish 'run-term-1' $true '2026-08-10T11:00:00Z'
                 $first = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-1' `
-                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:00:00Z'
+                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $r1 -ObservedAt '2026-08-10T11:01:00Z'
                 $first.decision.rounds_used | Should -Be 1
 
                 # A second round on the same campaign sees the first one's cost.
+                $r2 = & $publish 'run-term-2' $true '2026-08-10T11:10:00Z'
                 $second = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-2' `
-                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:10:00Z'
+                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $r2 -ObservedAt '2026-08-10T11:11:00Z'
                 $second.decision.rounds_used | Should -Be 2
+
+                # A run that brought back no complete review costs nothing, and its pause says so.
+                $r3 = & $publish 'run-term-3' $false '2026-08-10T11:20:00Z'
+                $third = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-3' `
+                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $r3 -ObservedAt '2026-08-10T11:21:00Z'
+                $third.decision.rounds_used | Should -Be 2
             }
             finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }

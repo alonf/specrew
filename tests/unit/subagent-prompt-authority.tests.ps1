@@ -6,12 +6,13 @@
 # the payload with agentId, agentType and parentAgentId; the Claude channel with agent_id, agent_type and
 # parent_agent_id. The task text is written by the model, so if it carries an approval phrase it must record nothing.
 #
-# Each case puts 'approved for review round' in a payload that carries a sub-agent field, runs the hook command the
+# Each case puts 'approved for allowance reset' in a payload that carries a sub-agent field, runs the hook command the
 # real deployer wrote, and then runs the REAL handover provider with exactly the arguments the dispatcher handed it.
 # The provider runs with --project-root, working directory and host project variables all set to a temp project,
 # and the suite fails if the repo's own stores change (DRIFT-007: a first version wrote into the repo). Nothing may
 # be stored. The controls are the same payloads without the sub-agent field: those store the approval,
-# so the chain under test is one that can record.
+# so the chain under test is one that can record. (Feature 203 T008 retired the round approval this suite first used;
+# the allowance reset is a typed act that still records.)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -24,7 +25,7 @@ function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition)
 
 . (Join-Path $repoRoot 'tests\host-probes\deployed-hook-harness.ps1')
 
-$approval = 'approved for review round'
+$approval = 'approved for allowance reset'
 
 function New-ApprovalProject {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('f202-subagent-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
@@ -36,7 +37,7 @@ function New-ApprovalProject {
 
 function Test-RoundApprovalStored {
     param([string]$Root)
-    $p = Join-Path $Root '.specrew/review/round-approval/pending-round-approval.json'
+    $p = Join-Path $Root '.specrew/review/allowance-reset/pending-allowance-reset.json'
     if (-not (Test-Path -LiteralPath $p)) { return $false }
     return [string]::IsNullOrWhiteSpace([string](Get-Content -LiteralPath $p -Raw | ConvertFrom-Json).spent_at)
 }
@@ -69,7 +70,7 @@ function Invoke-PinnedProvider {
 
 function Get-RepoStoreSnapshot {
     # The repo's own approval, authority and journal stores. The suite must leave every one of them as it found it.
-    $paths = @('.specrew\review\round-approval', '.specrew\authority', '.specrew\runtime\handover-journal.jsonl', '.specrew\runtime\conformance-sessions')
+    $paths = @('.specrew\review\round-approval', '.specrew\review\allowance-reset', '.specrew\authority', '.specrew\runtime\handover-journal.jsonl', '.specrew\runtime\conformance-sessions')
     foreach ($rel in $paths) {
         $full = Join-Path $repoRoot $rel
         if (-not (Test-Path -LiteralPath $full)) { "$rel <absent>"; continue }

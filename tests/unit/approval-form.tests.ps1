@@ -13,7 +13,9 @@ $ErrorActionPreference = 'Stop'
 # more than one verdict option is a quoted menu and never an approval, on any host. Hosts with no recorded paste marking
 # keep "the phrase alone", and the refusal names the reason.
 #
-# B4F-125 (b): the reset, typed in order to run a round, then needed a second approval for that round.
+# B4F-125 (b): the reset, typed in order to run a round, then needed a second approval for that round. Feature 203 T008
+# (FR-010) removed the per-round approval, so (b) closes by removal: a reset grants its fix and verification rounds itself.
+# The round-approval phrase is retired, so the cases that showed a phrase being recorded now show the reset.
 #
 # Every prompt case drives the shipped handover provider as its own process, the way the dispatcher launches it.
 
@@ -111,17 +113,17 @@ Describe 'Claude marks pastes: nothing inside one counts, a phrase on its own li
 
     It 'the phrase above a paste, on its own line, is recorded, with its same-line instruction' {
         $p = New-Project
-        $text = "approved for review round - scope it to the fixes`n<pasted_content id=`"3`">`nthe fixes, as a list`n</pasted_content id=`"3`">"
+        $text = "approved for allowance reset - scope it to the fixes`n<pasted_content id=`"3`">`nthe fixes, as a list`n</pasted_content id=`"3`">"
         Invoke-Prompt -Root $p -HostKind 'claude' -Text $text | Out-Null
-        Test-Stored -Root $p -Kind 'round' | Should -BeTrue
+        Test-Stored -Root $p -Kind 'reset' | Should -BeTrue
     }
 
     It 'residual, named: on Claude a short untagged line is typed text, so an approval line among typed lines counts' {
         # Claude marks larger pastes only; a short paste arrives untagged and cannot be told from typing. A single
         # approval line among typed lines is the accepted residual (DA-3), and a quoted menu is still refused below.
         $p = New-Project
-        Invoke-Prompt -Root $p -HostKind 'claude' -Text "Thanks, that reads well.`napproved for review round" | Out-Null
-        Test-Stored -Root $p -Kind 'round' | Should -BeTrue
+        Invoke-Prompt -Root $p -HostKind 'claude' -Text "Thanks, that reads well.`napproved for allowance reset" | Out-Null
+        Test-Stored -Root $p -Kind 'reset' | Should -BeTrue
     }
 
     It 'the observed paste-size boundary: untagged text past it cannot be told from a paste, so the one-line rule decides' {
@@ -167,32 +169,6 @@ Describe 'Hosts with no recorded paste marking keep the phrase alone, and say wh
         $p = New-Project
         Invoke-Prompt -Root $p -HostKind $HostKind -Text 'approved for allowance reset' | Out-Null
         Test-Stored -Root $p -Kind 'reset' | Should -BeTrue
-    }
-}
-
-Describe 'B4F-125 (b): a reset typed in order to run a round authorizes that round' {
-    BeforeAll {
-        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
-    }
-
-    It 'the reset''s own approval becomes the round approval, carrying where it came from' {
-        $p = New-Project
-        Invoke-Prompt -Root $p -HostKind 'claude' -Text 'approved for allowance reset' | Out-Null
-        $reset = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $p
-        $reset | Should -Not -BeNullOrEmpty
-        $derived = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $p -ResetApproval $reset -ResetId 'reset-test-1'
-        $derived | Should -Not -BeNullOrEmpty
-        $round = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $p
-        $round | Should -Not -BeNullOrEmpty
-        [string]$round.derived_from | Should -Be 'allowance-reset:reset-test-1'
-        [string]$round.evidence_source | Should -Be 'hook-captured-user-prompt'
-        # Compared as instants, to the tick: two [string] renderings agree even when the stored time is wrong (round 9).
-        (ConvertTo-SpecrewAuthorityInstant -Value $round.observed_at).UtcTicks | Should -Be (ConvertTo-SpecrewAuthorityInstant -Value $reset.observed_at).UtcTicks
-    }
-
-    It 'the review command writes it only when the reset answered a round waiting on the spent allowance' {
-        $cli = [IO.File]::ReadAllText((Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'))
-        $cli | Should -Match 'if \(\$null -ne \$outstandingAtReset -and \$null -ne \$capturedAllowanceReset\b[^\r\n]*Write-SpecrewReviewRoundApprovalFromReset'
     }
 }
 
@@ -258,10 +234,10 @@ Describe 'Bulleted alternatives are verdict options too (co-review round 6)' {
         $shown | Should -Match 'quoted menu'
     }
 
-    It 'claude: an instruction under the phrase that is not an option is still typed text, and the round is recorded' {
+    It 'claude: an instruction under the phrase that is not an option is still typed text, and the reset is recorded' {
         $p = New-Project
-        Invoke-Prompt -Root $p -HostKind 'claude' -Text "approved for review round`n- keep it to the fixes" | Out-Null
-        Test-Stored -Root $p -Kind 'round' | Should -BeTrue
+        Invoke-Prompt -Root $p -HostKind 'claude' -Text "approved for allowance reset`n- keep it to the fixes" | Out-Null
+        Test-Stored -Root $p -Kind 'reset' | Should -BeTrue
     }
 }
 
@@ -290,8 +266,8 @@ Describe 'A condition on its own line is part of the approval (co-review round 6
 
     It 'claude: typed text with no condition beside the phrase still leaves the phrase recorded' {
         $p = New-Project
-        Invoke-Prompt -Root $p -HostKind 'claude' -Text "Thanks, that reads well.`napproved for review round" | Out-Null
-        Test-Stored -Root $p -Kind 'round' | Should -BeTrue
+        Invoke-Prompt -Root $p -HostKind 'claude' -Text "Thanks, that reads well.`napproved for allowance reset" | Out-Null
+        Test-Stored -Root $p -Kind 'reset' | Should -BeTrue
     }
 }
 
@@ -330,13 +306,6 @@ Describe 'Only a message the human typed records an approval (co-review round 6)
         $shown | Should -Match "approved for review round"
     }
 
-    It 'claude: a withdrawal still removes an approval, whatever the origin, because refusing it would leave a retracted approval spendable' {
-        $p = New-Project
-        Invoke-Prompt -Root $p -HostKind 'claude' -Text 'approved for review round' | Out-Null
-        Test-Stored -Root $p -Kind 'round' | Should -BeTrue
-        Invoke-Prompt -Root $p -HostKind 'claude' -Text 'withdraw the approval' -Origin 'host-injected' | Out-Null
-        Test-Stored -Root $p -Kind 'round' | Should -BeFalse
-    }
 }
 
 Describe 'Text inside a machinery envelope is never reduced to an approval line' {
@@ -355,7 +324,7 @@ Describe 'Text inside a machinery envelope is never reduced to an approval line'
 # Co-review round 3 (iteration 003): the router read the approval form inside a try whose catch kept the raw message and
 # refused nothing, and skipped the form entirely when its function was not loaded. The partial sign-off writer reads every
 # line after its dash as the reason, so a condition typed beside the approval reached it again (the round 7 and 8 defect).
-# A form that cannot be read now refuses every writer that records authority; the withdrawal still runs.
+# A form that cannot be read now refuses every writer that records authority.
 Describe 'An approval form that cannot be read records no authority' {
     BeforeAll {
         # Run in its own process, so the stand-in form function cannot leak into the other cases.
@@ -401,11 +370,4 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
         Test-Stored -Root $p -Kind 'round' | Should -BeFalse
     }
 
-    It 'form throws: a withdrawal still removes a stored round approval' {
-        $p = New-Project
-        Invoke-Capture -Root $p -Mode 'normal' -Text 'approved for review round'
-        Test-Stored -Root $p -Kind 'round' | Should -BeTrue -Because 'precondition: there is an approval to withdraw'
-        Invoke-Capture -Root $p -Mode 'throws' -Text 'withdraw the approval'
-        Test-Stored -Root $p -Kind 'round' | Should -BeFalse
-    }
 }

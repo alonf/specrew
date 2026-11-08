@@ -1373,15 +1373,10 @@ function Invoke-SpecrewTypedAuthorityCapture {
     # caller passes through - the same shape as the path comparer and the fact-file classifier before it -
     # so it now lives here.
     #
-    # ORDER IS LOAD-BEARING: the withdrawal is offered the turn BEFORE the approval it revokes, so one
-    # turn cannot both withdraw and re-approve. The recognizers are disjoint; the order makes that
-    # explicit rather than lucky.
-    #
     # Offering the turn to every writer grants nothing: each applies its own recognizer, at most one
     # can match, and a turn that matches none writes nothing. Fully fail-open - a writer that throws
     # must never break the end of a human's turn.
-    #
-    # SPECREW-AUTHORITY-CONSUMER: approval-withdrawal
+
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
@@ -1540,8 +1535,6 @@ function Invoke-SpecrewTypedAuthorityCapture {
                 $legacyShape = Get-SpecrewTypedAuthorityShape -Text $Response
                 if ($null -ne $legacyShape) {
                     $expectedWriter = switch ([string]$legacyShape.Kind) {
-                        'approval-withdrawal' { 'Write-SpecrewApprovalWithdrawal' }
-                        'review-round-approval' { 'Write-SpecrewReviewRoundApprovalAuthorization' }
                         'pause-decision' { 'Write-SpecrewPauseDecisionAuthorization' }
                         'allowance-reset' { 'Write-SpecrewAllowanceResetAuthorization' }
                         'coverage-deferral' { 'Write-SpecrewCoverageDeferralAuthorization' }
@@ -1584,19 +1577,6 @@ function Invoke-SpecrewTypedAuthorityCapture {
     if ($formEmpty) { return }
     $mintedBy = [System.Collections.Generic.List[string]]::new()
     $writerFailed = $false
-    # The withdrawal is offered the turn first and on every path, as before: it removes authority, so refusing it on a
-    # quoted menu or an unconfirmed origin would leave an approval the human retracted spendable (fails open). The
-    # recognizers are disjoint, so a turn that withdraws is no other act.
-    $withdrawal = Get-Command 'Write-SpecrewApprovalWithdrawal' -ErrorAction SilentlyContinue
-    if ($null -ne $withdrawal) {
-        try {
-            $splat = @{ ProjectRoot = $ProjectRoot; Response = $Response; HostKind = $HostKind; SourceEvent = $SourceEvent }
-            if ($withdrawal.Parameters.ContainsKey('NowUtc') -and -not [string]::IsNullOrWhiteSpace($NowUtc)) { $splat['NowUtc'] = $NowUtc }
-            # The RESULT IS READ, not discarded: a withdrawal whose delete failed reported nothing and was believed (W68).
-            if ($null -ne (& $withdrawal @splat)) { [void]$mintedBy.Add('Write-SpecrewApprovalWithdrawal') }
-        }
-        catch { $writerFailed = $true }
-    }
     # Feature 203 T004 (FR-014, FR-018; DA-1 option B): ONE ACT PER TYPED TURN. The turn used to be offered to every
     # writer, each applying its own reading rules; now the classifier reads it once, against what waits, and only the
     # act it derives reaches the one writer for that kind. A boundary verdict is recorded by the verdict capture and a
@@ -1613,7 +1593,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         if ($identityKind -ceq 'typed-act' -and -not [string]::IsNullOrWhiteSpace($turnId)) { $turnRecord | Add-Member -NotePropertyName act_identity -NotePropertyValue $turnId }
         try {
             $act = Resolve-SpecrewTypedAct -Turn $turnRecord -Pending (Get-SpecrewTypedActPendingState -ProjectRoot $ProjectRoot) -RecordedIdentities (Get-SpecrewTypedActRecordedIdentities -ProjectRoot $ProjectRoot)
-            if ([string]$act.Kind -cnotin @('none', 'boundary-verdict', 'workshop-reply', 'withdrawal')) {
+            if ([string]$act.Kind -cnotin @('none', 'boundary-verdict', 'workshop-reply')) {
                 $writerName = Get-SpecrewTypedActWriterName -Act $act
                 $written = Invoke-SpecrewTypedActSink -ProjectRoot $ProjectRoot -Act $act -Text $Response -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc
                 if ($null -ne $written) { [void]$mintedBy.Add($writerName) }
@@ -1644,7 +1624,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
                 $nrShape = if ($null -ne $rawShape) { $rawShape } else { [pscustomobject]@{ Kind = $(if ([string]::IsNullOrWhiteSpace([string]$act.Shape)) { 'stop-answer' } else { [string]$act.Shape }); Retype = $typedLine } }
                 if ($nrReason -ceq 'missing-destination') { $nrShape = [pscustomobject]@{ Kind = 'stop-answer'; Retype = ('{0} to <destination>' -f $typedLine.TrimEnd('.').Trim()) } }
             }
-            elseif ($null -ne $act -and [string]$act.Kind -cnotin @('none', 'boundary-verdict', 'workshop-reply', 'withdrawal') -and [string]$act.Answer -cne 'judgment' -and
+            elseif ($null -ne $act -and [string]$act.Kind -cnotin @('none', 'boundary-verdict', 'workshop-reply') -and [string]$act.Answer -cne 'judgment' -and
                 [string]::IsNullOrWhiteSpace((Get-SpecrewTypedActWriterName -Act $act))) {
                 # Routed to what waits, and no writer records that kind yet (the review stop answers are T008's).
                 $nrReason = 'no-writer'; $nrShape = [pscustomobject]@{ Kind = [string]$act.Kind; Retype = $typedLine }
@@ -2168,11 +2148,12 @@ function Update-SpecrewRollingHandover {
             -not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
             try { $null = Write-SpecrewOutOfTailVerdictReport -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc } catch { $null = $_ }
         }
-        # W44 Stop backstop for round approval: on hosts where prompt-entry does not deliver the prompt
+        # W44 Stop backstop for the typed authority acts: on hosts where prompt-entry does not deliver the prompt
         # text (observed on claude - verdict capture lands at Stop), read the MOST RECENT genuine human
-        # turn from the transcript and offer it to the same writer. One turn only, verified human, every
-        # recognizer guard still applied - never agent text, never an older utterance resurrected.
-        if ((Get-Command Write-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) -and
+        # turn from the transcript and offer it to the same writers. One turn only, verified human, every
+        # recognizer guard still applied - never agent text, never an older utterance resurrected. Feature 203 T008:
+        # gated on the shared capture, not on the round-approval writer it was named for, which no longer exists.
+        if ((Get-Command Invoke-SpecrewTypedAuthorityCapture -ErrorAction SilentlyContinue) -and
             (Get-Command Get-SpecrewTranscriptParsedTurns -ErrorAction SilentlyContinue) -and
             (Get-Command Format-SpecrewConversationTurnText -ErrorAction SilentlyContinue) -and
             (Get-Command Test-SpecrewTurnIsHumanVerdictEvidence -ErrorAction SilentlyContinue) -and
@@ -2191,7 +2172,6 @@ function Update-SpecrewRollingHandover {
                 # mint loop, so a genuine typed capture in the same pass clears it.
                 if (Get-Command Write-SpecrewQuestionUiPhraseObservation -ErrorAction SilentlyContinue) {
                     $w54Kinds = @(
-                        @{ Phrase = 'approved for review round'; Kind = 'review-round-approval' }
                         @{ Phrase = 'approved for allowance reset'; Kind = 'allowance-reset' }
                         @{ Phrase = 'continue without coverage until the review phase'; Kind = 'coverage-deferral' }
                     )
@@ -2226,10 +2206,6 @@ function Update-SpecrewRollingHandover {
                     #   empty    - a caller from before T017: the position-based identity, as before.
                     # A declared host's typed entry that carries no ID is handled as 'none': this path cannot record it.
                     #
-                    # Co-review round 1 (iteration 002): A WITHDRAWAL IS STILL RECORDED HERE. It removes authority, so
-                    # recording it a second time costs nothing, while losing it leaves an approval the human revoked
-                    # spendable. When the message hook did not see one, this path records it under the position key,
-                    # which the exhausted-turn check holds to once.
                     $ratMessageId = ''
                     if ($roundApprovalTurns[$rat].PSObject.Properties['message_id']) { $ratMessageId = [string]$roundApprovalTurns[$rat].message_id }
                     $identityMode = ([string]$MessageIdentity).Trim().ToLowerInvariant()
@@ -2258,15 +2234,9 @@ function Update-SpecrewRollingHandover {
                                 if (-not (Test-SpecrewPromptChannelSawContent -ProjectRoot $ProjectRoot -ContentHash $ratHash -HostKind $fromHost `
                                             -SinceUtc $earliest -SessionId $SessionId -ExpectedCount $sameText -MessageTimesUtc $pairTimes)) {
                                     $ratKey = if ($roundApprovalTurns[$rat].PSObject.Properties['entry_id'] -and -not [string]::IsNullOrWhiteSpace([string]$roundApprovalTurns[$rat].entry_id)) { [string]$roundApprovalTurns[$rat].entry_id } else { ($ratHash + '|' + $ratWhen) }
-                                    if ([string]$shape.Kind -ceq 'approval-withdrawal') {
-                                        # Co-review round 3 (iteration 002): keyed by the transcript ENTRY, not by its index. The
-                                        # turn end reads a sliding 500-line window, so an index moves as the conversation grows,
-                                        # and each new index was a new key that ran the withdrawal again - against an approval
-                                        # another session had recorded since.
-                                        Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $ratText -HostKind $fromHost `
-                                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc -TurnPosition ('entry:' + $ratKey) -TurnArrival $ratWhen -SessionId $SessionId
-                                    }
-                                    else {
+                                    # Feature 203 T008: a retired phrase (the per-round approval or its withdrawal) recorded
+                                    # nothing wherever it arrived, so its loss here is no loss and is not reported as one.
+                                    if ([string]$shape.Kind -cnotin @('approval-withdrawal', 'review-round-approval')) {
                                         Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey $ratKey -HostKind $fromHost -SessionId $SessionId -NowUtc $NowUtc | Out-Null
                                     }
                                 }
@@ -2287,8 +2257,7 @@ function Update-SpecrewRollingHandover {
                     # Feature 203 T004 (FR-014, FR-022): THE TURN END RECOVERS, IT DOES NOT READ. It cites the newest human
                     # entry by its act identity (unique even when Claude gave a queued message the running turn's promptId)
                     # to the re-deriving writer, which reads it back, classifies it, and records only an act no path has
-                    # recorded. A withdrawal the writer does not take (in a quoted menu, say) still reaches the router, which
-                    # offers it on every path because losing it fails open.
+                    # recorded.
                     $ratText = [string]$roundApprovalTurns[$rat].text
                     $recovered = $null
                     if (-not [string]::IsNullOrWhiteSpace($ratMessageId) -and (Get-Command Write-SpecrewTypedAct -ErrorAction SilentlyContinue)) {
@@ -2302,11 +2271,7 @@ function Update-SpecrewRollingHandover {
                         }
                         catch { $recovered = $null }
                     }
-                    $isWithdrawal = $false
-                    if (Get-Command Test-SpecrewApprovalWithdrawalPhrase -ErrorAction SilentlyContinue) {
-                        try { $isWithdrawal = [bool](Test-SpecrewApprovalWithdrawalPhrase -Text $ratText).Matched } catch { $isWithdrawal = $false }
-                    }
-                    if ($null -eq $recovered -or ($isWithdrawal -and -not [bool]$recovered.Written)) {
+                    if ($null -eq $recovered) {
                         $null = Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
                             -Response $ratText -HostKind $fromHost `
                             -SourceEvent 'stop-transcript' -NowUtc $NowUtc `

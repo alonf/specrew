@@ -644,7 +644,7 @@ function Complete-ReviewPreInvocationFailure {
     $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -HarnessId $HarnessId -RuntimeOutcome $RuntimeOutcome -Invoked $false -TerminationVerified $true -Containment $Containment -Currentness unknown -StartedAt $StartedAt -EndedAt $ObservedAt -DurationMs $DurationMs -FailureReason $Reason
     $ingress | Add-Member -NotePropertyName slot_restored -NotePropertyValue $slotRestored -Force
     $ingress | Add-Member -NotePropertyName slot_restored_note -NotePropertyValue $(
-        if ($slotRestored) { 'The review did not start, so no round of the review budget was used. Fix what this message names and run the review again.' }
+        if ($slotRestored) { 'The review did not start, so no round of the review budget was used, and that round is still available. Fix what this message names and run the review again.' }
         else { '' }
     ) -Force
     return $ingress
@@ -1181,7 +1181,7 @@ function Format-ReviewCampaignBudgetSpentDetail {
     param([Parameter(Mandatory)]$BudgetState)
     $since = if ([string]$BudgetState.budget_source -ceq 'reset') { ' since the last allowance reset' } else { '' }
     $running = if ([int]$BudgetState.in_flight -gt 0) { (' {0} more {1} still running.' -f [int]$BudgetState.in_flight, $(if ([int]$BudgetState.in_flight -eq 1) { 'round is' } else { 'rounds are' })) } else { '' }
-    return ('Specrew did not start another review round, because this iteration''s review budget is used: {0} of {1} rounds{2}.{3} Nothing was launched, recorded or spent. The human can send approved for allowance reset, which grants one fix round and one verification round.' -f [int]$BudgetState.rounds_used, [int]$BudgetState.budget_total, $since, $running)
+    return ('Specrew did not start another review round, because this iteration''s review budget is used: {0} of {1} rounds{2}.{3} Nothing was launched, recorded or spent. The human can type approved for allowance reset, as a normal chat message (a reply inside a question UI or picker is not captured); it grants one fix round and one verification round.' -f [int]$BudgetState.rounds_used, [int]$BudgetState.budget_total, $since, $running)
 }
 
 function New-ReviewCampaignAuthorityStoreRefusal {
@@ -1236,12 +1236,12 @@ function Add-ReviewCampaignRoundPause {
         [AllowEmptyString()][string]$RepoRoot = ''
     )
 
-    # A prior ROUND is one that reached a terminal: it published a result, or it recorded a pause,
-    # or both. Infrastructure failures are excluded here for the same reason FR-014 keeps them off
-    # the allowance - a consumer must not be charged a round for an engine defect.
+    # Feature 203 T008 (DRIFT-052 item 3): the rounds used are the prior rounds that collected a complete review, plus
+    # this one only when it did too. A run that brought back no complete review costs no round, so its pause must not
+    # say it did.
     $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $CampaignId -ExcludeRunId $RunId -RepoRoot $RepoRoot
     $invokedPrior = @($budgetState.invoked_results)
-    $roundsUsed = [int]$budgetState.rounds_used + 1
+    $roundsUsed = [int]$budgetState.rounds_used + $(if (Test-ReviewResultSpendsRound -Result $Result) { 1 } else { 0 })
 
     $elapsedMs = [double]([long](Get-ReviewAuthorityProperty -Object $Result -Name 'duration_ms'))
     foreach ($prior in $invokedPrior) {
@@ -1784,7 +1784,7 @@ function Resolve-ReviewCampaignPublicIdentity {
         # conclude the feature did not exist and to propose bypassing the gate.
         throw ('Specrew could not work out which feature this review is for. It looked at the lifecycle ' +
             'state, the active feature record, and the branch name, and none of them named one. ' +
-            'Tell it directly: specrew review --live --feature <feature-id> --approve-round. Approving the round is the human''s decision - their typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is captured from the conversation, and the command consumes it.')
+            'Tell it directly: specrew review --live --feature <feature-id>. The review budget approved with the implementation pays for the round.')
     }
     $featureDirectory = Join-Path $root "specs/$feature"
     if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }

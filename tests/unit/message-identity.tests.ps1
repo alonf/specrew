@@ -118,8 +118,6 @@ $reserve = @{ ProjectRoot = $ProjectRoot; TurnId = $key; HostKind = $HostKind; S
 $shape = Get-SpecrewTypedAuthorityShape -Text $Text
 $writer = if ($null -eq $shape) { '' } else {
     switch ([string]$shape.Kind) {
-        'approval-withdrawal' { 'Write-SpecrewApprovalWithdrawal' }
-        'review-round-approval' { 'Write-SpecrewReviewRoundApprovalAuthorization' }
         'allowance-reset' { 'Write-SpecrewAllowanceResetAuthorization' }
         default { '' }
     }
@@ -143,11 +141,16 @@ if (-not [string]::IsNullOrWhiteSpace($writer)) {
         return ((& pwsh @a 2>$null) -join "`n")
     }
 
+    # Feature 203 T008: the sample act is the allowance reset (the per-round approval is retired). How many messages a
+    # writer recorded, read from the authority ledger: one line per turn that minted, naming its writer (the prompt hook)
+    # or the act it recorded (`top-up`, the turn end's re-deriving writer).
     function script:Get-RoundCaptures {
         param([Parameter(Mandatory)]$P)
-        $f = Join-Path $P.Root '.specrew/review/round-approval/captures.jsonl'
+        $f = Join-Path $P.Root '.specrew/authority/exhausted-turns.jsonl'
         if (-not (Test-Path -LiteralPath $f)) { return 0 }
-        return @(Get-Content -LiteralPath $f | Where-Object { $_.Trim() }).Count
+        return @(Get-Content -LiteralPath $f | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json } |
+                Where-Object { $_.PSObject.Properties['minted'] -and [string]$_.minted -match 'Write-SpecrewAllowanceResetAuthorization|top-up' } |
+                ForEach-Object { [string]$_.turn_id } | Sort-Object -Unique).Count
     }
 
     # Writer-agnostic: how many distinct turns the authority ledger reserved. One message must reserve one.
@@ -160,16 +163,15 @@ if (-not [string]::IsNullOrWhiteSpace($writer)) {
 
     function script:Set-RoundSpent {
         param([Parameter(Mandatory)]$P)
-        $f = Join-Path $P.Root '.specrew/review/round-approval/pending-round-approval.json'
+        $f = Join-Path $P.Root '.specrew/review/allowance-reset/pending-allowance-reset.json'
         $o = Get-Content -LiteralPath $f -Raw | ConvertFrom-Json
         $o.spent_at = '2026-10-17T05:01:00Z'
-        $o.authorization_ref = 'run-test'
         Set-Content -LiteralPath $f -Value ($o | ConvertTo-Json -Depth 8) -Encoding UTF8
     }
 
     function script:Test-RoundUnspent {
         param([Parameter(Mandatory)]$P)
-        $f = Join-Path $P.Root '.specrew/review/round-approval/pending-round-approval.json'
+        $f = Join-Path $P.Root '.specrew/review/allowance-reset/pending-allowance-reset.json'
         if (-not (Test-Path -LiteralPath $f)) { return $false }
         $o = Get-Content -LiteralPath $f -Raw | ConvertFrom-Json
         return [string]::IsNullOrWhiteSpace([string]$o.spent_at)
@@ -194,9 +196,9 @@ Describe 'One typed approval, both recording paths, N turn ends: exactly one rec
     ) {
         $p = New-Project
         if ($Size -eq 'large') { Add-Filler -P $p }
-        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId 'msg-1'
         $id = if ($HostKind -eq 'copilot') { '' } else { 'msg-1' }
-        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId $id | Out-Null
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId $id | Out-Null
         for ($i = 0; $i -lt 4; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
         Get-RoundCaptures -P $p | Should -Be 1
         Get-ReservedTurns -P $p | Should -Be 1
@@ -207,8 +209,8 @@ Describe 'One typed approval, both recording paths, N turn ends: exactly one rec
     ) {
         $p = New-Project
         Add-Filler -P $p
-        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
-        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1' | Out-Null
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId 'msg-1' | Out-Null
         Set-RoundSpent -P $p
         for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
         Get-RoundCaptures -P $p | Should -Be 1
@@ -222,7 +224,7 @@ Describe 'One typed approval, both recording paths, N turn ends: exactly one rec
         @{ HostKind = 'codex' }, @{ HostKind = 'claude' }
     ) {
         $p = New-Project
-        $text = 'approved for review round - replace secrets with [REDACTED]'
+        $text = 'approved for allowance reset - replace secrets with [REDACTED]'
         Add-Human -P $p -HostKind $HostKind -Text $text -MessageId 'msg-1'
         Invoke-Prompt -P $p -HostKind $HostKind -Text $text -MessageId 'msg-1' | Out-Null
         Set-RoundSpent -P $p
@@ -248,12 +250,12 @@ Describe 'One typed approval, both recording paths, N turn ends: exactly one rec
 Describe 'The key never wedges and the backup path still works' {
     It 'a genuine retype (a new message ID) after the first is spent records a second approval' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1'
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1' | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-1' | Out-Null
         Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude'
         Set-RoundSpent -P $p
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2'
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-2'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-2' | Out-Null
         Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-2'; Invoke-TurnEnd -P $p -HostKind 'claude'
         Get-RoundCaptures -P $p | Should -Be 2
         Test-RoundUnspent -P $p | Should -BeTrue
@@ -264,15 +266,15 @@ Describe 'The key never wedges and the backup path still works' {
     ) {
         $p = New-Project
         Add-Filler -P $p
-        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId 'msg-1'
         for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
         Get-RoundCaptures -P $p | Should -Be 1
     }
 
     It 'claude: a typed transcript entry with no promptId is not recorded by the turn end (no second key)' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -NoMessageId
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1' | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -NoMessageId
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-1' | Out-Null
         for ($i = 0; $i -lt 2; $i++) { Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude' }
         Get-RoundCaptures -P $p | Should -Be 1
         Get-ReservedTurns -P $p | Should -Be 1
@@ -284,7 +286,7 @@ Describe 'Entries that are not a human message never record (claude)' {
     # count, and this case is what keeps a summary out of authority then.
     It 'a compaction summary that quotes an approval line, under the /compact entry promptId, records nothing at the turn end' {
         $p = New-Project
-        Add-Line -P $p -Entry @{ type = 'user'; isCompactSummary = $true; isVisibleInTranscriptOnly = $true; promptId = 'msg-compact'; uuid = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); message = @{ role = 'user'; content = "This session is being continued from a previous conversation.`napproved for review round`nThe maintainer approved the round earlier." } }
+        Add-Line -P $p -Entry @{ type = 'user'; isCompactSummary = $true; isVisibleInTranscriptOnly = $true; promptId = 'msg-compact'; uuid = ([guid]::NewGuid().ToString()); timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); message = @{ role = 'user'; content = "This session is being continued from a previous conversation.`napproved for allowance reset`nThe maintainer approved the round earlier." } }
         for ($i = 0; $i -lt 2; $i++) { Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-compact'; Invoke-TurnEnd -P $p -HostKind 'claude' }
         Get-RoundCaptures -P $p | Should -Be 0
     }
@@ -293,8 +295,8 @@ Describe 'Entries that are not a human message never record (claude)' {
 Describe 'Copilot: the message hook is the only recording path, and a miss is reported, never dropped (DA-2)' {
     It 'an approval the message hook recorded is not reported' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for allowance reset' | Out-Null
         Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
         @(Get-NotRecordedReports -P $p).Count | Should -Be 0
     }
@@ -302,12 +304,12 @@ Describe 'Copilot: the message hook is the only recording path, and a miss is re
     It 'an approval the message hook missed is not recorded by the turn end, is reported once, and that turn end says it once' {
         # Feature 203 T006 (FR-026): said in the same turn, by the turn end that found it, not at the next message.
         $p = New-Project
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset'
         $ends = @(); for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot' | Out-Null; $ends += , [string](Invoke-TurnEnd -P $p -HostKind 'copilot') }
         Get-RoundCaptures -P $p | Should -Be 0
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
         $ends[0] | Should -Match '<<<SPECREW-VISIBLE-LINE>>>.*was not recorded'
-        $ends[0] | Should -Match 'approved for review round'
+        $ends[0] | Should -Match 'approved for allowance reset'
         $ends[1] | Should -Not -Match 'was not recorded'
         Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' | Should -Not -Match 'was not recorded'
     }
@@ -318,8 +320,8 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
         @{ HostKind = 'claude' }, @{ HostKind = 'codex' }
     ) {
         $p = New-Project
-        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
-        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -BeforeMessageIds | Out-Null
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for allowance reset' -BeforeMessageIds | Out-Null
         Set-RoundSpent -P $p
         for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind }
         Get-RoundCaptures -P $p | Should -Be 1
@@ -328,28 +330,15 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
 
     It 'finding 1: a genuine retype after the update still records' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1'
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -BeforeMessageIds | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset' -BeforeMessageIds | Out-Null
         Set-RoundSpent -P $p
         Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude'
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2'
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-2'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-2' | Out-Null
         Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-2'; Invoke-TurnEnd -P $p -HostKind 'claude'
         Get-RoundCaptures -P $p | Should -Be 2
         Test-RoundUnspent -P $p | Should -BeTrue
-    }
-
-    It 'finding 2, copilot: a withdrawal the message hook missed is still recorded by the turn end, once' {
-        $p = New-Project
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
-        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
-        Test-RoundUnspent -P $p | Should -BeTrue
-        Add-Human -P $p -HostKind 'copilot' -Text 'withdraw the approval'
-        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot' }
-        Test-RoundUnspent -P $p | Should -BeFalse
-        $w = Join-Path $p.Root '.specrew/authority/withdrawals.jsonl'
-        @(Get-Content -LiteralPath $w | Where-Object { $_.Trim() }).Count | Should -Be 1
     }
 
     It 'finding 2, copilot: a missed <Kind> is reported too' -ForEach @(
@@ -366,19 +355,19 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
 
     It 'finding 3, copilot: the same phrase typed again and missed is reported, though the first was recorded' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for allowance reset' | Out-Null
         Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
         Set-RoundSpent -P $p
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset'
         Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
     }
 
     It 'finding 3, copilot: another session recording the same phrase does not vouch for this one' {
         $p = New-Project
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' -Session 's2' | Out-Null
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for allowance reset' -Session 's2' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset'
         Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
     }
@@ -386,7 +375,7 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
     It 'finding 4, copilot: a miss in one session is said in that session, and never in another' {
         $p = New-Project
         $t2 = Join-Path $p.Root 'transcript-s2.jsonl'
-        Add-Content -LiteralPath $t2 -Value ((@{ type = 'user.message'; id = 'e-s2'; timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = 'approved for review round'; messageId = 'm-s2' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
+        Add-Content -LiteralPath $t2 -Value ((@{ type = 'user.message'; id = 'e-s2'; timestamp = ([DateTimeOffset]::UtcNow.ToString('o')); data = @{ content = 'approved for allowance reset'; messageId = 'm-s2' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
         Add-Content -LiteralPath $t2 -Value ((@{ type = 'assistant.message'; id = 'a-s2'; data = @{ content = 'Working on it.' } } | ConvertTo-Json -Depth 6 -Compress)) -Encoding UTF8
         $end2 = Invoke-TurnEnd -P $p -HostKind 'copilot' -Session 's2' -Transcript $t2
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
@@ -409,8 +398,8 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
 
     It 'finding 6, copilot: an approval recorded with a trailing space is not reported as missing' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round '
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round ' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset '
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for allowance reset ' | Out-Null
         Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
         Get-RoundCaptures -P $p | Should -Be 1
         @(Get-NotRecordedReports -P $p).Count | Should -Be 0
@@ -418,11 +407,11 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
 
     It 'under a message-ID key, a retype is not logged as a double mint' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-1'
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-1'
         Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind 'claude'
         Set-RoundSpent -P $p
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2'
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-2' | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-2'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset' -MessageId 'msg-2' | Out-Null
         $f = Join-Path $p.Root '.specrew/authority/exhausted-turns.jsonl'
         (Get-Content -LiteralPath $f -Raw) | Should -Not -Match 'cross-channel-double-mint'
     }
@@ -431,11 +420,11 @@ Describe 'Co-review round 1 (iteration 002): the six findings, each as its own r
 Describe 'Co-review round 2 (iteration 002): the four findings, each as its own replay' {
     It 'finding 1: a spent pre-update approval typed with a trailing space is not recorded again after the update' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'claude' -Text 'approved for review round ' -MessageId 'msg-1'
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round ' -BeforeMessageIds | Out-Null
+        Add-Human -P $p -HostKind 'claude' -Text 'approved for allowance reset ' -MessageId 'msg-1'
+        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for allowance reset ' -BeforeMessageIds | Out-Null
         # As the old message hook wrote it: the content hash of the UNTRIMMED text, and no identity field.
         $ledger = Join-Path $p.Root '.specrew/authority/exhausted-turns.jsonl'
-        $untrimmed = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('approved for review round ')))).ToLowerInvariant()
+        $untrimmed = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('approved for allowance reset ')))).ToLowerInvariant()
         $rows = foreach ($line in [IO.File]::ReadAllLines($ledger)) {
             $o = $line | ConvertFrom-Json
             $o.content_hash = $untrimmed
@@ -453,15 +442,15 @@ Describe 'Co-review round 2 (iteration 002): the four findings, each as its own 
         @{ HostKind = 'copilot' }, @{ HostKind = 'claude' }
     ) {
         $p = New-Project
-        $dir = Join-Path $p.Root '.specrew/review/round-approval'
+        $dir = Join-Path $p.Root '.specrew/review/allowance-reset'
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
-        $locked = Join-Path $dir 'pending-round-approval.json'
+        $locked = Join-Path $dir 'pending-allowance-reset.json'
         Set-Content -LiteralPath $locked -Value '{}' -Encoding UTF8
         $id = if ($HostKind -eq 'copilot') { '' } else { 'msg-1' }
-        Add-Human -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId 'msg-1'
+        Add-Human -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId 'msg-1'
         $hold = [IO.File]::Open($locked, 'Open', 'ReadWrite', 'None')
         $shown = $null
-        try { $shown = Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for review round' -MessageId $id }
+        try { $shown = Invoke-Prompt -P $p -HostKind $HostKind -Text 'approved for allowance reset' -MessageId $id }
         finally { $hold.Dispose() }
         $shown | Should -Match 'could not be saved'
         Add-AssistantTurn -P $p -HostKind $HostKind -MessageId 'msg-1'; Invoke-TurnEnd -P $p -HostKind $HostKind
@@ -473,11 +462,11 @@ Describe 'Co-review round 2 (iteration 002): the four findings, each as its own 
 
     It 'finding 3, copilot: an identical approval outside the transcript window never vouches for a missed one typed 30 seconds later' {
         $p = New-Project
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset'
+        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for allowance reset' | Out-Null
         Set-RoundSpent -P $p
         Add-Filler -P $p
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round' -SecondsFromNow 30
+        Add-Human -P $p -HostKind 'copilot' -Text 'approved for allowance reset' -SecondsFromNow 30
         Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
         @(Get-NotRecordedReports -P $p).Count | Should -Be 1
     }
@@ -488,7 +477,7 @@ Describe 'Co-review round 2 (iteration 002): the four findings, each as its own 
         New-Item -ItemType Directory -Path (Split-Path -Parent $journal) -Force | Out-Null
         $now = [DateTimeOffset]::UtcNow.ToString('o')
         [IO.File]::WriteAllLines($journal, [string[]]@(
-                (@{ event = 'authority-phrase-not-recorded'; phrase = 'review-round-approval'; reason = 'message-hook-did-not-record'; retype = 'approved for review round'; choice = ''; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)
+                (@{ event = 'authority-phrase-not-recorded'; phrase = 'allowance-reset'; reason = 'message-hook-did-not-record'; retype = 'approved for allowance reset'; choice = ''; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)
                 (@{ event = 'authority-phrase-not-recorded-disclosed'; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)
                 (@{ event = 'authority-phrase-not-recorded-undelivered'; entry_key = 'e1'; host_kind = 'copilot'; session_id = 's1'; recorded_at = $now } | ConvertTo-Json -Compress)))
         Invoke-Prompt -P $p -HostKind 'copilot' -Text 'what is next?' | Should -Match 'was not recorded'
@@ -497,23 +486,6 @@ Describe 'Co-review round 2 (iteration 002): the four findings, each as its own 
 }
 
 Describe 'Co-review round 3 (iteration 002): the three findings, each as its own replay' {
-    It 'finding 1, copilot: a recovered withdrawal runs once as the window slides, and never revokes a later approval from another session' {
-        $p = New-Project
-        Add-Filler -P $p
-        Add-Human -P $p -HostKind 'copilot' -Text 'approved for review round'
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' | Out-Null
-        Add-Human -P $p -HostKind 'copilot' -Text 'withdraw the approval'
-        Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot'
-        Test-RoundUnspent -P $p | Should -BeFalse
-        # Another session records a new approval; this session's conversation grows, sliding the window.
-        Invoke-Prompt -P $p -HostKind 'copilot' -Text 'approved for review round' -Session 's2' | Out-Null
-        Test-RoundUnspent -P $p | Should -BeTrue
-        for ($i = 0; $i -lt 3; $i++) { Add-AssistantTurn -P $p -HostKind 'copilot'; Add-AssistantTurn -P $p -HostKind 'copilot'; Invoke-TurnEnd -P $p -HostKind 'copilot' }
-        Test-RoundUnspent -P $p | Should -BeTrue
-        $w = Join-Path $p.Root '.specrew/authority/withdrawals.jsonl'
-        @(Get-Content -LiteralPath $w | Where-Object { $_.Trim() }).Count | Should -Be 1
-    }
-
     It 'finding 2, <HostKind>: a workshop repair approval whose save failed is reported, though its writer handles its own errors' -ForEach @(
         @{ HostKind = 'copilot' }, @{ HostKind = 'claude' }
     ) {
@@ -547,22 +519,6 @@ Describe 'Co-review round 3 (iteration 002): the three findings, each as its own
 }
 
 Describe 'Co-review round 4 (iteration 002): the three findings, each as its own replay' {
-    It 'finding 1, claude: a withdrawal the message hook missed is recorded, though an older <Prior> was recorded 5 seconds before it' -ForEach @(
-        @{ Prior = 'ok, carry on' }, @{ Prior = 'approved for review round' }
-    ) {
-        $p = New-Project
-        Invoke-Prompt -P $p -HostKind 'claude' -Text 'approved for review round' -MessageId 'msg-0' | Out-Null
-        Test-RoundUnspent -P $p | Should -BeTrue
-        # The old message hook reserved every message under its own key, with no identity: history, in the time window.
-        Invoke-Prompt -P $p -HostKind 'claude' -Text $Prior -BeforeMessageIds | Out-Null
-        Add-Human -P $p -HostKind 'claude' -Text 'withdraw the approval' -MessageId 'msg-2' -SecondsFromNow 5
-        Add-AssistantTurn -P $p -HostKind 'claude' -MessageId 'msg-2'
-        Invoke-TurnEnd -P $p -HostKind 'claude'
-        Test-RoundUnspent -P $p | Should -BeFalse
-        $w = Join-Path $p.Root '.specrew/authority/withdrawals.jsonl'
-        @(Get-Content -LiteralPath $w | Where-Object { $_.Trim() }).Count | Should -Be 1
-    }
-
     It 'finding 3, <HostKind>: a workshop repair approval whose existing record could not be read is reported, not dropped as a non-match' -ForEach @(
         @{ HostKind = 'copilot' }, @{ HostKind = 'claude' }
     ) {
@@ -594,7 +550,7 @@ Describe 'Co-review round 4 (iteration 002): the three findings, each as its own
 
 Describe 'B4F-137: an approval the human types replaces an unspent record from the turn-end path' {
     It '<Phrase>: the stored approval carries the typed message, not an older turn-end record' -ForEach @(
-        @{ Phrase = 'approved for review round'; Store = '.specrew/review/round-approval/pending-round-approval.json' }
+        @{ Phrase = 'approved for allowance reset'; Store = '.specrew/review/allowance-reset/pending-allowance-reset.json' }
         @{ Phrase = 'approved for allowance reset'; Store = '.specrew/review/allowance-reset/pending-allowance-reset.json' }
     ) {
         $p = New-Project

@@ -1455,4 +1455,45 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
     is written first, in step (iii).
   - The iteration plan's FR-008 row ("zero rounds") is corrected to the floor of 2 with T008's records. The ruling
     gives no boundary approval: T008 continues within the recorded before-implement approval.
-- **Class closure**: OPEN until T008 lands the ruled design; the items close step by step in the order of item 7.
+- **Built, step (i) (items 1 to 3)**: `2bfa0ca4` (engine and review command) and the commit after it (the hook side and the
+  suites that tested the removed approval). `tests/unit/review-budget-loop.Tests.ps1` (15 cases) failed 15 of 15 on the
+  commits before each part and passes on the tree; it is in lane `f203-i001-suites`.
+  - **Launch authority.** `Invoke-ReviewCampaignCommand` has no `-GrantAuthorizationRef`. It resolves the campaign's budget
+    grant, or the recorded before-implement verdict a floor grant will cite, before any pause, grant, reservation or
+    snapshot; with neither it refuses (`review-budget-no-verdict`) and writes nothing. Each launch gets a one-slot grant
+    whose `authorization_ref` is the budget grant (or, after a reset, the reset). The budget gate (used plus in-flight rounds
+    below the total) runs for every launch.
+  - **The floor grant** (`budget_source = floor-no-grant`) records `floor_reason` and `counts_from`, the verdict's own recorded
+    time; it names no plan. Interpretation: ledger entries do not name their iteration, so only the session's active
+    iteration has an identifiable verdict, and a grant-less campaign for another iteration is refused. Consequence for this
+    iteration: on the branch's engine, rounds run since the 2026-10-31 verdict (T002's review) count against the floor of 2.
+    The iteration review launches from the pin, whose engine still takes per-round approvals, so it is not affected.
+  - **What spends a round.** The result records `review_collected` (a valid candidate whose completion is complete), and the
+    counter counts only those, from the grant's `counts_from` or the latest reset. Interpretation: a run the controller
+    degrades (no design context, no source examined) still spends, because the reviewer delivered a complete review and a free
+    rerun would loop on the same degrade. Pause facts no longer stand in for a result. A round's pause counts itself only when
+    it collected a review.
+  - **Not yet built: partial findings as open findings** (the second half of item 3: carried into the next round, closed only
+    by a fix or a typed line, never clean). Where a finding is open and what is clean are decided by the loop's end and the
+    sign-off check, items 5 and 6, so it lands in step (iii) with them.
+  - **Removed (FR-010).** `--approve-round` (the review script refuses it in plain words; the front door no longer lists it),
+    the captured round approval, its mint, consumption, delivery and unconsumed-delivery records, the reset's derived round
+    approval, the entitlement retry loop with its "more time" retry, the out-of-band `--authorization-ref ... --ack-reason`
+    launch, and the `reviewer-hosts.json` reference as a grant. `--authorization-ref` remains only to record a reviewer host
+    (`--host X --authorization-ref Y`); on a live launch without `--host` it is refused, nothing written.
+  - **The typed phrases.** `approved for review round` and `withdraw the approval` are still recognised, so the first is never
+    read as the `review` boundary verdict (B4F-116/150), but they record nothing: the classifier returns `retired-act`, and the
+    human is told at their message that the phrase changed nothing and why. The Stop backstop for every typed act was gated on
+    the round-approval writer existing; it is gated on the shared capture now. B5F-029 findings 2 and 3 (the withdrawal taking
+    the round slot lock; a superseding partial sign-off reaching the round-approval consumption) close by removal: there is no
+    round slot or consumption left.
+  - **Suites.** Renamed with their subject: `round-approval-typed-authority` to `typed-authority-capture` (its general rules
+    now proven on the allowance reset and the stop decisions; 88 cases), `pause-choice-carries-round-approval` to
+    `pause-choice-spends-the-budget`, `review-approve-round-host-resolution` to `review-host-resolution`; lanes updated.
+    Deleted: `tests/integration/approve-round-decision.Tests.ps1` (release-gate list updated). Migrated to the allowance reset
+    or the new texts: `message-identity`, `typed-act-writer` (cases 2 to 6, 10b, 12 and 15 removed with the slot),
+    `typed-act-classifier`, `approval-form`, `capture-disclosure`, `not-recorded-report`, `subagent-prompt-authority`,
+    `timestamp-read`, `campaign-pause-core`, `campaign-pause-wiring`, `review-public-campaign-command`,
+    `review-harness-contract`, `review-spend-allowance`, `advisory-names-the-humans-act`, `authority-control-consumer-guard`,
+    `authorization-ref-not-the-advice`, `review-flag-whitelist-parity`, `slash-command-arg-whitelist`, and the navigator suite.
+- **Class closure**: OPEN; step (i) built except the partial-findings half of item 3 (step iii). Next: step (ii), item 4.

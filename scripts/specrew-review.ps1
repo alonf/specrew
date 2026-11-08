@@ -156,9 +156,9 @@ Options:
   --pause-choice <1|2|3> Carry a decided pause answer to Specrew (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign):
                          1 run another round, 2 stop here and complete sign-off, 3 abandon
   --pause-rationale      Optional note recorded with a stop-here answer
-  --authorization-ref    Your own authorization label. With --host and without --live, this
-                         only records reviewer setup and needs no --ack-reason or review spend.
-                         When it authorizes a live round, --ack-reason is required.
+  --authorization-ref    With --host, records that reviewer host as authorized, under your own label
+                         (who authorized it). It never pays for a round: the review budget
+                         approved with the implementation does.
   --code-writer-host     Host that produced the implementation, used to prefer an independent reviewer
   --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
   --allowed-path         Path scope the reviewer may inspect; repeatable
@@ -1265,8 +1265,9 @@ if ($Live) {
                         exit 1
                     }
                     # SPECREW-AUTHORITY-CONSUMER: review-round-budget
-                    if ([bool]$budgetState.budget_exhausted) {
-                        Write-Host ("The round budget for this review is spent ({0} of {1} rounds used), so another round was not authorized." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
+                    # Feature 203 T008: a round still running holds its place, so the gate is the counter's continuation.
+                    if (-not [bool]$budgetState.continuation_available) {
+                        Write-Host ("The round budget for this review is used ({0} of {1} rounds), so another round was not started." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
                         Write-Host 'Your answer was not recorded. Topping up the allowance is the human''s decision: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it: specrew review --remediate allowance-reset' -ForegroundColor Cyan
                         exit 1
                     }
@@ -1545,7 +1546,7 @@ if ($Live) {
                     Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
-                        Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <your note of who authorized it>'
+                        Write-Host '    specrew review --host <claude|codex|...> --authorization-ref reviewer-chosen-by-human'
                     }
                     elseif ($reason -match 'allowance-exhausted') {
                         # W50 rider: round accounting spoke three currencies - "1 of 4 rounds" on the

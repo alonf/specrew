@@ -34,7 +34,8 @@ Describe 'authority controls have production consumers' {
 
     It 'budget exhaustion is consumed before both answer recording and campaign invocation' {
         $cli = script:Get-ScriptAst 'scripts/specrew-review.ps1'
-        (script:Get-MemberAsts $cli 'budget_exhausted').Count | Should -BeGreaterThan 0
+        # Feature 203 T008: the gate is the counter's continuation, which holds a round still in flight.
+        (script:Get-MemberAsts $cli 'continuation_available').Count | Should -BeGreaterThan 0
 
         $orchestrator = script:Get-ScriptAst 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1'
         $calls = script:Get-CommandAsts $orchestrator 'Test-ReviewCampaignContinuationAuthorized'

@@ -36,7 +36,34 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
             [IO.File]::WriteAllText((Join-Path $Root 'specs/001-demo/spec.md'), '# Demo design context', [Text.UTF8Encoding]::new($false))
             & git -C $Root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
             & git -C $Root -c user.name=t -c user.email=t@example.invalid commit -qm initial 2>&1 | Out-Null
+            # Feature 203 T008 (FR-003, FR-010): the campaign's budget grant is its only launch authority. Four rounds, the
+            # cap these cases were written against, counted from before any round below.
+            script:Set-PauseBudget -Root $Root -Total 4
             return $Root
+        }
+
+        function script:Set-PauseBudget {
+            param([string]$Root, [int]$Total)
+            $resolution = [pscustomobject]@{
+                budget_total = $Total; host_order = @(); host_order_stated = $false; infra_failure_cap = 2
+                budget_source = 'plan'; ceiling = 10; plan_path = 'specs/001-demo/plan.md'; plan_hash = ('a' * 64)
+            }
+            $fact = New-ReviewBudgetGrantFact -CampaignId 'cmp-001-demo-i007' -Resolution $resolution -VerdictEntry 'auth-pause-verdict' -ObservedAt '2026-01-01T00:00:00.0000000+00:00'
+            $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot (Join-Path $Root '.specrew/review/authority') -Fact $fact
+        }
+
+        # A round the counter counts: a published result that collected a complete review (DRIFT-052 item 3).
+        function script:Add-SpentRound {
+            param([string]$Store, [string]$Campaign, [string]$RunId, [string]$StartedAt, [string]$Digest)
+            $result = [pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $Campaign; run_id = $RunId; target_digest = $Digest; harness_id = 'fixture'
+                completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+                currentness = 'current'; validation = 'valid'; can_approve_current = $false; summary = 'fixture'; findings = @()
+                started_at = $StartedAt; ended_at = $StartedAt; duration_ms = 60000; examined_paths = @(); review_collected = $true
+            }
+            Request-ReviewAuthorityClaim -StoreRoot $Store -CampaignId $Campaign -RunId $RunId -TargetLineage 'lin-budget' -ObservedAt $StartedAt | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $Store -CampaignId $Campaign -RunId $RunId -Fact $result | Out-Null
+            Complete-ReviewAuthorityClaim -StoreRoot $Store -CampaignId $Campaign -RunId $RunId -TargetLineage 'lin-budget' -Disposition released -ObservedAt $StartedAt | Out-Null
         }
 
         function script:New-PauseConfig {
@@ -101,9 +128,9 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         }
 
         function script:Invoke-PauseCommand {
-            param([string]$Root, [string]$Config, [string]$RunId, [string]$External, [string]$AuthRef = 'auth-pause-1')
+            param([string]$Root, [string]$Config, [string]$RunId, [string]$External)
             return Invoke-ReviewCampaignCommand -RepoRoot $Root -FeatureId '001-demo' -IterationNumber '007' `
-                -RunId $RunId -AuthorityConfigPath $Config -GrantAuthorizationRef $AuthRef `
+                -RunId $RunId -AuthorityConfigPath $Config `
                 -Ports (script:New-PausePorts -Root $Root -External $External -RunId $RunId)
         }
     }
@@ -189,7 +216,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
             }
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId 'run-gating' -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-gating' `
+            -RunId 'run-gating' -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot $external
                     harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort
@@ -216,7 +243,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
 
         # The SECOND invocation is the whole point. Before this wiring it ran a full review.
         $second = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId 'run-block-b' -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-pause-2' `
+            -RunId 'run-block-b' -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'block-ext-b')
                     # If the guard leaks, THIS throws - the refusal must happen before any harness work.
@@ -250,12 +277,12 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
             New-ReviewCampaignPauseDecisionFact -CampaignId ([string]$first.campaign_id) -RunId $answered `
                 -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
 
-        $second = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-cont-b' -External (Join-Path $TestDrive 'cont-ext-b') -AuthRef 'auth-pause-2'
+        $second = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-cont-b' -External (Join-Path $TestDrive 'cont-ext-b')
         [string]$second.status | Should -Be 'terminal' -Because 'an answered fix-and-continue is what authorizes the next round'
         [bool]$second.invoked | Should -BeTrue
     }
 
-    It 'THE PUBLIC COMMAND refuses a fifth round even when the latest pause says fix-and-continue and the round is approved' {
+    It 'THE PUBLIC COMMAND refuses a fifth round of a four-round budget even when the latest pause says fix-and-continue' {
         $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'budget-ceiling')
         $config = script:New-PauseConfig -Root $root
         $store = Join-Path $root '.specrew/review/authority'
@@ -264,6 +291,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         foreach ($round in 1..4) {
             $runId = "run-budget-$round"
             $observedAt = "2026-08-11T0$round`:00:00.0000000+00:00"
+            script:Add-SpentRound -Store $store -Campaign $campaign -RunId $runId -StartedAt $observedAt -Digest "digest-$round"
             Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
                 New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId $runId -TargetDigest "digest-$round" `
                     -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() `
@@ -276,7 +304,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         ) | Out-Null
 
         $fifth = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId 'run-budget-5' -AuthorityConfigPath $config -GrantAuthorizationRef 'human-approved-round-5' `
+            -RunId 'run-budget-5' -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'budget-ceiling-ext')
                     harness = [pscustomobject]@{
@@ -322,7 +350,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         }
 
         $attempt = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId "run-after-$name" -AuthorityConfigPath $config -GrantAuthorizationRef 'human-approved-corruption-test' `
+            -RunId "run-after-$name" -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive "corrupt-$name-ext")
                     harness = [pscustomobject]@{
@@ -359,7 +387,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         # decision instead of asking Get-ReviewCampaignPendingPause, which only ever returns unanswered
         # pauses and could therefore only answer "pending" - a tautology, not a check.
         $second = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId "run-end-$choice-b" -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-pause-2' `
+            -RunId "run-end-$choice-b" -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive "end-ext2-$choice")
                     harness = [pscustomobject]@{
@@ -723,7 +751,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId ([string]$first.campaign_id) -RunId 'run-pre-failed' -TargetLineage ([string]$first.target_lineage) -Disposition released -ObservedAt $failedAt | Out-Null
 
         # The retry the human is entitled to: their answer was never spent on a reviewer.
-        $retry = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-pre-b' -External (Join-Path $TestDrive 'pre-ext-b') -AuthRef 'auth-pause-2'
+        $retry = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-pre-b' -External (Join-Path $TestDrive 'pre-ext-b')
         [string]$retry.status | Should -Be 'terminal' -Because 'a round that never launched a reviewer cannot have consumed the answer that authorized one'
         [bool]$retry.invoked | Should -BeTrue
     }
@@ -753,7 +781,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId 'run-nopause' -TargetLineage 'lin-nopause' -Disposition released -ObservedAt '2026-08-11T12:10:01Z' | Out-Null
 
         $next = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId 'run-nopause-next' -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-nopause' `
+            -RunId 'run-nopause-next' -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'nopause-ext')
                     harness = [pscustomobject]@{
@@ -786,7 +814,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         [string]$first.status | Should -Be 'terminal'
 
         $second = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
-            -RunId 'run-resume-b' -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-resume-2' `
+            -RunId 'run-resume-b' -AuthorityConfigPath $config `
             -Ports ([pscustomobject]@{
                     target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'resume-ext-b')
                     harness = [pscustomobject]@{ id = 'must-not-run'

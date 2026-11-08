@@ -2,20 +2,15 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# W44 (2026-08-22, maintainer ruling): ROUND APPROVAL IS A TYPED PHRASE, LIKE EVERY OTHER AUTHORITY.
+# TYPED AUTHORITY IS CAPTURED FROM THE HUMAN'S OWN TURN, ONCE, AND NEVER FROM ANYTHING ELSE.
 #
-# RED FIRST, as the ruling demanded: before this change, `specrew review --live --approve-round` minted
-# an approval on BARE INVOCATION, regardless of who invoked it. An agent running the command WAS the
-# approval - the only authority in the system an agent could perform rather than relay. The acceptance
-# case below ("an agent invocation with no captured approval is refused") fails against that build,
-# which is the red this suite existed to produce.
-#
-# The model now: the human types `approved for review round` in the conversation; the prompt hooks
-# capture it (Stop backstop for hosts whose prompt event carries no text); the agent runs the command,
-# which consumes the captured phrase as its authority and stamps it spent with the reference it became.
-# A human at their own terminal - no agent session env - is still self-evidently authorized: their
-# invocation IS the approving act. The !-prefix path is covered by the capture recognizing the human's
-# own typed invocation as the act.
+# Born as the W44 suite (2026-08-22, maintainer ruling: round approval is a typed phrase like every other
+# authority). Feature 203 T008 (FR-010; DRIFT-052) removed the per-round approval and its withdrawal: the
+# review budget approved with the implementation pays for review rounds. The rules this suite pinned through
+# the round approval are kept, now proven on the acts that remain - the allowance reset and the stop
+# decisions: a turn mints at most once, across channels; a damaged ledger or installation fails closed; a
+# condition, a reversal or a following block defers; a question-UI reply is observed, never authority; and
+# the retired phrase is still recognised, so it is never read as the `review` boundary verdict.
 #
 # GOVERNANCE, not security: an agent holding the filesystem could fabricate the capture file, exactly
 # as it could fabricate verdict_history. The control makes the honest path the easy path and turns a
@@ -70,7 +65,7 @@ BeforeAll {
     }
 }
 
-Describe 'W44 the recognizer accepts only a clear human approving act' {
+Describe 'W44 the retired round-approval phrase is still recognised, so it is never read as the review boundary verdict' {
     It 'accepts the typed phrase and its natural variants' {
         foreach ($text in @('approved for review round',
                 'Approved for a review round - focus on the layout module',
@@ -134,43 +129,6 @@ Describe 'W44 the recognizer accepts only a clear human approving act' {
     }
 }
 
-Describe 'W44 the capture store: one approval, one round' {
-    It 'captures, reads back unspent, and reads null once completed' {
-        $root = New-CampaignFixture
-        try {
-            $written = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $written | Should -Not -BeNullOrEmpty
-            (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root).verdict_text | Should -Be 'approved for review round'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'cmp-x-round-1'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'a spent approval authorizes nothing further'
-            $onDisk = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
-            [string]$onDisk.authorization_ref | Should -Be 'cmp-x-round-1' -Because 'the record reads end to end: the phrase, and the reference it became'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'refuses to authorize from agent text: a non-prompt source event captures nothing' {
-        $root = New-CampaignFixture
-        try {
-            Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'PostToolUse' | Should -BeNullOrEmpty
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'fails CLOSED on a hand-authored file that does not hash-check' {
-        $root = New-CampaignFixture
-        try {
-            $path = Get-PendingFactPath -Root $root
-            New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-            # The forgery shape: the fields an author would guess, without the hash discipline.
-            Set-Content -LiteralPath $path -Value '{"schema_version":"1.0","fact_type":"review-round-approval","authority_kind":"human","verdict_text":"approved for review round","response_hash":"not-the-hash","evidence_source":"hook-captured-user-prompt","source_event":"UserPromptSubmit","observed_at":"2026-08-22T00:00:00Z"}' -Encoding UTF8
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'absent is the fail direction, and a file that does not check is absent'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-}
-
 Describe 'W44 the agent-session signal list cannot drift from the host detector' {
     It 'matches the per-host env sets in Get-SpecrewRuntimeHostFromEnv' {
         # The parity the store comment promises. A host added to HandoverStore without being added to
@@ -185,77 +143,11 @@ Describe 'W44 the agent-session signal list cannot drift from the host detector'
     }
 }
 
-Describe 'W44 ACCEPTANCE: who may fire a round, end to end through the real CLI' {
-    It 'RED-FIRST CASE: an agent invocation with no captured approval is refused, naming the phrase' {
-        # This is the case that fails against the pre-W44 build, where bare invocation minted.
-        $root = New-CampaignFixture
-        try {
-            $run = Invoke-ReviewCli -Root $root -Context 'agent'
-            $run.ExitCode | Should -Be 1
-            $run.Text | Should -Match 'approved for review round' -Because 'the refusal must hand the agent the exact phrase to ask for'
-            $run.Text | Should -Match 'no approval from them has been captured'
-            $run.Text | Should -Not -Match 'Round approved'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'an agent invocation AFTER the typed phrase runs - and an UNDELIVERED run leaves the entitlement standing' {
-        # W50 (maintainer ruling) supersedes the original stamp-at-mint expectation this case carried:
-        # the allowance meters attempts; the human authorizes DELIVERIES. This fixture has no reviewer,
-        # so nothing is ever delivered - and the walk proved the old behavior wrong: the capture was
-        # spent by an invocation that crashed, and the one-capture-one-round refusal locked the human
-        # out. The entitlement now survives every failure and is consumed only by a delivered review.
-        $root = New-CampaignFixture
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $run = Invoke-ReviewCli -Root $root -Context 'agent'
-            $run.Text | Should -Match 'Round approved by the human''s typed phrase'
-            $run.Text | Should -Not -Match 'no approval from them has been captured'
-            $fact = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
-            [string]$fact.spent_at | Should -BeNullOrEmpty -Because 'nothing was delivered, so the entitlement stands - a failure must not spend the human''s approval'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'a human at their own terminal is still self-evidently authorized' {
-        # No agent session env, no capture needed: the invocation IS the approving act.
-        $root = New-CampaignFixture
-        try {
-            $run = Invoke-ReviewCli -Root $root -Context 'terminal'
-            $run.Text | Should -Not -Match 'no approval from them has been captured'
-            $run.Text | Should -Match 'Round approved\. Specrew recorded your approval as'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-}
-
 Describe 'W44 the pause menu answer that spends a round carries the same authority' {
     # Extension (maintainer, 2026-08-22): answering the pause with "run another round" IS approving a
     # round - W21 established that for the mint - so the gate covers the whole approval predicate, and
     # `--pause-choice 1` was the last invocation-is-approval surface. Choices 2 and 3 spend nothing and
     # must never be asked to authorize the spend they are declining.
-
-    It 'an agent relaying pause-choice 1 without a captured phrase is refused' {
-        $root = New-CampaignFixture
-        try {
-            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '1')
-            $run.ExitCode | Should -Be 1
-            $run.Text | Should -Match 'no approval from them has been captured'
-            $run.Text | Should -Match 'approved for review round'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'an agent relaying pause-choice 1 AFTER the typed phrase gets past the gate' {
-        $root = New-CampaignFixture
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '1')
-            # The bare fixture fails later for its own reasons; what matters is WHICH refusal.
-            $run.Text | Should -Not -Match 'no approval from them has been captured'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
 
     It 'choices 2 and 3 spend nothing and are never gated on an approval' {
         $root = New-CampaignFixture
@@ -268,114 +160,6 @@ Describe 'W44 the pause menu answer that spends a round carries the same authori
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'a human at their terminal answering pause-choice 1 stays self-evident' {
-        $root = New-CampaignFixture
-        try {
-            $run = Invoke-ReviewCli -Root $root -Context 'terminal' -CliArgs @('--pause-choice', '1')
-            $run.Text | Should -Not -Match 'no approval from them has been captured'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'both pause surfaces name the typed phrase on the option that spends' {
-        # W49 rewording: the option leads with the typed decision (`run another round`) and carries the
-        # approval phrase, because choosing it approves a round.
-        foreach ($file in @('scripts/internal/continuous-co-review/review-authority-core.ps1',
-                'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')) {
-            $text = Get-Content -LiteralPath (Join-Path $script:RepoRoot $file) -Raw -Encoding UTF8
-            $optionLine = [regex]::Match($text, "id = 1[^\r\n]*run another round[^\r\n]*").Value
-            $optionLine | Should -Not -BeNullOrEmpty -Because $file
-            $optionLine.Contains('approved for review round') | Should -BeTrue -Because 'the human answering in a conversation must be shown the phrase that IS the approval'
-        }
-    }
-
-    It 'THE GENERAL PROPERTY: the gate condition is the same predicate that gates the mint' {
-        # Checkable now, as the ruling asked: no code path mints round authority without either a
-        # captured phrase or the human own invocation. The gate must sit on $roundApprovalRequested -
-        # the one predicate W21 pins as the full set of round-approving entries - so a new entry added
-        # to the predicate is gated automatically, and narrowing the gate back to the flag alone is a
-        # detectable mutation (the pause-choice refusal case above goes red).
-        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $tokens = $null; $parseErrors = $null
-        $ast = [System.Management.Automation.Language.Parser]::ParseInput($cli, [ref]$tokens, [ref]$parseErrors)
-        $gate = @($ast.FindAll({
-                    param($node)
-                    $node -is [System.Management.Automation.Language.IfStatementAst] -and
-                    $node.Extent.Text.Contains('no approval from them has been captured') -and
-                    $node.Extent.Text.Contains('approved for review round')
-                }, $true) | Sort-Object { $_.Extent.Text.Length } | Select-Object -First 1)
-        @($gate).Count | Should -Be 1
-        # Walk outward: the refusal must live under a $roundApprovalRequested condition.
-        $node = $gate[0]; $guarded = $false
-        while ($null -ne $node) {
-            if ($node -is [System.Management.Automation.Language.IfStatementAst] -and
-                $node.Clauses[0].Item1.Extent.Text -match 'roundApprovalRequested') { $guarded = $true; break }
-            $node = $node.Parent
-        }
-        $guarded | Should -BeTrue -Because 'gating on ApproveRound alone leaves pause-choice 1 as an invocation-is-approval surface'
-    }
-}
-
-Describe 'W50 the entitlement: the allowance meters attempts, the human authorizes deliveries' {
-    # RED-FIRST against the pre-W50 build: the walk's --approve-round consumed the captured phrase and
-    # minted round-2, then crashed on FeatureId validation - the approval was spent by an invocation
-    # that could never run, and the one-capture-one-round refusal locked the human out.
-
-    It 'ACCEPTANCE: an unresolvable feature refuses in consumer language and leaves the entitlement unconsumed - and says so' {
-        $root = New-CampaignFixture
-        try {
-            # Strip every feature-resolution source: no feature dir match for the branch, no
-            # session feature_ref, no feature.json.
-            Remove-Item -LiteralPath (Join-Path $root 'specs/001-fixture') -Recurse -Force
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--approve-round') -OmitFeature
-            $run.ExitCode | Should -Be 1
-            $run.Text | Should -Match '--feature' -Because 'the refusal names the flag in consumer language'
-            $run.Text | Should -Not -Match '\[0-9\]\+-\[a-z0-9\]' -Because 'a raw id regex is an internal-language leak in a refusal'
-            $run.Text | Should -Match 'was NOT spent'
-            $fact = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
-            [string]$fact.spent_at | Should -BeNullOrEmpty -Because 'failure before invocation consumes nothing'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'classifies every outcome the rule names, on FR-014''s own discriminator' {
-        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'completed'; completion = 'complete' } })).outcome | Should -Be 'delivered'
-        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'completed'; completion = 'partial' } })).outcome | Should -Be 'undelivered' -Because 'a partial is consumed only when the human explicitly accepts it'
-        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'timed-out'; completion = 'incomplete' } })).outcome | Should -Be 'undelivered'
-        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'preflight-failed'; completion = '' } })).outcome | Should -Be 'not-invoked' -Because 'a run that never reached a reviewer is failure-before-invocation, whatever the plumbing says'
-        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $false; status = 'not-started'; result = $null })).outcome | Should -Be 'not-invoked'
-        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun $null).outcome | Should -Be 'not-invoked'
-    }
-
-    It 'a partial the human explicitly accepts consumes the entitlement - at the acceptance' {
-        $root = New-CampaignFixture
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $null = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $root -TargetTreeId ('a' * 40) -CampaignId 'cmp-w50-fixture'
-            $null = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $root -Response 'approved for partial review signoff - the uncovered half is generated code' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'accepting the partial IS the delivery'
-            $fact = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
-            [string]$fact.authorization_ref | Should -Match '^partial-accepted:'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'THE STRUCTURE: consumption keys on delivered, the retry is bounded at one, and both are journaled' {
-        # The retry loop is CLI plumbing around a live harness, so its wiring is pinned structurally:
-        # Complete- fires only inside the delivered branch; the loop breaks at attempt 2; every
-        # undelivered attempt and every retry choice writes the delivery journal; and the second
-        # failure produces the plain-language ask, never the phrase demand.
-        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $loop = [regex]::Match($cli, "(?s)# W50: THE ENTITLEMENT LOOP.+?could not be delivered after a retry").Value
-        $loop | Should -Not -BeNullOrEmpty
-        $loop.Contains("outcome -ceq 'delivered'") | Should -BeTrue
-        ([regex]::Matches($loop, [regex]::Escape('Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot'))).Count | Should -Be 1 -Because 'delivery is the only consumption point in the loop'
-        $loop.Contains('if ($entitlementAttempt -ge 2) { break }') | Should -BeTrue -Because 'unlimited retry on failure is a token-burn hole'
-        $loop.Contains("'spent-without-delivery'") | Should -BeTrue -Because 'the cost is real and must stay visible'
-        $loop.Contains("'automatic-retry'") | Should -BeTrue -Because 'the retry choice is recorded'
-        $cli.Contains('Your approval is still standing') | Should -BeTrue -Because 'the ask is never a re-approval of the same decision'
-    }
 }
 
 Describe 'W50 rider: the allowance reset is phrase-gated authority' {
@@ -455,7 +239,7 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
         try {
             # The claude shape of an ask-user reply: a USER record whose content is a tool_result -
             # the phrase is in the transcript, and no genuine human turn carries it.
-            $line = '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":[{"type":"text","text":"approved for review round"}]}]}}'
+            $line = '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":[{"type":"text","text":"approved for allowance reset"}]}]}}'
             $tp = Join-Path $root 'transcript.jsonl'
             [IO.File]::WriteAllLines($tp, [string[]]@($line), [Text.UTF8Encoding]::new($false))
 
@@ -465,11 +249,11 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
             . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1')
             Update-SpecrewRollingHandover -ProjectRoot $root -TranscriptPath $tp -Source 'Stop' | Out-Null
 
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'a tool-result reply is not a typed turn; capture refusing it is the doctrine, not the defect'
             $obs = Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root
             $obs | Should -Not -BeNullOrEmpty -Because 'the refusing pass must record what it saw, or the refusal downstream cannot name the cause'
-            [string]$obs.phrase_kind | Should -Be 'review-round-approval'
+            [string]$obs.phrase_kind | Should -Be 'allowance-reset'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -478,12 +262,12 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
         $root = Join-Path ([IO.Path]::GetTempPath()) ('w54-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
         try {
-            $cliEcho = ('review output line`nThe approval is their typed reply: approved for review round`nmore output ' + ('x' * 400))
+            $cliEcho = ('review output line`nThe approval is their typed reply: approved for allowance reset`nmore output ' + ('x' * 400))
             $lines = @(
                 # The agent rendering the menu - assistant text quoting the phrase.
-                '{"type":"assistant","message":{"content":[{"type":"text","text":"Reply with `approved for review round` to approve one round."}]}}'
+                '{"type":"assistant","message":{"content":[{"type":"text","text":"Reply with `approved for allowance reset` to approve one round."}]}}'
                 # The QUESTION (tool_use input naming the phrase as an option) - a question is not a reply.
-                '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"ask_user","input":{"options":["approved for review round","hold"]}}]}}'
+                '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"ask_user","input":{"options":["approved for allowance reset","hold"]}}]}}'
                 # CLI output echoing the advisory inside a LONG tool-result string - command output, not a picker reply.
                 ('{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t3","content":[{"type":"text","text":"' + $cliEcho + '"}]}]}}')
             )
@@ -506,9 +290,9 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
         $root = Join-Path ([IO.Path]::GetTempPath()) ('w54-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
         try {
-            Write-SpecrewQuestionUiPhraseObservation -ProjectRoot $root -PhraseKind 'review-round-approval' -HostKind 'copilot' -SourceEvent 'stop-transcript' | Out-Null
+            Write-SpecrewQuestionUiPhraseObservation -ProjectRoot $root -PhraseKind 'allowance-reset' -HostKind 'copilot' -SourceEvent 'stop-transcript' | Out-Null
             (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root) | Should -Not -BeNullOrEmpty
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'copilot' -SourceEvent 'UserPromptSubmit'
+            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'copilot' -SourceEvent 'UserPromptSubmit'
             Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'once the human typed it in the chat, the picker diagnosis is history, not standing state'
         }
@@ -521,7 +305,7 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
         $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
         $cli.Contains('Get-SpecrewQuestionUiPhraseObservation') | Should -BeTrue -Because 'a refusal that cannot see the observation cannot name the cause'
         ([regex]::Matches($cli, [regex]::Escape('Ask the human to type it in the chat'))).Count |
-            Should -BeGreaterOrEqual 2 -Because 'both the round-approval and allowance-reset refusals diagnose the picker shape'
+            Should -BeGreaterOrEqual 1 -Because 'the allowance-reset refusal diagnoses the picker shape (feature 203 T008 removed the round approval and its refusal)'
     }
 }
 
@@ -637,57 +421,6 @@ Describe 'W57 round 16: authority must survive a reversal, a lost stamp, and a p
         }
     }
 
-    It 'MAJOR: a withdrawal the CLI advertises actually revokes the pending capture' {
-        # Round-16 finding: after the bounded delivery attempts fail, the CLI tells the human they may
-        # withdraw the approval and promises nothing further runs - and no recognizer, fact or check
-        # implemented it, so the next --approve-round loaded the same unspent capture and invoked
-        # another reviewer. A promise in a refusal is a contract.
-        (Test-SpecrewApprovalWithdrawalPhrase -Text 'withdraw the review round approval').Matched | Should -BeTrue
-        (Test-SpecrewApprovalWithdrawalPhrase -Text 'withdraw my approval').Matched | Should -BeTrue
-        (Test-SpecrewApprovalWithdrawalPhrase -Text 'should I withdraw my approval?').Matched | Should -BeFalse -Because 'a question is not an act, here as everywhere'
-        (Test-SpecrewApprovalWithdrawalPhrase -Text 'we discussed how to withdraw my approval').Matched | Should -BeFalse -Because 'a mention is not an act'
-
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w57-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root) | Should -Not -BeNullOrEmpty
-            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'a withdrawn approval is not standing authority - the promise the refusal made'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'MAJOR: a consumption that did not land is reported, never silently accepted' {
-        # Round-16 finding: the delivered branch swallowed every error from the consumption write and
-        # never checked its postcondition, so a transient failure left spent_at unset and the NEXT
-        # invocation derived a fresh grant from the same capture - two delivered reviews from one
-        # approval. The writer now verifies its own postcondition by read-back.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w57-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'ref-one'
-            [bool]$done.consumed | Should -BeTrue -Because 'a landed consumption reports that it landed'
-            [string]$done.fact.spent_at | Should -Not -BeNullOrEmpty
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty
-
-            # Absent capture: consumed=false, never a silent success.
-            Remove-Item -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') -Force
-            $missing = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'ref-two'
-            [bool]$missing.consumed | Should -BeFalse
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'the CLI blocks on an unconsumed approval rather than accepting the delivery quietly' {
-        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $branch = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,20000}?break').Value
-        $branch | Should -Not -BeNullOrEmpty
-        $branch.Contains('consumed') | Should -BeTrue -Because 'the delivered branch must read the consumption result, not discard it'
-        $branch | Should -Not -Match '\}\s*catch\s*\{\s*\$null = \$_\s*\}' -Because 'swallowing the consumption error is the defect'
-    }
 }
 
 
@@ -732,134 +465,8 @@ Describe 'W58 round 17: a claim about the frozen tree is checked, and a delivere
         @($byName.source_paths).Count | Should -Be 1
     }
 
-    It 'MAJOR: a delivered round whose stamp did not land blocks the next mint instead of warning' {
-        # Round-17 finding: the round-16 fix reported the failed consumption and stopped there, so the
-        # capture stayed unspent and the NEXT invocation minted a fresh grant from the same approval -
-        # a second paid review from one human act. The delivered-unconsumed state is now a durable
-        # fact, and the mint gate fails closed on it.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w58-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $root | Should -BeNullOrEmpty
-            $null = Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $root -RunId 'run-x' -AuthorizationRef 'cmp-x-round-1' -Reason 'stamp-not-durable'
-            $fact = Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $root
-            $fact | Should -Not -BeNullOrEmpty
-            [string]$fact.authorization_ref | Should -Be 'cmp-x-round-1'
-            [string]$fact.reason | Should -Be 'stamp-not-durable'
-            # Clearing is explicit: the state ends when the approval it names is actually spent.
-            Clear-SpecrewUnconsumedDeliveryFact -ProjectRoot $root
-            Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $root | Should -BeNullOrEmpty
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'the CLI writes that fact on a failed consumption and refuses to mint while it stands' {
-        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $delivered = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,20000}?break').Value
-        $delivered.Contains('Write-SpecrewUnconsumedDeliveryFact') | Should -BeTrue -Because 'a warning is not a control - the state must survive the process'
-        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
-        $mint.Contains('Get-SpecrewUnconsumedDeliveryFact') | Should -BeTrue -Because 'the mint gate must fail closed on a delivered round that was never marked paid'
-    }
 }
 
-
-Describe 'W59 round 18: the double-spend block is derived from delivery evidence, not from a marker that can also fail' {
-    BeforeAll { . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') }
-
-    It 'an unspent capture older than a DELIVERED run has already bought its review' {
-        # Round-18 finding (DRIFT-199-I001-128): round 17 blocked the double spend with a marker
-        # file - and the marker write can fail for exactly the reason the consumption write failed
-        # (unwritable directory, full disk), leaving nothing to block the next mint once storage
-        # recovers. THIRD consecutive round finding my fix one layer short of enforcement. The block
-        # is now DERIVED from evidence that was already published before the failure could occur:
-        # a delivered run that started after the capture was observed IS that capture's round.
-        $captureObserved = '2026-08-25T10:00:00.0000000+00:00'
-        $deliveredAfter = @([pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T10:05:00.0000000+00:00'; run_id = 'run-after' })
-        $deliveredBefore = @([pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T09:00:00.0000000+00:00'; run_id = 'run-before' })
-        $undelivered = @([pscustomobject]@{ runtime_outcome = 'launch-failed'; started_at = '2026-08-25T10:05:00.0000000+00:00'; run_id = 'run-failed' })
-
-        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults $deliveredAfter) |
-            Should -Not -BeNullOrEmpty -Because 'a delivered run after the capture is the round that capture paid for'
-        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults $deliveredBefore) |
-            Should -BeNullOrEmpty -Because 'a round that ran BEFORE the human typed cannot have been bought by it'
-        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults $undelivered) |
-            Should -BeNullOrEmpty -Because 'an undelivered attempt spends nothing - the W50 entitlement rule'
-        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults @()) |
-            Should -BeNullOrEmpty
-        # Unparseable timestamps must not fabricate a block: absent evidence is not evidence.
-        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt 'not-a-time' -RunResults $deliveredAfter) |
-            Should -BeNullOrEmpty
-    }
-
-    It 'the fallback marker verifies its own postcondition' {
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w59-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            $written = Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $root -RunId 'run-x' -AuthorizationRef 'cmp-x-round-1' -Reason 'stamp-not-durable'
-            $written | Should -Not -BeNullOrEmpty -Because 'a successful write reports the fact it can read back'
-            # A directory at the file path makes the write unserviceable: the writer must report that
-            # rather than returning a fact nobody can read.
-            $root2 = Join-Path ([IO.Path]::GetTempPath()) ('w59-' + [guid]::NewGuid().ToString('N'))
-            New-Item -ItemType Directory -Path (Join-Path $root2 '.specrew/review/round-approval/delivered-unconsumed.json') -Force | Out-Null
-            Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $root2 -RunId 'run-y' -AuthorizationRef 'cmp-y-round-1' -Reason 'stamp-not-durable' |
-                Should -BeNullOrEmpty -Because 'an unverifiable marker must not report success'
-            Remove-Item -LiteralPath $root2 -Recurse -Force -ErrorAction SilentlyContinue
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'the CLI derives the block from run results, not only from the marker' {
-        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
-        $mint.Contains('Get-SpecrewDeliveredRoundForMintedRef') | Should -BeTrue -Because 'the block survives a failed marker write only if it is derived from published evidence - joined through the grant since round 19'
-    }
-}
-
-Describe 'W60 the delivered-round comparison uses instants, not locale-rendered strings' {
-    BeforeAll { . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') }
-
-    It 'THE LIVE FALSE POSITIVE: a fresh approval is not blocked by an EARLIER delivered round' {
-        # Round-19 walk (DRIFT-199-I001-129), found by the round-18 block refusing the maintainer's
-        # own approval: both timestamps arrive from ConvertFrom-Json as DateTime objects, and
-        # [string] renders a Kind=Utc value as a bare UTC clock while rendering a +00:00 value as
-        # LOCAL - so the two instants were compared in different frames and skewed by the machine's
-        # offset. The delivered round (08:52Z) predates the capture (09:16Z) and must not block it.
-        $stored = '{"observed_at":"2026-08-25T09:16:59.8263433Z"}' | ConvertFrom-Json
-        $run = '{"runtime_outcome":"completed","started_at":"2026-08-25T08:52:55.5802455+00:00","run_id":"run-earlier"}' | ConvertFrom-Json
-        Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $stored.observed_at -RunResults @($run) |
-            Should -BeNullOrEmpty -Because 'a round that ran BEFORE the human typed cannot have been bought by that approval'
-    }
-
-    It 'still blocks when the delivered round genuinely followed the approval, in the same shapes' {
-        $stored = '{"observed_at":"2026-08-25T09:16:59.8263433Z"}' | ConvertFrom-Json
-        $later = '{"runtime_outcome":"completed","started_at":"2026-08-25T10:30:00.0000000+00:00","run_id":"run-later"}' | ConvertFrom-Json
-        $blocked = Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $stored.observed_at -RunResults @($later)
-        $blocked | Should -Not -BeNullOrEmpty
-        [string]$blocked.run_id | Should -Be 'run-later'
-    }
-
-    It 'treats every stored time shape as the instant it names' {
-        # Offset-bearing, Z-suffixed, and DateTime objects of each Kind must all mean one instant.
-        $observedUtcString = '2026-08-25T09:00:00.0000000Z'
-        $observedOffsetString = '2026-08-25T12:00:00.0000000+03:00'   # the same instant, written differently
-        $runAt0930 = [pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T09:30:00.0000000Z'; run_id = 'run-0930' }
-        foreach ($shape in @($observedUtcString, $observedOffsetString, ([DateTime]::SpecifyKind([DateTime]::Parse('2026-08-25T09:00:00'), 'Utc')))) {
-            Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $shape -RunResults @($runAt0930) |
-                Should -Not -BeNullOrEmpty -Because '09:30Z follows 09:00Z however 09:00Z was written'
-        }
-        $runAt0830 = [pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T08:30:00.0000000Z'; run_id = 'run-0830' }
-        foreach ($shape in @($observedUtcString, $observedOffsetString)) {
-            Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $shape -RunResults @($runAt0830) |
-                Should -BeNullOrEmpty -Because '08:30Z precedes 09:00Z however 09:00Z was written'
-        }
-    }
-
-    It 'the CLI hands the stored value over, not a locale rendering of it' {
-        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
-        $mint | Should -Not -Match '-CaptureObservedAt \(\[string\]' -Because 'stringifying a stored DateTime is what skewed the comparison by the machine offset'
-    }
-}
 
 Describe 'W61 round 19: ownership is joined through the grant, and the recovery path actually recovers' {
     BeforeAll {
@@ -885,79 +492,6 @@ Describe 'W61 round 19: ownership is joined through the grant, and the recovery 
                 Set-Content -LiteralPath (Join-Path $base 'runs/run-joined/result.json') -Encoding UTF8
             return [pscustomobject]@{ Root = $root; CampaignId = $campaign }
         }
-    }
-
-    It 'BLOCKING/MAJOR: ownership is joined through the grant this capture minted, never inferred from time' {
-        # Round-19 findings (DRIFT-199-I001-130): the block asked "did any completed run start after
-        # this capture?" - so an unrelated round completing in the same campaign refused a pending
-        # approval that never paid for it. Ownership is a JOIN through published facts:
-        # capture.minted_ref -> grant.authorization_ref -> reservation.run_id -> run result.
-        $f = New-JoinFixture -AuthorizationRef 'cmp-fixture-i001-round-7'
-        try {
-            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-7' |
-                Should -Not -BeNullOrEmpty -Because 'that grant reserved that run, and that run completed'
-            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-9' |
-                Should -BeNullOrEmpty -Because 'a DIFFERENT round completing is not this approval being spent - the round-19 major'
-            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef '' |
-                Should -BeNullOrEmpty -Because 'a capture that never minted a grant owns no round'
-        }
-        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'a run that completed with partial coverage is not a delivered round (co-review round 12, finding 4)' {
-        # The ingestor records runtime_outcome completed with completion partial; the post-run path counts that undelivered,
-        # and this join took it as delivered, so the next --approve-round marked the standing approval spent.
-        $f = New-JoinFixture -AuthorizationRef 'cmp-fixture-i001-round-7' -Completion 'partial'
-        try {
-            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-7' |
-                Should -BeNullOrEmpty -Because 'a partial is spent only when the human accepts it'
-        }
-        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'an undelivered run under this captures own grant leaves the entitlement standing' {
-        $f = New-JoinFixture -AuthorizationRef 'cmp-fixture-i001-round-7' -RunOutcome 'launch-failed'
-        try {
-            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-7' |
-                Should -BeNullOrEmpty -Because 'the W50 rule: attempts are metered, deliveries are authorized'
-        }
-        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'BLOCKING: the capture records the grant it minted, so ownership can be joined at all' {
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $stamped = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $root -AuthorizationRef 'cmp-x-round-3'
-            [bool]$stamped.stamped | Should -BeTrue -Because 'the mint must be recorded on the capture, verified by read-back'
-            [string](Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root).minted_ref | Should -Be 'cmp-x-round-3'
-            # Stamping the mint does NOT spend the capture: an undelivered attempt keeps the entitlement.
-            [string]((Get-Content (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') -Raw | ConvertFrom-Json).spent_at) |
-                Should -BeNullOrEmpty
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'BLOCKING: the recovery the CLI prints actually recovers - the delivered capture is retired' {
-        # Round-19 blocking finding: the CLI told the human to re-type the phrase, the writer treated
-        # the identical text as the same act and kept the old capture, and the block fired forever -
-        # the recovery instruction wedged the loop. Detecting a delivered round for this capture now
-        # RETIRES it (completing the consumption that failed), so the next approval is a fresh act.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $root -AuthorizationRef 'cmp-x-round-3'
-            $reconciled = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'cmp-x-round-3'
-            [bool]$reconciled.consumed | Should -BeTrue
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'a retired capture is not standing authority'
-            # And a NEW typed approval after that is a genuinely new act, not deduped into the old one.
-            $fresh = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $fresh | Should -Not -BeNullOrEmpty
-            [string]$fresh.minted_ref | Should -BeNullOrEmpty -Because 'a fresh capture owns no round yet, so nothing blocks it'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'BLOCKING: declared coverage rejects traversal and absolute paths outright' {
@@ -1232,17 +766,6 @@ Describe 'W64 round 22: authority machinery fails CLOSED, proven on a damaged in
     }
     AfterAll { Remove-Item -LiteralPath $script:DamagedRoot -Recurse -Force -ErrorAction SilentlyContinue }
 
-    It 'ACCEPTANCE: a damaged installation refuses to approve a round rather than approving without the human' {
-        $root = New-CampaignFixture
-        try {
-            $run = Invoke-DamagedCli -Root $root -CliArgs @('--approve-round')
-            $run.ExitCode | Should -Be 1
-            $run.Text | Should -Match '(?i)cannot check'
-            $run.Text | Should -Not -Match '(?i)Round approved' -Because 'a broken installation must never mint authority'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
     It 'ACCEPTANCE: a damaged installation refuses to replenish the allowance' {
         $root = New-CampaignFixture
         try {
@@ -1271,7 +794,7 @@ Describe 'W64 round 22: authority machinery fails CLOSED, proven on a damaged in
     It 'the refusal names what is wrong and what to do, without blaming the human' {
         $root = New-CampaignFixture
         try {
-            $run = Invoke-DamagedCli -Root $root -CliArgs @('--approve-round')
+            $run = Invoke-DamagedCli -Root $root -CliArgs @('--remediate', 'allowance-reset', '--ack-reason', '"because"')
             $run.Text | Should -Match '(?i)specrew update'
             $run.Text | Should -Match '(?i)nothing (was|has been) (spent|recorded)'
         }
@@ -1331,36 +854,12 @@ Describe 'W65 round 23: a PARTIAL authority store is a damaged one, and every fa
         }
     }
 
-    It 'ACCEPTANCE: a store missing the MINT and CONSUMPTION controls refuses to approve a round' {
-        # The store keeps Get-SpecrewReviewRoundApprovalAuthorization and
-        # Test-SpecrewInsideAgentSession - the two the round-22 assertion checked - and loses
-        # everything that links and retires the approval afterwards.
-        $installRoot = New-PartialInstallation -CutAtFunction 'Get-SpecrewPendingPauseIdentity'
-        $root = New-CampaignFixture
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $run = Invoke-InstallationCli -InstallRoot $installRoot -Root $root -CliArgs @('--approve-round')
-            $run.ExitCode | Should -Be 1
-            $run.Text | Should -Match '(?i)cannot check'
-            $run.Text | Should -Not -Match '(?i)Round approved' -Because 'launching a paid round whose approval can never be retired is the defect'
-            # And the human's approval is untouched: a refusal before the act spends nothing.
-            [string]((Get-Content (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') -Raw | ConvertFrom-Json).spent_at) |
-                Should -BeNullOrEmpty
-        }
-        finally {
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-            Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
     It 'the readiness sets name every authority function their own path calls' {
         # Structural, and deliberately mechanical: the assertion must not drift behind the code it
         # protects. Each required set is compared against the functions that path actually guards.
         $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        foreach ($required in @('Set-SpecrewReviewRoundApprovalMintedRef', 'Get-SpecrewDeliveredRoundForMintedRef',
-                'Complete-SpecrewReviewRoundApprovalAuthorization', 'Resolve-SpecrewRoundEntitlementOutcome')) {
-            $cli | Should -Match ("(?s)Assert-SpecrewAuthorityMachineryReady -Action 'approve a review round'.{0,900}?" + [regex]::Escape($required)) -Because "the round path calls $required"
-        }
+        # Feature 203 T008: the round path is gone with the per-round approval; the reset and stop paths remain.
+        $cli | Should -Not -Match "Assert-SpecrewAuthorityMachineryReady -Action 'approve a review round'"
         $cli | Should -Match "(?s)Assert-SpecrewAuthorityMachineryReady -Action 'replenish the review rounds'.{0,600}?Complete-SpecrewAllowanceResetAuthorization" -Because 'the reset path consumes its own capture'
     }
 
@@ -1459,28 +958,13 @@ Describe 'W66 round 24: one routing table for typed authority, a durable mint, a
             # PRECONDITION FIRST (appendix rule: a test asserts its own precondition). If this control
             # does not capture, the fixture's transcript shape is wrong and the case below would pass
             # or fail for reasons that have nothing to do with pause decisions.
-            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Invoke-StopCapture -Root $root -HumanText 'approved for allowance reset'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the fixture must be a transcript the Stop backstop actually reads'
 
             Invoke-StopCapture -Root $root -HumanText 'stop the review here'
             $decision = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
             $decision | Should -Not -BeNullOrEmpty -Because 'a decision the human typed must reach the store on every supported host'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'RED-FIRST: a typed withdrawal arriving only at Stop is captured, because that one fails OPEN' {
-        # The same divergence hid a worse case than the reported one: a withdrawal that never lands
-        # leaves an approval the human RETRACTED still spendable.
-        $root = New-StopCaptureRoot
-        try {
-            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -Not -BeNullOrEmpty -Because 'precondition: there must be an approval to withdraw'
-            Invoke-StopCapture -Root $root -HumanText 'withdraw my approval'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'the human took it back; a retracted approval must not stay spendable'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -1523,30 +1007,6 @@ Describe 'W66 round 24: one routing table for typed authority, a durable mint, a
         $direct | Should -BeNullOrEmpty -Because 'a hand-copied call site is how the two branches diverged in the first place'
         ([regex]::Matches($handover, 'Invoke-SpecrewTypedAuthorityCapture\s+-ProjectRoot')).Count |
             Should -BeGreaterOrEqual 2 -Because 'prompt-entry and the Stop backstop are both capture branches'
-    }
-
-    It 'RED-FIRST: a mint stamp that cannot be written refuses BEFORE launch instead of warning and running' {
-        # Round-24 finding: the CLI printed ROUND_APPROVAL_MINT_NOT_RECORDED and carried on. Without a
-        # durable minted_ref the delivered round cannot be joined back to the approval that paid for
-        # it, so the next invocation mints a second round from the same human approval.
-        $root = New-CampaignFixture
-        $handle = $null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            $pending = Get-PendingFactPath -Root $root
-            # A real transient failure: the file is readable, so the approval is found, but no writer
-            # can replace it - which is exactly the shape the stamp's read-back reports.
-            $handle = [IO.File]::Open($pending, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::Read)
-            $run = Invoke-ReviewCli -Root $root -Context 'agent'
-            $run.ExitCode | Should -Be 1
-            $run.Text | Should -Match 'will not start the review'
-            $run.Text | Should -Match 'still standing' -Because 'the human must be told their approval was not spent'
-            $run.Text | Should -Not -Match 'Round approved by the human' -Because 'the round must not launch on a link that was never written'
-        }
-        finally {
-            if ($null -ne $handle) { $handle.Dispose() }
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-        }
     }
 
     It 'RED-FIRST: allowance-reset consumption reports its outcome and verifies its own stamp' {
@@ -1637,84 +1097,6 @@ Describe 'W68 round 25: a withdrawal that cannot delete still revokes, and a pau
     # CONSUMPTION of the writer's result open, which is the report-don't-control shape this file has now
     # been corrected for four times.
 
-    It 'RED-FIRST: a withdrawal whose delete FAILS still revokes the approval' {
-        # The reported path: Write-SpecrewApprovalWithdrawal journals, then deletes the pending file.
-        # If the delete throws it returns $null with the approval intact, the router discards every
-        # writer result, and the reader never consults the journal - so the next --approve-round spends
-        # authority the human explicitly took back.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-wd-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        $handle = $null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
-            $pending = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
-            [IO.File]::Exists($pending) | Should -BeTrue -Because 'precondition: there must be an approval to withdraw'
-
-            # A transient lock: readable, so the withdrawal can journal what it revokes, but the delete
-            # cannot land. This is the reviewer's stated scenario, reproduced rather than imagined.
-            $handle = [IO.File]::Open($pending, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            [IO.File]::Exists($pending) | Should -BeTrue -Because 'precondition: the delete really did fail, which is what this case is about'
-
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'the human took it back; a file that could not be deleted must not hand their authority to the next command'
-        }
-        finally {
-            if ($null -ne $handle) { $handle.Dispose() }
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    It 'a withdrawal does NOT revoke an approval the human typed AFTERWARDS' {
-        # The recovery must recover. Revoking forever would be the round-19 wedge in another costume:
-        # the human withdraws, changes their mind, types the approval again, and is refused by a
-        # withdrawal that predates the new act.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-wd2-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        try {
-            $t0 = [DateTimeOffset]::UtcNow.AddMinutes(-10)
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.ToString('o'))
-            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.AddMinutes(1).ToString('o'))
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the withdrawal took effect'
-
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.AddMinutes(2).ToString('o'))
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -Not -BeNullOrEmpty -Because 'a later approval is a new act, not the one that was withdrawn'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'a journal it cannot read means WITHDRAWN, not "carry on"' {
-        # The fail-closed branch's own case. Its first cut had none: deleting the branch left the suite
-        # green, which is the inert-control class this feature keeps hitting and which mutation - not
-        # the green - is what finds. Everywhere else in this file a false refusal costs a retype; here
-        # a false ACCEPT spends authority the human revoked, so this is the one reader that must fail
-        # closed on corruption.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-corrupt-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
-        $handle = $null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -Not -BeNullOrEmpty -Because 'precondition: the approval reads fine while the journal is readable'
-
-            $journal = Join-Path $root '.specrew/review/round-approval/captures.jsonl'
-            $handle = [IO.File]::Open($journal, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'if it cannot tell whether the human withdrew, it must not hand over their authority'
-        }
-        finally {
-            if ($null -ne $handle) { $handle.Dispose() }
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
     It 'RED-FIRST: a pause decision does not bind to an ALREADY-ANSWERED pause from another campaign' {
         # The reported wedge: the identity reader scans every pending-pause.json in the project and
         # takes the newest observed_at, without excluding pauses that already carry a sibling
@@ -1802,20 +1184,20 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         # the backstop does on the next end-of-turn.
         $root = New-TurnRoot
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.ToString('o')) `
                 -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'precondition: the turn minted once, which is its whole entitlement'
 
-            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $done = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             [bool]$done.consumed | Should -BeTrue -Because 'precondition: the round really did spend it'
 
             # SAME turn: same position, same arrival, same text. A later Stop, nothing new from the human.
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(5).ToString('o')) `
                 -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'the human typed once; a turn mints at most once, ever'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -1827,13 +1209,13 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         # must not sit behind the same condition, or it inherits the same hole.
         $root = New-TurnRoot
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
-            $path = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
+            $path = Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json'
             [IO.File]::Exists($path) | Should -BeTrue -Because 'precondition: there is a capture to spend'
             # Delete the slot entirely - the most extreme "no unspent record to match" state there is.
             [IO.File]::Delete($path)
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
             [IO.File]::Exists($path) | Should -BeFalse -Because 'the turn was already exhausted; the state of the slot is not what decides that'
         }
@@ -1845,15 +1227,15 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         # round-19 wedge in yet another costume.
         $root = New-TurnRoot
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
 
             # The human types it again: a LATER turn in the transcript, its own arrival.
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'two typed acts are two authorities; the rule bounds re-offers, not humans'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -1885,16 +1267,16 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         # inert-control class again, this time hiding the one line where the regeneration lived.
         $root = New-TurnRoot
         try {
-            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Invoke-StopCapture -Root $root -HumanText 'approved for allowance reset'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'precondition: the backstop really does mint from this transcript'
 
-            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $done = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             [bool]$done.consumed | Should -BeTrue -Because 'precondition: a round spent it'
 
             # The next end-of-turn, with nothing new from the human: the same transcript, re-read.
-            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Invoke-StopCapture -Root $root -HumanText 'approved for allowance reset'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'this is the regeneration that was measured in production; one turn, one mint'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -1906,16 +1288,16 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         $handle = $null
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             [IO.File]::Exists($ledger) | Should -BeTrue -Because 'precondition: a mint records its turn'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
 
             $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '5' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-5'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'if it cannot tell whether this turn already minted, it must not mint'
         }
         finally {
@@ -1969,47 +1351,20 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         # rather than deleted, so the history of what was tried stays visible.
         $root = New-TurnRoot
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T15:40:45Z' `
                 -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11' -TurnOrigin 'typed-user'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'precondition: the prompt channel minted the human act'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
                 -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'one human message is one act however many channels deliver it'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Not -Match 'cross-channel-double-mint' `
                 -Because 'nothing minted twice, so there is nothing to observe'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'W70 ORIGINAL, kept as history: prompt-entry and Stop were once required to mint ONCE across both' -Skip {
-        # THE BLOCKING FINDING. Identity hashes SourceEvent, position and arrival, all of which differ
-        # between the two deliveries of ONE utterance. So prompt-entry mints, the agent consumes it
-        # during the turn, and the end-of-turn Stop computes a different id and writes the spent
-        # authorization back as fresh - the exact regeneration W69 was ruled to end, still open through
-        # the one door W69 did not look at.
-        $root = New-ChannelRoot
-        try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T15:40:45Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -Not -BeNullOrEmpty -Because 'precondition: prompt-entry minted the human act'
-
-            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            [bool]$done.consumed | Should -BeTrue -Because 'precondition: the round spent it during the turn'
-
-            # The SAME utterance, delivered again at end-of-turn by the other channel.
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
-                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'one human utterance is one act however many channels deliver it'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -2020,12 +1375,12 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         # mints. Without this the fix would trade a forgery for a wedge, which is the round-19 lesson.
         $root = New-ChannelRoot
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'on a prompt-entry-less host the backstop is the only channel, and a retype is a new act'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2039,7 +1394,7 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         # of turns the backstop exists for.
         $root = New-ChannelRoot
         try {
-            $hash = Get-SpecrewHumanAuthorityHash -Text 'approved for review round'
+            $hash = Get-SpecrewHumanAuthorityHash -Text 'approved for allowance reset'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             New-Item -ItemType Directory -Path (Split-Path -Parent $ledger) -Force | Out-Null
             # What prompt-entry leaves behind when it sees a turn and captures nothing: a reservation
@@ -2052,9 +1407,9 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
                     observed_at = '2026-08-26T15:40:45Z' } | ConvertTo-Json -Compress) |
                 Set-Content -LiteralPath $ledger -Encoding UTF8
 
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-4'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the backstop exists for turns prompt-entry saw and did not capture'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2077,9 +1432,9 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
             [IO.File]::WriteAllText($ledger, '', [Text.UTF8Encoding]::new($false))
             $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
 
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'if the one-turn limit cannot be recorded, the mint it is supposed to bound must not happen'
         }
         finally {
@@ -2093,16 +1448,16 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         # result the ledger exists to prevent. A line it cannot parse is a line it cannot rule out.
         $root = New-ChannelRoot
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             # An interrupted append: the tail of the file is half a record.
             Add-Content -LiteralPath $ledger -Value '{"schema_version":"1.0","fact_type":"typed-turn-exh' -Encoding UTF8
 
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-7'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 # W72 asserted -BeNullOrEmpty here. The maintainer reversed it on 2026-08-27, and round
                 # 31 is why: failing closed on "can this PROJECT ever be authorized again" is an
                 # outage, not a safety property. This is a DIFFERENT turn, so it mints; the damage is
@@ -2186,17 +1541,17 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         # genuinely later retype at Stop forever, with no recovery, exactly when the backstop is needed.
         $root = New-W71Root
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
                 -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-prompt-1' -TurnOrigin 'typed-user'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
 
             # Hours later the human types it again, and prompt-entry misses that turn.
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T14:00:00Z' `
                 -TurnPosition '31' -TurnArrival '2026-08-26T13:59:00Z' -MessageId 'msg-31'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the backstop must still work; a phrase the human can never make count is a wedge'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2210,15 +1565,15 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         # speculation about how often two channels deliver one utterance.
         $root = New-W71Root
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
                 -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4' -TurnOrigin 'typed-user'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T10:05:00Z' `
                 -TurnPosition '4' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4'
 
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'the turn end delivered a message the prompt channel already minted'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             $observations = @(Get-Content -LiteralPath $ledger -Encoding UTF8 |
@@ -2232,78 +1587,13 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
     It 'same-channel exhaustion still holds, which is the guarantee that survives' {
         $root = New-W71Root
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'one channel, one utterance, one mint - the attack the store actually recorded'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'RED-FIRST: a withdrawal revokes even when BOTH the journal append and the delete fail' {
-        # Round-28 blocking finding. W68 made the reader consult the journal; if the journal append is
-        # also suppressed there is nothing to consult, and the revoked approval reads as usable. My
-        # case proved delete-failure-after-successful-journal only.
-        $root = New-W71Root
-        $lockDir = $null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
-            $approvalRoot = Join-Path $root '.specrew/review/round-approval'
-            $pending = Join-Path $approvalRoot 'pending-round-approval.json'
-            [IO.File]::Exists($pending) | Should -BeTrue -Because 'precondition: there is an approval to withdraw'
-
-            # Both the journal and the delete blocked: the journal file held exclusively, the pending
-            # file held for reading so it can be stamped-or-not but never removed.
-            $journal = Join-Path $approvalRoot 'captures.jsonl'
-            if (-not [IO.File]::Exists($journal)) { [IO.File]::WriteAllText($journal, '', [Text.UTF8Encoding]::new($false)) }
-            # BOTH held. The first cut of this case locked only the journal, so the delete succeeded,
-            # the approval vanished and the case passed without ever reaching the state it names -
-            # a fixture that did not reproduce its own scenario.
-            $lockDir = @(
-                [IO.File]::Open($journal, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-                [IO.File]::Open($pending, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-            )
-            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'the human took it back; no single unwritable file may hand their authority back'
-        }
-        finally {
-            foreach ($h in @($lockDir)) { if ($null -ne $h) { $h.Dispose() } }
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    It 'SUPERSEDED by W75: a TORN withdrawal line is skipped and recorded, not read as every withdrawal' {
-        # Round-29, reported BLOCKING. Test-SpecrewApprovalIsWithdrawn documents itself as failing
-        # closed on an unreadable journal, and then skipped individual unparseable LINES - so an
-        # interrupted append (the exact failure the independent journal exists to survive) left a torn
-        # record that was ignored, and the still-present approval read as usable after the human
-        # revoked it.
-        #
-        # W70 fixed precisely this in the exhausted-turn ledger reader and left its sibling untouched:
-        # two readers of one concern, corrected one at a time, for the fifth time in this feature.
-        $root = New-W71Root
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -Not -BeNullOrEmpty -Because 'precondition: the approval reads as usable before anything is torn'
-
-            $independent = Join-Path $root '.specrew/authority/withdrawals.jsonl'
-            New-Item -ItemType Directory -Path (Split-Path -Parent $independent) -Force | Out-Null
-            Add-Content -LiteralPath $independent -Value '{"schema_version":"1.0","fact_type":"review-round-approval-with' -Encoding UTF8
-
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                # W72 asserted -BeNullOrEmpty here, and round 31 showed the cost: every approval,
-                # current and future, read as withdrawn forever, with retyping powerless. Same
-                # reversal, same reason.
-                Should -Not -BeNullOrEmpty -Because 'a torn line cannot mean every approval that will ever exist was withdrawn'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -2456,17 +1746,17 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         $root = New-W75Root
         try {
             # A real, complete history: one turn minted and was spent.
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2'
-            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             # Ctrl+C during an append.
             Add-Content -LiteralPath $ledger -Value '{"schema_version":"1.0","fact_type":"typed-turn-exh' -Encoding UTF8
 
             # A DIFFERENT turn, typed afterwards. It must still be able to mint.
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-27T09:30:00Z' -MessageId 'msg-9'
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'one interrupted append must not leave a project that can never be authorized again'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2477,51 +1767,17 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         # without saying so would trade an outage for an invisible hole.
         $root = New-W75Root
         try {
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             Add-Content -LiteralPath $ledger -Value '{"fact_type":"typed-turn-exh' -Encoding UTF8
-            $null = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+            $null = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '11' -TurnArrival '2026-08-27T10:00:00Z' -MessageId 'msg-11'
             (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Match 'authority-ledger-damaged' `
                 -Because 'a ledger that lost a record must say so, or the hole is invisible'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'RED-FIRST: a torn WITHDRAWAL journal line does not make every approval unusable forever' {
-        $root = New-W75Root
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
-            $independent = Join-Path $root '.specrew/authority/withdrawals.jsonl'
-            New-Item -ItemType Directory -Path (Split-Path -Parent $independent) -Force | Out-Null
-            Add-Content -LiteralPath $independent -Value '{"schema_version":"1.0","fact_type":"review-round-approval-with' -Encoding UTF8
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -Not -BeNullOrEmpty -Because 'a torn line cannot mean every approval that ever exists was withdrawn'
-        }
-        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'a TRANSIENT read failure still fails closed, because that one recovers on its own' {
-        # The distinction the ruling names: a locked file is a temporary refusal that clears when the
-        # lock does. A torn line is permanent damage, and failing closed on it is an outage.
-        $root = New-W75Root
-        $handle = $null
-        try {
-            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
-            $journal = Join-Path $root '.specrew/review/round-approval/captures.jsonl'
-            if (-not [IO.File]::Exists($journal)) { [IO.File]::WriteAllText($journal, '', [Text.UTF8Encoding]::new($false)) }
-            $handle = [IO.File]::Open($journal, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'if it cannot read at all it cannot rule out a withdrawal, and that refusal clears with the lock'
-        }
-        finally {
-            if ($null -ne $handle) { $handle.Dispose() }
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-        }
     }
 
     It 'REVERSED by PRED-BETA4-022: a following-line instruction is refused BY REASON, not erased in silence' {
@@ -2606,27 +1862,12 @@ Describe 'W76 the third surface: the reset advisory names a flag and never the p
         # it has never heard of is a decision someone must make, not something to skip quietly.
         . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
         $map = Get-SpecrewAuthorityFlagPhraseMap
-        $map.Keys | Should -Contain '--approve-round'
+        $map.Keys | Should -Not -Contain '--approve-round' -Because 'feature 203 T008 removed the per-round approval and its flag'
         $map.Keys | Should -Contain '--pause-choice'
         $map.Keys | Should -Contain '--remediate allowance-reset' -Because 'the flag that started this must be in the table it should always have been in'
         [string]$map['--remediate allowance-reset'] | Should -Be 'approved for allowance reset'
     }
 
-    It 'RED-FIRST: an undelivered round says BOTH facts - the approval survives AND the round is spent' {
-        # Second finding, same incident. The message states one true fact and stops, and the human
-        # reasons about the other: "not spent by a failure" reads as "nothing was spent" while the
-        # allowance moves underneath. Both facts are true; a surface that states one of them invites
-        # the wrong conclusion about the one it omits.
-        $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw -Encoding UTF8
-        # THE QUOTED MESSAGE, not the code line. The first cut matched the whole line and passed
-        # because `-ForegroundColor` contains the letters "round" - a green assertion that read the
-        # host parameter instead of the sentence, which is the inert-control class inside a test's own
-        # regex. Scoped to the string literal so it can only see what the human sees.
-        $message = [regex]::Match($cli, '"The review was invoked but not delivered[^"]*"').Value
-        $message | Should -Not -BeNullOrEmpty
-        $message | Should -Match 'approval' -Because 'the entitlement surviving is the reassuring half and must stay'
-        $message | Should -Match '(?i)\bround\b|\ballowance\b' -Because 'the round IS spent, and a message that omits it lets the human conclude nothing was'
-    }
 }
 
 Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that continues past its phrase is refused, disclosed, never minted' {
@@ -2652,7 +1893,7 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
         . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
         $script:HandoverProvider = Join-Path $script:RepoRoot 'scripts/internal/specrew-handover-provider.ps1'
         function script:New-B4F065Specimen {
-            param([string]$Head = 'approved for review round')
+            param([string]$Head = 'approved for allowance reset')
             $lines = [System.Collections.Generic.List[string]]::new()
             $lines.Add($Head)
             $lines.Add('Thought for 1s')
@@ -2686,14 +1927,14 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
     It '1. the recorded shape is NOT matched, and the refusal names its reason' {
         $specimen = New-B4F065Specimen
         @($specimen -split "`n").Count | Should -Be 136 -Because 'the specimen is the recorded length'
-        $r = Test-SpecrewReviewRoundApprovalPhrase -Text $specimen
+        $r = Test-SpecrewAllowanceResetPhrase -Text $specimen
         [bool]$r.Matched | Should -BeFalse -Because 'a verdict is one line, and this message has 136'
         [string]$r.Reason | Should -Be 'multi-line-refused'
         $sweep = Get-SpecrewAuthorityMultiLineRefusal -Text $specimen
         $sweep | Should -Not -BeNullOrEmpty
-        [string]$sweep.Kind | Should -Be 'review-round-approval'
+        [string]$sweep.Kind | Should -Be 'allowance-reset'
         [int]$sweep.LineCount | Should -Be 136
-        [string]$sweep.FirstLine | Should -Be 'approved for review round'
+        [string]$sweep.FirstLine | Should -Be 'approved for allowance reset'
     }
 
     It '2. every MINTING sibling refuses the same shape by reason; the WITHDRAWAL, which removes authority, does not' {
@@ -2727,20 +1968,20 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
         $root = New-B4F065Root
         try {
             foreach ($ev in @('UserPromptSubmit', 'Stop')) {
-                $written = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent $ev
+                $written = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent $ev
                 $written | Should -BeNullOrEmpty -Because "at $ev the writer mints nothing from a continuing message"
             }
-            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse -Because 'no pending approval exists - the file the defect produced'
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json') | Should -BeFalse -Because 'no pending approval exists - the file the defect produced'
             $now = '2026-09-10T18:28:54.0000000+00:00'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response $specimen -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now -MessageId 'msg-b4f065' -TurnOrigin 'typed-user' 2>$null
-            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse -Because 'the table, which is what the hooks call, mints nothing either'
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json') | Should -BeFalse -Because 'the table, which is what the hooks call, mints nothing either'
             $drops = @(Read-B4F065Drops -Root $root)
             $drops.Count | Should -Be 1 -Because 'the refusal is disclosed ONCE for the turn, whichever writer refused it'
             [string]$drops[0].event | Should -Be 'authority-phrase-matched-but-rejected'
-            [string]$drops[0].phrase | Should -Be 'review-round-approval'
+            [string]$drops[0].phrase | Should -Be 'allowance-reset'
             [string]$drops[0].reason | Should -Be 'multi-line'
             [int]$drops[0].line_count | Should -Be 136
-            [string]$drops[0].fix | Should -Match "send exactly one line: 'approved for review round'" -Because 'the journal names the one move that clears it (B4F-064)'
+            [string]$drops[0].fix | Should -Match "send exactly one line: 'approved for allowance reset'" -Because 'the journal names the one move that clears it (B4F-064)'
             [string]$drops[0].source_event | Should -Be 'UserPromptSubmit'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2751,11 +1992,11 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
         $root = New-B4F065Root
         try {
             $out = ((& pwsh -NoProfile -File $script:HandoverProvider --project-root $root --host-kind claude --source-event UserPromptSubmit --last-user-message $specimen 2>&1) -join "`n")
-            $out | Should -Match 'NOT recorded as a review-round-approval' -Because 'the disclosure reaches the inject stdout, so it reaches the same turn'
+            $out | Should -Match 'NOT recorded as a allowance-reset' -Because 'the disclosure reaches the inject stdout, so it reaches the same turn'
             $out | Should -Match 'a verdict is ONE line' -Because 'it names the rule'
-            $out | Should -Match "exactly one line: 'approved for review round' or 'approved for review round - <your instructions>'" -Because 'it names the retype, in the words the docs use'
+            $out | Should -Match "exactly one line: 'approved for allowance reset' or 'approved for allowance reset - <your instructions>'" -Because 'it names the retype, in the words the docs use'
             $out | Should -Match 'continues for 135 more line' -Because 'it says how far the message went on'
-            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json') | Should -BeFalse
             @(Read-B4F065Drops -Root $root).Count | Should -Be 1
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2764,14 +2005,14 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
     It '5. the one-line forms still mint, and a clean turn discloses NOTHING - the rule bounds pastes, not humans' {
         $root = New-B4F065Root
         try {
-            foreach ($text in @('approved for review round', 'approved for review round.', 'approved for review round - use the codex reviewer', "approved for review round`n`n", "approved for review round`r`n")) {
-                [bool](Test-SpecrewReviewRoundApprovalPhrase -Text $text).Matched | Should -BeTrue -Because ("still a verdict: " + ($text -replace "\r?\n", '\n'))
+            foreach ($text in @('approved for allowance reset', 'approved for allowance reset.', 'approved for allowance reset - use the codex reviewer', "approved for allowance reset`n`n", "approved for allowance reset`r`n")) {
+                [bool](Test-SpecrewAllowanceResetPhrase -Text $text).Matched | Should -BeTrue -Because ("still a verdict: " + ($text -replace "\r?\n", '\n'))
                 Get-SpecrewAuthorityMultiLineRefusal -Text $text | Should -BeNullOrEmpty -Because 'nothing to disclose'
             }
             Get-SpecrewAuthorityMultiLineRefusal -Text "What is the status of the tests directory?`nAnd the lanes?" | Should -BeNullOrEmpty -Because 'ordinary multi-line conversation is not a refused verdict; the sweep fires only when a phrase led'
             $now = '2026-09-10T18:28:54.0000000+00:00'
-            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round - use the codex reviewer' -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now -MessageId 'msg-b4f065' -TurnOrigin 'typed-user' 2>$null
-            Test-Path -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') | Should -BeTrue -Because 'the same-line instruction form mints through the table'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset - use the codex reviewer' -HostKind claude -SourceEvent UserPromptSubmit -NowUtc $now -TurnPosition 'prompt-entry' -TurnArrival $now -MessageId 'msg-b4f065' -TurnOrigin 'typed-user' 2>$null
+            Test-Path -LiteralPath (Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json') | Should -BeTrue -Because 'the same-line instruction form mints through the table'
             @(Read-B4F065Drops -Root $root).Count | Should -Be 0 -Because 'a clean turn writes no drop row'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -2796,12 +2037,12 @@ Describe 'PRED-BETA4-022 / B4F-065: a verdict is ONE line - a message that conti
                 ('. "{0}"' -f (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'))
                 ('. "{0}"' -f $mutant)
                 ('$s = [IO.File]::ReadAllText("{0}")' -f $specimenPath)
-                ('$w = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot "{0}" -Response $s -HostKind claude -SourceEvent UserPromptSubmit' -f $root)
+                ('$w = Write-SpecrewAllowanceResetAuthorization -ProjectRoot "{0}" -Response $s -HostKind claude -SourceEvent UserPromptSubmit' -f $root)
                 'Write-Output ("minted=" + ($null -ne $w))'
             ) -join "`n"
             $out = ((& pwsh -NoProfile -Command $script 2>&1) -join "`n")
             $out | Should -Match 'minted=True' -Because 'without the guard the first line decides and the paste mints - which is the record'
-            $pending = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
+            $pending = Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json'
             Test-Path -LiteralPath $pending | Should -BeTrue -Because 'the file the defect produced, reproduced'
             $fact = Get-Content -LiteralPath $pending -Raw -Encoding UTF8 | ConvertFrom-Json
             @(([string]$fact.verdict_text) -split "`n").Count | Should -Be 136 -Because 'the whole transcript became verdict_text, as in the record'

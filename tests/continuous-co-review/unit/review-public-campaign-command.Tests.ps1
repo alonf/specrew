@@ -29,6 +29,14 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             if (-not $WithoutDesignContext) {
                 [IO.File]::WriteAllText((Join-Path $Root "specs/$FeatureId/spec.md"), '# Demo design context', [Text.UTF8Encoding]::new($false))
             }
+            # Feature 203 T008 (FR-008, FR-010): the iteration's recorded before-implement verdict, which a campaign with
+            # no snapshotted budget spends as the floor of 2 rounds. There is no per-round approval to pass.
+            New-Item -ItemType Directory -Path (Join-Path $Root '.specrew') -Force | Out-Null
+            $context = [ordered]@{
+                session_state = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = $FeatureId; iteration_number = $IterationNumber }
+                boundary_enforcement = [ordered]@{ verdict_history = @([ordered]@{ from_boundary = 'tasks'; to_boundary = 'before-implement'; verdict_text = 'approved for before-implement'; feature_ref = $FeatureId; recorded_at = '2026-01-01T00:00:00Z'; authorization_id = 'auth-public-fixture-verdict' }) }
+            }
+            [IO.File]::WriteAllText((Join-Path $Root '.specrew/start-context.json'), ($context | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
             & git -C $Root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
             & git -C $Root -c user.name=t -c user.email=t@example.invalid commit -qm initial 2>&1 | Out-Null
             return $Root
@@ -105,7 +113,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Mock -CommandName New-ReviewCampaignProductionPorts -MockWith { throw 'ports-must-not-be-selected' }
 
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId "run-design-$name" `
-            -GrantAuthorizationRef "human-slot-design-$name" -DesignContextRefs $refs -AuthorityConfigPath $config -StoreRoot $store
+            -DesignContextRefs $refs -AuthorityConfigPath $config -StoreRoot $store
 
         $run.status | Should -Be 'not-started'
         $run.invoked | Should -BeFalse
@@ -120,7 +128,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $publicScript = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
         $pwsh = (Get-Process -Id $PID).Path
         $output = @(& $pwsh -NoProfile -File $publicScript -ProjectPath $root -FeatureId '001-demo' -IterationNumber '007' `
-            -Live -ReviewerHost claude -RunId 'run-public-design-invalid' -AuthorizationRef 'human-slot-public-design-invalid' `
+            -Live -ReviewerHost claude -RunId 'run-public-design-invalid' `
             -DesignContextRef 'specs/001-demo/missing.md' -TimeoutSeconds 30 2>&1)
         $exitCode = $LASTEXITCODE
         $text = ($output | Out-String)
@@ -139,7 +147,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
             -RunId 'run-public-unavailable-host' -ReviewerHost 'fixture' -ReviewerHostExplicit `
-            -GrantAuthorizationRef 'human-slot-public-unavailable-host' -DesignContextRefs @('specs/001-demo/spec.md') `
+            -DesignContextRefs @('specs/001-demo/spec.md') `
             -TimeoutSeconds 30 -AuthorityConfigPath $config -StoreRoot $store
 
         $run.status | Should -Be 'not-started'
@@ -149,7 +157,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Test-Path -LiteralPath $store | Should -BeFalse -Because 'unavailable host refusal precedes grant persistence and all campaign authority facts'
     }
 
-    It 'reloads a recorded one-time reviewer authorization through the public campaign call path' {
+    It 'reloads the recorded reviewer host through the public campaign call path, and pays with the budget, never its reference' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-recorded-authorization')
         $configDirectory = Join-Path $root '.specrew'
         New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
@@ -177,7 +185,10 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $store = Join-Path $root '.specrew/review/authority'
         $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId 'cmp-001-demo-i007' -Kind grants)
         $grants.Count | Should -Be 1
-        $grants[0].authorization_ref | Should -Be $recordedAuthorization
+        $budget = Get-ReviewCampaignBudgetGrant -StoreRoot $store -CampaignId 'cmp-001-demo-i007'
+        [string]$budget.budget_source | Should -Be 'floor-no-grant' -Because 'no budget was snapshotted, so the recorded verdict earns the floor'
+        $grants[0].authorization_ref | Should -Be ([string]$budget.grant_id) -Because 'the launch is paid by the budget (FR-010), not by the host reference on file'
+        $grants[0].authorization_ref | Should -Not -Be $recordedAuthorization
         $grants[0].slots | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId 'cmp-001-demo-i007' -Kind spend).Count | Should -Be 0 -Because 'this regression must never invoke a provider'
     }
@@ -204,7 +215,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
-            -GrantAuthorizationRef 'human-slot-design-valid' -DesignContextRefs @('specs/001-demo/spec.md') `
+            -DesignContextRefs @('specs/001-demo/spec.md') `
             -AuthorityConfigPath $config -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
 
         $run.status | Should -Be 'terminal' -Because $run.reason
@@ -243,7 +254,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
-            -GrantAuthorizationRef 'human-slot-design-feature-id' -AuthorityConfigPath $config `
+            -AuthorityConfigPath $config `
             -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
 
         $run.status | Should -Be 'terminal' -Because $run.reason
@@ -277,7 +288,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
-            -GrantAuthorizationRef 'human-slot-design-empty' -AuthorityConfigPath $config -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
+            -AuthorityConfigPath $config -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
 
         $run.status | Should -Be 'terminal' -Because $run.reason
         $run.design_context | Should -Be 'empty'
@@ -309,7 +320,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $progressEvents = [Collections.Generic.List[object]]::new()
         $progressSink = { param($event) $progressEvents.Add($event) | Out-Null }.GetNewClosure()
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
-            -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports -ProgressSink $progressSink
+            -ReviewerHost fixture -AuthorityConfigPath $config -StoreRoot $store -Ports $ports -ProgressSink $progressSink
 
         $run.status | Should -Be 'terminal' -Because $run.reason
         $run.invoked | Should -BeTrue
@@ -333,7 +344,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $gate.render_verdict_marker | Should -BeTrue
 
         $reused = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-public-two' `
-            -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
+            -ReviewerHost fixture -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
         # ORDERING CHANGED 2026-08-11 when the pause protocol was wired to this command, and the change
         # is deliberate rather than incidental. After a completed round BOTH refusals are true: the
         # round's decision is unanswered, and the single grant is spent. The old order reported
@@ -366,7 +377,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
         $store = Join-Path $root '.specrew/review/authority'
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-preflight-one' `
-            -GrantAuthorizationRef 'human-slot-preflight-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
+            -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
         $run.status | Should -Be 'failed'
         $run.invoked | Should -BeFalse
         $run.result.runtime_outcome | Should -Be 'preflight-failed'
@@ -561,7 +572,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "PSObject\.Properties\['store_root'\]" -Because 'a pre-store not-started result must render without a second property error'
         $campaignSource = $source.Substring($campaignBranch, $legacy - $campaignBranch)
         $campaignSource | Should -Match 'Resolve-ContinuousCoReviewConfiguredReviewerCandidate' -Because 'normal live runs must reload the recorded project-level reviewer grant'
-        $campaignSource | Should -Match '-GrantAuthorizationRef\s+\$campaignGrantAuthorizationRef' -Because 'the recorded authorization must reach campaign authority'
+        $campaignSource | Should -Not -Match '-GrantAuthorizationRef' -Because 'feature 203 T008: the review budget is the launch authority, and no reference on file buys a round'
         $campaignSource | Should -Match '-Model\s+\$campaignModel' -Because 'the resolved public model selection must reach campaign production-port construction'
         $campaignSource | Should -Not -Match '\$campaignModel\s*=\s*\[string\]\$configuredReviewer\.model' -Because 'a DECLARED reviewer model must never become a per-run harness override; hosts whose file-primary constructor takes no -Model would fail preflight with production-harness-model-override-unsupported'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-TargetRoot\s+\(\[string\]\$parsedArgs\.RunRoot\)' -Because 'the public workspace-root override must reach the singular target policy'

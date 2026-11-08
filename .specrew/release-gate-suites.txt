@@ -166,7 +166,6 @@ tests/continuous-co-review/unit/worktree-containment.Tests.ps1
 tests/continuous-co-review/unit/worktree-materialize-tar-resolution.Tests.ps1
 tests/continuous-co-review/unit/worktree-reviewer-heartbeat.Tests.ps1
 tests/continuous-co-review/unit/worktree-source-tree-identity.Tests.ps1
-tests/integration/approve-round-decision.Tests.ps1
 tests/integration/baseline-hygiene.tests.ps1
 tests/integration/beta-before-stable-sdlc.tests.ps1
 tests/integration/bootstrap-resolver-guard.tests.ps1

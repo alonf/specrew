@@ -104,9 +104,15 @@ try {
 
     Write-Host 'Case 6: an approval this message already recorded reports nothing'
     $r6 = New-ReportFixture
-    $o6a = Send-Prompt -Root $r6 -Text 'approved for review round'
-    $o6b = Send-Prompt -Root $r6 -Text 'approved for review round'
-    Assert-True ([string]::IsNullOrWhiteSpace((Get-Visible $o6a)) -and [string]::IsNullOrWhiteSpace((Get-Visible $o6b))) "two recorded round approvals, no line (got '$(Get-Visible $o6a)' / '$(Get-Visible $o6b)')"
+    $o6a = Send-Prompt -Root $r6 -Text 'approved for allowance reset'
+    $o6b = Send-Prompt -Root $r6 -Text 'approved for allowance reset'
+    Assert-True ([string]::IsNullOrWhiteSpace((Get-Visible $o6a)) -and [string]::IsNullOrWhiteSpace((Get-Visible $o6b))) "two recorded allowance resets, no line (got '$(Get-Visible $o6a)' / '$(Get-Visible $o6b)')"
+
+    Write-Host 'Case 6b (feature 203 T008): the retired round approval records nothing and says, in this turn, that it changed nothing'
+    $r6b = New-ReportFixture
+    $v6b = Get-Visible (Send-Prompt -Root $r6b -Text 'approved for review round')
+    Assert-True ($v6b.Contains("'approved for review round'") -and $v6b -match 'changed nothing' -and $v6b -match 'no longer need an approval') "it says the phrase changed nothing, and why (got '$v6b')"
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $r6b '.specrew/review/round-approval/pending-round-approval.json'))) 'and records no round approval'
 
     Write-Host 'Case 7: the provider marks each human-facing line for the visible channel'
     $r7 = New-ReportFixture

@@ -58,12 +58,13 @@ if ($offenders.Count -eq 0) {
     Write-Pass ("no consumer-facing message instructs --authorization-ref <ref> as the route ({0} files scanned)" -f $scanned)
 }
 else {
-    Fail ("{0} message(s) still tell a human to invent an authorization reference. Use --approve-round; the system mints the reference:`n    {1}" -f $offenders.Count, ($offenders -join "`n    "))
+    Fail ("{0} message(s) still tell a human to invent an authorization reference; name a concrete label or the review command:`n    {1}" -f $offenders.Count, ($offenders -join "`n    "))
 }
 
 # THE POSITIVE HALF (rule 4): a prohibition alone is satisfied by deleting the advice entirely, which
 # would leave a consumer refused with no way forward - the failure the stop-block rewrite already made
-# once. The two messages a driver actually meets must NAME the approving command.
+# once. The two messages a driver actually meets must NAME the command that runs the review on another host. Feature 203
+# T008 (FR-010): that command needs no approval flag, because the review budget approved with the implementation pays.
 $navigator = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1') -Raw
 foreach ($required in @('SAME-HOST fallback', 'NO reviewer host is authorized')) {
     $found = [regex]::Match($navigator, [regex]::Escape($required) + '.{0,600}', 'Singleline')
@@ -71,8 +72,8 @@ foreach ($required in @('SAME-HOST fallback', 'NO reviewer host is authorized'))
         Fail "the '$required' message is gone - it must still exist and still name a next step"
         continue
     }
-    if ($found.Value -match '--approve-round') { Write-Pass "the '$required' message names --approve-round" }
-    else { Fail "the '$required' message no longer names how to authorize a reviewer" }
+    if ($found.Value -match 'specrew review --live --host' -and $found.Value -notmatch '--approve-round') { Write-Pass "the '$required' message names the review command on another host, with no approval flag" }
+    else { Fail "the '$required' message no longer names how to run the review on an independent host" }
 }
 
 # And the flag itself must remain SUPPORTED, or "it stays valid for scripts" would be untrue.
@@ -80,16 +81,14 @@ $reviewCli = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/specrew-revi
 if ($reviewCli -match "Alias\('authorization-ref'\)") { Write-Pass '--authorization-ref remains a supported flag for scripts and self-chosen labels' }
 else { Fail '--authorization-ref was removed; the ruling keeps it working and only stops it being the advice' }
 
-# Reviewer selection is project setup, not a review spend. The same flag has a stricter meaning when it
-# is carried into --live, so the help must name the distinction instead of making one branch look invalid.
-if ($reviewCli -match 'With --host and without --live' -and
-    $reviewCli -match 'When it authorizes a live round, --ack-reason is required') {
-    Write-Pass 'help distinguishes non-spending reviewer setup from out-of-band live-round authority'
+# Reviewer selection is project setup, never a review spend: the help says the reference never pays for a round.
+if ($reviewCli -match 'With --host, records that reviewer host as authorized' -and $reviewCli -match 'It never pays for a round') {
+    Write-Pass 'help says --authorization-ref records a reviewer host and never pays for a round'
 }
 else {
-    Fail 'help does not explain that pure reviewer setup needs no --ack-reason while live-round authority does'
+    Fail 'help does not say that --authorization-ref only records a reviewer host and never pays for a round'
 }
 
 if ($failures -gt 0) { Write-Host "$failures failure(s)" -ForegroundColor Red; exit 1 }
-Write-Host 'authorization-ref is no longer the advice; --approve-round is.' -ForegroundColor Green
+Write-Host 'authorization-ref is no longer the advice; the review command is.' -ForegroundColor Green
 exit 0

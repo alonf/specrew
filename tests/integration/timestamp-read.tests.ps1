@@ -244,7 +244,7 @@ finally { if (Test-Path -LiteralPath $root9) { Remove-Item -LiteralPath $root9 -
 # Round 9 on the stored-time fix: two allowance-reset paths still sent a stored observed_at through a [string] cast. The
 # round approval derived from a reset stored that rendering as its own time, and the "has this capture already paid for
 # a reset?" guard compared it. A `+00:00` capture came back hours off in any zone but UTC, and both lost the fraction.
-Write-Host '  --- Case 10: the reset''s round approval and the reset reuse guard read the capture time as an instant ---'
+Write-Host '  --- Case 10: the reset reuse guard reads the capture time as an instant ---'
 foreach ($form in @(@{ n = '+00:00'; f = { param($t) $t.ToString('o') } }, @{ n = 'Z'; f = { param($t) $t.UtcDateTime.ToString('o') } })) {
     $root10 = Join-Path ([IO.Path]::GetTempPath()) ('tsr10-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
     try {
@@ -254,10 +254,7 @@ foreach ($form in @(@{ n = '+00:00'; f = { param($t) $t.ToString('o') } }, @{ n 
         $capture10 = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root10
         Assert-True ($null -ne $capture10 -and $capture10.observed_at -is [datetime]) ('{0} capture: the fixture is real, observed_at came back from JSON as a [datetime]' -f $form.n)
 
-        $null = Write-SpecrewReviewRoundApprovalFromReset -ProjectRoot $root10 -ResetApproval $capture10 -ResetId 'reset-tsr10'
-        $round10 = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root10
-        $roundAt10 = if ($null -ne $round10) { ConvertTo-SpecrewAuthorityInstant -Value $round10.observed_at } else { $null }
-        Assert-True ($null -ne $roundAt10 -and $roundAt10.UtcTicks -eq $typed10.UtcTicks) ('{0} capture: the round approval the reset answers carries the typed time to the tick (got: {1})' -f $form.n, $(if ($null -ne $roundAt10) { $roundAt10.ToString('o') } else { 'null' }))
+        # Feature 203 T008: the reset no longer derives a round approval (rounds need none); its reuse guard remains.
 
         $campaign10 = 'cmp-tsr10'
         $resets10 = Join-Path $root10 ('.specrew/review/authority/campaigns/' + $campaign10 + '/budget-resets')

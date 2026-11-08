@@ -56,7 +56,9 @@ foreach ($parameter in @($reviewAst.ParamBlock.Parameters)) {
 }
 $declaredFlags = @($declaredFlags | Sort-Object -Unique)
 Assert-True (@($declaredFlags).Count -ge 15) ("review script declares its public flags as parameter aliases (found {0})" -f @($declaredFlags).Count)
-foreach ($known in @('approve-round', 'pause-choice', 'pause-rationale', 'baseline-ref', 'code-writer-host')) {
+# Feature 203 T008 (FR-010): --approve-round is removed with the per-round approval, from the script and the front door.
+Assert-True (@($declaredFlags) -notcontains 'approve-round') 'the removed --approve-round is declared nowhere'
+foreach ($known in @('pause-choice', 'pause-rationale', 'baseline-ref', 'code-writer-host')) {
     Assert-True (@($declaredFlags) -contains $known) "derivation actually sees the flag '$known' the earlier hand-written guard had to be told about"
 }
 

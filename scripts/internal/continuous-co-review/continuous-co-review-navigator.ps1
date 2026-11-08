@@ -601,7 +601,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 $independenceNote = ''
                 $regIndependence = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewer_independence')) { [string]$reg.reviewer_independence } else { '' }
                 if ($regIndependence -eq 'same-host') {
-                    $independenceNote = ' NOTE: this was a SAME-HOST fallback review (reviewer = code-writer host; labelled, not silently substituted). Ask the human to approve an INDEPENDENT reviewer round once - their typed reply ``approved for review round`` (as a normal chat message - a reply inside a question UI or picker is not captured) is the approval, and Specrew captures it from the conversation. Once they have typed it, run ``specrew review --live --host <other-host> --approve-round`` yourself - the next run upgrades automatically.'
+                    $independenceNote = ' NOTE: this was a SAME-HOST fallback review (reviewer = code-writer host; labelled, not silently substituted). Run the next round on an INDEPENDENT reviewer: ``specrew review --live --host <other-host>`` - the review budget approved with the implementation pays for it, and the next run upgrades automatically.'
                 }
                 # T094/FR-036 (iter-009 D4): the 3-dimension evidence labels, derived from the terminal
                 # status + registry and promoted onto the durable record - the tiered gate's assurance
@@ -832,7 +832,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         catch { $navFailReason = '' }
                     }
                     if ($navFailReason -match '(?i)no-authorized-reviewer-host') {
-                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - ask the human to approve an INDEPENDENT reviewer round ONCE: their typed reply ``approved for review round`` (as a normal chat message - a reply inside a question UI or picker is not captured) is the approval, and Specrew captures it from the conversation. Once they have typed it, run ``specrew review --live --host <an-installed-harness-other-than-the-code-writer> --approve-round`` yourself. It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - run it on an INDEPENDENT reviewer: ``specrew review --live --host <an-installed-harness-other-than-the-code-writer>``. The review budget approved with the implementation pays for the round, and it then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
                     }
                     else {
                         $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null
@@ -1229,7 +1229,7 @@ function Format-ReviewCampaignOutstandingPause {
         # from the fact's own counts rather than assumed, so a resumed surface cannot offer a round the
         # campaign can no longer run.
         $offered = @(
-            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'run another round - fixes go in and one more review runs on your files; this approves one round, and your typed reply `approved for review round`, as a normal chat message, is that approval - a reply inside a question UI or picker is not captured' } }
+            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'run another round - fixes go in and one more review runs on your files; the review budget approved with the implementation pays for it' } }
             [pscustomobject]@{ id = 2; text = 'stop the review here - remaining findings become follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes; this spends nothing' }
             [pscustomobject]@{ id = 3; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' }
         )
@@ -1520,8 +1520,8 @@ function Get-ReviewCampaignActionSentence {
         # Telling a human in a conversation to go run a CLI command also failed as UX on day one (the
         # bash-PATH seam): the human is in a conversation, not a terminal. The command still appears
         # here - discoverability was the original defect - but addressed to the reader who runs it.
-        'request-current-digest-review' { return 'ask the human to approve a fresh review round of these files as they are now - their typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude' }
-        'request-authorized-review' { return 'ask the human to approve a review round of these files - their typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude' }
+        'request-current-digest-review' { return 'run a fresh review of these files as they are now: specrew review --live. The review budget approved with the implementation pays for the round' }
+        'request-authorized-review' { return 'run the review of these files: specrew review --live. The review budget approved with the implementation pays for the round' }
         'poll-existing-run' { return 'wait for the review that is already running; nothing else is needed from you' }
         'proceed' { return '' }
         'await-human-pause-decision' { return 'answer the review question above; nothing runs until you do' }
@@ -1545,7 +1545,9 @@ function Build-ReviewCampaignNavigatorAgentDirective {
     # DECISION is the human's, the EXECUTION is the agent's. The CLI enforces it: an agent invocation
     # of --approve-round without a captured typed approval is refused, so this sentence describes the
     # mechanism rather than standing in for one.
-    $lines.Add('Approving a review round is the HUMAN''s decision, given as their typed reply `approved for review round`, as a normal chat message - a reply inside a question UI or picker is not captured. Ask them for it; never record or fabricate one on their behalf. Once they have typed it, running `specrew review --live --approve-round` is YOUR job: the captured phrase is the authority the command consumes, and it refuses an agent invocation that has none.') | Out-Null
+    # Feature 203 T008 (FR-010): review rounds need no approval of their own; the review budget approved with the
+    # implementation pays for them, so running `specrew review --live` within it is the crew's job.
+    $lines.Add('Review rounds need no approval of their own: the review budget approved with the implementation pays for them, so running `specrew review --live` within it is YOUR job. Never ask the human for a round.') | Out-Null
     if ([bool](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'ask_narrow_question')) {
         $lines.Add('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') | Out-Null
     }
@@ -1555,7 +1557,7 @@ function Build-ReviewCampaignNavigatorAgentDirective {
     # --pause-choice 3. The last two spend nothing and need no captured approval - relay them as typed;
     # never show the human a --flag, and never answer a pause they have not decided.
     if ([string](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'implementer_action') -ceq 'await-human-pause-decision') {
-        $lines.Add('The pause menu above offers the human three typed decisions; mapping them to the CLI is YOUR job, never theirs: `run another round` -> `specrew review --live --pause-choice 1` (requires their captured chat-typed `approved for review round`); `stop the review here` -> `--pause-choice 2`; `abandon this review campaign` -> `--pause-choice 3`. The last two spend nothing and need no captured approval - relay the typed decision as given, never show the human a --flag, and never answer a pause they have not decided.') | Out-Null
+        $lines.Add('The pause menu above offers the human three typed decisions; mapping them to the CLI is YOUR job, never theirs: `run another round` -> `specrew review --live --pause-choice 1` (the review budget pays for it); `stop the review here` -> `--pause-choice 2`; `abandon this review campaign` -> `--pause-choice 3`. Relay the typed decision as given, never show the human a --flag, and never answer a pause they have not decided.') | Out-Null
     }
     $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
     $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')

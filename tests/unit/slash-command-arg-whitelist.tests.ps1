@@ -139,15 +139,15 @@ Set-Content -LiteralPath (Join-Path $liveScratch 'README.md') -Value 'scratch' -
 & git -C $liveScratch add . 2>$null | Out-Null
 & git -C $liveScratch commit -m baseline 2>$null | Out-Null
 try {
-    # W44 (2026-08-22) put a captured-approval gate in front of --approve-round, so inside an agent
-    # session this command now refuses BEFORE the deterministic preflight this case is about. The
-    # subject here is the argument whitelist and the preflight refusal behind it, not the approval
-    # gate - so the fixture carries a genuine captured approval, exactly as an approved round does,
-    # and the case goes on measuring what its name says.
-    . (Join-Path $repoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
-    $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $liveScratch `
-        -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
-    $result = Invoke-Specrew -CommandArgs @('review', '--live', '--project-path', $liveScratch, '--feature', $liveFeature, '--iteration', $liveIteration, '--approve-round')
+    # Feature 203 T008 (FR-008, FR-010): a review round needs no approval of its own; the iteration's recorded
+    # before-implement verdict earns the floor budget, which the launch spends. The fixture records that verdict, so the
+    # case goes on measuring what its name says: the whitelist, and the preflight refusal behind it.
+    $liveContext = [ordered]@{
+        session_state = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = $liveFeature; iteration_number = $liveIteration }
+        boundary_enforcement = [ordered]@{ verdict_history = @([ordered]@{ from_boundary = 'tasks'; to_boundary = 'before-implement'; verdict_text = 'approved for before-implement'; feature_ref = $liveFeature; recorded_at = '2026-01-01T00:00:00Z'; authorization_id = 'auth-whitelist-live' }) }
+    }
+    Set-Content -LiteralPath (Join-Path $liveScratch '.specrew\start-context.json') -Value ($liveContext | ConvertTo-Json -Depth 8) -Encoding UTF8
+    $result = Invoke-Specrew -CommandArgs @('review', '--live', '--project-path', $liveScratch, '--feature', $liveFeature, '--iteration', $liveIteration)
     Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
     Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --live with incomplete deterministic preflight exits non-zero'
     if ($result.Output -notlike '*verification-not-configured*' -or $result.Output -notlike '*Invoked: False*') {

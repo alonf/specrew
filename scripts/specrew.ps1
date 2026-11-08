@@ -86,7 +86,7 @@ Examples:
   specrew start
   specrew start "Build a REST API for user management"
   specrew review --project-path .
-  specrew review --live --baseline-ref origin/main --host claude --approve-round
+  specrew review --live --baseline-ref origin/main --host claude
   specrew where
   specrew status --compact
   specrew reseal --feature 001-layout-autocorrect --iteration 002
@@ -375,7 +375,7 @@ function Assert-WhitelistedArguments {
             # fifth flag. tests/unit/review-flag-whitelist-parity.tests.ps1 now DERIVES the expected set
             # from specrew-review.ps1's own parameter aliases, so the next flag is covered by the
             # invariant instead of by whoever remembers this line.
-            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--approve-round', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--trunk', '--checkpoint-id', '--run-id', '--reconcile-run', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope', '--fix-evidence-ref', '--pause-choice', '--pause-rationale') -MaxPositionals 1
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--trunk', '--checkpoint-id', '--run-id', '--reconcile-run', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope', '--fix-evidence-ref', '--pause-choice', '--pause-rationale') -MaxPositionals 1
         }
         'version' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')
