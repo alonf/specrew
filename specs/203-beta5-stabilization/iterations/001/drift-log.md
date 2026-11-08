@@ -1442,4 +1442,17 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
    findings 2 and 3, the dates written once with their offset (DRIFT-041, DRIFT-045).
 
 - **Requirement**: FR-003 to FR-011, FR-043; tasks.md T008.
-- **Class closure**: OPEN until the maintainer rules on the design.
+- **Ruling (maintainer, 2026-11-08)**: items 1, 5 and 7 as proposed; items 2, 3, 4 and 6 changed:
+  - **Item 2.** A campaign with no budget grant gets the FR-008 floor of 2 rounds, citing the recorded before-implement
+    verdict. Its host order is the engine's first pick that is not the code's writer, and `infra_failure_cap` is the
+    configured default. The grant records that it is the floor and why. It is not a stop and not a reset, and it never
+    reads the plan. With no before-implement verdict recorded, the launch is refused.
+  - **Item 3.** A round is spent when a complete review was collected, whatever the exit code. A run with no complete
+    review is free. Its partial findings become open findings: they carry into the next round, can be closed only by
+    a fix or a typed line, and a run that produced them never counts as clean.
+  - **Item 4.** The `--host` refusal stays, but a `--host` that matches the engine's current choice is accepted.
+  - **Item 6.** The review-signoff check refuses when the code changed after the last clean round (FR-013). Its test
+    is written first, in step (iii).
+  - The iteration plan's FR-008 row ("zero rounds") is corrected to the floor of 2 with T008's records. The ruling
+    gives no boundary approval: T008 continues within the recorded before-implement approval.
+- **Class closure**: OPEN until T008 lands the ruled design; the items close step by step in the order of item 7.

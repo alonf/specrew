@@ -30,7 +30,7 @@ Iteration 001 is the authority core: US1 (review budget), US2 (capture), US3 (sa
 | FR-005 | Within budget: clean ends the review; fix-needed fixes and runs the next round, no stop | US1 |
 | FR-006 | Human stops only for (a) to (d); never for a round; never outside implement | US1 |
 | FR-007 | The top-up records the reset fact, grants another window and starts the next round; hook-minted, human reason | US1 |
-| FR-008 | A plan without a budget gets zero rounds | US1 |
+| FR-008 | A plan without a budget gets the floor of 2 rounds | US1 |
 | FR-009 | Infrastructure failures spend no round; N in a row move to the next host; exhausted order is stop (d) | US1 |
 | FR-010 | The per-round approval, the one-slot grant and `--approve-round` are removed | US1 |
 | FR-011 | Review stop layout and phrases | US1 |
