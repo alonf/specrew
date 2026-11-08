@@ -1398,3 +1398,48 @@
 - **Class closure**: CLOSED for the launch path: the iteration review launches from the pin's review command as
   before. The side branch `203-pin-review-engine-side` stays local until the maintainer approves pushing it; T014's pin
   advance to the reviewed head supersedes it.
+
+### DRIFT-052 — T008 design: the grant is the only launch authority; what spends a round; the host order; the four stops (proposal, maintainer decision pending)
+
+Choices the spec leaves open, proposed before any T008 engine code is written. Items 1 to 3 change what a round costs.
+
+1. **Launch authority (FR-003, FR-004, FR-010).** The campaign's budget grant (T007) and any reset after it are the only
+   launch authority. For each launch the engine mints a one-slot grant fact whose id derives from the budget grant and
+   the launch's ordinal, `authority_kind = human`, `authorization_ref` = the budget grant id (which cites the verdict
+   entry). The reservation before invocation, and its release with nothing spent on a pre-invocation failure, stay as
+   they are. A launch is permitted only while `rounds_used` plus live reservations is below the total. Removed: the
+   `approved for review round` act and its capture writer, `--approve-round`, the out-of-session and
+   `--authorization-ref ... --ack-reason` forms, and the `reviewer-hosts.json` `authorization_ref` that mints a
+   one-slot grant for each new campaign.
+2. **A campaign with no budget grant** (its before-implement verdict predates T007, as this iteration's does): no round
+   launches. The refusal offers `approved for allowance reset`, the same line as a spent budget, which grants one fix and
+   verify cycle (2 rounds). No new phrase, and no grant is invented from the plan after the verdict (FR-003).
+3. **What spends a round (FR-004, FR-009).** A round is spent when the reviewer was invoked and the run was not an
+   infrastructure failure. Infrastructure failure: the reviewer ran but no complete review came back, that is
+   `runtime_outcome` timed-out, terminated, invalid-output or abandoned. Partial findings from such a run are shown, and
+   the round is not spent. `identity-mismatch` and `containment-violated` are not infrastructure: they spend the round
+   and stop at (c). After a reset, rounds count from the reset against 2 (FR-007).
+4. **The host order (FR-009, FR-006(d)).** The engine chooses the reviewer, not `--host`. The approved order is the
+   grant's `host_order`, or, when the plan stated none, the engine's first pick other than the code's writer, recorded on
+   that round's launch grant. The current host is the first in the order with fewer than `infra_failure_cap`
+   consecutive infrastructure failures since the last spent round. When every host in the order is past the cap, the
+   cycle stops at (d) and names the host the engine would try next. `allow reviewer <host>` records a fact that appends
+   it. A `--host` that differs from the current host is refused, naming the current host.
+5. **The loop and the four stops (FR-005, FR-006, FR-011).** A clean round ends the review with no stop. A fix-needed
+   round within the budget writes no human pause. The crew fixes within the approved tasks and launches the next round,
+   which is refused, spending nothing, until the tree has moved since that round. Pause facts are written only for:
+   (a) the budget spent with findings open; (b) a finding the crew disputes or proposes to defer (`specrew review
+   --dispute <finding-id> --reason <text>` / `--propose-defer <finding-id> --to <destination>`); (c) a judgment call
+   (`--ask <text>`) and the two outcomes in item 3; (d) item 4. Each pause renders the FR-011 layout and its lines:
+   `approved for allowance reset`, `stop the review here`, `defer finding <id> to <destination>`, `drop finding <id>`,
+   `fix finding <id>`, `allow reviewer <host>`, or free text for (c). The hook mints each line from the typed turn
+   (T004's writer), and the next launch reads the answer.
+6. **The Stop hook (FR-006).** The navigator stops only on an open pause fact (a) to (d), and only during implement.
+   Removed: `review-required`, `review-stale` and every other stop or "What to do" line that asks for a round. The
+   review-signoff boundary's coverage check is unchanged; it is a boundary gate, not a round request.
+7. **Order of work, each step RED first through the shipped entry points (FR-043).** (i) items 1 to 3 with the
+   counter; (ii) item 4; (iii) items 5 and 6; (iv) the carried items: B5F-017 severity kept (FR-005), B5F-029
+   findings 2 and 3, the dates written once with their offset (DRIFT-041, DRIFT-045).
+
+- **Requirement**: FR-003 to FR-011, FR-043; tasks.md T008.
+- **Class closure**: OPEN until the maintainer rules on the design.
