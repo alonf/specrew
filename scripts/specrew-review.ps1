@@ -827,7 +827,20 @@ if ($requiresReviewEngine) {
     }
     . $engineResolverPath
     try {
-        $reviewEngineSelection = Resolve-SpecrewReviewEngineRoot -ProjectRoot $resolvedProjectPath -InstalledRuntimeRoot $installedReviewEngineRoot
+        # Feature 203 T008 (DRIFT-051): a pinned project's review runs the pin's engine. The pin record is read with
+        # the hooks' own reader; with no record nothing else is loaded and resolution is unchanged.
+        $reviewLaunchPin = $null
+        if (Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew/runtime/live-engine.json') -PathType Leaf) {
+            $liveEngineResolverPath = Join-Path $PSScriptRoot '../extensions/specrew-speckit/scripts/live-engine-resolution.ps1'
+            if (Test-Path -LiteralPath $liveEngineResolverPath -PathType Leaf) {
+                . $liveEngineResolverPath
+                $reviewLaunchPin = Get-SpecrewLiveEnginePin -ProjectRoot $resolvedProjectPath
+            }
+            else {
+                $reviewLaunchPin = [pscustomobject]@{ Configured = $true; Valid = $false; Root = $null; Commit = $null; Reason = 'pin-resolver-missing'; Detail = $null }
+            }
+        }
+        $reviewEngineSelection = Resolve-SpecrewReviewEngineForLaunch -ProjectRoot $resolvedProjectPath -InstalledRuntimeRoot $installedReviewEngineRoot -Pin $reviewLaunchPin
         $reviewEngineRoot = [string]$reviewEngineSelection.runtime_root
     }
     catch {

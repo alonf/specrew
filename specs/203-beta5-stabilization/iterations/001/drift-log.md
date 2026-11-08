@@ -1373,5 +1373,19 @@
   one-slot grant for each new campaign with no captured approval (FR-010 removes that grant). The pause kinds (a), (c)
   and (d) are never produced, and `defer`/`drop`/`fix finding` and `allow reviewer` have no writer.
 - **Requirement**: FR-003, FR-004, FR-010; DRIFT-028.
-- **Class closure**: OPEN until a review launch for a pinned project loads its engine from the pin, and the
-  iteration review has a launch path the maintainer has chosen.
+- **Ruling (maintainer, 2026-11-08)**: option A, on three conditions: (1) before the pin is advanced, the maintainer
+  sees `git diff --stat a489e6c0..<side commit>` and the diff, which may touch only the review CLI and its engine
+  resolver (and their `.specify` copies; they have none), nothing the hooks load for capture; (2) the same fix lands on
+  `203-beta5-stabilization` with byte-identical files (blob hashes compared), so the iteration review reviews exactly
+  what ran; (3) the side commit is on a named local branch, and pushing it is asked first.
+- **Built**: `scripts/internal/review-engine-resolution.ps1` gains `Resolve-SpecrewReviewEngineForLaunch`: with a pin
+  configured, the launch loads the pin's `continuous-co-review` engine and never the project tree's copy, and only the
+  pin's own review command may launch; another copy, or a configured pin that cannot be used, is refused in plain
+  words. With no pin it calls `Resolve-SpecrewReviewEngineRoot` as before. `scripts/specrew-review.ps1` reads the pin
+  record with the hooks' own reader (`live-engine-resolution.ps1`, unchanged) only when `.specrew/runtime/live-engine.json`
+  exists. Side commit `bd4635df` on local branch `203-pin-review-engine-side` (parent `a489e6c0`); the same two files
+  on this branch. `tests/unit/pinned-review-launch.Tests.ps1` (6 cases, two through the CLI) fails 6 of 6 on the
+  committed files and passes 6 of 6 here and on the side base; it joins lane `f203-i001-suites`. Read only, against this
+  project, the side's code run as the pin selects the pin's engine and refuses any other copy.
+- **Class closure**: OPEN until the pin is advanced to the side commit on the maintainer's approval and a review
+  launch from the pin resolves; the iteration review then launches from the pin as before.

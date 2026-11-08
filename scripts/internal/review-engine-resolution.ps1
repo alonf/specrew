@@ -269,3 +269,71 @@ function Resolve-SpecrewReviewEngineRoot {
         marker_present = ($null -ne $marker)
     }
 }
+
+function Get-SpecrewPinnedReviewLaunchProblem {
+    # The pin's reason codes in plain words, for a refusal the human reads.
+    param([Parameter(Mandatory)]$Pin)
+    $where = if ([string]::IsNullOrWhiteSpace([string]$Pin.Root)) { 'The pinned copy' } else { ('The pinned copy at {0}' -f [string]$Pin.Root) }
+    switch ([string]$Pin.Reason) {
+        'record-unreadable' { return 'Its settings file (.specrew/runtime/live-engine.json) could not be read.' }
+        'pin-missing' { return ('{0} does not exist.' -f $where) }
+        'pin-not-a-checkout' { return ('{0} is not a checked-out copy of the repository.' -f $where) }
+        'pin-commit-mismatch' { return ('{0} is not at the reviewed commit it was set to.' -f $where) }
+        'pin-engine-file-missing' { return ('{0} is missing {1}.' -f $where, [string]$Pin.Detail) }
+        'pin-resolver-missing' { return 'This copy of the review command cannot read the pin settings.' }
+        default { return ('{0} could not be used.' -f $where) }
+    }
+}
+
+function New-SpecrewPinnedReviewLaunchRefusal {
+    param([Parameter(Mandatory)][string]$Reason, [Parameter(Mandatory)][string]$Message)
+    $refusal = [System.InvalidOperationException]::new($Message)
+    $refusal.Data['specrew_reason'] = $Reason
+    return $refusal
+}
+
+function Resolve-SpecrewReviewEngineForLaunch {
+    # Feature 203 T008 (DRIFT-028, DRIFT-051): the engine that records the human's approvals is the one that spends
+    # them. With a live-engine pin configured the hooks capture approvals with the pin's code, so a review launch for
+    # that project runs the pin's engine, never the project tree's copy, which holds edits not yet reviewed. Only the
+    # pin's own review command may launch: another copy would pair its own capture-reading code with the pin's engine.
+    # Inert until configured: with no pin the launch resolves exactly as before (Resolve-SpecrewReviewEngineRoot).
+    # $Pin is Get-SpecrewLiveEnginePin's record, or $null when none is configured.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$InstalledRuntimeRoot,
+        [AllowNull()]$Pin
+    )
+
+    if ($null -eq $Pin -or -not [bool]$Pin.Configured) {
+        return Resolve-SpecrewReviewEngineRoot -ProjectRoot $ProjectRoot -InstalledRuntimeRoot $InstalledRuntimeRoot
+    }
+    if (-not [bool]$Pin.Valid) {
+        throw (New-SpecrewPinnedReviewLaunchRefusal -Reason 'review-engine-pin-unusable' -Message (
+            'Specrew did not start the review, because this project runs its reviewed engine from a pinned copy and that copy could not be used. ' +
+            (Get-SpecrewPinnedReviewLaunchProblem -Pin $Pin) +
+            ' Nothing was launched, recorded or spent, and your approvals are unchanged. To fix it, the crew can re-create the pinned copy with scripts/internal/live-engine-pin.ps1, once you approve.'))
+    }
+
+    $separators = [char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $pinEngine = [IO.Path]::GetFullPath((Join-Path ([string]$Pin.Root) 'scripts/internal/continuous-co-review')).TrimEnd($separators)
+    $ownEngine = [IO.Path]::GetFullPath($InstalledRuntimeRoot).TrimEnd($separators)
+    # Undetermined case rule: 'distinct', so a path that differs only by case is read as another copy and refused.
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $pinEngine -WhenUndetermined 'distinct'
+    if (-not $ownEngine.Equals($pinEngine, $comparison)) {
+        $pinScript = Join-Path ([string]$Pin.Root) 'scripts/specrew-review.ps1'
+        throw (New-SpecrewPinnedReviewLaunchRefusal -Reason 'review-engine-not-pinned-launch' -Message (
+            ('Specrew did not start the review, because this project runs its reviewed engine from the pinned copy at {0} ({1}), and this review command is a different copy. ' -f [string]$Pin.Root, ([string]$Pin.Commit).Substring(0, 8)) +
+            'Nothing was launched, recorded or spent, and your approvals are unchanged. ' +
+            ('Run the same review from the pinned copy: pwsh -File "{0}" with the same arguments.' -f $pinScript)))
+    }
+
+    return [pscustomobject][ordered]@{
+        runtime_root = $pinEngine
+        source = 'pin'
+        bundle_sha256 = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $pinEngine
+        project_bundle_sha256 = $null
+        marker_present = $false
+    }
+}
