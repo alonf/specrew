@@ -412,7 +412,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "552853858d71381c6aad23f9baca99e41ffd846cbd0240f2e273408d736a9242"
+      "sha256": "9e7b6b4ef03a2c599a6b5b487c3b6241c85233840a29d9cc31550a9b932799e2"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -488,7 +488,7 @@
     },
     {
       "path": "squad-templates/agents/planner/charter.md",
-      "sha256": "53fb0c52efd09103865e282fb7db3ae4962dc4b2f773ad13bf0d25f3bc134459"
+      "sha256": "82facbe88b5f748203847b89daf7954be670a86bcab265f591aaf121c14dedfb"
     },
     {
       "path": "squad-templates/agents/retro-facilitator/charter.md",
@@ -504,7 +504,7 @@
     },
     {
       "path": "squad-templates/ceremonies/planning.md",
-      "sha256": "df5e2cb5abd7e3b1dced34efde4321dad23c2a755d6262259e969502a6515a17"
+      "sha256": "40b854a055ca1a6921b7582999b03d2d87377aecdab9a07adae492a8f380fd6d"
     },
     {
       "path": "squad-templates/ceremonies/README.md",

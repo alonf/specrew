@@ -447,6 +447,10 @@ then T014.
     verdict writer, `Add-SpecrewBoundaryAuthorization`, so `extensions/specrew-speckit/scripts/shared-governance.ps1` and
     its `.specify` copy; the grant is a new store fact, so `review-authority-core.ps1` and `review-authority-store.ps1`;
     the hook says why a verdict was refused for its budget, so `scripts/internal/bootstrap/HandoverStore.ps1`.
+    **Widened by the maintainer (2026-11-08):** FR-001 reaches new plans through the plan template
+    (`templates/specify/templates/plan-template.md` and its `.specify` copy) and the planner guidance (the planner
+    charter in `extensions/specrew-speckit/squad-templates/` and in `templates/squad/`, the planning ceremony, and their
+    deployed copies under `.specify/` and `.squad/`).
 - [ ] T008 [owner: Implementer] [sp: 5.0] [US1] **Orchestrator loop on the budget.**
   - **Carries from T004 (DRIFT-027):** removing the per-round approval (FR-010): the `approved for review round` act
     in the classifier, its capture writer and `--approve-round`, in the same change that makes the grant the only
@@ -477,6 +481,14 @@ then T014.
        round keeps finding new rare cases in code the fix did not change (rounds 8 and 9).
     4. B5F-017 (findings that state a concrete failure scenario demoted to notes for having none) is fixed before the
        automatic cycle is trusted; otherwise the cycle signs off on unfixed findings.
+  - **An empty host order and FR-006(d) (from T007, DRIFT-048 decision 2):** a grant whose plan stated no host order
+    (`host_order: []`, `host_order_stated: false`) approves exactly one host: the reviewer the engine picks for the
+    first round (a host other than the code's writer), recorded on that round's spend as the approved order. An empty
+    order never means "any host". Every other host is outside the approved order, so when `infra_failure_cap`
+    consecutive infrastructure failures exhaust that one host, the cycle stops at (d) and names the next host the
+    engine would try; `allow reviewer <host>` continues with it. **Acceptance:** with an empty order, the first round
+    runs on the engine's pick without a stop; two infrastructure failures on it stop at (d); no second host is invoked
+    before `allow reviewer`.
     **Carried from T004 (B5F-029 findings 2 and 3; DRIFT-039):** the approval withdrawal takes the round slot lock and
     revokes only its capture; a superseding partial sign-off reaches the round-approval consumption step. The same
     withdrawal writer records `withdrew_observed_at` as ISO 8601 with its offset, not the `[string]` of a parsed date

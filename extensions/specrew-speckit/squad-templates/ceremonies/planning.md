@@ -104,6 +104,8 @@ The planning ceremony does not finish until all checks pass:
 2. **Traceability**: no orphan tasks, no uncovered in-scope requirements
 3. **Capacity**: total effort is within threshold or explicitly approved
 4. **Lifecycle readiness**: the plan can transition to execution without missing required artifacts
+5. **Review budget**: the feature plan's `## Review budget` section (`specs/NNN-feature/plan.md`, FR-001) states this
+   iteration's rounds and reviewer host order, within `co_review_max_rounds`; the plan sync refuses a budget above it
 
 Use `specrew-capacity-planning` to pressure-test estimates and `specrew-traceability-check` before approval.
 If the plan is over capacity, record the explicit defer recommendation against the lowest-priority requirement slices before any approval decision is made.
@@ -118,6 +120,10 @@ Write or update `iterations/NNN/plan.md` with:
 - a `## Phase Baseline` section for planning, discovery/spikes, implementation, review, and expected rework
 - traceability summary
 - known risks, deferred work, and gate outcomes
+
+The review budget is not written here: it lives in the feature plan's `## Review budget` section, one
+`iteration-NNN:` entry per iteration (or one entry for all), and the before-implement approval records it for the
+iteration. When this iteration needs a budget of its own, add its entry there before asking for that approval.
 
 Set `Status: planning` until approval is recorded.
 

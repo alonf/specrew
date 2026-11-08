@@ -111,6 +111,33 @@
 - Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.
 - Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.
 
+## Review budget
+
+<!--
+  REQUIRED (FR-001). The review rounds this feature's review may spend, and the reviewer hosts in the order they are
+  tried. The human's before-implement approval records this budget once, for the iteration it starts; the review
+  then runs to it without asking for each round. Editing it after that approval changes nothing for that iteration.
+
+  - One `iteration-NNN:` entry per iteration, or the settings alone (no iteration key) for every iteration.
+  - rounds: at least 2 (one review round and one round that verifies the fixes); a plan that states fewer, or none,
+    gets 2. At most `co_review_max_rounds` in .specrew/config.yml (4 when not set); the plan sync refuses more.
+  - host_order: reviewer hosts, first one first: antigravity, claude, codex, copilot, cursor-agent. Name hosts other
+    than the one writing the code. A host outside this list stops the review for your decision.
+  - infra_failure_cap: consecutive infrastructure failures on one host before the next host is tried (1 to 10;
+    2 when not set). A failure to run is not a review round and spends none.
+  - model: optional; a description, not read by Specrew.
+-->
+
+```yaml
+iteration-001:
+  rounds: 2
+  host_order: [codex, copilot]
+  infra_failure_cap: 2
+```
+
+**Reasoning**: [Why this many rounds for this scope (the size and risk of the change, rounds similar work needed),
+and why these hosts in this order]
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

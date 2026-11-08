@@ -4172,14 +4172,25 @@ function Get-SpecrewReviewEngineLoadPath {
     return $null
 }
 
+function New-SpecrewReviewBudgetRefusal {
+    # Feature 203 T007 (DRIFT-048): one refusal of the before-implement verdict for its review budget. The capture reports
+    # it as 'review-budget-refused' and shows the message as written, so the message carries the whole refusal standard:
+    # what was not recorded, that nothing else changed, and the one action that unblocks it.
+    param([Parameter(Mandatory)][string]$Message)
+    $refusal = [System.InvalidOperationException]::new($Message)
+    $refusal.Data['specrew_reason'] = 'review-budget-refused'
+    return $refusal
+}
+
 function Invoke-SpecrewReviewBudgetSnapshot {
     # Feature 203 T007 (FR-002, FR-003, FR-008): recording the before-implement verdict snapshots the plan's review budget
     # for this iteration into a single grant, citing the verdict entry. Called by Add-SpecrewBoundaryAuthorization BEFORE
-    # the verdict is saved, so a budget the snapshot refuses (above co_review_max_rounds, an unknown reviewer, a block it
-    # cannot read) leaves nothing recorded: the refusal says why and how to go on, and the human approves again. The
-    # refusal carries Data['specrew_reason'] = 'review-budget-refused' for the capture to report it as such.
-    # When the approval names no feature or iteration, or no review engine can be loaded, the verdict is still recorded
-    # and a warning says no budget was snapshotted: the human's approval is not refused for the machinery's absence.
+    # the verdict is saved, so whenever no grant can be written nothing is recorded: the refusal says why and how to go
+    # on, and the human approves again. That covers a budget the snapshot refuses (above co_review_max_rounds, an unknown
+    # reviewer, a block it cannot read), an approval that names no feature or iteration, and a review engine that cannot
+    # be loaded. A before-implement verdict recorded without a grant would leave the iteration nothing to spend and no
+    # way to make a grant, since a second approval for a boundary already crossed authorizes nothing (maintainer ruling,
+    # DRIFT-048). Every refusal carries Data['specrew_reason'] = 'review-budget-refused' for the capture.
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [AllowNull()][AllowEmptyString()][string]$FeatureRef,
@@ -4190,23 +4201,25 @@ function Invoke-SpecrewReviewBudgetSnapshot {
     $feature = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { '' } else { Split-Path -Leaf $FeatureRef.Trim() }
     $iteration = if ([string]::IsNullOrWhiteSpace($IterationNumber)) { '' } else { $IterationNumber.Trim() }
     if ($iteration -match '^\d{1,2}$') { $iteration = '{0:000}' -f [int]$iteration }
-    if ([string]::IsNullOrWhiteSpace($feature) -or $iteration -notmatch '^\d{3,}$') {
-        try { [Console]::Error.WriteLine('[specrew-governance] WARN REVIEW_BUDGET_NOT_SNAPSHOTTED the before-implement approval names no feature or iteration, so no review budget was recorded with it.') } catch { $null = $_ }
-        return $null
+    $resync = 'Sync the before-implement boundary again, naming the feature and the iteration (sync-boundary-state.ps1 -BoundaryType before-implement -FeatureRef <feature> -IterationNumber <NNN>), then send: approved for before-implement'
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        throw (New-SpecrewReviewBudgetRefusal -Message ('Specrew did not record the before-implement approval, because the lifecycle state names no feature for it, so the review budget it grants cannot be recorded. Nothing else was changed. ' + $resync))
+    }
+    if ($iteration -notmatch '^\d{3,}$') {
+        throw (New-SpecrewReviewBudgetRefusal -Message ("Specrew did not record the before-implement approval, because the lifecycle state names no iteration of {0} for it, so the review budget it grants cannot be recorded. Nothing else was changed. {1}" -f $feature, $resync))
+    }
+    $loadedFrom = $null
+    if (-not (Get-Command Resolve-ReviewBudgetForIteration -ErrorAction SilentlyContinue)) {
+        $loadedFrom = Get-SpecrewReviewEngineLoadPath -ProjectRoot $ProjectRoot
+        if ($null -ne $loadedFrom) { . $loadedFrom }
     }
     if (-not (Get-Command Resolve-ReviewBudgetForIteration -ErrorAction SilentlyContinue)) {
-        $load = Get-SpecrewReviewEngineLoadPath -ProjectRoot $ProjectRoot
-        if ($null -ne $load) { . $load }
-    }
-    if (-not (Get-Command Resolve-ReviewBudgetForIteration -ErrorAction SilentlyContinue)) {
-        try { [Console]::Error.WriteLine('[specrew-governance] WARN REVIEW_BUDGET_NOT_SNAPSHOTTED the review engine could not be loaded, so no review budget was recorded with the before-implement approval.') } catch { $null = $_ }
-        return $null
+        $why = if ($null -eq $loadedFrom) { 'no Specrew review engine was found to load' } else { ("the review engine at {0} has no review budget support, so it is older than the approval capture" -f (Split-Path -Parent (Split-Path -Parent $loadedFrom))) }
+        throw (New-SpecrewReviewBudgetRefusal -Message ("Specrew did not record the before-implement approval, because {0}, so the review budget it grants cannot be recorded. Nothing else was changed. Run specrew update to bring the project's Specrew files and its review engine to the same version, then send: approved for before-implement" -f $why))
     }
     $resolution = Resolve-ReviewBudgetForIteration -RepoRoot $ProjectRoot -FeatureId $feature -IterationNumber $iteration
     if (-not [bool]$resolution.ok) {
-        $refusal = [System.InvalidOperationException]::new([string]$resolution.refusal)
-        $refusal.Data['specrew_reason'] = 'review-budget-refused'
-        throw $refusal
+        throw (New-SpecrewReviewBudgetRefusal -Message ([string]$resolution.refusal))
     }
     $campaignId = Get-ReviewCampaignIdForIteration -FeatureId $feature -IterationNumber $iteration
     $fact = New-ReviewBudgetGrantFact -CampaignId $campaignId -Resolution $resolution -VerdictEntry $VerdictEntry -ObservedAt $ObservedAt
@@ -4493,7 +4506,11 @@ function Add-SpecrewBoundaryAuthorization {
     # budget records neither (Invoke-SpecrewReviewBudgetSnapshot).
     if ($authorizedCanonical -ceq 'before-implement') {
         $budgetSession = if ($null -ne $enforcementState.Context -and $enforcementState.Context.Contains('session_state') -and $null -ne $enforcementState.Context['session_state']) { ConvertTo-SpecrewBoundaryMap -Value $enforcementState.Context['session_state'] } else { $null }
-        $budgetIteration = if ($null -ne $budgetSession -and $budgetSession.Contains('iteration_number')) { [string]$budgetSession['iteration_number'] } else { $null }
+        # The session's iteration belongs to the session's feature; when the pending crossing names another feature, it is
+        # not this approval's iteration, and the snapshot refuses rather than grant the wrong one.
+        $budgetSessionFeature = if ($null -ne $budgetSession -and $budgetSession.Contains('feature_ref') -and -not [string]::IsNullOrWhiteSpace([string]$budgetSession['feature_ref'])) { Split-Path -Leaf ([string]$budgetSession['feature_ref']).Trim() } else { '' }
+        $budgetFeature = if ([string]::IsNullOrWhiteSpace($authorizationFeatureRef)) { '' } else { Split-Path -Leaf ([string]$authorizationFeatureRef).Trim() }
+        $budgetIteration = if ($null -ne $budgetSession -and $budgetSession.Contains('iteration_number') -and $budgetSessionFeature -ceq $budgetFeature) { [string]$budgetSession['iteration_number'] } else { $null }
         $null = Invoke-SpecrewReviewBudgetSnapshot -ProjectRoot $ProjectRoot -FeatureRef $authorizationFeatureRef -IterationNumber $budgetIteration `
             -VerdictEntry ([string]$newAuthorization['authorization_id']) -ObservedAt $effectiveRecordedAt
     }

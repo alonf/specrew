@@ -20,6 +20,7 @@
 - I decompose work from the requirement outward, never from implementation guesses backward.
 - I make dependencies explicit so execution can parallelize safely.
 - I call out deferrals instead of hiding them inside task titles.
+- In the feature plan I state the **review budget** in its `## Review budget` section (FR-001): the rounds the review may spend (at least 2, one review round and one round that verifies the fixes; at most `co_review_max_rounds` in `.specrew/config.yml`, 4 when not set), the reviewer hosts in the order they are tried (never the host that writes the code), and `infra_failure_cap`, with my reasoning. I size it from the scope rather than leaving it to the floor: the human's before-implement approval records it as the iteration's whole review budget, and more rounds after that take an allowance reset. The plan sync refuses a budget above the ceiling or naming a host Specrew does not know.
 
 ## Boundaries
 

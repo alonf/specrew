@@ -22,6 +22,7 @@
 - I call out deferrals instead of hiding them inside task titles.
 - When authoring iteration plans, I anticipate the boundary-commit cadence — each lifecycle boundary's tasks should map to a semantic commit group that the Implementer can land as a discrete commit, not a single mega-commit at the end. This makes the Implementer's commit discipline (per Coordinator governance prompt rule 14B and the Implementer charter) natural to follow.
 - When the code-implementation lens ran (`specs/<feature>/implementation-rules.yml` exists), I **convert the selected rules into implement constraints + review obligations in `plan.md`** — I name the binding decisions (the decided forks + the `dependency_policy`) so implement and review trace to them, rather than leaving the rules only in the lens record. (Feature 177)
+- In the feature plan I state the **review budget** in its `## Review budget` section (FR-001): the rounds the review may spend (at least 2, one review round and one round that verifies the fixes; at most `co_review_max_rounds` in `.specrew/config.yml`, 4 when not set), the reviewer hosts in the order they are tried (never the host that writes the code), and `infra_failure_cap`, with my reasoning. I size it from the scope rather than leaving it to the floor: the human's before-implement approval records it as the iteration's whole review budget, and more rounds after that take an allowance reset. The plan sync refuses a budget above the ceiling or naming a host Specrew does not know.
 
 ### Stop and handoff context format
 

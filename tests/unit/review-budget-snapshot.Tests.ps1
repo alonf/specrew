@@ -25,7 +25,10 @@ BeforeAll {
         # plan carries -Budget under `## Review budget` when given; -ConfigExtra is appended to .specrew/config.yml.
         # -SpecrewVersion: the plan-sync cases declare a version below 0.30.0, where the design-analysis gate starts, so
         # the plan sync reaches the budget check without a design-analysis artifact; that gate is not under test here.
-        param([AllowNull()][string]$Budget, [string]$ConfigExtra = '', [string]$Boundary = 'before-implement', [string]$LastAuthorized = 'tasks', [string]$SpecrewVersion = '0.40.0')
+        # -SessionFeature and -SessionIteration are what the lifecycle state's session names; -PendingFeature adds a pending
+        # crossing to before-implement for that feature, which the verdict writer reads before the session.
+        param([AllowNull()][string]$Budget, [string]$ConfigExtra = '', [string]$Boundary = 'before-implement', [string]$LastAuthorized = 'tasks', [string]$SpecrewVersion = '0.40.0',
+            [string]$SessionFeature = '001-fixture', [string]$SessionIteration = '001', [string]$PendingFeature = '')
         $root = Join-Path ([IO.Path]::GetTempPath()) ('rbs-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
         $script:Roots.Add($root) | Out-Null
         foreach ($d in @('.specrew/runtime', '.specify', '.squad', '.github/agents', 'specs/001-fixture/iterations/001')) { $null = New-Item -ItemType Directory -Path (Join-Path $root $d) -Force }
@@ -53,8 +56,13 @@ BeforeAll {
         $ctx = [ordered]@{
             schema               = 'v2'
             feature_path         = (Join-Path $root 'specs/001-fixture')
-            session_state        = [ordered]@{ active = $true; boundary_type = $Boundary; feature_ref = '001-fixture'; iteration_number = '001'; auth_commit_hash = $head; recorded_at = '2026-11-08T08:00:00Z' }
+            session_state        = [ordered]@{ active = $true; boundary_type = $Boundary; feature_ref = $SessionFeature; iteration_number = $SessionIteration; auth_commit_hash = $head; recorded_at = '2026-11-08T08:00:00Z' }
             boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $LastAuthorized; pending_next_boundary = $Boundary; verdict_history = @(); bypass_history = @() }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($PendingFeature)) {
+            $tree = (@(& git -C $root rev-parse 'HEAD^{tree}' 2>&1))[0].ToString().Trim()
+            $ctx.boundary_enforcement['pending_crossing'] = New-SpecrewBoundaryCrossingIdentity -FromBoundary $LastAuthorized -ToBoundary $Boundary `
+                -BoundaryCommitHash $head -ArtifactStateId $tree -RecordedAt '2026-11-08T08:00:00Z' -FeatureRef $PendingFeature -IdentityVersion '2'
         }
         [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 8), $script:Utf8)
         $null = & git -C $root add -A 2>&1
@@ -235,5 +243,94 @@ Describe 'the ceiling (FR-002)' {
         $head = (@(& git -C $within rev-parse HEAD 2>&1))[0].ToString().Trim()
         $out = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $script:SyncWrapper -ProjectPath $within -BoundaryType plan -FeatureRef 001-fixture -IterationNumber 001 -AuthCommitHash $head 2>&1 | ForEach-Object { [string]$_ }) -join "`n"
         $out | Should -Not -Match 'review budget' -Because "a budget within the ceiling is not refused:`n$out"
+    }
+}
+
+Describe 'no grant, no verdict: an approval the snapshot cannot ground is refused (FR-003; maintainer ruling, DRIFT-048)' {
+    # A before-implement verdict recorded without a grant would leave the iteration nothing to spend and no way to make a
+    # grant: a second approval for a boundary already crossed authorizes nothing. So each case below refuses the verdict,
+    # records nothing, and ends with the one recovery action. Before the ruling each recorded the verdict with a warning.
+
+    It 'refuses an approval whose lifecycle state names no feature' {
+        $root = New-BudgetFixture -Budget "iteration-001:`n  rounds: 3" -SessionFeature ''
+        $refusal = Get-RefusalText { Invoke-BeforeImplementApproval -Root $root }
+        $refusal | Should -Match '^Specrew did not record the before-implement approval, because the lifecycle state names no feature'
+        $refusal | Should -Match 'Nothing else was changed'
+        $refusal | Should -Match '-BoundaryType before-implement -FeatureRef <feature> -IterationNumber <NNN>'
+        $refusal | Should -Match 'then send: approved for before-implement$'
+        @(Get-VerdictHistory -Root $root).Count | Should -Be 0 -Because 'no grant, no verdict'
+        Test-Path -LiteralPath (Join-Path $root '.specrew/review/authority') | Should -BeFalse
+    }
+
+    It 'refuses an approval whose lifecycle state names no iteration' {
+        $root = New-BudgetFixture -Budget "iteration-001:`n  rounds: 3" -SessionIteration ''
+        $refusal = Get-RefusalText { Invoke-BeforeImplementApproval -Root $root }
+        $refusal | Should -Match 'names no iteration of 001-fixture'
+        $refusal | Should -Match 'then send: approved for before-implement$'
+        @(Get-VerdictHistory -Root $root).Count | Should -Be 0
+        @(Get-BudgetGrants -Root $root).Count | Should -Be 0
+    }
+
+    It 'refuses rather than grant another feature''s iteration when the pending crossing and the session name different features' {
+        # A pending crossing's typed verdict needs the crossing's stage evidence, which is not under test here; the writer
+        # is reached as a declared out-of-band authorization, which takes the same snapshot before it is saved.
+        $root = New-BudgetFixture -Budget "iteration-001:`n  rounds: 3" -SessionFeature '002-other' -PendingFeature '001-fixture'
+        $outOfBand = Get-SpecrewFixtureOutOfBandSplat -Reason 'review-budget-snapshot fixture: the session names another feature'
+        $refusal = Get-RefusalText { Add-SpecrewBoundaryAuthorization -ProjectRoot $root -CurrentBoundary 'tasks' -AuthorizedBoundary 'before-implement' `
+                -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for before-implement' @outOfBand 2>$null }
+        $refusal | Should -Match 'names no iteration of 001-fixture' -Because 'the session''s iteration 001 belongs to 002-other, not to the approval''s feature'
+        @(Get-VerdictHistory -Root $root).Count | Should -Be 0
+        @(Get-BudgetGrants -Root $root).Count | Should -Be 0
+    }
+
+    It 'refuses an approval when no review engine can be loaded' {
+        $root = New-BudgetFixture -Budget "iteration-001:`n  rounds: 3"
+        Mock Get-SpecrewReviewEngineLoadPath { $null }
+        $refusal = Get-RefusalText { Invoke-BeforeImplementApproval -Root $root }
+        $refusal | Should -Match 'because no Specrew review engine was found to load'
+        $refusal | Should -Match 'Run specrew update'
+        $refusal | Should -Match 'then send: approved for before-implement$'
+        @(Get-VerdictHistory -Root $root).Count | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $root '.specrew/review/authority') | Should -BeFalse
+    }
+
+    It 'refuses an approval when the engine it loads is older than the approval capture' {
+        $root = New-BudgetFixture -Budget "iteration-001:`n  rounds: 3"
+        $old = Join-Path $root 'old-module/scripts/internal/continuous-co-review'
+        $null = New-Item -ItemType Directory -Path $old -Force
+        [IO.File]::WriteAllText((Join-Path $old '_load.ps1'), "# an engine from before T007: no review budget functions`n", $script:Utf8)
+        Mock Get-SpecrewReviewEngineLoadPath { Join-Path $old '_load.ps1' }
+        $refusal = Get-RefusalText { Invoke-BeforeImplementApproval -Root $root }
+        $refusal | Should -Match 'has no review budget support, so it is older than the approval capture'
+        $refusal | Should -Match ([regex]::Escape((Join-Path $root 'old-module/scripts/internal')))
+        $refusal | Should -Match 'Run specrew update'
+        @(Get-VerdictHistory -Root $root).Count | Should -Be 0
+    }
+}
+
+Describe 'new plans carry the section (FR-001)' {
+    It 'ships the Review budget section in the plan template, and the reader takes the template''s own budget as written' {
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'templates/specify/templates/plan-template.md') -Raw -Encoding UTF8
+        $template | Should -Match '(?m)^## Review budget\s*$' -Because 'before this change the template had no such section, so a new plan stated none and got the floor'
+        $section = [regex]::Match($template, '(?ms)^## Review budget\s*$.*?(?=^## )').Value
+        $section | Should -Match 'co_review_max_rounds'
+        $block = [regex]::Match($section, '(?ms)^```yaml\s*$\n(.*?)^```').Groups[1].Value
+        $block | Should -Not -BeNullOrEmpty
+        $root = New-BudgetFixture -Budget $block
+        $null = Invoke-BeforeImplementApproval -Root $root
+        $grant = @(Get-BudgetGrants -Root $root)[0]
+        $grant.budget_source | Should -Be 'plan' -Because 'the template''s example is a budget the snapshot reads as stated, not a block it refuses or ignores'
+        $grant.budget_total | Should -Be 2
+        @($grant.host_order) -join ',' | Should -Be 'codex,copilot'
+        $deployed = Get-Content -LiteralPath (Join-Path $script:RepoRoot '.specify/templates/plan-template.md') -Raw -Encoding UTF8
+        $deployed | Should -BeExactly $template -Because 'this repository''s own plans are written from the deployed copy'
+    }
+
+    It 'tells the planner to state the budget, in both planner charters' {
+        foreach ($charter in @('extensions/specrew-speckit/squad-templates/agents/planner/charter.md', 'templates/squad/agents/planner/charter.md')) {
+            $text = Get-Content -LiteralPath (Join-Path $script:RepoRoot $charter) -Raw -Encoding UTF8
+            $text | Should -Match '## Review budget' -Because "$charter is what a planner reads"
+            $text | Should -Match 'co_review_max_rounds'
+        }
     }
 }

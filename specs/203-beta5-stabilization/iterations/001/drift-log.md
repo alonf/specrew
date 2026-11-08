@@ -1228,18 +1228,40 @@
      `co_review_max_rounds`, then `approved for before-implement`). The hook reports it as `review-budget-refused` and
      shows that sentence as written.
   2. *An unstated host order snapshots as empty* (`host_order_stated: false`): the engine picks a reviewer other than the
-     code's writer, so no fixed default order exists. T008 decides what an empty order does at an infrastructure failure.
-  3. *No feature or iteration on the approval, or no loadable review engine*: the verdict is recorded with a warning and
-     no grant. The human's approval is not refused for the machinery's absence; T008's loop refuses to spend without a
-     grant.
+     code's writer, so no fixed default order exists. **How it reads against FR-006(d)** (the maintainer asked T008 to
+     say; now in T008's task text): an empty order approves exactly one host, the engine's pick for the first round,
+     recorded as the approved order on that round's spend. It never means "any host": once `infra_failure_cap`
+     consecutive infrastructure failures exhaust that host, the cycle stops at (d), and `allow reviewer <host>` goes on.
+  3. ~~*No feature or iteration on the approval, or no loadable review engine*: the verdict is recorded with a warning
+     and no grant.~~ **Overruled by the maintainer (2026-11-08):** it contradicted decision 1. A before-implement verdict
+     recorded without a grant leaves the iteration nothing T008 can spend and no way to make a grant, since a second
+     `approved for before-implement` authorizes nothing once that boundary is crossed. Each case now refuses the
+     verdict the way decision 1 does, records nothing, and ends with the recovery step:
+     - *no feature* or *no iteration* named by the lifecycle state, including a session whose iteration belongs to a
+       different feature than the pending crossing's: sync the before-implement boundary again naming both
+       (`sync-boundary-state.ps1 -BoundaryType before-implement -FeatureRef <feature> -IterationNumber <NNN>`), then
+       send `approved for before-implement`;
+     - *no review engine found*, or *an engine older than the capture* (no budget support): run `specrew update`, which
+       brings the project's Specrew files and the engine to one version, then send `approved for before-implement`.
+     The maintainer asked first whether a real before-implement crossing can lack a feature or iteration. None was
+     found: the boundary sync refuses before-implement with no iteration (`sync-boundary-state.ps1:378`) and writes
+     `session_state` with both, v2 included (the design-analysis gate's comment that a v2 start context has no
+     `session_state` is out of date; no writer removes it). The routes left are hand-edited or restored state, a
+     session naming another feature, and a capture newer than the engine it loads.
   4. *A second before-implement verdict for the same iteration* writes a second grant (its own verdict entry); the reader
      takes the newest. A verdict read twice (prompt hook and Stop) writes one.
 - **Owns widened**: `shared-governance.ps1` and its `.specify` copy (the snapshot in the verdict writer, the plan gate),
   `review-authority-core.ps1` and `review-authority-store.ps1` (the new fact's contract), `HandoverStore.ps1` (the
   refusal's capture reason and disclosure). Campaign ids now come from one derivation (`Get-ReviewCampaignIdForIteration`).
-- **Not in T007**: the plan template does not yet carry a `## Review budget` section, so a new plan states none and gets
-  the floor; FR-001's "the plan MUST state" reaches planners only when the template and planner guidance say so.
-- **Tests**: `tests/unit/review-budget-snapshot.Tests.ps1` (10 cases, RED before: no grant), in `f203-i001-suites`.
+- **FR-001 reaches new plans (maintainer, 2026-11-08)**: the plan template carries a `## Review budget` section (the
+  rules in a comment: floor 2, ceiling `co_review_max_rounds`, the known hosts, `infra_failure_cap`; a two-round,
+  two-host example the snapshot reads as stated; a Reasoning line). Both planner charters tell the planner to state
+  and size it; the planning ceremony adds it as a gate and says it lives in the feature plan, not the iteration plan.
+  Deployed copies updated with their sources.
+- **Tests**: `tests/unit/review-budget-snapshot.Tests.ps1`, 17 cases, in `f203-i001-suites`: the 10 first cases (RED
+  before T007: no grant); 5 for decision 3's refusals (no feature, no iteration, a session naming another feature, no
+  engine, an engine older than the capture; all 5 RED on `06fb5a00`, where each recorded the verdict); 2 for the
+  template (its block grants what it states; its deployed copy matches) and both planner charters.
 - **Live**: none yet. The pin keeps the hooks on the reviewed engine until T014, and nothing spends the grant until T008.
 - **Requirement**: FR-001, FR-002, FR-003, FR-008.
 - **Class closure**: OPEN until the iteration review.
