@@ -1496,4 +1496,22 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
     `timestamp-read`, `campaign-pause-core`, `campaign-pause-wiring`, `review-public-campaign-command`,
     `review-harness-contract`, `review-spend-allowance`, `advisory-names-the-humans-act`, `authority-control-consumer-guard`,
     `authorization-ref-not-the-advice`, `review-flag-whitelist-parity`, `slash-command-arg-whitelist`, and the navigator suite.
-- **Class closure**: OPEN; step (i) built except the partial-findings half of item 3 (step iii). Next: step (ii), item 4.
+- **Step (i) closed (2026-11-09)**: the affected suites and every lane green on `e7e58623` and `4f208e2a`, f198 green alone on
+  `de8152f2` (it found a reviewer name in the host-neutral core from T007's parser, fixed in `4f208e2a`); the real home
+  unchanged. Two suites outside every lane are red before T008 as well (B5F-036).
+- **Built, step (ii) (item 4)**: the engine chooses the reviewer (`Resolve-ReviewCampaignReviewerHost`). The approved order is the
+  grant's `host_order` plus every `allow reviewer` fact (`AllowedReviewerFact`, `Add-ReviewCampaignAllowedReviewerFact`); for an
+  empty order it is the engine's first pick that is not the code's writer, recorded on the round's launch grant
+  (`reviewer_host`) and read back from it. Each result records the reviewer that ran (`reviewer_host`). The current reviewer is
+  the first in the order with fewer than `infra_failure_cap` consecutive infrastructure failures since the last spent round;
+  with all past the cap the command stops (`review-host-order-exhausted`), naming the next reviewer and the line to type. A
+  `--host` naming another reviewer is refused (`review-host-not-current`), naming the current one; a `--host` naming it is
+  accepted. Interpretations: an infrastructure failure is an invoked run that brought back no complete review (item 3's
+  line); such a run writes no round pause, so the cycle goes on without a human, and the missing-pause guard looks only at
+  spent rounds; with no order and no reviewer set up nothing is enforced (the launch proceeds as before). The next reviewer
+  at (d) is the engine's pick among the set-up reviewers outside the order. `tests/unit/review-budget-loop.Tests.ps1` gains
+  five cases (codex to copilot after two failures; a spent round clears the count; the empty order and (d); allow reviewer;
+  `--host`), all failing on `de8152f2`.
+- **Not yet built (step iii)**: the typed `allow reviewer <host>` reaching the fact writer from the hook, and (d) as a pause fact
+  the navigator stops on with the FR-011 layout; both go with the other stops in step (iii).
+- **Class closure**: OPEN; steps (i) and (ii) built. Next: step (iii), items 5 and 6, with the partial-findings half of item 3.

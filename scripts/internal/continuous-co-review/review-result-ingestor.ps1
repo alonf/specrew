@@ -338,7 +338,9 @@ function Invoke-ReviewResultIngress {
         # rather than trusted by name. Same supplier as TargetHasSource - only the orchestrator holds
         # the snapshot - and same fail-open default: absent means today's by-name classification.
         [AllowNull()][string]$TargetRoot,
-        [object[]]$PriorFindings = @()
+        [object[]]$PriorFindings = @(),
+        # Feature 203 T008 (FR-009): the reviewer that ran, recorded on the result so its infrastructure failures count.
+        [AllowEmptyString()][string]$ReviewerHost = ''
     )
     $paths = Get-ReviewRunStagingPaths -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId
     $candidateLimits = Get-ReviewAuthorityCandidateLimits
@@ -439,6 +441,7 @@ function Invoke-ReviewResultIngress {
         # paid for, and a timed-out run with half a review is not.
         review_collected = [bool]($candidateRead.valid -and $null -ne $candidateRead.candidate -and [string]$candidateRead.candidate.completion -ceq 'complete')
     }
+    if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $result | Add-Member -NotePropertyName reviewer_host -NotePropertyValue $ReviewerHost.Trim().ToLowerInvariant() }
     $published = Publish-ReviewRunResultFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Fact $result
     $report = Write-ReviewRunReportCreateNew -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Content (ConvertTo-ReviewRunReportMarkdown -Result $result)
     return [pscustomobject]@{

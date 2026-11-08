@@ -38,9 +38,9 @@ BeforeAll {
     }
 
     # The grant T007's before-implement snapshot writes, through its own writer.
-    function script:Set-LoopBudgetGrant([pscustomobject]$Repo, [int]$Total) {
+    function script:Set-LoopBudgetGrant([pscustomobject]$Repo, [int]$Total, [string[]]$HostOrder = @()) {
         $resolution = [pscustomobject]@{
-            budget_total = $Total; host_order = @(); host_order_stated = $false; infra_failure_cap = 2
+            budget_total = $Total; host_order = @($HostOrder); host_order_stated = (@($HostOrder).Count -gt 0); infra_failure_cap = 2
             budget_source = 'plan'; ceiling = 10; plan_path = 'specs/001-demo/plan.md'; plan_hash = ('a' * 64)
         }
         $fact = New-ReviewBudgetGrantFact -CampaignId $script:CampaignId -Resolution $resolution -VerdictEntry 'auth-loop-verdict' -ObservedAt '2026-11-08T08:00:00.0000000+00:00'
@@ -306,5 +306,123 @@ Describe 'a round is spent only when a complete review was collected (DRIFT-052 
         $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
         (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-term-1' -Outcome terminated).invoked | Should -BeTrue
         (script:Get-LoopCounter -Repo $repo).rounds_used | Should -Be 1
+    }
+}
+
+Describe 'the engine chooses the reviewer from the approved host order (FR-009, FR-006(d); DRIFT-052 item 4)' {
+    BeforeAll {
+        # Three reviewers this project has set up and authorized; the code's writer is claude. The engine's own pick is
+        # the strongest one that is not the writer: codex, then copilot.
+        function script:Set-LoopReviewers([pscustomobject]$Repo) {
+            $rows = foreach ($h in @(@{ host = 'codex'; rank = 90 }, @{ host = 'claude'; rank = 85 }, @{ host = 'copilot'; rank = 80 })) {
+                [ordered]@{ host = $h.host; model = 'fixture'; adapter_id = ('reviewer-host-adapter-' + $h.host); allowed = $true; installed = $true
+                    review_class_rank = $h.rank; model_source = 'fixture'; cost_class = 'non-default'; authorization_ref = ('fixture-authorized-' + $h.host)
+                    fallback_allowed = $false; timeout_seconds = 0 }
+            }
+            New-Item -ItemType Directory -Path (Join-Path $Repo.root '.specrew') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Repo.root '.specrew/reviewer-hosts.json'), (([ordered]@{ schema_version = '1.0'; hosts = @($rows) }) | ConvertTo-Json -Depth 8), $script:Utf8)
+        }
+
+        # Ports for whichever reviewer the engine chose. $Behaviour says what each reviewer brings back: 'complete', or
+        # 'partial' (a timed-out run with half a review, an infrastructure failure). The ports record who was invoked.
+        function script:New-HostPortsFactory([pscustomobject]$Repo, [hashtable]$Behaviour, [System.Collections.Generic.List[string]]$Invoked) {
+            $repoForPorts = $Repo
+            $makePorts = ${function:script:New-LoopPorts}
+            return {
+                param([string]$HostName)
+                $Invoked.Add($HostName) | Out-Null
+                $kind = if ($Behaviour.ContainsKey($HostName)) { [string]$Behaviour[$HostName] } else { 'complete' }
+                $ports = & $makePorts -Repo $repoForPorts -Completion $kind -Outcome $(if ($kind -ceq 'partial') { 'timed-out' } else { 'completed' })
+                $ports.harness | Add-Member -NotePropertyName host -NotePropertyValue $HostName -Force
+                $ports.harness.id = 'fixture-' + $HostName
+                return $ports
+            }.GetNewClosure()
+        }
+
+        function script:Invoke-HostRound([pscustomobject]$Repo, [string]$RunId, [scriptblock]$Factory, [string]$ExplicitHost = '') {
+            $splat = @{
+                RepoRoot = $Repo.root; FeatureId = '001-demo'; IterationNumber = '007'; RunId = $RunId; AuthorityConfigPath = $Repo.config
+                CodeWriterHost = 'claude'; PortsFactory = $Factory
+            }
+            if (-not [string]::IsNullOrWhiteSpace($ExplicitHost)) { $splat.ReviewerHost = $ExplicitHost; $splat.ReviewerHostExplicit = $true }
+            return Invoke-ReviewCampaignCommand @splat
+        }
+    }
+
+    It 'acceptance: two infrastructure failures on codex advance the round to copilot, the next host in the approved order' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'host-advance')
+        script:Set-LoopReviewers -Repo $repo
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2 -HostOrder @('codex', 'copilot')
+        $invoked = [System.Collections.Generic.List[string]]::new()
+        $factory = script:New-HostPortsFactory -Repo $repo -Behaviour @{ codex = 'partial' } -Invoked $invoked
+        foreach ($n in 1..3) { $null = script:Invoke-HostRound -Repo $repo -RunId "run-host-adv-$n" -Factory $factory }
+        @($invoked) | Should -Be @('codex', 'codex', 'copilot')
+        (script:Get-LoopCounter -Repo $repo).rounds_used | Should -Be 1 -Because 'the two failed runs spent nothing; the complete one spent one'
+    }
+
+    It 'a spent round clears the count: one failure, a complete round, then one more failure stays on codex' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'host-reset')
+        script:Set-LoopReviewers -Repo $repo
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 4 -HostOrder @('codex', 'copilot')
+        $invoked = [System.Collections.Generic.List[string]]::new()
+        $behaviour = @{ codex = 'partial' }
+        $factory = script:New-HostPortsFactory -Repo $repo -Behaviour $behaviour -Invoked $invoked
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-rst-1' -Factory $factory
+        $behaviour['codex'] = 'complete'
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-rst-2' -Factory $factory
+        script:Add-LoopFix -Repo $repo -Number 1
+        $behaviour['codex'] = 'partial'
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-rst-3' -Factory $factory
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-rst-4' -Factory $factory
+        @($invoked) | Should -Be @('codex', 'codex', 'codex', 'codex') -Because 'the count is of consecutive failures since the last spent round'
+    }
+
+    It 'an empty host order approves the engine''s first pick, records it on the launch grant, and stops at (d) when it is spent, naming the next host' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'host-empty')
+        script:Set-LoopReviewers -Repo $repo
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
+        $invoked = [System.Collections.Generic.List[string]]::new()
+        $factory = script:New-HostPortsFactory -Repo $repo -Behaviour @{ codex = 'partial' } -Invoked $invoked
+        $first = script:Invoke-HostRound -Repo $repo -RunId 'run-host-empty-1' -Factory $factory
+        $first.invoked | Should -BeTrue -Because 'the first round runs on the engine''s pick with no stop'
+        $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $repo.store -CampaignId $script:CampaignId -Kind grants)
+        [string]$grants[0].reviewer_host | Should -BeExactly 'codex' -Because 'the approved host is recorded on the round''s launch grant'
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-empty-2' -Factory $factory
+        $third = script:Invoke-HostRound -Repo $repo -RunId 'run-host-empty-3' -Factory $factory
+        $third.invoked | Should -BeFalse
+        [string]$third.reason | Should -BeExactly 'review-host-order-exhausted'
+        [string]$third.next_host | Should -BeExactly 'copilot' -Because 'the engine names the host it would try next, never the code''s writer'
+        [string]$third.reason_detail | Should -Match 'allow reviewer copilot'
+        @($invoked) | Should -Be @('codex', 'codex') -Because 'no second host is invoked before allow reviewer'
+    }
+
+    It 'allow reviewer appends a host to the approved order, and the round continues on it' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'host-allow')
+        script:Set-LoopReviewers -Repo $repo
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
+        $invoked = [System.Collections.Generic.List[string]]::new()
+        $factory = script:New-HostPortsFactory -Repo $repo -Behaviour @{ codex = 'partial' } -Invoked $invoked
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-allow-1' -Factory $factory
+        $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-allow-2' -Factory $factory
+        $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $repo.store -CampaignId $script:CampaignId -HostName 'copilot' -AuthorizationRef 'typed-allow-reviewer-copilot' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+        $next = script:Invoke-HostRound -Repo $repo -RunId 'run-host-allow-3' -Factory $factory
+        $next.invoked | Should -BeTrue
+        @($invoked) | Should -Be @('codex', 'codex', 'copilot')
+    }
+
+    It 'a --host that differs from the engine''s current choice is refused, naming it; a --host that matches is accepted' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'host-explicit')
+        script:Set-LoopReviewers -Repo $repo
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2 -HostOrder @('codex', 'copilot')
+        $invoked = [System.Collections.Generic.List[string]]::new()
+        $factory = script:New-HostPortsFactory -Repo $repo -Behaviour @{} -Invoked $invoked
+        Mock -CommandName Get-ContinuousCoReviewProductionHarnessDefinition -MockWith { [pscustomobject]@{ command = 'pwsh'; harness_id = 'fixture' } }
+        $other = script:Invoke-HostRound -Repo $repo -RunId 'run-host-exp-1' -Factory $factory -ExplicitHost 'copilot'
+        $other.invoked | Should -BeFalse
+        [string]$other.reason | Should -BeExactly 'review-host-not-current'
+        [string]$other.reason_detail | Should -Match 'codex'
+        @($invoked).Count | Should -Be 0
+        (script:Invoke-HostRound -Repo $repo -RunId 'run-host-exp-2' -Factory $factory -ExplicitHost 'codex').invoked | Should -BeTrue
+        @($invoked) | Should -Be @('codex')
     }
 }

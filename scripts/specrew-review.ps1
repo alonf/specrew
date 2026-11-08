@@ -1353,7 +1353,8 @@ if ($Live) {
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost `
                 -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
                 -DesignContextRefs @($parsedArgs.DesignContextRefs) -ExcludedPathPatterns @($parsedArgs.ExcludedPathPatterns) `
-                -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
+                -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink `
+                -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -ReviewerConfigPath ([string]$parsedArgs.ReviewerConfigPath)
             if (-not [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'reason_detail')) -and -not $Json -and -not $Quiet) {
                 Write-Host ([string]$campaignRun.reason_detail) -ForegroundColor Yellow
             }

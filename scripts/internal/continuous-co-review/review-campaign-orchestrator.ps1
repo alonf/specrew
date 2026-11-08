@@ -1155,7 +1155,8 @@ function Add-ReviewCampaignLaunchGrant {
     # gives the reservation a slot. A slot that a pre-invocation failure released is reused, not minted again. Two
     # launches racing derive the same ordinal and so the same grant: one wins its slot, the other is refused.
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$AuthorityRef, [Parameter(Mandatory)][string]$ObservedAt)
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$AuthorityRef, [Parameter(Mandatory)][string]$ObservedAt,
+        [AllowEmptyString()][string]$ReviewerHost = '')
     $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind grants)
     $state = Get-ReviewCampaignAllowanceState -CampaignId $CampaignId -Grants $grants `
         -Reservations @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind reservations) `
@@ -1169,12 +1170,135 @@ function Add-ReviewCampaignLaunchGrant {
         grant_id = ('grant-' + (Get-ReviewCampaignStableToken -Value "$CampaignId/$AuthorityRef/launch/$ordinal" -Length 20))
         slots = 1; authority_kind = 'human'; authorization_ref = $AuthorityRef; observed_at = $ObservedAt
     }
+    # Feature 203 T008 (FR-009): the reviewer the engine chose for this round, which an empty host order approves.
+    if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $fact | Add-Member -NotePropertyName reviewer_host -NotePropertyValue $ReviewerHost.Trim().ToLowerInvariant() }
     try { $null = Add-ReviewCampaignGrantFact -StoreRoot $StoreRoot -Fact $fact }
     catch {
         # The same ordinal minted by a concurrent launch, with its own time: that launch's grant is the one.
         if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
     }
     return $fact
+}
+
+function Add-ReviewCampaignAllowedReviewerFact {
+    # Feature 203 T008 (FR-009, FR-006(d)): the human's `allow reviewer <host>` appends that reviewer to the campaign's
+    # approved order. Immutable and idempotent: allowing the same reviewer twice records it once.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$HostName,
+        [Parameter(Mandatory)][string]$AuthorizationRef, [Parameter(Mandatory)][string]$ObservedAt)
+    $name = $HostName.Trim().ToLowerInvariant()
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'allowed-reviewer'; campaign_id = $CampaignId; host = $name
+        authority_kind = 'human'; authorization_ref = $AuthorizationRef; observed_at = $ObservedAt
+    }
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/allowed-reviewers/$name.json"
+    try { return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $fact -ContractName AllowedReviewerFact -ExpectedCampaignId $CampaignId }
+    catch {
+        # Allowed already, under another reference or time: the reviewer is in the order, which is all the fact says.
+        if ($_.Exception.Message -like 'review-store-corruption:conflicting-immutable-fact:*') { return $null }
+        throw
+    }
+}
+
+function Get-ReviewCampaignAllowedReviewers {
+    # The reviewers the human allowed with `allow reviewer <host>`, in the order they were allowed.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/allowed-reviewers'
+    $path = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($path)) { return @() }
+    $facts = foreach ($file in [IO.Directory]::EnumerateFiles($path, '*.json', [IO.SearchOption]::TopDirectoryOnly)) {
+        Read-ReviewAuthorityFactFile -Path $file -ContractName AllowedReviewerFact -ExpectedCampaignId $CampaignId
+    }
+    return @($facts | Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'allowed-reviewer.observed_at' } |
+            ForEach-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'host') })
+}
+
+function Get-ReviewCampaignReviewerCatalog {
+    # The project's reviewer catalog (its reviewer-hosts file), or $null when it has none or it cannot be read.
+    param([Parameter(Mandatory)][string]$RepoRoot, [AllowEmptyString()][string]$ReviewerConfigPath = '')
+    $path = if ([string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { Join-Path $RepoRoot '.specrew/reviewer-hosts.json' } else { $ReviewerConfigPath }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog' -ErrorAction SilentlyContinue)) { return $null }
+    try { return Get-ContinuousCoReviewReviewerHostCatalog -Configuration (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100) }
+    catch { return $null }
+}
+
+function Resolve-ReviewCampaignReviewerHost {
+    # Feature 203 T008 (FR-009, FR-006(d); DRIFT-052 item 4, ruled 2026-11-08): THE ENGINE CHOOSES THE REVIEWER.
+    #
+    # The approved order is the budget grant's host order, plus every reviewer the human allowed since. A grant that
+    # states no order approves exactly one reviewer: the engine's first pick that is not the code's writer, recorded on
+    # that round's launch grant and read back from it for every later round. The current reviewer is the first in the
+    # order with fewer than infra_failure_cap consecutive infrastructure failures (invoked runs that brought back no
+    # complete review) since the last spent round. With every reviewer in the order past the cap, the cycle stops at (d)
+    # and names the reviewer the engine would try next. With no order and no reviewer set up, nothing is enforced and
+    # the launch goes ahead as it did before (Enforced = $false).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId,
+        [AllowEmptyString()][string]$ReviewerConfigPath = '', [AllowEmptyString()][string]$CodeWriterHost = ''
+    )
+    $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $cap = if ($null -ne $grant) { [int](Get-ReviewAuthorityProperty -Object $grant -Name 'infra_failure_cap') } else { [int]$script:ReviewBudgetDefaultInfraFailureCap }
+    if ($cap -lt 1) { $cap = [int]$script:ReviewBudgetDefaultInfraFailureCap }
+    $order = [Collections.Generic.List[string]]::new()
+    if ($null -ne $grant) {
+        # Assigned before wrapping: the accessor returns a collection unenumerated, so @(accessor) is one element.
+        $grantOrder = Get-ReviewAuthorityProperty -Object $grant -Name 'host_order'
+        foreach ($h in @($grantOrder)) {
+            $name = ([string]$h).Trim().ToLowerInvariant()
+            if (-not [string]::IsNullOrWhiteSpace($name) -and -not $order.Contains($name)) { $order.Add($name) }
+        }
+    }
+    $catalog = Get-ReviewCampaignReviewerCatalog -RepoRoot $RepoRoot -ReviewerConfigPath $ReviewerConfigPath
+    $writer = ([string]$CodeWriterHost).Trim().ToLowerInvariant()
+    $pickFrom = {
+        param([string[]]$Excluded)
+        if ($null -eq $catalog -or -not (Get-Command -Name 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) { return '' }
+        $remaining = @($catalog.hosts | Where-Object { @($Excluded) -notcontains ([string]$_.host).ToLowerInvariant() })
+        if ($remaining.Count -eq 0) { return '' }
+        $candidate = Select-ContinuousCoReviewReviewerCandidate -Catalog ([pscustomobject]@{ hosts = $remaining }) -CodeWriterHost $writer
+        if ($null -eq $candidate) { return '' }
+        return ([string]$candidate.host).ToLowerInvariant()
+    }
+    if ($order.Count -eq 0) {
+        # The approved one, as the first round recorded it; before any round, the engine's pick now.
+        $recorded = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind grants |
+                Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $_ -Name 'reviewer_host')) } |
+                Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'grant.observed_at' }) | Select-Object -First 1
+        $first = if ($null -ne $recorded) { ([string](Get-ReviewAuthorityProperty -Object $recorded -Name 'reviewer_host')).ToLowerInvariant() } else { & $pickFrom @() }
+        if (-not [string]::IsNullOrWhiteSpace($first)) { $order.Add($first) }
+    }
+    foreach ($allowed in @(Get-ReviewCampaignAllowedReviewers -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
+        if (-not [string]::IsNullOrWhiteSpace($allowed) -and -not $order.Contains($allowed)) { $order.Add($allowed) }
+    }
+    if ($order.Count -eq 0) { return [pscustomobject]@{ Enforced = $false; Host = ''; Order = @(); NextHost = ''; Cap = $cap; Exhausted = $false } }
+
+    $failures = @{}
+    $results = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId |
+            Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' })
+    foreach ($result in $results) {
+        if ([string](Get-ReviewAuthorityProperty -Object $result -Name 'runtime_outcome') -in @('preflight-failed', 'claim-contended', 'launch-failed')) { continue }
+        if (Test-ReviewResultSpendsRound -Result $result) { $failures = @{}; continue }
+        $ranOn = ([string](Get-ReviewAuthorityProperty -Object $result -Name 'reviewer_host')).ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($ranOn)) { continue }
+        $failures[$ranOn] = 1 + $(if ($failures.ContainsKey($ranOn)) { [int]$failures[$ranOn] } else { 0 })
+    }
+    $current = @($order | Where-Object { -not $failures.ContainsKey($_) -or [int]$failures[$_] -lt $cap }) | Select-Object -First 1
+    if ($null -ne $current) { return [pscustomobject]@{ Enforced = $true; Host = [string]$current; Order = @($order); NextHost = ''; Cap = $cap; Exhausted = $false } }
+    return [pscustomobject]@{ Enforced = $true; Host = ''; Order = @($order); NextHost = (& $pickFrom @($order)); Cap = $cap; Exhausted = $true }
+}
+
+function Format-ReviewCampaignHostOrderExhaustedDetail {
+    param([Parameter(Mandatory)]$Decision)
+    $order = (@($Decision.Order) -join ', ')
+    $next = [string]$Decision.NextHost
+    $lead = 'Specrew did not start another review round, because every reviewer in the approved order ({0}) failed to bring back a complete review {1} times in a row, so the next reviewer is outside the order that was approved. Nothing was launched, recorded or spent.' -f $order, [int]$Decision.Cap
+    if ([string]::IsNullOrWhiteSpace($next)) {
+        return ($lead + ' No other reviewer is set up for this project. Once the human has named one: specrew review --host <name> --authorization-ref reviewer-chosen-by-human, then the human can type allow reviewer <name>.')
+    }
+    return ($lead + (' The next reviewer would be {0}. To continue with it, the human can type, as a normal chat message (a reply inside a question UI or picker is not captured): allow reviewer {0}' -f $next))
 }
 
 function Format-ReviewCampaignBudgetSpentDetail {
@@ -1882,7 +2006,12 @@ function Invoke-ReviewCampaignCommand {
         [string]$StagingRoot,
         [string]$TargetRoot,
         [AllowNull()]$Ports,
-        [scriptblock]$ProgressSink
+        [scriptblock]$ProgressSink,
+        # Feature 203 T008 (FR-009): what the engine needs to choose the reviewer: who wrote the code, the project's reviewer
+        # catalog, and (tests) how to build the ports for the reviewer it chose.
+        [AllowEmptyString()][string]$CodeWriterHost = '',
+        [AllowEmptyString()][string]$ReviewerConfigPath = '',
+        [scriptblock]$PortsFactory
     )
     $progressCollector = New-ReviewProgressCollector -ExternalSink $ProgressSink
     $authority = Get-ContinuousCoReviewAuthorityDecision -ConfigPath $AuthorityConfigPath
@@ -2020,7 +2149,7 @@ function Invoke-ReviewCampaignCommand {
         $newestInvoked = $null
         try {
             $newestInvoked = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
-                    Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') } |
+                    Where-Object { Test-ReviewResultSpendsRound -Result $_ } |
                     Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' }) | Select-Object -Last 1
         }
         catch {
@@ -2218,16 +2347,56 @@ function Invoke-ReviewCampaignCommand {
             diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
         }
     }
+    # Feature 203 T008 (FR-009, FR-006(d)): THE ENGINE CHOOSES THE REVIEWER from the approved order. A --host is accepted
+    # only when it names the engine's current choice; an exhausted order stops at (d), naming the next reviewer.
+    $hostDecision = $null
     try {
-        $null = Add-ReviewCampaignLaunchGrant -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -AuthorityRef ([string]$launchBudget.authority_ref) `
-            -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+        $hostDecision = Resolve-ReviewCampaignReviewerHost -RepoRoot $root -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
+            -ReviewerConfigPath $ReviewerConfigPath -CodeWriterHost $CodeWriterHost
     }
     catch {
         return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
             -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
     }
+    $launchHost = $ReviewerHost
+    if ([bool]$hostDecision.Enforced) {
+        if ([bool]$hostDecision.Exhausted) {
+            return [pscustomobject][ordered]@{
+                status = 'paused'; reason = 'review-host-order-exhausted'; reason_detail = (Format-ReviewCampaignHostOrderExhaustedDetail -Decision $hostDecision)
+                next_host = [string]$hostDecision.NextHost; host_order = @($hostDecision.Order)
+                invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+                target_lineage = $identity.target_lineage; store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+                design_context = [string]$designContext.classification
+                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+                continuation_authorized = $false; continuation_reason = 'review-host-order-exhausted'
+                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            }
+        }
+        if ($ReviewerHostExplicit -and -not [string]::IsNullOrWhiteSpace($ReviewerHost) -and $ReviewerHost.Trim().ToLowerInvariant() -cne [string]$hostDecision.Host) {
+            return [pscustomobject][ordered]@{
+                status = 'not-started'; reason = 'review-host-not-current'
+                reason_detail = ('Specrew did not start the review on {0}, because the reviewer for this round is {1}, the current one in the approved order ({2}). Nothing was launched, recorded or spent. Run the review without --host, or with --host {1}.' -f $ReviewerHost.Trim().ToLowerInvariant(), [string]$hostDecision.Host, (@($hostDecision.Order) -join ', '))
+                current_host = [string]$hostDecision.Host
+                invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+                target_lineage = $identity.target_lineage; authority_mode = 'campaign'
+                design_context = [string]$designContext.classification
+                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            }
+        }
+        $launchHost = [string]$hostDecision.Host
+    }
+    try {
+        $null = Add-ReviewCampaignLaunchGrant -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -AuthorityRef ([string]$launchBudget.authority_ref) `
+            -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -ReviewerHost $(if ([bool]$hostDecision.Enforced) { $launchHost } else { '' })
+    }
+    catch {
+        return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+    }
+    if ($null -eq $Ports -and $null -ne $PortsFactory) { $Ports = & $PortsFactory $launchHost }
     if ($null -eq $Ports) {
-        $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TargetRoot $TargetRoot `
+        $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $launchHost -Model $Model -TargetRoot $TargetRoot `
             -ExcludedPathPatterns $ExcludedPathPatterns -TimeoutSeconds $TimeoutSeconds
     }
     $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
@@ -2576,7 +2745,8 @@ function Invoke-ReviewCampaignRun {
             }
         }
         catch { $targetHasSource = $false }
-        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason -TargetHasSource $targetHasSource -TargetRoot ([string]$snapshot.snapshot_path)
+        $reviewerHostRan = if ($HarnessPort.PSObject.Properties['host'] -and -not [string]::IsNullOrWhiteSpace([string]$HarnessPort.host)) { [string]$HarnessPort.host } else { [string]$HarnessPort.id }
+        $ingress = Invoke-ReviewResultIngress -ReviewerHost $reviewerHostRan -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason -TargetHasSource $targetHasSource -TargetRoot ([string]$snapshot.snapshot_path)
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
             $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }
@@ -2585,7 +2755,10 @@ function Invoke-ReviewCampaignRun {
             # hand the decision to the human. Fail-soft: a pause that cannot be recorded must not
             # destroy a published review result, so the round still returns its terminal outcome.
             $roundPause = $null
-            try {
+            # Feature 203 T008 (FR-009; DRIFT-052 item 3): a run that brought back no complete review is not a round. It spent
+            # nothing and writes no pause; the next launch runs on the current reviewer, which the engine advances after
+            # infra_failure_cap such runs in a row.
+            if (Test-ReviewResultSpendsRound -Result $ingress.result) { try {
                 # ProjectName addresses the human in the pause surface and must never be the reason a
                 # pause is lost. An empty FeatureId falls back to the campaign identity, which encodes it.
                 $pauseProjectName = if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId }
@@ -2610,7 +2783,7 @@ function Invoke-ReviewCampaignRun {
                     (([pscustomobject][ordered]@{ event = 'review-pause-write-failed'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $targetDigest; exception_type = $_.Exception.GetType().FullName; message = $_.Exception.Message }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $pauseTrace -Encoding UTF8
                 }
                 catch { $null = $_ }
-            }
+            } }
             return [pscustomobject]@{ status = 'terminal'; reason = $ingress.reason; invoked = $true; result = $ingress.result; result_path = $ingress.result_path; report_path = $ingress.report_path; pause = $roundPause }
         }
         # A reviewer tree may still be using the frozen target. Recovery owns disposal after it proves

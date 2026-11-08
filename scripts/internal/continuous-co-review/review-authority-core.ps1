@@ -702,7 +702,7 @@ function Test-ReviewAuthorityContractObject {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -717,8 +717,11 @@ function Test-ReviewAuthorityContractObject {
         'ReviewRun' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'state') }
         'ReviewInvocation' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'snapshot_path', 'review_scope', 'prompt_path', 'candidate_result_path', 'candidate_report_path', 'deadline') }
         'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths') }
-        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected') }
-        'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at') }
+        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected', 'reviewer_host') }
+        # Feature 203 T008 (FR-009): a launch grant names the reviewer the engine chose for that round.
+        'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host') }
+        # Feature 203 T008 (FR-009, FR-006(d)): `allow reviewer <host>` appends a reviewer to the campaign's approved order.
+        'AllowedReviewerFact' { @('schema_version', 'fact_type', 'campaign_id', 'host', 'authority_kind', 'authorization_ref', 'observed_at') }
         # Feature 203 T007 (FR-003): the review budget, snapshotted from the plan when the before-implement verdict is recorded.
         'BudgetGrantFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'grant_id', 'budget_total', 'host_order', 'host_order_stated',
@@ -811,11 +814,23 @@ function Test-ReviewAuthorityContractObject {
             # Feature 203 T008 (DRIFT-052 item 3): whether a complete review was collected, the fact a round is spent on.
             # Optional: a result written before T008 has none, and its completion stands in for it.
             Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'review_collected' -Errors $errors -Optional
+            # Feature 203 T008 (FR-009): which reviewer ran, so its infrastructure failures can be counted. Optional for the same reason.
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'reviewer_host' -Errors $errors -MaxLength 64 -Optional
         }
         'GrantFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('grant')
             Test-ReviewAuthorityIdField -Object $InputObject -Name 'grant_id' -Kind grant -Errors $errors
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'slots' -Errors $errors -Minimum 1 -Maximum 100
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorization_ref' -Errors $errors -MaxLength 256
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'reviewer_host' -Errors $errors -MaxLength 64 -Optional
+        }
+        'AllowedReviewerFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 32 -Enum @('allowed-reviewer')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'host' -Errors $errors -MaxLength 64
+            $allowedHost = [string](Get-ReviewAuthorityProperty -Object $InputObject -Name 'host')
+            if (-not [string]::IsNullOrEmpty($allowedHost) -and $allowedHost -cnotmatch '^[a-z][a-z0-9-]{0,31}$') { Add-ReviewAuthorityError -Errors $errors -Message 'invalid-value:host' }
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorization_ref' -Errors $errors -MaxLength 256
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
