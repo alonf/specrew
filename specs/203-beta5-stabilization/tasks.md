@@ -431,7 +431,7 @@ then T014.
 
 ## Phase 5: US1, approve a review budget once (P1)
 
-- [ ] T007 [owner: Implementer] [sp: 2.5] [US1] **Budget declaration and snapshot.**
+- [X] T007 [owner: Implementer] [sp: 2.5] [US1] **Budget declaration and snapshot.**
   - **Work:** parse the plan's `## Review budget` block; validate against `co_review_max_rounds` at plan sync and at
     the snapshot (the refusal names the ceiling and `.specrew/config.yml`); write the grant fact at the
     before-implement verdict, citing the verdict entry; zero rounds when no budget is stated.

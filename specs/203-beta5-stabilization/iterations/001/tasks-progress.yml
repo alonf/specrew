@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-07T21:37:58.3442833Z"
+updated_at: "2026-11-08T14:19:05.3525541Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -41,9 +41,9 @@ tasks:
     blocked_reason: ""
   T007:
     title: "Budget declaration and snapshot; ceiling validation at plan sync and snapshot; zero-rounds default"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-08T14:19:05.3488461Z"
+    completed_at: "2026-11-08T14:19:05.3488461Z"
     blocked_reason: ""
   T008:
     title: "Orchestrator loop: single grant, reservation before invocation, top-up, infra cap, pause facts, navigator, stop layout and phrases"
