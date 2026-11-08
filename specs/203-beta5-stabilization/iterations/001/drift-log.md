@@ -1257,11 +1257,15 @@
   pending; hashes match the copies); `.specify/feature.json` rebuilt by the one pointer writer,
   `Set-SpecrewActiveFeaturePointer`. validate-governance passes on iteration 001, and the prompt and Stop hooks have run
   since. The branch was pushed to origin (`8308d468..06fb5a00`) so its commits have a second copy.
-- **Pin record (`.specrew/runtime/live-engine.json`)**: not yet rebuilt. `live-engine-pin.ps1` has no action that adopts an
-  existing checkout: Create refuses a pin folder that exists, and Advance refuses with no record. The pin checkout itself
-  is intact (clean, at `a489e6c0`). Until the record and its bindings are back, the hooks load engine code from this
-  worktree (`06fb5a00`, which carries the unreviewed T005 to T007 changes), not from the reviewed pin. How to rebuild it
-  is the maintainer's decision.
+- **Pin record (`.specrew/runtime/live-engine.json`)**: `live-engine-pin.ps1` has no action that adopts an existing
+  checkout: Create refuses a pin folder that exists, and Advance refuses with no record. From the restore (about 02:55)
+  to 03:06 local the hooks therefore loaded engine code from this worktree (`06fb5a00`, with the unreviewed T005 to T007
+  changes); no verdict or approval was typed in that window. Rebuilt on the maintainer's instruction ("rebuild the pin"):
+  the clean pin checkout removed by its exact path without `--force`, then T002's command,
+  `live-engine-pin.ps1 -Action Create -Commit a489e6c0`, re-created it and wrote the record and the bindings (five hosts,
+  stamped for `a489e6c0`). `-Action Show` reports it usable, and the launcher's three checks (pin HEAD equals the record,
+  the pinned dispatcher exists, the bindings match the commit) pass; this session's PostToolUse hook ran through it at
+  03:06:45.
 - **Lost for good, and what each loss affects later**:
   1. *Review campaign facts* (`.specrew/review/authority/`): the launches, results, finding dispositions and sign-offs of
      T002's rounds 1 to 7 (signed off on `7abcd180` and `063e233a`) and T004's rounds 8 to 13 (signed off on `6210e2ab`).
@@ -1287,4 +1291,5 @@
   6. *Regenerated or of low value*: `.specrew/handover/` (already regenerated), `active-sessions.yml`, `host-history.json`,
      `last-validator-summary.json`, `start-summary.md`, `.squad/decisions/inbox/`, `.squad/log/`, `.squad/orchestration-log/`.
 - **Requirement**: none; an incident in the crew's own tooling. Finding B5F-035.
-- **Class closure**: OPEN until the pin is rebuilt and the hooks are confirmed to run from it.
+- **Class closure**: restore complete (pin rebuilt, hooks run from it); the losses above are permanent. B5F-035 stays OPEN
+  until Specrew's own worktree-removing helpers hold its three checks.
