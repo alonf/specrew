@@ -1350,3 +1350,28 @@
   Antigravity binding to the redirected home instead, which confirms the neighbour suites as the writer.
 - **Class closure**: CLOSED for this incident. The suites that deploy without their own override stay open under
   B5F-032 (T013).
+
+### DRIFT-051 — No review round can launch for this project since T007 changed the review engine; DRIFT-028's precondition was missed (crew error; observation for T008)
+
+- **Observed (2026-11-08, read only, nothing launched)**: the pin's own engine resolver
+  (`live-engine\203-beta5-stabilization\scripts\internal\review-engine-resolution.ps1`, `a489e6c0`), asked to resolve
+  the engine for this worktree, refuses with `review-engine-project-runtime-drifted`: the worktree's
+  `scripts/internal/continuous-co-review/.specrew-runtime.json` names bundle `f98ec871...`, the files now hash to
+  `116f6814...`. The same check runs before the engine is chosen in every `specrew review` launch, so a round launched
+  from the pin's script or from the installed module (0.40.0-beta41) refuses the same way.
+- **Cause (crew error)**: T007 changed `review-campaign-orchestrator.ps1`, `review-authority-core.ps1` and
+  `review-authority-store.ps1` (DRIFT-048 widened its ownership for the grant fact). DRIFT-028 had recorded that a
+  pinned launch takes its review engine from the worktree and that T007/T008 must first make it take the pin's engine;
+  the widening did not carry that precondition, and nothing checked launchability after it.
+- **Effect**: none yet. No round is due before the iteration review after T013, and no round was attempted. The hooks
+  are not affected: they load from the pin.
+- **Also found while mapping T008 (read only, for T008)**: the T007 grant is written but nothing reads it yet; the cap
+  still comes from `co_review_max_rounds` (default 4). `host_order` and `infra_failure_cap` are unread, and there is no
+  consecutive-failure count. A timed-out round writes an unanswered pause, so its "more time" retry is refused by the
+  command gate (traced, not run). `--ack-reason` is checked for presence and then dropped. With neither
+  `--authorization-ref` nor `--approve-round`, the `authorization_ref` in `.specrew/reviewer-hosts.json` mints a new
+  one-slot grant for each new campaign with no captured approval (FR-010 removes that grant). The pause kinds (a), (c)
+  and (d) are never produced, and `defer`/`drop`/`fix finding` and `allow reviewer` have no writer.
+- **Requirement**: FR-003, FR-004, FR-010; DRIFT-028.
+- **Class closure**: OPEN until a review launch for a pinned project loads its engine from the pin, and the
+  iteration review has a launch path the maintainer has chosen.
