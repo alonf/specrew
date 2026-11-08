@@ -1243,3 +1243,48 @@
 - **Live**: none yet. The pin keeps the hooks on the reviewed engine until T014, and nothing spends the grant until T008.
 - **Requirement**: FR-001, FR-002, FR-003, FR-008.
 - **Class closure**: OPEN until the iteration review.
+
+### DRIFT-049 — The session worktree was force-removed by a pattern match; its git-ignored state is partly restored, the rest is lost for good (incident, maintainer ruling)
+
+- **What happened**: 2026-11-08 00:21 local. Clearing the stopped sweep checkout for `06fb5a00`, the crew ran
+  `git worktree list | Select-String '06fb5a00'` and force-removed every match. This worktree's own HEAD was `06fb5a00`,
+  so it matched and was removed with the sweep's checkout (B5F-035). Tracked work: nothing lost (the tree was clean at
+  `06fb5a00`; the branch ref was intact in the main checkout). Git-ignored state: deleted. There is no shadow copy, and C:
+  is an NVMe SSD with TRIM, so nothing can be undeleted.
+- **Restored (2026-11-08, about 02:55 local; maintainer's instruction)**: the worktree re-added at `06fb5a00`;
+  `.specrew/start-context.json` and `.specrew/last-start-prompt.md` copied from the companion's transcript copies taken
+  2026-11-07 04:30 local, with no boundary crossed since (last authorized `before-implement`, 5 verdicts, nothing
+  pending; hashes match the copies); `.specify/feature.json` rebuilt by the one pointer writer,
+  `Set-SpecrewActiveFeaturePointer`. validate-governance passes on iteration 001, and the prompt and Stop hooks have run
+  since. The branch was pushed to origin (`8308d468..06fb5a00`) so its commits have a second copy.
+- **Pin record (`.specrew/runtime/live-engine.json`)**: not yet rebuilt. `live-engine-pin.ps1` has no action that adopts an
+  existing checkout: Create refuses a pin folder that exists, and Advance refuses with no record. The pin checkout itself
+  is intact (clean, at `a489e6c0`). Until the record and its bindings are back, the hooks load engine code from this
+  worktree (`06fb5a00`, which carries the unreviewed T005 to T007 changes), not from the reviewed pin. How to rebuild it
+  is the maintainer's decision.
+- **Lost for good, and what each loss affects later**:
+  1. *Review campaign facts* (`.specrew/review/authority/`): the launches, results, finding dispositions and sign-offs of
+     T002's rounds 1 to 7 (signed off on `7abcd180` and `063e233a`) and T004's rounds 8 to 13 (signed off on `6210e2ab`).
+     Later: the iteration review cannot cite them as store facts; DRIFT-010 to DRIFT-035 and the commits are now their only
+     record. validate-governance's check of an accepted review.md reads the iteration's active campaign, so the iteration
+     review after T013 must produce its own campaign evidence; the T002 and T004 sign-offs cannot stand in for it.
+  2. *The spend ledger* (the campaign's `spend/`): the 13 rounds iteration 001 spent. Later: the engine counts iteration
+     001's rounds from zero, so the `co_review_max_rounds` fuse and any report of rounds used (T008 here, T010 in iteration
+     002) undercount this iteration. Round counts for the iteration review come from the drift log.
+  3. *Round approvals, allowance resets, coverage dispositions, pause decisions and the sign-off gate*
+     (`.specrew/review/round-approval/`, `allowance-reset/`, `coverage-disposition/`, `pause-decision/`, `signoff-gate/`):
+     no unspent approval was known to be pending. Later: the next review round needs a fresh typed approval; DRIFT-042's
+     B5F-029 finding 1 fix still goes to the iteration review, with no stored link to its sign-off.
+  4. *`.specrew/authority/`*: `exhausted-turns.jsonl`, the set of typed turns that have already minted an approval, and
+     `withdrawals.jsonl`. Later: an approval typed earlier in this conversation is no longer known to be spent, so a hook
+     that re-reads the transcript (the Stop backstop) could mint it again. For the rest of this conversation the crew checks
+     any approval the hooks find that the maintainer did not just type before acting on it. The withdrawals referred to approvals that
+     are also gone, so none is revived; the 5 boundary verdicts are unaffected.
+  5. *Journals and ledgers* (`.specrew/runtime/`): turn-end ledgers, the verdict-disclosure journal, hook-output authority,
+     hook health, conformance sessions, refocus state, and the pin bindings. Later: the evidence the drift entries quote
+     from these files (DRIFT-039's live check, DRIFT-043 to DRIFT-046) can no longer be re-read from disk; T012's
+     record-to-turn join has no records from before 2026-11-08 to join.
+  6. *Regenerated or of low value*: `.specrew/handover/` (already regenerated), `active-sessions.yml`, `host-history.json`,
+     `last-validator-summary.json`, `start-summary.md`, `.squad/decisions/inbox/`, `.squad/log/`, `.squad/orchestration-log/`.
+- **Requirement**: none; an incident in the crew's own tooling. Finding B5F-035.
+- **Class closure**: OPEN until the pin is rebuilt and the hooks are confirmed to run from it.
