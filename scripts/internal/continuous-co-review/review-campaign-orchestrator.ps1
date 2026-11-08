@@ -644,7 +644,7 @@ function Complete-ReviewPreInvocationFailure {
     $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -HarnessId $HarnessId -RuntimeOutcome $RuntimeOutcome -Invoked $false -TerminationVerified $true -Containment $Containment -Currentness unknown -StartedAt $StartedAt -EndedAt $ObservedAt -DurationMs $DurationMs -FailureReason $Reason
     $ingress | Add-Member -NotePropertyName slot_restored -NotePropertyValue $slotRestored -Force
     $ingress | Add-Member -NotePropertyName slot_restored_note -NotePropertyValue $(
-        if ($slotRestored) { 'The review did not start, so no round was used and the authorization you already gave is still available. You do not need to issue a new one; fix what this message names and run the review again.' }
+        if ($slotRestored) { 'The review did not start, so no round of the review budget was used. Fix what this message names and run the review again.' }
         else { '' }
     ) -Force
     return $ingress
@@ -672,12 +672,30 @@ function Get-ReviewCampaignRoundBudgetTotal {
     return $default
 }
 
+function Test-ReviewResultSpendsRound {
+    # Feature 203 T008 (FR-004; DRIFT-052 item 3, ruled 2026-11-08): a round is spent when a complete review was
+    # collected, whatever the exit. A run that never reached a reviewer, or reached one and brought back no complete
+    # review, is free; its partial findings stay open (they are not a clean round).
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Result)
+    if ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'runtime_outcome') -in @('preflight-failed', 'claim-contended', 'launch-failed')) { return $false }
+    if ((Get-ReviewAuthorityPropertyNames -Object $Result) -contains 'review_collected') {
+        return [bool](Get-ReviewAuthorityProperty -Object $Result -Name 'review_collected')
+    }
+    # A result written before T008 carries no review_collected; its completion is the nearest record of one.
+    return ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'completion') -ceq 'complete')
+}
+
 function Get-ReviewCampaignRoundBudgetState {
     <#
-    One production counter for the runaway fuse. A round counts only when a reviewer was
-    invoked (FR-014), and an immutable human reset moves the counting origin. Authority-store
-    corruption and malformed timestamps throw: callers must refuse before any reservation or
-    reviewer launch rather than substitute a permissive zero.
+    The one counter (FR-004): rounds_used against budget_total. Feature 203 T008: the total is the campaign's budget
+    grant (T007's snapshot, or the FR-008 floor the launch grants when none was snapshotted), counted from the
+    before-implement verdict; after a reset (FR-007) it is one fix and one verification round, counted from the reset.
+    A round counts only when a complete review was collected (Test-ReviewResultSpendsRound). A launch still in flight
+    (reserved, not released, no result yet) does not count as used, but it holds its round: continuation_available is
+    false when the used and in-flight rounds together reach the total, so two launches cannot both take the last one.
+    Authority-store corruption and malformed timestamps throw: callers must refuse before any reservation or reviewer
+    launch rather than substitute a permissive zero. RepoRoot is accepted for older callers and no longer read.
     #>
     [CmdletBinding()]
     param(
@@ -687,42 +705,67 @@ function Get-ReviewCampaignRoundBudgetState {
         [AllowEmptyString()][string]$RepoRoot = ''
     )
 
-    $budgetTotal = Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot
+    $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId
     $reset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
     $resetAt = if ($null -eq $reset) { $null } else {
         ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $reset -Name 'observed_at') -FieldName 'round-budget-reset.observed_at'
     }
-    $runIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $invokedResults = [Collections.Generic.List[object]]::new()
-
-    foreach ($result in @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
-        $runId = [string](Get-ReviewAuthorityProperty -Object $result -Name 'run_id')
-        if ((-not [string]::IsNullOrWhiteSpace($ExcludeRunId)) -and $runId -ceq $ExcludeRunId) { continue }
-        if ([string](Get-ReviewAuthorityProperty -Object $result -Name 'runtime_outcome') -in @('preflight-failed', 'claim-contended', 'launch-failed')) { continue }
-        $startedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $result -Name 'started_at') -FieldName "review-result[$runId].started_at"
-        if ($null -ne $resetAt -and $startedAt -le $resetAt) { continue }
-        $null = $runIds.Add($runId)
-        $invokedResults.Add($result) | Out-Null
+    $origin = $null
+    $budgetTotal = $script:ReviewBudgetFloor
+    $source = 'floor'
+    $authorityRef = $null
+    if ($null -ne $grant) {
+        $countsFrom = Get-ReviewAuthorityProperty -Object $grant -Name 'counts_from'
+        if ($null -eq $countsFrom -or [string]::IsNullOrWhiteSpace([string]$countsFrom)) { $countsFrom = Get-ReviewAuthorityProperty -Object $grant -Name 'observed_at' }
+        $origin = ConvertTo-ReviewAuthorityTimestamp -Value $countsFrom -FieldName 'budget-grant.counts_from'
+        $budgetTotal = [int](Get-ReviewAuthorityProperty -Object $grant -Name 'budget_total')
+        $source = 'grant'
+        $authorityRef = [string](Get-ReviewAuthorityProperty -Object $grant -Name 'grant_id')
+    }
+    if ($null -ne $resetAt -and ($null -eq $origin -or $resetAt -gt $origin)) {
+        $origin = $resetAt
+        $budgetTotal = $script:ReviewBudgetFloor
+        $source = 'reset'
+        $authorityRef = [string](Get-ReviewAuthorityProperty -Object $reset -Name 'reset_id')
     }
 
-    # A valid pending-pause fact is a second durable proof that a round reached the reviewer
-    # terminal. This covers a result that was lost after invocation without silently accepting a
-    # malformed pause; Get-ReviewCampaignPauseRecords validates and throws on corruption.
-    foreach ($record in @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
-        $runId = [string](Get-ReviewAuthorityProperty -Object $record.pause -Name 'run_id')
+    $runIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $resultRunIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $spentResults = [Collections.Generic.List[object]]::new()
+    foreach ($result in @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
+        $runId = [string](Get-ReviewAuthorityProperty -Object $result -Name 'run_id')
+        $null = $resultRunIds.Add($runId)
         if ((-not [string]::IsNullOrWhiteSpace($ExcludeRunId)) -and $runId -ceq $ExcludeRunId) { continue }
-        $pausedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $record.pause -Name 'observed_at') -FieldName "pending-pause[$runId].observed_at"
-        if ($null -ne $resetAt -and $pausedAt -le $resetAt) { continue }
-        $null = $runIds.Add($runId)
+        if (-not (Test-ReviewResultSpendsRound -Result $result)) { continue }
+        $startedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $result -Name 'started_at') -FieldName "review-result[$runId].started_at"
+        if ($null -ne $origin -and $startedAt -le $origin) { continue }
+        if ($runIds.Add($runId)) { $spentResults.Add($result) | Out-Null }
+    }
+
+    $releasedIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($release in @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind releases)) {
+        $null = $releasedIds.Add([string](Get-ReviewAuthorityProperty -Object $release -Name 'reservation_id'))
+    }
+    $inFlight = 0
+    foreach ($reservation in @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind reservations)) {
+        $runId = [string](Get-ReviewAuthorityProperty -Object $reservation -Name 'run_id')
+        if ((-not [string]::IsNullOrWhiteSpace($ExcludeRunId)) -and $runId -ceq $ExcludeRunId) { continue }
+        if ($releasedIds.Contains([string](Get-ReviewAuthorityProperty -Object $reservation -Name 'reservation_id'))) { continue }
+        if ($resultRunIds.Contains($runId)) { continue }
+        $inFlight++
     }
 
     return [pscustomobject][ordered]@{
         rounds_used            = $runIds.Count
         budget_total           = $budgetTotal
         budget_exhausted       = ($runIds.Count -ge $budgetTotal)
-        continuation_available = ($runIds.Count -lt $budgetTotal)
-        invoked_results        = @($invokedResults)
+        continuation_available = (($runIds.Count + $inFlight) -lt $budgetTotal)
+        in_flight              = $inFlight
+        invoked_results        = @($spentResults)
         reset_at               = $resetAt
+        counts_from            = $origin
+        budget_source          = $source
+        authority_ref          = $authorityRef
     }
 }
 
@@ -1007,6 +1050,138 @@ function Get-ReviewCampaignBudgetGrant {
     }
     $newest = @($grants | Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'budget-grant.observed_at' }) | Select-Object -Last 1
     return $newest
+}
+
+function Get-ReviewJsonStringProperty {
+    param([Parameter(Mandatory)][System.Text.Json.JsonElement]$Element, [Parameter(Mandatory)][string]$Name)
+    if ($Element.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) { return '' }
+    $value = [System.Text.Json.JsonElement]::new()
+    if ($Element.TryGetProperty($Name, [ref]$value) -and $value.ValueKind -eq [System.Text.Json.JsonValueKind]::String) { return [string]$value.GetString() }
+    return ''
+}
+
+function Get-ReviewCampaignBeforeImplementVerdict {
+    # Feature 203 T008 (DRIFT-052 item 2): the before-implement verdict the lifecycle ledger recorded for this feature's
+    # active iteration, or $null. Read from .specrew/start-context.json, as written: System.Text.Json keeps the
+    # recorded time as its text (ConvertFrom-Json would turn it into a local DateTime). Ledger entries do not name
+    # their iteration, so only the session's own iteration has an identifiable verdict; for any other iteration this
+    # is $null and the launch is refused rather than spend a verdict that was not that iteration's.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$FeatureId, [Parameter(Mandatory)][string]$IterationNumber)
+    $path = Join-Path $RepoRoot '.specrew/start-context.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $normalize = { param($value) $text = ([string]$value).Trim(); if ($text -match '^\d+$') { '{0:000}' -f [int]$text } else { $text } }
+    $document = $null
+    try { $document = [System.Text.Json.JsonDocument]::Parse([IO.File]::ReadAllText($path)) }
+    catch { return $null }
+    try {
+        $context = $document.RootElement
+        $session = [System.Text.Json.JsonElement]::new()
+        if ($context.ValueKind -ne [System.Text.Json.JsonValueKind]::Object -or -not $context.TryGetProperty('session_state', [ref]$session)) { return $null }
+        $sessionFeature = Get-ReviewJsonStringProperty -Element $session -Name 'feature_ref'
+        if ([string]::IsNullOrWhiteSpace($sessionFeature) -or (Split-Path -Leaf $sessionFeature.Trim()) -cne $FeatureId) { return $null }
+        if ((& $normalize (Get-ReviewJsonStringProperty -Element $session -Name 'iteration_number')) -cne (& $normalize $IterationNumber)) { return $null }
+        $enforcement = [System.Text.Json.JsonElement]::new()
+        $history = [System.Text.Json.JsonElement]::new()
+        if (-not $context.TryGetProperty('boundary_enforcement', [ref]$enforcement) -or $enforcement.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) { return $null }
+        if (-not $enforcement.TryGetProperty('verdict_history', [ref]$history) -or $history.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) { return $null }
+        $found = $null
+        foreach ($entry in $history.EnumerateArray()) {
+            if ((Get-ReviewJsonStringProperty -Element $entry -Name 'to_boundary') -cne 'before-implement') { continue }
+            $entryFeature = Get-ReviewJsonStringProperty -Element $entry -Name 'feature_ref'
+            if ([string]::IsNullOrWhiteSpace($entryFeature) -or (Split-Path -Leaf $entryFeature.Trim()) -cne $FeatureId) { continue }
+            $authorizationId = Get-ReviewJsonStringProperty -Element $entry -Name 'authorization_id'
+            $recordedAt = Get-ReviewJsonStringProperty -Element $entry -Name 'recorded_at'
+            if ([string]::IsNullOrWhiteSpace($authorizationId) -or [string]::IsNullOrWhiteSpace($recordedAt)) { continue }
+            $found = [pscustomobject][ordered]@{ authorization_id = $authorizationId; recorded_at = $recordedAt }
+        }
+        return $found
+    }
+    finally { $document.Dispose() }
+}
+
+function New-ReviewCampaignFloorGrantFact {
+    # Feature 203 T008 (FR-008; DRIFT-052 item 2, ruled 2026-11-08): a campaign whose before-implement verdict was
+    # recorded before Specrew snapshotted review budgets has no budget grant. It gets the floor of 2 rounds, citing that
+    # verdict: no host order (the engine's first pick that is not the code's writer), the default infrastructure cap, and
+    # no plan read. It is not a stop and not a reset; its rounds count from the verdict.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)]$Verdict, [Parameter(Mandatory)][string]$ObservedAt, [AllowEmptyString()][string]$RepoRoot = '')
+    $ceiling = Get-ReviewBudgetCeiling -RepoRoot $RepoRoot
+    return [pscustomobject][ordered]@{
+        schema_version    = '1.0'
+        fact_type         = 'budget-grant'
+        campaign_id       = $CampaignId
+        grant_id          = ('grant-' + (Get-ReviewCampaignStableToken -Value "$CampaignId/budget-floor/$([string]$Verdict.authorization_id)" -Length 20))
+        budget_total      = [int]$script:ReviewBudgetFloor
+        host_order        = @()
+        host_order_stated = $false
+        infra_failure_cap = [int]$script:ReviewBudgetDefaultInfraFailureCap
+        budget_source     = 'floor-no-grant'
+        ceiling           = [int]$ceiling.value
+        plan_path         = ''
+        plan_hash         = ''
+        verdict_entry     = [string]$Verdict.authorization_id
+        authority_kind    = 'human'
+        observed_at       = $ObservedAt
+        floor_reason      = ('The before-implement approval {0}, recorded {1}, was given before Specrew recorded review budgets, so no budget was snapshotted for this campaign. It gets the floor of {2} rounds (FR-008): one review and one fix verification, with no host order and the default cap, and the plan is not read.' -f [string]$Verdict.authorization_id, [string]$Verdict.recorded_at, [int]$script:ReviewBudgetFloor)
+        counts_from       = [string]$Verdict.recorded_at
+    }
+}
+
+function Resolve-ReviewCampaignLaunchAuthority {
+    # Feature 203 T008 (FR-003, FR-010): what a launch spends. Read only, so a refusal writes nothing. The campaign's
+    # budget grant when there is one; otherwise the recorded before-implement verdict the floor grant will cite; with
+    # neither, a refusal. Store corruption throws, for the caller to refuse.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$FeatureId, [Parameter(Mandatory)][string]$IterationNumber
+    )
+    $grant = $null
+    if ([IO.Directory]::Exists($StoreRoot)) { $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId }
+    if ($null -ne $grant) { return [pscustomobject]@{ ok = $true; reason = 'budget-grant'; detail = ''; budget_grant = $grant; floor_verdict = $null } }
+    $verdict = Get-ReviewCampaignBeforeImplementVerdict -RepoRoot $RepoRoot -FeatureId $FeatureId -IterationNumber $IterationNumber
+    if ($null -ne $verdict) { return [pscustomobject]@{ ok = $true; reason = 'budget-floor'; detail = ''; budget_grant = $null; floor_verdict = $verdict } }
+    return [pscustomobject]@{
+        ok = $false; reason = 'review-budget-no-verdict'; budget_grant = $null; floor_verdict = $null
+        detail = ('Specrew did not start the review, because no before-implement approval is recorded for {0} iteration {1}, and review rounds are approved with the implementation, so there is no review budget to spend. Nothing was launched, recorded or spent. Once this iteration has its before-implement approval (approved for before-implement), run the review again.' -f $FeatureId, $IterationNumber)
+    }
+}
+
+function Add-ReviewCampaignLaunchGrant {
+    # Feature 203 T008 (FR-010): the one-slot grant a launch reserves, minted from the budget grant (or the reset that
+    # topped it up), never from a per-round approval. The budget gate has already confirmed a round is left; this only
+    # gives the reservation a slot. A slot that a pre-invocation failure released is reused, not minted again. Two
+    # launches racing derive the same ordinal and so the same grant: one wins its slot, the other is refused.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$AuthorityRef, [Parameter(Mandatory)][string]$ObservedAt)
+    $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind grants)
+    $state = Get-ReviewCampaignAllowanceState -CampaignId $CampaignId -Grants $grants `
+        -Reservations @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind reservations) `
+        -Spends @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind spend) `
+        -Releases @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind releases)
+    if (-not $state.valid) { throw ('review-store-corruption:allowance-invalid:' + (@($state.errors) -join ',')) }
+    if (@($state.available).Count -gt 0) { return $null }
+    $ordinal = @($grants | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'authorization_ref') -ceq $AuthorityRef }).Count + 1
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'grant'; campaign_id = $CampaignId
+        grant_id = ('grant-' + (Get-ReviewCampaignStableToken -Value "$CampaignId/$AuthorityRef/launch/$ordinal" -Length 20))
+        slots = 1; authority_kind = 'human'; authorization_ref = $AuthorityRef; observed_at = $ObservedAt
+    }
+    try { $null = Add-ReviewCampaignGrantFact -StoreRoot $StoreRoot -Fact $fact }
+    catch {
+        # The same ordinal minted by a concurrent launch, with its own time: that launch's grant is the one.
+        if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
+    }
+    return $fact
+}
+
+function Format-ReviewCampaignBudgetSpentDetail {
+    param([Parameter(Mandatory)]$BudgetState)
+    $since = if ([string]$BudgetState.budget_source -ceq 'reset') { ' since the last allowance reset' } else { '' }
+    $running = if ([int]$BudgetState.in_flight -gt 0) { (' {0} more {1} still running.' -f [int]$BudgetState.in_flight, $(if ([int]$BudgetState.in_flight -eq 1) { 'round is' } else { 'rounds are' })) } else { '' }
+    return ('Specrew did not start another review round, because this iteration''s review budget is used: {0} of {1} rounds{2}.{3} Nothing was launched, recorded or spent. The human can send approved for allowance reset, which grants one fix round and one verification round.' -f [int]$BudgetState.rounds_used, [int]$BudgetState.budget_total, $since, $running)
 }
 
 function New-ReviewCampaignAuthorityStoreRefusal {
@@ -1698,7 +1873,6 @@ function Invoke-ReviewCampaignCommand {
         [string]$ReviewerHost,
         [switch]$ReviewerHostExplicit,
         [string]$Model,
-        [string]$GrantAuthorizationRef,
         [AllowEmptyCollection()][string[]]$DesignContextRefs = @(),
         [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @(),
         [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
@@ -1750,33 +1924,17 @@ function Invoke-ReviewCampaignCommand {
         $hostCommandAvailable = $null -ne $hostDefinition -and
             -not [string]::IsNullOrWhiteSpace([string]$hostDefinition.command) -and
             $null -ne (Get-Command -Name ([string]$hostDefinition.command) -ErrorAction SilentlyContinue)
-        $hostAuthorized = -not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)
-        if ($null -eq $hostDefinition -or -not $hostCommandAvailable -or -not $hostAuthorized) {
-            # T014: SAY WHICH OF THE THREE FAILED.
-            #
-            # One sentence used to cover three unrelated conditions - not catalogued, not installed, not
-            # approved - so a MISSING APPROVAL read as "codex is not installed" and sent the consumer to
-            # reinstall a tool that works perfectly. It fires on exactly the path a human answering a
-            # pause takes, because that path supplies a host and may not supply an approval.
-            #
-            # Ordered from the condition the consumer can act on most directly. Approval is checked LAST
-            # of the three but reported FIRST when it is the only failure, because it is the one they
-            # can fix in the next keystroke.
-            $failedCondition = if ($null -eq $hostDefinition) { 'not-cataloged' }
-            elseif (-not $hostCommandAvailable) { 'not-installed' }
-            else { 'not-approved' }
+        if ($null -eq $hostDefinition -or -not $hostCommandAvailable) {
+            # T014: SAY WHICH CONDITION FAILED. A host that is not catalogued and a host that is not installed are fixed
+            # in different places. Feature 203 T008 (FR-010): there is no third, approval condition; the budget grant is
+            # the launch authority, checked below.
+            $failedCondition = if ($null -eq $hostDefinition) { 'not-cataloged' } else { 'not-installed' }
             $conditionSentence = switch ($failedCondition) {
                 'not-cataloged' { "Specrew does not recognise the reviewer '$ReviewerHost'. Check the name, or list the reviewers this project can use with: specrew review --list-hosts" }
-                'not-installed' { "The reviewer '$ReviewerHost' is set up for this project, but its command is not on this machine. Install it, or choose one that is available with: specrew review --list-hosts" }
-                default { "This review round needs the human''s approval before it can run. Their typed reply `approved for review round`, as a normal chat message, is the approval - a reply inside a question UI or picker is not captured; once they have typed it, run: specrew review --live --approve-round. From their own terminal, the human can also run that command directly - their invocation is itself the approval." }
+                default { "The reviewer '$ReviewerHost' is set up for this project, but its command is not on this machine. Install it, or choose one that is available with: specrew review --list-hosts" }
             }
-            # THE TOKEN ITSELF MUST STOP LYING, not just the sentence beside it. For the two genuine
-            # host conditions the host really is the problem, so the long-standing
-            # `requested-host-not-available:` prefix is KEPT - other tooling classifies on it, and
-            # renaming a true token to add detail would be churn. A MISSING APPROVAL is not a host
-            # problem at all, so it gets its own token; that conflation is the whole defect.
-            $reasonToken = if ($failedCondition -ceq 'not-approved') { 'review-round-not-approved' }
-            else { "requested-host-not-available:{0}:{1}" -f $failedCondition, $ReviewerHost }
+            # The long-standing `requested-host-not-available:` prefix is kept: other tooling classifies on it.
+            $reasonToken = "requested-host-not-available:{0}:{1}" -f $failedCondition, $ReviewerHost
             return [pscustomobject][ordered]@{
                 status = 'not-started'
                 reason = $reasonToken
@@ -1801,6 +1959,29 @@ function Invoke-ReviewCampaignCommand {
     $StagingRoot = [IO.Path]::GetFullPath($StagingRoot)
     if (Test-ReviewTargetPathUnderRoot -Path $StagingRoot -Root $root) {
         throw "review-campaign-staging-root-inside-origin:$StagingRoot"
+    }
+    # Feature 203 T008 (FR-003, FR-008, FR-010; DRIFT-052): THE LAUNCH AUTHORITY. The campaign's budget grant, or the
+    # floor its recorded before-implement verdict earns; there is no per-round approval. Resolved read-only before any
+    # pause, grant, reservation or snapshot, so a refusal writes nothing and spends nothing.
+    $launchAuthority = $null
+    try {
+        $launchAuthority = Resolve-ReviewCampaignLaunchAuthority -RepoRoot $root -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
+            -FeatureId ([string]$identity.feature_id) -IterationNumber ([string]$identity.iteration_number)
+    }
+    catch {
+        return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+    }
+    if (-not [bool]$launchAuthority.ok) {
+        return [pscustomobject][ordered]@{
+            status = 'not-started'; reason = [string]$launchAuthority.reason; reason_detail = [string]$launchAuthority.detail
+            invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+            target_lineage = $identity.target_lineage; authority_mode = 'campaign'
+            design_context = [string]$designContext.classification
+            resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+            resolved_timeout_seconds = $TimeoutSeconds
+            diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+        }
     }
     # FR-003, WIRED TO THE COMMAND. This check existed as Test-ReviewCampaignContinuationAuthorized and
     # nothing in production called it, so a round that ended in a pause did not stop the next one from
@@ -2005,27 +2186,45 @@ function Invoke-ReviewCampaignCommand {
             }
         }
     }
-    if (-not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)) {
-        # One human authorization reference creates at most one campaign slot. A new run that reuses
-        # the same reference sees the already-spent grant; it does not mint another allowance slot.
-        $grantId = 'grant-' + (Get-ReviewCampaignStableToken -Value "$($identity.campaign_id)/$GrantAuthorizationRef" -Length 20)
-        $grant = [pscustomobject][ordered]@{
-            schema_version = '1.0'; fact_type = 'grant'; campaign_id = $identity.campaign_id; grant_id = $grantId
-            slots = 1; authority_kind = 'human'; authorization_ref = $GrantAuthorizationRef
-            observed_at = [DateTimeOffset]::UtcNow.ToString('o')
-        }
-        $existingGrant = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -Kind grants | Where-Object { [string]$_.grant_id -ceq $grantId })
-        if ($existingGrant.Count -eq 0) {
-            try { Add-ReviewCampaignGrantFact -StoreRoot $StoreRoot -Fact $grant | Out-Null }
+    # Feature 203 T008 (FR-004, FR-008, FR-010): THE BUDGET GATE, for every launch. A floor grant is recorded first when
+    # the campaign has none (it cites the verdict resolved above); then the one counter decides, and the launch gets
+    # a one-slot grant minted from the budget. No reviewer is invoked past budget_total.
+    $launchBudget = $null
+    try {
+        if ($null -ne $launchAuthority.floor_verdict) {
+            $floorGrant = New-ReviewCampaignFloorGrantFact -CampaignId $identity.campaign_id -Verdict $launchAuthority.floor_verdict `
+                -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -RepoRoot $root
+            try { $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot $StoreRoot -Fact $floorGrant }
             catch {
+                # A concurrent launch recorded the same floor first; its grant is the campaign's.
                 if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
-                $existingGrant = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -Kind grants | Where-Object { [string]$_.grant_id -ceq $grantId })
-                if ($existingGrant.Count -ne 1) { throw }
             }
         }
-        if ($existingGrant.Count -gt 0 -and ([string]$existingGrant[0].authorization_ref -cne $GrantAuthorizationRef -or [int]$existingGrant[0].slots -ne 1)) {
-            throw "review-store-corruption:grant-identity-mismatch:$grantId"
+        $launchBudget = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -ExcludeRunId $identity.run_id -RepoRoot $root
+    }
+    catch {
+        return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+    }
+    if (-not [bool]$launchBudget.continuation_available) {
+        return [pscustomobject][ordered]@{
+            status = 'not-started'; reason = 'review-round-budget-exhausted'; reason_detail = (Format-ReviewCampaignBudgetSpentDetail -BudgetState $launchBudget)
+            invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+            target_lineage = $identity.target_lineage; store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+            design_context = [string]$designContext.classification
+            resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+            rounds_used = [int]$launchBudget.rounds_used; budget_total = [int]$launchBudget.budget_total
+            continuation_authorized = $false; continuation_reason = 'review-round-budget-exhausted'
+            diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
         }
+    }
+    try {
+        $null = Add-ReviewCampaignLaunchGrant -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -AuthorityRef ([string]$launchBudget.authority_ref) `
+            -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+    }
+    catch {
+        return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
     }
     if ($null -eq $Ports) {
         $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TargetRoot $TargetRoot `

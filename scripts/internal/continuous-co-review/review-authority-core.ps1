@@ -717,12 +717,14 @@ function Test-ReviewAuthorityContractObject {
         'ReviewRun' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'state') }
         'ReviewInvocation' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'snapshot_path', 'review_scope', 'prompt_path', 'candidate_result_path', 'candidate_report_path', 'deadline') }
         'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths') }
-        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths') }
+        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected') }
         'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at') }
         # Feature 203 T007 (FR-003): the review budget, snapshotted from the plan when the before-implement verdict is recorded.
         'BudgetGrantFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'grant_id', 'budget_total', 'host_order', 'host_order_stated',
-            'infra_failure_cap', 'budget_source', 'ceiling', 'plan_path', 'plan_hash', 'verdict_entry', 'authority_kind', 'observed_at'
+            'infra_failure_cap', 'budget_source', 'ceiling', 'plan_path', 'plan_hash', 'verdict_entry', 'authority_kind', 'observed_at',
+            # Feature 203 T008 (DRIFT-052 item 2): a floor grant records why it is the floor and the verdict time it counts from.
+            'floor_reason', 'counts_from'
         ) }
         'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at') }
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
@@ -806,6 +808,9 @@ function Test-ReviewAuthorityContractObject {
             # projection. The declared-coverage rule was reachable only because nothing downstream
             # could see what the reviewer said it had read.
             Test-ReviewAuthorityExaminedPathsField -Object $InputObject -Name 'examined_paths' -Errors $errors
+            # Feature 203 T008 (DRIFT-052 item 3): whether a complete review was collected, the fact a round is spent on.
+            # Optional: a result written before T008 has none, and its completion stands in for it.
+            Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'review_collected' -Errors $errors -Optional
         }
         'GrantFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('grant')
@@ -823,9 +828,17 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'ceiling' -Errors $errors -Minimum 1 -Maximum 100
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'infra_failure_cap' -Errors $errors -Minimum 1 -Maximum 10
             Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'host_order_stated' -Errors $errors
-            Test-ReviewAuthorityStringField -Object $InputObject -Name 'budget_source' -Errors $errors -MaxLength 32 -Enum @('plan', 'floor-raised', 'floor-not-stated')
-            Test-ReviewAuthorityStringField -Object $InputObject -Name 'plan_path' -Errors $errors -MaxLength 512
-            Test-ReviewAuthorityStringField -Object $InputObject -Name 'plan_hash' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'budget_source' -Errors $errors -MaxLength 32 -Enum @('plan', 'floor-raised', 'floor-not-stated', 'floor-no-grant')
+            # A floor grant (no grant was snapshotted, so the engine grants the FR-008 floor citing the recorded verdict)
+            # never reads the plan: it names no plan, and it says why it is the floor and when its rounds count from.
+            $isFloorGrant = [string](Get-ReviewAuthorityProperty -Object $InputObject -Name 'budget_source') -ceq 'floor-no-grant'
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'plan_path' -Errors $errors -MaxLength 512 -AllowEmpty:$isFloorGrant
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'floor_reason' -Errors $errors -MaxLength 1000 -Optional:(-not $isFloorGrant)
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'counts_from' -Errors $errors -MaxLength 64 -Optional:(-not $isFloorGrant)
+            if ($isFloorGrant -and -not [string]::IsNullOrEmpty([string](Get-ReviewAuthorityProperty -Object $InputObject -Name 'plan_path'))) {
+                Add-ReviewAuthorityError -Errors $errors -Message 'invalid-value:plan_path:floor-grant-reads-no-plan'
+            }
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'plan_hash' -Errors $errors -MaxLength 64 -AllowEmpty:$isFloorGrant
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'verdict_entry' -Errors $errors -MaxLength 128
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64

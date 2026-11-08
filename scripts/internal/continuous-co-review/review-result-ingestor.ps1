@@ -433,6 +433,11 @@ function Invoke-ReviewResultIngress {
         # projection is an explicit field list - the same one that silently dropped the demotion
         # marks - so a field added upstream and not named here never reaches a single reader.
         examined_paths = @($coverage.paths)
+        # Feature 203 T008 (DRIFT-052 item 3, ruled 2026-11-08): a round is spent when a complete review was collected,
+        # whatever the exit. Recorded as its own fact because `completion` also folds in the runtime outcome and the
+        # controller's degrades: a complete review delivered by a run that then exited badly is still a review the human
+        # paid for, and a timed-out run with half a review is not.
+        review_collected = [bool]($candidateRead.valid -and $null -ne $candidateRead.candidate -and [string]$candidateRead.candidate.completion -ceq 'complete')
     }
     $published = Publish-ReviewRunResultFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Fact $result
     $report = Write-ReviewRunReportCreateNew -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Content (ConvertTo-ReviewRunReportMarkdown -Result $result)
