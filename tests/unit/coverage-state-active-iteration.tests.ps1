@@ -27,8 +27,17 @@ function New-RouterShapedStore {
     & git -C $root init -q -b main; & git -C $root config user.email 'f@f'; & git -C $root config user.name 'f'
     & git -C $root add -A 2>$null; & git -C $root commit -q -m base 2>$null
     $covered = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
-    # campaign i002: four delivered runs on the covered tree - the allowance spent
+    # campaign i002: four delivered runs on the covered tree - the allowance spent. Feature 203 T008: the counter's total is the
+    # campaign's budget grant, so the fixture states the four rounds that were approved, before the runs.
     $c2 = 'cmp-001-feat-i002'
+    $grantDir = Join-Path $root ('.specrew/review/authority/campaigns/{0}/budget-grants' -f $c2)
+    New-Item -ItemType Directory -Path $grantDir -Force | Out-Null
+    $grant = [ordered]@{
+        schema_version = '1.0'; fact_type = 'budget-grant'; campaign_id = $c2; grant_id = 'grant-0123456789abcdef0123'
+        budget_total = 4; host_order = @(); host_order_stated = $false; infra_failure_cap = 2; budget_source = 'plan'; ceiling = 4
+        plan_path = 'specs/001-feat/plan.md'; plan_hash = ('a' * 64); verdict_entry = 'auth-csai'; authority_kind = 'human'; observed_at = '2026-09-13T01:00:00Z'
+    }
+    [IO.File]::WriteAllText((Join-Path $grantDir 'grant-0123456789abcdef0123.json'), ($grant | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
     for ($n = 1; $n -le 4; $n++) {
         $runId = ('run-20260913-00000000{0}-aaaaaaa{0}' -f $n)
         $runDir = Join-Path $root ('.specrew/review/authority/campaigns/{0}/runs/{1}' -f $c2, $runId)

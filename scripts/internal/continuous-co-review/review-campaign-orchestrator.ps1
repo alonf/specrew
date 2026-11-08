@@ -1124,7 +1124,7 @@ function New-ReviewCampaignFloorGrantFact {
         verdict_entry     = [string]$Verdict.authorization_id
         authority_kind    = 'human'
         observed_at       = $ObservedAt
-        floor_reason      = ('The before-implement approval {0}, recorded {1}, was given before Specrew recorded review budgets, so no budget was snapshotted for this campaign. It gets the floor of {2} rounds (FR-008): one review and one fix verification, with no host order and the default cap, and the plan is not read.' -f [string]$Verdict.authorization_id, [string]$Verdict.recorded_at, [int]$script:ReviewBudgetFloor)
+        floor_reason      = ('The before-implement approval {0}, recorded {1}, was given before Specrew recorded review budgets, so no budget was snapshotted for this campaign. It gets the floor of {2} rounds: one review and one fix verification, with no host order and the default cap, and the plan is not read.' -f [string]$Verdict.authorization_id, [string]$Verdict.recorded_at, [int]$script:ReviewBudgetFloor)
         counts_from       = [string]$Verdict.recorded_at
     }
 }
