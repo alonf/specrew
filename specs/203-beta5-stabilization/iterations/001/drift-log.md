@@ -1387,5 +1387,14 @@
   on this branch. `tests/unit/pinned-review-launch.Tests.ps1` (6 cases, two through the CLI) fails 6 of 6 on the
   committed files and passes 6 of 6 here and on the side base; it joins lane `f203-i001-suites`. Read only, against this
   project, the side's code run as the pin selects the pin's engine and refuses any other copy.
-- **Class closure**: OPEN until the pin is advanced to the side commit on the maintainer's approval and a review
-  launch from the pin resolves; the iteration review then launches from the pin as before.
+- **Pin advanced (2026-11-08 17:34:48 local)**: on the maintainer's typed `advance the pin`, after the diff and the blob
+  comparison were shown, `live-engine-pin.ps1 -Action Advance -Commit bd4635df`. `-Action Show`: usable at `bd4635df`.
+  The pin checkout is clean. The record and the bindings name `bd4635df`; `.claude/settings.local.json` and the three
+  real-home hook files are unchanged by hash. The hooks run through it: the PostToolUse hook wrote its refocus state at
+  17:35:03. Read only, the pin's code resolves this project's review launch to the pin's engine (`source = pin`). The
+  sweep of `cb2fae64` before the advance: 6 of 6 lanes; 141 of 142 neighbours, the one failure
+  (`distribution-module-update.ps1`, GNU `tar` on PATH because the crew launched the sweep from Git Bash) passing when
+  rerun through the same driver from PowerShell; no real home hook file changed.
+- **Class closure**: CLOSED for the launch path: the iteration review launches from the pin's review command as
+  before. The side branch `203-pin-review-engine-side` stays local until the maintainer approves pushing it; T014's pin
+  advance to the reviewed head supersedes it.
