@@ -65,13 +65,21 @@ BeforeAll {
     }
 
     # What the reviewer brings back. Kind: 'findings' (a complete review with one major finding), 'clean' (a complete review
-    # with none), 'partial' (a timed-out run with half a review and one finding), 'mismatch' (a complete review answering
-    # another run: an identity mismatch), 'violated' (a complete clean review from a reviewer that changed the frozen copy).
+    # with none, answering no open finding), 'resolved' / 'still-open' (a clean complete review that answers every open
+    # finding it was given with that status), 'reworded' (a complete review reporting the same defect reworded, on a
+    # shifted line, answering nothing), 'partial' (a timed-out run with half a review and one finding), 'mismatch' (a
+    # complete review answering another run: an identity mismatch), 'violated' (a complete clean review from a reviewer
+    # that changed the frozen copy). Every invocation's review scope is kept in $script:StopScopes.
+    $script:StopScopes = [System.Collections.Generic.List[string]]::new()
     function script:New-StopPorts([pscustomobject]$Repo, [string]$Kind, [string]$HostName = '') {
-        $findingCount = if ($Kind -cin @('clean', 'violated')) { 0 } else { 1 }
+        $findingCount = if ($Kind -cin @('clean', 'violated', 'resolved', 'still-open')) { 0 } else { 1 }
+        $title = if ($Kind -ceq 'reworded') { 'Store lookup throws when empty' } else { 'Empty store {0}' }
+        $line = if ($Kind -ceq 'reworded') { 'src/app.ps1:3' } else { 'src/app.ps1:1' }
         $findings = @(for ($i = 1; $i -le $findingCount; $i++) {
-                [pscustomobject][ordered]@{ local_id = "local-$i"; severity = 'major'; title = "Empty store $i"; description = "Get-Answer reads the store. Failure scenario: when the store is empty, step $i throws instead of returning null."; location = 'src/app.ps1:1' }
+                [pscustomobject][ordered]@{ local_id = "local-$i"; severity = 'major'; title = ($title -f $i); description = "Get-Answer reads the store. Failure scenario: when the store is empty, step $i throws instead of returning null."; location = $line }
             })
+        $answer = if ($Kind -cin @('resolved', 'still-open')) { $Kind } else { '' }
+        $scopes = $script:StopScopes
         $completion = if ($Kind -ceq 'partial') { 'partial' } else { 'complete' }
         $verdict = if ($Kind -ceq 'partial') { 'incomplete' } elseif ($findingCount -gt 0) { 'findings' } else { 'pass' }
         $candidate = [pscustomobject][ordered]@{ schema_version = '1.0'; run_id = 'x'; target_digest = 'x'; completion = $completion; verdict = $verdict; summary = 'stop fixture'; findings = $findings; examined_paths = @('src/app.ps1') }
@@ -86,6 +94,11 @@ BeforeAll {
                 $payload = $candidate | Select-Object *
                 $payload.target_digest = [string]$invocation.target_digest
                 $payload.run_id = $(if ($mismatch) { 'run-someone-else' } else { [string]$invocation.run_id })
+                $scopes.Add([string]$invocation.review_scope) | Out-Null
+                if ($answer) {
+                    $given = @([regex]::Matches([string]$invocation.review_scope, 'finding-[0-9a-f]{16}') | ForEach-Object { $_.Value } | Select-Object -Unique)
+                    $payload | Add-Member -NotePropertyName finding_resolutions -NotePropertyValue @($given | ForEach-Object { [pscustomobject][ordered]@{ finding_id = $_; status = $answer } })
+                }
                 [IO.File]::WriteAllText([string]$invocation.candidate_result_path, ($payload | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
                 [pscustomobject]@{ exit_code = 0; output_activity = $true }
             }.GetNewClosure()
@@ -207,12 +220,13 @@ Describe 'stop (a): the budget spent with findings open is a pause fact in the F
         $surface | Should -Not -Match 'run another round' -Because 'no stop asks for a round (FR-006)'
     }
 
-    It 'the budget spent on a clean round ends the review with no stop' {
+    It 'the budget spent on a clean round that resolves the open finding ends the review with no stop' {
         $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'stop-a-clean')
         script:Set-StopBudgetGrant -Repo $repo -Total 2
         $null = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-ac-1' -Kind findings
         script:Add-StopFix -Repo $repo -Number 1
-        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-ac-2' -Kind clean
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-ac-2' -Kind resolved
+        (script:Get-StopCounter -Repo $repo).rounds_used | Should -Be 2 -Because 'the answering round collected a complete review'
         Get-ReviewCampaignOpenStop -StoreRoot $repo.store -CampaignId $script:CampaignId | Should -BeNullOrEmpty
         @(script:Get-StopPauseFacts -Repo $repo).Count | Should -Be 0
     }
@@ -300,12 +314,12 @@ Describe 'partial findings stay open until a fix or a typed line closes them (DR
         @($script:Releasing) | Should -Not -Contain ([string](script:Get-StopSignoff -Repo $repo).route)
     }
 
-    It 'a fix closes it: a complete round on moved files that does not report it again' {
+    It 'a fix closes it: a complete round on moved files whose reviewer marks it resolved' {
         $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'partial-fixed')
         script:Set-StopBudgetGrant -Repo $repo -Total 3
         $null = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-pf-1' -Kind partial
         script:Add-StopFix -Repo $repo -Number 1
-        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-pf-2' -Kind clean
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-pf-2' -Kind resolved
         @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId).Count | Should -Be 0
         (Get-ReviewCampaignLoopState -StoreRoot $repo.store -CampaignId $script:CampaignId).ended_clean | Should -BeTrue
     }
@@ -318,5 +332,68 @@ Describe 'partial findings stay open until a fix or a typed line closes them (DR
         $null = Add-ReviewCampaignFindingDisposition -StoreRoot $repo.store -CampaignId $script:CampaignId -FindingKey ([string]$finding.finding_key) `
             -Answer drop -Argument '' -AuthorizationRef 'typed-drop-finding' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
         @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId).Count | Should -Be 0
+    }
+}
+
+Describe 'an open finding closes only on the reviewer''s explicit resolved on moved files, or the human''s defer or drop (2026-11-09 ruling)' {
+    BeforeEach { $script:StopScopes.Clear() }
+
+    It 'the next round''s reviewer is given the open findings, by id' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'given')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-given-1' -Kind findings
+        $open = @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId)[0]
+        script:Add-StopFix -Repo $repo -Number 1
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-given-2' -Kind clean
+        $script:StopScopes[-1] | Should -Match ([regex]::Escape([string]$open.finding_id))
+    }
+
+    It 'a reworded finding on a shifted line does not close the original' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'reworded')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-reword-1' -Kind findings
+        $original = [string]@(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId)[0].finding_id
+        script:Add-StopFix -Repo $repo -Number 1
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-reword-2' -Kind reworded
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId | ForEach-Object { [string]$_.finding_id }) | Should -Contain $original
+    }
+
+    It 'no answer keeps it open: a clean round on moved files that does not answer it' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'no-answer')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-none-1' -Kind findings
+        script:Add-StopFix -Repo $repo -Number 1
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-none-2' -Kind clean
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId).Count | Should -Be 1
+        (Get-ReviewCampaignLoopState -StoreRoot $repo.store -CampaignId $script:CampaignId).ended_clean | Should -BeFalse
+    }
+
+    It 'still-open keeps it open' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'still-open')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-still-1' -Kind findings
+        script:Add-StopFix -Repo $repo -Number 1
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-still-2' -Kind still-open
+        (script:Get-StopCounter -Repo $repo).rounds_used | Should -Be 2 -Because 'the answering round collected a complete review'
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId).Count | Should -Be 1
+    }
+
+    It 'resolved on files that did not move keeps it open' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'resolved-same')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-same-1' -Kind partial
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-same-2' -Kind resolved
+        (script:Get-StopCounter -Repo $repo).rounds_used | Should -Be 1 -Because 'the answering round collected a complete review'
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId).Count | Should -Be 1 -Because 'nothing was changed, so nothing was fixed'
+    }
+
+    It 'resolved on moved files closes it, and the review ends clean' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'resolved-moved')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-moved-1' -Kind findings
+        script:Add-StopFix -Repo $repo -Number 1
+        $null = script:Invoke-StopRound -Repo $repo -RunId 'run-id-moved-2' -Kind resolved
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $repo.store -CampaignId $script:CampaignId).Count | Should -Be 0
+        (Get-ReviewCampaignLoopState -StoreRoot $repo.store -CampaignId $script:CampaignId).ended_clean | Should -BeTrue
     }
 }
