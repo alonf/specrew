@@ -30,11 +30,16 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
         # The stop-block builder lives in the legacy navigator module, which `_load.ps1` does not carry.
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
-        $script:BlockedPacket = New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' `
-            -Reason 'latest-result-not-current' `
-            -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' `
-            -CampaignId 'cmp-199-beta3-stabilization-i001' -RunId 'run-20260810-085753967-af5bef76' `
-            -TargetDigest ('a' * 40) -ImplementerAction 'request-current-digest-review'
+        # Feature 203 T008 (DRIFT-052 item 6; maintainer classification 2026-11-09, class B): the per-route navigator block is
+        # gone. A review stop is the human's block now (Format-ReviewCampaignStopSurface) with the agent's half beside it
+        # (Build-ReviewCampaignStopAgentDirective). The adjudication is the same, checked on those two.
+        $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
+        $script:Stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-beta3-stabilization-i001' -RunId 'run-20260810-085753967-af5bef76' `
+            -TargetDigest ('a' * 40) -Decision $decision -ObservedAt '2026-08-10T08:05:00Z' -StopKind 'c-judgment' -StopReason 'ask'
+        $script:Stop | Add-Member -NotePropertyName recommendation -NotePropertyValue 'should the retry cap count per host or per campaign?' -Force
+        function script:Get-HumanBlock([AllowNull()]$Crossing) {
+            return (@(Format-ReviewCampaignStopSurface -Stop $script:Stop -OpenFindings @() -PendingCrossing $Crossing) -join "`n")
+        }
 
         # The shape is transcribed from this repository's own .specrew/start-context.json rather than
         # invented, so the fixture cannot pass against a crossing shape the controller never writes.
@@ -55,71 +60,53 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
 
     Context 'with no recorded crossing the block is unchanged' {
         It 'still carries the blanket no-marker clause (nothing to adjudicate against)' {
-            # The pre-existing guarantee, restated here so the adjudication below can never be read as
-            # permission to emit markers generally. review-public-campaign-command.Tests.ps1 asserts
-            # this same clause across every blocked route.
-            # MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive and no
-            # longer prints inside the human's block. The GUARANTEE is unchanged - the agent is still told -
-            # only the channel moved.
-            $block = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket -PendingCrossing $null
-            $block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            # The pre-existing guarantee, restated here so the adjudication below can never be read as permission to emit
+            # markers generally. MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive.
+            Build-ReviewCampaignStopAgentDirective -PendingCrossing $null | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            script:Get-HumanBlock -Crossing $null | Should -Not -Match '(?i)approval you still owe' -Because 'with no crossing there is nothing to defer to'
         }
     }
 
     Context 'with a recorded crossing the block scopes itself instead of suppressing the marker' {
         It 'does NOT instruct blanket marker suppression' {
-            $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket `
-                -PendingCrossing (script:New-PendingCrossing)
-
-            $block | Should -Not -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            Build-ReviewCampaignStopAgentDirective -PendingCrossing (script:New-PendingCrossing) | Should -Not -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            script:Get-HumanBlock -Crossing (script:New-PendingCrossing) | Should -Not -Match 'SPECREW-VERDICT-BOUNDARY' -Because 'the marker clause is never the human''s to read'
         }
 
         It 'names the crossing it is deferring to, so the adjudication is readable rather than inferred' {
-            $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket `
-                -PendingCrossing (script:New-PendingCrossing)
-
-            # MOVED 2026-08-11 (T010, emission-point rule). The GUARANTEE - the adjudication is READABLE
-            # rather than inferred - is unchanged and now asserted on both channels for what each owes.
-            # The human is told which approval is still theirs, in boundary names they can act on; the
-            # 64-character identifier was REMOVED from that sentence (it stuttered with its own label and
-            # is noise to a reader) and travels on the agent channel, where it is the thing being matched.
+            # MOVED 2026-08-11 (T010). The human is told which approval is still theirs, in boundary names they can act on; the
+            # identifier travels on the agent channel, where it is the thing being matched. Fix 5 (maintainer classification
+            # 2026-11-09): the stop block says it does not decide that approval.
+            $block = script:Get-HumanBlock -Crossing (script:New-PendingCrossing)
             $block | Should -Match 'before-implement'
             $block | Should -Match 'review-signoff'
-            $directive = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket `
-                -PendingCrossing (script:New-PendingCrossing)
-            $directive | Should -Match 'crossing-9b3d255e'
+            $block | Should -Match '(?i)does not decide'
+            $block | Should -Not -Match 'crossing-9b3d255e' -Because 'the identifier is noise to a reader'
+            Build-ReviewCampaignStopAgentDirective -PendingCrossing (script:New-PendingCrossing) | Should -Match 'crossing-9b3d255e'
         }
 
         It 'still states its own review position - deferring on the marker is not withdrawing the block' {
-            # The campaign block does not evaporate because a crossing exists. It keeps saying a
-            # current review is owed; it just stops claiming authority over the lifecycle marker.
-            $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket `
-                -PendingCrossing (script:New-PendingCrossing)
-
-            # MOVED 2026-08-11 (T010). Was `Should -Match 'review-stale'` - a RAW ROUTE NAME, which is
-            # internal vocabulary in the first line a human reads. The guarantee is that the block still
-            # STATES ITS REVIEW POSITION, so it is asserted on the position itself rather than on the
-            # token that used to express it.
-            $block | Should -Match '(?i)no longer covers these files'
-            $block | Should -Not -Match 'review-stale' -Because 'the position must be stated in words the reader can act on'
+            # The stop does not evaporate because a crossing exists: it still states why it stopped and the decision it needs.
+            $block = script:Get-HumanBlock -Crossing (script:New-PendingCrossing)
+            $block | Should -Match 'Specrew review stopped'
+            $block | Should -Match 'Why: the crew needs your judgment'
+            $block | Should -Match 'Your decision: '
+            $block | Should -Not -Match 'c-judgment' -Because 'the position must be stated in words the reader can act on'
         }
     }
 
     Context 'fail closed: only a well-formed crossing outranks the clause' {
         It 'a crossing missing its destination confers nothing' {
-            # Absence of evidence is not evidence - the same direction every other rule in this
-            # feature fails toward. A half-written crossing must not unlock a marker.
+            # Absence of evidence is not evidence. A half-written crossing must not unlock a marker.
             $partial = script:New-PendingCrossing
             $partial.to_boundary = ''
             $partial.working_boundary = ''
-
-            $block = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket -PendingCrossing $partial
-            $block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            Build-ReviewCampaignStopAgentDirective -PendingCrossing $partial | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            script:Get-HumanBlock -Crossing $partial | Should -Not -Match '(?i)approval you still owe'
         }
 
         It 'a null crossing confers nothing' {
-            $block = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket -PendingCrossing $null
-            $block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            Build-ReviewCampaignStopAgentDirective -PendingCrossing $null | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
     }
 }
