@@ -65,7 +65,10 @@ BeforeAll {
         try {
             $out = Join-Path $TestDrive ('cli-' + [guid]::NewGuid().ToString('N'))
             [IO.File]::WriteAllText("$out.in", '')
-            $argumentList = @('-NoProfile', '-NonInteractive', '-File', (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'), '-ProjectPath', $Project.root) + $Arguments
+            # Start-Process joins its argument list with spaces and quotes nothing, so a value with spaces is quoted here,
+            # the way a shell would pass it; unquoted, its words bind to other parameters by position.
+            $quoted = @($Arguments | ForEach-Object { if ([string]$_ -match '\s') { '"' + ([string]$_ -replace '"', '\"') + '"' } else { [string]$_ } })
+            $argumentList = @('-NoProfile', '-NonInteractive', '-File', (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'), '-ProjectPath', $Project.root) + $quoted
             $process = Start-Process -FilePath 'pwsh' -ArgumentList $argumentList -RedirectStandardInput "$out.in" -RedirectStandardOutput "$out.out" -RedirectStandardError "$out.err" -NoNewWindow -PassThru -Wait
             $text = (Get-Content -LiteralPath "$out.out" -Raw -ErrorAction SilentlyContinue) + (Get-Content -LiteralPath "$out.err" -Raw -ErrorAction SilentlyContinue)
             return [pscustomobject]@{ ExitCode = $process.ExitCode; Text = ((($text -replace "`e\[[0-9;]*m", '') -replace '\s*\|\s+', ' ') -replace '\s+', ' ') }

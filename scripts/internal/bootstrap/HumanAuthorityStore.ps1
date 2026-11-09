@@ -855,6 +855,11 @@ function Get-SpecrewNonAuthorityFlagExemptions {
         '--list-hosts'      = 'prints the reviewer catalogue; authorizes nothing'
         '--ack-degraded'    = 'acknowledges a degraded runtime so the reason is recorded; it does not authorize a review, and the typed phrase is still required to run one'
         '--flag'            = 'appears only as prose about flags in general, never as a command to run'
+        '--dispute'         = 'the crew raises a review stop for the human to decide; it decides and authorizes nothing itself'
+        '--reason'          = 'carries the crew''s reason for a dispute, shown to the human at the stop; authorizes nothing'
+        '--propose-defer'   = 'the crew raises a review stop proposing a deferral; only the human''s typed defer line moves the finding'
+        '--to'              = 'names where a proposed deferral would go; authorizes nothing'
+        '--ask'             = 'the crew raises a review stop asking the human a question; authorizes nothing'
         '--authorization-ref' = 'LABELS where an approval came from; it records provenance and explicitly does not stand in for one. Its own advisory says so, and the gate says command-line identity fields are not authority.'
     }
 }

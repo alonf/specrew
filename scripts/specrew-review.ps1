@@ -29,6 +29,18 @@ param(
     [string]$PauseChoice,
     [Alias('pause-rationale')]
     [string]$PauseRationale,
+    # Feature 203 T008 step (iii) (FR-006, FR-011): the crew raises review stop (b) or (c) itself. --dispute <finding-id>
+    # --reason <why> and --propose-defer <finding-id> --to <destination> raise (b); --ask <question> raises (c).
+    [Alias('dispute')]
+    [string]$DisputeFinding,
+    [Alias('reason')]
+    [string]$DisputeReason,
+    [Alias('propose-defer')]
+    [string]$ProposeDeferFinding,
+    [Alias('to')]
+    [string]$DeferTo,
+    [Alias('ask')]
+    [string]$AskText,
     [Alias('code-writer-host')]
     [string]$CodeWriterHost,
     [Alias('fallback-policy')]
@@ -154,9 +166,15 @@ Options:
   --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
   --model <model>        Requested reviewer model id for the host
   --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
-  --pause-choice <1|2|3> Carry a decided pause answer to Specrew (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign):
-                         1 run another round, 2 stop here and complete sign-off, 3 abandon
+  --pause-choice stop-here  Relay the human's typed stop the review here, once it is captured
+                         (refused without it). It is the only pause answer.
   --pause-rationale      Optional note recorded with a stop-here answer
+  --dispute <finding-id> Raise a review stop: the crew disputes an open finding (with --reason)
+  --reason <why>         The crew's reason for a dispute, shown to the human at the stop
+  --propose-defer <finding-id>
+                         Raise a review stop: the crew proposes to defer an open finding (with --to)
+  --to <destination>     The backlog item or iteration a proposed deferral would move the finding to
+  --ask <question>       Raise a review stop that asks the human for a judgment call
   --authorization-ref    With --host, records that reviewer host as authorized, under your own label
                          (who authorized it). It never pays for a round: the review budget
                          approved with the implementation does.
@@ -216,6 +234,11 @@ function Convert-UnixStyleArguments {
         # command tests went red on a pause field they never use.
         PauseChoice     = $null
         PauseRationale  = $null
+        DisputeFinding  = $null
+        DisputeReason   = $null
+        ProposeDeferFinding = $null
+        DeferTo         = $null
+        AskText         = $null
         CodeWriterHost  = $null
         TimeoutSeconds  = 0
         FallbackPolicy  = 'none'
@@ -240,7 +263,7 @@ function Convert-UnixStyleArguments {
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|reconcile-run|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope|fix-evidence-ref)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|reconcile-run|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope|fix-evidence-ref|dispute|reason|propose-defer|to|ask)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -268,6 +291,11 @@ function Convert-UnixStyleArguments {
                     'remediate' { $result.Remediate = $value }
                     'scope' { $result.Scope = $value }
                     'fix-evidence-ref' { $result.FixEvidenceRef = $value }
+                    'dispute' { $result.DisputeFinding = $value }
+                    'reason' { $result.DisputeReason = $value }
+                    'propose-defer' { $result.ProposeDeferFinding = $value }
+                    'to' { $result.DeferTo = $value }
+                    'ask' { $result.AskText = $value }
                     'design-context-ref' { $result.DesignContextRefs = @($result.DesignContextRefs) + @($value) }
                     'allowed-path' { $result.AllowedPaths = @($result.AllowedPaths) + @($value) }
                     'forbidden-path' { $result.ForbiddenPaths = @($result.ForbiddenPaths) + @($value) }
@@ -756,6 +784,11 @@ if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
 if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
 if (-not [string]::IsNullOrWhiteSpace($PauseChoice)) { $parsedArgs.PauseChoice = $PauseChoice }
 if (-not [string]::IsNullOrWhiteSpace($PauseRationale)) { $parsedArgs.PauseRationale = $PauseRationale }
+if ($PSBoundParameters.ContainsKey('DisputeFinding')) { $parsedArgs.DisputeFinding = $DisputeFinding }
+if ($PSBoundParameters.ContainsKey('DisputeReason')) { $parsedArgs.DisputeReason = $DisputeReason }
+if ($PSBoundParameters.ContainsKey('ProposeDeferFinding')) { $parsedArgs.ProposeDeferFinding = $ProposeDeferFinding }
+if ($PSBoundParameters.ContainsKey('DeferTo')) { $parsedArgs.DeferTo = $DeferTo }
+if ($PSBoundParameters.ContainsKey('AskText')) { $parsedArgs.AskText = $AskText }
 if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $parsedArgs.CodeWriterHost = $CodeWriterHost }
 if (-not [string]::IsNullOrWhiteSpace($FallbackPolicy)) { $parsedArgs.FallbackPolicy = $FallbackPolicy }
 if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.ReviewerConfigPath = $ReviewerConfigPath }
@@ -798,7 +831,12 @@ if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
 }
 $installedReviewEngineRoot = Join-Path $PSScriptRoot 'internal/continuous-co-review'
 $reviewEngineRoot = $installedReviewEngineRoot
-$requiresReviewEngine = $Live -or
+$crewStopKinds = @(@(
+        $(if ($null -ne $parsedArgs.DisputeFinding) { 'dispute' })
+        $(if ($null -ne $parsedArgs.ProposeDeferFinding) { 'propose-defer' })
+        $(if ($null -ne $parsedArgs.AskText) { 'ask' })
+    ) | Where-Object { $_ })
+$requiresReviewEngine = $Live -or ($crewStopKinds.Count -gt 0) -or
     (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) -or
     (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) -or
     (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate))
@@ -852,6 +890,40 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) {
             if ($null -ne $reconciled.result) { Write-Host ("verdict={0} completion={1} runtime_outcome={2}" -f $reconciled.result.verdict, $reconciled.result.completion, $reconciled.result.runtime_outcome) }
         }
         if ([string]$reconciled.status -notin @('complete', 'terminal')) { exit 1 }
+        exit 0
+    }
+    catch { Write-Error $_.Exception.Message; exit 1 }
+}
+
+# Feature 203 T008 step (iii) (FR-006, FR-011; maintainer ruling 2026-11-09): THE CREW RAISES A REVIEW STOP ITSELF, then
+# exits - a standalone operation like the reconciliation above. --dispute and --propose-defer raise stop (b) about an open
+# finding; --ask raises stop (c). The stop waits for the human's typed line; this command decides nothing for them, launches
+# nothing and spends nothing. A refusal says why in plain words and writes nothing.
+if ($crewStopKinds.Count -gt 0) {
+    if ($crewStopKinds.Count -gt 1) {
+        Write-Host 'Raise one review stop at a time: --dispute, --propose-defer and --ask each raise their own. Nothing was recorded.' -ForegroundColor Yellow
+        exit 1
+    }
+    try {
+        . (Join-Path $reviewEngineRoot '_load.ps1')
+        $crewKind = [string]$crewStopKinds[0]
+        $crewIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId 'run-crew-probe'
+        $crewDigest = 'unresolved'
+        try { $crewState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $resolvedProjectPath; if ($null -ne $crewState -and [bool]$crewState.ok) { $crewDigest = [string]$crewState.tree_id } } catch { $crewDigest = 'unresolved' }
+        $crewFinding = switch ($crewKind) { 'dispute' { [string]$parsedArgs.DisputeFinding } 'propose-defer' { [string]$parsedArgs.ProposeDeferFinding } default { '' } }
+        $crewText = switch ($crewKind) { 'dispute' { [string]$parsedArgs.DisputeReason } 'propose-defer' { [string]$parsedArgs.DeferTo } default { [string]$parsedArgs.AskText } }
+        $raised = Add-ReviewCampaignCrewStop -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -CampaignId ([string]$crewIdentity.campaign_id) `
+            -Kind $crewKind -FindingId $crewFinding -Text $crewText -TargetDigest $crewDigest
+        if (-not [bool]$raised.written) {
+            Write-Host ([string]$raised.message) -ForegroundColor Yellow
+            exit 1
+        }
+        if ($Json) { $raised | ConvertTo-Json -Depth 12 }
+        else {
+            Write-Host 'The review stop is recorded and waits for the human''s typed line. Show them this block as it is, then stop:' -ForegroundColor Cyan
+            Write-Host ''
+            foreach ($line in @($raised.surface)) { Write-Host $line }
+        }
         exit 0
     }
     catch { Write-Error $_.Exception.Message; exit 1 }
@@ -1119,7 +1191,7 @@ if ($Live) {
                 if ([string]::IsNullOrWhiteSpace([string]$FeatureId)) {
                     Write-Host 'Specrew does not know which feature you are answering for, so it cannot find the round waiting for you.' -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}   (relaying the human''s typed decision: 1 = run another round, 2 = stop the review here, 3 = abandon this review campaign)' -f $pauseAnswer) -ForegroundColor Cyan
+                    Write-Host 'Tell it which one:  specrew review --live --feature <feature-id> --pause-choice stop-here   (relaying the human''s typed stop the review here, once it is captured)' -ForegroundColor Cyan
                     exit 1
                 }
                 $campaignStoreRoot = Join-Path $resolvedProjectPath '.specrew/review/authority'
@@ -1448,7 +1520,7 @@ if ($Live) {
                         # they answer - so it may name the flag, but only WITH the typed decisions, so
                         # the menu language and the transport stay one vocabulary.
                         Write-Host ''
-                        Write-Host ("Answer from this terminal with:  specrew review --live --pause-choice <1|2|3>   (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign){0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
+                        Write-Host ("The human answers with their typed line, as a normal chat message; the one pause answer this command relays is stop the review here:  specrew review --live --pause-choice stop-here{0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
                     }
                 }
                 if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {

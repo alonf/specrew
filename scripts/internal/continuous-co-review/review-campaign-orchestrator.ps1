@@ -1548,7 +1548,11 @@ function Format-ReviewCampaignStopSurface {
             )
         }
         'b-dispute-or-defer' {
-            $why = 'the crew disputes a finding, or proposes to defer it: ' + [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation')
+            # Each writer's own reason (maintainer ruling 2026-11-09): Add-ReviewCampaignCrewStop records which act raised it.
+            $recommendation = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation')
+            $why = if ($reason -ceq 'dispute' -and -not [string]::IsNullOrWhiteSpace($recommendation)) { 'the crew disputes ' + $recommendation }
+            elseif ($reason -ceq 'propose-defer' -and -not [string]::IsNullOrWhiteSpace($recommendation)) { 'the crew proposes to defer ' + $recommendation }
+            else { 'the crew disputes a finding, or proposes to defer it: ' + $recommendation }
             $decision = 'Decide what happens to that finding.'
             $sendable = @(
                 @{ line = 'fix finding <id>'; does = 'the crew fixes it within the approved tasks, and the next round checks the fix' }
@@ -1728,6 +1732,69 @@ function Get-ReviewCampaignSignoffFindingLines {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
     return @(@(Get-ReviewCampaignSignoffFindings -StoreRoot $StoreRoot -CampaignId $CampaignId) | ForEach-Object { Format-ReviewCampaignSignoffFindingLine -Item $_ })
+}
+
+function Add-ReviewCampaignCrewStop {
+    # Feature 203 T008 step (iii) (FR-006, FR-011; maintainer ruling 2026-11-09, condition 2): THE CREW'S OWN ENTRY POINTS FOR
+    # STOPS (b) AND (c). The crew raises the stop - it disputes an open finding, proposes to defer one, or asks the human for
+    # a judgment - and the human's typed line answers it (Invoke-ReviewCampaignStopAnswerLanding). Each writer sets its own
+    # reason, never a sentence from the old menu. One stop at a time: while one waits for the human, no other is raised. A
+    # refusal says why in plain words, returns written = $false and writes nothing.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][ValidateSet('dispute', 'propose-defer', 'ask')][string]$Kind,
+        [AllowEmptyString()][string]$FindingId = '',
+        [AllowEmptyString()][string]$Text = '',
+        [AllowEmptyString()][string]$TargetDigest = 'unresolved',
+        [string]$ObservedAt = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $refuse = { param([string]$Reason, [string]$Message) [pscustomobject]@{ written = $false; reason = $Reason; message = ($Message + ' Nothing was recorded.'); stop = $null; surface = @() } }
+    $FindingId = ([string]$FindingId).Trim(); $Text = ([string]$Text).Trim()
+    switch ($Kind) {
+        'dispute' {
+            if ([string]::IsNullOrWhiteSpace($FindingId)) { return (& $refuse 'finding-required' 'A dispute names the finding it disputes: --dispute <finding-id> --reason <why>.') }
+            if ([string]::IsNullOrWhiteSpace($Text)) { return (& $refuse 'reason-required' 'A dispute needs the crew''s reason, so the human can judge it: --dispute <finding-id> --reason <why>.') }
+        }
+        'propose-defer' {
+            if ([string]::IsNullOrWhiteSpace($FindingId)) { return (& $refuse 'finding-required' 'A deferral names the finding it would move: --propose-defer <finding-id> --to <backlog item or iteration>.') }
+            if ([string]::IsNullOrWhiteSpace($Text)) { return (& $refuse 'destination-required' 'A deferral needs the place the finding would go: --propose-defer <finding-id> --to <backlog item or iteration>.') }
+        }
+        'ask' {
+            if ([string]::IsNullOrWhiteSpace($Text)) { return (& $refuse 'question-required' 'A question for the human needs its text: --ask <question>.') }
+        }
+    }
+    if ($Text.Length -gt 2000) { return (& $refuse 'text-too-long' 'The text is longer than 2000 characters; say it shorter.') }
+    if ($null -ne (Get-ReviewCampaignOpenStop -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
+        return (& $refuse 'stop-already-open' 'A review stop is already waiting for the human''s typed line, and it is answered first.')
+    }
+    if ([bool](Get-ReviewCampaignLoopState -StoreRoot $StoreRoot -CampaignId $CampaignId).stopped_here) {
+        return (& $refuse 'review-stopped-here' 'The human stopped the review here, so there is no review left to raise a stop in.')
+    }
+    $label = ''
+    if ($Kind -cne 'ask') {
+        $finding = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.finding_id -ceq $FindingId -or [string]$_.finding_key -ceq $FindingId }) | Select-Object -First 1
+        if ($null -eq $finding) {
+            return (& $refuse 'finding-not-open' ('Finding {0} is not open in this review, so there is nothing to {1}.' -f $FindingId, $(if ($Kind -ceq 'dispute') { 'dispute' } else { 'defer' })))
+        }
+        $label = ('{0} ({1})' -f $(if ($finding.finding_id) { [string]$finding.finding_id } else { [string]$finding.finding_key }), [string]$finding.title)
+    }
+    $recommendation = switch ($Kind) {
+        'dispute' { '{0}: {1}' -f $label, $Text }
+        'propose-defer' { '{0} to {1}.' -f $label, $Text }
+        default { $Text }
+    }
+    $budget = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed ([int]$budget.rounds_used) -BudgetTotal ([Math]::Max(1, [int]$budget.budget_total))
+    $runId = 'run-crew-' + (Get-ReviewCampaignStableToken -Value ('{0}/{1}/{2}/{3}/{4}' -f $CampaignId, $Kind, $FindingId, $Text, $ObservedAt) -Length 20)
+    $stopKind = if ($Kind -ceq 'ask') { 'c-judgment' } else { 'b-dispute-or-defer' }
+    $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $runId -TargetDigest $(if ([string]::IsNullOrWhiteSpace($TargetDigest)) { 'unresolved' } else { $TargetDigest }) `
+        -Decision $decision -ObservedAt $ObservedAt -StopKind $stopKind -StopReason $Kind
+    $fact | Add-Member -NotePropertyName recommendation -NotePropertyValue $recommendation -Force
+    $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact
+    $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    return [pscustomobject]@{ written = $true; reason = $Kind; message = ''; stop = $fact; surface = @(Format-ReviewCampaignStopSurface -Stop $fact -OpenFindings $openFindings) }
 }
 
 function Invoke-ReviewCampaignHaltLanding {
