@@ -7,7 +7,7 @@
 **Tasks Remaining**: T008, T011, T012, T013, T014
 **In Progress**: (none)
 **Baseline Ref**: fca9067e
-**Updated**: 2026-11-08T14:19:05.3699902Z
+**Updated**: 2026-11-09T08:24:33.9542974Z
 
 ## Execution Summary
 
@@ -34,7 +34,7 @@
   the Claude hooks redeployed from the pin's deployer; the transcript showed the hooks running with no error
   (DRIFT-019). T001 resumes. Round 4 finding 1 (a binding shared by every project on the machine) is a
   release-blocking follow-up; finding 2 joins B5F-019.
-- Task progress: 1 complete, 1 in-progress, 10 pending, 0 blocked.
+
 ## Notes
 
 - Update this file after each task completes.
