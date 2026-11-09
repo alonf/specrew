@@ -56,9 +56,12 @@ Describe 'W74 a records-only commit during a round does not take the pass away' 
 
     It 'still refuses to PROMOTE a result that never authorized on its own terms' {
         # The round-5 regression this branch already guards, and it must survive the fix: the exemption
-        # preserves an authorizing result, it never manufactures one. A findings verdict is not a pass.
+        # preserves an authorizing result, it never manufactures one. Feature 203 T008 (FR-004, maintainer ruling 2026-11-09):
+        # a findings verdict whose findings are all non-gating now authorizes on its own terms (it releases on the exact
+        # digest), so the non-authorizing shape this case needs is a findings verdict with an open major.
         $result = New-PassingResult -Currentness 'snapshot-moved' -CanApprove $false
         $result.verdict = 'findings'
+        $result.findings = @([pscustomobject][ordered]@{ finding_id = 'finding-00000000000000ab'; source_local_id = 'l1'; lineage_id = 'lin-00000000000000ab'; severity = 'major'; title = 'Retry never backs off'; description = 'Failure scenario: it never backs off.'; location = 'src/Engine.cs:41'; relevance = 'current'; resolution = 'open'; demoted = $false; demoted_from = '' })
         $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-w74' -CurrentDigest 'bbbb2222' `
             -RepoRoot $script:RepoRoot -FeatureId '199-beta3-stabilization' `
             -OrderedRunIds @('run-20260826-000000001-aaaaaaaa') -Results @($result) -ActiveRun $null `

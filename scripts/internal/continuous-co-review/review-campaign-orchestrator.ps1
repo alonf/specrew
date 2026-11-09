@@ -1658,18 +1658,25 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     return [pscustomobject]@{ landed = @($landed); skipped = @($skipped) }
 }
 
-function Get-ReviewCampaignSignoffFindingLines {
+function Get-ReviewCampaignSignoffFindings {
     # Feature 203 T008 step (iii) (FR-011, FR-013; maintainer rulings 2026-11-09): what the review leaves behind, finding by
-    # finding (id, title, where), never only a count. Every finding still open is not covered (after `stop the review here`
-    # too); every non-gating finding of the reviewed head is a follow-up; every finding the ingestor demoted is named with
-    # the reviewer's original severity and why, because a demoted blocker opens no finding and the loop can end clean on it.
-    [OutputType([string[]])]
+    # finding (id, title, where, severity), never only a count. Every finding still open is not covered (after `stop the
+    # review here` too); every non-gating finding of the reviewed head is a follow-up; every finding the ingestor demoted is
+    # named with the reviewer's original severity, because a demoted blocker opens no finding and the loop can end clean on
+    # it. Structured (correction 3): the sign-off renders these, the crossing stores them, and the demotion lead reads
+    # `demoted_from` here rather than parsing a rendered line.
+    [OutputType([object[]])]
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
-    $where = { param($f) $l = Get-ReviewAuthorityProperty -Object $f -Name 'location'; if ($null -eq $l -or [string]::IsNullOrWhiteSpace([string]$l)) { '' } elseif ($l -is [string]) { ' at ' + $l } else { ' at ' + ($l | ConvertTo-Json -Compress -Depth 4) } }
-    $lines = [Collections.Generic.List[string]]::new()
+    $where = { param($f) $l = Get-ReviewAuthorityProperty -Object $f -Name 'location'; if ($null -eq $l -or [string]::IsNullOrWhiteSpace([string]$l)) { '' } elseif ($l -is [string]) { $l } else { $l | ConvertTo-Json -Compress -Depth 4 } }
+    $item = { param([string]$Kind, $f, [string]$Severity, [string]$From)
+        [pscustomobject][ordered]@{
+            kind = $Kind; finding_id = [string](Get-ReviewAuthorityProperty -Object $f -Name 'finding_id'); title = [string](Get-ReviewAuthorityProperty -Object $f -Name 'title')
+            location = [string](& $where $f); severity = $Severity; demoted_from = $From
+        } }
+    $items = [Collections.Generic.List[object]]::new()
     foreach ($open in @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
-        $lines.Add(('Not covered (still open): {0} ({1}) {2}{3}' -f [string]$open.finding_id, [string]$open.severity, [string]$open.title, (& $where $open))) | Out-Null
+        $items.Add((& $item 'not-covered' $open ([string]$open.severity) '')) | Out-Null
     }
     $loop = Get-ReviewCampaignLoopState -StoreRoot $StoreRoot -CampaignId $CampaignId
     if ($null -ne $loop.last_spent_result) {
@@ -1677,15 +1684,35 @@ function Get-ReviewCampaignSignoffFindingLines {
         foreach ($finding in @($reviewed | ForEach-Object { $_ } | Where-Object { $null -ne $_ })) {
             $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
             if ($script:ReviewCampaignGatingSeverities -ccontains $severity) { continue }
-            $id = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'finding_id'); $title = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'title')
             if ([bool](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted')) {
-                $from = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted_from')
-                $lines.Add(('Demoted: {0} {1}{2} - the reviewer reported it as {3}; it was recorded as {4} because it states no concrete failure scenario.' -f $id, $title, (& $where $finding), $from, $severity)) | Out-Null
+                $items.Add((& $item 'demoted' $finding $severity ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted_from')))) | Out-Null
             }
-            else { $lines.Add(('Follow-up: {0} ({1}) {2}{3}' -f $id, $severity, $title, (& $where $finding))) | Out-Null }
+            else { $items.Add((& $item 'follow-up' $finding $severity '')) | Out-Null }
         }
     }
-    return @($lines)
+    return @($items)
+}
+
+function Format-ReviewCampaignSignoffFindingLine {
+    # One line of the sign-off listing, rendered from one structured item of Get-ReviewCampaignSignoffFindings.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Item)
+    $at = if ([string]::IsNullOrWhiteSpace([string]$Item.location)) { '' } else { ' at ' + [string]$Item.location }
+    switch -CaseSensitive ([string]$Item.kind) {
+        'not-covered' { return ('Not covered (still open): {0} ({1}) {2}{3}' -f [string]$Item.finding_id, [string]$Item.severity, [string]$Item.title, $at) }
+        'demoted' { return ('Demoted: {0} {1}{2} - the reviewer reported it as {3}; it was recorded as {4} because it states no concrete failure scenario.' -f [string]$Item.finding_id, [string]$Item.title, $at, [string]$Item.demoted_from, [string]$Item.severity) }
+        'follow-up' { return ('Follow-up: {0} ({1}) {2}{3}' -f [string]$Item.finding_id, [string]$Item.severity, [string]$Item.title, $at) }
+        default { throw ('review-signoff-listing-unknown-kind:' + [string]$Item.kind) }
+    }
+}
+
+function Get-ReviewCampaignSignoffFindingLines {
+    # The sign-off listing as the human reads it: one line per structured item.
+    [OutputType([string[]])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    return @(@(Get-ReviewCampaignSignoffFindings -StoreRoot $StoreRoot -CampaignId $CampaignId) | ForEach-Object { Format-ReviewCampaignSignoffFindingLine -Item $_ })
 }
 
 function Invoke-ReviewCampaignHaltLanding {

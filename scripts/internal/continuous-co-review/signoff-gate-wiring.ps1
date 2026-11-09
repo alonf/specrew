@@ -81,6 +81,56 @@ function Write-ContinuousCoReviewSignoffGateDecisionEvidence {
     }
 }
 
+function Write-ReviewCampaignSignoffListing {
+    <#
+    .SYNOPSIS
+        The ONE writer of the sign-off listing (feature 203 T008, correction 3, maintainer 2026-11-09; FR-013): at the
+        review-signoff crossing, what the review leaves behind - not covered, follow-ups, demoted - each with id, title,
+        location and severity, into one file in the iteration folder. The retro reads that file; nothing else writes it.
+    .DESCRIPTION
+        Called only when the crossing releases. An empty listing is still written, so a reader can tell "the review left
+        nothing behind" from "nothing was recorded". Emits nothing (the boundary-sync result pipeline stays one object).
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)]$Decision
+    )
+    foreach ($required in @('finding_items', 'feature_id', 'iteration_number')) {
+        if ($null -eq $Decision.PSObject.Properties[$required]) { return }
+    }
+    $featureId = [string]$Decision.feature_id
+    $iteration = [string]$Decision.iteration_number
+    if ([string]::IsNullOrWhiteSpace($featureId) -or [string]::IsNullOrWhiteSpace($iteration)) { return }
+    $iterationDirectory = Join-Path $ProjectRoot ('specs/{0}/iterations/{1}' -f $featureId, $iteration)
+    if (-not (Test-Path -LiteralPath $iterationDirectory -PathType Container)) {
+        throw ("[continuous-co-review-gate] review-signoff could not store what the review leaves behind: the iteration folder specs/{0}/iterations/{1} does not exist." -f $featureId, $iteration)
+    }
+    $items = @($Decision.finding_items | Where-Object { $null -ne $_ } | ForEach-Object {
+            [pscustomobject][ordered]@{
+                kind = [string]$_.kind; finding_id = [string]$_.finding_id; title = [string]$_.title
+                location = [string]$_.location; severity = [string]$_.severity; demoted_from = [string]$_.demoted_from
+            }
+        })
+    $listing = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        feature_id     = $featureId
+        iteration      = $iteration
+        campaign_id    = $(if ($Decision.PSObject.Properties['campaign_id']) { [string]$Decision.campaign_id } else { '' })
+        run_id         = $(if ($Decision.PSObject.Properties['matched_run_id']) { [string]$Decision.matched_run_id } else { '' })
+        decision       = [string]$Decision.reason
+        recorded_at    = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:sszzz', [Globalization.CultureInfo]::InvariantCulture)
+        items          = $items
+    }
+    $json = ConvertTo-Json -InputObject $listing -Depth 8
+    $path = Join-Path $iterationDirectory 'review-signoff-listing.json'
+    if (Get-Command -Name 'Write-SpecrewFileAtomic' -ErrorAction SilentlyContinue) {
+        Write-SpecrewFileAtomic -Path $path -Content $json | Out-Null
+    }
+    else {
+        [System.IO.File]::WriteAllText($path, $json, [System.Text.UTF8Encoding]::new($false))
+    }
+}
+
 # Get-ContinuousCoReviewTrunkName retired 2026-07-13: the shared co-review-trunk-resolver.ps1 now owns trunk
 # resolution end-to-end. The config `co_review_trunk` is precedence level 1 there (Get-ContinuousCoReviewConfiguredTrunk),
 # and the gate auto-detects the rest (origin/HEAD, upstream, conventional refs, single pre-feature branch) instead
@@ -157,7 +207,15 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
                 catch { $capturedOverride = $null }
             }
             if ($null -ne $capturedOverride) {
+                $refused = $decision
                 $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -OverrideAuthorization $capturedOverride
+                # Correction 3: the human accepted the gap the refusal named, so the listing stored at this crossing is the
+                # refusal's own: what stays uncovered is exactly what partial coverage leaves behind.
+                foreach ($carried in @('finding_items', 'feature_id', 'iteration_number', 'campaign_id')) {
+                    if ($null -ne $refused.PSObject.Properties[$carried] -and $null -eq $decision.PSObject.Properties[$carried]) {
+                        $decision | Add-Member -NotePropertyName $carried -NotePropertyValue $refused.$carried -Force
+                    }
+                }
             }
         }
     }
@@ -192,6 +250,9 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
         }
     }
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision
+    if ($decision.decision -ne 'block') {
+        Write-ReviewCampaignSignoffListing -ProjectRoot $ProjectRoot -Decision $decision
+    }
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"
     }

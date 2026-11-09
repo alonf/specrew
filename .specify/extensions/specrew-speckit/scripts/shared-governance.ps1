@@ -8840,7 +8840,7 @@ function Test-SpecrewLifecycleExecutionRecordPath {
         'drift-log.md', 'state.md', 'tasks-progress.yml',
         'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
         'dashboard.md', 'security-surface.md',
-        'review-signoff.md', 'retro.md'
+        'review-signoff.md', 'review-signoff-listing.json', 'retro.md'
     )
     $comparison = [System.StringComparison]::OrdinalIgnoreCase
     foreach ($name in $recordFiles) {

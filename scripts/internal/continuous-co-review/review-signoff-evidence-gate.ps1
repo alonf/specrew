@@ -577,7 +577,7 @@ function Test-ReviewCampaignPathIsFeatureProcessRecord {
     $recordFiles = @(
         'drift-log.md', 'state.md', 'tasks-progress.yml',
         'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
-        'review-signoff.md', 'retro.md'
+        'review-signoff.md', 'review-signoff-listing.json', 'retro.md'
     )
     foreach ($name in $recordFiles) {
         if ($relative.Equals($name, $Comparison)) { return $true }
@@ -924,10 +924,22 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
                 [string](Get-ReviewAuthorityProperty -Object $latest -Name 'runtime_outcome') -ceq 'completed' -and
                 [string](Get-ReviewAuthorityProperty -Object $latest -Name 'completion') -ceq 'complete' -and
                 [string](Get-ReviewAuthorityProperty -Object $latest -Name 'validation') -ceq 'valid' -and
-                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'verdict') -ceq 'pass' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'verdict') -cin @('pass', 'findings') -and
                 [string](Get-ReviewAuthorityProperty -Object $latest -Name 'containment') -ceq 'verified' -and
                 [bool](Get-ReviewAuthorityProperty -Object $latest -Name 'termination_verified')
             )
+            # Feature 203 T008 (cf2285d7's sibling, FR-004, FR-009): a review whose findings are all non-gating authorizes on its
+            # own terms - it releases on the exact digest - so a records commit must not take it away either. Same rule as that
+            # release: no open blocking or major finding, and no identity-bound require-correction for the reviewed tree. The
+            # campaign's open-finding ledger is still consulted after this route, so a finding still open keeps it from release.
+            if ($recordsOnlyAuthorizes -and [string](Get-ReviewAuthorityProperty -Object $latest -Name 'verdict') -ceq 'findings') {
+                $gatingOpen = @(@(Get-ReviewAuthorityProperty -Object $latest -Name 'findings') | Where-Object { $null -ne $_ -and [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
+                $correctionRequired = @($HumanDispositions | Where-Object {
+                        (Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest ([string]$latest.target_digest)).valid -and
+                        [string]$_.decision -ceq 'require-correction'
+                    }).Count -gt 0
+                $recordsOnlyAuthorizes = (-not $gatingOpen -and -not $correctionRequired)
+            }
             if (-not $recordsOnlyAuthorizes) {
                 return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'records-only-delta-over-non-authorizing-result' -Message 'Only governance and records files changed since your last review, but that review did not finish with a result that can sign anything off. Run a fresh review of your files as they are now: specrew review --live' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
             }
@@ -1156,18 +1168,24 @@ function Get-ReviewCampaignVerdictPacketDecision {
     # whatever the latest result says. It closes only by a fix the next round confirms, or by the human's typed line.
     # Feature 203 T008 step (iii) (FR-011, FR-013): the sign-off names what the review leaves behind, finding by finding.
     # Fail closed (maintainer, 2026-11-09): a sign-off that cannot list what the review leaves behind does not release.
-    $findingLines = @()
-    try { $findingLines = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $StoreRoot -CampaignId $CampaignId) }
+    # Correction 3 (DRIFT-052): the listing is structured; the lines are rendered from it, the crossing stores it, and the
+    # demotion lead counts the reviewer's own severity from `demoted_from`, never by parsing a rendered line.
+    $findingItems = @()
+    try { $findingItems = @(Get-ReviewCampaignSignoffFindings -StoreRoot $StoreRoot -CampaignId $CampaignId) }
     catch {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'signoff-listing-unreadable' `
             -Message ('Specrew could not list the findings this review leaves behind, so it cannot ask for your sign-off yet. What could not be read: ' + $_.Exception.Message) `
             -CampaignId $CampaignId -RunId ([string]$packet.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
     }
+    $findingLines = @($findingItems | ForEach-Object { Format-ReviewCampaignSignoffFindingLine -Item $_ })
+    $packet | Add-Member -NotePropertyName finding_items -NotePropertyValue $findingItems -Force
+    $packet | Add-Member -NotePropertyName feature_id -NotePropertyValue ([string]$FeatureId) -Force
+    $packet | Add-Member -NotePropertyName iteration_number -NotePropertyValue ([string]$IterationNumber) -Force
     if ($findingLines.Count -gt 0) {
         # When the ingestor demoted anything, the release leads with that, never with "found nothing that blocks".
-        $demoted = @($findingLines | Where-Object { $_ -like 'Demoted:*' })
+        $demoted = @($findingItems | Where-Object { [string]$_.kind -ceq 'demoted' })
         if ($demoted.Count -gt 0 -and [bool]$packet.render_boundary_packet) {
-            $bySeverity = @($demoted | ForEach-Object { if ($_ -match 'reported it as (?<s>[a-z]+);') { $Matches['s'] } } | Group-Object | Sort-Object Name |
+            $bySeverity = @($demoted | Group-Object -Property { [string]$_.demoted_from } | Sort-Object Name |
                     ForEach-Object { '{0} {1} finding{2}' -f $_.Count, $_.Name, $(if ($_.Count -eq 1) { '' } else { 's' }) })
             $lead = ('The reviewer reported {0}. Specrew recorded {1} as minor because {2} no concrete failure scenario. Read {3} below before you approve.' -f `
                     ($bySeverity -join ' and '), $(if ($demoted.Count -eq 1) { 'it' } else { 'them' }), $(if ($demoted.Count -eq 1) { 'it states' } else { 'they state' }), $(if ($demoted.Count -eq 1) { 'it' } else { 'them' }))
@@ -1251,6 +1269,10 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.gate_allows) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
         foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'gate_allows', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
             $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
+        }
+        # Correction 3: what the crossing stores. Absent on the routes that return before the listing is built.
+        foreach ($property in @('finding_items', 'feature_id', 'iteration_number')) {
+            if ($null -ne $packet.PSObject.Properties[$property]) { $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property -Force }
         }
         return $decision
     }
