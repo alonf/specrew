@@ -108,7 +108,7 @@ Describe 'the review sign-off names what the review leaves behind, finding by fi
 Describe 'corrections to the sign-off listing (maintainer, 2026-11-09)' {
     It 'if the listing cannot be built, the sign-off refuses in plain words and says what could not be read' {
         $project = script:New-ListProject -Name 'listing-fails' -Verdict 'pass' -Findings @()
-        Mock -CommandName Get-ReviewCampaignSignoffFindingLines -MockWith { throw 'review-store-corruption:result-unreadable:run-list-1' }
+        Mock -CommandName Get-ReviewCampaignSignoffFindings -MockWith { throw 'review-store-corruption:result-unreadable:run-list-1' }
         $signoff = script:Get-Signoff -Project $project
         [string]$signoff.decision | Should -BeExactly 'block' -Because 'a sign-off that cannot list what the review leaves behind must not release'
         [string]$signoff.message | Should -Match '(?i)could not (read|list)'
@@ -181,10 +181,17 @@ Describe 'the sign-off listing is stored at the review-signoff crossing (correct
         $out | Should -BeNullOrEmpty
     }
 
-    It 'one writer: exactly one engine script names the listing file' {
-        $writers = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts') -Recurse -Filter '*.ps1' |
-                Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match [regex]::Escape($script:ListingName) })
-        $writers.Count | Should -Be 1 -Because 'one writer owns the file; everything else reads what it wrote'
+    It 'one writer: only Write-ReviewCampaignSignoffListing writes the file, and only the crossing calls it' {
+        # Every engine script that names the file: the writer, and the records allowlist that classifies it as review
+        # OUTPUT (FR-009) so storing it does not make the review it records look stale.
+        $naming = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts') -Recurse -Filter '*.ps1' |
+                Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match [regex]::Escape($script:ListingName) } | ForEach-Object { $_.Name } | Sort-Object)
+        $naming | Should -Be @('review-signoff-evidence-gate.ps1', 'signoff-gate-wiring.ps1')
+        $gate = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1') -Raw
+        @([regex]::Matches($gate, [regex]::Escape($script:ListingName))).Count | Should -Be 1 -Because 'the gate only lists the name as a record'
+        $callers = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts'), (Join-Path $script:RepoRoot 'extensions') -Recurse -Filter '*.ps1' |
+                ForEach-Object { [regex]::Matches((Get-Content -LiteralPath $_.FullName -Raw), '(?m)^(?!\s*function\s)(?!\s*#).*\bWrite-ReviewCampaignSignoffListing\b').Count } | Measure-Object -Sum).Sum
+        $callers | Should -Be 1 -Because 'the review-signoff crossing is the one place the listing is written'
     }
 
     It 'the structured listing carries the severity of a finding still open' {
@@ -204,5 +211,26 @@ Describe 'the demotion lead reads the structured demoted_from, not the rendered 
         $project = script:New-ListProject -Name 'lead-structured' -Verdict 'findings' -Findings @(
             (script:New-Finding -Id 'finding-00000000000000d9' -Severity 'minor' -Title 'log says the probe reported it as major; nothing checks it' -Location 'src/probe.ps1:4' -Demoted))
         [string](script:Get-Signoff -Project $project).message | Should -Match '^The reviewer reported 1 blocking finding\.'
+    }
+}
+
+Describe 'a review whose findings are all non-gating still covers the files after a records-only commit (cf2285d7''s sibling, FR-009)' {
+    It 'recording review.md after a minor-only review does not ask for a fresh review: the sign-off still releases' {
+        $project = script:New-ListProject -Name 'records-after-minor' -Verdict 'findings' -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000fa' -Severity 'minor' -Title 'Typo' -Location 'src/app.ps1:2'))
+        [string](script:Get-Signoff -Project $project).decision | Should -BeExactly 'allow' -Because 'the exact-digest case released already (cf2285d7)'
+        [IO.File]::WriteAllText((Join-Path $project.root 'specs/001-demo/iterations/007/review.md'), "# Review`n", $script:Utf8)
+        script:Invoke-ListGit $project.root @('add', '-A'); script:Invoke-ListGit $project.root @('commit', '-qm', 'record the review')
+        $signoff = script:Get-Signoff -Project $project
+        [string]$signoff.decision | Should -BeExactly 'allow' -Because 'a record of what the review found cannot invalidate the review (FR-009)'
+        [string]$signoff.message | Should -Match 'finding-00000000000000fa' -Because 'the follow-up is still listed'
+    }
+
+    It 'a gating finding is not released by a records-only commit: the exemption preserves, it never promotes' {
+        $project = script:New-ListProject -Name 'records-after-major' -Verdict 'findings' -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000bb' -Severity 'major' -Title 'Retry never backs off' -Location 'src/poll.ps1:41'))
+        [IO.File]::WriteAllText((Join-Path $project.root 'specs/001-demo/iterations/007/review.md'), "# Review`n", $script:Utf8)
+        script:Invoke-ListGit $project.root @('add', '-A'); script:Invoke-ListGit $project.root @('commit', '-qm', 'record the review')
+        [string](script:Get-Signoff -Project $project).decision | Should -BeExactly 'block'
     }
 }
