@@ -2598,6 +2598,50 @@ function Invoke-ReviewCampaignCommand {
         return New-ReviewCampaignOpenStopRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext -Stop $openStop `
             -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events))
     }
+    # Fix 7 (maintainer classification 2026-11-09): a round that stops at (c) must be recorded as a stop. Recording it is
+    # forgiving so a failed write cannot destroy the review the human paid for, which leaves a containment-violated round
+    # with no stop on record - and that must not read as "no stop". The launch records the missing (c) stop now and shows
+    # it; when that write fails too, it refuses and says what could not be saved. Nothing is launched or spent either way.
+    if ([bool]$loopState.containment_violated -and -not [string]::IsNullOrWhiteSpace([string]$loopState.last_spent_run_id)) {
+        $violatedRunId = [string]$loopState.last_spent_run_id
+        $hasRecord = $false
+        try { $hasRecord = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $identity.campaign_id | Where-Object { [string]$_.run_id -ceq $violatedRunId }).Count -gt 0 }
+        catch { $hasRecord = $false }
+        if (-not $hasRecord) {
+            $recordedStop = $null; $writeFailure = ''
+            try {
+                $budgetNow = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $identity.campaign_id
+                $missingDecision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed ([int]$budgetNow.rounds_used) -BudgetTotal ([Math]::Max(1, [int]$budgetNow.budget_total))
+                $missingStop = New-ReviewCampaignPendingPauseFact -CampaignId $identity.campaign_id -RunId $violatedRunId -TargetDigest ([string]$loopState.last_spent_digest) `
+                    -Decision $missingDecision -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -StopKind 'c-judgment' -StopReason 'containment-violated'
+                $missingStop | Add-Member -NotePropertyName recommendation -NotePropertyValue 'The reviewer changed the frozen copy of your files it was reviewing, so its review cannot count as clean, whatever it found.' -Force
+                $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $missingStop
+                $recordedStop = Get-ReviewCampaignOpenStop -StoreRoot $StoreRoot -CampaignId $identity.campaign_id
+            }
+            catch { $writeFailure = $_.Exception.Message }
+            if ($null -ne $recordedStop) {
+                return New-ReviewCampaignOpenStopRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext -Stop $recordedStop `
+                    -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events))
+            }
+            return [pscustomobject][ordered]@{
+                status = 'paused'; reason = 'pause-record-missing-for-completed-round'; reason_detail = $writeFailure
+                invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+                target_lineage = $identity.target_lineage; store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+                design_context = [string]$designContext.classification
+                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+                pause = $null; pause_decision = $null
+                pause_surface = @(
+                    'Specrew did not start another review round. The last round''s reviewer changed the frozen copy of your files it was reviewing, so that round is a review stop that needs your decision, and Specrew could not save the record of that stop.',
+                    '',
+                    ('What could not be saved: ' + $(if ([string]::IsNullOrWhiteSpace($writeFailure)) { 'the stop could not be read back after writing it' } else { $writeFailure })),
+                    '',
+                    'Nothing was launched, recorded or spent. Check that the folder .specrew/review/authority in this project can be written, then run the review again; the stop is shown to you then.'
+                )
+                continuation_authorized = $false; continuation_reason = 'pause-record-missing-for-completed-round'
+                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            }
+        }
+    }
     if ([bool]$loopState.stopped_here) {
         $uncovered = @($loopState.open_findings | ForEach-Object {
                 $where = if ($null -eq $_.location) { '' } elseif ($_.location -is [string]) { (' at ' + $_.location) } else { '' }
