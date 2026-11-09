@@ -359,78 +359,37 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             $decision.reason = [string]$scope.reason
             return $decision
         }
-        # R1: the Stop-hook advisory read may use the digest cache; the signoff gate's read of the same function never does.
-        try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved -AllowCache }
+        # Feature 203 T008 step (iii) item 6 (FR-006; DRIFT-052 item 6, ruled 2026-11-08): THE NAVIGATOR STOPS ONLY ON AN
+        # OPEN STOP, AND ONLY DURING IMPLEMENT. Before step (iii) it read the sign-off gate's packet and stopped on every
+        # route that did not release it - review-required, review-stale and the rest - each with a "What to do" line that
+        # asked for a round. FR-006: no stop asks for a round, and no block exists only to make the crew run the next one;
+        # the loop runs within the budget on its own. What is left is a stop the engine wrote as a pause fact, (a) to (d),
+        # which waits for the human's typed line. The review-signoff boundary still checks coverage; that is a boundary
+        # gate, not a round request, and it is not here.
+        $stage = Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $resolved
+        if ($stage -ne 'implement') { $decision.reason = 'not-implement-stage'; return $decision }
+        $openStop = $null; $openFindings = @()
+        try {
+            $navIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolved -RunId 'run-navigator-probe'
+            $navStore = Join-Path $resolved '.specrew/review/authority'
+            $openStop = Get-ReviewCampaignOpenStop -StoreRoot $navStore -CampaignId ([string]$navIdentity.campaign_id)
+            if ($null -ne $openStop) { $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $navStore -CampaignId ([string]$navIdentity.campaign_id)) }
+        }
         catch {
-            $decision.reason = 'campaign-packet-gate-failed'
-            $decision.stop_block = "Campaign review authority could not be read safely: $($_.Exception.Message)`n(Campaign review block, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)"
+            # Not a stop: an unreadable store is reported, and the review command refuses on it by itself.
+            $decision.reason = 'campaign-stop-unreadable'
+            $decision.inject_notes = @(('[co-review] Specrew could not read whether a review stop is waiting: {0}' -f $_.Exception.Message))
             return $decision
         }
-        $decision.reason = [string]$packet.reason
-        # The route travels on the decision so the provider can tell a pause the human owes from a file
-        # attribution it may quiet for a session that wrote nothing (fix 2 item (c)).
-        $decision | Add-Member -NotePropertyName route -NotePropertyValue ([string]$packet.route) -Force
-        if ([bool]$packet.render_boundary_packet) {
-            $decision.inject_notes = @(("[co-review] Review {0} covers your files exactly as they are now." -f $packet.run_id))
-        }
-        elseif ([string]$packet.route -eq 'review-running') {
-            $decision.inject_notes = @(("[co-review] Review {0} is still checking your files as they are now; nothing is needed from you yet." -f $packet.run_id))
-        }
-        else {
-            # T003 / FR-007: hand the block the recorded crossing so it can scope itself instead of
-            # blanket-suppressing a marker the lifecycle may genuinely owe. Reading controller truth
-            # must never be able to break the stop, so an unreadable record yields $null and the block
-            # falls back to its original unconditional clause.
-            $pendingCrossing = $null
-            try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved }
-            catch { $pendingCrossing = $null }
-            # AN UNANSWERED PAUSE BLOCKS THE STOP UNTIL ITS SURFACE HAS BEEN RENDERED.
-            #
-            # The route already blocked the Stop - what it carried was a one-line summary ("This review
-            # is waiting for your decision"), while the decision surface FR-002 exists to produce sat in
-            # the store, written and shown to nobody. Measured on both dogfood runs: each agent read the
-            # findings itself, decided, and proceeded; the human saw a count and a conclusion.
-            #
-            # Same shape as the projection that dropped the pause and the generated file that was not the
-            # rendered one - the mechanism worked and the seam to the human did not. So the block IS the
-            # surface: findings with locations, the numbered options, and how to send one. An agent
-            # cannot now read a review's findings and carry on while the human sees only a summary,
-            # because the Stop does not clear until this text has been put in front of them.
-            if ([string]$packet.route -ceq 'pause-pending') {
-                $pauseSurfaceLines = @()
-                try {
-                    if (-not (Get-Command -Name 'Format-ReviewCampaignOutstandingPause' -ErrorAction SilentlyContinue)) {
-                        . (Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1')
-                    }
-                    $pauseStore = Join-Path $resolved '.specrew/review/authority'
-                    $outstandingPause = Get-ReviewCampaignPendingPause -StoreRoot $pauseStore -CampaignId ([string]$packet.campaign_id)
-                    if ($null -ne $outstandingPause) {
-                        $pauseFindings = $null
-                        try {
-                            $pauseResult = Get-ReviewRunAuthorityFact -StoreRoot $pauseStore -CampaignId ([string]$packet.campaign_id) `
-                                -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingPause -Name 'run_id')) -Stage result
-                            if ($null -ne $pauseResult) { $pauseFindings = Get-ReviewAuthorityProperty -Object $pauseResult -Name 'findings' }
-                        }
-                        catch { $pauseFindings = $null }
-                        $pauseProject = Split-Path -Leaf $resolved
-                        $pauseSurfaceLines = @(Format-ReviewCampaignOutstandingPause -ProjectName $pauseProject -Fact $outstandingPause -Findings $pauseFindings)
-                    }
-                }
-                catch { $pauseSurfaceLines = @() }
-                if (@($pauseSurfaceLines).Count -gt 0) {
-                    $decision.stop_block = (@($pauseSurfaceLines) -join [Environment]::NewLine)
-                    $decision | Add-Member -NotePropertyName agent_directives `
-                        -NotePropertyValue 'A review round is waiting for the human''s answer. Render the block above verbatim and STOP. Do NOT read the findings and decide on their behalf - the decision is theirs, and answering it is a command they run.' -Force
-                    return $decision
-                }
-            }
-            $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet -PendingCrossing $pendingCrossing
-            # T010 (emission-point rule): the agent's directives travel BESIDE the human's block, never
-            # inside it. MOVED, not deleted - the agent is a different reader, not a lesser one, and it
-            # still has to be told whether a verdict marker applies.
-            $decision | Add-Member -NotePropertyName agent_directives `
-                -NotePropertyValue (Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $packet -PendingCrossing $pendingCrossing) -Force
-        }
+        if ($null -eq $openStop) { $decision.reason = 'no-open-stop'; return $decision }
+        $stopKind = [string](Get-ReviewAuthorityProperty -Object $openStop -Name 'stop_kind')
+        $decision.reason = ('review-stop-open:' + $stopKind)
+        # The route travels on the decision so the provider can tell a stop the human owes from a file attribution.
+        $decision | Add-Member -NotePropertyName route -NotePropertyValue 'pause-pending' -Force
+        $decision.stop_block = (@(Format-ReviewCampaignStopSurface -Stop $openStop -OpenFindings $openFindings) -join [Environment]::NewLine)
+        $pendingCrossing = $null
+        try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved } catch { $pendingCrossing = $null }
+        $decision | Add-Member -NotePropertyName agent_directives -NotePropertyValue (Build-ReviewCampaignStopAgentDirective -PendingCrossing $pendingCrossing) -Force
         return $decision
     }
 

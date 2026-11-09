@@ -1387,190 +1387,24 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
     return $sb.ToString().TrimEnd()
 }
 
-function Build-ReviewCampaignNavigatorStopBlock {
-    # T051 / FR-045: campaign outcomes can block lifecycle progress, but only a clean or explicitly
-    # human-dispositioned exact-digest result may release the ordinary boundary packet. This block is
-    # deliberately marker-free so it cannot be captured as lifecycle authorization evidence.
-    #
-    # T003 / FR-007 - THE TWO-GOVERNOR ADJUDICATION. The no-marker clause below used to be emitted
-    # unconditionally, with no knowledge of whether a lifecycle crossing was pending. When one is, the
-    # stop carries two contradictory instructions at the same moment: the boundary evidence gate needs
-    # the crossing's verdict marker or the human's answer cannot be captured at all, while this block
-    # says emit no marker. That collision was captured live three times during this feature, and each
-    # time an AGENT adjudicated it - which is precisely ledger F5, because a consumer could not.
-    #
-    # Maintainer ruling: the recorded crossing WINS. Controller truth naming an exact pending
-    # authorization outranks this clause, which governs ITSELF - it describes what this block is, not
-    # what the lifecycle owes. Under the other reading a recorded crossing becomes unanswerable and
-    # the lifecycle wedges on a review the human may not even owe yet.
-    #
-    # Deferring the MARKER is not withdrawing the BLOCK: the review position above is unchanged, and
-    # only a well-formed crossing - one naming its destination - outranks the clause.
-    param(
-        [Parameter(Mandatory)]$PacketDecision,
-        [AllowNull()]$PendingCrossing
-    )
-    # T010 / FR-015, FR-016 - SCOPED BY EMISSION POINT (maintainer ruling 2026-08-11). Text a human
-    # reads at a stop is a consumer surface WHEREVER it is composed. An earlier pass scoped this by FILE
-    # and guarded only the `-Message` literal, leaving the five lines around it - the ones composed
-    # here - carrying every defect the pass was about.
-    #
-    # AGENT DIRECTIVES DO NOT LIVE IN THIS BLOCK. They are not vocabulary leaking through; they are the
-    # agent's private channel printed in front of the consumer. They moved to
-    # Build-ReviewCampaignNavigatorAgentDirective - MOVED, never deleted: the agent is a different
-    # reader, not a lesser one, and it still has to be told.
-    $sb = [Text.StringBuilder]::new()
-    [void]$sb.AppendLine(('Specrew review — {0}.' -f (Get-ReviewCampaignRouteSentence -Route ([string]$PacketDecision.route))))
-    [void]$sb.AppendLine([string]$PacketDecision.message)
-    # THE NEXT STEP, in words. Removing the old `Implementer action: request-current-digest-review` line
-    # was itself a defect - caught on a live stop, which rendered a block with no actionable step at
-    # all. The complaint about that line was that it was MACHINERY ADDRESSED TO A ROLE, not that the
-    # reader does not need a next step. Translating it is the fix; deleting it traded one unusable
-    # sentence for a missing one.
-    $nextStep = Get-ReviewCampaignActionSentence -Action ([string]$PacketDecision.implementer_action)
-    if (-not [string]::IsNullOrWhiteSpace($nextStep)) { [void]$sb.AppendLine(('What to do: {0}' -f $nextStep)) }
-
-    if (-not [string]::IsNullOrWhiteSpace([string]$PacketDecision.run_id)) {
-        # A bare identifier is a thing the reader must look up before the line means anything. The gloss
-        # says what it is FOR, so a reader who does not need it can skip it.
-        [void]$sb.AppendLine(('Review run: {0} (identifies this review if you need to refer to it)' -f [string]$PacketDecision.run_id))
-    }
-
-    $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
-    $crossingFrom = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'from_boundary')
-    $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')
-    if ([string]::IsNullOrWhiteSpace($crossingTo)) {
-        $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'working_boundary')
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($crossingTo) -and -not [string]::IsNullOrWhiteSpace($crossingId)) {
-        # THE BOUNDARIES ARE THE ACTIONABLE PART; the identifier is REMOVED, not glossed. The old line
-        # read "the recorded crossing crossing-fdfd..." - a stutter, because the label and the id say
-        # the same word - and a 64-character hex string is noise in a sentence whose job is to tell a
-        # human their approval is still owed. The id still travels on the agent channel, where it is
-        # the thing actually being matched.
-        $null = $crossingId
-        [void]$sb.AppendLine((
-            'This does not decide the approval you still owe ({0} -> {1}); that decision is unaffected and still waits for you.' -f `
-                $(if ([string]::IsNullOrWhiteSpace($crossingFrom)) { 'unrecorded' } else { $crossingFrom }), $crossingTo
-        ))
-    }
-    return $sb.ToString().TrimEnd()
-}
-
-function Get-ReviewCampaignRouteSentence {
-    # A raw route name (`review-stale`, `review-required`) is internal vocabulary in the FIRST line the
-    # reader sees. Unknown routes fall back to a neutral phrase rather than leaking the token: a new
-    # route added later degrades to vague, never to machinery.
+function Build-ReviewCampaignStopAgentDirective {
+    # Feature 203 T008 step (iii) item 6 (FR-006): the agent's half of a review stop, carried beside the human's block
+    # (T010's emission-point rule). The stop waits for the human's typed line; the agent renders it and stops. It replaces
+    # the round-request block and its "What to do" line: no stop asks for a round.
     [OutputType([string])]
     [CmdletBinding()]
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Route)
-    switch ([string]$Route) {
-        'review-stale' { return 'your last review no longer covers these files' }
-        'review-required' { return 'these files have not been reviewed yet' }
-        'review-running' { return 'a review is running now' }
-        'review-current' { return 'your review covers these files' }
-        'review-timeout' { return 'the last review ran out of time' }
-        'review-failure' { return 'the review record needs repair' }
-        'review-partial' { return 'the last review finished only partly' }
-        'pause-pending' { return 'this review is waiting for your decision' }
-        default { return 'there is something to know about your review' }
-    }
-}
-
-function Build-ContinuousCoReviewNavigatorAgentDirective {
-    # The agent's half of the blocking co-review stop. Split from the human block under T010's
-    # emission-point rule: the marker instruction is for the assistant, the "your tree is unchanged"
-    # reassurance is for the person.
-    [OutputType([string])]
-    [CmdletBinding()]
-    param([Parameter(Mandatory)]$Verdict)
-    $null = $Verdict
-    return 'Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.'
-}
-
-function Get-ReviewCampaignActionSentence {
-    # `request-current-digest-review` is machinery addressed to a role. The reader needs the ACT, in
-    # words, with the command where one exists. An unknown action returns EMPTY rather than echoing the
-    # token: a line that prints an internal identifier is worse than no line, because it looks like an
-    # instruction the reader has failed to follow.
-    [OutputType([string])]
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Action)
-    switch ([string]$Action) {
-        # --approve-round IS NAMED HERE because this is the ONE place every "run a review" instruction
-        # resolves through, and because the only other place that named it was emitted BY the checkpoint
-        # (navigator :835). The checkpoint never fired on either dogfood host, so the message never
-        # rendered, so neither agent could discover the flag - and both improvised an authorization
-        # instead. The instruction for the fix lived inside the thing that was broken.
-        #
-        # A review costs a provider round and needs the human's approval, so the command that starts one
-        # must carry the approval in the same line. Someone reading a refusal is exactly the person
-        # looking for how to run a review; making them find a second message first is what produced two
-        # invented authorizations.
-        # W44 (maintainer ruling, 2026-08-22): THE DECISION IS THE HUMAN'S, THE EXECUTION IS THE AGENT'S.
-        #
-        # W36 drew the line in the wrong place: it made the COMMAND the human's to run, which is the one
-        # role this system never gives the human anywhere else. Boundary verdicts, partial signoff and
-        # workshop repair are all typed phrases captured from conversation, with the agent operating the
-        # machinery afterwards - and round approval now works the same way. The human types `approved
-        # for review round`; the hooks capture it; the agent runs the command carrying that captured
-        # phrase as its authority, and a bare agent invocation without one is refused by the CLI itself.
-        #
-        # Telling a human in a conversation to go run a CLI command also failed as UX on day one (the
-        # bash-PATH seam): the human is in a conversation, not a terminal. The command still appears
-        # here - discoverability was the original defect - but addressed to the reader who runs it.
-        'request-current-digest-review' { return 'run a fresh review of these files as they are now: specrew review --live. The review budget approved with the implementation pays for the round' }
-        'request-authorized-review' { return 'run the review of these files: specrew review --live. The review budget approved with the implementation pays for the round' }
-        'poll-existing-run' { return 'wait for the review that is already running; nothing else is needed from you' }
-        'proceed' { return '' }
-        'await-human-pause-decision' { return 'answer the review question above; nothing runs until you do' }
-        'reconcile-run-claim' { return 'recover the interrupted review before signing off: specrew review --reconcile' }
-        'repair-review-state' { return 'the stored review records need repair before a decision can be asked for' }
-        default { return '' }
-    }
-}
-
-function Build-ReviewCampaignNavigatorAgentDirective {
-    # THE AGENT'S CHANNEL. These lines are instructions to the assistant, not information for the human,
-    # and printing them inside the human's block was the defect that forced the emission-point rule.
-    # They are carried separately so the agent still receives them - it is a different reader, not a
-    # lesser one.
-    [OutputType([string])]
-    [CmdletBinding()]
-    param([Parameter(Mandatory)]$PacketDecision, [AllowNull()]$PendingCrossing)
-
+    param([AllowNull()]$PendingCrossing)
     $lines = [Collections.Generic.List[string]]::new()
-    # W44 (supersedes W36): the agent's own channel now states the split the maintainer ruled - the
-    # DECISION is the human's, the EXECUTION is the agent's. The CLI enforces it: an agent invocation
-    # of --approve-round without a captured typed approval is refused, so this sentence describes the
-    # mechanism rather than standing in for one.
-    # Feature 203 T008 (FR-010): review rounds need no approval of their own; the review budget approved with the
-    # implementation pays for them, so running `specrew review --live` within it is the crew's job.
-    $lines.Add('Review rounds need no approval of their own: the review budget approved with the implementation pays for them, so running `specrew review --live` within it is YOUR job. Never ask the human for a round.') | Out-Null
-    if ([bool](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'ask_narrow_question')) {
-        $lines.Add('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') | Out-Null
-    }
-    # W49: the pause menu shows the human typed decisions only - the CLI spelling is yours. Mapping:
-    # `run another round` -> specrew review --live --pause-choice 1 (needs their captured `approved for
-    # review round`); `stop the review here` -> --pause-choice 2; `abandon this review campaign` ->
-    # --pause-choice 3. The last two spend nothing and need no captured approval - relay them as typed;
-    # never show the human a --flag, and never answer a pause they have not decided.
-    if ([string](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'implementer_action') -ceq 'await-human-pause-decision') {
-        $lines.Add('The pause menu above offers the human three typed decisions; mapping them to the CLI is YOUR job, never theirs: `run another round` -> `specrew review --live --pause-choice 1` (the review budget pays for it); `stop the review here` -> `--pause-choice 2`; `abandon this review campaign` -> `--pause-choice 3`. Relay the typed decision as given, never show the human a --flag, and never answer a pause they have not decided.') | Out-Null
-    }
+    $lines.Add('A review stop is waiting for the human''s typed line. Render the block above verbatim and STOP. Never answer it for them and never send one of its lines yourself; their typed line is the answer, and the next review launch reads it.') | Out-Null
     $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
     $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')
-    if ([string]::IsNullOrWhiteSpace($crossingTo)) {
-        $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'working_boundary')
-    }
+    if ([string]::IsNullOrWhiteSpace($crossingTo)) { $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'working_boundary') }
     if (-not [string]::IsNullOrWhiteSpace($crossingTo) -and -not [string]::IsNullOrWhiteSpace($crossingId)) {
-        # T003's adjudication, unchanged in substance: the recorded crossing WINS over this block's
-        # self-describing no-marker clause.
-        $lines.Add(('This is a campaign review block, not a lifecycle verdict. It does not govern the recorded crossing {0}, whose SPECREW-VERDICT-BOUNDARY marker applies as normal; this block does not suppress it.' -f $crossingId)) | Out-Null
+        # T003's adjudication, unchanged in substance: the recorded crossing wins over this block's no-marker clause.
+        $lines.Add(('This is a review stop, not a lifecycle verdict. It does not govern the recorded crossing {0}, whose SPECREW-VERDICT-BOUNDARY marker applies as normal.' -f $crossingId)) | Out-Null
     }
     else {
-        $lines.Add('Campaign review block, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.') | Out-Null
+        $lines.Add('Review stop, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.') | Out-Null
     }
     return (($lines -join [Environment]::NewLine))
 }
