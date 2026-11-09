@@ -246,8 +246,8 @@ function New-ReviewCampaignPendingPauseFactBody {
 function New-ReviewCampaignBudgetResetFact {
     # THE CEILING'S WAY OUT, which the ceiling has been advertising and the engine refused.
     #
-    # `Cost so far ... Round budget: 4 of 4 used` withdrew option 1 and told the consumer, in prose,
-    # `specrew review --remediate allowance-reset`. Under campaign authority that command threw - every
+    # `Cost so far ... Round budget: 4 of 4 used` withdrew option 1 and told the consumer, in prose, to run the
+    # allowance-reset remediation. Under campaign authority that command threw - every
     # remediation except override-block was rejected - so a consumer who reached the ceiling was told
     # exactly one way forward, followed it verbatim, and was refused. Permanently wedged, with no route
     # to another round short of editing configuration or abandoning the campaign. It surfaced only
