@@ -1650,7 +1650,26 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   the maintainer's correction: `records-only-delta-survives-its-own-round` "still refuses to PROMOTE" used a `findings`
   verdict with no findings as its non-authorizing fixture; under FR-004 that now authorizes, so the fixture carries an
   open major instead. Same assertion, no It deleted.
-- **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
+- **Built (2026-11-09), the suite migration, fixes 4, 5 and 7, and the (b)/(c) writers**: the eight suites migrated under
+  the approved classification, no It deleted (`b40aa68b` orchestrator and public command; `09353cdf` campaign-pause-wiring;
+  `7e6c3914` navigator; `cccfb885` two-governor; `e81d89a5` advisory; `d4f3d382` consumer-language; `ca0a27e1` firewall).
+  Code fixes found on the way: fix 7 (`91d29c4e`, a containment-violated round with no recorded stop: the launch records
+  and shows stop (c), or refuses saying what could not be saved), the navigator never silent on unreadable lifecycle state
+  (`b65aaac5`, the classification's "must never go silent"), fix 5 (`289bdc23`, the stop says it does not decide the
+  approval still owed for a recorded crossing, in boundary names), fix 4 (`623cf098`, the agent message says rounds are
+  the agent's job). The crew's writers (`d0bb4317` red 10 of 10, `d240c68e`): `--dispute <id> --reason`, `--propose-defer
+  <id> --to` raise (b), `--ask` raises (c), each with its own reason, refusals in plain words, flags whitelisted and
+  classified; the help and two hints that still taught `--pause-choice 1/2/3` now name `stop the review here`.
+- **Awaiting the maintainer's classification (2026-11-09)**: six cases fail that the approved classification did not
+  list, each a consequence of a later ruling: `campaign-pause-wiring` "the pending pause is the CHRONOLOGICALLY newest"
+  (records `fix-and-continue`, no longer recordable) and "A REFUSED stop-here leaves the pause ANSWERABLE" (its source
+  guard looks for the landing inside the CLI's stop-here branch, now a relay); `advisory-names-the-humans-act`'s four W67
+  "round summary states the whole mix" cases (they pin `Format-ReviewCampaignPauseSurface` and
+  `Format-ReviewCampaignOutstandingPause`, deleted under the a0ab0ca0 ruling). Two changes the crew classified itself are
+  also open to correction: `records-only-delta-survives-its-own-round`'s promote fixture (above) and
+  `review-public-campaign-command`'s note-only route, now `boundary-clean` under the FR-004 ruling (`b40aa68b`).
+- **Not yet built, step (iii)** (as recorded before 2026-11-09's later sessions; superseded by the two entries above):
+  the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
   (8), `campaign-two-governor-adjudication` (6), `consumer-language` (10), `review-public-campaign-command` (2) and
