@@ -1628,6 +1628,13 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   message) built with it. Still open from the classification: the navigator, consumer-language, advisory, two-governor,
   firewall, orchestrator, public-command and campaign-pause-wiring suites; code fixes 4, 5 and 7; the (b) and (c)-ask
   writers; then the sweep and step (iv), whose B5F-017 fix lands before T014.
+- **Corrections to `cf2285d7` (maintainer, 2026-11-09)**: (1) the sign-off listing must not fail open: if it cannot be
+  built, the sign-off refuses in plain words and says what could not be read (red first). (2) When any finding was
+  demoted, the clean route's message leads with it ("The reviewer reported N blocking finding(s). Specrew recorded them
+  as minor because they state no concrete failure scenario. Read them below before you approve.") and never opens with
+  "found nothing that blocks sign-off"; without demotions the wording stays. (3) The follow-ups are stored (FR-013): at the
+  review-signoff crossing one writer writes the listing (not covered, follow-ups, demoted; each with id, title, location
+  and severity) into one file in the iteration folder, and the retro reads it (red first).
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
