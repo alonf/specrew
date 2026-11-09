@@ -1522,7 +1522,39 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   - An identity-mismatch run, though free, counts toward the consecutive infrastructure-failure count
     (`infra_failure_cap`). Repeated mismatches move the cycle to the next reviewer in the order and end at (d); they
     never loop for free. A test confirms this in step (iii).
-- **Class closure**: OPEN; steps (i) and (ii) built. Next: step (iii), items 5 and 6, with the partial-findings half of item 3.
+- **Built, step (iii), so far (2026-11-09)**, each piece red first through its shipped entry point:
+  - **The loop and stops (a), (c), (d)** (`047cd6a0` red 13 of 13, `8b98e2ef`): a round writes a pause fact only for stop
+    (a), the round that spends the last of the budget with a finding open, or (c), a containment-violated review (never
+    clean; it does not end the review or release the sign-off). A clean or fix-needed round writes none. The next launch is
+    refused, spending nothing, while the files are unchanged since the last round that collected a review
+    (`review-tree-unchanged`, not a stop). The exhausted order is stop (d), written once as a pause fact naming the next
+    reviewer. An identity mismatch is free, writes no stop, and counts toward `infra_failure_cap`; repeated mismatches end
+    at (d). Every stop renders the FR-011 layout (`Format-ReviewCampaignStopSurface`); no line asks for a round.
+  - **Partial findings** (same commits): open findings are read from the results (`Get-ReviewCampaignOpenFindings`). A
+    gating finding from a round or from a run with no complete review stays open until a complete round on moved files
+    does not report it again, or the human's typed defer or drop (`FindingDispositionFact`); `fix finding` keeps it open.
+    The sign-off check refuses while any finding is open (`review-findings-open`).
+  - **Item 6, the navigator** (`06462e70` red 5 of 5, `a515a7e5`): during implement it stops only on an open stop, with its
+    FR-011 surface; outside implement nothing stops. `Build-ReviewCampaignNavigatorStopBlock`, its route and action
+    sentences and every "What to do" line are removed. The FR-013 sign-off suite (`ddefbd2e`) stays green.
+  - **The typed lines** (`69d2f548` red 4 of 5, `c930e1db`): the hook records `allow reviewer`, `defer`/`drop`/`fix finding`
+    and free text at (c) through `Write-SpecrewStopAnswerAuthorization`, bound to the stop open when typed; the review
+    command lands each before a launch (`Invoke-ReviewCampaignStopAnswerLanding`) as the allowed-reviewer fact, the
+    finding's disposition, or the stop's answer, spent once. A stop line with no stop to bind to is reported at the
+    human's message.
+  - **Interpretations** (for the maintainer to correct): a finding's identity across runs is its location and title; stop
+    (a) also closes when nothing is left open; after the human answers a (c) stop, one rerun on the same files is
+    allowed; a pause written before step (iii) has no `stop_kind` and stops nothing; step (iii)'s fixtures state the
+    literal `Failure scenario:` clause, because without it the ingestor demotes the finding to minor (B5F-017, step (iv)).
+- **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
+  `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
+  that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
+  (8), `campaign-two-governor-adjudication` (6), `consumer-language` (10), `review-public-campaign-command` (2) and
+  `consumer-applicability-firewall` fail, each asserting a navigator stop on review-required/review-stale, the "What to
+  do" sentence or a per-round pause; the 128-suite sweep of `8b98e2ef` will list the rest. None of these commits is
+  pushed. Step (iv) has not started.
+- **Class closure**: OPEN; steps (i) and (ii) built, step (iii) partly built (above). Next: the (b) and (c) entry points,
+  the suite migration, then step (iv).
 
 ### DRIFT-053 — CI was red on this branch for 8 days and 40 pushes, and nothing in the crew's routine looked (process gap; proposal, maintainer decision pending)
 
