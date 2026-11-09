@@ -386,9 +386,35 @@ function Test-ReviewCampaignPendingPauseQuiet {
     return [pscustomobject]@{ confers_quiet = $true; reason = 'pause-pending-on-current-tree' }
 }
 
+# Feature 203 T008 step (iii) (FR-006): the four stops, and the only reasons a review pauses for the human.
+$script:ReviewCampaignStopKinds = @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order')
+
 function New-ReviewCampaignPendingPauseFact {
     # The pause recorded as a FACT (design Option B). A derived pause could only be inferred, which
     # made the quiet-state read heuristic and lost the surface verbatim on resume.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][string]$TargetDigest,
+        [Parameter(Mandatory)]$Decision,
+        [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T008 step (iii) (FR-006): which stop this is, why, and for (d) the reviewer the engine would try next.
+        [AllowEmptyString()][string]$StopKind = '',
+        [AllowEmptyString()][string]$StopReason = '',
+        [AllowEmptyString()][string]$NextHost = ''
+    )
+    $fact = New-ReviewCampaignPendingPauseFactBody -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -Decision $Decision -ObservedAt $ObservedAt
+    if (-not [string]::IsNullOrWhiteSpace($StopKind)) {
+        if ($script:ReviewCampaignStopKinds -cnotcontains $StopKind) { throw "review-stop-kind-unknown:$StopKind" }
+        $fact | Add-Member -NotePropertyName stop_kind -NotePropertyValue $StopKind
+        $fact | Add-Member -NotePropertyName stop_reason -NotePropertyValue $StopReason
+        if (-not [string]::IsNullOrWhiteSpace($NextHost)) { $fact | Add-Member -NotePropertyName next_host -NotePropertyValue $NextHost }
+    }
+    return $fact
+}
+
+function New-ReviewCampaignPendingPauseFactBody {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$CampaignId,
@@ -702,7 +728,8 @@ function Test-ReviewAuthorityContractObject {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact',
+            'FindingDispositionFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -722,6 +749,9 @@ function Test-ReviewAuthorityContractObject {
         'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host') }
         # Feature 203 T008 (FR-009, FR-006(d)): `allow reviewer <host>` appends a reviewer to the campaign's approved order.
         'AllowedReviewerFact' { @('schema_version', 'fact_type', 'campaign_id', 'host', 'authority_kind', 'authorization_ref', 'observed_at') }
+        # Feature 203 T008 step (iii) (FR-011): the human's typed `defer finding <id> to <destination>`, `drop finding <id>` or
+        # `fix finding <id>` for one open finding. Defer and drop close it; fix keeps it open for the crew.
+        'FindingDispositionFact' { @('schema_version', 'fact_type', 'campaign_id', 'finding_key', 'answer', 'argument', 'authority_kind', 'authorization_ref', 'observed_at') }
         # Feature 203 T007 (FR-003): the review budget, snapshotted from the plan when the before-implement verdict is recorded.
         'BudgetGrantFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'grant_id', 'budget_total', 'host_order', 'host_order_stated',
@@ -738,7 +768,10 @@ function Test-ReviewAuthorityContractObject {
         'PendingPauseFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'blocking_count',
             'major_count', 'minor_count', 'demoted_count', 'rounds_used', 'budget_total', 'elapsed_minutes',
-            'evidence_state', 'result_produced', 'recommendation', 'observed_at'
+            'evidence_state', 'result_produced', 'recommendation', 'observed_at',
+            # Feature 203 T008 step (iii) (FR-006, FR-011): which of the four stops this pause is. A pause without one was
+            # written before step (iii), when every round paused; it is history and stops nothing.
+            'stop_kind', 'stop_reason', 'next_host'
         ) }
         'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }
         # The round budget is topped up by RECORDING a decision, never by mutating a count. Rounds
@@ -932,6 +965,24 @@ function Test-ReviewAuthorityContractObject {
             if (($pauseNames -contains 'evidence_state') -xor ($pauseNames -contains 'result_produced')) {
                 Add-ReviewAuthorityError -Errors $errors -Message 'incomplete-group:pause-evidence-state'
             }
+            if ($pauseNames -contains 'stop_kind') {
+                Test-ReviewAuthorityStringField -Object $InputObject -Name 'stop_kind' -Errors $errors -MaxLength 32 -Enum $script:ReviewCampaignStopKinds
+            }
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'stop_reason' -Errors $errors -MaxLength 64 -Optional
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'next_host' -Errors $errors -MaxLength 64 -Optional
+        }
+        'FindingDispositionFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 32 -Enum @('finding-disposition')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'finding_key' -Errors $errors -MaxLength 256
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'answer' -Errors $errors -MaxLength 8 -Enum @('defer', 'drop', 'fix')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'argument' -Errors $errors -MaxLength 512 -Optional
+            if ([string](Get-ReviewAuthorityProperty -Object $InputObject -Name 'answer') -ceq 'defer' -and
+                [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $InputObject -Name 'argument'))) {
+                Add-ReviewAuthorityError -Errors $errors -Message 'missing-destination:argument'
+            }
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorization_ref' -Errors $errors -MaxLength 256
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
         }
         'RecoveryFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('recovery')

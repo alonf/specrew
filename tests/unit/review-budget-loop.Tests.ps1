@@ -390,7 +390,8 @@ Describe 'the engine chooses the reviewer from the approved host order (FR-009, 
         $null = script:Invoke-HostRound -Repo $repo -RunId 'run-host-empty-2' -Factory $factory
         $third = script:Invoke-HostRound -Repo $repo -RunId 'run-host-empty-3' -Factory $factory
         $third.invoked | Should -BeFalse
-        [string]$third.reason | Should -BeExactly 'review-host-order-exhausted'
+        # Step (iii): the exhausted order is stop (d), written as a pause fact (review-loop-stops.Tests.ps1).
+        [string]$third.reason | Should -BeExactly 'review-stop-open:d-host-outside-order'
         [string]$third.next_host | Should -BeExactly 'copilot' -Because 'the engine names the host it would try next, never the code''s writer'
         [string]$third.reason_detail | Should -Match 'allow reviewer copilot'
         @($invoked) | Should -Be @('codex', 'codex') -Because 'no second host is invoked before allow reviewer'

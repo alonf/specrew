@@ -1308,6 +1308,278 @@ function Format-ReviewCampaignBudgetSpentDetail {
     return ('Specrew did not start another review round, because this iteration''s review budget is used: {0} of {1} rounds{2}.{3} Nothing was launched, recorded or spent. The human can type approved for allowance reset, as a normal chat message (a reply inside a question UI or picker is not captured); it grants one fix round and one verification round.' -f [int]$BudgetState.rounds_used, [int]$BudgetState.budget_total, $since, $running)
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Feature 203 T008 step (iii) (FR-005, FR-006, FR-011, FR-013; DRIFT-052 items 3 and 5, and the 2026-11-09 ruling on stop
+# (c)): THE LOOP RUNS WITHOUT A HUMAN UNTIL ONE OF FOUR STOPS.
+#
+# Before step (iii) every round that collected a review wrote a pending pause, and the next round waited for the human's
+# answer or for the files to move. Now a round writes a pause fact only for a stop: (a) the budget spent with findings
+# open, (b) a dispute or a proposed deferral, (c) a judgment call, which includes a reviewer that changed the frozen copy
+# it reviewed, and (d) a next reviewer outside the approved order. A clean round ends the review; a fix-needed round hands
+# straight back to the crew, and the next round is refused, for free, until the files have moved.
+#
+# What is open is read from the results, never stored as a count: a finding from a round, or from a run that brought back
+# only part of a review, stays open until a later complete round on moved files does not report it again (a fix), or the
+# human's typed line defers or drops it. A pause written before step (iii) carries no stop_kind; it is history and stops
+# nothing.
+# ---------------------------------------------------------------------------------------------------------------------
+$script:ReviewCampaignGatingSeverities = @('blocking', 'major')
+
+function Get-ReviewCampaignFindingKey {
+    # One key per finding across runs: where it is and what it says. A reviewer's own ids are per run, so the same defect
+    # reported twice has two ids and one key.
+    [OutputType([string])]
+    param([Parameter(Mandatory)]$Finding)
+    $location = Get-ReviewAuthorityProperty -Object $Finding -Name 'location'
+    $where = if ($null -eq $location) { '' } elseif ($location -is [string]) { $location } else { ($location | ConvertTo-Json -Compress -Depth 6) }
+    $title = [string](Get-ReviewAuthorityProperty -Object $Finding -Name 'title')
+    return (('{0}|{1}' -f $where.Trim(), $title.Trim()) -replace '\s+', ' ').ToLowerInvariant()
+}
+
+function Add-ReviewCampaignFindingDisposition {
+    # The human's typed `defer finding <id> to <destination>`, `drop finding <id>` or `fix finding <id>`, for one open
+    # finding. Immutable; a second answer for the same finding is a new fact, and the newest one stands.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$FindingKey,
+        [Parameter(Mandatory)][ValidateSet('defer', 'drop', 'fix')][string]$Answer, [AllowEmptyString()][string]$Argument = '',
+        [Parameter(Mandatory)][string]$AuthorizationRef, [Parameter(Mandatory)][string]$ObservedAt
+    )
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'finding-disposition'; campaign_id = $CampaignId; finding_key = $FindingKey
+        answer = $Answer; argument = $Argument; authority_kind = 'human'; authorization_ref = $AuthorizationRef; observed_at = $ObservedAt
+    }
+    # Only a deferral names a destination; an empty argument is left out rather than stored empty.
+    if ([string]::IsNullOrWhiteSpace($Argument)) { $fact.PSObject.Properties.Remove('argument') }
+    $token = Get-ReviewCampaignStableToken -Value ('{0}/{1}/{2}/{3}' -f $FindingKey, $Answer, $Argument, $ObservedAt) -Length 20
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/finding-dispositions/disp-$token.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $fact -ContractName FindingDispositionFact -ExpectedCampaignId $CampaignId
+}
+
+function Get-ReviewCampaignFindingDispositions {
+    # The newest typed answer per finding key.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/finding-dispositions'
+    $directory = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    $latest = @{}
+    if (-not [IO.Directory]::Exists($directory)) { return $latest }
+    $facts = foreach ($file in [IO.Directory]::EnumerateFiles($directory, '*.json', [IO.SearchOption]::TopDirectoryOnly)) {
+        Read-ReviewAuthorityFactFile -Path $file -ContractName FindingDispositionFact -ExpectedCampaignId $CampaignId
+    }
+    foreach ($fact in @($facts | Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'finding-disposition.observed_at' })) {
+        $latest[[string](Get-ReviewAuthorityProperty -Object $fact -Name 'finding_key')] = $fact
+    }
+    return $latest
+}
+
+function Get-ReviewCampaignOpenFindings {
+    # The findings still open in this campaign, oldest first. A finding opens when a round, or a run that brought back only
+    # part of a review, reports it at a gating severity. It closes when a later complete round on moved files does not
+    # report it again, or when the human's typed line defers or drops it; `fix finding` keeps it open for the crew.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $open = [ordered]@{}
+    $results = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId |
+            Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') } |
+            Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' })
+    foreach ($result in $results) {
+        $digest = [string](Get-ReviewAuthorityProperty -Object $result -Name 'target_digest')
+        $runId = [string](Get-ReviewAuthorityProperty -Object $result -Name 'run_id')
+        $collected = Test-ReviewResultSpendsRound -Result $result
+        $resultFindings = Get-ReviewAuthorityProperty -Object $result -Name 'findings'
+        $reported = [ordered]@{}
+        foreach ($finding in @($resultFindings)) {
+            if ($null -eq $finding) { continue }
+            $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+            if ($script:ReviewCampaignGatingSeverities -cnotcontains $severity) { continue }
+            $key = Get-ReviewCampaignFindingKey -Finding $finding
+            $reported[$key] = [pscustomobject][ordered]@{
+                finding_key = $key; finding_id = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'finding_id')
+                severity = $severity; title = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'title')
+                location = Get-ReviewAuthorityProperty -Object $finding -Name 'location'
+                run_id = $runId; target_digest = $digest; source = $(if ($collected) { 'round' } else { 'partial' })
+            }
+        }
+        if ($collected) {
+            # A complete review on moved files that does not report a finding again is its fix.
+            foreach ($key in @($open.Keys)) {
+                if (-not $reported.Contains($key) -and [string]$open[$key].target_digest -cne $digest) { $open.Remove($key) }
+            }
+        }
+        foreach ($key in $reported.Keys) { $open[$key] = $reported[$key] }
+    }
+    $dispositions = Get-ReviewCampaignFindingDispositions -StoreRoot $StoreRoot -CampaignId $CampaignId
+    return @($open.Values | Where-Object {
+            $answer = if ($dispositions.ContainsKey([string]$_.finding_key)) { [string]$dispositions[[string]$_.finding_key].answer } else { '' }
+            $answer -cnotin @('defer', 'drop')
+        })
+}
+
+function Test-ReviewResultContainmentViolated {
+    # The reviewer changed the frozen copy it reviewed (the 2026-11-09 ruling): such a result never counts as clean.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)]$Result)
+    return ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'containment') -ceq 'violated' -or
+        [string](Get-ReviewAuthorityProperty -Object $Result -Name 'runtime_outcome') -ceq 'containment-violated')
+}
+
+function Get-ReviewCampaignLoopState {
+    # Where the loop stands: the last round that collected a review, the findings still open, and whether the review has
+    # ended clean. Clean means the last such round reviewed the files without changing them and nothing is open; a
+    # containment-violated round is never clean (the 2026-11-09 ruling), whatever it found.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $lastSpent = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId |
+            Where-Object { Test-ReviewResultSpendsRound -Result $_ } |
+            Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' }) | Select-Object -Last 1
+    $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    $violated = ($null -ne $lastSpent -and (Test-ReviewResultContainmentViolated -Result $lastSpent))
+    # A judgment the human gave on that round's own stop lets the crew run it again on the same files.
+    $judged = $false
+    if ($null -ne $lastSpent) {
+        $lastRunId = [string](Get-ReviewAuthorityProperty -Object $lastSpent -Name 'run_id')
+        $record = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.run_id -ceq $lastRunId }) | Select-Object -First 1
+        $judged = ($null -ne $record -and [bool]$record.answered -and [string](Get-ReviewAuthorityProperty -Object $record.pause -Name 'stop_kind') -ceq 'c-judgment')
+    }
+    return [pscustomobject][ordered]@{
+        last_spent_result = $lastSpent
+        last_spent_run_id = $(if ($null -ne $lastSpent) { [string](Get-ReviewAuthorityProperty -Object $lastSpent -Name 'run_id') } else { '' })
+        last_spent_digest = $(if ($null -ne $lastSpent) { [string](Get-ReviewAuthorityProperty -Object $lastSpent -Name 'target_digest') } else { '' })
+        open_findings = $openFindings
+        containment_violated = $violated
+        rerun_judged = $judged
+        ended_clean = ($null -ne $lastSpent -and -not $violated -and $openFindings.Count -eq 0)
+    }
+}
+
+function Get-ReviewCampaignOpenStop {
+    # The newest stop still waiting for the human, or $null. A stop closes with the human's answer (its pause decision);
+    # (a) also closes with an allowance reset after it, and (d) with a reviewer allowed after it.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $records = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $_.pause -Name 'stop_kind')) -and -not $_.answered })
+    if ($records.Count -eq 0) { return $null }
+    $reset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $resetAt = if ($null -ne $reset) { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $reset -Name 'observed_at') -FieldName 'round-budget-reset.observed_at' } else { $null }
+    $allowedAt = $null
+    $allowedRelative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/allowed-reviewers'
+    $allowedRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $allowedRelative
+    if ([IO.Directory]::Exists($allowedRoot)) {
+        foreach ($file in [IO.Directory]::EnumerateFiles($allowedRoot, '*.json', [IO.SearchOption]::TopDirectoryOnly)) {
+            $allowed = Read-ReviewAuthorityFactFile -Path $file -ContractName AllowedReviewerFact -ExpectedCampaignId $CampaignId
+            $at = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $allowed -Name 'observed_at') -FieldName 'allowed-reviewer.observed_at'
+            if ($null -eq $allowedAt -or $at -gt $allowedAt) { $allowedAt = $at }
+        }
+    }
+    # A record is bound to a name first: inside a switch, $_ is the switch's own value.
+    $stillOpen = @(foreach ($record in $records) {
+            $closed = switch ([string](Get-ReviewAuthorityProperty -Object $record.pause -Name 'stop_kind')) {
+                'a-budget-spent' { $null -ne $resetAt -and $resetAt -gt $record.observed_at }
+                'd-host-outside-order' { $null -ne $allowedAt -and $allowedAt -gt $record.observed_at }
+                default { $false }
+            }
+            if (-not $closed) { $record }
+        })
+    if ($stillOpen.Count -eq 0) { return $null }
+    return $stillOpen[-1].pause
+}
+
+function Format-ReviewCampaignStopSurface {
+    # FR-011: every review stop in one layout - why; what happened, counted; the one decision; the lines the human can
+    # send, each stating its consequence. No line asks for a round (FR-006).
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$OpenFindings = @())
+    $kind = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_kind')
+    $reason = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_reason')
+    $used = [int](Get-ReviewAuthorityProperty -Object $Stop -Name 'rounds_used'); $total = [int](Get-ReviewAuthorityProperty -Object $Stop -Name 'budget_total')
+    $findings = @($OpenFindings | Where-Object { $null -ne $_ })
+    $stopLine = @{ line = 'stop the review here'; does = 'ends the review now; the sign-off lists every finding still open as not covered' }
+    switch ($kind) {
+        'a-budget-spent' {
+            $why = ('the review budget is spent ({0} of {1} rounds) and {2} still open.' -f $used, $total, $(if ($findings.Count -eq 1) { '1 finding is' } else { ('{0} findings are' -f $findings.Count) }))
+            $decision = 'Decide what happens to the open findings.'
+            $sendable = @(
+                @{ line = 'approved for allowance reset'; does = 'grants one fix round and one verification round, and the review goes on' }
+                $stopLine
+                @{ line = 'defer finding <id> to <backlog item or iteration>'; does = 'moves that finding to the place you name and closes it here; the destination is required' }
+                @{ line = 'drop finding <id>'; does = 'closes that finding with no fix' }
+            )
+        }
+        'b-dispute-or-defer' {
+            $why = 'the crew disputes a finding, or proposes to defer it: ' + [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation')
+            $decision = 'Decide what happens to that finding.'
+            $sendable = @(
+                @{ line = 'fix finding <id>'; does = 'the crew fixes it within the approved tasks, and the next round checks the fix' }
+                @{ line = 'defer finding <id> to <backlog item or iteration>'; does = 'moves that finding to the place you name and closes it here; the destination is required' }
+                @{ line = 'drop finding <id>'; does = 'closes that finding with no fix' }
+            )
+        }
+        'c-judgment' {
+            $why = if ($reason -ceq 'containment-violated') {
+                'the reviewer changed the frozen copy of your files it was reviewing, so its review cannot count as clean, whatever it found.'
+            }
+            else { 'the crew needs your judgment: ' + [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation') }
+            $decision = 'Decide how the review goes on.'
+            $sendable = @(
+                @{ line = 'your answer, in your own words'; does = 'the crew follows it; the review waits for it' }
+                $stopLine
+            )
+        }
+        'd-host-outside-order' {
+            $nextHost = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'next_host')
+            $why = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation')
+            $decision = 'Decide whether another reviewer may continue the review.'
+            $sendable = @(
+                $(if (-not [string]::IsNullOrWhiteSpace($nextHost)) { @{ line = ('allow reviewer {0}' -f $nextHost); does = ('adds {0} to the approved order, and the review goes on with it' -f $nextHost) } })
+                $stopLine
+            ) | Where-Object { $null -ne $_ }
+        }
+        default { throw "review-stop-kind-unknown:$kind" }
+    }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add('Specrew review stopped - your decision is needed.') | Out-Null
+    $lines.Add('Why: ' + $why) | Out-Null
+    $lines.Add(('What happened: {0} of {1} rounds used; {2} open.' -f $used, $total, $(if ($findings.Count -eq 1) { '1 finding' } else { ('{0} findings' -f $findings.Count) }))) | Out-Null
+    foreach ($finding in $findings) {
+        $location = $finding.location
+        $where = if ($null -eq $location) { '' } elseif ($location -is [string]) { (' at ' + $location) } else { (' at ' + ($location | ConvertTo-Json -Compress -Depth 4)) }
+        $lines.Add(('  - {0} ({1}) {2}{3}' -f $(if ($finding.finding_id) { $finding.finding_id } else { $finding.finding_key }), $finding.severity, $finding.title, $where)) | Out-Null
+    }
+    $lines.Add('Your decision: ' + $decision) | Out-Null
+    $lines.Add('Send one of these lines as a normal chat message (a reply inside a question UI or picker is not captured):') | Out-Null
+    foreach ($entry in @($sendable)) { $lines.Add(('  {0} - {1}' -f $entry.line, $entry.does)) | Out-Null }
+    return @($lines)
+}
+
+function New-ReviewCampaignOpenStopRefusal {
+    # The launch refused because a stop waits for the human: nothing reserved, launched or spent, and the stop's own
+    # surface carried out so the CLI and the navigator show the same text.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Identity, [Parameter(Mandatory)][string]$StoreRoot, [AllowNull()]$DesignContext,
+        [Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$Diagnostics = @()
+    )
+    $kind = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_kind')
+    $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId ([string]$Identity.campaign_id))
+    return [pscustomobject][ordered]@{
+        status = 'paused'; reason = ('review-stop-open:' + $kind)
+        reason_detail = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation')
+        stop_kind = $kind; next_host = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'next_host')
+        invoked = $false; result = $null
+        campaign_id = [string]$Identity.campaign_id; run_id = [string]$Identity.run_id; target_lineage = [string]$Identity.target_lineage
+        store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+        design_context = if ($null -ne $DesignContext) { [string]$DesignContext.classification } else { '' }
+        resolved_design_context = if ($null -ne $DesignContext) { @($DesignContext.resolved_refs) } else { @() }
+        unresolved_design_context = @()
+        pause = $Stop; pause_decision = $null; pause_run_id = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'run_id')
+        pause_surface = @(Format-ReviewCampaignStopSurface -Stop $Stop -OpenFindings $openFindings)
+        continuation_authorized = $false; continuation_reason = ('review-stop-open:' + $kind)
+        diagnostics = @($Diagnostics)
+    }
+}
+
 function New-ReviewCampaignAuthorityStoreRefusal {
     # SPECREW-AUTHORITY-CONSUMER: authority-store-read-failure
     [CmdletBinding()]
@@ -1385,21 +1657,27 @@ function Add-ReviewCampaignRoundPause {
         -RoundsUsed $roundsUsed -BudgetTotal ([int]$budgetState.budget_total) `
         -ElapsedMinutes ([Math]::Round($elapsedMs / 60000, 0))
 
-    $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -Decision $decision -ObservedAt $ObservedAt
+    # Feature 203 T008 step (iii) (FR-005, FR-006; DRIFT-052 item 5): a round writes a pause fact only for a stop. A
+    # reviewer that changed the frozen copy stops at (c) and never counts as clean (the 2026-11-09 ruling); the round
+    # that spends the last of the budget with a finding still open stops at (a). Any other round - clean, or fix-needed
+    # within the budget - writes nothing: the crew fixes and runs the next round, and no stop asks for one.
+    $stopKind = ''; $stopReason = ''
+    $openFindings = @()
+    if (Test-ReviewResultContainmentViolated -Result $Result) { $stopKind = 'c-judgment'; $stopReason = 'containment-violated' }
+    else {
+        $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
+        if ($roundsUsed -ge [int]$budgetState.budget_total -and $openFindings.Count -gt 0) { $stopKind = 'a-budget-spent'; $stopReason = 'budget-spent' }
+    }
+    if ([string]::IsNullOrWhiteSpace($stopKind)) {
+        return [pscustomobject]@{ recorded = $false; decision = $decision; fact = $null; surface = $null; stop_kind = '' }
+    }
+    $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -Decision $decision -ObservedAt $ObservedAt `
+        -StopKind $stopKind -StopReason $stopReason
     $recorded = $false
     try { $recorded = [bool](Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact).created }
     catch { $recorded = $false }
-
-    if (-not (Get-Command -Name 'Format-ReviewCampaignPauseSurface' -ErrorAction SilentlyContinue)) {
-        $navigator = Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1'
-        if (Test-Path -LiteralPath $navigator -PathType Leaf) { try { . $navigator } catch { $null = $_ } }
-    }
-    $surface = if (Get-Command -Name 'Format-ReviewCampaignPauseSurface' -ErrorAction SilentlyContinue) {
-        Format-ReviewCampaignPauseSurface -ProjectName $ProjectName -Decision $decision
-    }
-    else { $null }
-
-    return [pscustomobject]@{ recorded = $recorded; decision = $decision; fact = $fact; surface = $surface }
+    $surface = @(Format-ReviewCampaignStopSurface -Stop $fact -OpenFindings $openFindings)
+    return [pscustomobject]@{ recorded = $recorded; decision = $decision; fact = $fact; surface = $surface; stop_kind = $stopKind }
 }
 
 function Invoke-ReviewCampaignStopHereLanding {
@@ -2112,205 +2390,43 @@ function Invoke-ReviewCampaignCommand {
             diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
         }
     }
-    # FR-003, WIRED TO THE COMMAND. This check existed as Test-ReviewCampaignContinuationAuthorized and
-    # nothing in production called it, so a round that ended in a pause did not stop the next one from
-    # spending - the exact self-minted continuation ledger obs-6 recorded, where one grant was stretched
-    # across seven rounds. It sits BEFORE grant persistence, harness selection, reservation and snapshot,
-    # so a refusal costs nothing.
-    #
-    # The digest is deliberately NOT consulted here. A moved tree SUPERSEDES a pause for the purpose of
-    # quieting the stop surface (Test-ReviewCampaignPendingPauseQuiet), but it does not authorize a
-    # spend: fixing the code is not answering the question. Only the human's numbered reply is.
-    $latestPause = $null
-    try { $latestPause = Get-ReviewCampaignLatestPause -StoreRoot $StoreRoot -CampaignId $identity.campaign_id }
+    # Feature 203 T008 step (iii) (FR-005, FR-006; DRIFT-052 item 5): THE LOOP'S OWN GATE, before any grant, reservation or
+    # snapshot, so a refusal writes and spends nothing. It refuses for two reasons only. A stop that waits for the human's
+    # typed line. And files unchanged since the last round that collected a review: after a fix-needed round that waits for
+    # the crew's fix, and after a clean round it means the review has ended. Neither asks the human for a round (FR-006).
+    $openStop = $null; $loopState = $null
+    try {
+        $openStop = Get-ReviewCampaignOpenStop -StoreRoot $StoreRoot -CampaignId $identity.campaign_id
+        if ($null -eq $openStop) { $loopState = Get-ReviewCampaignLoopState -StoreRoot $StoreRoot -CampaignId $identity.campaign_id }
+    }
     catch {
         return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
             -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
     }
-
-    # A PAUSE THAT COULD NOT BE WRITTEN MUST NOT READ AS "NO PAUSE".
-    #
-    # Recording the pause is deliberately forgiving - Add-ReviewCampaignRoundPause swallows write
-    # errors and the round still returns its terminal result, because a pause that cannot be recorded
-    # must not destroy a review the human already paid for. That tolerance was HARMLESS while nothing
-    # read pause facts. This guard reads them, so the same tolerance became an open door: a failed
-    # write leaves no pause, the guard sees nothing to enforce, and the next command reserves and
-    # invokes another reviewer with no numbered answer given - the unbounded loop the feature exists to
-    # stop.
-    #
-    # ADDING A CONSUMER CHANGES THE RISK OF AN EXISTING TOLERANCE. The fail-soft was not wrong before
-    # and is not wrong now; what changed is that something now depends on its output.
-    #
-    # So absence is checked against the store's own evidence rather than trusted: if the newest INVOKED
-    # round has no pause fact, the pause is MISSING rather than absent, and this fails closed. The
-    # invoked filter is FR-014's, so a pre-invocation failure - which correctly publishes a run record
-    # without ever pausing - cannot trip it.
-    if ($null -eq $latestPause) {
-        $newestInvoked = $null
-        try {
-            $newestInvoked = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
-                    Where-Object { Test-ReviewResultSpendsRound -Result $_ } |
-                    Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' }) | Select-Object -Last 1
-        }
-        catch {
-            return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
-                -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
-        }
-        if ($null -ne $newestInvoked) {
-            return [pscustomobject][ordered]@{
-                status = 'paused'; reason = 'review-round-paused:pause-record-missing-for-completed-round'
-                invoked = $false; result = $null
-                campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
-                store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
-                design_context = [string]$designContext.classification
-                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
-                pause = $null; pause_decision = $null
-                pause_run_id = [string](Get-ReviewAuthorityProperty -Object $newestInvoked -Name 'run_id')
-                pause_surface = @(
-                    'A review round finished, but Specrew could not save the record of what it found.',
-                    '',
-                    'Because that record is missing, Specrew cannot tell whether you have answered it, so it will not start another review.',
-                    'This protects you from paying for rounds nobody asked for.',
-                    '',
-                    'What to do: check that Specrew can write to its own folder under .specrew/review/authority, then run the review again.'
-                )
-                continuation_authorized = $false
-                continuation_reason = 'pause-record-missing-for-completed-round'
-                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
-            }
-        }
+    if ($null -ne $openStop) {
+        return New-ReviewCampaignOpenStopRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext -Stop $openStop `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events))
     }
-    if ($null -ne $latestPause) {
-        try {
-            $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
-                -ExcludeRunId $identity.run_id -RepoRoot $RepoRoot
-        }
-        catch {
-            return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
-                -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
-        }
-        $pauseDecisions = @()
-        if ($null -ne $latestPause.decision) { $pauseDecisions = @($latestPause.decision) }
-        $roundsSinceDecision = 0
-        if ($null -ne $latestPause.decision) {
-            # WHAT THIS COUNTER MEASURES, stated because the last counter that left it implicit took a
-            # day to pin (T008's naming convention): it is INVOKED ROUNDS SINCE THE HUMAN'S ANSWER. It
-            # is NOT runs, and it is NOT allowance slots.
-            #
-            # The distinction is FR-014's own, and this counter broke it hours after the requirement was
-            # honoured elsewhere. A pre-invocation failure PUBLISHES a run record - correctly, that is
-            # FR-014 working - so counting run records made a round that never launched a reviewer
-            # consume the answer, while the F4 disclosure on the very same failure told the human their
-            # authorization was still available. Same requirement, two counters, opposite behaviour.
-            #
-            # The filter is FR-014's existing discriminator, reused verbatim rather than re-derived, so
-            # the two cannot drift apart: a run whose runtime_outcome is preflight-failed,
-            # claim-contended, or launch-failed never reached a reviewer and therefore never spent the
-            # round the human authorized.
-            $decidedAtValue = Get-ReviewAuthorityProperty -Object $latestPause.decision -Name 'observed_at'
-            if ($null -ne $decidedAtValue) {
-                try {
-                    $decidedAt = ConvertTo-ReviewAuthorityTimestamp -Value $decidedAtValue -FieldName 'pause-decision.observed_at'
-                    $roundsSinceDecision = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
-                            Where-Object {
-                                $startedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at'
-                                $startedAt -gt $decidedAt -and
-                                [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed')
-                            }).Count
-                }
-                catch {
-                    return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
-                        -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
-                }
-            }
-        }
-        # W28: A PAUSE ANSWER GOVERNS THE SNAPSHOT IT WAS ABOUT, NOT THE CAMPAIGN FOREVER.
-        #
-        # Test-ReviewCampaignPendingPauseQuiet already states the rule this gate was missing: "a pause
-        # whose target no longer matches the current tree is SUPERSEDED - it describes work that has
-        # moved on". The quiet rule honoured that; this gate did not, and read the old answer as binding
-        # whatever the tree now contains.
-        #
-        # Measured 2026-08-19 (KeyContextAI): a review of the PLANNING artifacts was answered "stop
-        # here" - correctly, nothing was found and nothing needed fixing - and the whole iteration's
-        # code was then written. Every attempt to review that code was refused with
-        # choice-does-not-continue:stop-here, so the signoff gate said "your last review no longer
-        # covers these files, run a fresh review" while the campaign said "you already said stop". The
-        # only documented escape was an allowance reset, which asks the human to REPAIR the machinery
-        # rather than to decide anything - and the code went unreviewed.
-        #
-        # Superseding does not weaken FR-003. Continuation still needs an explicit human act; that act
-        # is the fresh round approval rather than an answer about a snapshot that no longer exists.
-        # FAIL-CLOSED: if the current digest cannot be resolved the gate applies exactly as before,
-        # because "I could not tell whether the tree moved" must never open a round.
-        $pauseSuperseded = $false
-        try {
-            $pauseDigest = [string](Get-ReviewAuthorityProperty -Object $latestPause.pause -Name 'target_digest')
-            if (-not [string]::IsNullOrWhiteSpace($pauseDigest)) {
-                $currentState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root
-                if ($null -ne $currentState -and [bool]$currentState.ok -and
-                    -not [string]::IsNullOrWhiteSpace([string]$currentState.tree_id) -and
-                    [string]$currentState.tree_id -cne $pauseDigest) {
-                    $pauseSuperseded = $true
-                }
-            }
-        }
-        catch { $pauseSuperseded = $false }
-
-        # The budget is a SEPARATE cap and supersession must not lift it. Caught by the existing
-        # public-command fixture, which refuses a fifth round even on an authorized continuation: the
-        # first version of this branch returned authorized without consulting the budget at all.
-        $continuation = if ($pauseSuperseded) {
-            if ([int]$budgetState.budget_total -le 0 -or [int]$budgetState.rounds_used -ge [int]$budgetState.budget_total) {
-                [pscustomobject]@{ authorized = $false; reason = 'review-round-budget-exhausted'; choice = $null }
+    if (-not [string]::IsNullOrWhiteSpace([string]$loopState.last_spent_digest) -and -not [bool]$loopState.rerun_judged) {
+        # Fail-open on an unreadable digest: the snapshot that follows refuses on its own, and the budget still bounds it.
+        $currentState = $null
+        try { $currentState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root } catch { $currentState = $null }
+        if ($null -ne $currentState -and [bool]$currentState.ok -and [string]$currentState.tree_id -ceq [string]$loopState.last_spent_digest) {
+            $unchangedDetail = if ([bool]$loopState.ended_clean) {
+                'Specrew did not start another review round, because the review of these files has ended clean: the last round reviewed them as they are now and nothing is open. Nothing was launched, recorded or spent.'
             }
             else {
-                [pscustomobject]@{ authorized = $true; reason = 'pause-superseded-by-moved-tree'; choice = $null }
+                ('Specrew did not start another review round, because the last round already reviewed these files as they are now and {0} still open. Fix {1} within the approved tasks; the next round runs once the files have changed. Nothing was launched, recorded or spent.' -f `
+                        $(if (@($loopState.open_findings).Count -eq 1) { '1 finding is' } else { ('{0} findings are' -f @($loopState.open_findings).Count) }), $(if (@($loopState.open_findings).Count -eq 1) { 'it' } else { 'them' }))
             }
-        }
-        else {
-            Test-ReviewCampaignContinuationAuthorized -PendingPause $latestPause.pause `
-                -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision `
-                -RoundsUsed ([int]$budgetState.rounds_used) -BudgetTotal ([int]$budgetState.budget_total)
-        }
-        if (-not $continuation.authorized) {
-            # The findings come from the RESULT, not from the pause fact - the fact stores counts only,
-            # which is exactly why the resumed surface had nothing to show. Read defensively and
-            # unwrapped with a direct assignment: the accessor returns collections with -NoEnumerate.
-            # The navigator is NOT in _load.ps1's set, so it must be pulled in the same lazy way
-            # Add-ReviewCampaignRoundPause already does for its sibling renderer. Missed here because
-            # every fixture dot-sources the navigator in BeforeAll - so the suite was green while the
-            # shipped path threw "Format-ReviewCampaignOutstandingPause is not recognized" on the first
-            # real paused invocation. A fixture can only prove the shape it invents, and it invented a
-            # load order production does not have.
-            if (-not (Get-Command -Name 'Format-ReviewCampaignOutstandingPause' -ErrorAction SilentlyContinue)) {
-                $navigatorModule = Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1'
-                if (Test-Path -LiteralPath $navigatorModule -PathType Leaf) { try { . $navigatorModule } catch { $null = $_ } }
-            }
-            $pausedRoundFindings = $null
-            try {
-                $pausedResult = Get-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
-                    -RunId ([string]$latestPause.run_id) -Stage result
-                if ($null -ne $pausedResult) { $pausedRoundFindings = Get-ReviewAuthorityProperty -Object $pausedResult -Name 'findings' }
-            }
-            catch { $pausedRoundFindings = $null }
             return [pscustomobject][ordered]@{
-                status = 'paused'; reason = ('review-round-paused:' + [string]$continuation.reason)
-                invoked = $false; result = $null
-                campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
-                store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+                status = 'not-started'; reason = 'review-tree-unchanged'; reason_detail = $unchangedDetail
+                ended_clean = [bool]$loopState.ended_clean; open_findings = @($loopState.open_findings)
+                invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+                target_lineage = $identity.target_lineage; store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
                 design_context = [string]$designContext.classification
                 resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
-                # The surface the human must answer, carried OUT so the CLI can re-render it verbatim
-                # rather than reconstructing a decision from a status string.
-                pause = $latestPause.pause
-                pause_decision = $latestPause.decision
-                pause_run_id = [string]$latestPause.run_id
-                pause_surface = @(Format-ReviewCampaignOutstandingPause `
-                        -ProjectName $(if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId } else { Split-Path -Leaf $root }) `
-                        -Fact $latestPause.pause -Findings $pausedRoundFindings)
-                continuation_authorized = $false
-                continuation_reason = [string]$continuation.reason
+                continuation_authorized = $false; continuation_reason = 'review-tree-unchanged'
                 diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
             }
         }
@@ -2361,16 +2477,27 @@ function Invoke-ReviewCampaignCommand {
     $launchHost = $ReviewerHost
     if ([bool]$hostDecision.Enforced) {
         if ([bool]$hostDecision.Exhausted) {
-            return [pscustomobject][ordered]@{
-                status = 'paused'; reason = 'review-host-order-exhausted'; reason_detail = (Format-ReviewCampaignHostOrderExhaustedDetail -Decision $hostDecision)
-                next_host = [string]$hostDecision.NextHost; host_order = @($hostDecision.Order)
-                invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
-                target_lineage = $identity.target_lineage; store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
-                design_context = [string]$designContext.classification
-                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
-                continuation_authorized = $false; continuation_reason = 'review-host-order-exhausted'
-                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            # Feature 203 T008 step (iii) (FR-006(d)): the exhausted order is stop (d), written once as a pause fact, so the
+            # navigator stops on it and `allow reviewer <host>` closes it. The launch that found it reserves nothing.
+            try {
+                $exhaustedDigest = ''
+                try { $exhaustedState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root; if ($null -ne $exhaustedState -and [bool]$exhaustedState.ok) { $exhaustedDigest = [string]$exhaustedState.tree_id } } catch { $exhaustedDigest = '' }
+                if ([string]::IsNullOrWhiteSpace($exhaustedDigest)) { $exhaustedDigest = 'unresolved' }
+                $exhaustedDecision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed ([int]$launchBudget.rounds_used) -BudgetTotal ([Math]::Max(1, [int]$launchBudget.budget_total))
+                $stopFact = New-ReviewCampaignPendingPauseFact -CampaignId $identity.campaign_id -RunId $identity.run_id -TargetDigest $exhaustedDigest `
+                    -Decision $exhaustedDecision -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -StopKind 'd-host-outside-order' `
+                    -StopReason 'host-order-exhausted' -NextHost ([string]$hostDecision.NextHost)
+                $stopFact.recommendation = Format-ReviewCampaignHostOrderExhaustedDetail -Decision $hostDecision
+                $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $stopFact
             }
+            catch {
+                return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+                    -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+            }
+            $refusal = New-ReviewCampaignOpenStopRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext -Stop $stopFact `
+                -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events))
+            $refusal | Add-Member -NotePropertyName host_order -NotePropertyValue @($hostDecision.Order)
+            return $refusal
         }
         if ($ReviewerHostExplicit -and -not [string]::IsNullOrWhiteSpace($ReviewerHost) -and $ReviewerHost.Trim().ToLowerInvariant() -cne [string]$hostDecision.Host) {
             return [pscustomobject][ordered]@{

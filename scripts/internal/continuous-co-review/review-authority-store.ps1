@@ -133,7 +133,8 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact',
+            'FindingDispositionFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -200,7 +201,8 @@ function Read-ReviewAuthorityFactFile {
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact', 'BudgetGrantFact', 'AllowedReviewerFact',
+            'FindingDispositionFact'
         )][string]$ContractName,
         [AllowEmptyString()][string]$ExpectedCampaignId = '',
         [AllowEmptyString()][string]$ExpectedRunId = '',

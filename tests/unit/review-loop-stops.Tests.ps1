@@ -70,7 +70,7 @@ BeforeAll {
     function script:New-StopPorts([pscustomobject]$Repo, [string]$Kind, [string]$HostName = '') {
         $findingCount = if ($Kind -cin @('clean', 'violated')) { 0 } else { 1 }
         $findings = @(for ($i = 1; $i -le $findingCount; $i++) {
-                [pscustomobject][ordered]@{ local_id = "local-$i"; severity = 'major'; title = "Empty store $i"; description = "When the store is empty, step $i throws instead of returning null."; location = 'src/app.ps1:1' }
+                [pscustomobject][ordered]@{ local_id = "local-$i"; severity = 'major'; title = "Empty store $i"; description = "Get-Answer reads the store. Failure scenario: when the store is empty, step $i throws instead of returning null."; location = 'src/app.ps1:1' }
             })
         $completion = if ($Kind -ceq 'partial') { 'partial' } else { 'complete' }
         $verdict = if ($Kind -ceq 'partial') { 'incomplete' } elseif ($findingCount -gt 0) { 'findings' } else { 'pass' }

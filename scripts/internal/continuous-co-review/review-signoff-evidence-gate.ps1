@@ -1139,6 +1139,18 @@ function Get-ReviewCampaignVerdictPacketDecision {
         -FeatureId $FeatureId -HumanDispositions $dispositions -PendingPause $pendingPause `
         -SignoffGateDecision $recordedGateDecision -ChangedPathsSinceResult $changedSinceResult `
         -ChangedPathsSinceActiveRun $changedSinceActiveRun
+    # Feature 203 T008 step (iii) (DRIFT-052 item 3; FR-013): a finding still open - from a round, or from a run that
+    # brought back only part of a review - keeps the review from counting as clean, so it cannot release the sign-off,
+    # whatever the latest result says. It closes only by a fix the next round confirms, or by the human's typed line.
+    if ([bool]$packet.render_boundary_packet -or [string]$packet.route -cin @('boundary-clean', 'review-current')) {
+        $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
+        if ($openFindings.Count -gt 0) {
+            $openMessage = ('{0} from the review {1} still open, so the review has not ended clean. A finding closes when the next round confirms its fix, or with your typed defer or drop line.' -f `
+                    $(if ($openFindings.Count -eq 1) { '1 finding' } else { ('{0} findings' -f $openFindings.Count) }), $(if ($openFindings.Count -eq 1) { 'is' } else { 'are' }))
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-findings-open' -Reason 'open-findings' -Message $openMessage `
+                -CampaignId $CampaignId -RunId ([string]$packet.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'proceed'
+        }
+    }
     if ($null -eq $finalizationEnvelope) { return $packet }
     if ([string]$packet.route -cne 'boundary-clean') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-not-clean' -Message 'The finalization envelope is valid but its bound result is not an authorizing clean result; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
