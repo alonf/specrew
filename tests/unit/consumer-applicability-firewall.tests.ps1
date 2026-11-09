@@ -17,6 +17,7 @@ foreach ($dependency in @(
         'scripts/internal/coordinator-resume.ps1',
         'extensions/specrew-speckit/scripts/shared-governance.ps1',
         'scripts/internal/continuous-co-review/worktree-reviewer.ps1',
+        'scripts/internal/continuous-co-review/_load.ps1',
         'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1'
     )) {
     . (Join-Path $repoRoot $dependency)
@@ -119,11 +120,22 @@ $reviewPrompt = Get-ContinuousCoReviewSlimPrompt -RunId 'fixture-review' -RoundN
     -PriorFindings '{"findings":[]}' -ImplementerEvidencePresent
 $reviewPrompt | Set-Content -LiteralPath (Join-Path $renderRoot 'runtime/reviewer-round.md') -Encoding UTF8
 
-$navigatorDecision = New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'fixture-partial' `
-    -Message 'The current review is partial evidence.' -CampaignId 'fixture-campaign' -RunId 'fixture-review' `
-    -TargetDigest 'fixture-digest' -ImplementerAction 'request-current-review'
-$navigatorNote = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $navigatorDecision
-$navigatorNote | Set-Content -LiteralPath (Join-Path $renderRoot 'runtime/navigator-inject-note.md') -Encoding UTF8
+# Feature 203 T008 (DRIFT-052 item 6; maintainer classification 2026-11-09, class B): the navigator's per-route block is
+# gone. What the navigator now renders is a review stop - one surface per stop kind, (a) to (d) - with the agent message
+# beside it. All of them are rendered into the note this check reads; the check itself is unchanged.
+$crossing = [pscustomobject]@{ crossing_id = 'crossing-fixture'; from_boundary = 'before-implement'; to_boundary = 'review-signoff' }
+$openFindings = @([pscustomobject]@{ finding_id = 'finding-0123456789abcdef'; finding_key = 'finding-0123456789abcdef'; severity = 'major'; title = 'Routing table drops the last hop'; location = 'src/routing.py:12' })
+$navigatorNote = foreach ($stopKind in @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order')) {
+    $stopReason = switch ($stopKind) { 'a-budget-spent' { 'budget-spent' } 'b-dispute-or-defer' { 'dispute' } 'c-judgment' { 'ask' } default { 'host-order-exhausted' } }
+    $stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-fixture-i001' -RunId 'run-fixture-review' -TargetDigest ('a' * 40) `
+        -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2) -ObservedAt '2026-11-09T08:00:00Z' `
+        -StopKind $stopKind -StopReason $stopReason -NextHost $(if ($stopKind -ceq 'd-host-outside-order') { 'claude' } else { '' })
+    $stop | Add-Member -NotePropertyName recommendation -NotePropertyValue 'the crew wants to know whether routing retries belong to the client.' -Force
+    @(Format-ReviewCampaignStopSurface -Stop $stop -OpenFindings $openFindings -PendingCrossing $crossing) -join [Environment]::NewLine
+    ''
+}
+$navigatorNote = @($navigatorNote) + @((Build-ReviewCampaignStopAgentDirective -PendingCrossing $crossing), (Build-ReviewCampaignStopAgentDirective -PendingCrossing $null))
+($navigatorNote -join [Environment]::NewLine) | Set-Content -LiteralPath (Join-Path $renderRoot 'runtime/navigator-inject-note.md') -Encoding UTF8
 $surfaces += Get-Item -LiteralPath (Join-Path $renderRoot 'runtime/start-prompt.md'), (Join-Path $renderRoot 'runtime/reviewer-round.md'), (Join-Path $renderRoot 'runtime/navigator-inject-note.md')
 $result = Invoke-ConsumerCheck -FixtureRoot $fixture
 if ($surfaces.Count -lt 10) { Write-Fail "prompt fixture covered too few surfaces ($($surfaces.Count))" }
