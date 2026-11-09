@@ -1,0 +1,166 @@
+{
+  "schema_version": "1.1",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "agenda_contract": "complete-coverage-v1",
+  "human_turn_contract": "typed-turns-v1",
+  "agenda_status": "confirmed",
+  "selected": [
+    "requirements-nfr",
+    "architecture-core",
+    "data-storage",
+    "devops-operations",
+    "code-implementation"
+  ],
+  "agenda": {
+    "requirements-nfr": {
+      "depth": "medium",
+      "decision": "Take over the binding-constraint and scope questions from architecture-core, and set the quality bar for the parity test: which surfaces it must cover (skill, methodology, agenda writer, deployed copies), what counts as a second definition, and what its failure message must say."
+    },
+    "architecture-core": {
+      "depth": "medium",
+      "decision": "Your carried question: how iteration 1 orders whole lenses when a mixed lens (data-storage, security-compliance, integration-api, ui-ux, devops-operations) still asks solution questions before architecture-core in a single pass; and whether consumers read index.yml at runtime or keep copies that the parity test checks."
+    },
+    "data-storage": {
+      "depth": "light",
+      "decision": "The shape of the space tag in index.yml (field name, values, whether 'mixed' exists, how a one-space lens says so) and whether a confirmed agenda records the order it was confirmed under, for FR-013 migration."
+    },
+    "devops-operations": {
+      "depth": "light",
+      "decision": "Which deployed copies the parity test checks (squad-templates skill, host skill copies, downstream lens catalog), and how specrew update carries the new order to existing projects without changing a mid-workshop agenda."
+    },
+    "code-implementation": {
+      "depth": "light",
+      "decision": "Craft rules for the PowerShell/Pester changes: the parity test's shape and location, reading index.yml without a new dependency, and recording the reviewer host you choose below."
+    }
+  },
+  "skipped": {
+    "component-design": "No new component boundary: the change is lens text, the index.yml catalog, one test and the order an existing writer uses; the consumption model is decided in architecture-core.",
+    "ui-ux": "No screen or visual state; the workshop's conversational order is the subject itself and is decided in architecture-core.",
+    "security-compliance": "No identity, secret, sensitive data or new trust surface; the edits are lens text, a YAML catalog and a test.",
+    "integration-api": "No external contract or protocol; index.yml is an internal catalog whose shape is covered in data-storage.",
+    "observability-resilience": "No runtime behaviour to observe beyond the parity test's failure message, whose wording is set in requirements-nfr."
+  },
+  "agenda_confirmation": "human-confirmed",
+  "agenda_confirmation_scope": "lens-selection",
+  "agenda_turn_receipt": "9ae5956985dc581d21c80d97d030a4282bebb5aa41444a74aba4651ca6158bb4",
+  "agenda_digest": "a29b688c956a2300776b866314ab23247293185254d6c8679ff93ea976722e5a",
+  "workshop": {
+    "requirements-nfr": {
+      "agenda": [
+        "binding constraints vs preferences",
+        "scope",
+        "FR-001 parity proof coverage",
+        "FR-005 tagging proof",
+        "failure message"
+      ],
+      "decision": "Binding: index.yml sole order source; FR-013 no confirmed agenda changes; single pass; gate readers of Design Decision Points keep working (with a test); 203/pin/b4f-142 untouched; 204 reserved; deployed copies sync-produced only. Scope as proposed. FR-001 option b: known surfaces plus sweep of shipped text only (specs/ and proposals/ never scanned or rewritten); relative-order match passes so subsets need no exemption; exemptions state a reason and are shown to the human; deployed copy differing from source fails with run-the-sync message; agenda writer refuses relative-order violations for new agendas, never reorders, pre-release agendas exempt. FR-005 checks a/b/c; section shape decided in data-storage. Failure output names file:line, expected and found order, fix, and reports every mismatch in one run.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/205-workshop-lens-order/workshop/requirements-nfr.md - order-surface table",
+      "bindings": {
+        "lens-order-source": "index-yml",
+        "workshop-passes": "single",
+        "parity-proof": "known-surfaces-plus-sweep",
+        "sweep-scope": "shipped-text-only",
+        "agenda-order-violation": "refuse",
+        "deployed-copies": "sync-only",
+        "parity-report": "all-mismatches"
+      },
+      "human_turn_receipt": "24abaa4043bdf569de5fc6bfa6efee35e531fed2a431a20677bc659125fb35b3"
+    },
+    "architecture-core": {
+      "agenda": [
+        "single-pass whole-lens order (carried question)",
+        "order consumption model",
+        "decomposition and volatility"
+      ],
+      "decision": "Order option A (product-domain, requirements-nfr, ui-ux, security-compliance, data-storage, integration-api, devops-operations, architecture-core, component-design, observability-resilience, code-implementation) with the problem section asked first inside every lens; no formal decide-later in iteration 1 (deferrals stay in decision text). Consumers: agenda writer reads index.yml at runtime; prose lists kept and parity-checked; skill gains the sentence that index.yml wins on disagreement. No new structure; catalog is the volatile point. Amends requirements-nfr: full lists (skill list, methodology catalog tables, catalog README) must match index.yml exactly in order and membership; relative-order rule for partial lists only; the test names the full surfaces.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/205-workshop-lens-order/workshop/architecture-core.md - order sequence + consumption flow",
+      "bindings": {
+        "lens-order-source": "index-yml",
+        "workshop-passes": "single",
+        "lens-order": "problem-first-option-a",
+        "within-lens-order": "problem-before-solution",
+        "prose-order-lists": "kept-parity-checked",
+        "full-list-parity": "exact-order-and-membership",
+        "partial-list-parity": "relative-order"
+      },
+      "human_turn_receipt": "aed97a1fee09292d59aae144f2f7cb2d7bc4ccad2079ba82d3c9abffc6926cb3"
+    },
+    "data-storage": {
+      "agenda": [
+        "space tag shape in index.yml",
+        "lens file section shape",
+        "FR-013 agenda marker"
+      ],
+      "decision": "index.yml gains space: problem|solution|both; list position is the order; tags as proposed (problem: product-domain, requirements-nfr; solution: architecture-core, component-design, observability-resilience, code-implementation; both: ui-ux, security-compliance, data-storage, integration-api, devops-operations). Lens files: ### Problem questions / ### Solution questions inside ## Design Decision Points, with an extractor test; a bullet mixing both spaces is split into two bullets keeping words and meaning, every split listed in the plan. FR-013: no new field; order check only at confirmation; test proves old confirmed agenda resumes. Scope amendment (original text kept): iteration 2 = problem-space completeness with its own short workshop; iteration 1 lists problem-side gaps per lens while tagging; iteration 3 = back-check, amendments, sweeps after 203.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/205-workshop-lens-order/workshop/data-storage.md - index.yml entry + lens file shape",
+      "bindings": {
+        "space-tag": "problem-solution-both",
+        "lens-section-shape": "subheadings-in-decision-points",
+        "mixed-bullet-handling": "split-keep-words",
+        "agenda-order-marker": "none",
+        "feature-iterations": "three",
+        "problem-gap-list": "iteration-1-output"
+      },
+      "human_turn_receipt": "b9603f92c4c53102aeccb8b8af729c920c61bae0af204a516e5eb8ee47e83f2b"
+    },
+    "devops-operations": {
+      "agenda": [
+        "sync named in failure message",
+        "deployed-copy comparison scope",
+        "CI lane",
+        "downstream rollout"
+      ],
+      "decision": "Failure message names the two project-only deploy scripts (deploy-speckit-extension -RefreshExisting, deploy-squad-runtime), never the full update; scratch verification showed they refresh every checked copy incl .cursor and also restamp .squad runtime files (message says to review git status); real-home hook files unchanged (correction: ~/.specrew/hook-bindings/ folder exists, untouched by mtime, included in future checks). specrew-update.ps1 never run in this worktree while 203 unmerged. Copy comparison: full content of touched files minus deploy wrapper. CI: named step in specrew-ci.yml; markdownlint (CI command) before every push, no push on non-zero; follow Specrew CI, Test, Cross-Platform Validation to conclusion after every push, skipped gate = red. Skill sentence gains: a confirmed agenda keeps the order it was confirmed in. Rollback = revert in next beta.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/205-workshop-lens-order/workshop/devops-operations.md - source-to-copy map",
+      "bindings": {
+        "deployed-copies": "sync-only",
+        "copy-refresh-command": "project-only-deploy-scripts",
+        "copy-comparison": "full-content-touched-files",
+        "ci-lane": "specrew-ci-named-step",
+        "full-update-in-worktree": "never-before-203-merge"
+      },
+      "human_turn_receipt": "74dbc28eb9fa5f606811a8f181d38301541a69834530fbd3bf9c0e368b9e3a95"
+    },
+    "code-implementation": {
+      "agenda": [
+        "source of rules",
+        "stack and baseline",
+        "testing posture",
+        "error handling",
+        "dependencies",
+        "reviewer"
+      ],
+      "decision": "Repo conventions (script-style tests, existing refusal helper), no other guideline; PowerShell 7, all baseline defaults on. Test-first lens-order-parity.tests.ps1 + extend workshop-agenda-confirmation.tests.ps1; run every existing workshop test locally and report; register as named specrew-ci.yml steps the two files plus every existing workshop test covering a touched file that passes; already-red workshop tests reported as findings, never fixed or omitted silently. Refusal via New-SpecrewWorkshopAgendaRefusal, never reorder; parity test collects all mismatches. No new dependency; Read-IntakeYaml verified to parse the space scalar (scratch copy). Reviewer codex, authorized workshop-205-workshop-lens-order.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/205-workshop-lens-order/workshop/code-implementation.md - design-time to implement-time flow",
+      "bindings": {
+        "resolved-stack": "powershell",
+        "dependency-stance": "no-new-dependency",
+        "reviewer-host": "codex",
+        "testing-posture": "test-first",
+        "agenda-order-violation": "refuse"
+      },
+      "human_turn_receipt": "e476b58729df6e287dd2af25a63086f509291712a8ecd5117579ebe39b03e2e3"
+    }
+  }
+}
