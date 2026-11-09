@@ -1724,3 +1724,26 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   skipped or not yet run. Item 4 (the orientation shows the branch's last CI result) is product work for a B5F item.
 - **Class closure**: OPEN: the crew rules (1, 2, 3) apply from 2026-11-09; the `pre-push` step (item 1, later) and the
   orientation line (item 4) are not built.
+
+### DRIFT-054 — a Stop-hook block continued the turn with no live turn token, so the turn-end declaration was refused (observed; maintainer asked for the record)
+
+- **Observed (2026-11-09, times UTC)**: at 21:40:30 the crew declared turn 1 in flight with token `7f252e5c…` (accepted;
+  `.specrew/runtime/turn-end/<owner>/turn-1.json`). At 21:41:05 the Stop hook ran and blocked with the pinned engine's
+  review-required stop (`bd4635df`, the stop T008 removes; DRIFT-052's T014 evidence). The host continued the same turn with
+  the hook's text as feedback. No UserPromptSubmit fired, so no `[specrew-turn]` line reached the crew, and the only token
+  it held was turn 1's. The crew's declaration with that token was refused: "the token '7f252e5c…' matches no live session
+  in this project (3 live tokens)". At 21:41:34 the next Stop judged the turn "declared nothing and not material" and let
+  it end, so that turn is not recorded as ended. The next typed turn (21:56:14, prompt event `bb957fe6…`) was issued token
+  `634ceb25…` as turn 3; no turn 2 token was ever shown to the crew.
+- **Cause, as far as the records show**: a turn token is issued only at UserPromptSubmit and is spent at that turn's
+  Stop. A Stop-hook block continues the turn without a new prompt event, so a crew that needs to declare again (here,
+  after replying to the block) has no live token to declare with. The counter's jump from turn 1 to turn 3 is observed and
+  not explained by the records read; the three live tokens named in the refusal belong to other, older sessions' state.
+- **Capture of the following message (checked 2026-11-10)**: the maintainer's 21:56 message is recorded once in
+  `.specrew/authority/exhausted-turns.jsonl` as a typed turn (UserPromptSubmit, `turn_origin` typed-user, prompt event
+  `bb957fe6…`, session `d8f18eb4…`), and nothing was minted from it; token `634ceb25…` is this session's live turn token.
+  No approval was recorded: the message contains no approval phrase, and no review round was approved.
+- **Requirement**: FR-014/FR-015 (one typed turn mints at most once; only the user-prompt event mints) hold. The gap is in
+  the turn-end contract: a Stop-hook block asks the crew to reply, and the reply cannot be declared.
+- **Class closure**: OPEN, observation only; no code written. A B5F item is proposed: when a Stop block continues the turn,
+  either issue the continuation its own token in the block text or accept the spent token for one continuation.
