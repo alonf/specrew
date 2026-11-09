@@ -390,9 +390,9 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
         $decision.reason = ('review-stop-open:' + $stopKind)
         # The route travels on the decision so the provider can tell a stop the human owes from a file attribution.
         $decision | Add-Member -NotePropertyName route -NotePropertyValue 'pause-pending' -Force
-        $decision.stop_block = (@(Format-ReviewCampaignStopSurface -Stop $openStop -OpenFindings $openFindings) -join [Environment]::NewLine)
         $pendingCrossing = $null
         try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved } catch { $pendingCrossing = $null }
+        $decision.stop_block = (@(Format-ReviewCampaignStopSurface -Stop $openStop -OpenFindings $openFindings -PendingCrossing $pendingCrossing) -join [Environment]::NewLine)
         $decision | Add-Member -NotePropertyName agent_directives -NotePropertyValue (Build-ReviewCampaignStopAgentDirective -PendingCrossing $pendingCrossing) -Force
         return $decision
     }

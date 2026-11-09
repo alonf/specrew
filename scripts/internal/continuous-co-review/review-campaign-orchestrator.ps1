@@ -1530,7 +1530,7 @@ function Format-ReviewCampaignStopSurface {
     # FR-011: every review stop in one layout - why; what happened, counted; the one decision; the lines the human can
     # send, each stating its consequence. No line asks for a round (FR-006).
     [OutputType([string[]])]
-    param([Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$OpenFindings = @())
+    param([Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$OpenFindings = @(), [AllowNull()]$PendingCrossing = $null)
     $kind = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_kind')
     $reason = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_reason')
     $used = [int](Get-ReviewAuthorityProperty -Object $Stop -Name 'rounds_used'); $total = [int](Get-ReviewAuthorityProperty -Object $Stop -Name 'budget_total')
@@ -1590,6 +1590,21 @@ function Format-ReviewCampaignStopSurface {
     $lines.Add('Your decision: ' + $decision) | Out-Null
     $lines.Add('Send one of these lines as a normal chat message (a reply inside a question UI or picker is not captured):') | Out-Null
     foreach ($entry in @($sendable)) { $lines.Add(('  {0} - {1}' -f $entry.line, $entry.does)) | Out-Null }
+    # Fix 5 (maintainer classification 2026-11-09; T003's adjudication): when a lifecycle crossing is recorded and waiting,
+    # the stop says it does not decide that approval, naming the crossing by its boundaries. The identifier stays on the
+    # agent's channel (Build-ReviewCampaignStopAgentDirective). A half-written crossing names nothing.
+    $crossingFrom = ''; $crossingTo = ''
+    if ($null -ne $PendingCrossing) {
+        foreach ($name in @('from_boundary', 'to_boundary', 'working_boundary')) {
+            $property = $PendingCrossing.PSObject.Properties[$name]
+            $value = if ($null -ne $property -and $null -ne $property.Value) { [string]$property.Value } else { '' }
+            switch ($name) { 'from_boundary' { $crossingFrom = $value } 'to_boundary' { $crossingTo = $value } 'working_boundary' { if ([string]::IsNullOrWhiteSpace($crossingTo)) { $crossingTo = $value } } }
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($crossingTo)) {
+        $step = if ([string]::IsNullOrWhiteSpace($crossingFrom)) { ('the move to {0}' -f $crossingTo) } else { ('the move from {0} to {1}' -f $crossingFrom, $crossingTo) }
+        $lines.Add(('This review stop does not decide the approval you still owe for {0}; that approval is answered on its own, as before.' -f $step)) | Out-Null
+    }
     return @($lines)
 }
 
