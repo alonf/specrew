@@ -1594,4 +1594,10 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
      because a skipped gate proved nothing.
   4. Optionally, for Specrew itself: the session orientation shows the branch's last CI conclusion, so a red CI is
      visible at the start of every session. This is product work (a B5F item), not a crew rule.
-- **Class closure**: OPEN until the maintainer rules on the proposal.
+- **Ruling (maintainer, 2026-11-09)**: items 1, 3 and 4 as proposed; item 2 changed. After every push the crew follows
+  Specrew CI, Test and Cross-Platform Validation to their conclusion and reports it in plain words in the same or the
+  next turn. A red run, or a skipped gate or contract-lane job, is a finding handled before more work goes on top of it.
+  Boundary packets still carry the CI line, and the review-signoff packet is never presented on a head whose CI is red,
+  skipped or not yet run. Item 4 (the orientation shows the branch's last CI result) is product work for a B5F item.
+- **Class closure**: OPEN: the crew rules (1, 2, 3) apply from 2026-11-09; the `pre-push` step (item 1, later) and the
+  orientation line (item 4) are not built.
