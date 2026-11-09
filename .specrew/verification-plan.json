@@ -74,6 +74,39 @@
       "label": "Feature 203 iteration 001 suites, added 2026-11-01 with T002 (203 DRIFT-007, DRIFT-008). live-engine-resolution: with no pin configured engine resolution is today's; a valid pin loads engine code from the pin only; a configured pin that is missing or corrupt refuses in plain words and loads nothing. live-engine-hook-root (the maintainer's condition (a)): hook events run through a configured pin, by Claude's deployed command and by the per-machine launcher, write only into the project - nothing into the pin (which has its own .specrew) or the profile's .specrew, and none of the project's own deployed engine copies run; a pin that cannot be found refuses visibly. Measured together 59.5 s against 150 s (2.52x). Re-timed after review round 1 (DRIFT-010: the launcher commit check, the pin-script dirty-pin cases, the dispatcher helper-error cases and the turn-end store case): 67.8 s, so the timeout went 150 to 165 s (2.43x). Re-timed with T001's first commit (round 2 findings 2 to 4: the Create rollback, the Remove of a non-worktree folder, the accessor helper-missing case): 79.1 s, so the timeout went 165 to 190 s (2.40x). Re-timed with the T002 hook-command-length follow-up (DRIFT-016, hook-command-length.tests.ps1 added): 81.7 s, so the timeout went 190 to 200 s. Re-timed with round 4 finding 1 (DRIFT-020, hook-binding-per-project.tests.ps1 added: two projects deployed into one home from engines with different Antigravity bindings each keep their own): 90 s under the lane's environment, within the 200 s timeout (2.2x). Re-timed with round 5 findings 1 and 3 (DRIFT-021: two launcher implementations in both deploy orders; the pin helper missing): 113 s under the lane's environment, so the timeout went 200 to 250 s (2.2x). T003 (2026-11-02): typed-turn-identity (Copilot's two hook channels give one prompt one stand-in identity, from the payload alone) and typed-act-classifier (one act or none per typed turn: a queued approval counts as typed, a compaction summary and a pasted transcript do not, a verdict pairs with the waiting crossing): 19 s together, within the 250 s timeout. T004 (2026-11-04): typed-act-writer (the cited turn is re-read and only the act it derives is written) and position-key-identity (Cursor and Antigravity: the position key on the prompt path, and one message whose prompt hook fires twice records one act); the timeout went 250 to 600 s until the sweep re-times the lane. design-decision-cited-turn (2026-11-04, option 1: a design decision is recorded only as the human's newest typed message). Re-timed on 4230b030 (2026-11-04, the T004 sweep, the lane's environment): 204 s, so the timeout went 600 to 450 s (2.2x). specify-mirror-record (2026-11-07, T002 follow-up, B5F-033): the .specify mirror's install record is written only from an exact copy of extensions/, a hand edit in .specify is refused and the record left as it was, and this repository's committed mirror and record match. self-repo-review-integrity (2026-11-07): validates a copy of this tree with iteration 001 in reviewing status, where the validator applies W43, and finds no integrity error; a control with one deployed file hand-edited must report it. review-budget-snapshot (T007, 2026-11-08; DRIFT-048): the before-implement verdict snapshots the plan's review budget into one grant citing the verdict; the floor is 2; a budget above co_review_max_rounds, naming an unknown reviewer or unreadable is refused at the plan sync and at the snapshot, where nothing is recorded and the hook says why. Also refused, with the recovery step: an approval whose lifecycle state names no feature or iteration, and one when no current review engine loads (no grant, no verdict; maintainer ruling 2026-11-08). The plan template carries the section and its example grants as written. pinned-review-launch (T008, DRIFT-051): a review launch for a pinned project loads the pin's engine, from the pin's own review command only; another copy or an unusable pin is refused in plain words before anything is written; with no pin, resolution is unchanged. review-budget-loop (T008, DRIFT-052): a launch spends the campaign's budget grant, or the FR-008 floor citing the recorded before-implement verdict, with no per-round approval; a round is spent only when a complete review was collected; no reviewer is invoked past the budget. review-signoff-after-clean-round (T008, FR-013): the sign-off check refuses code changed after the last clean round, a test-only change included; a records-only change does not reopen it."
     },
     {
+      "command_id": "f203-i001-t008-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/review-signoff-lists-findings.Tests.ps1','tests/unit/retro-reads-signoff-listing.Tests.ps1','tests/unit/review-crew-stops.Tests.ps1','tests/unit/review-decision-surface.Tests.ps1','tests/unit/review-loop-stops.Tests.ps1','tests/unit/review-navigator-stops.Tests.ps1','tests/unit/review-stop-answers.Tests.ps1','tests/unit/review-stop-here.Tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 T008 suite FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 900,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 203 iteration 001, T008's own suites, added 2026-11-10 when every-suite-is-named-by-a-lane found them in no lane (the sweep on 8eff07e1). The review loop and its stops (review-loop-stops, review-stop-here, review-stop-answers, review-navigator-stops, review-decision-surface), the sign-off listing and its storage (review-signoff-lists-findings, retro-reads-signoff-listing), and the crew's stop writers (review-crew-stops). A lane of its own because f203-i001-suites already uses 748 of its 900 seconds."
+    },
+    {
       "command_id": "f203-i001-validator-scope",
       "executable": "pwsh",
       "arguments": [

@@ -49,7 +49,7 @@ foreach ($f in $homeHookFiles) { if (Test-Path -LiteralPath $f) { Copy-Item -Lit
 $co = Join-Path ([IO.Path]::GetTempPath()) ('lanes-' + $Rev)
 if (Test-Path $co) { Assert-NotSessionTree $co; & git -C $Repo worktree remove --force $co 2>&1 | Out-Null }
 & git -C $Repo worktree add -q --detach $co $Rev
-$lanes = @(if (-not $SkipLanes) { 'iteration-001-governance-203', 'f203-i001-suites', 'f203-i001-validator-scope', 'f203-i001-carried', 'f199-class-guards-a', 'f199-class-guards-b' })
+$lanes = @(if (-not $SkipLanes) { 'iteration-001-governance-203', 'f203-i001-suites', 'f203-i001-t008-suites', 'f203-i001-validator-scope', 'f203-i001-carried', 'f199-class-guards-a', 'f199-class-guards-b' })
 try {
     $out = @("lanes: " + ($lanes -join ', '))
     if ($lanes.Count -gt 0) { $out += @(& (Join-Path $tools 'run-lane.ps1') -Dir $co -LaneIds $lanes 2>&1 | ForEach-Object { [string]$_ }) }
