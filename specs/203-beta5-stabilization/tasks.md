@@ -526,7 +526,18 @@ then T014.
     written", and the line was sent again verbatim. **Again 2026-11-02 (T001's Copilot step):** the reply
     carried the declared "What to look for" paragraph split into a bold lead and two bullets, word for word
     otherwise; Stop blocked the same way and the paragraph was sent a second time.
-  - **Trace:** FR-046.
+    **Added (maintainer, 2026-11-10; DRIFT-054): a reply that follows a stop-hook block is recorded as a turn end.**
+    Today the conformance provider judges the turn, deletes its token and steps the counter at Stop, and a provider
+    that runs after it (the co-review navigator) blocks; the host continues the turn with no prompt event, so the
+    reply to the block has no live token and cannot be declared, and its own Stop counts it as an undeclared turn.
+    After T014 the four review stops block the same way, so every reply after one would go unrecorded. **RED first:**
+    through the real dispatcher with a deployed binding, a declared turn whose Stop is blocked by a later provider,
+    then a reply that declares: the declaration is accepted and recorded for that continuation (today it is refused,
+    "matches no live session"). The case also pins that the counter and the token agree on which turn the
+    continuation is. Also: each Stop leaves a history line (turn judged, declaration kind, token consumed or kept,
+    counter step, the provider that blocked, if any), the record DRIFT-054 found missing. **Ordering:** built before
+    T014 advances the pin.
+  - **Trace:** FR-046; DRIFT-054.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`,
     `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `extensions/specrew-speckit/scripts/declare-turn-end.ps1`,
     the skill and refocus sources that name the piped draft, `tests/unit/presented-check.Tests.ps1`.

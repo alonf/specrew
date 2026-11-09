@@ -1745,5 +1745,24 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   No approval was recorded: the message contains no approval phrase, and no review round was approved.
 - **Requirement**: FR-014/FR-015 (one typed turn mints at most once; only the user-prompt event mints) hold. The gap is in
   the turn-end contract: a Stop-hook block asks the crew to reply, and the reply cannot be declared.
-- **Class closure**: OPEN, observation only; no code written. A B5F item is proposed: when a Stop block continues the turn,
-  either issue the continuation its own token in the block text or accept the spent token for one continuation.
+- **Second occurrence (2026-11-09, UTC)**: the turn declared with token `634ceb25…` (turn 3) was followed by the same
+  pinned-engine block; the reply to it had no token. `turn-material.json` records the continuation as `turn-4`,
+  declaration `absent`, not material, judged 22:06:51; `turn-counter.json` stepped to 5 at the same instant; the next typed
+  turn (22:17:19, prompt event `faeb1118…`) was issued `85f91c2a…` as turn 5.
+- **Why the counter skipped from 1 to 3 (established 2026-11-10)**: the counter is not a prompt count. `turn-end-store.ps1`
+  (`Step-SpecrewTurnCounter`) steps it at every Stop the conformance provider processes, and a token is issued only at a
+  user-prompt event (`Write-SpecrewTurnToken`). At Stop the conformance provider runs first: it judges the declaration,
+  deletes the token and steps the counter, because it does not block. The co-review navigator runs after it in the same
+  Stop (the dispatcher's order, stated in `turn-end-store.ps1`) and blocks. The host then continues the turn without a
+  prompt event, so the continuation takes the next counter number and never gets a token; its own Stop judges it `absent`
+  and steps the counter again. Turn 2 was that continuation on 2026-11-09 (its Stop at 21:41:34, the navigator journal's
+  "session declared nothing and was judged not material"); turn 4 was the second. The store's "a block force-continues
+  the same turn and keeps it" holds only for the conformance provider's own block, not for a later provider's.
+- **What record is missing**: `turn-counter.json` and `turn-material.json` keep only the latest step, so turn 2's own step is
+  shown by the mechanism, the navigator journal and the identical second occurrence, not by a record of its own. Missing: a
+  per-Stop history line - the turn judged, its declaration kind, whether the token was consumed, the counter step, and
+  which provider (if any) blocked the Stop.
+- **Placement (maintainer, 2026-11-10)**: not a loose follow-up. After T014 the four review stops block turns the same way
+  the pinned stop does today, and every reply after one would go unrecorded. In T011 (the Stop check): a reply that follows
+  a stop-hook block, from any provider, is recorded as a turn end; RED case first; built before T014 (tasks.md T011).
+- **Class closure**: OPEN; T011 owns it, before T014.
