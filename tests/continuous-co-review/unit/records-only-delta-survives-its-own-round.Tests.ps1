@@ -69,6 +69,20 @@ Describe 'W74 a records-only commit during a round does not take the pass away' 
         [string]$decision.reason | Should -Be 'records-only-delta-over-non-authorizing-result' -Because 'the records-only rule is about staleness, never about authority'
     }
 
+    It 'still refuses to PROMOTE a findings verdict that lists no findings (the original example)' {
+        # Maintainer correction 2026-11-09: the original fixture of the case above, restored beside the migrated one. A
+        # findings verdict with an EMPTY list is an inconsistent result - most likely lost or unread findings - never a pass,
+        # so a records commit cannot preserve it either.
+        $result = New-PassingResult -Currentness 'snapshot-moved' -CanApprove $false
+        $result.verdict = 'findings'
+        $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-w74' -CurrentDigest 'bbbb2222' `
+            -RepoRoot $script:RepoRoot -FeatureId '199-beta3-stabilization' `
+            -OrderedRunIds @('run-20260826-000000001-aaaaaaaa') -Results @($result) -ActiveRun $null `
+            -ChangedPathsSinceResult @('specs/199-beta3-stabilization/iterations/001/drift-log.md')
+        [string]$decision.reason | Should -Be 'records-only-delta-over-non-authorizing-result' -Because 'the records-only rule is about staleness, never about authority'
+        [bool]$decision.gate_allows | Should -BeFalse
+    }
+
     It 'still refuses when containment was not verified' {
         # The other half of "authorizes on its own terms": a review that may have read outside its
         # frozen copy is not evidence about that copy, whatever verdict it published.

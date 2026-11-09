@@ -24,8 +24,9 @@ BeforeAll {
         script:Invoke-SignoffGit $Root @('commit', '-qm', $RelativePath)
     }
 
-    # A project whose latest review round is clean and covers the tree exactly as it is.
-    function script:New-CleanReviewedProject([string]$Root) {
+    # A project whose latest review round is clean and covers the tree exactly as it is. -Verdict and -Findings give the
+    # same round other outcomes: all findings non-gating, or a findings verdict that lists none.
+    function script:New-CleanReviewedProject([string]$Root, [string]$Verdict = 'pass', [object[]]$Findings = @()) {
         New-Item -ItemType Directory -Path (Join-Path $Root 'specs/001-demo/iterations/007') -Force | Out-Null
         [IO.File]::WriteAllText((Join-Path $Root 'specs/001-demo/spec.md'), '# Demo design context', $script:Utf8)
         New-Item -ItemType Directory -Path (Join-Path $Root 'src'), (Join-Path $Root 'tests') -Force | Out-Null
@@ -41,14 +42,21 @@ BeforeAll {
         $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root).tree_id
         $result = [pscustomobject][ordered]@{
             schema_version = '1.0'; campaign_id = $campaign; run_id = $run; target_digest = $digest; harness_id = 'fixture'
-            completion = 'complete'; verdict = 'pass'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
-            currentness = 'current'; validation = 'valid'; can_approve_current = $true; summary = 'clean'; findings = @()
+            completion = 'complete'; verdict = $Verdict; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+            currentness = 'current'; validation = 'valid'; can_approve_current = ($Verdict -ceq 'pass'); summary = 'clean'; findings = @($Findings)
             started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $true
         }
         Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $run -TargetLineage 'lin-demo' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
         Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId $run -Fact $result | Out-Null
         Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $run -TargetLineage 'lin-demo' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
         return [pscustomobject]@{ root = $Root; store = $store }
+    }
+
+    function script:New-MinorFinding {
+        return [pscustomobject][ordered]@{
+            finding_id = 'finding-00000000000000c1'; source_local_id = 'l1'; lineage_id = 'lin-00000000000000c1'; severity = 'minor'; title = 'Typo in help text'
+            description = 'Failure scenario: the help text misspells the flag.'; location = 'src/app.ps1:1'; relevance = 'current'; resolution = 'open'; demoted = $false; demoted_from = ''
+        }
     }
 
     function script:Get-SignoffDecision([pscustomobject]$Project) {
@@ -85,5 +93,43 @@ Describe 'the review-signoff check refuses code changed after the last clean rou
         script:Add-SignoffCommit -Root $project.root -RelativePath 'specs/001-demo/iterations/007/drift-log.md' -Content "# drift`n"
         $decision = script:Get-SignoffDecision -Project $project
         @($script:Releasing) | Should -Contain ([string]$decision.route) -Because ([string]$decision.reason)
+    }
+}
+
+Describe 'after a review whose findings are all non-gating, only records leave it standing (b915fa37; maintainer, 2026-11-09)' {
+    It 'control: a records-only change after a minor-only review does not reopen it' {
+        $project = script:New-CleanReviewedProject -Root (Join-Path $TestDrive 'minor-records') -Verdict 'findings' -Findings @((script:New-MinorFinding))
+        script:Add-SignoffCommit -Root $project.root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content "# Review`n"
+        $decision = script:Get-SignoffDecision -Project $project
+        @($script:Releasing) | Should -Contain ([string]$decision.route) -Because ([string]$decision.reason)
+    }
+
+    It 'a source change after a minor-only review is refused' {
+        $project = script:New-CleanReviewedProject -Root (Join-Path $TestDrive 'minor-source') -Verdict 'findings' -Findings @((script:New-MinorFinding))
+        script:Add-SignoffCommit -Root $project.root -RelativePath 'src/app.ps1' -Content "function Get-Answer { 43 }`n"
+        $decision = script:Get-SignoffDecision -Project $project
+        @($script:Releasing) | Should -Not -Contain ([string]$decision.route) -Because 'the minor-only review covered other code; the records-only exemption must not stretch to source'
+        [bool]$decision.render_boundary_packet | Should -BeFalse
+    }
+}
+
+Describe 'a findings verdict that lists no findings is an inconsistent review, never a clean one (maintainer, 2026-11-09)' {
+    # A reviewer that says "findings" and lists none most likely lost its findings, or they could not be read. The candidate
+    # contract already refuses that shape at intake; a stored result with it must not release the sign-off either.
+    It 'on the files exactly as reviewed, the sign-off refuses it in plain words as an inconsistent review' {
+        $project = script:New-CleanReviewedProject -Root (Join-Path $TestDrive 'empty-findings') -Verdict 'findings' -Findings @()
+        $decision = script:Get-SignoffDecision -Project $project
+        @($script:Releasing) | Should -Not -Contain ([string]$decision.route) -Because 'a findings verdict with no findings is not passing'
+        [bool]$decision.render_boundary_packet | Should -BeFalse
+        [string]$decision.reason | Should -BeExactly 'findings-verdict-without-findings'
+        [string]$decision.message | Should -Match '(?i)inconsistent'
+        [string]$decision.message | Should -Match '(?i)listed none'
+    }
+
+    It 'after a records-only change, it is refused too' {
+        $project = script:New-CleanReviewedProject -Root (Join-Path $TestDrive 'empty-findings-records') -Verdict 'findings' -Findings @()
+        script:Add-SignoffCommit -Root $project.root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content "# Review`n"
+        $decision = script:Get-SignoffDecision -Project $project
+        @($script:Releasing) | Should -Not -Contain ([string]$decision.route) -Because 'the records-only exemption preserves a passing review; it never makes one'
     }
 }
