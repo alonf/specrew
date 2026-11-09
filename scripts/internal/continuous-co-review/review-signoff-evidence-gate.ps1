@@ -1002,6 +1002,14 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         if ($actionable -or $requiresCorrection) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-actionable' -Reason 'complete-current-actionable-findings' -Message 'The review of your files as they are now has findings to fix. They are fixed within the approved tasks, and the next round checks the fixes within the review budget.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'fix-and-request-rerun-grant'
         }
+        # Feature 203 T008 step (iii) (FR-004, FR-013; maintainer ruling 2026-11-09): non-gating findings never block sign-off.
+        # A complete, current, valid review of these files whose findings are all non-gating releases the boundary, and the
+        # sign-off lists each one as a follow-up (or as demoted, with the reviewer's severity).
+        $nonGatingRelease = ([string]$latest.validation -ceq 'valid' -and [string]$latest.currentness -ceq 'current' -and
+            [string]$latest.containment -ceq 'verified' -and [string]$latest.target_digest -ceq $CurrentDigest)
+        if ($nonGatingRelease) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-follow-ups-only' -Message 'Your review found nothing that blocks sign-off, and it covers your files exactly as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+        }
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-human-decision' -Reason 'complete-current-advisory-findings' -Message 'The exact current review has advisory findings that require a narrow human disposition before any boundary packet.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -AskNarrowQuestion $true -ImplementerAction 'ask-narrow-non-boundary-question'
     }
     return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'rerun-within-budget'
@@ -1146,11 +1154,19 @@ function Get-ReviewCampaignVerdictPacketDecision {
     # Feature 203 T008 step (iii) (DRIFT-052 item 3; FR-013): a finding still open - from a round, or from a run that
     # brought back only part of a review - keeps the review from counting as clean, so it cannot release the sign-off,
     # whatever the latest result says. It closes only by a fix the next round confirms, or by the human's typed line.
+    # Feature 203 T008 step (iii) (FR-011, FR-013): the sign-off names what the review leaves behind, finding by finding.
+    $findingLines = @()
+    try { $findingLines = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $StoreRoot -CampaignId $CampaignId) } catch { $findingLines = @() }
+    if ($findingLines.Count -gt 0) {
+        $packet.message = ([string]$packet.message + [Environment]::NewLine + ($findingLines -join [Environment]::NewLine))
+        $packet | Add-Member -NotePropertyName finding_lines -NotePropertyValue $findingLines -Force
+    }
     if ([bool]$packet.render_boundary_packet -or [string]$packet.route -cin @('boundary-clean', 'review-current')) {
         $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
         if ($openFindings.Count -gt 0) {
             $openMessage = ('{0} from the review {1} still open, so the review has not ended clean. A finding closes when the next round confirms its fix, or with your typed defer or drop line.' -f `
                     $(if ($openFindings.Count -eq 1) { '1 finding' } else { ('{0} findings' -f $openFindings.Count) }), $(if ($openFindings.Count -eq 1) { 'is' } else { 'are' }))
+            if ($findingLines.Count -gt 0) { $openMessage = $openMessage + [Environment]::NewLine + ($findingLines -join [Environment]::NewLine) }
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-findings-open' -Reason 'open-findings' -Message $openMessage `
                 -CampaignId $CampaignId -RunId ([string]$packet.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'proceed'
         }

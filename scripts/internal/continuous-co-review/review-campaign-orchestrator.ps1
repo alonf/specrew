@@ -1658,6 +1658,36 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     return [pscustomobject]@{ landed = @($landed); skipped = @($skipped) }
 }
 
+function Get-ReviewCampaignSignoffFindingLines {
+    # Feature 203 T008 step (iii) (FR-011, FR-013; maintainer rulings 2026-11-09): what the review leaves behind, finding by
+    # finding (id, title, where), never only a count. Every finding still open is not covered (after `stop the review here`
+    # too); every non-gating finding of the reviewed head is a follow-up; every finding the ingestor demoted is named with
+    # the reviewer's original severity and why, because a demoted blocker opens no finding and the loop can end clean on it.
+    [OutputType([string[]])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $where = { param($f) $l = Get-ReviewAuthorityProperty -Object $f -Name 'location'; if ($null -eq $l -or [string]::IsNullOrWhiteSpace([string]$l)) { '' } elseif ($l -is [string]) { ' at ' + $l } else { ' at ' + ($l | ConvertTo-Json -Compress -Depth 4) } }
+    $lines = [Collections.Generic.List[string]]::new()
+    foreach ($open in @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
+        $lines.Add(('Not covered (still open): {0} ({1}) {2}{3}' -f [string]$open.finding_id, [string]$open.severity, [string]$open.title, (& $where $open))) | Out-Null
+    }
+    $loop = Get-ReviewCampaignLoopState -StoreRoot $StoreRoot -CampaignId $CampaignId
+    if ($null -ne $loop.last_spent_result) {
+        $reviewed = Get-ReviewAuthorityProperty -Object $loop.last_spent_result -Name 'findings'
+        foreach ($finding in @($reviewed | ForEach-Object { $_ } | Where-Object { $null -ne $_ })) {
+            $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+            if ($script:ReviewCampaignGatingSeverities -ccontains $severity) { continue }
+            $id = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'finding_id'); $title = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'title')
+            if ([bool](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted')) {
+                $from = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted_from')
+                $lines.Add(('Demoted: {0} {1}{2} - the reviewer reported it as {3}; it was recorded as {4} because it states no concrete failure scenario.' -f $id, $title, (& $where $finding), $from, $severity)) | Out-Null
+            }
+            else { $lines.Add(('Follow-up: {0} ({1}) {2}{3}' -f $id, $severity, $title, (& $where $finding))) | Out-Null }
+        }
+    }
+    return @($lines)
+}
+
 function Invoke-ReviewCampaignHaltLanding {
     # The typed `stop the review here`, captured with no stop open (bound to no run), lands as a stop of its own: a pause
     # fact (stop (c), reason human-halt) answered `stop-here` in the same act, then the capture is spent. Returns the capture
@@ -2124,7 +2154,7 @@ function Invoke-ReviewCampaignStopHereLanding {
         # naming only "minor findings" told a human who had just accepted two majors that nothing
         # above minor remained. The severity-neutral phrase is honest for both shapes; the accepted
         # counts themselves live in the pause record and the result, not in this scope.
-        ('Review is signed off. Any remaining findings are saved as follow-ups, and the final check ran on your files exactly as they were{0}.' -f $ran)
+        ('Review is signed off. Any remaining findings are listed, one by one, in the review sign-off, and the final check ran on your files exactly as they were{0}.' -f $ran)
     }
     else {
         $whatFailed = switch ($failedStep) {

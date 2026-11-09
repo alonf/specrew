@@ -1261,7 +1261,7 @@ if ($Live) {
                 # immediately, as before.
                 if ($choice -ceq 'stop-here') {
                     $rationale = if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseRationale)) { [string]$parsedArgs.PauseRationale }
-                    else { 'Remaining findings accepted as follow-ups at the review pause.' }
+                    else { 'Remaining findings accepted at stop the review here; the review sign-off lists each one.' }
                     $landingRef = "pause-stop-here:$answeredRunId"
                     $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $resolvedProjectPath -StoreRoot $campaignStoreRoot `
                         -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId -AuthorizedBy 'human' `
@@ -1284,7 +1284,7 @@ if ($Live) {
                     }
                     if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.landed) { 0 } else { 1 }) }
                     if ([bool]$landing.landed) {
-                        Write-Host 'Your files were checked exactly as they are now, the remaining findings were saved as follow-ups, and review sign-off is complete.' -ForegroundColor Green
+                        Write-Host 'Your files were checked exactly as they are now, the remaining findings are listed one by one in the review sign-off, and review sign-off is complete.' -ForegroundColor Green
                         exit 0
                     }
                     Write-Host ([string]$landing.message) -ForegroundColor Yellow
