@@ -536,7 +536,10 @@ then T014.
     "matches no live session"). The case also pins that the counter and the token agree on which turn the
     continuation is. Also: each Stop leaves a history line (turn judged, declaration kind, token consumed or kept,
     counter step, the provider that blocked, if any), the record DRIFT-054 found missing. **Ordering:** built before
-    T014 advances the pin.
+    T014 advances the pin. **How (maintainer ruling 2026-11-10):** a rule about ordering, not a special case for the
+    navigator - a turn's token is used up, and its counter stepped, only after every check in that Stop has passed, so
+    a block from any later check keeps the turn and its token. The RED case blocks with a check other than the
+    navigator as well, so a navigator-only fix cannot pass it.
   - **Trace:** FR-046; DRIFT-054.
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`,
     `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `extensions/specrew-speckit/scripts/declare-turn-end.ps1`,

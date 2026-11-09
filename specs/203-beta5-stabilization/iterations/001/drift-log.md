@@ -1765,4 +1765,7 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Placement (maintainer, 2026-11-10)**: not a loose follow-up. After T014 the four review stops block turns the same way
   the pinned stop does today, and every reply after one would go unrecorded. In T011 (the Stop check): a reply that follows
   a stop-hook block, from any provider, is recorded as a turn end; RED case first; built before T014 (tasks.md T011).
+- **Ruling (maintainer, 2026-11-10), how T011 fixes it**: as a rule about ordering, not a special case for the navigator:
+  a turn's token is used up only after every check in that Stop has passed, so a block from any later check keeps the
+  turn and its token. Third occurrence the same evening (after the turn declared with `85f91c2a…`).
 - **Class closure**: OPEN; T011 owns it, before T014.
