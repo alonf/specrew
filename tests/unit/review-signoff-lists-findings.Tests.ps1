@@ -12,6 +12,8 @@ BeforeAll {
     . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1')
     $script:Utf8 = [Text.UTF8Encoding]::new($false)
     $script:Campaign = 'cmp-demo-i007'
+    $script:CrossingCampaign = 'cmp-001-demo-i007'
+    $script:ListingName = 'review-signoff-listing.json'
 
     function script:Invoke-ListGit([string]$Root, [string[]]$Arguments) {
         $null = & git -C $Root -c user.name=t -c user.email=t@example.invalid @Arguments 2>&1
@@ -26,11 +28,21 @@ BeforeAll {
         }
     }
 
-    # A project whose one round reviewed the files exactly as they are now and returned $Findings.
-    function script:New-ListProject([string]$Name, [object[]]$Findings, [string]$Verdict) {
+    # A project whose one round reviewed the files exactly as they are now and returned $Findings. -WithLifecycle records
+    # the active feature and iteration the way a real project does, so the review-signoff crossing resolves them itself.
+    function script:New-ListProject([string]$Name, [object[]]$Findings, [string]$Verdict, [switch]$WithLifecycle) {
+        $campaign = if ($WithLifecycle) { $script:CrossingCampaign } else { $script:Campaign }
+        $lineage = if ($WithLifecycle) { 'lin-001-demo' } else { 'lin-demo' }
         $root = Join-Path $TestDrive $Name
         New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-demo/iterations/007'), (Join-Path $root 'src') -Force | Out-Null
         [IO.File]::WriteAllText((Join-Path $root 'specs/001-demo/spec.md'), '# Demo design context', $script:Utf8)
+        if ($WithLifecycle) {
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), (([ordered]@{
+                            schema = 'v2'; feature_path = (Join-Path $root 'specs/001-demo')
+                            session_state = [ordered]@{ active = $true; boundary_type = 'implement'; feature_ref = '001-demo'; feature_path = (Join-Path $root 'specs/001-demo'); iteration_number = '007' }
+                        }) | ConvertTo-Json -Depth 6), $script:Utf8)
+        }
         [IO.File]::WriteAllText((Join-Path $root 'src/app.ps1'), "function Get-Answer { 42 }`n", $script:Utf8)
         [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/review/`n", $script:Utf8)
         script:Invoke-ListGit $root @('init', '-q'); script:Invoke-ListGit $root @('branch', '-m', 'main')
@@ -38,14 +50,14 @@ BeforeAll {
         $store = Join-Path $root '.specrew/review/authority'
         $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
         $result = [pscustomobject][ordered]@{
-            schema_version = '1.0'; campaign_id = $script:Campaign; run_id = 'run-list-1'; target_digest = $digest; harness_id = 'fixture'
+            schema_version = '1.0'; campaign_id = $campaign; run_id = 'run-list-1'; target_digest = $digest; harness_id = 'fixture'
             completion = 'complete'; verdict = $Verdict; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
             currentness = 'current'; validation = 'valid'; can_approve_current = ($Verdict -ceq 'pass'); summary = 'fixture'; findings = @($Findings)
             started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $true
         }
-        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:Campaign -RunId 'run-list-1' -TargetLineage 'lin-demo' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
-        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $script:Campaign -RunId 'run-list-1' -Fact $result | Out-Null
-        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:Campaign -RunId 'run-list-1' -TargetLineage 'lin-demo' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId 'run-list-1' -TargetLineage $lineage -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId 'run-list-1' -Fact $result | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId 'run-list-1' -TargetLineage $lineage -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
         return [pscustomobject]@{ root = $root; store = $store }
     }
 
@@ -115,5 +127,82 @@ Describe 'corrections to the sign-off listing (maintainer, 2026-11-09)' {
     It 'without a demotion, the clean route keeps its wording' {
         $project = script:New-ListProject -Name 'plain-lead' -Verdict 'findings' -Findings @((script:New-Finding -Id 'finding-00000000000000f5' -Severity 'minor' -Title 'Typo' -Location 'src/app.ps1:2'))
         [string](script:Get-Signoff -Project $project).message | Should -Match '^Your review found nothing that blocks sign-off'
+    }
+}
+
+Describe 'the sign-off listing is stored at the review-signoff crossing (correction 3, maintainer 2026-11-09; FR-013)' {
+    It 'crossing review-signoff writes one file in the iteration folder naming each finding with id, title, location and severity' {
+        $project = script:New-ListProject -Name 'stored' -Verdict 'findings' -WithLifecycle -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000f7' -Severity 'minor' -Title 'Typo in help text' -Location 'src/app.ps1:3'),
+            (script:New-Finding -Id 'finding-00000000000000d7' -Severity 'minor' -Title 'Cache never invalidated' -Location 'src/cache.ps1:9' -Demoted))
+        { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $project.root -BoundaryType 'review-signoff' } | Should -Not -Throw
+        $path = Join-Path $project.root ('specs/001-demo/iterations/007/' + $script:ListingName)
+        Test-Path -LiteralPath $path -PathType Leaf | Should -BeTrue -Because 'the listing is written once, at the crossing, into the iteration folder'
+        $listing = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+        [string]$listing.feature_id | Should -BeExactly '001-demo'
+        [string]$listing.iteration | Should -BeExactly '007'
+        $followUp = @($listing.items | Where-Object { [string]$_.finding_id -ceq 'finding-00000000000000f7' })
+        $followUp.Count | Should -Be 1
+        [string]$followUp[0].kind | Should -BeExactly 'follow-up'
+        [string]$followUp[0].title | Should -BeExactly 'Typo in help text'
+        [string]$followUp[0].location | Should -BeExactly 'src/app.ps1:3'
+        [string]$followUp[0].severity | Should -BeExactly 'minor'
+        $demoted = @($listing.items | Where-Object { [string]$_.finding_id -ceq 'finding-00000000000000d7' })
+        [string]$demoted[0].kind | Should -BeExactly 'demoted'
+        [string]$demoted[0].severity | Should -BeExactly 'minor'
+        [string]$demoted[0].demoted_from | Should -BeExactly 'blocking' -Because 'the reviewer''s own severity travels with the record'
+    }
+
+    It 'a clean review with nothing left behind still records an empty listing, so the retro can tell "nothing" from "not recorded"' {
+        $project = script:New-ListProject -Name 'stored-empty' -Verdict 'pass' -WithLifecycle -Findings @()
+        Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $project.root -BoundaryType 'review-signoff' | Out-Null
+        $listing = Get-Content -LiteralPath (Join-Path $project.root ('specs/001-demo/iterations/007/' + $script:ListingName)) -Raw | ConvertFrom-Json
+        @($listing.items).Count | Should -Be 0
+    }
+
+    It 'a sign-off the gate refuses writes no listing: the crossing did not happen' {
+        $project = script:New-ListProject -Name 'stored-refused' -Verdict 'findings' -WithLifecycle -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000b7' -Severity 'major' -Title 'Retry never backs off' -Location 'src/poll.ps1:41'))
+        { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $project.root -BoundaryType 'review-signoff' } | Should -Throw
+        Test-Path -LiteralPath (Join-Path $project.root ('specs/001-demo/iterations/007/' + $script:ListingName)) | Should -BeFalse
+    }
+
+    It 'signing off again after the listing is written still releases: the listing is a record, not reviewable content' {
+        $project = script:New-ListProject -Name 'stored-twice' -Verdict 'findings' -WithLifecycle -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000f8' -Severity 'minor' -Title 'Typo' -Location 'src/app.ps1:2'))
+        Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $project.root -BoundaryType 'review-signoff' | Out-Null
+        { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $project.root -BoundaryType 'review-signoff' } | Should -Not -Throw
+    }
+
+    It 'the crossing still emits nothing on the allow path (the boundary-sync result stays one object)' {
+        $project = script:New-ListProject -Name 'stored-silent' -Verdict 'findings' -WithLifecycle -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000f9' -Severity 'minor' -Title 'Typo' -Location 'src/app.ps1:2'))
+        $out = Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $project.root -BoundaryType 'review-signoff'
+        $out | Should -BeNullOrEmpty
+    }
+
+    It 'one writer: exactly one engine script names the listing file' {
+        $writers = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts') -Recurse -Filter '*.ps1' |
+                Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match [regex]::Escape($script:ListingName) })
+        $writers.Count | Should -Be 1 -Because 'one writer owns the file; everything else reads what it wrote'
+    }
+
+    It 'the structured listing carries the severity of a finding still open' {
+        $project = script:New-ListProject -Name 'structured-open' -Verdict 'findings' -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000b8' -Severity 'major' -Title 'Retry never backs off' -Location 'src/poll.ps1:41'))
+        $items = @(Get-ReviewCampaignSignoffFindings -StoreRoot $project.store -CampaignId $script:Campaign)
+        $open = @($items | Where-Object { [string]$_.kind -ceq 'not-covered' })
+        $open.Count | Should -Be 1
+        [string]$open[0].finding_id | Should -BeExactly 'finding-00000000000000b8'
+        [string]$open[0].severity | Should -BeExactly 'major'
+        [string]$open[0].location | Should -BeExactly 'src/poll.ps1:41'
+    }
+}
+
+Describe 'the demotion lead reads the structured demoted_from, not the rendered line (maintainer, 2026-11-09)' {
+    It 'a demoted finding whose own title reads "reported it as major;" still leads with the severity the reviewer used' {
+        $project = script:New-ListProject -Name 'lead-structured' -Verdict 'findings' -Findings @(
+            (script:New-Finding -Id 'finding-00000000000000d9' -Severity 'minor' -Title 'log says the probe reported it as major; nothing checks it' -Location 'src/probe.ps1:4' -Demoted))
+        [string](script:Get-Signoff -Project $project).message | Should -Match '^The reviewer reported 1 blocking finding\.'
     }
 }
