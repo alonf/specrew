@@ -352,6 +352,38 @@ function Assert-ReviewArtifactReadyForRetro {
     return $overallVerdict
 }
 
+function Get-SignoffListingLines {
+    # Feature 203 T008, correction 3 (DRIFT-052, maintainer 2026-11-09; FR-013): what the review left behind, as the
+    # review-signoff crossing stored it (review-signoff-listing.json, one writer, in this iteration folder). Absent is said
+    # as absent - never as "nothing left behind" - and an unreadable listing refuses rather than being dropped.
+    param([Parameter(Mandatory = $true)][string]$IterationDirectory)
+
+    $listingPath = Join-Path $IterationDirectory 'review-signoff-listing.json'
+    if (-not (Test-Path -LiteralPath $listingPath -PathType Leaf)) {
+        return @('- No sign-off listing was recorded for this iteration (review-signoff-listing.json is absent), so what the review left behind is not known from the record.')
+    }
+    try {
+        $listing = Get-Content -LiteralPath $listingPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $listing -or $null -eq $listing.PSObject.Properties['items']) { throw 'it has no items list' }
+        $lines = @(foreach ($item in @($listing.items | Where-Object { $null -ne $_ })) {
+                $at = if ([string]::IsNullOrWhiteSpace([string]$item.location)) { '' } else { ' at ' + [string]$item.location }
+                switch -CaseSensitive ([string]$item.kind) {
+                    'not-covered' { '- Not covered (still open): {0} ({1}) {2}{3}' -f [string]$item.finding_id, [string]$item.severity, [string]$item.title, $at }
+                    'follow-up' { '- Follow-up: {0} ({1}) {2}{3}' -f [string]$item.finding_id, [string]$item.severity, [string]$item.title, $at }
+                    'demoted' { '- Demoted: {0} {1}{2} - the reviewer reported it as {3}; it was recorded as {4} because it states no concrete failure scenario.' -f [string]$item.finding_id, [string]$item.title, $at, [string]$item.demoted_from, [string]$item.severity }
+                    default { throw ("an item has an unknown kind '{0}'" -f [string]$item.kind) }
+                }
+            })
+    }
+    catch {
+        throw ("The retro could not read what the review left behind, so it was not scaffolded. Specrew could not read '{0}': {1}" -f $listingPath, $_.Exception.Message)
+    }
+    if ($lines.Count -eq 0) {
+        return @('- The review left nothing behind: no finding was still open, kept as a follow-up, or demoted at sign-off.')
+    }
+    return $lines
+}
+
 function Get-DriftSummary {
     param(
         [AllowEmptyString()]
@@ -427,6 +459,7 @@ if ($phaseRows.Count -eq 0) {
 $iterationLabel = Get-IterationLabel -PlanLines $planLines -Fallback (Split-Path -Leaf $resolvedIterationDirectory)
 $reviewOverallVerdict = Assert-ReviewArtifactReadyForRetro -ReviewLines $reviewLines
 $driftSummary = Get-DriftSummary -DriftLines $driftLines
+$signoffListingLines = @(Get-SignoffListingLines -IterationDirectory $resolvedIterationDirectory)
 
 if (-not (Test-Path -LiteralPath $reviewerArtifactScriptPath -PathType Leaf)) {
     throw "Reviewer artifact helper '$reviewerArtifactScriptPath' does not exist."
@@ -512,6 +545,10 @@ $($phaseVarianceRows -join [Environment]::NewLine)
 - Resolved via revert: $($driftSummary.ImplementationRevert)
 - Deferred: $($driftSummary.Deferred)
 - Escalated to human decision: $($driftSummary.HumanDecision)
+
+## What the Review Left Behind
+
+$($signoffListingLines -join [Environment]::NewLine)
 
 ## What Went Well
 

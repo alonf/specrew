@@ -18,7 +18,8 @@ BeforeAll {
         [IO.File]::WriteAllText((Join-Path $dir 'state.md'), "# State`n", $script:Utf8)
         [IO.File]::WriteAllText((Join-Path $dir 'drift-log.md'), "# Drift Log`n", $script:Utf8)
         [IO.File]::WriteAllText((Join-Path $dir 'review.md'), "# Review`n`n**Overall Verdict**: accepted`n`n## Task Verdicts`n`n| Task | Verdict | Notes |`n| ---- | ------- | ----- |`n| T001 | pass | Delivered and reviewed. |`n", $script:Utf8)
-        if ($null -ne $ListingJson) { [IO.File]::WriteAllText((Join-Path $dir 'review-signoff-listing.json'), $ListingJson, $script:Utf8) }
+        # A [string] parameter turns $null into '', so "no listing" is the empty string here.
+        if (-not [string]::IsNullOrEmpty($ListingJson)) { [IO.File]::WriteAllText((Join-Path $dir 'review-signoff-listing.json'), $ListingJson, $script:Utf8) }
         return $dir
     }
 

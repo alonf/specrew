@@ -400,7 +400,7 @@
     },
     {
       "path": "scripts/scaffold-retro-artifact.ps1",
-      "sha256": "f93a96706e4c4cd5fd0c353c7a501def782e63f97a3ab5d9927186ec0beef8da"
+      "sha256": "65a23f2ac672b80a467669e29b02157568fe9fc97406f5acdacef6c29cf9b621"
     },
     {
       "path": "scripts/scaffold-review-artifact.ps1",
