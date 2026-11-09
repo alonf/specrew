@@ -298,86 +298,92 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
 }
 
 Describe 'W67 the round summary states the whole mix, and says plainly when nothing blocks' {
-    # W67 (maintainer ruling, 2026-08-26): every human-facing round summary states HOW MANY findings,
-    # how many BLOCKING, how many need the human's ACCEPTANCE, how many are NOTES - and what each
-    # decision does given that mix. And when nothing blocks, it says so plainly, so stopping here
-    # reads as the ordinary next step rather than a concession the human is talking themselves into.
-    #
-    # The shape this replaces made the reader assemble the mix themselves out of a gating list, a
-    # trailing minors sentence and a demotion note - three places, no total anywhere, and no sentence
-    # that said "nothing here blocks sign-off" even when nothing did.
+    # W67 (maintainer ruling, 2026-08-26): a human-facing round summary hides no severity. Feature 203 T008 (maintainer
+    # classification 2026-11-09, class A): the round summary and its renderers are gone with the pause menu (a0ab0ca0). The
+    # property stays, split across the two surfaces that replaced it - the STOP counts the open findings one by one, and
+    # the SIGN-OFF lists the rest - so every finding of the round, of every severity, is named on one of them.
     BeforeAll {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
         function script:New-MixFinding {
-            param([string]$Severity, [string]$Title = 'a finding', [string]$Location = 'src/x.ps1:1')
-            return [pscustomobject]@{ severity = $Severity; title = $Title; description = 'detail'; location = $Location }
+            param([string]$Id, [string]$Severity, [string]$Title = 'a finding', [string]$Location = 'src/x.ps1:1')
+            return [pscustomobject][ordered]@{
+                finding_id = $Id; source_local_id = 'l-' + $Id.Substring(8, 4); lineage_id = 'lin-' + $Id.Substring(8); severity = $Severity; title = $Title
+                description = 'Failure scenario: it breaks.'; location = $Location; relevance = 'current'; resolution = 'open'; demoted = $false; demoted_from = ''
+            }
         }
-        function script:Render-Mix {
-            param([object[]]$Findings, [int]$RoundsUsed = 1, [int]$BudgetTotal = 4)
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings $Findings -RoundsUsed $RoundsUsed -BudgetTotal $BudgetTotal -ElapsedMinutes 12
-            return (Format-ReviewCampaignPauseSurface -ProjectName 'mixdemo' -Decision $decision)
+        # One round that collected a review with $Findings, through the engine's own writers; then what each surface shows.
+        function script:Get-Mix {
+            param([object[]]$Findings)
+            $store = Join-Path $TestDrive ('mix-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            $result = [pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = 'cmp-mixdemo-i001'; run_id = 'run-mix'; target_digest = ('c' * 40); harness_id = 'fixture'
+                completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+                currentness = 'current'; validation = 'valid'; can_approve_current = $false; summary = 'fixture'; findings = @($Findings)
+                started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/x.ps1'); review_collected = $true
+            }
+            Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-mixdemo-i001' -RunId 'run-mix' -TargetLineage 'lin-mix' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-mixdemo-i001' -RunId 'run-mix' -Fact $result | Out-Null
+            Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-mixdemo-i001' -RunId 'run-mix' -TargetLineage 'lin-mix' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
+            $open = @(Get-ReviewCampaignOpenFindings -StoreRoot $store -CampaignId 'cmp-mixdemo-i001')
+            $stop = $null; $surface = ''
+            if ($open.Count -gt 0) {
+                $stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-mixdemo-i001' -RunId 'run-mix' -TargetDigest ('c' * 40) `
+                    -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2) -ObservedAt '2026-11-09T08:02:00Z' -StopKind 'a-budget-spent' -StopReason 'budget-spent'
+                $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $stop
+                $surface = @(Format-ReviewCampaignStopSurface -Stop $stop -OpenFindings $open) -join "`n"
+            }
+            return [pscustomobject]@{
+                store = $store; open = $open; stop_surface = $surface
+                signoff = (@(Get-ReviewCampaignSignoffFindingLines -StoreRoot $store -CampaignId 'cmp-mixdemo-i001') -join "`n")
+            }
         }
     }
 
     It 'states the counts as one mix a reader can hold: total, blocking, needing acceptance, notes' {
-        $surface = script:Render-Mix -Findings @(
-            (script:New-MixFinding -Severity 'blocking' -Title 'auth bypass' -Location 'src/auth.ps1:12'),
-            (script:New-MixFinding -Severity 'major'),
-            (script:New-MixFinding -Severity 'minor'),
-            (script:New-MixFinding -Severity 'minor'))
-        $surface | Should -Match '(?i)4 findings'
-        $surface | Should -Match '(?i)1 blocks sign-off'
-        $surface | Should -Match '(?i)1 needs your acceptance'
-        $surface | Should -Match '(?i)2 are notes'
+        $mix = script:Get-Mix -Findings @(
+            (script:New-MixFinding -Id 'finding-00000000000000a1' -Severity 'blocking' -Title 'auth bypass' -Location 'src/auth.ps1:12'),
+            (script:New-MixFinding -Id 'finding-00000000000000a2' -Severity 'major' -Title 'retry never backs off'),
+            (script:New-MixFinding -Id 'finding-00000000000000a3' -Severity 'minor' -Title 'typo one'),
+            (script:New-MixFinding -Id 'finding-00000000000000a4' -Severity 'minor' -Title 'typo two'))
+        $mix.stop_surface | Should -Match 'What happened: 2 of 2 rounds used; 2 findings open\.' -Because 'the stop counts the open findings'
+        $mix.stop_surface | Should -Match 'finding-00000000000000a1 \(blocking\) auth bypass at src/auth\.ps1:12'
+        $mix.stop_surface | Should -Match 'finding-00000000000000a2 \(major\) retry never backs off'
+        $mix.signoff | Should -Match 'Follow-up: finding-00000000000000a3 \(minor\) typo one' -Because 'the sign-off lists the rest'
+        $mix.signoff | Should -Match 'Follow-up: finding-00000000000000a4 \(minor\) typo two'
+        foreach ($id in 'a1', 'a2', 'a3', 'a4') { ($mix.stop_surface + "`n" + $mix.signoff) | Should -Match ('finding-00000000000000' + $id) -Because 'no severity is hidden' }
     }
 
     It 'when NOTHING blocks, it says so plainly and frames stopping here as the ordinary next step' {
-        # The wording the ruling asked for. A human reading a minors-only round should not have to
-        # infer that stopping is safe; the surface says nothing blocks and what stopping does.
-        $surface = script:Render-Mix -Findings @(
-            (script:New-MixFinding -Severity 'minor'),
-            (script:New-MixFinding -Severity 'minor'),
-            (script:New-MixFinding -Severity 'minor'))
-        $surface | Should -Match '(?i)nothing here blocks sign-off'
-        $surface | Should -Match '(?i)3 findings'
-        $surface | Should -Match '(?i)0 block sign-off|none block sign-off'
-        $surface | Should -Match '(?i)3 are notes'
-        # And the decision text says what stopping does GIVEN that mix - notes carried, not accepted
-        # under protest.
-        $surface | Should -Match '(?i)stop the review here'
-        $surface | Should -Not -Match '(?i)accept the remaining findings anyway' -Because 'nothing is being conceded when nothing blocks'
+        $mix = script:Get-Mix -Findings @(
+            (script:New-MixFinding -Id 'finding-00000000000000b1' -Severity 'minor' -Title 'typo one'),
+            (script:New-MixFinding -Id 'finding-00000000000000b2' -Severity 'minor' -Title 'typo two'),
+            (script:New-MixFinding -Id 'finding-00000000000000b3' -Severity 'note' -Title 'naming idea'))
+        @($mix.open).Count | Should -Be 0 -Because 'nothing blocks, so nothing is open and no stop is raised'
+        $mix.stop_surface | Should -BeNullOrEmpty
+        @($mix.signoff -split "`n" | Where-Object { $_ -like 'Follow-up:*' }).Count | Should -Be 3 -Because 'each non-gating finding is listed at sign-off, none hidden'
+        $mix.signoff | Should -Match 'finding-00000000000000b3 \(note\) naming idea'
+        $mix.signoff | Should -Not -Match '(?i)accept the remaining findings anyway' -Because 'nothing is being conceded when nothing blocks'
     }
 
     It 'a round with acceptances says what stopping means for them, without calling notes acceptances' {
-        $surface = script:Render-Mix -Findings @(
-            (script:New-MixFinding -Severity 'major'),
-            (script:New-MixFinding -Severity 'major'),
-            (script:New-MixFinding -Severity 'minor'))
-        $surface | Should -Match '(?i)3 findings'
-        $surface | Should -Match '(?i)2 need your acceptance'
-        $surface | Should -Match '(?i)1 is a note'
-        # Majors do not block, so "nothing blocks" is TRUE and worth saying - but the same sentence
-        # must not imply nothing is being asked of the human, because an acceptance IS.
-        $surface | Should -Match '(?i)nothing here blocks sign-off'
-        $surface | Should -Match '(?i)accepts those findings as follow-ups' -Because 'the acceptance is the thing stopping here actually does here'
-        $surface | Should -Not -Match '(?i)nothing needs your acceptance' -Because 'two findings do'
+        $mix = script:Get-Mix -Findings @(
+            (script:New-MixFinding -Id 'finding-00000000000000c1' -Severity 'major' -Title 'first major'),
+            (script:New-MixFinding -Id 'finding-00000000000000c2' -Severity 'major' -Title 'second major'),
+            (script:New-MixFinding -Id 'finding-00000000000000c3' -Severity 'minor' -Title 'a note'))
+        $mix.stop_surface | Should -Match '2 findings open' -Because 'the majors are what the decision is about'
+        $mix.stop_surface | Should -Match 'stop the review here - ends the review now; the sign-off lists every finding still open as not covered' -Because 'what stopping means for them'
+        $mix.stop_surface | Should -Not -Match 'finding-00000000000000c3' -Because 'a note is not counted among the open findings'
+        $mix.signoff | Should -Match 'Not covered \(still open\): finding-00000000000000c1 \(major\)'
+        $mix.signoff | Should -Match 'Follow-up: finding-00000000000000c3 \(minor\) a note' -Because 'the note is a follow-up, never an acceptance'
     }
 
     It 'the resumed surface carries the same mix, so coming back a day later reads the same' {
-        # The returning consumer is exactly who cannot reconstruct the mix from memory.
-        $fact = [pscustomobject]@{
-            schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = 'cmp-mixdemo-i001'
-            run_id = 'run-mix'; target_digest = 'digest-mix'; blocking_count = 0; major_count = 0
-            minor_count = 2; demoted_count = 0; rounds_used = 1; budget_total = 4; elapsed_minutes = 12.0
-            recommendation = 'Nothing here blocks you.'; observed_at = '2026-08-26T10:00:00.0000000+00:00'
-            result_produced = $true
-        }
-        # This renderer returns an ARRAY of lines; piping it to Should -Match would test each line
-        # separately and fail on the first that does not match.
-        $resumed = (@(Format-ReviewCampaignOutstandingPause -ProjectName 'mixdemo' -Fact $fact `
-            -Findings @((script:New-MixFinding -Severity 'minor'), (script:New-MixFinding -Severity 'minor'))) -join "`n")
-        $resumed | Should -Match '(?i)2 findings'
-        $resumed | Should -Match '(?i)nothing here blocks sign-off'
+        $mix = script:Get-Mix -Findings @(
+            (script:New-MixFinding -Id 'finding-00000000000000d1' -Severity 'blocking' -Title 'auth bypass'),
+            (script:New-MixFinding -Id 'finding-00000000000000d2' -Severity 'minor' -Title 'typo'))
+        $resumedStop = Get-ReviewCampaignOpenStop -StoreRoot $mix.store -CampaignId 'cmp-mixdemo-i001'
+        $resumed = @(Format-ReviewCampaignStopSurface -Stop $resumedStop -OpenFindings @(Get-ReviewCampaignOpenFindings -StoreRoot $mix.store -CampaignId 'cmp-mixdemo-i001')) -join "`n"
+        $resumed | Should -BeExactly $mix.stop_surface -Because 'the stop read back from the store renders as it did when it was raised'
+        (@(Get-ReviewCampaignSignoffFindingLines -StoreRoot $mix.store -CampaignId 'cmp-mixdemo-i001') -join "`n") | Should -BeExactly $mix.signoff
     }
 }
-

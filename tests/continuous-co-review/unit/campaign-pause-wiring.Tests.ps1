@@ -437,10 +437,11 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         [string]$latest.run_id | Should -Be ([string]$pending.run_id)
 
         # And once the newest is answered, the pending selector must fall silent rather than reaching
-        # back to the older unanswered-looking one by a different sort.
+        # back to the older unanswered-looking one by a different sort. Feature 203 T008 (maintainer classification
+        # 2026-11-09, class B): the answer is `stop-here`, the one pause answer left; fix-and-continue can no longer be recorded.
         Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (
             New-ReviewCampaignPauseDecisionFact -CampaignId $campaign -RunId 'run-review-signoff-10' `
-                -Choice 'fix-and-continue' -ObservedAt '2026-08-02T01:00:00.0000000+00:00') | Out-Null
+                -Choice 'stop-here' -ObservedAt '2026-08-02T01:00:00.0000000+00:00') | Out-Null
         [string](Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId $campaign).run_id | Should -Be 'run-review-signoff-9' -Because 'the older pause is genuinely still unanswered; it becomes pending only once the newer one is answered'
         [string](Get-ReviewCampaignLatestPause -StoreRoot $store -CampaignId $campaign).run_id | Should -Be 'run-review-signoff-10' -Because 'latest is about recency, pending is about answeredness; they are different questions over the same order'
     }
@@ -695,8 +696,11 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         # THE ORDERING ITSELF, which is what actually decides recoverability. Asserted on the source
         # because the defect was neither function being wrong - it was which one ran first.
         $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
-        $branch = [regex]::Match($cli, "(?s)if \(\`$choice -ceq 'stop-here'\) \{.*?\n                \}")
-        $branch.Success | Should -BeTrue -Because 'the guard must anchor on the real stop-here branch'
+        # Feature 203 T008 (maintainer classification 2026-11-09, class B): --pause-choice stop-here is now a relay, and the
+        # command has two `stop-here` branches - one loads the capture store, one lands. The guard anchors on the one that
+        # lands, so it keeps checking what it always did: the answer is spent only after the landing succeeds.
+        $branch = [regex]::Match($cli, "(?s)if \(\`$choice -ceq 'stop-here'\) \{\s*\r?\n\s*\`$rationale = .*?\n                \}")
+        $branch.Success | Should -BeTrue -Because 'the guard must anchor on the real stop-here landing branch'
         $landingAt = $branch.Value.IndexOf('Invoke-ReviewCampaignStopHereLanding')
         $writeAt = $branch.Value.IndexOf('Write-ReviewCampaignPauseDecisionFact')
         $landingAt | Should -BeGreaterThan -1
