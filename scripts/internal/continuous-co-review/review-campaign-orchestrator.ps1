@@ -679,6 +679,7 @@ function Test-ReviewResultSpendsRound {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Result)
     if ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'runtime_outcome') -in @('preflight-failed', 'claim-contended', 'launch-failed')) { return $false }
+    # SPECREW-AUTHORITY-CONSUMER: review-result-produced
     if ((Get-ReviewAuthorityPropertyNames -Object $Result) -contains 'review_collected') {
         return [bool](Get-ReviewAuthorityProperty -Object $Result -Name 'review_collected')
     }
@@ -705,6 +706,7 @@ function Get-ReviewCampaignRoundBudgetState {
         [AllowEmptyString()][string]$RepoRoot = ''
     )
 
+    # SPECREW-AUTHORITY-CONTROL: review-round-budget
     # SPECREW-AUTHORITY-CONSUMER: floor-grant
     $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId
     $reset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
@@ -1672,7 +1674,7 @@ function Invoke-ReviewCampaignHaltLanding {
     $runId = 'run-halt-' + (Get-ReviewCampaignStableToken -Value ('{0}/{1}' -f $CampaignId, [string]$capture.response_hash + [string]$capture.observed_at) -Length 20)
     $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed ([int]$budget.rounds_used) -BudgetTotal ([Math]::Max(1, [int]$budget.budget_total))
     $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $runId -TargetDigest $digest -Decision $decision -ObservedAt $at -StopKind 'c-judgment' -StopReason 'human-halt'
-    $fact.recommendation = 'The human stopped the review here between stops.'
+    $fact | Add-Member -NotePropertyName recommendation -NotePropertyValue 'The human stopped the review here between stops.' -Force
     $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact
     $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $runId -Choice stop-here -ObservedAt $at)
     if (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue) {
@@ -1801,6 +1803,10 @@ function Add-ReviewCampaignRoundPause {
     }
     $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -Decision $decision -ObservedAt $ObservedAt `
         -StopKind $stopKind -StopReason $stopReason
+    # The stop's own reason (maintainer ruling 2026-11-09): never a sentence from the old menu.
+    $stopReasonText = if ($stopKind -ceq 'c-judgment') { 'The reviewer changed the frozen copy of your files it was reviewing, so its review cannot count as clean, whatever it found.' }
+    else { 'The review budget is spent and findings are still open.' }
+    $fact | Add-Member -NotePropertyName recommendation -NotePropertyValue $stopReasonText -Force
     $recorded = $false
     try { $recorded = [bool](Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact).created }
     catch { $recorded = $false }
@@ -2633,7 +2639,7 @@ function Invoke-ReviewCampaignCommand {
                 $stopFact = New-ReviewCampaignPendingPauseFact -CampaignId $identity.campaign_id -RunId $identity.run_id -TargetDigest $exhaustedDigest `
                     -Decision $exhaustedDecision -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -StopKind 'd-host-outside-order' `
                     -StopReason 'host-order-exhausted' -NextHost ([string]$hostDecision.NextHost)
-                $stopFact.recommendation = Format-ReviewCampaignHostOrderExhaustedDetail -Decision $hostDecision
+                $stopFact | Add-Member -NotePropertyName recommendation -NotePropertyValue (Format-ReviewCampaignHostOrderExhaustedDetail -Decision $hostDecision) -Force
                 $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $stopFact
             }
             catch {

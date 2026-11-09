@@ -1594,6 +1594,17 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   round" or "abandon"; the reset typed as a normal chat message (W54); a second answer refused). Also ruled: after `stop
   the review here`, the sign-off check and the review-signoff packet name each open finding as not covered (id, title,
   where), red first (FR-011, FR-013).
+- **Built (2026-11-09), the old pause decision and its renderers**: red first (`a0ab0ca0`), then built.
+  `Format-ReviewCampaignPauseSurface`, `Format-ReviewCampaignOutstandingPause` and `Get-ReviewCampaignFindingMixLines` are
+  deleted. `Resolve-ReviewCampaignPauseDecision` returns only `rounds_used`, `budget_total` and an empty `recommendation`;
+  the pause fact no longer writes the finding counts (stored facts with them stay valid), and carries a `recommendation`
+  only when the stop's own writer sets one ((a), (c) containment, (d) and the halt each do). `review-result-produced` is
+  declared on `review_collected` (ingestor) with two consumers: `Test-ReviewResultSpendsRound` and the sign-off gate's
+  `review-partial` route, which now reads `review_collected` and says the review did not complete with no per-round
+  authorization. The timeout and failure routes' action `report-failure-and-request-rerun-grant` is now
+  `rerun-within-budget`, and the actionable route's "separately authorized review" wording is gone (FR-010). Suites:
+  `review-decision-surface` 7/7, `authority-control-consumer-guard` 7/7, the step (iii) suites green. Nineteen
+  `campaign-pause-core` cases pin the deleted decision's fields and await the maintainer's classification.
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`

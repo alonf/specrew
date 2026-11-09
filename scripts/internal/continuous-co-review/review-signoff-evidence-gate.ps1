@@ -969,13 +969,17 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             'The review ran out of time before it finished (' + [string]$latest.failure_reason + '), so it produced no usable result. ' +
             'Reviews of this size often need a longer window: raise co_review_timeout_seconds in .specrew/config.yml, ' +
             'or pass --timeout-seconds on the next run, then run the review again.'
-        ) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+        ) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'rerun-within-budget'
     }
-    if ([string]$latest.completion -cne 'complete') {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'latest-review-incomplete' -Message 'Validated partial findings remain advisory, but a complete separately authorized run is required.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'use-partial-findings-and-request-rerun-grant'
+    # SPECREW-AUTHORITY-CONSUMER: review-result-produced
+    # Feature 203 T008 step (iii) (maintainer ruling 2026-11-09): one answer to "did a complete review come back" -
+    # review_collected, as the engine reads it; a result written before T008 has none, and its completion stands in.
+    $latestCollected = if ((Get-ReviewAuthorityPropertyNames -Object $latest) -contains 'review_collected') { [bool](Get-ReviewAuthorityProperty -Object $latest -Name 'review_collected') } else { [string]$latest.completion -ceq 'complete' }
+    if (-not $latestCollected) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'latest-review-incomplete' -Message 'The latest review did not complete, so it cannot clear your files, and any findings it reported stay open. The next round runs within the review budget approved with the implementation; nothing is needed from you for it.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'use-partial-findings-and-request-rerun-grant'
     }
     if ([string]$latest.validation -cne 'valid' -or [string]$latest.currentness -cne 'current') {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'rerun-within-budget'
     }
     # The SAME predicate the pause guard above consults. Reaching here means the sequential gates have
     # already excluded every other shape, so this is equivalent to the conjunction it replaces - and
@@ -996,11 +1000,11 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         }
         $actionable = @($latest.findings | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
         if ($actionable -or $requiresCorrection) {
-            return New-ReviewCampaignVerdictPacketDecision -Route 'review-actionable' -Reason 'complete-current-actionable-findings' -Message 'The exact current review has actionable findings; suppress the boundary packet, correct them, and run a separately authorized review.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'fix-and-request-rerun-grant'
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-actionable' -Reason 'complete-current-actionable-findings' -Message 'The review of your files as they are now has findings to fix. They are fixed within the approved tasks, and the next round checks the fixes within the review budget.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'fix-and-request-rerun-grant'
         }
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-human-decision' -Reason 'complete-current-advisory-findings' -Message 'The exact current review has advisory findings that require a narrow human disposition before any boundary packet.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -AskNarrowQuestion $true -ImplementerAction 'ask-narrow-non-boundary-question'
     }
-    return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+    return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'rerun-within-budget'
 }
 
 function Get-ReviewCampaignVerdictPacketDecision {

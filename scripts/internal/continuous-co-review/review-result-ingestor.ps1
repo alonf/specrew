@@ -439,6 +439,7 @@ function Invoke-ReviewResultIngress {
         # whatever the exit. Recorded as its own fact because `completion` also folds in the runtime outcome and the
         # controller's degrades: a complete review delivered by a run that then exited badly is still a review the human
         # paid for, and a timed-out run with half a review is not.
+        # SPECREW-AUTHORITY-CONTROL: review-result-produced
         review_collected = [bool]($candidateRead.valid -and $null -ne $candidateRead.candidate -and [string]$candidateRead.candidate.completion -ceq 'complete')
     }
     if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $result | Add-Member -NotePropertyName reviewer_host -NotePropertyValue $ReviewerHost.Trim().ToLowerInvariant() }

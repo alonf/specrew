@@ -26,7 +26,7 @@ BeforeAll {
     function script:Resolve-Gate($Result) {
         return Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($Result)
     }
-    function script:New-Major { [pscustomobject][ordered]@{ finding_id = 'finding-0123456789abcdef'; severity = 'major'; title = 'Empty store'; location = 'src/app.ps1:1'; resolution = 'open' } }
+    function script:New-Major { [pscustomobject][ordered]@{ finding_id = 'finding-0123456789abcdef'; source_local_id = 'l1'; lineage_id = 'lin-0123456789abcdef'; severity = 'major'; title = 'Empty store'; description = 'Failure scenario: an empty store throws.'; location = 'src/app.ps1:1'; relevance = 'current'; resolution = 'open'; demoted = $false; demoted_from = '' } }
 }
 
 Describe 'the old pause menu is gone, and nothing reads it (maintainer ruling 2026-11-09)' {
