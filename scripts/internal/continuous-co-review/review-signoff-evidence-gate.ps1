@@ -1155,9 +1155,24 @@ function Get-ReviewCampaignVerdictPacketDecision {
     # brought back only part of a review - keeps the review from counting as clean, so it cannot release the sign-off,
     # whatever the latest result says. It closes only by a fix the next round confirms, or by the human's typed line.
     # Feature 203 T008 step (iii) (FR-011, FR-013): the sign-off names what the review leaves behind, finding by finding.
+    # Fail closed (maintainer, 2026-11-09): a sign-off that cannot list what the review leaves behind does not release.
     $findingLines = @()
-    try { $findingLines = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $StoreRoot -CampaignId $CampaignId) } catch { $findingLines = @() }
+    try { $findingLines = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $StoreRoot -CampaignId $CampaignId) }
+    catch {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'signoff-listing-unreadable' `
+            -Message ('Specrew could not list the findings this review leaves behind, so it cannot ask for your sign-off yet. What could not be read: ' + $_.Exception.Message) `
+            -CampaignId $CampaignId -RunId ([string]$packet.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+    }
     if ($findingLines.Count -gt 0) {
+        # When the ingestor demoted anything, the release leads with that, never with "found nothing that blocks".
+        $demoted = @($findingLines | Where-Object { $_ -like 'Demoted:*' })
+        if ($demoted.Count -gt 0 -and [bool]$packet.render_boundary_packet) {
+            $bySeverity = @($demoted | ForEach-Object { if ($_ -match 'reported it as (?<s>[a-z]+);') { $Matches['s'] } } | Group-Object | Sort-Object Name |
+                    ForEach-Object { '{0} {1} finding{2}' -f $_.Count, $_.Name, $(if ($_.Count -eq 1) { '' } else { 's' }) })
+            $lead = ('The reviewer reported {0}. Specrew recorded {1} as minor because {2} no concrete failure scenario. Read {3} below before you approve.' -f `
+                    ($bySeverity -join ' and '), $(if ($demoted.Count -eq 1) { 'it' } else { 'them' }), $(if ($demoted.Count -eq 1) { 'it states' } else { 'they state' }), $(if ($demoted.Count -eq 1) { 'it' } else { 'them' }))
+            $packet.message = $lead
+        }
         $packet.message = ([string]$packet.message + [Environment]::NewLine + ($findingLines -join [Environment]::NewLine))
         $packet | Add-Member -NotePropertyName finding_lines -NotePropertyValue $findingLines -Force
     }
