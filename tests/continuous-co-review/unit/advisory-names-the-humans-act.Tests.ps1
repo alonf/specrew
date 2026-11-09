@@ -15,7 +15,39 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
     . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+
+    # Feature 203 T008 (DRIFT-052 item 6): the review-request advisories and their sentence generator are gone with the
+    # navigator's per-route block. What a human and an agent now meet at a review stop is the stop surface - one per stop
+    # kind, (a) to (d) - and the agent message beside it. These are every one of them, built through the engine's writer.
+    $script:StopKinds = @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order')
+    function script:New-Stop([string]$Kind) {
+        $reason = switch ($Kind) { 'a-budget-spent' { 'budget-spent' } 'b-dispute-or-defer' { 'dispute' } 'c-judgment' { 'ask' } default { 'host-order-exhausted' } }
+        $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
+        $stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-advisory' -TargetDigest ('a' * 40) -Decision $decision `
+            -ObservedAt '2026-11-09T08:00:00Z' -StopKind $Kind -StopReason $reason -NextHost $(if ($Kind -ceq 'd-host-outside-order') { 'claude' } else { '' })
+        $stop | Add-Member -NotePropertyName recommendation -NotePropertyValue 'the crew wants to know whether the cache should be per host.' -Force
+        return $stop
+    }
+    function script:Get-StopSurfaces {
+        $open = @([pscustomobject]@{ finding_id = 'finding-0123456789abcdef'; finding_key = 'finding-0123456789abcdef'; severity = 'major'; title = 'Empty store'; location = 'src/app.ps1:1' })
+        $crossing = [pscustomobject]@{ crossing_id = 'crossing-9b3d255e'; from_boundary = 'before-implement'; to_boundary = 'review-signoff'; working_boundary = 'review-signoff' }
+        foreach ($kind in $script:StopKinds) {
+            foreach ($withCrossing in @($false, $true)) {
+                [pscustomobject]@{
+                    name = ('{0}{1}' -f $kind, $(if ($withCrossing) { ' (crossing recorded)' } else { '' }))
+                    text = (@(Format-ReviewCampaignStopSurface -Stop (script:New-Stop -Kind $kind) -OpenFindings $open -PendingCrossing $(if ($withCrossing) { $crossing } else { $null })) -join "`n")
+                }
+            }
+        }
+        foreach ($withCrossing in @($false, $true)) {
+            [pscustomobject]@{
+                name = ('agent message{0}' -f $(if ($withCrossing) { ' (crossing recorded)' } else { '' }))
+                text = [string](Build-ReviewCampaignStopAgentDirective -PendingCrossing $(if ($withCrossing) { $crossing } else { $null }))
+            }
+        }
+    }
 
     # Written without regex: every generated pattern in this slice has had its escapes mangled at least
     # once, and plain string work has nothing to mangle.
@@ -36,60 +68,71 @@ BeforeAll {
 }
 
 Describe 'T008 the review-request advisories name the command and ask for no round approval' {
-    It '<Action> names the review command and the budget that pays for it, and asks for no approval' -ForEach @(
-        @{ Action = 'request-current-digest-review' }, @{ Action = 'request-authorized-review' }
+    # Renamed from "<Action> names the review command and the budget that pays for it, and asks for no approval" (maintainer
+    # classification 2026-11-09, class A, DRIFT-052 item 6 and FR-006): there is no review-request advisory left. No stop
+    # surface and no agent message names a review command, `approved for review round` or "run another round".
+    It 'the <Kind> stop and the agent message name no review command, no round approval and no further round' -ForEach @(
+        @{ Kind = 'a-budget-spent' }, @{ Kind = 'b-dispute-or-defer' }, @{ Kind = 'c-judgment' }, @{ Kind = 'd-host-outside-order' }
     ) {
-        $sentence = [string](Get-ReviewCampaignActionSentence -Action $Action)
-        $sentence | Should -Not -BeNullOrEmpty
-        $sentence | Should -Match ([regex]::Escape('specrew review --live')) -Because 'the command stays discoverable - removing it produced two invented authorizations'
-        $sentence | Should -Match 'review budget approved with the implementation'
-        $sentence.Contains($script:ApprovalFlag) | Should -BeFalse -Because 'the per-round approval flag no longer exists'
-        $sentence.ToLowerInvariant().Contains($script:TypedPhrase) | Should -BeFalse -Because 'there is no round approval to ask the human for'
+        foreach ($surface in @(script:Get-StopSurfaces | Where-Object { $_.name.StartsWith($Kind) -or $_.name.StartsWith('agent message') })) {
+            $lower = $surface.text.ToLowerInvariant()
+            $lower.Contains('specrew review --') | Should -BeFalse -Because "$($surface.name): no stop names the review command - no stop asks for a round (FR-006)"
+            $lower.Contains($script:TypedPhrase) | Should -BeFalse -Because "$($surface.name): the per-round approval is gone (FR-010)"
+            $lower.Contains('run another round') | Should -BeFalse -Because "$($surface.name): the loop runs the next round itself"
+            $surface.text.Contains($script:ApprovalFlag) | Should -BeFalse -Because "$($surface.name): the flag no longer exists"
+        }
     }
 
     It 'does not tell the human to run the command as their own act' {
-        foreach ($action in @('request-current-digest-review', 'request-authorized-review')) {
-            $sentence = [string](Get-ReviewCampaignActionSentence -Action $action)
-            $sentence.ToLowerInvariant().Contains('ask the human to run') | Should -BeFalse -Because 'the human decides; the agent operates'
+        # Class B: the same property, over every stop surface.
+        foreach ($surface in @(script:Get-StopSurfaces)) {
+            $surface.text.ToLowerInvariant().Contains('ask the human to run') | Should -BeFalse -Because "$($surface.name): the human decides; the agent operates"
         }
     }
 
     It 'leaves advisories that name no approval command alone' {
-        $sentence = Get-ReviewCampaignActionSentence -Action 'poll-existing-run'
-        $sentence | Should -Not -BeNullOrEmpty
-        $sentence.Contains($script:ApprovalFlag) | Should -BeFalse
+        # Class A (the sentence generator is gone): the stop's agent message names no approval command and no flag.
+        foreach ($surface in @(script:Get-StopSurfaces | Where-Object { $_.name.StartsWith('agent message') })) {
+            $surface.text | Should -Not -Match '--[a-z]' -Because "$($surface.name): flags are not the agent message's business at a stop"
+            $surface.text.ToLowerInvariant().Contains('approved for') | Should -BeFalse -Because "$($surface.name): the agent never relays an approval phrase at a stop"
+        }
     }
 
     It 'still returns empty for an unknown action rather than echoing the token' {
-        Get-ReviewCampaignActionSentence -Action 'not-a-real-action' | Should -BeNullOrEmpty
+        # Class B: an unknown stop kind refuses, and its token never renders on a surface.
+        $rendered = $null
+        { $script:rendered = Format-ReviewCampaignStopSurface -Stop (script:New-Stop -Kind 'not-a-real-kind') -OpenFindings @() } | Should -Throw
+        $rendered | Should -BeNullOrEmpty
     }
 }
 
 Describe 'T008 the agent channel runs the review within the budget and never asks for a round' {
     It 'says running the review is the agent''s job and that the human is never asked for a round' {
-        $decision = [pscustomobject]@{ ask_narrow_question = $false; route = 'review-required'; message = 'x'; run_id = ''; implementer_action = 'request-authorized-review' }
-        $directive = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $decision -PendingCrossing $null
-        $directive | Should -Not -BeNullOrEmpty
-        $lower = $directive.ToLowerInvariant()
-        $lower.Contains('your job') | Should -BeTrue -Because 'execution is the agent role, stated in the agent channel'
-        $lower.Contains('never ask the human for a round') | Should -BeTrue
-        $lower.Contains($script:TypedPhrase) | Should -BeFalse
-        $directive.Contains($script:ApprovalFlag) | Should -BeFalse
+        # Class B, the code was wrong (fix 4, maintainer classification 2026-11-09): the stop's agent message dropped it.
+        foreach ($surface in @(script:Get-StopSurfaces | Where-Object { $_.name.StartsWith('agent message') })) {
+            $lower = $surface.text.ToLowerInvariant()
+            $lower.Contains('your job') | Should -BeTrue -Because "$($surface.name): execution is the agent role, stated in the agent channel"
+            $lower.Contains('never ask the human for a round') | Should -BeTrue -Because $surface.name
+            $lower.Contains($script:TypedPhrase) | Should -BeFalse
+            $surface.text.Contains($script:ApprovalFlag) | Should -BeFalse
+        }
     }
 }
 
 Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming the typed phrase' {
     It 'holds across every action the sentence generator can produce' {
-        $actions = @('request-current-digest-review', 'request-authorized-review', 'poll-existing-run',
-            'proceed', 'await-human-pause-decision', 'reconcile-run-claim', 'repair-review-state')
+        # Class B (maintainer classification 2026-11-09): the same rule over every surface the stop renderer produces - an
+        # authority flag on a surface must name the typed phrase that authorizes it.
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        $authorityFlags = Get-SpecrewAuthorityFlagPhraseMap
         $offenders = [System.Collections.Generic.List[string]]::new()
-        foreach ($action in $actions) {
-            $sentence = [string](Get-ReviewCampaignActionSentence -Action $action)
-            if ([string]::IsNullOrWhiteSpace($sentence)) { continue }
-            if (-not $sentence.Contains($script:ApprovalFlag)) { continue }
-            if (-not (Test-NamesTheDecision -Text $sentence)) { [void]$offenders.Add($action) }
+        foreach ($surface in @(script:Get-StopSurfaces)) {
+            foreach ($flag in @($authorityFlags.Keys)) {
+                if (-not $surface.text.Contains([string]$flag)) { continue }
+                if (-not $surface.text.Contains([string]$authorityFlags[$flag])) { [void]$offenders.Add("$($surface.name) [$flag]") }
+            }
         }
-        @($offenders).Count | Should -Be 0 -Because "an advisory naming the flag must name the typed phrase that authorizes it (offenders: $($offenders -join ', '))"
+        @($offenders).Count | Should -Be 0 -Because "a surface naming a flag must name the typed phrase that authorizes it (offenders: $($offenders -join ', '))"
     }
 
     It 'holds across the reader-facing strings in the co-review sources and the review CLI' {
