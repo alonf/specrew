@@ -345,19 +345,13 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $reused = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-public-two' `
             -ReviewerHost fixture -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
-        # ORDERING CHANGED 2026-08-11 when the pause protocol was wired to this command, and the change
-        # is deliberate rather than incidental. After a completed round BOTH refusals are true: the
-        # round's decision is unanswered, and the single grant is spent. The old order reported
-        # 'allowance-exhausted' first, which points the consumer at `--remediate allowance-reset` - a
-        # spend-enabling action - while the thing actually owed is an ANSWER. Answering may well end the
-        # campaign (option 2 stops here and completes sign-off) with no top-up needed at all, so the
-        # pause is not merely first in the code, it is the cheaper and more accurate next step.
-        #
-        # What has NOT changed is the part that matters most: nothing was invoked and nothing was spent.
-        # The two fact counts below are unchanged from before this reordering and are the real guarantee.
-        $reused.status | Should -Be 'paused'
+        # Feature 203 T008 (DRIFT-052 item 5; maintainer classification 2026-11-09, class A): no per-round pause is owed.
+        # The review of these files ended clean, so a second launch on the same files is refused as unchanged - nothing
+        # invoked, nothing spent. The two fact counts below are the guarantee this case always carried.
+        $reused.status | Should -Be 'not-started'
         $reused.invoked | Should -BeFalse
-        $reused.reason | Should -Match 'pause-decision-pending'
+        $reused.reason | Should -BeExactly 'review-tree-unchanged'
+        [bool]$reused.ended_clean | Should -BeTrue -Because 'the last round reviewed these exact files and nothing is open'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind grants).Count | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 1
     }
@@ -603,8 +597,11 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $note = New-CampaignResult -Verdict findings -CanApprove $false -Findings @((New-CampaignFinding -Severity note))
         $noteRoute = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($note)
-        $noteRoute.route | Should -Be 'review-human-decision'
-        $noteRoute.ask_narrow_question | Should -BeTrue
+        # Feature 203 T008 (FR-004; maintainer ruling 2026-11-09, built in cf2285d7): a complete, current review whose
+        # findings are all non-gating releases the sign-off and lists them; it no longer asks for a human disposition.
+        $noteRoute.route | Should -Be 'boundary-clean'
+        $noteRoute.render_boundary_packet | Should -BeTrue
+        $noteRoute.ask_narrow_question | Should -BeFalse
 
         $disposition = [pscustomobject][ordered]@{
             schema_version = '1.0'; fact_type = 'human-disposition'; disposition_id = 'disposition-human-one'
@@ -627,16 +624,17 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $timeout = New-CampaignResult -Completion partial -Verdict incomplete -Runtime timed-out -CanApprove $false -Findings @((New-CampaignFinding -Severity minor)) -FailureReason 'killed after timeout'
         (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($timeout)).route | Should -Be 'review-timeout'
 
-        foreach ($blocked in @($majorRoute, $noteRoute,
+        foreach ($blocked in @($majorRoute,
                 (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($partial)),
                 (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($stale)),
                 (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($timeout)))) {
             $blocked.render_boundary_packet | Should -BeFalse
             $blocked.render_verdict_marker | Should -BeFalse
-            # MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive and no
-            # longer prints in the human's block. Same guarantee, different channel.
-            (Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $blocked -PendingCrossing $null) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
+        # MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive and never prints in the
+        # human's block. Feature 203 T008 (DRIFT-052 item 6; maintainer classification 2026-11-09, class B): the per-route
+        # navigator block is gone, and the agent message of a review stop carries the clause. Same guarantee, its new home.
+        (Build-ReviewCampaignStopAgentDirective -PendingCrossing $null) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
     }
 
     It 'backfills omitted production scope, publishes one direct-parent finalization, and renders both commits through the wired gate' {

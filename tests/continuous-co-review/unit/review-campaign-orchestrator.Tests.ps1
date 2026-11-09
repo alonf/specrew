@@ -86,22 +86,18 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         $result.result.started_at | Should -Match '^2026-07-16T'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 0
-        # THE ROUND SPENT ITS SLOT, SO IT OWES THE HUMAN A PAUSE TO ANSWER.
-        #
-        # DRIFT-199-I002-018: this assertion did not exist, and the pause write beneath it had NEVER
-        # succeeded. `Add-ReviewCampaignRoundPause` was called with `-ProjectName $FeatureId` inside a
-        # function that declared no `$FeatureId` - under StrictMode it threw on argument binding every
-        # time, and a bare `catch { $roundPause = $null }` swallowed it. The result published, the round
-        # was charged, and no pause was recorded; the NEXT round then failed closed on
-        # `pause-record-missing-for-completed-round` and told the human to check a folder permission that
-        # was fine. Nothing was red, because nothing asked.
-        #
-        # $result.pause is the return-value half; pending-pause.json is the durable half the guard that
-        # blocks the next round actually reads. Both are asserted, because the defect was invisible in
-        # the first and only detectable in the second.
-        $result.pause | Should -Not -BeNullOrEmpty -Because 'a terminal round returns the pause it recorded'
-        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/pending-pause.json') | Should -BeTrue -Because 'the durable pause fact is what the next round reads; without it the campaign wedges'
-        (Get-ReviewCampaignPendingPause -StoreRoot $context.store -CampaignId cmp-demo) | Should -Not -BeNullOrEmpty -Because 'the guard reads it through this accessor, so this is the shape that matters'
+        # Feature 203 T008 (DRIFT-052 item 5; maintainer classification 2026-11-09, class A): a round within the budget records
+        # no pause - the per-round pause is gone (FR-006, FR-010). What the next launch reads is the loop state: the last
+        # round that collected a review, on this digest, with nothing open, so a launch on the same files is refused with
+        # review-tree-unchanged (proven at the public layer in tests/unit/review-loop-stops.Tests.ps1).
+        # DRIFT-199-I002-018's half still holds: whatever a terminal round records, the next launch must be able to read.
+        [bool]$result.pause.recorded | Should -BeFalse -Because 'a round within the budget owes the human no answer'
+        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/pending-pause.json') | Should -BeFalse -Because 'no per-round pause is written'
+        (Get-ReviewCampaignPendingPause -StoreRoot $context.store -CampaignId cmp-demo) | Should -BeNullOrEmpty
+        $loop = Get-ReviewCampaignLoopState -StoreRoot $context.store -CampaignId cmp-demo
+        [string]$loop.last_spent_run_id | Should -BeExactly 'run-one' -Because 'the round collected a complete review, so it counts'
+        [string]$loop.last_spent_digest | Should -BeExactly 'digest-one' -Because 'the next launch compares the files against this digest'
+        [bool]$loop.ended_clean | Should -BeTrue -Because 'nothing is open after a pass'
         @($events).Count | Should -BeGreaterThan 2
         @($events | Where-Object { $_.authority }).Count | Should -Be 0
         @($events | Where-Object { $null -ne $_.validated_finding_count -and $_.stage -ne 'terminal' }).Count | Should -Be 0
@@ -356,13 +352,15 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         $recovered.result.can_approve_current | Should -BeFalse
         $disposeLog.Count | Should -Be 1
         (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('complete')
-        # ANY PATH THAT SPENDS A ROUND OWES THE PAUSE THAT LETS THE HUMAN ANSWER FOR IT.
-        # This publish passes Invoked:$true and therefore charges the allowance. Until DRIFT-199-I002-018
-        # it wrote no pause, so spending the round and wedging the campaign were one act: the next round
-        # failed closed on pause-record-missing-for-completed-round and blamed a folder permission.
-        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/pending-pause.json') | Should -BeTrue -Because 'a reconciled run is charged to the allowance, so it owes the human a pause to answer'
-        $reconciledPause = Get-ReviewCampaignPendingPause -StoreRoot $context.store -CampaignId cmp-demo
-        $reconciledPause | Should -Not -BeNullOrEmpty -Because 'the pause the guard reads must be the one this path wrote'
+        # Feature 203 T008 (DRIFT-052 items 3 and 5; maintainer classification 2026-11-09, class A): a reconciled run counts
+        # only if it brought back a complete review (item 3: whatever the exit), and it writes no pause unless it is stop (a)
+        # or (c). This reviewer wrote a complete review before the controller crashed, so the round counts; one round of the
+        # floor budget of 2 is used with nothing open, which is neither stop (a) nor (c), so it owes the human no answer.
+        [bool]$recovered.result.review_collected | Should -BeTrue -Because 'the reviewer had written a complete review'
+        Test-ReviewResultSpendsRound -Result $recovered.result | Should -BeTrue -Because 'a collected review spends its round whatever the exit'
+        [string](Get-ReviewCampaignLoopState -StoreRoot $context.store -CampaignId cmp-demo).last_spent_run_id | Should -BeExactly 'run-one'
+        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/pending-pause.json') | Should -BeFalse -Because 'no stop (a) or (c) was reached'
+        (Get-ReviewCampaignPendingPause -StoreRoot $context.store -CampaignId cmp-demo) | Should -BeNullOrEmpty
     }
 
     It 'terminates and abandons a historical four-binding code recovery fact without asserting currentness' {
