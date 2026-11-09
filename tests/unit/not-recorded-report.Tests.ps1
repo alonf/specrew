@@ -88,11 +88,14 @@ try {
     try { $v3 = Get-Visible (Send-Prompt -Root $r3 -Text 'defer finding F1') } finally { ${function:Get-SpecrewTypedActPendingState} = $originalPending }
     Assert-True (Test-Says $v3 'defer finding F1' 'destination' -and $v3.Contains('defer finding F1 to <')) "it names the missing destination and the form (got '$v3')"
 
-    Write-Host 'Case 4: an answer the review stop waits for but no writer records yet says so, never silence'
+    # Feature 203 T008 step (iii) gave every stop line a writer (Write-SpecrewStopAnswerAuthorization), so no stop answer is
+    # left that "this version cannot record". What stays: a stop line routed to a stop that has no pause fact to bind to
+    # records nothing, and says so - never silence.
+    Write-Host 'Case 4: a stop answer whose stop cannot be found to bind it to records nothing and says so, never silence'
     $r4 = New-ReportFixture
     ${function:Get-SpecrewTypedActPendingState} = { param([string]$ProjectRoot) [pscustomobject]@{ Crossing = $null; Pause = [pscustomobject]@{ Kind = 'b-dispute-or-defer'; Id = 'run-1' }; WorkshopQuestion = $null; PreBudgetReviewActs = $true } }
     try { $v4 = Get-Visible (Send-Prompt -Root $r4 -Text 'drop finding F1') } finally { ${function:Get-SpecrewTypedActPendingState} = $originalPending }
-    Assert-True (Test-Says $v4 'drop finding F1' 'cannot record') "it says this version cannot record that answer (got '$v4')"
+    Assert-True (Test-Says $v4 'drop finding F1' 'not recorded') "it says the answer was not recorded (got '$v4')"
 
     Write-Host 'Case 5: the report checks the store when it speaks: a message recorded since its report is not reported'
     $r5 = New-ReportFixture

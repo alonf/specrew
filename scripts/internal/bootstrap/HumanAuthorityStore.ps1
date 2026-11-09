@@ -1493,7 +1493,11 @@ function Get-SpecrewTypedActPendingState {
     $pause = $null
     try {
         $published = Get-SpecrewPendingPauseIdentity -ProjectRoot $ProjectRoot
-        if ($null -ne $published -and -not [string]::IsNullOrWhiteSpace([string]$published.run_id)) { $pause = [pscustomobject]@{ Kind = 'b-dispute-or-defer'; Id = [string]$published.run_id } }
+        # Feature 203 T008 step (iii): the stop's own kind; a pause written before step (iii) has none and reads as before.
+        if ($null -ne $published -and -not [string]::IsNullOrWhiteSpace([string]$published.run_id)) {
+            $kind = if (-not [string]::IsNullOrWhiteSpace([string]$published.stop_kind)) { [string]$published.stop_kind } else { 'b-dispute-or-defer' }
+            $pause = [pscustomobject]@{ Kind = $kind; Id = [string]$published.run_id }
+        }
     }
     catch { $pause = $null }
     $crossing = $null
@@ -1519,7 +1523,11 @@ function Get-SpecrewTypedActWriterName {
         'coverage-deferral' { return 'Write-SpecrewCoverageDeferralAuthorization' }
         'partial-signoff' { return 'Write-SpecrewReviewSignoffOverrideAuthorization' }
         'workshop-repair' { return 'Write-SpecrewWorkshopRepairAuthorization' }
-        'stop-answer' { if ([string]$Act.Answer -cin @('stop-review', 'abandon')) { return 'Write-SpecrewPauseDecisionAuthorization' } }
+        'stop-answer' {
+            if ([string]$Act.Answer -cin @('stop-review', 'abandon')) { return 'Write-SpecrewPauseDecisionAuthorization' }
+            # Feature 203 T008 step (iii) (FR-011): the other stop lines, captured bound to the open stop for the next launch.
+            if ([string]$Act.Answer -cin @('defer', 'drop', 'fix', 'allow-reviewer', 'judgment')) { return 'Write-SpecrewStopAnswerAuthorization' }
+        }
     }
     return ''
 }
@@ -1543,6 +1551,8 @@ function Invoke-SpecrewTypedActSink {
     $splat = @{ ProjectRoot = $ProjectRoot; Response = $Text; HostKind = $HostKind; SourceEvent = $SourceEvent }
     if ($writer.Parameters.ContainsKey('NowUtc') -and -not [string]::IsNullOrWhiteSpace($NowUtc)) { $splat['NowUtc'] = $NowUtc }
     if ($writer.Parameters.ContainsKey('TurnIdentity') -and -not [string]::IsNullOrWhiteSpace([string]$Act.TurnIdentity)) { $splat['TurnIdentity'] = [string]$Act.TurnIdentity }
+    # A writer that records what the classifier derived (the stop lines: answer, finding, argument) takes the act itself.
+    if ($writer.Parameters.ContainsKey('Act')) { $splat['Act'] = $Act }
     return (& $writer @splat)
 }
 
@@ -2449,6 +2459,9 @@ function Get-SpecrewPendingPauseIdentity {
             # module and it must not take a dependency on the review-authority reader to answer a
             # question about a file sitting next to the one it already opened.
             if ([IO.File]::Exists([IO.Path]::Combine($pauseFile.DirectoryName, 'pause-decision.json'))) { continue }
+            # Feature 203 T008 step (iii): a stop the engine reads as closed is not waiting either - (a) after an allowance
+            # reset, (d) after a reviewer was allowed (Get-ReviewCampaignOpenStop, read here from the files beside it).
+            if ($pause.PSObject.Properties['stop_kind'] -and (Test-SpecrewStopClosedBySibling -Pause $pause -RunDirectory $pauseFile.DirectoryName)) { continue }
             $pauseCampaign = if ($pause.PSObject.Properties['campaign_id']) { [string]$pause.campaign_id } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($CampaignId)) {
                 if ($pauseCampaign -cne [string]$CampaignId) { continue }
@@ -2468,7 +2481,126 @@ function Get-SpecrewPendingPauseIdentity {
         campaign_id = $(if ($newest.PSObject.Properties['campaign_id']) { [string]$newest.campaign_id } else { '' })
         run_id = [string]$newest.run_id
         target_digest = $(if ($newest.PSObject.Properties['target_digest']) { [string]$newest.target_digest } else { '' })
+        stop_kind = $(if ($newest.PSObject.Properties['stop_kind']) { [string]$newest.stop_kind } else { '' })
     }
+}
+
+function Test-SpecrewStopClosedBySibling {
+    # Feature 203 T008 step (iii): whether the campaign closed this stop without a pause decision - stop (a) by an allowance
+    # reset recorded after it, stop (d) by a reviewer allowed after it. The bootstrap module reads the campaign's files
+    # directly rather than loading the review engine for one question (the same rule as the answered check above).
+    [OutputType([bool])]
+    param([Parameter(Mandatory)]$Pause, [Parameter(Mandatory)][string]$RunDirectory)
+    $kind = [string]$Pause.stop_kind
+    $folder = switch ($kind) { 'a-budget-spent' { 'budget-resets' } 'd-host-outside-order' { 'allowed-reviewers' } default { '' } }
+    if ([string]::IsNullOrWhiteSpace($folder)) { return $false }
+    $pausedAt = if ($Pause.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $Pause.observed_at } else { $null }
+    if ($null -eq $pausedAt) { return $false }
+    $campaignDirectory = [IO.Path]::GetDirectoryName([IO.Path]::GetDirectoryName($RunDirectory))
+    $siblings = [IO.Path]::Combine($campaignDirectory, $folder)
+    if (-not [IO.Directory]::Exists($siblings)) { return $false }
+    foreach ($file in [IO.Directory]::EnumerateFiles($siblings, '*.json')) {
+        try {
+            $fact = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+            $at = if ($fact.PSObject.Properties['observed_at']) { ConvertTo-SpecrewAuthorityInstant -Value $fact.observed_at } else { $null }
+            if ($null -ne $at -and $at -gt $pausedAt) { return $true }
+        }
+        catch { continue }
+    }
+    return $false
+}
+
+function Get-SpecrewStopAnswerRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/stop-answer'
+}
+
+function Write-SpecrewStopAnswerAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: stop-answer
+    # Feature 203 T008 step (iii) (FR-006, FR-011; DRIFT-052 item 5): the human's typed stop line - `allow reviewer <host>`,
+    # `defer finding <id> to <destination>`, `drop finding <id>`, `fix finding <id>`, or free text at a judgment stop -
+    # captured from the typed turn and bound to the stop that was open when they typed it. The next review launch lands it
+    # as the campaign's own fact (Invoke-ReviewCampaignStopAnswerLanding) and spends it. A line typed with no stop open
+    # binds to nothing and records nothing.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [AllowNull()]$Act,
+        [AllowNull()][string]$TurnIdentity,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    $evidenceSource = 'hook-captured-user-prompt'
+    if ($null -eq $event) {
+        if (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { $event = 'Stop'; $evidenceSource = 'hook-captured-from-transcript' }
+        else { return $null }
+    }
+    $pending = Get-SpecrewPendingPauseIdentity -ProjectRoot $ProjectRoot
+    if ($null -eq $pending -or [string]::IsNullOrWhiteSpace([string]$pending.run_id) -or [string]::IsNullOrWhiteSpace([string]$pending.stop_kind)) { return $null }
+    $text = ([string]$Response).Trim()
+    $answer = ''; $finding = ''; $argument = ''
+    $shape = Get-SpecrewStopAnswerShape -Text $text
+    if ($null -ne $shape) { $answer = [string]$shape.Answer; $finding = [string]$shape.Finding; $argument = [string]$shape.Argument }
+    elseif ($null -ne $Act -and [string]$Act.Answer -ceq 'judgment' -and [string]$pending.stop_kind -ceq 'c-judgment') { $answer = 'judgment' }
+    if ([string]::IsNullOrWhiteSpace($answer)) { return $null }
+    if ($answer -ceq 'defer' -and [string]::IsNullOrWhiteSpace($argument)) { return $null }
+    $hash = Get-SpecrewHumanAuthorityHash -Text $text
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-stop-answer'; authority_kind = 'human'; authorized_by = 'unattributed-human'
+        answer = $answer; finding = $finding; argument = $argument; verdict_text = $text; response_hash = $hash
+        evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind; turn_identity = [string]$TurnIdentity
+        campaign_id = [string]$pending.campaign_id; run_id = [string]$pending.run_id; stop_kind = [string]$pending.stop_kind
+        observed_at = $NowUtc; spent_at = $null; authorization_ref = $null
+    }
+    $directory = Join-Path (Get-SpecrewStopAnswerRoot -ProjectRoot $ProjectRoot) ([string]$pending.run_id)
+    [IO.Directory]::CreateDirectory($directory) | Out-Null
+    $path = Join-Path $directory ('{0}-{1}.json' -f $answer, $hash.Substring(0, 16))
+    if ([IO.File]::Exists($path)) {
+        try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop) } catch { $null = $_ }
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    try { ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path (Get-SpecrewStopAnswerRoot -ProjectRoot $ProjectRoot) 'captures.jsonl') -Encoding UTF8 } catch { $null = $_ }
+    return $fact
+}
+
+function Get-SpecrewStopAnswerAuthorizations {
+    # The unspent typed stop lines bound to one stop, oldest first, each with its path. A record whose text does not hash to
+    # its recorded hash, or that is not the human's, is not authority and is skipped.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$RunId)
+    $directory = Join-Path (Get-SpecrewStopAnswerRoot -ProjectRoot $ProjectRoot) $RunId
+    if (-not [IO.Directory]::Exists($directory)) { return @() }
+    $answers = foreach ($file in [IO.Directory]::EnumerateFiles($directory, '*.json')) {
+        $fact = $null
+        try { $fact = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+        if ($null -eq $fact -or [string]$fact.fact_type -cne 'review-stop-answer' -or [string]$fact.authority_kind -cne 'human') { continue }
+        if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { continue }
+        if ([string]$fact.run_id -cne $RunId) { continue }
+        if (-not [string]::IsNullOrWhiteSpace([string]$fact.spent_at)) { continue }
+        $fact | Add-Member -NotePropertyName path -NotePropertyValue $file -Force
+        $fact
+    }
+    return @($answers | Sort-Object -Property { ConvertTo-SpecrewAuthorityInstant -Value $_.observed_at })
+}
+
+function Complete-SpecrewStopAnswerAuthorization {
+    # One typed line, one landing: stamped spent with the fact it became, and read back.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$AuthorizationRef, [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o')))
+    $fact = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+    $fact.PSObject.Properties.Remove('path')
+    $fact | Add-Member -NotePropertyName spent_at -NotePropertyValue $NowUtc -Force
+    $fact | Add-Member -NotePropertyName authorization_ref -NotePropertyValue $AuthorizationRef -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $Path -Content $json }
+    else { [IO.File]::WriteAllText($Path, $json, [Text.UTF8Encoding]::new($false)) }
+    $verified = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+    return (-not [string]::IsNullOrWhiteSpace([string]$verified.spent_at))
 }
 
 function Test-SpecrewPauseDecisionPhrase {

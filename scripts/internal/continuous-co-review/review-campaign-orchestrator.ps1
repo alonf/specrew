@@ -1476,7 +1476,8 @@ function Get-ReviewCampaignOpenStop {
     # A record is bound to a name first: inside a switch, $_ is the switch's own value.
     $stillOpen = @(foreach ($record in $records) {
             $closed = switch ([string](Get-ReviewAuthorityProperty -Object $record.pause -Name 'stop_kind')) {
-                'a-budget-spent' { $null -ne $resetAt -and $resetAt -gt $record.observed_at }
+                # (a) is about the open findings: with every one fixed, deferred or dropped there is nothing left to decide.
+                'a-budget-spent' { ($null -ne $resetAt -and $resetAt -gt $record.observed_at) -or @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId).Count -eq 0 }
                 'd-host-outside-order' { $null -ne $allowedAt -and $allowedAt -gt $record.observed_at }
                 default { $false }
             }
@@ -1551,6 +1552,64 @@ function Format-ReviewCampaignStopSurface {
     $lines.Add('Send one of these lines as a normal chat message (a reply inside a question UI or picker is not captured):') | Out-Null
     foreach ($entry in @($sendable)) { $lines.Add(('  {0} - {1}' -f $entry.line, $entry.does)) | Out-Null }
     return @($lines)
+}
+
+function Invoke-ReviewCampaignStopAnswerLanding {
+    # Feature 203 T008 step (iii) (FR-006, FR-011; DRIFT-052 item 5): THE NEXT LAUNCH READS THE ANSWER. The hook captured
+    # the human's typed stop line bound to the open stop (Write-SpecrewStopAnswerAuthorization); before a launch the review
+    # command lands each one as the campaign's own fact, then spends it: `allow reviewer <host>` as the allowed-reviewer
+    # fact (closing (d)), `defer`/`drop`/`fix finding <id>` as that finding's disposition, and free text at (c) as the
+    # stop's answer. A line naming a finding that is not open is left unspent and reported. The capture store is read
+    # through the two functions passed in (the bootstrap module's by default), so the engine takes no dependency on it.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId,
+        [scriptblock]$ReadAnswers, [scriptblock]$CompleteAnswer
+    )
+    if ($null -eq $ReadAnswers) {
+        if (-not (Get-Command -Name 'Get-SpecrewStopAnswerAuthorizations' -ErrorAction SilentlyContinue)) { return [pscustomobject]@{ landed = @(); skipped = @() } }
+        # Bound by value: a closure's own scope cannot see a function the caller dot-sourced.
+        $reader = (Get-Command -Name 'Get-SpecrewStopAnswerAuthorizations').ScriptBlock
+        $ReadAnswers = { param($runId) & $reader -ProjectRoot $ProjectRoot -RunId $runId }.GetNewClosure()
+    }
+    if ($null -eq $CompleteAnswer) { $CompleteAnswer = { param($answer, $ref) Complete-SpecrewStopAnswerAuthorization -Path ([string]$answer.path) -AuthorizationRef $ref } }
+    $landed = [Collections.Generic.List[object]]::new(); $skipped = [Collections.Generic.List[object]]::new()
+    $stop = Get-ReviewCampaignOpenStop -StoreRoot $StoreRoot -CampaignId $CampaignId
+    if ($null -eq $stop) { return [pscustomobject]@{ landed = @(); skipped = @() } }
+    $stopRunId = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'run_id')
+    $stopKind = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'stop_kind')
+    foreach ($answer in @(& $ReadAnswers $stopRunId)) {
+        if ($null -eq $answer) { continue }
+        $kind = [string]$answer.answer
+        $ref = 'typed-stop-answer:' + ([string]$answer.response_hash).Substring(0, [Math]::Min(32, ([string]$answer.response_hash).Length))
+        $at = [DateTimeOffset]::UtcNow.ToString('o')
+        switch ($kind) {
+            'allow-reviewer' {
+                $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $StoreRoot -CampaignId $CampaignId -HostName ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at
+            }
+            { $_ -cin @('defer', 'drop', 'fix') } {
+                $named = [string]$answer.finding
+                $target = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.finding_id -ceq $named -or [string]$_.finding_key -ceq $named }) | Select-Object -First 1
+                if ($null -eq $target) { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'finding-not-open' }) | Out-Null; continue }
+                $null = Add-ReviewCampaignFindingDisposition -StoreRoot $StoreRoot -CampaignId $CampaignId -FindingKey ([string]$target.finding_key) `
+                    -Answer $kind -Argument ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at
+            }
+            'judgment' {
+                if ($stopKind -cne 'c-judgment') { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'not-a-judgment-stop' }) | Out-Null; continue }
+                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at
+                $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact $decisionFact
+            }
+            default { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'unknown-answer' }) | Out-Null; continue }
+        }
+        # A dispute or deferral stop (b) is answered once its finding has the human's line.
+        if ($stopKind -ceq 'b-dispute-or-defer' -and $kind -cin @('defer', 'drop', 'fix')) {
+            try { $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at) }
+            catch { if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw } }
+        }
+        $null = & $CompleteAnswer $answer $ref
+        $landed.Add($answer) | Out-Null
+    }
+    return [pscustomobject]@{ landed = @($landed); skipped = @($skipped) }
 }
 
 function New-ReviewCampaignOpenStopRefusal {

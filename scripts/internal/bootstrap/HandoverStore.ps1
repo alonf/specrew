@@ -1543,6 +1543,11 @@ function Invoke-SpecrewTypedAuthorityCapture {
                         default { '' }
                     }
                 }
+                # Feature 203 T008 step (iii): a review stop line (allow reviewer, defer/drop/fix finding) is recorded by
+                # the stop-answer writer.
+                elseif ((Get-Command Get-SpecrewStopAnswerShape -ErrorAction SilentlyContinue) -and $null -ne (Get-SpecrewStopAnswerShape -Text $Response)) {
+                    $expectedWriter = 'Write-SpecrewStopAnswerAuthorization'
+                }
             }
             $legacy = [bool](Test-SpecrewLegacyTurnRecorded -ProjectRoot $ProjectRoot -LegacyTurnId $legacyTurnId `
                     -ContentHash $contentHash -HostKind $HostKind -SinceUtc $TurnArrival -ExpectedWriter $expectedWriter)
@@ -1628,6 +1633,11 @@ function Invoke-SpecrewTypedAuthorityCapture {
                 [string]::IsNullOrWhiteSpace((Get-SpecrewTypedActWriterName -Act $act))) {
                 # Routed to what waits, and no writer records that kind yet (the review stop answers are T008's).
                 $nrReason = 'no-writer'; $nrShape = [pscustomobject]@{ Kind = [string]$act.Kind; Retype = $typedLine }
+            }
+            elseif ($null -ne $act -and [string]$act.Kind -ceq 'stop-answer' -and [string]$act.Answer -cne 'judgment') {
+                # Feature 203 T008 step (iii): routed to a stop, its writer exists, and it bound nothing (the stop closed or
+                # could not be read when the line arrived). Received is not recorded, and the human is told so.
+                $nrReason = 'no-pending-crossing'; $nrShape = [pscustomobject]@{ Kind = 'stop-answer'; Retype = $typedLine }
             }
             if (-not [string]::IsNullOrWhiteSpace($nrReason)) {
                 $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $nrShape -EntryKey $turnId -HostKind $HostKind -SessionId $SessionId `

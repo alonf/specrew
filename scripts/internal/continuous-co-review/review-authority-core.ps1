@@ -487,7 +487,7 @@ function New-ReviewCampaignPauseDecisionFact {
     param(
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$RunId,
-        [Parameter(Mandatory)][ValidateSet('fix-and-continue', 'stop-here', 'abandon')][string]$Choice,
+        [Parameter(Mandatory)][ValidateSet('fix-and-continue', 'stop-here', 'abandon', 'answered')][string]$Choice,
         [Parameter(Mandatory)][string]$ObservedAt
     )
     return [pscustomobject][ordered]@{

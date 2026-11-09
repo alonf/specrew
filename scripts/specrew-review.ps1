@@ -1349,6 +1349,20 @@ if ($Live) {
             # Feature 203 T008: one launch per invocation, paid for by the review budget. A run that brings back no complete
             # review spends nothing (DRIFT-052 item 3), so there is no per-round approval for an automatic retry to protect;
             # moving to the next host after infrastructure failures is the engine's (FR-009).
+            # Feature 203 T008 step (iii) (FR-006, FR-011): the next launch reads the answer. Any typed stop line the hook
+            # captured for the open stop lands first as the campaign's own fact, so a stop the human answered does not
+            # refuse this launch. Fail-soft: a line that cannot land stays unspent and the stop says so again.
+            try {
+                $landingIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId 'run-stop-answer-landing'
+                $stopLanding = Invoke-ReviewCampaignStopAnswerLanding -ProjectRoot $resolvedProjectPath -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -CampaignId ([string]$landingIdentity.campaign_id)
+                foreach ($landedAnswer in @($stopLanding.landed)) {
+                    if (-not $Json -and -not $Quiet) { Write-Host ("Your answer to the review stop was recorded: {0}" -f [string]$landedAnswer.verdict_text) -ForegroundColor Cyan }
+                }
+                foreach ($skippedAnswer in @($stopLanding.skipped)) {
+                    [Console]::Error.WriteLine(("[specrew-review] WARN STOP_ANSWER_NOT_LANDED {0}: {1}" -f [string]$skippedAnswer.reason, [string]$skippedAnswer.answer.verdict_text))
+                }
+            }
+            catch { [Console]::Error.WriteLine('[specrew-review] WARN STOP_ANSWER_LANDING_FAILED ' + $_.Exception.Message) }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost `
                 -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
@@ -1472,7 +1486,9 @@ if ($Live) {
                     # complete wherever it is rendered); the live round's surface does not. Printing
                     # unconditionally showed it twice on the resumed path - measured on a real stop, not
                     # in a fixture, because no assertion counts how many times a correct line appears.
-                    $alreadyTold = (($pauseLines -join "`n") -match '--pause-choice')
+                    # Feature 203 T008 step (iii): a stop's FR-011 surface carries its own sendable lines; the numbered footer
+                    # (which offered "run another round") is never added to it.
+                    $alreadyTold = (($pauseLines -join "`n") -match '--pause-choice|Send one of these lines')
                     # The surface states the choices; this states HOW to send one, which is the half a
                     # numbered list cannot carry on a command line.
                     $answerRunId = [string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_run_id')
