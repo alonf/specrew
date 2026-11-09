@@ -2596,6 +2596,7 @@ function Invoke-ReviewCampaignCommand {
         return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
             -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
     }
+    # SPECREW-AUTHORITY-CONSUMER: review-round-budget
     if (-not [bool]$launchBudget.continuation_available) {
         return [pscustomobject][ordered]@{
             status = 'not-started'; reason = 'review-round-budget-exhausted'; reason_detail = (Format-ReviewCampaignBudgetSpentDetail -BudgetState $launchBudget)
