@@ -37,3 +37,7 @@ index.yml (order + space per lens)
   - Full lists must match index.yml exactly, in order and in membership. A lens added to index.yml fails the test until those lists carry it. The full lists are the skill's list, the methodology catalog tables and the catalog README. The crew also proposes counting the before-specify command list as full, since it enumerates every lens.
   - The relative-order rule applies only to partial lists, such as an example agenda.
   - The test itself names which surfaces are full.
+
+## Amendment (human, 2026-11-10, at the specify review)
+
+Decision 1's "Iteration 2's two-pass split" is stale. The two-pass split (proposal FR-002/FR-003) is now in **iteration 3**, with the back-check, amendments and sweeps. Iteration 2 is problem-space completeness. The original text above is kept.

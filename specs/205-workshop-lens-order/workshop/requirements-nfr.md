@@ -55,3 +55,11 @@ The non-goal "new lenses or questions" applies to **iteration 1**. The feature n
 - **Iteration 3:** the back-check, amendments and sweeps, still waiting for 203.
 
 The original text above is left in place.
+
+## Amendments (human, 2026-11-10, at the specify review)
+
+- **Decision 2 (scope):** "everything in iteration 2 (the two-pass split, back-check, amendments, bindings flow, sweeps, FR-014 fixtures)" is stale. Those items are now **iteration 3**, after 203 merges. Iteration 2 is problem-space completeness.
+- **Decision 4 (FR-005):** "both gate readers of `## Design Decision Points` (design-analysis-gate.ps1, lens-applicability.ps1)" is wrong. Per the data-storage correction, there is **one code reader**, `Get-SpecrewLensDecisionPoints` in `scripts/internal/lens-applicability.ps1`, plus the skill's instruction to the agent. design-analysis-gate.ps1 reads "Key Design Decision Points" in design-analysis.md, which is a different file.
+- **Decision 1 (FR-004 merge):** architecture-core's binding-constraints question duplicates requirements-nfr's existing "Which constraints are mandatory rather than preferences?". The two are merged, and only the scope question is added to requirements-nfr.
+
+The original text above is kept.

@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Open for clarify: which iteration, if any, takes the two-pass split (proposal FR-002/FR-003). It is recorded as unassigned.
+- The two-pass split (proposal FR-002/FR-003) is assigned to iteration 3 (maintainer, 2026-11-10). No open items remain.

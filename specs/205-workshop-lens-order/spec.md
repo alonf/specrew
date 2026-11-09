@@ -16,7 +16,7 @@ The workshop records under `workshop/` are the source of truth. This section sum
 - **Iterations** (scope amendment, 2026-11-10):
   - Iteration 1 (this spec's delivery scope): order, tagging, parity proof, migration.
   - Iteration 2: problem-space completeness, filling thin problem-side questions. It gets its own short workshop.
-  - Iteration 3: the end-of-lens back-check, amendments and final sweeps. It waits for feature 203 to merge.
+  - Iteration 3: the two-pass split (proposal FR-002/FR-003), the end-of-lens back-check, amendments and final sweeps. It waits for feature 203 to merge.
 - **requirements-nfr**: binding constraints and scope (moved here from architecture-core); the parity proof; the tagging proof; the failure output.
 - **architecture-core**:
   - Order option A, with the problem section asked first inside every lens.
@@ -129,7 +129,7 @@ While tagging each lens, the crew lists every problem-side gap it sees for that 
 
 ## Requirements *(mandatory)*
 
-Requirement ids keep proposal 220's numbers where the maintainer named them. FR-015 and later are new in this feature. The proposal's FR-002, FR-003, FR-006 to FR-012 and FR-014 are not in this feature's iteration 1 (see Assumptions).
+Requirement ids keep proposal 220's numbers where the maintainer named them. FR-015 and later are new in this feature. The proposal's FR-002, FR-003, FR-006 to FR-012 and FR-014 belong to iteration 3 (see TG-003).
 
 ### Functional Requirements
 
@@ -140,19 +140,22 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   - every deployed copy of a touched file for full-content equality with its source, ignoring the deploy wrapper
 
   The test MUST name the full surfaces in its own code.
-- **FR-004**: requirements-nfr MUST own the binding-constraint and scope questions, and architecture-core MUST NOT ask them.
+- **FR-004**: requirements-nfr MUST own the binding-constraint and scope questions, and architecture-core MUST NOT ask them. architecture-core's "Which constraints are binding, and which are preferences?" duplicates requirements-nfr's existing "Which constraints are mandatory rather than preferences?", so the two are merged into requirements-nfr's existing question. Only the scope question ("What is deliberately out of scope for this iteration?") is added to requirements-nfr.
 - **FR-005**: Each lens file MUST carry `### Problem questions` and `### Solution questions` inside `## Design Decision Points`. A one-space lens MUST keep the empty heading with a one-line reason. Every decision point MUST sit under exactly one sub-heading. A test MUST prove these, prove that each file agrees with index.yml's `space`, and prove that `Get-SpecrewLensDecisionPoints` returns exactly the tagged points for every lens.
 - **FR-013**: Agendas confirmed before this release MUST NOT be re-checked or reordered. The order check MUST run only when an agenda is confirmed. A test MUST prove that an old-order confirmed agenda resumes and completes.
 - **FR-015**: `index.yml` MUST give each lens a `space` of `problem`, `solution` or `both`, and a lens's position in the list MUST be the order:
   - product-domain, requirements-nfr: problem
   - ui-ux, security-compliance, data-storage, integration-api, devops-operations: both
   - architecture-core, component-design, observability-resilience, code-implementation: solution
+
+  These tags are the expected result, not a target to force. If tagging finds a lens whose questions disagree with its expected tag, the crew MUST bring that lens to the maintainer before deciding. A question MUST NOT be filed under the wrong heading to make the check pass.
 - **FR-016**: The agenda writer MUST refuse a new agenda whose selected lenses break index.yml's relative order. It MUST refuse through the existing refusal helper, naming the out-of-order lenses and the index.yml order, with one action, and MUST NOT reorder silently.
 - **FR-017**: The workshop skill and methodology MUST describe the single-pass order from index.yml, with each lens's problem questions asked before its solution questions.
 - **FR-018**: The workshop skill MUST state that if any list disagrees with index.yml, index.yml wins, and that a confirmed agenda keeps the order it was confirmed in.
 - **FR-019**: A mismatch report MUST name the file and line, the expected order, the order found, and the fix, and one run MUST report every mismatch. For a deployed copy, the fix MUST name `deploy-speckit-extension.ps1 -ProjectPath . -RefreshExisting` and `deploy-squad-runtime.ps1 -ProjectPath .`, say they write inside the project only, and say they also restamp `.squad` runtime files.
 - **FR-020**: The tagging pass MUST record a per-lens list of problem-side gaps as iteration 2's input, and MUST NOT add or reword questions, apart from the split rule and the FR-004 move.
 - **FR-021**: Every existing workshop test MUST be run locally and its result reported. Named `specrew-ci.yml` steps MUST cover the new parity test, the extended agenda-confirmation test, and every existing workshop test that covers a file this feature touches and passes. An already-red workshop test MUST be reported as a finding.
+- **FR-022**: Proposal 220 MUST move to `status: active` with `shipped-as: feature-205`. Its status history MUST gain a line recording the three iterations (1: order, tagging, parity, migration; 2: problem-space completeness; 3: two-pass split, back-check, amendments and sweeps after 203), the fifth order surface found at intake (the before-specify command list), and the choice of order option A. `proposals/INDEX.md` MUST follow in both its table row and its summary line.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -162,9 +165,9 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   - US3: FR-005
   - US4: FR-013, FR-018
   - US5: FR-020
-  - FR-004 and FR-021 cut across the stories.
+  - FR-004, FR-021 and FR-022 cut across the stories.
 - **TG-002**: The implementer owns all FRs, the reviewer (codex co-review) owns review evidence, and the spec steward owns drift.
-- **TG-003**: All FRs above are in iteration 001. Problem-space completeness is iteration 002. The back-check, amendments and sweeps are iteration 003, after 203 merges.
+- **TG-003**: All FRs above are in iteration 001. Problem-space completeness is iteration 002. Iteration 003, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014).
 - **TG-004**: Any spec or implementation conflict is recorded in the iteration drift log and routed through clarify, never edited silently into this spec.
 
 ### Key Entities
@@ -180,7 +183,7 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 ### Measurable Outcomes
 
 - **SC-001**: On the pre-change tree, the parity test fails and reports every disagreeing order surface, at least the five known ones, in a single run. After the change it passes.
-- **SC-002**: All 11 lens files pass the tagging checks, and for each lens the extractor returns exactly the tagged points. The count per lens equals the pre-change count plus one per split bullet, minus the two questions moved off architecture-core.
+- **SC-002**: All 11 lens files pass the tagging checks, and for each lens the extractor returns exactly the tagged points. For every lens, the post-change count is the pre-change count plus one per split bullet in that lens, with two adjustments: architecture-core has two fewer (its constraints question merged into requirements-nfr's, its scope question moved), and requirements-nfr has one more (the scope question). No other lens changes count.
 - **SC-003**: The exemption list is shown to the maintainer, and every entry has a reason.
 - **SC-004**: The old-order agenda fixture resumes and completes, and an out-of-order new agenda is refused with zero reordering.
 - **SC-005**: The named CI steps pass on the feature branch's push, and Specrew CI, Test and Cross-Platform Validation all conclude green with no skipped gate job.
@@ -188,7 +191,8 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 
 ## Assumptions
 
-- The two-pass split (proposal FR-002/FR-003) is out of iteration 1 and not yet assigned to an iteration.
+- The two-pass split (proposal FR-002/FR-003) is out of iteration 1. The maintainer assigned it to iteration 3 on 2026-11-10, with the back-check, amendments and sweeps.
+- The before-specify command list is a full list. The maintainer confirmed this on 2026-11-10.
 - `Read-IntakeYamlDocument -Kind lenses` parses `space` as bare or quoted and keeps list order. This was verified on a scratch copy on 2026-11-10.
 - The two deploy scripts refresh every checked copy, including `.cursor`, and never write to the home folder. This was verified in scratch on 2026-11-10.
 - `scripts/specrew-update.ps1` is never run in this worktree while 203 is unmerged: it writes to the home folder, and on main it cannot redirect.
