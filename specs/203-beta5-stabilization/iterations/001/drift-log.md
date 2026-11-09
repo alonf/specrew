@@ -1523,3 +1523,34 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
     (`infra_failure_cap`). Repeated mismatches move the cycle to the next reviewer in the order and end at (d); they
     never loop for free. A test confirms this in step (iii).
 - **Class closure**: OPEN; steps (i) and (ii) built. Next: step (iii), items 5 and 6, with the partial-findings half of item 3.
+
+### DRIFT-053 — CI was red on this branch for 8 days and 40 pushes, and nothing in the crew's routine looked (process gap; proposal, maintainer decision pending)
+
+- **Observed (2026-11-09)**: Specrew CI's Lint job failed on every push of `203-beta5-stabilization` from `0999ff62`
+  (2026-11-01 15:06 UTC) to `4af8e22f` (2026-11-08), 40 pushes. The last green push was `8a9a5d1c` (2026-11-01 14:31 UTC). Cause:
+  a hand-written line "- Task progress: 1 complete, 1 in-progress, 10 pending, 0 blocked." directly above "## Notes" in
+  this iteration's `state.md` (markdownlint MD032 and MD022, lines 37-38). It also contradicted the managed summary block.
+  Removed in `e56fcfcd`, and the CI command (`markdownlint '**/*.md' --ignore node_modules --ignore .squad --ignore .specify`)
+  exits 0 locally.
+- **What it masked**: the deterministic gate has `needs: lint` and the contract lane needs the gate, so neither ran for
+  those 40 pushes. With them went PSScriptAnalyzer and the governance-validation steps, the gate the maintainer asked to
+  keep whole at the specify verdict. T002 to T008 step (ii) were built with that gate silent.
+- **Why nobody noticed (crew error and process gap)**: the crew's commit routine runs the sweep driver and the lanes,
+  which do not run markdownlint. No boundary packet, stop or orientation reads CI status. The push for a boundary
+  reports the push, not what CI said about it. The Nightly Truth-Check on `main` has the same gap at a larger scale:
+  red every night since 2026-08-08 (B5F-038).
+- **Requirement**: the specify verdict (gate kept as the Linux lane with all its steps); FR-043 (evidence through the
+  shipped entry points).
+- **Proposal (for the maintainer's ruling; no code written)**:
+  1. **markdownlint before every push.** The crew runs the CI's own markdownlint command, the same arguments, before
+     any push, and a push does not go out on a non-zero exit. Cheapest and closes this instance. Proposed as a crew
+     rule now, and as a `pre-push` step of the repository's own tooling later (no `core.hooksPath` is set today).
+  2. **CI status in the boundary packet.** Before a boundary packet is presented, the crew reads the latest Specrew CI,
+     Test and Cross-Platform Validation conclusions for the pushed head (`gh run list --branch <branch>`), and the
+     packet carries one line: green, red with the failing job, or not run. A red or skipped gate job is a finding in
+     the packet, not a footnote.
+  3. **The skip is the signal.** A run where the deterministic gate or contract lane was `skipped` is reported as red,
+     because a skipped gate proved nothing.
+  4. Optionally, for Specrew itself: the session orientation shows the branch's last CI conclusion, so a red CI is
+     visible at the start of every session. This is product work (a B5F item), not a crew rule.
+- **Class closure**: OPEN until the maintainer rules on the proposal.
