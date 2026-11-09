@@ -1551,8 +1551,17 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
   (8), `campaign-two-governor-adjudication` (6), `consumer-language` (10), `review-public-campaign-command` (2) and
   `consumer-applicability-firewall` fail, each asserting a navigator stop on review-required/review-stale, the "What to
-  do" sentence or a per-round pause; the 128-suite sweep of `8b98e2ef` will list the rest. None of these commits is
-  pushed. Step (iv) has not started.
+  do" sentence or a per-round pause. The 128-suite sweep of `8b98e2ef` (the engine slice, before the navigator change;
+  home redirected, the real home unchanged) failed 7: `advisory-names-the-humans-act`, `authority-control-consumer-guard`,
+  `campaign-pause-core`, `campaign-pause-wiring`, `review-campaign-orchestrator`, `review-public-campaign-command`, and
+  `project-path-resolution-regression` (a timeout, red before 203 as well: B5F-036). With the navigator suites above, ten
+  suites to migrate. None of these commits is pushed. Step (iv) has not started.
+- **Observed (2026-11-09, evidence for T014)**: after this turn's commits the live Stop hook, which runs the pin
+  (`bd4635df`), blocked with the review-required stop: "these files have not been reviewed yet ... ASK them for it: their
+  typed reply `approved for review round` ... run specrew review --live --approve-round". That is the stop step (iii)
+  item 6 removes, asking for the act T008 retired; the pin carries neither change until T014. The crew did not ask for a
+  round: none is due before the iteration review, and a captured phrase would spend one of the human's rounds on the
+  pin's engine for unfinished work. T014's check after the pin advance should confirm the stop no longer appears.
 - **Class closure**: OPEN; steps (i) and (ii) built, step (iii) partly built (above). Next: the (b) and (c) entry points,
   the suite migration, then step (iv).
 
