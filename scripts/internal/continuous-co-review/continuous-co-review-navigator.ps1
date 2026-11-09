@@ -1153,6 +1153,9 @@ function Build-ReviewCampaignStopAgentDirective {
     param([AllowNull()]$PendingCrossing)
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add('A review stop is waiting for the human''s typed line. Render the block above verbatim and STOP. Never answer it for them and never send one of its lines yourself; their typed line is the answer, and the next review launch reads it.') | Out-Null
+    # Fix 4 (maintainer classification 2026-11-09): the stop replaced the round request, and with it this sentence went.
+    # It stays the rule: the loop's rounds are the crew's to run within the budget, and the human is never asked for one.
+    $lines.Add('Running review rounds within the approved budget is your job: never ask the human for a round. Once the stop is answered, the next launch goes on by itself.') | Out-Null
     $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
     $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')
     if ([string]::IsNullOrWhiteSpace($crossingTo)) { $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'working_boundary') }
