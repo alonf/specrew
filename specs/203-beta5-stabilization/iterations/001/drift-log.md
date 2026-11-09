@@ -1605,6 +1605,20 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   `rerun-within-budget`, and the actionable route's "separately authorized review" wording is gone (FR-010). Suites:
   `review-decision-surface` 7/7, `authority-control-consumer-guard` 7/7, the step (iii) suites green. Nineteen
   `campaign-pause-core` cases pin the deleted decision's fields and await the maintainer's classification.
+- **Ruling (maintainer, 2026-11-09), the 19 `campaign-pause-core` cases**: 17 approved as classified (and the two
+  approved cases whose Context `BeforeAll` called a deleted renderer are fixed within scope). Changed: (1) both minor
+  cases keep both halves: minors never open a finding, cause (a) or block sign-off, AND the sign-off check and the
+  review-signoff packet list every non-gating finding of the reviewed head (id, title, location) as a follow-up (FR-013
+  requires them recorded). Today nothing writes a follow-up record; the "saved as follow-ups" wording
+  (`review-campaign-orchestrator.ps1` about line 2127, `specrew-review.ps1` about lines 1264 and 1287) describes the deleted
+  menu: either write a real record or say where the findings are. (2) The five demotion cases are B with the code wrong,
+  and the required surface is the SIGN-OFF: a blocker the ingestor demotes never opens a finding, so the loop can end clean
+  with no stop. The sign-off check and packet list each demoted finding with the reviewer's original severity and why it
+  was demoted; the stop surface may also. Red first, including a case where the only blocking finding is demoted and the
+  loop ends clean and the sign-off still names it.
+- **Ordering constraint (maintainer, 2026-11-09)**: step (iv)'s B5F-017 fix (a finding that states a concrete failure
+  scenario keeps the reviewer's severity, FR-005) must land BEFORE T014 advances the pin, because that is when this loop
+  goes live and a demoted blocker could otherwise end a review clean.
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
