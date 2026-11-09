@@ -1514,4 +1514,12 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   `--host`), all failing on `de8152f2`.
 - **Not yet built (step iii)**: the typed `allow reviewer <host>` reaching the fact writer from the hook, and (d) as a pause fact
   the navigator stops on with the FR-011 layout; both go with the other stops in step (iii).
+- **Ruling (maintainer, 2026-11-09), item 5's "two outcomes in item 3"**: the ruling on item 3 split them. An
+  identity-mismatch run collected no complete review, so it is free and writes no stop. A containment-violated run
+  (the reviewer changed the frozen copy it reviewed) **stops at (c)**, on these conditions:
+  - A containment-violated result never counts as clean, even when its review is complete and has no findings. It does
+    not end the review, and it does not satisfy FR-013's "last clean round" check at sign-off.
+  - An identity-mismatch run, though free, counts toward the consecutive infrastructure-failure count
+    (`infra_failure_cap`). Repeated mismatches move the cycle to the next reviewer in the order and end at (d); they
+    never loop for free. A test confirms this in step (iii).
 - **Class closure**: OPEN; steps (i) and (ii) built. Next: step (iii), items 5 and 6, with the partial-findings half of item 3.
