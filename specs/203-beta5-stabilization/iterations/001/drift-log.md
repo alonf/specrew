@@ -1542,6 +1542,12 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
     command lands each before a launch (`Invoke-ReviewCampaignStopAnswerLanding`) as the allowed-reviewer fact, the
     finding's disposition, or the stop's answer, spent once. A stop line with no stop to bind to is reported at the
     human's message.
+  - **Finding identity (maintainer ruling 2026-11-09, replacing the interpretation below)**: location plus title is not
+    identity; a reworded title or a shifted line would close an open finding nobody fixed. The next round's reviewer is
+    given the open findings by id (appended to its review scope) and answers each in a new optional candidate field,
+    `finding_resolutions` (`resolved` or `still-open`), carried into the result. A finding closes only on `resolved` from
+    a round that collected a complete review of moved files, or the human's typed defer or drop; `still-open`, no answer,
+    or `resolved` on unmoved files keep it open. Red first (`1a8bd19b`, 8 of 19), built in the commit after it.
   - **Interpretations** (for the maintainer to correct): a finding's identity across runs is its location and title; stop
     (a) also closes when nothing is left open; after the human answers a (c) stop, one rerun on the same files is
     allowed; a pause written before step (iii) has no `stop_kind` and stops nothing; step (iii)'s fixtures state the

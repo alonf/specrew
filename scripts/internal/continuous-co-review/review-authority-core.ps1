@@ -386,6 +386,25 @@ function Test-ReviewCampaignPendingPauseQuiet {
     return [pscustomobject]@{ confers_quiet = $true; reason = 'pause-pending-on-current-tree' }
 }
 
+function Test-ReviewAuthorityFindingResolutionsField {
+    # Feature 203 T008 step (iii) (maintainer ruling 2026-11-09): the reviewer's answer to each open finding it was given,
+    # `resolved` or `still-open`, by the finding's id. Optional: a candidate that answers nothing leaves every finding open.
+    # Closed shape per entry, because this field closes findings: an entry the controller cannot read closes nothing.
+    param([Parameter(Mandatory)]$Object, [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors)
+    if ((Get-ReviewAuthorityPropertyNames -Object $Object) -notcontains 'finding_resolutions') { return }
+    $entries = Get-ReviewAuthorityProperty -Object $Object -Name 'finding_resolutions'
+    if ($null -eq $entries -or $entries -is [string] -or $entries -isnot [System.Collections.IEnumerable]) { Add-ReviewAuthorityError -Errors $Errors -Message 'invalid-array:finding_resolutions'; return }
+    $count = 0
+    foreach ($entry in @($entries)) {
+        $count++
+        if ($count -gt 200) { Add-ReviewAuthorityError -Errors $Errors -Message 'too-many:finding_resolutions'; return }
+        $names = @(Get-ReviewAuthorityPropertyNames -Object $entry)
+        if (@($names | Where-Object { $_ -cnotin @('finding_id', 'status') }).Count -gt 0 -or $names.Count -ne 2) { Add-ReviewAuthorityError -Errors $Errors -Message 'invalid-shape:finding_resolutions'; continue }
+        Test-ReviewAuthorityStringField -Object $entry -Name 'finding_id' -Errors $Errors -MaxLength 64
+        Test-ReviewAuthorityStringField -Object $entry -Name 'status' -Errors $Errors -MaxLength 16 -Enum @('resolved', 'still-open')
+    }
+}
+
 # Feature 203 T008 step (iii) (FR-006): the four stops, and the only reasons a review pauses for the human.
 $script:ReviewCampaignStopKinds = @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order')
 
@@ -743,8 +762,9 @@ function Test-ReviewAuthorityContractObject {
         'ReviewCampaign' { @('schema_version', 'campaign_id', 'target_lineage', 'created_at') }
         'ReviewRun' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'state') }
         'ReviewInvocation' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'snapshot_path', 'review_scope', 'prompt_path', 'candidate_result_path', 'candidate_report_path', 'deadline') }
-        'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths') }
-        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected', 'reviewer_host') }
+        # Feature 203 T008 step (iii) (2026-11-09 ruling): finding_resolutions answers the open findings the reviewer was given.
+        'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths', 'finding_resolutions') }
+        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected', 'reviewer_host', 'finding_resolutions') }
         # Feature 203 T008 (FR-009): a launch grant names the reviewer the engine chose for that round.
         'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host') }
         # Feature 203 T008 (FR-009, FR-006(d)): `allow reviewer <host>` appends a reviewer to the campaign's approved order.
@@ -825,6 +845,7 @@ function Test-ReviewAuthorityContractObject {
             # it behaves exactly as before, so no project already in flight is refused by a field it
             # has never heard of. The rule lives in the ingest degrade, not in this contract.
             Test-ReviewAuthorityExaminedPathsField -Object $InputObject -Name 'examined_paths' -Errors $errors
+            Test-ReviewAuthorityFindingResolutionsField -Object $InputObject -Errors $errors
         }
         'ReviewResult' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial', 'none')
@@ -849,6 +870,7 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'review_collected' -Errors $errors -Optional
             # Feature 203 T008 (FR-009): which reviewer ran, so its infrastructure failures can be counted. Optional for the same reason.
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'reviewer_host' -Errors $errors -MaxLength 64 -Optional
+            Test-ReviewAuthorityFindingResolutionsField -Object $InputObject -Errors $errors
         }
         'GrantFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('grant')

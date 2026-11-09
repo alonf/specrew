@@ -1326,14 +1326,12 @@ function Format-ReviewCampaignBudgetSpentDetail {
 $script:ReviewCampaignGatingSeverities = @('blocking', 'major')
 
 function Get-ReviewCampaignFindingKey {
-    # One key per finding across runs: where it is and what it says. A reviewer's own ids are per run, so the same defect
-    # reported twice has two ids and one key.
+    # A finding is identified by the id the controller gave it when it was reported (maintainer ruling 2026-11-09). Its
+    # location and title are not identity: a reworded title or a shifted line would make an open finding look "not reported
+    # again", and it would close with nobody fixing it.
     [OutputType([string])]
     param([Parameter(Mandatory)]$Finding)
-    $location = Get-ReviewAuthorityProperty -Object $Finding -Name 'location'
-    $where = if ($null -eq $location) { '' } elseif ($location -is [string]) { $location } else { ($location | ConvertTo-Json -Compress -Depth 6) }
-    $title = [string](Get-ReviewAuthorityProperty -Object $Finding -Name 'title')
-    return (('{0}|{1}' -f $where.Trim(), $title.Trim()) -replace '\s+', ' ').ToLowerInvariant()
+    return [string](Get-ReviewAuthorityProperty -Object $Finding -Name 'finding_id')
 }
 
 function Add-ReviewCampaignFindingDisposition {
@@ -1375,8 +1373,10 @@ function Get-ReviewCampaignFindingDispositions {
 
 function Get-ReviewCampaignOpenFindings {
     # The findings still open in this campaign, oldest first. A finding opens when a round, or a run that brought back only
-    # part of a review, reports it at a gating severity. It closes when a later complete round on moved files does not
-    # report it again, or when the human's typed line defers or drops it; `fix finding` keeps it open for the crew.
+    # part of a review, reports it at a gating severity. It closes only when a later round that collected a complete review
+    # of moved files answers it `resolved` (its finding_resolutions; the open findings are given to that reviewer), or when
+    # the human's typed line defers or drops it (maintainer ruling 2026-11-09). `still-open`, no answer, or `resolved` on
+    # files that did not move keeps it open; `fix finding` keeps it open for the crew.
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
     $open = [ordered]@{}
@@ -1402,9 +1402,12 @@ function Get-ReviewCampaignOpenFindings {
             }
         }
         if ($collected) {
-            # A complete review on moved files that does not report a finding again is its fix.
-            foreach ($key in @($open.Keys)) {
-                if (-not $reported.Contains($key) -and [string]$open[$key].target_digest -cne $digest) { $open.Remove($key) }
+            # The reviewer's explicit `resolved`, on files that moved since the finding was reported, is its fix.
+            $answered = Get-ReviewAuthorityProperty -Object $result -Name 'finding_resolutions'
+            foreach ($answer in @($answered | ForEach-Object { $_ } | Where-Object { $null -ne $_ })) {
+                $answeredId = [string](Get-ReviewAuthorityProperty -Object $answer -Name 'finding_id')
+                if ([string](Get-ReviewAuthorityProperty -Object $answer -Name 'status') -cne 'resolved' -or -not $open.Contains($answeredId)) { continue }
+                if ([string]$open[$answeredId].target_digest -cne $digest) { $open.Remove($answeredId) }
             }
         }
         foreach ($key in $reported.Keys) { $open[$key] = $reported[$key] }
@@ -1414,6 +1417,23 @@ function Get-ReviewCampaignOpenFindings {
             $answer = if ($dispositions.ContainsKey([string]$_.finding_key)) { [string]$dispositions[[string]$_.finding_key].answer } else { '' }
             $answer -cnotin @('defer', 'drop')
         })
+}
+
+function Add-ReviewCampaignOpenFindingsToScope {
+    # The open findings, by id, appended to what the reviewer is asked to do, with the answer the controller reads back.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$ReviewScope, [AllowEmptyCollection()][object[]]$OpenFindings = @())
+    $findings = @($OpenFindings | Where-Object { $null -ne $_ -and -not [string]::IsNullOrWhiteSpace([string]$_.finding_id) })
+    if ($findings.Count -eq 0) { return $ReviewScope }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add('') | Out-Null
+    $lines.Add('Open findings from earlier rounds. For each one, say in finding_resolutions whether it is resolved in the files as they are now (status "resolved") or not (status "still-open"). Do not report them again as new findings.') | Out-Null
+    foreach ($finding in $findings) {
+        $location = $finding.location
+        $where = if ($null -eq $location) { '' } elseif ($location -is [string]) { (' at ' + $location) } else { (' at ' + ($location | ConvertTo-Json -Compress -Depth 4)) }
+        $lines.Add(('- {0} ({1}) {2}{3}' -f [string]$finding.finding_id, [string]$finding.severity, [string]$finding.title, $where)) | Out-Null
+    }
+    return ($ReviewScope + [Environment]::NewLine + ($lines -join [Environment]::NewLine))
 }
 
 function Test-ReviewResultContainmentViolated {
@@ -2576,6 +2596,12 @@ function Invoke-ReviewCampaignCommand {
         $null = Add-ReviewCampaignLaunchGrant -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -AuthorityRef ([string]$launchBudget.authority_ref) `
             -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -ReviewerHost $(if ([bool]$hostDecision.Enforced) { $launchHost } else { '' })
     }
+    catch {
+        return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+    }
+    # Maintainer ruling 2026-11-09: the reviewer is given the open findings by id, and only its explicit answer closes one.
+    try { $ReviewScope = Add-ReviewCampaignOpenFindingsToScope -ReviewScope $ReviewScope -OpenFindings @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $identity.campaign_id) }
     catch {
         return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
             -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message

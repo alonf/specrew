@@ -442,6 +442,13 @@ function Invoke-ReviewResultIngress {
         review_collected = [bool]($candidateRead.valid -and $null -ne $candidateRead.candidate -and [string]$candidateRead.candidate.completion -ceq 'complete')
     }
     if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $result | Add-Member -NotePropertyName reviewer_host -NotePropertyValue $ReviewerHost.Trim().ToLowerInvariant() }
+    # Feature 203 T008 step (iii) (2026-11-09 ruling): the reviewer's answer to each open finding it was given, carried into
+    # the terminal record by name - this projection drops every field it does not list.
+    if ($candidateRead.valid -and $null -ne $candidateRead.candidate -and (Get-ReviewAuthorityPropertyNames -Object $candidateRead.candidate) -contains 'finding_resolutions') {
+        $resolutions = @(Get-ReviewAuthorityProperty -Object $candidateRead.candidate -Name 'finding_resolutions' | ForEach-Object { $_ } | Where-Object { $null -ne $_ } |
+                ForEach-Object { [pscustomobject][ordered]@{ finding_id = [string]$_.finding_id; status = [string]$_.status } })
+        $result | Add-Member -NotePropertyName finding_resolutions -NotePropertyValue $resolutions
+    }
     $published = Publish-ReviewRunResultFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Fact $result
     $report = Write-ReviewRunReportCreateNew -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Content (ConvertTo-ReviewRunReportMarkdown -Result $result)
     return [pscustomobject]@{

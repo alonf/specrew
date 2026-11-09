@@ -38,6 +38,8 @@ verdict = "pass", "findings", or "incomplete"
 summary = concise plain text
 findings = array of objects with exactly: local_id, severity, title, description, and optional location
 examined_paths = array of the repo-relative paths you actually opened and read
+finding_resolutions = only when the review scope lists open findings from earlier rounds: an array of objects with
+exactly finding_id (the id as listed) and status ("resolved" or "still-open"), one per listed finding
 
 Keep the candidate well inside the schema bounds: summary at most __MAX_SUMMARY_CHARACTERS__ characters;
 no more than __MAX_FINDINGS__ findings; each local_id at most __MAX_LOCAL_ID_CHARACTERS__ characters,
