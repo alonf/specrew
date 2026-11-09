@@ -933,7 +933,9 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             # release: no open blocking or major finding, and no identity-bound require-correction for the reviewed tree. The
             # campaign's open-finding ledger is still consulted after this route, so a finding still open keeps it from release.
             if ($recordsOnlyAuthorizes -and [string](Get-ReviewAuthorityProperty -Object $latest -Name 'verdict') -ceq 'findings') {
-                $gatingOpen = @(@(Get-ReviewAuthorityProperty -Object $latest -Name 'findings') | Where-Object { $null -ne $_ -and [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
+                # A findings verdict that lists none is an inconsistent review (maintainer, 2026-11-09), never one that authorizes.
+                $listed = @(@(Get-ReviewAuthorityProperty -Object $latest -Name 'findings') | ForEach-Object { $_ } | Where-Object { $null -ne $_ })
+                $gatingOpen = ($listed.Count -eq 0) -or (@($listed | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0)
                 $correctionRequired = @($HumanDispositions | Where-Object {
                         (Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest ([string]$latest.target_digest)).valid -and
                         [string]$_.decision -ceq 'require-correction'
@@ -1000,6 +1002,12 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'Your review passed, and it covers your files exactly as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
     }
     if ([string]$latest.verdict -ceq 'findings') {
+        # Maintainer correction 2026-11-09: a reviewer that says "findings" and lists none is an INCONSISTENT review - most
+        # likely its findings were lost or could not be read - never a clean one. The candidate contract refuses that shape at
+        # intake; a stored result carrying it refuses here, before any release, including the non-gating one below.
+        if (@(@($latest.findings) | ForEach-Object { $_ } | Where-Object { $null -ne $_ }).Count -eq 0) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'findings-verdict-without-findings' -Message 'The latest review said it found problems but listed none, so its result is inconsistent - most likely its findings were lost or could not be read. It cannot sign anything off; the next round runs within the review budget approved with the implementation.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'rerun-within-budget'
+        }
         $matchingDispositions = @($HumanDispositions | Where-Object {
             $v = Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest $CurrentDigest
             $v.valid
