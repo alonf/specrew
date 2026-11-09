@@ -27,14 +27,23 @@ $mints = @($cliAst.FindAll({ param($node) $node -is [System.Management.Automatio
 Assert-True ($mints.Count -eq 0) 'the CLI derives no per-round grant reference'
 Assert-True ($cliText -notmatch 'Get-SpecrewReviewRoundApprovalAuthorization|roundApprovalRequested') 'no pause answer is turned into a round approval, because none exists'
 
-# The cap is the round budget, checked inside the pause-answer path before the immutable answer is built.
-$pauseRegionStart = $cliText.IndexOf('$pauseAnswer = [string]$parsedArgs.PauseChoice')
-$budgetIndex = $cliText.IndexOf('continuation_available', $pauseRegionStart)
-Assert-True ($pauseRegionStart -gt 0 -and $budgetIndex -gt $pauseRegionStart) 'the round-budget check lives inside the pause-answer path'
-$decisionBeforeBudget = $cliText.IndexOf('New-ReviewCampaignPauseDecisionFact', $pauseRegionStart)
-Assert-True ($decisionBeforeBudget -gt $budgetIndex) 'the budget refusal precedes constructing the immutable pause decision, so a capped attempt consumes no answer'
-$budgetGate = [regex]::Match($cliText.Substring($pauseRegionStart), "(?s)if \(\`$choice -ceq 'fix-and-continue'\) \{.{0,1500}?continuation_available").Value
-Assert-True (-not [string]::IsNullOrWhiteSpace($budgetGate)) 'only the answer that runs a round meets the budget gate; stopping and abandoning spend nothing'
+# Feature 203 T008 (maintainer classification 2026-11-09, class A; the 2026-11-09 mapping removed option 1 and
+# fix-and-continue): no pause answer can start a round any more, so the budget is not checked inside the pause-answer
+# path - it is checked once, at every launch, before anything is reserved. What stays: an answer that is not
+# `stop-here` is refused before anything is read or built, so a retired answer consumes nothing.
+$pauseBlock = @($cliAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.IfStatementAst] -and
+            $node.Clauses.Count -gt 0 -and $node.Clauses[0].Item1.Extent.Text -match '^\-not \[string\]::IsNullOrWhiteSpace\(\$pauseAnswer\)$' }, $true)) | Select-Object -First 1
+Assert-True ($null -ne $pauseBlock) 'the pause-answer path is found'
+$pauseText = $pauseBlock.Extent.Text
+Assert-True ($pauseText -notmatch 'Invoke-ReviewCampaignCommand|Invoke-ReviewCampaignRun|continuation_available') 'no pause answer starts a round or meets the budget gate'
+$retiredAt = $pauseText.IndexOf("if ([string]`$pauseAnswer -cne 'stop-here')")
+Assert-True ($retiredAt -gt 0) 'an answer that is not stop-here is refused'
+Assert-True ($retiredAt -lt $pauseText.IndexOf('Resolve-ReviewCampaignPublicIdentity') -and $retiredAt -lt $pauseText.IndexOf('New-ReviewCampaignPauseDecisionFact')) 'the refusal comes before anything is read or built, so a retired answer consumes nothing'
+$orchText = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\internal\continuous-co-review\review-campaign-orchestrator.ps1') -Raw -Encoding UTF8
+$commandText = [regex]::Match($orchText, '(?s)function Invoke-ReviewCampaignCommand \{.*?\n\}').Value
+Assert-True (-not [string]::IsNullOrWhiteSpace($commandText)) 'the launch command is found'
+$gateAt = $commandText.IndexOf('THE BUDGET GATE, for every launch')
+Assert-True ($gateAt -gt 0 -and $gateAt -lt $commandText.IndexOf('Invoke-ReviewCampaignRun ')) 'the budget gate runs at every launch, before the run that reserves anything'
 
 # --- Round-13 findings (DRIFT-199-I001-122), pinned structurally where the behavior lives ---
 

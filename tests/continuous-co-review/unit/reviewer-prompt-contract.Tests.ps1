@@ -22,6 +22,25 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
         $script:Prompt = Get-ContinuousCoReviewSlimPrompt -RunId 'run-t005-probe' -RoundNumber 1 -MaxRounds 3
+
+        function script:Invoke-ScenarioIngress {
+                param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Description, [string]$Severity = 'blocking')
+                $store = Join-Path $Root 'store'; $staging = Join-Path $Root 'staging'
+                $paths = Initialize-ReviewRunStaging -StagingRoot $staging -CampaignId 'cmp-demo' -RunId 'run-one'
+                $candidate = [pscustomobject][ordered]@{
+                    schema_version = '1.0'; run_id = 'run-one'; target_digest = 'digest-one'
+                    completion = 'complete'; verdict = 'findings'; summary = 'review complete'
+                    findings = @([pscustomobject][ordered]@{
+                            local_id = 'l1'; severity = $Severity; title = 'unvalidated input reaches the shell'
+                            description = $Description; location = 'src/app.ps1:10'
+                        })
+                }
+                [IO.File]::WriteAllText($paths.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
+                return Invoke-ReviewResultIngress -StoreRoot $store -StagingRoot $staging -CampaignId 'cmp-demo' -RunId 'run-one' `
+                    -TargetDigest 'digest-one' -HarnessId 'fixture' -RuntimeOutcome 'completed' -Invoked $true `
+                    -TerminationVerified $true -Containment 'verified' -Currentness 'current' `
+                    -StartedAt '2026-08-10T00:00:00Z' -EndedAt '2026-08-10T00:00:01Z' -DurationMs 1000
+            }
     }
 
     Context 'the prompt asks for a verdict, not only for faults' {
@@ -78,18 +97,13 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
         }
 
         It 'the demoted finding is ABSENT from the gating count' {
-            # The whole point, expressed against the surface the human actually sees: a scenario-less
-            # observation cannot cost them a round.
-            $findings = @(
-                [pscustomobject]@{ severity = 'blocking'; title = 'no scenario'; location = 'a.ps1:1' }
-            )
-            $graded = @(Resolve-ReviewFindingGatingEligibility -Findings @(
-                    script:New-CandidateFinding -LocalId 'l3' -Severity 'blocking' -Description 'Please rename this variable for clarity.'
-                ))
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings $graded -RoundsUsed 1 -BudgetTotal 3
-            $decision.gating | Should -BeFalse
-            $decision.blocking_count | Should -Be 0
-            $decision.minor_count | Should -Be 1
+            # The whole point, against what decides a stop now: a scenario-less observation cannot cost the human a round.
+            # Feature 203 T008 (maintainer classification 2026-11-09, class A; the decision's counts were deleted under
+            # a0ab0ca0): the demoted finding opens no finding, and it is stored as minor with the reviewer's severity kept.
+            $published = script:Invoke-ScenarioIngress -Root (Join-Path $TestDrive 'ingest-demote') -Description 'Please rename this variable for clarity.'
+            $published.result.findings[0].severity | Should -Be 'minor'
+            $published.result.findings[0].demoted_from | Should -Be 'blocking'
+            @(Get-ReviewCampaignOpenFindings -StoreRoot (Join-Path $TestDrive 'ingest-demote/store') -CampaignId 'cmp-demo').Count | Should -Be 0 -Because 'a demoted finding opens nothing that can gate'
         }
 
         It 'a minor without a scenario is untouched (demotion has nothing to demote)' {
@@ -111,24 +125,7 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
     # of what the reviewer had actually reported. THE WIRING IS WHAT DRIFTS.
     Context 'the contract binds through the REAL ingress, end to end' {
         BeforeAll {
-            function script:Invoke-ScenarioIngress {
-                param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Description, [string]$Severity = 'blocking')
-                $store = Join-Path $Root 'store'; $staging = Join-Path $Root 'staging'
-                $paths = Initialize-ReviewRunStaging -StagingRoot $staging -CampaignId 'cmp-demo' -RunId 'run-one'
-                $candidate = [pscustomobject][ordered]@{
-                    schema_version = '1.0'; run_id = 'run-one'; target_digest = 'digest-one'
-                    completion = 'complete'; verdict = 'findings'; summary = 'review complete'
-                    findings = @([pscustomobject][ordered]@{
-                            local_id = 'l1'; severity = $Severity; title = 'unvalidated input reaches the shell'
-                            description = $Description; location = 'src/app.ps1:10'
-                        })
-                }
-                [IO.File]::WriteAllText($paths.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
-                return Invoke-ReviewResultIngress -StoreRoot $store -StagingRoot $staging -CampaignId 'cmp-demo' -RunId 'run-one' `
-                    -TargetDigest 'digest-one' -HarnessId 'fixture' -RuntimeOutcome 'completed' -Invoked $true `
-                    -TerminationVerified $true -Containment 'verified' -Currentness 'current' `
-                    -StartedAt '2026-08-10T00:00:00Z' -EndedAt '2026-08-10T00:00:01Z' -DurationMs 1000
-            }
+            # Invoke-ScenarioIngress moved to the Describe's BeforeAll (feature 203 T008), so the ingest cases reach the store too.
         }
 
         It 'a scenario-less blocking finding is demoted IN THE PUBLISHED RESULT, with the marks intact' {
@@ -150,23 +147,21 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
         }
 
         It 'the human-facing surface names that demotion, from the PERSISTED result' {
-            # The full chain in one case: reviewer output -> ingest -> store -> decision -> the words
-            # the human reads. Each link was green in isolation while the chain was broken.
+            # The full chain in one case: reviewer output -> ingest -> store -> the words the human reads. Feature 203 T008
+            # (class A): the surface is the sign-off listing, built from the stored result, which names the demotion and
+            # the severity the reviewer used.
             $root = Join-Path $TestDrive 'e2e-surface'
-            $published = script:Invoke-ScenarioIngress -Root $root -Description 'Please rename this variable for clarity.'
-            $persisted = Read-ReviewAuthorityFactFile -Path $published.result_path -ContractName ReviewResult
-
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @($persisted.findings) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-            $decision.gating | Should -BeFalse
-            $decision.demoted_count | Should -Be 1
-
-            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision $decision
-            $surface | Should -Match '(?i)reported as blocking'
-            $surface | Should -Match '(?i)no concrete failure scenario'
+            $null = script:Invoke-ScenarioIngress -Root $root -Description 'Please rename this variable for clarity.'
+            $listing = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot (Join-Path $root 'store') -CampaignId 'cmp-demo') -join "`n"
+            $listing | Should -Match 'Demoted: .*unvalidated input reaches the shell'
+            $listing | Should -Match '(?i)reported it as blocking'
+            $listing | Should -Match '(?i)no concrete failure scenario'
         }
 
         It 'a finding WITH a scenario keeps its severity and its gate through the same path' {
-            # The other direction, so the case above cannot be satisfied by demoting everything.
+            # The other direction, so the case above cannot be satisfied by demoting everything. Feature 203 T008 (class A,
+            # maintainer ruling 2026-11-09: both halves): the finding keeps its severity AND opens a finding, and the sign-off
+            # listing carries no demotion for it.
             $root = Join-Path $TestDrive 'e2e-keeps'
             $published = script:Invoke-ScenarioIngress -Root $root `
                 -Description 'The digest strip drops real source. Failure scenario: on a case-sensitive volume a change under Specs/ is classified records-only, so the review never runs and the change ships unreviewed.'
@@ -175,10 +170,10 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
             $published.result.findings[0].demoted | Should -BeFalse
             $published.result.findings[0].demoted_from | Should -BeNullOrEmpty
 
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @($published.result.findings) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-            $decision.gating | Should -BeTrue
-            $decision.demoted_count | Should -Be 0
-            (Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision $decision) | Should -Not -Match '(?i)demoted'
+            $open = @(Get-ReviewCampaignOpenFindings -StoreRoot (Join-Path $root 'store') -CampaignId 'cmp-demo')
+            $open.Count | Should -Be 1 -Because 'a finding that keeps its scenario keeps its gate'
+            [string]$open[0].severity | Should -Be 'blocking'
+            (@(Get-ReviewCampaignSignoffFindingLines -StoreRoot (Join-Path $root 'store') -CampaignId 'cmp-demo') -join "`n") | Should -Not -Match '(?i)demoted'
         }
     }
 }

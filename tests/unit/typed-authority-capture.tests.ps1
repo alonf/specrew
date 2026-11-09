@@ -642,9 +642,11 @@ Describe 'W63 round 21: the pause gate must actually run, be bound to its pause,
         # was supposed to stop an agent manufacturing sign-off was skipped entirely. A control that
         # exists and never executes: the class this project already has a method rule about, and the
         # reason this case drives the SHIPPED CLI rather than the function.
+        # Feature 203 T008 (maintainer classification 2026-11-09, class B): option 2 is `--pause-choice stop-here` now, the
+        # one relay left; the same gate refuses it with no captured decision.
         $root = New-PendingPauseFixture
         try {
-            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '2')
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', 'stop-here')
             $run.Text | Should -Match 'no decision from them has been captured'
             $run.Text | Should -Match 'stop the review here'
             $run.ExitCode | Should -Be 1
@@ -653,11 +655,15 @@ Describe 'W63 round 21: the pause gate must actually run, be bound to its pause,
     }
 
     It 'ACCEPTANCE: abandoning is gated the same way, and names its own phrase' {
+        # Feature 203 T008 (maintainer classification 2026-11-09, class A; abandon retired by the 2026-11-09 mapping): there is
+        # no abandon to gate. --pause-choice 3 is refused in plain words, names the one answer left, and records nothing.
         $root = New-PendingPauseFixture
         try {
             $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '3')
-            $run.Text | Should -Match 'no decision from them has been captured'
-            $run.Text | Should -Match 'abandon this review campaign'
+            $run.Text | Should -Match 'no longer exists'
+            $run.Text | Should -Match 'stop the review here'
+            $run.Text | Should -Match '(?i)nothing was recorded'
+            @(Get-ChildItem -LiteralPath $root -Recurse -Filter 'pause-decision.json' -ErrorAction SilentlyContinue).Count | Should -Be 0
             $run.ExitCode | Should -Be 1
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -781,9 +787,10 @@ Describe 'W64 round 22: authority machinery fails CLOSED, proven on a damaged in
         # A REAL pending pause: the assertion fires when the CLI is about to take an
         # authority-bearing action, and with no pause waiting there is no action to take - refusing
         # with "cannot check authority" there would be a confusing answer to a different question.
+        # Feature 203 T008 (maintainer classification 2026-11-09, class B): through `--pause-choice stop-here`, the one relay left.
         $root = New-PendingPauseFixture
         try {
-            $run = Invoke-DamagedCli -Root $root -CliArgs @('--pause-choice', '2')
+            $run = Invoke-DamagedCli -Root $root -CliArgs @('--pause-choice', 'stop-here')
             $run.ExitCode | Should -Be 1
             $run.Text | Should -Match '(?i)cannot check'
             $run.Text | Should -Not -Match '(?i)sign-off is complete'
@@ -1831,9 +1838,11 @@ Describe 'W76 the third surface: the reset advisory names a flag and never the p
     # lines would leave the next flag to repeat this exactly.
 
     BeforeAll {
+        # Feature 203 T008 (maintainer ruling 2026-11-09): the orchestrator joins, since the budget-spent message lives there now.
         $script:CoReviewSources = @(
             (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
             (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-core.ps1')
+            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
         )
     }
 
