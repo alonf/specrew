@@ -1559,6 +1559,14 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   `tests/unit/review-navigator-stops.Tests.ps1` gains a case through `Invoke-ContinuousCoReviewWorktreeNavigator` with
   campaign authority off and a done blocking verdict, red on the deleted function. Writing it found an older gap, fixed with
   it: on that path the worktree navigator copied the reap's stop block but dropped its agent directive (T010's channel).
+- **Suite migration, class guard `authority-control-consumer-guard` (maintainer ruling 2026-11-09)**: the budget case now
+  asserts ORDER inside `Invoke-ReviewCampaignCommand` (the `continuation_available` check before
+  `Add-ReviewCampaignLaunchGrant` and before `Invoke-ReviewCampaignRun`) instead of a call to
+  `Test-ReviewCampaignContinuationAuthorized`. Its former "before answer recording" half is class A: an exhausted budget
+  must not refuse the answer that tops it up, since `approved for allowance reset` has to land while the budget is spent
+  (FR-007). The derived case was red on `stop-answer` (a control with no consumer marker): the landing is now marked its
+  consumer, and finding-disposition, allowed-reviewer and floor-grant are declared with their production consumers. The
+  function's deletion (fix 8) waits for the ruling on the numbered pause answers, which its direct callers test.
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`

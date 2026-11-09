@@ -705,6 +705,7 @@ function Get-ReviewCampaignRoundBudgetState {
         [AllowEmptyString()][string]$RepoRoot = ''
     )
 
+    # SPECREW-AUTHORITY-CONSUMER: floor-grant
     $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId
     $reset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
     $resetAt = if ($null -eq $reset) { $null } else {
@@ -1101,6 +1102,7 @@ function Get-ReviewCampaignBeforeImplementVerdict {
 }
 
 function New-ReviewCampaignFloorGrantFact {
+    # SPECREW-AUTHORITY-CONTROL: floor-grant
     # Feature 203 T008 (FR-008; DRIFT-052 item 2, ruled 2026-11-08): a campaign whose before-implement verdict was
     # recorded before Specrew snapshotted review budgets has no budget grant. It gets the floor of 2 rounds, citing that
     # verdict: no host order (the engine's first pick that is not the code's writer), the default infrastructure cap, and
@@ -1181,6 +1183,7 @@ function Add-ReviewCampaignLaunchGrant {
 }
 
 function Add-ReviewCampaignAllowedReviewerFact {
+    # SPECREW-AUTHORITY-CONTROL: allowed-reviewer
     # Feature 203 T008 (FR-009, FR-006(d)): the human's `allow reviewer <host>` appends that reviewer to the campaign's
     # approved order. Immutable and idempotent: allowing the same reviewer twice records it once.
     [CmdletBinding()]
@@ -1270,6 +1273,7 @@ function Resolve-ReviewCampaignReviewerHost {
         $first = if ($null -ne $recorded) { ([string](Get-ReviewAuthorityProperty -Object $recorded -Name 'reviewer_host')).ToLowerInvariant() } else { & $pickFrom @() }
         if (-not [string]::IsNullOrWhiteSpace($first)) { $order.Add($first) }
     }
+    # SPECREW-AUTHORITY-CONSUMER: allowed-reviewer
     foreach ($allowed in @(Get-ReviewCampaignAllowedReviewers -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
         if (-not [string]::IsNullOrWhiteSpace($allowed) -and -not $order.Contains($allowed)) { $order.Add($allowed) }
     }
@@ -1335,6 +1339,7 @@ function Get-ReviewCampaignFindingKey {
 }
 
 function Add-ReviewCampaignFindingDisposition {
+    # SPECREW-AUTHORITY-CONTROL: finding-disposition
     # The human's typed `defer finding <id> to <destination>`, `drop finding <id>` or `fix finding <id>`, for one open
     # finding. Immutable; a second answer for the same finding is a new fact, and the newest one stands.
     [CmdletBinding()]
@@ -1412,6 +1417,7 @@ function Get-ReviewCampaignOpenFindings {
         }
         foreach ($key in $reported.Keys) { $open[$key] = $reported[$key] }
     }
+    # SPECREW-AUTHORITY-CONSUMER: finding-disposition
     $dispositions = Get-ReviewCampaignFindingDispositions -StoreRoot $StoreRoot -CampaignId $CampaignId
     return @($open.Values | Where-Object {
             $answer = if ($dispositions.ContainsKey([string]$_.finding_key)) { [string]$dispositions[[string]$_.finding_key].answer } else { '' }
@@ -1575,6 +1581,7 @@ function Format-ReviewCampaignStopSurface {
 }
 
 function Invoke-ReviewCampaignStopAnswerLanding {
+    # SPECREW-AUTHORITY-CONSUMER: stop-answer
     # Feature 203 T008 step (iii) (FR-006, FR-011; DRIFT-052 item 5): THE NEXT LAUNCH READS THE ANSWER. The hook captured
     # the human's typed stop line bound to the open stop (Write-SpecrewStopAnswerAuthorization); before a launch the review
     # command lands each one as the campaign's own fact, then spends it: `allow reviewer <host>` as the allowed-reviewer

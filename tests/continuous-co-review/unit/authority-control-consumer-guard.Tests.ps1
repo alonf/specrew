@@ -32,16 +32,31 @@ Describe 'authority controls have production consumers' {
         }
     }
 
-    It 'budget exhaustion is consumed before both answer recording and campaign invocation' {
-        $cli = script:Get-ScriptAst 'scripts/specrew-review.ps1'
-        # Feature 203 T008: the gate is the counter's continuation, which holds a round still in flight.
-        (script:Get-MemberAsts $cli 'continuation_available').Count | Should -BeGreaterThan 0
-
+    It 'budget exhaustion is consumed before the launch grant and before campaign invocation' {
+        # Feature 203 T008 step (iii) (DRIFT-052 fix 8, maintainer ruling 2026-11-09). This case used to require the
+        # orchestrator to call Test-ReviewCampaignContinuationAuthorized, the per-round pause's continuation check, which
+        # step (iii) removed; the budget is consumed by the counter's continuation_available instead. The property is
+        # unchanged and asserted by ORDER, not presence: inside Invoke-ReviewCampaignCommand the continuation_available
+        # check comes before Add-ReviewCampaignLaunchGrant and before Invoke-ReviewCampaignRun.
+        #
+        # The case's former other half, "before answer recording" (the review command checked the budget before recording
+        # a pause answer), is class A: an exhausted budget must not refuse the answer that tops it up, because
+        # `approved for allowance reset` has to land while the budget is spent (FR-007).
         $orchestrator = script:Get-ScriptAst 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1'
-        $calls = script:Get-CommandAsts $orchestrator 'Test-ReviewCampaignContinuationAuthorized'
-        $calls.Count | Should -BeGreaterThan 0
-        ($calls.Extent.Text -join "`n") | Should -Match '-RoundsUsed'
-        ($calls.Extent.Text -join "`n") | Should -Match '-BudgetTotal'
+        $command = @($orchestrator.FindAll({
+                    param($node)
+                    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -ceq 'Invoke-ReviewCampaignCommand'
+                }, $true))
+        $command.Count | Should -Be 1
+        $budgetChecks = @(script:Get-MemberAsts $command[0] 'continuation_available')
+        $budgetChecks.Count | Should -BeGreaterThan 0 -Because 'the launch consumes the budget counter'
+        $grants = @(script:Get-CommandAsts $command[0] 'Add-ReviewCampaignLaunchGrant')
+        $runs = @(script:Get-CommandAsts $command[0] 'Invoke-ReviewCampaignRun')
+        $grants.Count | Should -BeGreaterThan 0
+        $runs.Count | Should -BeGreaterThan 0
+        $firstCheck = ($budgetChecks | ForEach-Object { $_.Extent.StartOffset } | Measure-Object -Minimum).Minimum
+        foreach ($grant in $grants) { $firstCheck | Should -BeLessThan $grant.Extent.StartOffset -Because 'no launch grant is minted before the budget is checked' }
+        foreach ($run in $runs) { $firstCheck | Should -BeLessThan $run.Extent.StartOffset -Because 'no reviewer is invoked before the budget is checked' }
     }
 
     It 'not-produced evidence is consumed by both live and resumed human surfaces' {
