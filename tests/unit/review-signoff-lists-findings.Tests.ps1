@@ -92,3 +92,28 @@ Describe 'the review sign-off names what the review leaves behind, finding by fi
         [string]$signoff.message | Should -Match 'src/poll\.ps1:41'
     }
 }
+
+Describe 'corrections to the sign-off listing (maintainer, 2026-11-09)' {
+    It 'if the listing cannot be built, the sign-off refuses in plain words and says what could not be read' {
+        $project = script:New-ListProject -Name 'listing-fails' -Verdict 'pass' -Findings @()
+        Mock -CommandName Get-ReviewCampaignSignoffFindingLines -MockWith { throw 'review-store-corruption:result-unreadable:run-list-1' }
+        $signoff = script:Get-Signoff -Project $project
+        [string]$signoff.decision | Should -BeExactly 'block' -Because 'a sign-off that cannot list what the review leaves behind must not release'
+        [string]$signoff.message | Should -Match '(?i)could not (read|list)'
+        [string]$signoff.message | Should -Match 'result-unreadable'
+    }
+
+    It 'with a demoted finding, the clean route leads with the demotion, never with "found nothing that blocks"' {
+        $project = script:New-ListProject -Name 'demoted-lead' -Verdict 'findings' -Findings @((script:New-Finding -Id 'finding-00000000000000d4' -Severity 'minor' -Title 'Cache never invalidated' -Location 'src/cache.ps1:9' -Demoted))
+        $signoff = script:Get-Signoff -Project $project
+        [string]$signoff.message | Should -Match '^The reviewer reported 1 blocking finding'
+        [string]$signoff.message | Should -Match 'no concrete failure scenario'
+        [string]$signoff.message | Should -Match 'Read (it|them) below before you approve'
+        [string]$signoff.message | Should -Not -Match 'found nothing that blocks'
+    }
+
+    It 'without a demotion, the clean route keeps its wording' {
+        $project = script:New-ListProject -Name 'plain-lead' -Verdict 'findings' -Findings @((script:New-Finding -Id 'finding-00000000000000f5' -Severity 'minor' -Title 'Typo' -Location 'src/app.ps1:2'))
+        [string](script:Get-Signoff -Project $project).message | Should -Match '^Your review found nothing that blocks sign-off'
+    }
+}
