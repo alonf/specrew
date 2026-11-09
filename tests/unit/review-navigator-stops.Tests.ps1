@@ -41,9 +41,20 @@ BeforeAll {
         return $root
     }
 
-    # A stop the engine wrote: (a) with one open finding, through the engine's own fact writer.
+    # A stop the engine wrote: (a) with one open finding, through the engine's own fact writers. Stop (a) is about its open
+    # findings, so the fixture publishes one (a run that brought back part of a review); with none open, (a) is closed.
     function script:Add-NavStop([string]$Root, [string]$Kind = 'a-budget-spent') {
         $store = Join-Path $Root '.specrew/review/authority'
+        $partial = [pscustomobject][ordered]@{
+            schema_version = '1.0'; campaign_id = $script:CampaignId; run_id = 'run-nav-partial'; target_digest = ('a' * 40); harness_id = 'fixture'
+            completion = 'partial'; verdict = 'incomplete'; runtime_outcome = 'timed-out'; termination_verified = $true; containment = 'verified'
+            currentness = 'current'; validation = 'valid'; can_approve_current = $false; summary = 'half'
+            findings = @([pscustomobject][ordered]@{ finding_id = 'finding-0123456789abcdef'; source_local_id = 'l1'; lineage_id = 'lin-0123456789abcdef'; severity = 'major'; title = 'Empty store'; description = 'Failure scenario: an empty store throws.'; location = 'src/app.ps1:1'; relevance = 'current'; resolution = 'open'; demoted = $false; demoted_from = '' })
+            started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $false
+        }
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:CampaignId -RunId 'run-nav-partial' -TargetLineage 'lin-001-demo' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $script:CampaignId -RunId 'run-nav-partial' -Fact $partial | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:CampaignId -RunId 'run-nav-partial' -TargetLineage 'lin-001-demo' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
         $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
         $fact = New-ReviewCampaignPendingPauseFact -CampaignId $script:CampaignId -RunId 'run-nav-stop-1' -TargetDigest ('a' * 40) -Decision $decision `
             -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -StopKind $Kind -StopReason 'budget-spent'
@@ -102,5 +113,29 @@ Describe 'the navigator stops only on an open stop, and only during implement (F
         Get-Command -Name Build-ReviewCampaignNavigatorStopBlock -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
         $navigator | Should -Not -Match "'review-required'\s*\{"
         $navigator | Should -Not -Match "'review-stale'\s*\{"
+    }
+}
+
+Describe 'with campaign authority off, the navigator still stops on a completed blocking verdict (step (iii) defect, DRIFT-052)' {
+    # a515a7e5 deleted Build-ContinuousCoReviewNavigatorAgentDirective with the campaign stop block, while the reap that
+    # runs when campaign authority is off still called it. Entered at the Stop hook's navigator entry, so any surviving
+    # call to a deleted function on this path fails here.
+    It 'a done blocking verdict on the current files is a stop, with the agent''s directive beside it' {
+        Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+            [pscustomobject]@{ mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true; campaign_authority_enabled = $false; reason = 'authority-mode-legacy' }
+        }
+        $root = script:New-NavProject -Name 'legacy-blocking'
+        $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+        $runId = 'legacy-current-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+        $pendingDir = Join-Path $root '.specrew/review/pending'
+        $runDir = Join-Path $pendingDir $runId
+        New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+        $resultPath = Join-Path $runDir 'result.out'
+        Set-Content -LiteralPath $resultPath -Encoding UTF8 -Value '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.ps1", "comment": "a blocking finding", "disposition": "blocking" } ] }'
+        ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest } | ConvertTo-Json) |
+            Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+        $decision = script:Invoke-Nav -Root $root
+        [string]$decision.stop_block | Should -Not -BeNullOrEmpty -Because ([string]$decision.reason)
+        [string]$decision.agent_directives | Should -Not -BeNullOrEmpty
     }
 }
