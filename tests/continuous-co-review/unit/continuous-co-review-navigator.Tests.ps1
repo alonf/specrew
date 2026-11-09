@@ -63,6 +63,17 @@ Describe 'T078/T079 continuous co-review navigator (reap + fire + dedup + orphan
             return $root
         }
 
+        # Feature 203 T008 (DRIFT-052 item 6): an open review stop, written by the engine's own writer, in the campaign the
+        # fixture resolves to (feature 001-demo, iteration 001). A (c) judgment stop stays open until the human answers it.
+        function script:Add-NavigatorOpenStop {
+            param([Parameter(Mandatory)][string]$Root)
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 2
+            $stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-001-demo-i001' -RunId 'run-nav-stop' -TargetDigest ('a' * 40) -Decision $decision `
+                -ObservedAt '2026-11-09T08:00:00Z' -StopKind 'c-judgment' -StopReason 'ask'
+            $stop | Add-Member -NotePropertyName recommendation -NotePropertyValue 'should the retry cap count per host or per campaign?' -Force
+            $null = Write-ReviewCampaignPendingPauseFact -StoreRoot (Join-Path $Root '.specrew/review/authority') -Fact $stop
+        }
+
         # Add a NEW commit on top of trunk so the merge-base baseline -> HEAD diff is a real checkpoint.
         function script:Add-NavigatorIncrement {
             param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Content)
@@ -392,33 +403,45 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
     # against GENUINE committed work, and the paired cases below pin quiet for a FULLY-RESOLVED empty
     # delta only. Unresolved inputs stay pinned fail-closed (live) by the case after them.
     It 'campaign <Boundary>: the packet gate is STILL consulted from the implement window onward on genuine work (the fix must not silence live stages)' -TestCases @(
-        @{ Boundary = 'before-implement' }
-        @{ Boundary = 'review-signoff' }
+        @{ Boundary = 'before-implement'; Quiet = 'no-open-stop'; StopsHere = $true }
+        @{ Boundary = 'review-signoff'; Quiet = 'not-implement-stage'; StopsHere = $false }
     ) {
-        param($Boundary)
+        # Feature 203 T008 (DRIFT-052 item 6, FR-006; maintainer classification 2026-11-09, class A): the navigator no longer
+        # reads the sign-off gate's packet. On genuine work during implement it is quiet until a stop is open, and then it
+        # stops; at review-signoff it never stops (no review stop outside implement - the sign-off boundary check is
+        # covered by ddefbd2e's suite). What this case protected still holds: the live stage is not silenced - an open stop
+        # is shown.
+        param($Boundary, $Quiet, $StopsHere)
         $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
         try {
             $featureRoot = Join-Path $root 'specs/001-demo'
             New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
             '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
-            # Genuine implementation in the coverage delta: a source change committed on the feature
-            # branch, which is what "there is implementation to review" means.
+            # Genuine implementation in the coverage delta: a source change committed on the feature branch.
             Set-Content -LiteralPath (Join-Path $root 'src/feature.txt') -Value 'implemented' -Encoding UTF8 -NoNewline
             & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' add src/feature.txt 2>&1 | Out-Null
             & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' commit -q -m 'boundary(implement): feature work' 2>&1 | Out-Null
             Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
                 [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
             }
-            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith {
-                [pscustomobject]@{ reason = 'no-authoritative-campaign-result'; render_boundary_packet = $false; route = 'review-required'; run_id = $null }
-            }
-            Mock -CommandName Build-ReviewCampaignNavigatorStopBlock -MockWith { 'CAMPAIGN-BLOCK' }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
 
+            $quietDecision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $quietDecision.reason | Should -Be $Quiet
+            $quietDecision.stop_block | Should -BeNullOrEmpty -Because 'no stop is open, and no block exists only to make the crew run a round (FR-006)'
+
+            script:Add-NavigatorOpenStop -Root $root
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
-            $decision.reason | Should -Be 'no-authoritative-campaign-result'
-            $decision.stop_block | Should -Be 'CAMPAIGN-BLOCK'
-            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 1 -Exactly
+            if ($StopsHere) {
+                $decision.reason | Should -Be 'review-stop-open:c-judgment'
+                $decision.stop_block | Should -Match 'Your decision: ' -Because 'an open stop during implement is shown, with its decision'
+            }
+            else {
+                $decision.reason | Should -Be 'not-implement-stage'
+                $decision.stop_block | Should -BeNullOrEmpty -Because 'no review stop occurs outside implement (FR-006)'
+            }
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -460,10 +483,13 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
     # coverage anchor cannot be resolved the gate stays consulted, so a broken repository shape can
     # never silence the campaign surface.
     It 'campaign <Boundary>: an unresolvable coverage anchor keeps the gate consulted (fail closed)' -TestCases @(
-        @{ Boundary = 'before-implement' }
-        @{ Boundary = 'review-signoff' }
+        @{ Boundary = 'before-implement'; StopsHere = $true }
+        @{ Boundary = 'review-signoff'; StopsHere = $false }
     ) {
-        param($Boundary)
+        # Feature 203 T008 (DRIFT-052 item 6, FR-006; maintainer classification 2026-11-09, class A): the packet gate is no
+        # longer consulted. Fail closed still means what it meant: an anchor that cannot be resolved never quiets the surface,
+        # so an open stop during implement is shown; at review-signoff no review stop is shown (none occurs outside implement).
+        param($Boundary, $StopsHere)
         $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
         try {
             $featureRoot = Join-Path $root 'specs/001-demo'
@@ -475,20 +501,25 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
                 [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
             }
-            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith {
-                [pscustomobject]@{ reason = 'no-authoritative-campaign-result'; render_boundary_packet = $false; route = 'review-required'; run_id = $null }
-            }
-            Mock -CommandName Build-ReviewCampaignNavigatorStopBlock -MockWith { 'CAMPAIGN-BLOCK' }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+            script:Add-NavigatorOpenStop -Root $root
 
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
-            $decision.reason | Should -Be 'no-authoritative-campaign-result'
-            $decision.stop_block | Should -Be 'CAMPAIGN-BLOCK'
-            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 1 -Exactly
+            if ($StopsHere) {
+                $decision.reason | Should -Be 'review-stop-open:c-judgment' -Because 'an unresolvable anchor must never quiet an open stop'
+                $decision.stop_block | Should -Match 'Your decision: '
+            }
+            else {
+                $decision.stop_block | Should -BeNullOrEmpty -Because 'no review stop occurs outside implement (FR-006)'
+            }
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'campaign intake: malformed active feature state still fails closed through the packet gate' {
+        # Feature 203 T008 (DRIFT-052 item 6, FR-006: only stops (a) to (d); maintainer classification 2026-11-09, class A):
+        # no stop, plus a visible note that Specrew could not read whether a stop is waiting. It must never go silent.
         $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
         try {
             New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
@@ -498,10 +529,12 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             }
 
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
-            $decision.reason | Should -Be 'campaign-packet-gate-failed'
-            $decision.stop_block | Should -Match 'could not work out which feature this review is for'
-            $decision.stop_block | Should -Match ([regex]::Escape('specrew review --live --feature <feature-id>'))
-            $decision.stop_block | Should -Not -Match 'approve-round' -Because 'feature 203 T008 removed the per-round approval'
+            $decision.stop_block | Should -BeNullOrEmpty -Because 'an unreadable state is not a stop'
+            $decision.reason | Should -Be 'campaign-stop-unreadable'
+            $note = @($decision.inject_notes) -join "`n"
+            $note | Should -Match 'could not read whether a review stop is waiting' -Because 'it must never go silent'
+            $note | Should -Match 'could not work out which feature this review is for'
+            $note | Should -Not -Match 'approve-round' -Because 'feature 203 T008 removed the per-round approval'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -544,9 +577,13 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
                 [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
             }
 
+            # Feature 203 T008 (DRIFT-052 item 6, FR-006; maintainer classification 2026-11-09, class A): no stop, plus a visible
+            # note that Specrew could not read whether a stop is waiting. It must never go silent.
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
-            $decision.reason | Should -Be 'campaign-packet-gate-failed'
-            $decision.stop_block | Should -Match 'review-campaign-active-iteration-unresolved'
+            $decision.stop_block | Should -BeNullOrEmpty -Because 'an unreadable state is not a stop'
+            $decision.reason | Should -Be 'campaign-stop-unreadable'
+            (@($decision.inject_notes) -join "`n") | Should -Match 'could not read whether a review stop is waiting'
+            (@($decision.inject_notes) -join "`n") | Should -Match 'review-campaign-active-iteration-unresolved'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -576,9 +613,13 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
                 [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
             }
 
+            # Feature 203 T008 (DRIFT-052 item 6, FR-006; maintainer classification 2026-11-09, class A): no stop, plus a visible
+            # note that Specrew could not read whether a stop is waiting. It must never go silent.
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
-            $decision.reason | Should -Be 'campaign-packet-gate-failed'
-            $decision.stop_block | Should -Match 'review-campaign-active-iteration-unresolved'
+            $decision.stop_block | Should -BeNullOrEmpty -Because 'an unreadable state is not a stop'
+            $decision.reason | Should -Be 'campaign-stop-unreadable'
+            (@($decision.inject_notes) -join "`n") | Should -Match 'could not read whether a review stop is waiting'
+            (@($decision.inject_notes) -join "`n") | Should -Match 'review-campaign-active-iteration-unresolved'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
