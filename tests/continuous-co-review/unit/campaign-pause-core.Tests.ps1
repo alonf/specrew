@@ -17,6 +17,16 @@ Describe 'Campaign pause core (T001)' {
         # Rendering lives in the navigator layer (the D1 binding), which _load does not dot-source.
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
+        # Feature 203 T008 step (iii): one stop of each kind through the engine's own writer, rendered by the surface the human sees.
+        function script:New-StopSurface([string]$Kind, [int]$Used = 2, [int]$Total = 2, [string]$NextHost = '') {
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed $Used -BudgetTotal $Total
+            $reason = switch ($Kind) { 'a-budget-spent' { 'budget-spent' } 'b-dispute-or-defer' { 'dispute' } 'c-judgment' { 'ask' } default { 'host-order-exhausted' } }
+            $stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-surface' -TargetDigest ('a' * 40) -Decision $decision `
+                -ObservedAt '2026-11-09T08:00:00Z' -StopKind $Kind -StopReason $reason -NextHost $NextHost
+            $open = @([pscustomobject]@{ finding_id = 'finding-0123456789abcdef'; finding_key = 'finding-0123456789abcdef'; severity = 'major'; title = 'Empty store'; location = 'src/app.ps1:1' })
+            return @(Format-ReviewCampaignStopSurface -Stop $stop -OpenFindings $open)
+        }
+
         function script:New-Finding {
             param([string]$Severity, [string]$Title = 'a finding', [string]$Location = 'src/x.ps1:1')
             return [pscustomobject]@{ severity = $Severity; title = $Title; description = 'detail'; location = $Location }
@@ -57,18 +67,13 @@ Describe 'Campaign pause core (T001)' {
             $decision.gating | Should -BeTrue
         }
 
-        It 'the recommendation is derived from severity ALONE and never decides for the human' {
-            $blocking = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'blocking')) `
-                -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 5
-            $minorsOnly = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'minor')) `
-                -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 5
-
-            $blocking.recommendation | Should -Not -BeNullOrEmpty
-            $minorsOnly.recommendation | Should -Not -BeNullOrEmpty
-            $blocking.recommendation | Should -Not -Be $minorsOnly.recommendation
-            # Three numbered options are always offered: the recommendation informs, it never selects.
-            @($blocking.options).Count | Should -Be 3
-            @($minorsOnly.options).Count | Should -Be 3
+        # Class A for the old menu (deleted, no production caller; maintainer ruling 2026-11-09); the property - nothing
+        # decides for the human - now holds on the stop surface the human sees.
+        It 'no stop line is pre-chosen or marked as the default: nothing decides for the human' {
+            foreach ($kind in @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order')) {
+                $text = (script:New-StopSurface -Kind $kind -NextHost 'copilot') -join "`n"
+                $text | Should -Not -Match '(?i)recommended|\(default\)|default:|we will|selected|\[x\]'
+            }
         }
 
         It 'SC-002: an exhausted budget refuses continuation until a human reset' {
@@ -80,17 +85,13 @@ Describe 'Campaign pause core (T001)' {
             $decision.options | Where-Object { $_.id -eq 1 } | Should -BeNullOrEmpty
         }
 
-        It 'SC-002: continue is ABSENT when the budget is spent, never merely discouraged' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
-                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
-
-            @($decision.options | Where-Object { $_.choice -ceq 'fix-and-continue' }).Count | Should -Be 0
-            # The reset is NOT a numbered choice: a sanctioned bypass rendered as an option becomes
-            # one keystroke inside the flow it exists to interrupt, and exhaustion must feel
-            # different from an ordinary continuation.
-            @($decision.options | Where-Object { $_.choice -ceq 'reset-allowance' }).Count | Should -Be 0
-            @($decision.options).Count | Should -Be 2
-            @($decision.options | ForEach-Object { $_.choice }) | Should -Be @('stop-here', 'abandon')
+        # Class A for the old menu; SC-002 on the stop surface: at (a) the only line that continues is the allowance reset,
+        # sent as a line with its consequence; with budget left there is no (a) stop at all (review-loop-stops.Tests.ps1).
+        It 'SC-002: at stop (a) the only line that continues is approved for allowance reset, sent with its consequence' {
+            $lines = @(script:New-StopSurface -Kind 'a-budget-spent')
+            $continuing = @($lines | Where-Object { $_ -match '^\s{2}\S' -and $_ -match '(?i)goes on|continue' })
+            $continuing.Count | Should -Be 1
+            $continuing[0] | Should -Match '^\s+approved for allowance reset - .+'
         }
 
         It 'the refusal names what happened and the exact command to reset (U4 shape)' {
@@ -170,19 +171,20 @@ Describe 'Campaign pause core (T001)' {
             $script:Surface | Should -Match '3 of 4'
         }
 
-        It 'offers the three TYPED decisions and states that nothing spends until the human answers' {
-            # W49 (maintainer ruling, 2026-08-23) replaced the numbered menu with typed decisions,
-            # each carrying its consequence: a number indexes nothing a human can type, and numbered
-            # labels taught bare-number replies that are never authority in this system. This case
-            # asserted the superseded contract and had been red ever since - outside both verification
-            # lanes, which is why nobody saw it. Updated to the ruled shape; the FROZEN FR-002/SC-001
-            # text still says "numbered", and reconciling that is the maintainer's open item
-            # (DRIFT-199-I001-127/-131, five independent confirmations).
-            $script:Surface | Should -Match 'run another round'
-            $script:Surface | Should -Match 'stop the review here'
-            $script:Surface | Should -Match 'abandon this review campaign'
-            $script:Surface | Should -Not -Match '(?m)^\s*\d\.\s' -Because 'W49: the typed decision is the answer, not a number'
-            $script:Surface | Should -Match '[Nn]othing runs and nothing is spent until you answer'
+        # Class A for the old menu (FR-011): each stop offers exactly its own lines, and none asks for a round or abandons.
+        It 'each stop kind offers exactly its FR-011 lines, and none says run another round or abandon' {
+            $expected = @{
+                'a-budget-spent'       = @('approved for allowance reset', 'stop the review here', 'defer finding <id> to <backlog item or iteration>', 'drop finding <id>')
+                'b-dispute-or-defer'   = @('fix finding <id>', 'defer finding <id> to <backlog item or iteration>', 'drop finding <id>')
+                'c-judgment'           = @('your answer, in your own words', 'stop the review here')
+                'd-host-outside-order' = @('allow reviewer copilot', 'stop the review here')
+            }
+            foreach ($kind in $expected.Keys) {
+                $lines = @(script:New-StopSurface -Kind $kind -NextHost 'copilot')
+                $offered = @($lines | Where-Object { $_ -match '^\s{2}\S.* - ' -and $_ -notmatch '^\s{2}- ' } | ForEach-Object { ($_.Trim() -split ' - ', 2)[0] })
+                $offered | Should -Be $expected[$kind] -Because $kind
+                ($lines -join "`n") | Should -Not -Match '(?i)run another round|abandon'
+            }
         }
 
         It 'FR-015: carries no internal machinery vocabulary' {
@@ -191,19 +193,16 @@ Describe 'Campaign pause core (T001)' {
             }
         }
 
-        It 'renders the exhausted-budget refusal as prose, withdrawing only the decision that spends' {
-            # Same W49 update. The property under test is unchanged and is the one that matters: with
-            # the allowance spent, the decision that would spend a round is WITHDRAWN from the menu
-            # while the two that spend nothing remain, and the replenishment path is named.
-            $exhausted = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
-                Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
-            )
-            $exhausted | Should -Match '4 of 4'
-            $exhausted | Should -Match 'allowance-reset'
-            $exhausted | Should -Not -Match 'run another round' -Because 'a menu must not offer a round it cannot grant'
-            $exhausted | Should -Match 'stop the review here'
-            $exhausted | Should -Match 'abandon this review campaign'
-            $exhausted | Should -Not -Match '(?m)^\s*\d\.\s'
+        # B (maintainer ruling 2026-11-09): the exhausted-budget refusal stays prose naming the reset, and says the reset is
+        # typed as a normal chat message (W54).
+        It 'renders the exhausted-budget refusal as prose naming the reset, typed as a normal chat message' {
+            $text = Format-ReviewCampaignBudgetSpentDetail -BudgetState ([pscustomobject]@{ rounds_used = 2; budget_total = 2; budget_source = 'grant'; in_flight = 0 })
+            $text | Should -Match 'approved for allowance reset'
+            $text | Should -Match 'as a normal chat message'
+            $text | Should -Not -Match '(?i)abandon|run another round'
+            $stopText = (script:New-StopSurface -Kind 'a-budget-spent') -join "`n"
+            $resetLine = @($stopText -split "`n" | Where-Object { $_ -match 'approved for allowance reset' })[0]
+            $resetLine | Should -Match 'normal chat message' -Because 'W54: the line naming a captured phrase says how it is sent'
         }
     }
 
@@ -515,15 +514,16 @@ Describe 'Campaign pause core (T001)' {
             finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
+        # B: one reply per round still holds, with the answers that can still be recorded.
         It 'a second answer for the same round is refused (one reply, one round)' {
             $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-pause-' + [Guid]::NewGuid().ToString('N'))
             try {
                 $answer = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-dup' `
-                    -Choice 'fix-and-continue' -ObservedAt '2026-08-10T10:05:00Z'
+                    -Choice 'stop-here' -ObservedAt '2026-08-10T10:05:00Z'
                 Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact $answer | Out-Null
 
                 $conflicting = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-dup' `
-                    -Choice 'abandon' -ObservedAt '2026-08-10T10:06:00Z'
+                    -Choice 'answered' -ObservedAt '2026-08-10T10:06:00Z'
                 { Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact $conflicting } | Should -Throw '*conflicting-immutable-fact*'
             }
             finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }

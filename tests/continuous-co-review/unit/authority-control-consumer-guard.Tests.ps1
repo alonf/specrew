@@ -59,11 +59,22 @@ Describe 'authority controls have production consumers' {
         foreach ($run in $runs) { $firstCheck | Should -BeLessThan $run.Extent.StartOffset -Because 'no reviewer is invoked before the budget is checked' }
     }
 
-    It 'not-produced evidence is consumed by both live and resumed human surfaces' {
-        $navigator = script:Get-ScriptAst 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1'
-        (script:Get-MemberAsts $navigator 'result_produced').Count | Should -BeGreaterOrEqual 1
-        $source = $navigator.Extent.Text
-        ([regex]::Matches($source, "Get-ReviewAuthorityProperty\s+-Object\s+\`$Fact\s+-Name\s+'result_produced'")).Count | Should -BeGreaterThan 0
+    It 'a review that did not complete is consumed by the engine and by the human sign-off surface' {
+        # Feature 203 T008 step (iii) (maintainer ruling 2026-11-09). The case used to require the navigator's resumed pause
+        # surface to read result_produced; that renderer had no production caller and is deleted (class A for that half).
+        # The property keeps its HUMAN half: one answer to "did a complete review come back", review_collected, is read by
+        # the engine (Test-ReviewResultSpendsRound: a run without one is free and never counts as clean) AND by the sign-off
+        # gate's review-partial route, which tells the human the latest review did not complete.
+        $orchestrator = script:Get-ScriptAst 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1'
+        $spends = @($orchestrator.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq 'Test-ReviewResultSpendsRound' }, $true))
+        $spends.Count | Should -Be 1
+        $spends[0].Extent.Text | Should -Match "-Name 'review_collected'"
+        $spends[0].Extent.Text | Should -Match 'SPECREW-AUTHORITY-CONSUMER: review-result-produced'
+
+        $gate = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1') -Raw
+        $partial = [regex]::Match($gate, "(?s)SPECREW-AUTHORITY-CONSUMER: review-result-produced.{0,600}?-Route 'review-partial'")
+        $partial.Success | Should -BeTrue -Because 'the review-partial route is the live human surface for a review that did not complete'
+        $partial.Value | Should -Match 'review_collected'
     }
 
     It 'agenda authority compares the captured structured digest with the exact proposed agenda' {
