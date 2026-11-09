@@ -115,6 +115,7 @@ tests/integration/review-command.ps1
 tests/integration/scaffolder-protection.tests.ps1
 tests/integration/stale-state-retro.tests.ps1
 tests/integration/timestamp-read.tests.ps1
+tests/integration/validator-hardening-iteration2.ps1
 tests/unit/approval-form.tests.ps1
 tests/unit/authorization-ref-not-the-advice.tests.ps1
 tests/unit/capture-disclosure.tests.ps1
