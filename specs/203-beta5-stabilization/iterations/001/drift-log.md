@@ -1619,6 +1619,15 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Ordering constraint (maintainer, 2026-11-09)**: step (iv)'s B5F-017 fix (a finding that states a concrete failure
   scenario keeps the reviewer's severity, FR-005) must land BEFORE T014 advances the pin, because that is when this loop
   goes live and a demoted blocker could otherwise end a review clean.
+- **Built (2026-11-09), the sign-off listing and the 19 cases**: `Get-ReviewCampaignSignoffFindingLines` names, by id,
+  title and location, each finding still open as not covered, each non-gating finding of the reviewed head as a
+  follow-up, and each demoted finding with the reviewer's severity and why; the sign-off check appends them to its
+  message. A complete, current, valid review whose findings are all non-gating now releases the boundary instead of asking
+  for a human disposition (FR-004). Red first (`c3a3725f`, 3 of 3), built in `cf2285d7`. `campaign-pause-core` migrated
+  under the ruling: 37 It blocks kept (none deleted), 37/37; fix 3 (the reset line says it is typed as a normal chat
+  message) built with it. Still open from the classification: the navigator, consumer-language, advisory, two-governor,
+  firewall, orchestrator, public-command and campaign-pause-wiring suites; code fixes 4, 5 and 7; the (b) and (c)-ask
+  writers; then the sweep and step (iv), whose B5F-017 fix lands before T014.
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`

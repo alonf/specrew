@@ -1541,7 +1541,7 @@ function Format-ReviewCampaignStopSurface {
             $why = ('the review budget is spent ({0} of {1} rounds) and {2} still open.' -f $used, $total, $(if ($findings.Count -eq 1) { '1 finding is' } else { ('{0} findings are' -f $findings.Count) }))
             $decision = 'Decide what happens to the open findings.'
             $sendable = @(
-                @{ line = 'approved for allowance reset'; does = 'grants one fix round and one verification round, and the review goes on' }
+                @{ line = 'approved for allowance reset'; does = 'grants one fix round and one verification round, and the review goes on; type it as a normal chat message (a reply inside a question UI or picker is not captured)' }
                 $stopLine
                 @{ line = 'defer finding <id> to <backlog item or iteration>'; does = 'moves that finding to the place you name and closes it here; the destination is required' }
                 @{ line = 'drop finding <id>'; does = 'closes that finding with no fix' }

@@ -27,6 +27,29 @@ Describe 'Campaign pause core (T001)' {
             return @(Format-ReviewCampaignStopSurface -Stop $stop -OpenFindings $open)
         }
 
+        # Feature 203 T008 step (iii): a store holding one published round with $Findings, through the engine's own writers.
+        function script:New-RoundStore([object[]]$Findings, [bool]$Collected = $true, [string]$RunId = 'run-core-1', [string]$Digest = ('c' * 40)) {
+            $store = Join-Path $TestDrive ('store-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            $result = [pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = 'cmp-199-x-i001'; run_id = $RunId; target_digest = $Digest; harness_id = 'fixture'
+                completion = $(if ($Collected) { 'complete' } else { 'partial' }); verdict = $(if ($Collected) { 'findings' } else { 'incomplete' })
+                runtime_outcome = $(if ($Collected) { 'completed' } else { 'terminated' }); termination_verified = $true; containment = 'verified'
+                currentness = 'current'; validation = 'valid'; can_approve_current = $false; failure_reason = $(if ($Collected) { $null } else { 'the run brought back half a review' }); summary = 'fixture'; findings = @($Findings)
+                started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/x.ps1'); review_collected = $Collected
+            }
+            Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId $RunId -TargetLineage 'lin-199-x' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId $RunId -Fact $result | Out-Null
+            Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId $RunId -TargetLineage 'lin-199-x' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
+            return $store
+        }
+        function script:New-StoredFinding([string]$Id, [string]$Severity, [string]$Title = 'a finding', [string]$Location = 'src/x.ps1:1', [string]$DemotedFrom = '') {
+            return [pscustomobject][ordered]@{
+                finding_id = $Id; source_local_id = 'l1'; lineage_id = 'lin-' + $Id.Substring(8); severity = $Severity; title = $Title
+                description = 'Failure scenario: it breaks.'; location = $Location; relevance = 'current'; resolution = 'open'
+                demoted = (-not [string]::IsNullOrWhiteSpace($DemotedFrom)); demoted_from = $DemotedFrom
+            }
+        }
+
         function script:New-Finding {
             param([string]$Severity, [string]$Title = 'a finding', [string]$Location = 'src/x.ps1:1')
             return [pscustomobject]@{ severity = $Severity; title = $Title; description = 'detail'; location = $Location }
@@ -34,37 +57,28 @@ Describe 'Campaign pause core (T001)' {
     }
 
     Context 'the decision the surface renders from' {
-        It 'separates the severities and reports the cost the human is spending' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @(
-                (script:New-Finding -Severity 'blocking' -Title 'auth bypass' -Location 'src/auth.ps1:12'),
-                (script:New-Finding -Severity 'major'),
-                (script:New-Finding -Severity 'minor'),
-                (script:New-Finding -Severity 'minor')
-            ) -RoundsUsed 3 -BudgetTotal 4 -ElapsedMinutes 41
-
-            $decision.blocking_count | Should -Be 1
-            $decision.major_count | Should -Be 1
-            $decision.minor_count | Should -Be 2
-            $decision.rounds_used | Should -Be 3
-            $decision.budget_total | Should -Be 4
-            $decision.elapsed_minutes | Should -Be 41
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. Class A (the decision's counts are gone): the stop the human sees
+        # counts its open findings one by one and shows the rounds used.
+        It 'stop (a) counts its open findings one by one and shows the rounds used' {
+            $text = (script:New-StopSurface -Kind 'a-budget-spent') -join "`n"
+            $text | Should -Match 'What happened: 2 of 2 rounds used; 1 finding open\.'
+            $text | Should -Match '- finding-0123456789abcdef \(major\) Empty store at src/app\.ps1:1'
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B, both halves: a minor never opens a finding, never causes stop (a)
+        # and never blocks sign-off, AND the sign-off lists it as a follow-up (FR-013).
         It 'FR-004: minors never gate, and are carried as recorded follow-ups' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @(
-                (script:New-Finding -Severity 'minor'),
-                (script:New-Finding -Severity 'minor'),
-                (script:New-Finding -Severity 'minor')
-            ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 5
-
-            $decision.gating | Should -BeFalse
-            $decision.carried_followups | Should -Be 3
+            $store = script:New-RoundStore -Findings @((script:New-StoredFinding -Id 'finding-00000000000000a1' -Severity 'minor' -Title 'wording'))
+            @(Get-ReviewCampaignOpenFindings -StoreRoot $store -CampaignId 'cmp-199-x-i001').Count | Should -Be 0
+            (Get-ReviewCampaignLoopState -StoreRoot $store -CampaignId 'cmp-199-x-i001').ended_clean | Should -BeTrue
+            @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Contain 'Follow-up: finding-00000000000000a1 (minor) wording at src/x.ps1:1'
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B.
         It 'a blocking finding gates' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'blocking')) `
-                -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 5
-            $decision.gating | Should -BeTrue
+            $store = script:New-RoundStore -Findings @((script:New-StoredFinding -Id 'finding-00000000000000b1' -Severity 'blocking'))
+            @(Get-ReviewCampaignOpenFindings -StoreRoot $store -CampaignId 'cmp-199-x-i001').Count | Should -Be 1
+            (Get-ReviewCampaignLoopState -StoreRoot $store -CampaignId 'cmp-199-x-i001').ended_clean | Should -BeFalse
         }
 
         # Class A for the old menu (deleted, no production caller; maintainer ruling 2026-11-09); the property - nothing
@@ -76,13 +90,16 @@ Describe 'Campaign pause core (T001)' {
             }
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B, on the budget state the launch consumes.
         It 'SC-002: an exhausted budget refuses continuation until a human reset' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
-                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
-
-            $decision.budget_exhausted | Should -BeTrue
-            $decision.continuation_available | Should -BeFalse
-            $decision.options | Where-Object { $_.id -eq 1 } | Should -BeNullOrEmpty
+            $store = script:New-RoundStore -Findings @() -RunId 'run-core-1'
+            $null = Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-core-2' -TargetLineage 'lin-199-x' -ObservedAt '2026-11-09T08:02:00Z'
+            $second = (Get-ReviewRunAuthorityFact -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-core-1' -Stage result) | Select-Object *
+            $second.run_id = 'run-core-2'; $second.started_at = '2026-11-09T08:02:00Z'; $second.ended_at = '2026-11-09T08:03:00Z'
+            $null = Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-core-2' -Fact $second
+            (Get-ReviewCampaignRoundBudgetState -StoreRoot $store -CampaignId 'cmp-199-x-i001').continuation_available | Should -BeFalse
+            $null = Write-ReviewCampaignBudgetResetFact -StoreRoot $store -Fact (New-ReviewCampaignBudgetResetFact -CampaignId 'cmp-199-x-i001' -AuthorizedBy 'human' -Reason 'more' -ObservedAt '2026-11-09T09:00:00Z')
+            (Get-ReviewCampaignRoundBudgetState -StoreRoot $store -CampaignId 'cmp-199-x-i001').continuation_available | Should -BeTrue
         }
 
         # Class A for the old menu; SC-002 on the stop surface: at (a) the only line that continues is the allowance reset,
@@ -94,81 +111,68 @@ Describe 'Campaign pause core (T001)' {
             $continuing[0] | Should -Match '^\s+approved for allowance reset - .+'
         }
 
-        It 'the refusal names what happened and the exact command to reset (U4 shape)' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
-                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
-
-            $decision.budget_refusal | Should -Not -BeNullOrEmpty
-            $decision.budget_refusal | Should -Match '4 of 4'
-            $decision.budget_refusal | Should -Match 'allowance-reset'
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B (FR-010 for the command): the refusal names what happened and the
+        # typed line, never a command for the agent to run on the human's behalf.
+        It 'the refusal names what happened and the typed reset line (U4 shape)' {
+            $text = Format-ReviewCampaignBudgetSpentDetail -BudgetState ([pscustomobject]@{ rounds_used = 2; budget_total = 2; budget_source = 'grant'; in_flight = 0 })
+            $text | Should -Match '2 of 2 rounds'
+            $text | Should -Match 'approved for allowance reset'
+            $text | Should -Not -Match '--remediate'
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B.
         It 'no refusal text is rendered while budget remains' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 3
-            $decision.budget_refusal | Should -BeNullOrEmpty
+            $store = script:New-RoundStore -Findings @()
+            (Get-ReviewCampaignRoundBudgetState -StoreRoot $store -CampaignId 'cmp-199-x-i001').continuation_available | Should -BeTrue -Because 'one of the floor''s two rounds is left, so the launch is not refused'
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B, checked on an empty campaign.
         It 'continuation stays available while budget remains' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
-                -RoundsUsed 2 -BudgetTotal 4 -ElapsedMinutes 20
-
-            $decision.budget_exhausted | Should -BeFalse
-            $decision.continuation_available | Should -BeTrue
+            $store = Join-Path $TestDrive ('store-empty-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            $state = Get-ReviewCampaignRoundBudgetState -StoreRoot $store -CampaignId 'cmp-199-x-i001'
+            $state.rounds_used | Should -Be 0
+            $state.continuation_available | Should -BeTrue
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B: a run without a complete review never ends
+        # clean, its findings stay open, and the sign-off routes it review-partial.
         It 'a review that produced no valid result gates and never renders as clean at the budget ceiling' {
-            $result = [pscustomobject][ordered]@{
-                completion = 'none'; validation = 'not-produced'; verdict = 'incomplete'
-                failure_reason = 'review-timeout'; findings = @()
-            }
-            $decision = Resolve-ReviewCampaignPauseDecision -Result $result -Findings @() `
-                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
-
-            $decision.gating | Should -BeTrue
-            $decision.evidence_state | Should -Be 'not-produced'
-            $decision.result_produced | Should -BeFalse
-            $decision.continuation_available | Should -BeFalse
-            @($decision.options | Where-Object { $_.id -eq 1 }).Count | Should -Be 0
-            $decision.budget_refusal | Should -Match '4 of 4'
-
-            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision $decision
-            $surface | Should -Match 'found nothing and cleared nothing'
-            $surface | Should -Match 'not a clean review|Do not read this as a clean result'
-            $surface | Should -Not -Match 'Nothing was found\. Stopping here completes your sign-off'
+            $store = script:New-RoundStore -Findings @((script:New-StoredFinding -Id 'finding-00000000000000c1' -Severity 'major')) -Collected $false
+            @(Get-ReviewCampaignOpenFindings -StoreRoot $store -CampaignId 'cmp-199-x-i001').Count | Should -Be 1
+            (Get-ReviewCampaignLoopState -StoreRoot $store -CampaignId 'cmp-199-x-i001').ended_clean | Should -BeFalse
+            $partial = Get-ReviewRunAuthorityFact -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-core-1' -Stage result
+            (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' -CurrentDigest ('c' * 40) -OrderedRunIds @('run-core-1') -Results @($partial)).route | Should -BeExactly 'review-partial'
         }
     }
 
     Context 'the rendered decision surface (what the human actually reads)' {
         BeforeAll {
-            $script:Surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
-                Resolve-ReviewCampaignPauseDecision -Findings @(
-                    (script:New-Finding -Severity 'blocking' -Title 'SQL injection in the export endpoint' -Location 'src/export.ps1:88'),
-                    (script:New-Finding -Severity 'major' -Title 'retry loop never backs off' -Location 'src/poll.ps1:41'),
-                    (script:New-Finding -Severity 'minor'), (script:New-Finding -Severity 'minor'), (script:New-Finding -Severity 'minor')
-                ) -RoundsUsed 3 -BudgetTotal 4 -ElapsedMinutes 41
-            )
+            # Feature 203 T008 step (iii): the old menu renderer is deleted (no production caller); the surface the human
+            # reads at a stop is Format-ReviewCampaignStopSurface.
+            $script:Surface = (script:New-StopSurface -Kind 'a-budget-spent') -join "`n"
+            $script:AllSurfaces = @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order' | ForEach-Object { (script:New-StopSurface -Kind $_ -NextHost 'copilot') -join "`n" })
         }
 
-        It 'names the project and what was found, with locations' {
-            $script:Surface | Should -Match 'linkcheck'
-            $script:Surface | Should -Match 'SQL injection in the export endpoint'
-            $script:Surface | Should -Match 'src/export\.ps1:88'
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. A for the project name (it belonged to the deleted menu); B for the
+        # findings: the stop lists each open finding with its id, severity, title and location.
+        It 'names what was found, with locations' {
+            $script:Surface | Should -Match 'finding-0123456789abcdef \(major\) Empty store at src/app\.ps1:1'
         }
 
-        It 'shows the minors as saved follow-ups that do not block' {
-            # W67 (2026-08-26) replaced the trailing "3 minor findings" footnote with the whole mix
-            # stated in one place - total, blocking, needing acceptance, notes - because a reader had
-            # to combine three separate lines to learn what the round amounted to, and no line said
-            # nothing blocked even when nothing did. The property this case exists for is unchanged:
-            # the minors are visible AS non-gating follow-ups.
-            $script:Surface | Should -Match '(?i)3 are notes'
-            $script:Surface | Should -Match 'follow-up'
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. Both halves: no minor appears as an open finding at a stop, and the
+        # sign-off lists it as a follow-up.
+        It 'shows the minors as follow-ups that do not block' {
+            $store = script:New-RoundStore -Findings @((script:New-StoredFinding -Id 'finding-00000000000000d2' -Severity 'major' -Title 'retry'), (script:New-StoredFinding -Id 'finding-00000000000000d3' -Severity 'minor' -Title 'wording'))
+            $open = @(Get-ReviewCampaignOpenFindings -StoreRoot $store -CampaignId 'cmp-199-x-i001')
+            @($open | ForEach-Object { $_.finding_id }) | Should -Be @('finding-00000000000000d2')
+            $stopText = (Format-ReviewCampaignStopSurface -Stop ([pscustomobject]@{ stop_kind = 'a-budget-spent'; stop_reason = 'budget-spent'; rounds_used = 2; budget_total = 2 }) -OpenFindings $open) -join "`n"
+            $stopText | Should -Not -Match 'finding-00000000000000d3'
+            @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Contain 'Follow-up: finding-00000000000000d3 (minor) wording at src/x.ps1:1'
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B.
         It 'shows the cost and the budget position' {
-            $script:Surface | Should -Match '3 rounds'
-            $script:Surface | Should -Match '41 minutes'
-            $script:Surface | Should -Match '3 of 4'
+            $script:Surface | Should -Match '2 of 2 rounds used'
         }
 
         # Class A for the old menu (FR-011): each stop offers exactly its own lines, and none asks for a round or abandons.
@@ -187,9 +191,12 @@ Describe 'Campaign pause core (T001)' {
             }
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B (class guard): every stop surface.
         It 'FR-015: carries no internal machinery vocabulary' {
-            foreach ($banned in @('crossing', 'mint', 'digest', 'boundary sync', 'verdict capture', 'ratchet', 'terminalize', 'claim-ordered')) {
-                $script:Surface | Should -Not -Match ([regex]::Escape($banned))
+            foreach ($surface in $script:AllSurfaces) {
+                foreach ($banned in @('crossing', 'mint', 'digest', 'boundary sync', 'verdict capture', 'ratchet', 'terminalize', 'claim-ordered')) {
+                    $surface | Should -Not -Match ([regex]::Escape($banned))
+                }
             }
         }
 
@@ -216,87 +223,45 @@ Describe 'Campaign pause core (T001)' {
     # no such line. A surface that always mentions demotion teaches the reader to skip the sentence.
     Context 'a demotion is never silent (FR-006 visibility)' {
         BeforeAll {
-            function script:New-DemotedFinding {
-                # The shape ingest produces: severity already lowered to minor, the reviewer's original
-                # severity preserved beside it. Built here rather than by calling the grader so this
-                # suite keeps testing the SURFACE, not the ingestor.
-                param([string]$From = 'blocking', [string]$Title = 'unvalidated input reaches the shell')
-                return [pscustomobject]@{
-                    severity = 'minor'; title = $Title; description = 'detail'; location = 'src/x.ps1:1'
-                    demoted = $true; demoted_from = $From
-                }
-            }
+            # Feature 203 T008 step (iii), maintainer ruling 2026-11-09: a demoted blocker opens no finding, so the loop can end
+            # clean with no stop; the required surface is the SIGN-OFF, which names each demotion with the reviewer's original
+            # severity and why. B for all five cases, and the code was wrong (nothing live showed demotions).
+            $script:DemotedStore = script:New-RoundStore -Findings @(
+                (script:New-StoredFinding -Id 'finding-00000000000000e1' -Severity 'minor' -Title 'unvalidated input reaches the shell' -Location 'src/run.ps1:7' -DemotedFrom 'blocking'),
+                (script:New-StoredFinding -Id 'finding-00000000000000e2' -Severity 'minor' -Title 'retry ignores the cap' -Location 'src/poll.ps1:3' -DemotedFrom 'major'))
+            $script:DemotedLines = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot $script:DemotedStore -CampaignId 'cmp-199-x-i001')
+            $script:PlainLines = @(Get-ReviewCampaignSignoffFindingLines -StoreRoot (script:New-RoundStore -Findings @((script:New-StoredFinding -Id 'finding-00000000000000e3' -Severity 'minor' -Title 'wording'))) -CampaignId 'cmp-199-x-i001')
         }
 
-        It 'the decision counts the demotions and keeps the reviewer original severity' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @(
-                (script:New-DemotedFinding -From 'blocking'),
-                (script:New-DemotedFinding -From 'major'),
-                (script:New-Finding -Severity 'minor')
-            ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-
-            $decision.demoted_count | Should -Be 2
-            $decision.demoted_from_blocking | Should -Be 1
-            $decision.demoted_from_major | Should -Be 1
-            $decision.minor_count | Should -Be 3 -Because 'a demoted finding IS a minor now - the demotion count names a subset, it does not add a bucket'
-            $decision.gating | Should -BeFalse -Because 'the whole point of the demotion is that it cannot cost the human a round'
+        It 'the sign-off counts each demotion and keeps the reviewer original severity' {
+            @($script:DemotedLines | Where-Object { $_ -like 'Demoted:*' }).Count | Should -Be 2
+            ($script:DemotedLines -join "`n") | Should -Match 'reported it as blocking'
         }
 
         It 'a round with no demotions reports zero' {
-            $decision = Resolve-ReviewCampaignPauseDecision -Findings @(
-                (script:New-Finding -Severity 'blocking'), (script:New-Finding -Severity 'minor')
-            ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-
-            $decision.demoted_count | Should -Be 0
-            $decision.demoted_from_blocking | Should -Be 0
-            $decision.demoted_from_major | Should -Be 0
+            @($script:PlainLines | Where-Object { $_ -like 'Demoted:*' }).Count | Should -Be 0
         }
 
-        It 'the surface NAMES the demotion, the reviewer original severity, and where it went' {
-            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
-                Resolve-ReviewCampaignPauseDecision -Findings @(
-                    (script:New-DemotedFinding -From 'blocking'), (script:New-Finding -Severity 'minor')
-                ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-            )
-
-            $surface | Should -Match '(?i)reported as blocking' -Because 'the human must be able to see it was NOT the reviewer that called this minor'
-            $surface | Should -Match '(?i)demoted'
-            $surface | Should -Match '(?i)no concrete failure scenario'
-            $surface | Should -Match '(?i)follow-up'
+        It 'the sign-off NAMES the demotion, the reviewer original severity, and where it went' {
+            $script:DemotedLines | Should -Contain 'Demoted: finding-00000000000000e1 unvalidated input reaches the shell at src/run.ps1:7 - the reviewer reported it as blocking; it was recorded as minor because it states no concrete failure scenario.'
         }
 
         It 'a round with NO demotions renders no demotion line at all' {
-            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
-                Resolve-ReviewCampaignPauseDecision -Findings @(
-                    (script:New-Finding -Severity 'blocking'), (script:New-Finding -Severity 'minor')
-                ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-            )
-
-            $surface | Should -Not -Match '(?i)demoted'
-            $surface | Should -Not -Match '(?i)no concrete failure scenario'
+            ($script:PlainLines -join "`n") | Should -Not -Match '(?i)demot'
+            $script:PlainLines | Should -Contain 'Follow-up: finding-00000000000000e3 (minor) wording at src/x.ps1:1'
         }
 
         It 'mixed origins are stated honestly rather than collapsed to one severity' {
-            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
-                Resolve-ReviewCampaignPauseDecision -Findings @(
-                    (script:New-DemotedFinding -From 'blocking'), (script:New-DemotedFinding -From 'major')
-                ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-            )
-
-            $surface | Should -Match '(?i)reported as blocking or major'
-            $surface | Should -Match '2 findings'
+            @($script:DemotedLines | Where-Object { $_ -match 'finding-00000000000000e1.*reported it as blocking' }).Count | Should -Be 1
+            @($script:DemotedLines | Where-Object { $_ -match 'finding-00000000000000e2.*reported it as major' }).Count | Should -Be 1
         }
 
-        It 'the recorded pause fact carries the demotion count and still validates' {
-            # Without this the SURFACE tells the truth while the RECORD does not, and the record is
-            # what a later reader has.
-            $fact = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-demote' `
-                -TargetDigest ('a' * 40) -Decision (
-                Resolve-ReviewCampaignPauseDecision -Findings @((script:New-DemotedFinding -From 'blocking')) `
-                    -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
-            ) -ObservedAt '2026-08-10T10:00:00Z'
-
-            $fact.demoted_count | Should -Be 1
+        # Class A (the counts are no longer written); what stays: a fact stored before, with its demotion count, still validates.
+        It 'a pause fact stored with its demotion count still validates' {
+            $fact = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-dem' -TargetDigest ('e' * 40) `
+                -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 2) -ObservedAt '2026-08-10T11:00:00Z'
+            foreach ($name in @('blocking_count', 'major_count', 'minor_count')) { $fact | Add-Member -NotePropertyName $name -NotePropertyValue 0 }
+            $fact | Add-Member -NotePropertyName demoted_count -NotePropertyValue 1
             (Test-ReviewAuthorityContractObject -ContractName PendingPauseFact -InputObject $fact -ExpectedCampaignId 'cmp-199-x-i001').valid | Should -BeTrue
         }
     }
@@ -473,24 +438,18 @@ Describe 'Campaign pause core (T001)' {
             (Test-ReviewCampaignPendingPauseQuiet -PendingPause $null -CurrentDigest ('a' * 40)).confers_quiet | Should -BeFalse
         }
 
+        # Feature 203 T008 step (iii), maintainer ruling 2026-11-09 on the 19 cases. B: the fields a stop carries now persist and read back.
         It 'the facts persist and read back through the immutable store' {
-            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-pause-' + [Guid]::NewGuid().ToString('N'))
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-persist-' + [Guid]::NewGuid().ToString('N'))
             try {
-                $digest = 'c' * 40
-                $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-store' `
-                    -TargetDigest $digest -Decision (Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 2 -BudgetTotal 4 -ElapsedMinutes 12) `
-                    -ObservedAt '2026-08-10T10:00:00Z'
-
-                $write = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $pending
-                $write.created | Should -BeTrue
-
-                $readBack = Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001'
-                $readBack | Should -Not -BeNullOrEmpty
-                $readBack.run_id | Should -Be 'run-t001-store'
-                $readBack.target_digest | Should -Be $digest
-                # Resume renders the surface VERBATIM from the fact, so its content must survive.
-                $readBack.recommendation | Should -Be $pending.recommendation
-                $readBack.rounds_used | Should -Be 2
+                $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-persist' -TargetDigest ('a' * 40) `
+                    -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2) -ObservedAt '2026-08-10T10:00:00Z' -StopKind 'a-budget-spent' -StopReason 'budget-spent'
+                $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $pending
+                $read = Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001'
+                [int]$read.rounds_used | Should -Be 2
+                [int]$read.budget_total | Should -Be 2
+                [string]$read.stop_kind | Should -BeExactly 'a-budget-spent'
+                [string]$read.stop_reason | Should -BeExactly 'budget-spent'
             }
             finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
