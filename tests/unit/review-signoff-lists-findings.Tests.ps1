@@ -1,0 +1,94 @@
+# Feature 203 T008 step (iii) (FR-011, FR-013; maintainer rulings 2026-11-09): the review sign-off names what the review
+# leaves behind, finding by finding (id, title, where), never only a count: every finding still open as not covered (after
+# `stop the review here` too), every non-gating finding of the reviewed head as a follow-up, and every finding the
+# ingestor demoted, with the reviewer's original severity and why. A blocker the ingestor demotes never opens a finding,
+# so the loop can end clean with no stop; the sign-off must still name it. Entered at the sign-off check
+# (Get-ContinuousCoReviewSignoffGateDecision, what the review-signoff boundary runs) on a real Git repo.
+
+BeforeAll {
+    $script:RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+    . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+    . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1')
+    $script:Utf8 = [Text.UTF8Encoding]::new($false)
+    $script:Campaign = 'cmp-demo-i007'
+
+    function script:Invoke-ListGit([string]$Root, [string[]]$Arguments) {
+        $null = & git -C $Root -c user.name=t -c user.email=t@example.invalid @Arguments 2>&1
+        if ($LASTEXITCODE -ne 0) { throw ('fixture-git-failed:' + ($Arguments -join ' ')) }
+    }
+
+    function script:New-Finding([string]$Id, [string]$Severity, [string]$Title, [string]$Location, [switch]$Demoted) {
+        return [pscustomobject][ordered]@{
+            finding_id = $Id; source_local_id = 'l-' + $Id.Substring(8, 4); lineage_id = 'lin-' + $Id.Substring(8); severity = $Severity; title = $Title
+            description = $(if ($Demoted) { '[demoted to minor: no concrete failure scenario, so it cannot gate; reported as blocking by the reviewer] the cache is never invalidated' } else { 'Failure scenario: it breaks.' })
+            location = $Location; relevance = 'current'; resolution = 'open'; demoted = [bool]$Demoted; demoted_from = $(if ($Demoted) { 'blocking' } else { '' })
+        }
+    }
+
+    # A project whose one round reviewed the files exactly as they are now and returned $Findings.
+    function script:New-ListProject([string]$Name, [object[]]$Findings, [string]$Verdict) {
+        $root = Join-Path $TestDrive $Name
+        New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-demo/iterations/007'), (Join-Path $root 'src') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root 'specs/001-demo/spec.md'), '# Demo design context', $script:Utf8)
+        [IO.File]::WriteAllText((Join-Path $root 'src/app.ps1'), "function Get-Answer { 42 }`n", $script:Utf8)
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/review/`n", $script:Utf8)
+        script:Invoke-ListGit $root @('init', '-q'); script:Invoke-ListGit $root @('branch', '-m', 'main')
+        script:Invoke-ListGit $root @('add', '-A'); script:Invoke-ListGit $root @('commit', '-qm', 'initial')
+        $store = Join-Path $root '.specrew/review/authority'
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+        $result = [pscustomobject][ordered]@{
+            schema_version = '1.0'; campaign_id = $script:Campaign; run_id = 'run-list-1'; target_digest = $digest; harness_id = 'fixture'
+            completion = 'complete'; verdict = $Verdict; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+            currentness = 'current'; validation = 'valid'; can_approve_current = ($Verdict -ceq 'pass'); summary = 'fixture'; findings = @($Findings)
+            started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $true
+        }
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:Campaign -RunId 'run-list-1' -TargetLineage 'lin-demo' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $script:Campaign -RunId 'run-list-1' -Fact $result | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:Campaign -RunId 'run-list-1' -TargetLineage 'lin-demo' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
+        return [pscustomobject]@{ root = $root; store = $store }
+    }
+
+    function script:Get-Signoff([pscustomobject]$Project) {
+        return Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $Project.root -CampaignId $script:Campaign -TargetLineage 'lin-demo' `
+            -CampaignStoreRoot $Project.store -FeatureId '001-demo' -IterationNumber '007'
+    }
+}
+
+Describe 'the review sign-off names what the review leaves behind, finding by finding (FR-011, FR-013)' {
+    It 'a non-gating finding of the reviewed head is listed as a follow-up, with id, title and where it is' {
+        $project = script:New-ListProject -Name 'follow-up' -Verdict 'findings' -Findings @((script:New-Finding -Id 'finding-00000000000000f1' -Severity 'minor' -Title 'Typo in help text' -Location 'src/app.ps1:3'))
+        $signoff = script:Get-Signoff -Project $project
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $project.store -CampaignId $script:Campaign).Count | Should -Be 0 -Because 'a minor never opens a finding'
+        [string]$signoff.decision | Should -BeExactly 'allow' -Because 'a minor never blocks sign-off; it is listed instead'
+        [string]$signoff.message | Should -Match 'follow-up'
+        [string]$signoff.message | Should -Match 'finding-00000000000000f1'
+        [string]$signoff.message | Should -Match 'Typo in help text'
+        [string]$signoff.message | Should -Match 'src/app\.ps1:3'
+    }
+
+    It 'when the only blocking finding was demoted and the loop ends clean, the sign-off still names it, with the reviewer''s severity and why' {
+        $project = script:New-ListProject -Name 'demoted-only' -Verdict 'findings' -Findings @((script:New-Finding -Id 'finding-00000000000000d1' -Severity 'minor' -Title 'Cache never invalidated' -Location 'src/cache.ps1:9' -Demoted))
+        (Get-ReviewCampaignLoopState -StoreRoot $project.store -CampaignId $script:Campaign).ended_clean | Should -BeTrue -Because 'a demoted blocker opens no finding, so nothing stops the loop'
+        $signoff = script:Get-Signoff -Project $project
+        [string]$signoff.decision | Should -BeExactly 'allow'
+        [string]$signoff.message | Should -Match 'finding-00000000000000d1'
+        [string]$signoff.message | Should -Match 'Cache never invalidated'
+        [string]$signoff.message | Should -Match 'src/cache\.ps1:9'
+        [string]$signoff.message | Should -Match '(?i)reported (it )?as blocking'
+        [string]$signoff.message | Should -Match '(?i)no concrete failure scenario'
+    }
+
+    It 'after stop the review here, each finding still open is named as not covered, with id, title and where it is' {
+        $project = script:New-ListProject -Name 'stopped' -Verdict 'findings' -Findings @((script:New-Finding -Id 'finding-00000000000000b1' -Severity 'major' -Title 'Retry never backs off' -Location 'src/poll.ps1:41'))
+        $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
+        $stop = New-ReviewCampaignPendingPauseFact -CampaignId $script:Campaign -RunId 'run-list-stop' -TargetDigest ('a' * 40) -Decision $decision -ObservedAt '2026-11-09T08:05:00Z' -StopKind 'a-budget-spent' -StopReason 'budget-spent'
+        $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $project.store -Fact $stop
+        $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $project.store -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $script:Campaign -RunId 'run-list-stop' -Choice stop-here -ObservedAt '2026-11-09T08:06:00Z')
+        $signoff = script:Get-Signoff -Project $project
+        [string]$signoff.message | Should -Match '(?i)not covered'
+        [string]$signoff.message | Should -Match 'finding-00000000000000b1'
+        [string]$signoff.message | Should -Match 'Retry never backs off'
+        [string]$signoff.message | Should -Match 'src/poll\.ps1:41'
+    }
+}
