@@ -1576,6 +1576,24 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   launch lands it as a stop answered `stop-here`, and no further round launches, naming what remains uncovered, until an
   allowance reset reopens the review (fix 6, which also applies to `stop-here` on any stop).
   `Test-ReviewCampaignContinuationAuthorized` is deleted. Red first (`bcb074a2`, 9 of 9); `review-stop-here` 9/9.
+- **Ruling (maintainer, 2026-11-09), the old pause decision and its renderers** (not yet built): delete
+  `Format-ReviewCampaignPauseSurface` and `Format-ReviewCampaignOutstandingPause` (no production caller) and the options
+  list. `Resolve-ReviewCampaignPauseDecision` keeps only `rounds_used`, `budget_total` and `recommendation`; the unread
+  counts become optional in the pause-fact schema so stored facts stay valid. `review-result-produced` is re-declared on
+  `review_collected`. Conditions: (1) the guard keeps a human half: the sign-off gate's `review-partial` route
+  (`review-signoff-evidence-gate.ps1`, about line 974) is marked a consumer beside `Test-ReviewResultSpendsRound`, reads
+  `review_collected` instead of `completion`, and the case asserts both (the engine never counts a not-collected run as
+  clean; the sign-off tells the human the latest review did not complete). Its message ("a complete separately authorized
+  run is required") and the timeout route's `report-failure-and-request-rerun-grant` are rewritten in consumer language
+  without per-round authorization (FR-010). (2) A stop's `recommendation` is always written by that stop's own writer: the
+  severity-derived sentences never reach a stop surface (removed from the decision or not copied into the fact), and the
+  not-produced text ending "reset it explicitly or abandon" goes; the (b) and (c)-ask writers each set their own reason,
+  with a case rendering both that finds none of the old sentences. Five campaign-pause-core cases are pointed at
+  `Format-ReviewCampaignStopSurface` (no pre-chosen line; at (a) the only continuing line is `approved for allowance
+  reset` with its consequence, no (a) with budget left; each stop offers exactly its FR-011 lines and never "run another
+  round" or "abandon"; the reset typed as a normal chat message (W54); a second answer refused). Also ruled: after `stop
+  the review here`, the sign-off check and the review-signoff packet name each open finding as not covered (id, title,
+  where), red first (FR-011, FR-013).
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
