@@ -23,8 +23,9 @@ param(
     # FR-003/FR-005. The human's numbered reply to a paused round, as the ONLY way a further round is
     # authorized. Accepts the number shown on the surface or the choice name behind it, because the
     # surface shows numbers and a consumer reading a transcript later has only the words.
+    # Feature 203 T008 step (iii) (FR-010, FR-011): only `stop-here` remains. No ValidateSet, so a retired value is refused in
+    # plain words by the command rather than by a parameter-binding error.
     [Alias('pause-choice')]
-    [ValidateSet('1', '2', '3', 'fix-and-continue', 'stop-here', 'abandon')]
     [string]$PauseChoice,
     [Alias('pause-rationale')]
     [string]$PauseRationale,
@@ -982,21 +983,9 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     -AuthorizedBy ([string]$resetActor) -Reason ([string]$parsedArgs.AckReason) `
                     -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
                 Write-ReviewCampaignBudgetResetFact -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -Fact $resetFact | Out-Null
-                # THE RESET MUST ALSO UNWEDGE THE ROUND IT WAS CALLED FOR. Round 5, blocking: recording
-                # the fact alone left the exhausted round's pause UNANSWERED, so the very next command -
-                # the one this message names - was refused with `pause-decision-pending`, and the
-                # resumed surface still omitted option 1 because its immutable pause fact says 4 of 4.
-                # The advertised recovery stayed wedged unless the consumer guessed an extra step nobody
-                # offered. Topping up the allowance IS the choice to continue, so the outstanding pause
-                # is answered as `fix-and-continue` in the same act.
-                $resetStore = Join-Path $resolvedProjectPath '.specrew/review/authority'
-                $outstandingAtReset = Get-ReviewCampaignPendingPause -StoreRoot $resetStore -CampaignId $resetIdentity.campaign_id
-                if ($null -ne $outstandingAtReset) {
-                    Write-ReviewCampaignPauseDecisionFact -StoreRoot $resetStore -Fact (
-                        New-ReviewCampaignPauseDecisionFact -CampaignId $resetIdentity.campaign_id `
-                            -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingAtReset -Name 'run_id')) `
-                            -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
-                }
+                # Feature 203 T008 step (iii) (maintainer ruling 2026-11-09): the reset no longer answers the outstanding pause
+                # as fix-and-continue, which is removed. A reset recorded after stop (a) closes that stop by itself
+                # (Get-ReviewCampaignOpenStop).
                 # Feature 203 T008 (FR-007, FR-010): the reset is itself the authority for its fix and verification rounds;
                 # no round approval is derived from it, because rounds need none.
                 # The outcome is READ, not discarded: a swallowed failure here is what let one approval
@@ -1113,11 +1102,17 @@ if ($Live) {
             }
             # FR-003/FR-005: THE HUMAN'S REPLY, on the command they are already standing in.
             #
-            # Answering happens BEFORE any run, and two of the three answers end the invocation without
-            # spending anything. Only 'fix-and-continue' falls through to a round, which is what makes
-            # one answer authorize exactly one round rather than a mode the campaign stays in.
+            # Answering happens BEFORE any run and spends nothing. Feature 203 T008 step (iii): the one answer left is
+            # `stop the review here`, relayed as --pause-choice stop-here; it lands the sign-off and ends the invocation.
             $pauseAnswer = [string]$parsedArgs.PauseChoice
             if (-not [string]::IsNullOrWhiteSpace($pauseAnswer)) {
+                # Feature 203 T008 step (iii) (FR-010, FR-011; maintainer ruling 2026-11-09): `stop the review here` is the
+                # only pause answer. The numbers, fix-and-continue (rounds need no answer to continue) and abandon (retired)
+                # are refused in plain words before anything is read or written.
+                if ([string]$pauseAnswer -cne 'stop-here') {
+                    Write-Host ("--pause-choice {0} no longer exists: review rounds need no answer to continue, because the review budget pays for them, and abandoning a review campaign was retired. The only pause answer is the human's typed line, as a normal chat message (a reply inside a question UI or picker is not captured): stop the review here. Once they have typed it, run: specrew review --live --pause-choice stop-here. Nothing was recorded or written." -f $pauseAnswer) -ForegroundColor Yellow
+                    exit 1
+                }
                 # CHECKED BEFORE IDENTITY RESOLUTION, or the resolver throws first and the human is told
                 # to run --approve-round when they were ANSWERING a pause. Found by the end-to-end walk:
                 # the text was correct and the next step it named was for a different act.
@@ -1185,12 +1180,7 @@ if ($Live) {
                         exit 0
                     }
                 }
-                $choice = switch ($pauseAnswer) {
-                    '1' { 'fix-and-continue' }
-                    '2' { 'stop-here' }
-                    '3' { 'abandon' }
-                    default { $pauseAnswer }
-                }
+                $choice = 'stop-here'
                 $answeredRunId = [string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')
 
                 # Round-20 finding (DRIFT-199-I001-131): EVERY PAUSE CHOICE CARRIES THE HUMAN.
@@ -1204,7 +1194,7 @@ if ($Live) {
                 # Same shape as W44: inside an agent session the typed decision must be captured; a
                 # human at their own terminal is self-evidently authorized by their own invocation.
                 $pauseDecisionAuthorization = $null
-                if ($choice -cin @('stop-here', 'abandon')) {
+                if ($choice -ceq 'stop-here') {
                     # Round-21 finding (DRIFT-199-I001-132): LOAD THE STORE ON THIS PATH TOO. The
                     # round-20 gate was unreachable - HumanAuthorityStore is dot-sourced only when a
                     # ROUND approval is requested, which choices 2 and 3 never are, so every
@@ -1219,7 +1209,7 @@ if ($Live) {
                     Assert-SpecrewAuthorityMachineryReady -Action 'record that decision' `
                         -RequiredFunctions @('Get-SpecrewPauseDecisionAuthorization', 'Complete-SpecrewPauseDecisionAuthorization', 'Test-SpecrewInsideAgentSession')
                 }
-                if ($choice -cin @('stop-here', 'abandon') -and
+                if ($choice -ceq 'stop-here' -and
                     (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) -and
                     (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
                     # Bound to the run being answered: a decision captured against another round, or
@@ -1227,16 +1217,15 @@ if ($Live) {
                     # SPECREW-AUTHORITY-CONSUMER: pause-decision
                     try { $pauseDecisionAuthorization = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -RunId $answeredRunId }
                     catch { $pauseDecisionAuthorization = $null }
-                    if ((Test-SpecrewInsideAgentSession) -and $null -eq $pauseDecisionAuthorization) {
+                    # Feature 203 T008 step (iii) (FR-025; maintainer ruling 2026-11-09): --pause-choice stop-here only relays the
+                    # human's captured, unspent typed line - in a session or at their own terminal alike.
+                    if ($null -eq $pauseDecisionAuthorization) {
                         # Looked up rather than branched: an inline `if ($choice -ceq 'stop-here')`
                         # here matches the anchor of the ordering pin in campaign-pause-wiring, whose
                         # non-greedy match then ends on this fragment instead of the real branch and
                         # reports a regression that does not exist. Found by breaking it (round 21).
-                        $decisionPhrase = @{ 'stop-here' = 'stop the review here'; 'abandon' = 'abandon this review campaign' }[$choice]
-                        $decisionEffect = @{
-                            'stop-here' = 'Stopping here records their acceptance of the remaining findings and completes review sign-off.'
-                            'abandon'   = 'Abandoning ends the campaign; nothing further runs and nothing is signed off.'
-                        }[$choice]
+                        $decisionPhrase = 'stop the review here'
+                        $decisionEffect = 'Stopping here records their acceptance of the remaining findings and completes review sign-off.'
                         Write-Host 'That decision is the human''s, and no decision from them has been captured.' -ForegroundColor Yellow
                         Write-Host ''
                         Write-Host $decisionEffect
@@ -1246,32 +1235,11 @@ if ($Live) {
                         Write-Host ('  {0}' -f $decisionPhrase) -ForegroundColor Cyan
                         Write-Host ''
                         Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
+                        Write-Host 'Nothing was recorded or written.'
                         exit 1
                     }
                 }
 
-                # The menu withdrawing option 1 is presentation; this is enforcement. A caller can
-                # always type the flag directly, so fix-and-continue is refused before the immutable
-                # answer is written when the reviewer-invoked round budget is exhausted. A corrupt
-                # authority store fails the same way: no answer is consumed and no reviewer starts.
-                if ($choice -ceq 'fix-and-continue') {
-                    try {
-                        $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $campaignStoreRoot `
-                            -CampaignId $answerIdentity.campaign_id -RepoRoot $resolvedProjectPath
-                    }
-                    catch {
-                        Write-Host 'Specrew could not read its review authority safely, so it did not use your answer or start another reviewer.' -ForegroundColor Yellow
-                        Write-Host ("What went wrong: {0}" -f $_.Exception.Message)
-                        exit 1
-                    }
-                    # SPECREW-AUTHORITY-CONSUMER: review-round-budget
-                    # Feature 203 T008: a round still running holds its place, so the gate is the counter's continuation.
-                    if (-not [bool]$budgetState.continuation_available) {
-                        Write-Host ("The round budget for this review is used ({0} of {1} rounds), so another round was not started." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
-                        Write-Host 'Your answer was not recorded. Topping up the allowance is the human''s decision: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it: specrew review --remediate allowance-reset' -ForegroundColor Cyan
-                        exit 1
-                    }
-                }
                 $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId `
                     -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
 
@@ -1324,27 +1292,6 @@ if ($Live) {
                     exit 1
                 }
 
-                Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
-
-                if ($choice -ceq 'abandon') {
-                    # Round-21 finding (DRIFT-199-I001-132): this branch used the human's decision and
-                    # walked away without retiring it, leaving the captured phrase unspent and able to
-                    # abandon a LATER campaign with no new human act. One decision, one landing -
-                    # on every branch that lands, not only the one that was written first.
-                    if ($null -ne $pauseDecisionAuthorization -and (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
-                        $abandonConsumption = $null
-                        try { $abandonConsumption = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -AuthorizationRef "pause-abandon:$answeredRunId" }
-                        catch { $abandonConsumption = $null }
-                        if ($null -eq $abandonConsumption -or -not [bool]$abandonConsumption.consumed) {
-                            [Console]::Error.WriteLine('[specrew-review] WARN PAUSE_DECISION_NOT_CONSUMED ' + $(if ($null -ne $abandonConsumption) { [string]$abandonConsumption.reason } else { 'no-result' }))
-                        }
-                    }
-                    Write-Host 'This review campaign is closed. Nothing further will run.' -ForegroundColor Cyan
-                    exit 0
-                }
-                # fix-and-continue falls through: the answer authorizes the round that follows.
-                # (stop-here returned above, before its decision could be recorded on a failed landing;
-                # `landed`, not `ok` - the per-STEP outcomes carry `ok`, the composition does not.)
             }
             # Feature 203 T008: one launch per invocation, paid for by the review budget. A run that brings back no complete
             # review spends nothing (DRIFT-052 item 3), so there is no per-round approval for an automatic retry to protect;

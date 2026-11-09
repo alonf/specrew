@@ -250,10 +250,6 @@ function Resolve-ReviewCampaignPauseDecision {
 
     if (-not $resultProduced) {
         $options = [Collections.Generic.List[object]]::new()
-        if ($continuationAvailable) {
-            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - the review runs again on your files; the review budget approved with the implementation pays for it' })
-        }
-        $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
         return [pscustomobject][ordered]@{
             blocking_count         = 0
             major_count            = 0
@@ -329,11 +325,7 @@ function Resolve-ReviewCampaignPauseDecision {
     # sanctioned bypass rendered as a numbered choice becomes one keystroke inside the very flow the
     # budget exists to interrupt. Exhaustion has to feel different from an ordinary continuation.
     $options = [Collections.Generic.List[object]]::new()
-    if ($continuationAvailable) {
-        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - fixes go in and one more review runs on your files; the review budget approved with the implementation pays for it' })
-    }
     $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; reply = 'stop the review here'; text = 'stop the review here - remaining findings become follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes; this spends nothing' })
-    $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
 
     return [pscustomobject][ordered]@{
         blocking_count         = $blocking
@@ -506,7 +498,7 @@ function New-ReviewCampaignPauseDecisionFact {
     param(
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$RunId,
-        [Parameter(Mandatory)][ValidateSet('fix-and-continue', 'stop-here', 'abandon', 'answered')][string]$Choice,
+        [Parameter(Mandatory)][ValidateSet('stop-here', 'answered')][string]$Choice,
         [Parameter(Mandatory)][string]$ObservedAt
     )
     return [pscustomobject][ordered]@{
@@ -517,36 +509,6 @@ function New-ReviewCampaignPauseDecisionFact {
         choice         = $Choice
         observed_at    = $ObservedAt
     }
-}
-
-function Test-ReviewCampaignContinuationAuthorized {
-    # FR-003: continuation is always an explicit human choice, and each choice authorizes exactly ONE
-    # round. RoundsSinceDecision is what makes the grant single-run: a decision already spent cannot
-    # be replayed into a second round.
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]$PendingPause,
-        [AllowEmptyCollection()][object[]]$PauseDecisions = @(),
-        [int]$RoundsSinceDecision = 0,
-        [int]$RoundsUsed = 0,
-        [int]$BudgetTotal = 4
-    )
-    $runId = [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')
-    $answer = @($PauseDecisions | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -ceq $runId }) | Select-Object -First 1
-    if ($null -eq $answer) {
-        return [pscustomobject]@{ authorized = $false; reason = 'pause-decision-pending'; choice = $null }
-    }
-    $choice = [string](Get-ReviewAuthorityProperty -Object $answer -Name 'choice')
-    if ($choice -cne 'fix-and-continue') {
-        return [pscustomobject]@{ authorized = $false; reason = ('choice-does-not-continue:' + $choice); choice = $choice }
-    }
-    if ($BudgetTotal -le 0 -or $RoundsUsed -ge $BudgetTotal) {
-        return [pscustomobject]@{ authorized = $false; reason = 'review-round-budget-exhausted'; choice = $choice }
-    }
-    if ($RoundsSinceDecision -ge 1) {
-        return [pscustomobject]@{ authorized = $false; reason = 'single-run-grant-already-spent'; choice = $choice }
-    }
-    return [pscustomobject]@{ authorized = $true; reason = 'human-authorized-single-round'; choice = $choice }
 }
 
 function Test-ReviewCampaignFeatureIdentity {

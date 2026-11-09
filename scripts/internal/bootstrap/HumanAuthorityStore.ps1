@@ -1313,6 +1313,10 @@ function Resolve-SpecrewTypedAct {
                 return (& $route 'top-up' $pauseId '' '')
             }
             'pause-decision' {
+                # Feature 203 T008 step (iii) (FR-011; maintainer ruling 2026-11-09): abandoning a review campaign is retired, the
+                # way the per-round approval is: still recognised, so it is never read as anything else, and it records nothing.
+                # The human is told it changed nothing and that `stop the review here` is what to type instead.
+                if ([string]$shape.Choice -ceq 'abandon') { return (& $none 'retired-act' $true) }
                 # Feature 203 T004 (DRIFT-027): today's pause decision is recorded even with no pause waiting, bound to none,
                 # and the review CLI refuses it for a run it does not answer; T008's stop answers replace it.
                 if ($null -eq $pause -and (& $prop $Pending 'PreBudgetReviewActs') -eq $true) { return (& $route 'stop-answer' '' $(if ([string]$shape.Choice -ceq 'abandon') { 'abandon' } else { 'stop-review' }) '') }
@@ -1524,7 +1528,7 @@ function Get-SpecrewTypedActWriterName {
         'partial-signoff' { return 'Write-SpecrewReviewSignoffOverrideAuthorization' }
         'workshop-repair' { return 'Write-SpecrewWorkshopRepairAuthorization' }
         'stop-answer' {
-            if ([string]$Act.Answer -cin @('stop-review', 'abandon')) { return 'Write-SpecrewPauseDecisionAuthorization' }
+            if ([string]$Act.Answer -ceq 'stop-review') { return 'Write-SpecrewPauseDecisionAuthorization' }
             # Feature 203 T008 step (iii) (FR-011): the other stop lines, captured bound to the open stop for the next launch.
             if ([string]$Act.Answer -cin @('defer', 'drop', 'fix', 'allow-reviewer', 'judgment')) { return 'Write-SpecrewStopAnswerAuthorization' }
         }
@@ -2169,7 +2173,10 @@ function Write-SpecrewAuthorityNotRecordedReport {
                 retype = [string]$Shape.Retype; typed = [string]$Typed; choice = $shapeChoice; entry_key = $EntryKey; host_kind = [string]$HostKind
                 session_id = [string]$SessionId; recorded_at = $NowUtc
             }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8 -ErrorAction Stop
-        if ($Reason -ceq 'retired-act') {
+        if ($Reason -ceq 'retired-act' -and $shapeChoice -ceq 'abandon') {
+            [Console]::Error.WriteLine("[specrew-authority] 'abandon this review campaign' CHANGED NOTHING: abandoning a review campaign was retired. To end the review, type: 'stop the review here'.")
+        }
+        elseif ($Reason -ceq 'retired-act') {
             [Console]::Error.WriteLine(("[specrew-authority] '{0}' CHANGED NOTHING: review rounds no longer need an approval of their own; the review budget approved with the implementation pays for them." -f [string]$Shape.Retype))
         }
         else {
@@ -2260,6 +2267,9 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
             }
             elseif ($reason -ceq 'no-pending-crossing') {
                 ("Specrew: your '{0}' was received but not recorded - it reads as {1} now, so it changed nothing. Nothing you wrote is lost. Send it again when Specrew asks for it." -f $typed, $readsAs)
+            }
+            elseif ($reason -ceq 'retired-act' -and $typed -match '(?i)\babandon\b') {
+                ("Specrew: your '{0}' changed nothing - abandoning a review campaign was retired, so nothing was recorded. Nothing you wrote is lost. To end the review, type, as a normal chat message: 'stop the review here'." -f $typed)
             }
             elseif ($reason -ceq 'retired-act') {
                 ("Specrew: your '{0}' changed nothing - review rounds no longer need an approval of their own, because the review budget approved with the implementation pays for them, so there is no round approval to give or withdraw. Nothing you wrote is lost." -f $typed)

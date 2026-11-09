@@ -1567,6 +1567,15 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   (FR-007). The derived case was red on `stop-answer` (a control with no consumer marker): the landing is now marked its
   consumer, and finding-disposition, allowed-reviewer and floor-grant are declared with their production consumers. The
   function's deletion (fix 8) waits for the ruling on the numbered pause answers, which its direct callers test.
+- **The numbered pause answers (maintainer ruling 2026-11-09)**: `fix-and-continue` is removed with option 1 on the old
+  pause surface, `--pause-choice 1` and the allowance reset's write of it; `abandon` is retired the way `approved for
+  review round` is (recognised, records nothing, and the human is told it changed nothing and to type `stop the review
+  here`); `stop the review here` is the only pause answer. `--pause-choice` accepts only `stop-here`, which relays a
+  captured, unspent typed line on every path, in a session or not (FR-025); every other value is refused in plain words
+  and writes nothing. Typed during implement with no stop open, `stop the review here` halts the active campaign: the next
+  launch lands it as a stop answered `stop-here`, and no further round launches, naming what remains uncovered, until an
+  allowance reset reopens the review (fix 6, which also applies to `stop-here` on any stop).
+  `Test-ReviewCampaignContinuationAuthorized` is deleted. Red first (`bcb074a2`, 9 of 9); `review-stop-here` 9/9.
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`

@@ -307,24 +307,27 @@ Describe 'Campaign pause core (T001)' {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
         }
 
-        It 'records the pause and returns the surface when a round publishes its result' {
+        # Class A (203 T008 step (iii), DRIFT-052 item 5): a round no longer always ends in a pause. Within the budget it records
+        # nothing; it records a stop only for (a) or (c), and that stop returns the FR-011 surface.
+        It 'records no pause for a round within the budget, and records stop (c) with its FR-011 surface for a reviewer that changed the frozen copy' {
             $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-term-' + [Guid]::NewGuid().ToString('N'))
             try {
                 $result = [pscustomobject]@{
-                    findings = @(
-                        [pscustomobject]@{ severity = 'major'; title = 'retry loop never backs off'; location = 'src/poll.ps1:41' },
-                        [pscustomobject]@{ severity = 'minor'; title = 'wording'; location = 'docs/a.md:2' }
-                    )
-                    duration_ms = 600000
+                    findings = @([pscustomobject]@{ severity = 'major'; title = 'retry loop never backs off'; location = 'src/poll.ps1:41' })
+                    duration_ms = 600000; completion = 'complete'; review_collected = $true; containment = 'verified'; runtime_outcome = 'completed'
                 }
-                $pause = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-a' `
+                $within = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-a' `
                     -TargetDigest ('e' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:00:00Z'
+                $within.recorded | Should -BeFalse
+                (Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -BeNullOrEmpty
 
-                $pause.recorded | Should -BeTrue
-                $pause.surface | Should -Match 'Review round'
-                $pause.surface | Should -Match 'Nothing runs and nothing is spent until you answer'
-                # The pause is now readable state, not something the caller must remember.
-                (Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Not -BeNullOrEmpty
+                $result.containment = 'violated'
+                $violated = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-b' `
+                    -TargetDigest ('e' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:05:00Z'
+                $violated.recorded | Should -BeTrue
+                [string]$violated.stop_kind | Should -BeExactly 'c-judgment'
+                (@($violated.surface) -join "`n") | Should -Match 'Why: '
+                (Get-ReviewCampaignOpenStop -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Not -BeNullOrEmpty
             }
             finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -404,30 +407,43 @@ Describe 'Campaign pause core (T001)' {
                     -Choice 'continue-forever' -ObservedAt '2026-08-10T10:05:00Z' } | Should -Throw
         }
 
-        It 'FR-003: an unanswered pause blocks continuation - no agent-minted authorization' {
-            $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
-                -TargetDigest ('a' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 2) `
-                -ObservedAt '2026-08-10T10:00:00Z'
-
-            $unanswered = Test-ReviewCampaignContinuationAuthorized -PendingPause $pending -PauseDecisions @()
-            $unanswered.authorized | Should -BeFalse
-            $unanswered.reason | Should -Match 'pending'
+        # Class A (203 T008 step (iii); FR-006, FR-010): the per-round continuation check is gone. What blocks the next launch
+        # is an open stop, which only the human's answer closes (the launch refusal itself: review-loop-stops.Tests.ps1).
+        It 'an open stop stays open until the human answers it - no agent-minted authorization' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-open-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
+                    -TargetDigest ('a' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 2) `
+                    -ObservedAt '2026-08-10T10:00:00Z' -StopKind 'c-judgment' -StopReason 'ask'
+                $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $pending
+                (Get-ReviewCampaignOpenStop -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Not -BeNullOrEmpty
+                $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' -Choice 'answered' -ObservedAt '2026-08-10T10:05:00Z')
+                (Get-ReviewCampaignOpenStop -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -BeNullOrEmpty
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
-        It 'FR-003: a fix-and-continue decision authorizes EXACTLY ONE further round' {
-            $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
-                -TargetDigest ('a' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 2) `
-                -ObservedAt '2026-08-10T10:00:00Z'
-            $answer = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
-                -Choice 'fix-and-continue' -ObservedAt '2026-08-10T10:05:00Z'
-
-            $authorized = Test-ReviewCampaignContinuationAuthorized -PendingPause $pending -PauseDecisions @($answer)
-            $authorized.authorized | Should -BeTrue
-
-            # The SAME decision cannot authorize a second round: one answer, one round.
-            $second = Test-ReviewCampaignContinuationAuthorized -PendingPause $pending -PauseDecisions @($answer) -RoundsSinceDecision 1
-            $second.authorized | Should -BeFalse
-            $second.reason | Should -Match 'single-run'
+        # Class A (203 T008 step (iii); FR-006, FR-010): fix-and-continue is removed. After a fix-needed round, exactly one round
+        # runs once the files move: the loop's own record of the last round's files is what the launch compares (the
+        # command path, refused while unchanged and run once after a fix: review-loop-stops.Tests.ps1).
+        It 'after a fix-needed round the loop records the files it reviewed, which the next launch compares' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-loop-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $result = [pscustomobject][ordered]@{
+                    schema_version = '1.0'; campaign_id = 'cmp-199-x-i001'; run_id = 'run-t001-loop'; target_digest = ('c' * 40); harness_id = 'fixture'
+                    completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+                    currentness = 'current'; validation = 'valid'; can_approve_current = $false; summary = 'one finding'
+                    findings = @([pscustomobject][ordered]@{ finding_id = 'finding-00000000000000aa'; source_local_id = 'l1'; lineage_id = 'lin-00000000000000aa'; severity = 'major'; title = 'retry'; description = 'Failure scenario: it never backs off.'; location = 'src/poll.ps1:41'; relevance = 'current'; resolution = 'open'; demoted = $false; demoted_from = '' })
+                    started_at = '2026-08-10T10:00:00Z'; ended_at = '2026-08-10T10:01:00Z'; duration_ms = 60000; examined_paths = @('src/poll.ps1'); review_collected = $true
+                }
+                Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-loop' -TargetLineage 'lin-199-x' -ObservedAt '2026-08-10T10:00:00Z' | Out-Null
+                Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-loop' -Fact $result | Out-Null
+                $loop = Get-ReviewCampaignLoopState -StoreRoot $store -CampaignId 'cmp-199-x-i001'
+                [string]$loop.last_spent_digest | Should -BeExactly ('c' * 40)
+                $loop.ended_clean | Should -BeFalse
+                @($loop.open_findings).Count | Should -Be 1
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
         # Maintainer ruling 2026-08-10. A pause is recorded AGAINST a tree state. The human then
@@ -513,16 +529,21 @@ Describe 'Campaign pause core (T001)' {
             finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
-        It 'stop-here and abandon never authorize another round' {
-            foreach ($choice in @('stop-here', 'abandon')) {
+        # Class A (203 T008 step (iii); FR-011, maintainer ruling 2026-11-09): abandon is retired; `stop the review here` ends
+        # the campaign's rounds until an allowance reset recorded after it reopens the review (fix 6).
+        It 'stop the review here ends the campaign''s rounds until an allowance reset reopens them' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-stop-' + [Guid]::NewGuid().ToString('N'))
+            try {
                 $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
-                    -TargetDigest ('a' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 2) `
-                    -ObservedAt '2026-08-10T10:00:00Z'
-                $answer = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
-                    -Choice $choice -ObservedAt '2026-08-10T10:05:00Z'
-
-                (Test-ReviewCampaignContinuationAuthorized -PendingPause $pending -PauseDecisions @($answer)).authorized | Should -BeFalse
+                    -TargetDigest ('a' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2 -ElapsedMinutes 2) `
+                    -ObservedAt '2026-08-10T10:00:00Z' -StopKind 'a-budget-spent' -StopReason 'budget-spent'
+                $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $pending
+                $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' -Choice 'stop-here' -ObservedAt '2026-08-10T10:05:00Z')
+                (Get-ReviewCampaignLoopState -StoreRoot $store -CampaignId 'cmp-199-x-i001').stopped_here | Should -BeTrue
+                $null = Write-ReviewCampaignBudgetResetFact -StoreRoot $store -Fact (New-ReviewCampaignBudgetResetFact -CampaignId 'cmp-199-x-i001' -AuthorizedBy 'maintainer' -Reason 'reopen' -ObservedAt '2026-08-10T10:10:00Z')
+                (Get-ReviewCampaignLoopState -StoreRoot $store -CampaignId 'cmp-199-x-i001').stopped_here | Should -BeFalse
             }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
 }

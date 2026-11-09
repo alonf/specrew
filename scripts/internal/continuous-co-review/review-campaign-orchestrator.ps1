@@ -1468,7 +1468,18 @@ function Get-ReviewCampaignLoopState {
         $record = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.run_id -ceq $lastRunId }) | Select-Object -First 1
         $judged = ($null -ne $record -and [bool]$record.answered -and [string](Get-ReviewAuthorityProperty -Object $record.pause -Name 'stop_kind') -ceq 'c-judgment')
     }
+    # Fix 6 (maintainer ruling 2026-11-09): `stop the review here` - answering a stop, or typed between stops - ends the
+    # campaign's rounds until an allowance reset recorded after it reopens the review.
+    $reset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $resetAt = if ($null -ne $reset) { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $reset -Name 'observed_at') -FieldName 'round-budget-reset.observed_at' } else { $null }
+    $stoppedHere = $false
+    foreach ($record in @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { $_.answered })) {
+        if ([string](Get-ReviewAuthorityProperty -Object $record.decision -Name 'choice') -cne 'stop-here') { continue }
+        $stoppedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $record.decision -Name 'observed_at') -FieldName 'pause-decision.observed_at'
+        if ($null -eq $resetAt -or $stoppedAt -gt $resetAt) { $stoppedHere = $true }
+    }
     return [pscustomobject][ordered]@{
+        stopped_here = $stoppedHere
         last_spent_result = $lastSpent
         last_spent_run_id = $(if ($null -ne $lastSpent) { [string](Get-ReviewAuthorityProperty -Object $lastSpent -Name 'run_id') } else { '' })
         last_spent_digest = $(if ($null -ne $lastSpent) { [string](Get-ReviewAuthorityProperty -Object $lastSpent -Name 'target_digest') } else { '' })
@@ -1602,7 +1613,13 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     if ($null -eq $CompleteAnswer) { $CompleteAnswer = { param($answer, $ref) Complete-SpecrewStopAnswerAuthorization -Path ([string]$answer.path) -AuthorizationRef $ref } }
     $landed = [Collections.Generic.List[object]]::new(); $skipped = [Collections.Generic.List[object]]::new()
     $stop = Get-ReviewCampaignOpenStop -StoreRoot $StoreRoot -CampaignId $CampaignId
-    if ($null -eq $stop) { return [pscustomobject]@{ landed = @(); skipped = @() } }
+    if ($null -eq $stop) {
+        # Maintainer ruling 2026-11-09: with no stop open, the human's typed `stop the review here` (captured unbound) halts
+        # the active campaign - recorded as a stop answered `stop-here`, which launches no further round until an allowance
+        # reset reopens the review (fix 6).
+        $halt = Invoke-ReviewCampaignHaltLanding -ProjectRoot $ProjectRoot -StoreRoot $StoreRoot -CampaignId $CampaignId
+        return [pscustomobject]@{ landed = @($(if ($null -ne $halt) { $halt })); skipped = @() }
+    }
     $stopRunId = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'run_id')
     $stopKind = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'stop_kind')
     foreach ($answer in @(& $ReadAnswers $stopRunId)) {
@@ -1637,6 +1654,31 @@ function Invoke-ReviewCampaignStopAnswerLanding {
         $landed.Add($answer) | Out-Null
     }
     return [pscustomobject]@{ landed = @($landed); skipped = @($skipped) }
+}
+
+function Invoke-ReviewCampaignHaltLanding {
+    # The typed `stop the review here`, captured with no stop open (bound to no run), lands as a stop of its own: a pause
+    # fact (stop (c), reason human-halt) answered `stop-here` in the same act, then the capture is spent. Returns the capture
+    # it landed, or $null when there is none.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    if (-not (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) { return $null }
+    $capture = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $ProjectRoot -Choice stop-here
+    if ($null -eq $capture -or -not [string]::IsNullOrWhiteSpace([string]$capture.run_id)) { return $null }
+    $at = [DateTimeOffset]::UtcNow.ToString('o')
+    $digest = 'unresolved'
+    try { $state = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot; if ($null -ne $state -and [bool]$state.ok) { $digest = [string]$state.tree_id } } catch { $digest = 'unresolved' }
+    $budget = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $runId = 'run-halt-' + (Get-ReviewCampaignStableToken -Value ('{0}/{1}' -f $CampaignId, [string]$capture.response_hash + [string]$capture.observed_at) -Length 20)
+    $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed ([int]$budget.rounds_used) -BudgetTotal ([Math]::Max(1, [int]$budget.budget_total))
+    $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $runId -TargetDigest $digest -Decision $decision -ObservedAt $at -StopKind 'c-judgment' -StopReason 'human-halt'
+    $fact.recommendation = 'The human stopped the review here between stops.'
+    $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact
+    $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $runId -Choice stop-here -ObservedAt $at)
+    if (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue) {
+        $null = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $ProjectRoot -Choice stop-here -AuthorizationRef ('review-halt:' + $runId)
+    }
+    return $capture
 }
 
 function New-ReviewCampaignOpenStopRefusal {
@@ -2492,6 +2534,23 @@ function Invoke-ReviewCampaignCommand {
     if ($null -ne $openStop) {
         return New-ReviewCampaignOpenStopRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext -Stop $openStop `
             -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events))
+    }
+    if ([bool]$loopState.stopped_here) {
+        $uncovered = @($loopState.open_findings | ForEach-Object {
+                $where = if ($null -eq $_.location) { '' } elseif ($_.location -is [string]) { (' at ' + $_.location) } else { '' }
+                ('{0} ({1}) {2}{3}' -f [string]$_.finding_id, [string]$_.severity, [string]$_.title, $where)
+            })
+        $stoppedDetail = ('Specrew did not start another review round, because the human stopped the review here. {0} Nothing was launched, recorded or spent. To reopen the review, the human can type, as a normal chat message (a reply inside a question UI or picker is not captured): approved for allowance reset.' -f `
+                $(if ($uncovered.Count -gt 0) { 'Still uncovered: ' + ($uncovered -join '; ') + '.' } else { 'Nothing is left open.' }))
+        return [pscustomobject][ordered]@{
+            status = 'not-started'; reason = 'review-stopped-here'; reason_detail = $stoppedDetail; open_findings = @($loopState.open_findings)
+            invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+            target_lineage = $identity.target_lineage; store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+            design_context = [string]$designContext.classification
+            resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+            continuation_authorized = $false; continuation_reason = 'review-stopped-here'
+            diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+        }
     }
     if (-not [string]::IsNullOrWhiteSpace([string]$loopState.last_spent_digest) -and -not [bool]$loopState.rerun_judged) {
         # Fail-open on an unreadable digest: the snapshot that follows refuses on its own, and the budget still bounds it.
