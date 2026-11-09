@@ -1387,6 +1387,20 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
     return $sb.ToString().TrimEnd()
 }
 
+function Build-ContinuousCoReviewNavigatorAgentDirective {
+    # The agent's half of the blocking co-review stop. Split from the human block under T010's
+    # emission-point rule: the marker instruction is for the assistant, the "your tree is unchanged"
+    # reassurance is for the person.
+    #
+    # Feature 203 T008 step (iii): restored after a515a7e5 deleted it with the campaign stop block. The reap
+    # (Invoke-ContinuousCoReviewNavigatorReap) still calls it when campaign authority is off.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Verdict)
+    $null = $Verdict
+    return 'Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.'
+}
+
 function Build-ReviewCampaignStopAgentDirective {
     # Feature 203 T008 step (iii) item 6 (FR-006): the agent's half of a review stop, carried beside the human's block
     # (T010's emission-point rule). The stop waits for the human's typed line; the agent renders it and stops. It replaces

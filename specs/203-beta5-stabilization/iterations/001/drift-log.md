@@ -1546,6 +1546,13 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
     (a) also closes when nothing is left open; after the human answers a (c) stop, one rerun on the same files is
     allowed; a pause written before step (iii) has no `stop_kind` and stops nothing; step (iii)'s fixtures state the
     literal `Failure scenario:` clause, because without it the ingestor demotes the finding to minor (B5F-017, step (iv)).
+- **Defect, step (iii) (found 2026-11-09 by the maintainer, fixed)**: `a515a7e5` deleted
+  `Build-ContinuousCoReviewNavigatorAgentDirective` with the campaign stop block, but `Invoke-ContinuousCoReviewNavigatorReap`
+  (`continuous-co-review-navigator.ps1`, about line 769) still calls it, and the worktree navigator runs that reap whenever
+  campaign authority is off. That mode threw on its first completed blocking verdict. No test reached the call. Restored;
+  `tests/unit/review-navigator-stops.Tests.ps1` gains a case through `Invoke-ContinuousCoReviewWorktreeNavigator` with
+  campaign authority off and a done blocking verdict, red on the deleted function. Writing it found an older gap, fixed with
+  it: on that path the worktree navigator copied the reap's stop block but dropped its agent directive (T010's channel).
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`

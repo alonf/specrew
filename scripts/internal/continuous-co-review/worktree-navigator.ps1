@@ -397,6 +397,9 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $resolved -TrunkName $TrunkName -CrossSession:$SessionStart -TranscriptPath $TranscriptPath
     $decision.stop_block = $reap.stop_block
     $decision.inject_notes = @($reap.inject_notes)
+    # The agent's directive travels beside the human's block (T010's emission-point rule); the reap writes it, and this
+    # decision dropped it until 203 T008 step (iii) (DRIFT-052).
+    if ($reap.PSObject.Properties['agent_directives']) { $decision | Add-Member -NotePropertyName agent_directives -NotePropertyValue $reap.agent_directives -Force }
     if ($SessionStart) { $decision.reason = 'cross-session-sweep'; return $decision }
 
     # IMPLEMENT-stage gate (reuse).
