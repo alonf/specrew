@@ -189,6 +189,18 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - **SC-005**: The named CI steps pass on the feature branch's push, and Specrew CI, Test and Cross-Platform Validation all conclude green with no skipped gate job.
 - **SC-006**: The problem-side gap list covers all 11 lenses.
 
+## Clarifications
+
+### Session 2026-11-10
+
+- No open questions. The maintainer approved recording this at the specify verdict ("Clarify may record 'no open questions'"). The intake workshop resolved the ambiguities that clarify would otherwise raise, and the maintainer's five corrections at the specify review closed the rest:
+  - the two-pass split is assigned to iteration 3
+  - FR-015's tags are the expected result, and a disagreement goes to the maintainer
+  - the FR-004 merge and the corrected SC-002 formula
+  - FR-022, the proposal status
+  - the before-specify list counts as a full list
+- Clarify ran only after Specrew CI, Test and Cross-Platform Validation all concluded green on `700e6127` with no skipped job, as the maintainer instructed. Specrew CI passed on its approved single rerun; the first-attempt failure is recorded as DRIFT-205-INTAKE-001 in `workshop/intake-drift-log.md`.
+
 ## Assumptions
 
 - The two-pass split (proposal FR-002/FR-003) is out of iteration 1. The maintainer assigned it to iteration 3 on 2026-11-10, with the back-check, amendments and sweeps.
