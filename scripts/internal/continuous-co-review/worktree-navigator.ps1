@@ -367,7 +367,11 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
         # which waits for the human's typed line. The review-signoff boundary still checks coverage; that is a boundary
         # gate, not a round request, and it is not here.
         $stage = Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $resolved
-        if ($stage -ne 'implement') { $decision.reason = 'not-implement-stage'; return $decision }
+        # The stage is only known when the lifecycle state could be read. When the active feature or iteration could not be
+        # resolved, quiet would be a guess: the navigator reads on, and an unreadable stop becomes the visible note below
+        # rather than silence (maintainer classification 2026-11-09: it must never go silent).
+        $scopeUnresolved = ([string]$scope.reason -cin @('active-feature-state-invalid', 'active-session-state-invalid', 'active-feature-unresolved', 'active-iteration-unresolved'))
+        if ($stage -ne 'implement' -and -not $scopeUnresolved) { $decision.reason = 'not-implement-stage'; return $decision }
         $openStop = $null; $openFindings = @()
         try {
             $navIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolved -RunId 'run-navigator-probe'
