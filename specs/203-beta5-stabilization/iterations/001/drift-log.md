@@ -1635,6 +1635,21 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   "found nothing that blocks sign-off"; without demotions the wording stays. (3) The follow-ups are stored (FR-013): at the
   review-signoff crossing one writer writes the listing (not covered, follow-ups, demoted; each with id, title, location
   and severity) into one file in the iteration folder, and the retro reads it (red first).
+- **Corrections built (2026-11-09)**: (1) and (2) in `c260d58a`. (3) in `b915fa37` and `02a6dcbb` (red on `812a193b`,
+  `f5c5153e`, `18210769`): the listing is structured (`Get-ReviewCampaignSignoffFindings`: kind, id, title, location,
+  severity, `demoted_from`), the demotion lead groups by `demoted_from` (maintainer instruction 2026-11-09, test: a title
+  that itself reads "reported it as major;"), and `Write-ReviewCampaignSignoffListing`, called only when the
+  review-signoff crossing releases, writes `review-signoff-listing.json` into the iteration folder (empty when nothing is
+  left; none on a refusal; a partial-coverage override stores the refusal's listing). The retro scaffold renders it under
+  "What the Review Left Behind", says "not recorded" when absent, and refuses when it cannot be read. The file is review
+  output, so it joined the FR-009 records allowlist.
+- **Found while building (3), fixed (`b915fa37`)**: `cf2285d7` released a review whose findings are all non-gating only on
+  the exact digest; the records-only exemption still required verdict `pass`, so any records commit after a minor-only
+  review (review.md, or the stored listing itself) asked for a fresh review. The exemption now uses the same rule as the
+  exact-digest release. One case outside the approved migration list moved with it, classified by the crew and open to
+  the maintainer's correction: `records-only-delta-survives-its-own-round` "still refuses to PROMOTE" used a `findings`
+  verdict with no findings as its non-authorizing fixture; under FR-004 that now authorizes, so the fixture carries an
+  open major instead. Same assertion, no It deleted.
 - **Not yet built, step (iii)**: the crew's own entry points for (b) and (c), `specrew review --dispute <id> --reason`,
   `--propose-defer <id> --to` and `--ask <text>` (they also need the CLI flag whitelists). The migration of the suites
   that pin the removed behaviour: on `c930e1db`, `continuous-co-review-navigator` (8 cases), `advisory-names-the-humans-act`
