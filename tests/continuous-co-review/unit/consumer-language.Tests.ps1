@@ -125,39 +125,49 @@ Describe 'Consumer language layer (T010)' {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
-            function script:New-StaleBlock {
-                param([switch]$WithCrossing)
-                $decision = New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' `
-                    -Reason 'latest-result-not-current' -Message 'Your earlier review no longer covers these files.' `
-                    -CampaignId 'cmp-199-x-i001' -RunId 'run-20260810-085753967-af5bef76' `
-                    -TargetDigest ('a' * 40) -ImplementerAction 'request-current-digest-review'
-                $crossing = if ($WithCrossing) {
-                    [pscustomobject]@{
-                        crossing_id = 'crossing-fdfd08331c434810bfb008886e73a3476306c1bf484c84813463914ae4ba0605'
-                        from_boundary = 'before-implement'; to_boundary = 'review-signoff'
-                    }
+            # Feature 203 T008 (DRIFT-052 item 6; maintainer classification 2026-11-09, class B): the navigator's per-route
+            # block is gone. The block a human reads at a stop is the stop surface - one per stop kind, (a) to (d) - and the
+            # agent's half travels beside it. The guards below are unchanged; they read every one of those blocks.
+            $script:StopKinds = @('a-budget-spent', 'b-dispute-or-defer', 'c-judgment', 'd-host-outside-order')
+            $script:RunId = 'run-20260810-085753967-af5bef76'
+            $script:Crossing = [pscustomobject]@{
+                crossing_id = 'crossing-fdfd08331c434810bfb008886e73a3476306c1bf484c84813463914ae4ba0605'
+                from_boundary = 'before-implement'; to_boundary = 'review-signoff'
+            }
+            function script:New-Stop([string]$Kind) {
+                $reason = switch ($Kind) { 'a-budget-spent' { 'budget-spent' } 'b-dispute-or-defer' { 'dispute' } 'c-judgment' { 'ask' } default { 'host-order-exhausted' } }
+                $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
+                $stop = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId $script:RunId -TargetDigest ('a' * 40) -Decision $decision `
+                    -ObservedAt '2026-11-09T08:00:00Z' -StopKind $Kind -StopReason $reason -NextHost $(if ($Kind -ceq 'd-host-outside-order') { 'claude' } else { '' })
+                $stop | Add-Member -NotePropertyName recommendation -NotePropertyValue 'the crew wants to know whether the cache should be per host.' -Force
+                return $stop
+            }
+            function script:New-StopBlock([string]$Kind, [switch]$WithCrossing) {
+                $open = @([pscustomobject]@{ finding_id = 'finding-0123456789abcdef'; finding_key = 'finding-0123456789abcdef'; severity = 'major'; title = 'Empty store'; location = 'src/app.ps1:1' })
+                return (@(Format-ReviewCampaignStopSurface -Stop (script:New-Stop -Kind $Kind) -OpenFindings $open -PendingCrossing $(if ($WithCrossing) { $script:Crossing } else { $null })) -join "`n")
+            }
+            function script:Get-StopBlocks {
+                foreach ($kind in $script:StopKinds) {
+                    [pscustomobject]@{ name = $kind; text = (script:New-StopBlock -Kind $kind) }
+                    [pscustomobject]@{ name = "$kind (crossing recorded)"; text = (script:New-StopBlock -Kind $kind -WithCrossing) }
                 }
-                else { $null }
-                return (Build-ReviewCampaignNavigatorStopBlock -PacketDecision $decision -PendingCrossing $crossing)
             }
         }
 
         It 'carries NO agent directive - the agent has its own channel' {
-            # The decisive case. `do NOT emit a SPECREW-VERDICT-BOUNDARY marker` is the agent's private
-            # instruction printed in front of the consumer.
-            $block = script:New-StaleBlock
-            $block | Should -Not -Match 'SPECREW-VERDICT-BOUNDARY'
-            $block | Should -Not -Match '(?i)do NOT emit'
-            $block | Should -Not -Match '(?i)Ask only the narrow'
+            # The decisive case. `do NOT emit a SPECREW-VERDICT-BOUNDARY marker` is the agent's private instruction printed in
+            # front of the consumer. Every stop block, with and without a recorded crossing.
+            foreach ($block in @(script:Get-StopBlocks)) {
+                $block.text | Should -Not -Match 'SPECREW-VERDICT-BOUNDARY' -Because $block.name
+                $block.text | Should -Not -Match '(?i)do NOT emit' -Because $block.name
+                $block.text | Should -Not -Match '(?i)Ask only the narrow' -Because $block.name
+                $block.text | Should -Not -Match '(?i)render the block above' -Because "$($block.name): the agent's instruction to render is the agent's"
+            }
         }
 
         It 'the agent directives still EXIST, on their own channel' {
-            # Moved, not deleted: the agent must still be told. Same guarantee, different emission point.
-            $decision = New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'r' `
-                -Message 'm' -CampaignId 'cmp-199-x-i001' -RunId 'run-x' -TargetDigest ('a' * 40) `
-                -ImplementerAction 'request-current-digest-review'
-            $directives = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $decision -PendingCrossing $null
-            $directives | Should -Match 'SPECREW-VERDICT-BOUNDARY'
+            # Moved, not deleted: the agent must still be told. Same guarantee, the review stop's agent message.
+            Build-ReviewCampaignStopAgentDirective -PendingCrossing $null | Should -Match 'SPECREW-VERDICT-BOUNDARY'
         }
 
         It 'the navigator CARRIES the agent channel beside the block (source guard)' {
@@ -166,7 +176,7 @@ Describe 'Consumer language layer (T010)' {
             # Guarded here because a unit fixture cannot reach that assignment without the full
             # navigator harness.
             $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-navigator.ps1') -Raw
-            $source | Should -Match 'Build-ReviewCampaignNavigatorAgentDirective' -Because 'the directives must actually be produced, not merely producible'
+            $source | Should -Match 'Build-ReviewCampaignStopAgentDirective' -Because 'the directives must actually be produced, not merely producible'
             $source | Should -Match 'agent_directives'
         }
 
@@ -214,47 +224,60 @@ Describe 'Consumer language layer (T010)' {
         }
 
         It 'no line carries a banned noun' {
-            foreach ($block in @((script:New-StaleBlock), (script:New-StaleBlock -WithCrossing))) {
-                foreach ($line in ($block -split "`n")) {
+            foreach ($block in @(script:Get-StopBlocks)) {
+                foreach ($line in ($block.text -split "`n")) {
                     @(Get-SpecrewBannedConsumerNoun -Text $line) -join ',' |
-                        Should -BeNullOrEmpty -Because "every line a human reads is a consumer surface: $line"
+                        Should -BeNullOrEmpty -Because "every line a human reads is a consumer surface ($($block.name)): $line"
                 }
             }
         }
 
         It 'the block still tells the reader WHAT TO DO - in words, with the command' {
-            # SELF-CAUGHT ON A LIVE STOP. The first rewrite deleted `Implementer action:
-            # request-current-digest-review` instead of translating it, and the block rendered with no
-            # actionable step at all. The complaint about that line was that it was MACHINERY ADDRESSED
-            # TO A ROLE - not that the reader does not need a next step. Deleting it traded one unusable
-            # sentence for a missing one.
-            $block = script:New-StaleBlock
-            $block | Should -Match '(?i)what to do'
-            $block | Should -Match 'specrew review --live'
-            $block | Should -Not -Match 'request-current-digest-review' -Because 'the ACT belongs in the human''s block; the token belongs on the machine channel'
+            # SELF-CAUGHT ON A LIVE STOP (the original case): deleting the next step traded one unusable sentence for a missing
+            # one. Feature 203 T008 (DRIFT-052 item 6, FR-011; maintainer classification 2026-11-09, class A): the "What to do"
+            # line and its command are removed on purpose - no stop asks for a round. What stays is the property: every stop
+            # states its one decision, and each line the human can send states its consequence, in words, with no command.
+            foreach ($block in @(script:Get-StopBlocks)) {
+                $lines = @($block.text -split "`n")
+                @($lines | Where-Object { $_ -match '^Your decision: \S' }).Count | Should -Be 1 -Because "$($block.name): one decision, stated"
+                $sendAt = [Array]::FindIndex([string[]]$lines, [Predicate[string]] { param($l) $l -like 'Send one of these lines*' })
+                $sendAt | Should -BeGreaterThan -1 -Because "$($block.name): the lines the human can send are offered"
+                $sendable = @($lines[($sendAt + 1)..($lines.Count - 1)] | Where-Object { $_ -match '^  \S' })
+                $sendable.Count | Should -BeGreaterThan 0 -Because $block.name
+                foreach ($line in $sendable) { $line | Should -Match '^  .+ - \S.{10,}' -Because "$($block.name): each line states its consequence: $line" }
+                $block.text | Should -Not -Match 'specrew review --' -Because "$($block.name): the act is the human's typed line, not a command"
+                $block.text | Should -Not -Match '(?<![\w-])--[a-z]' -Because "$($block.name): a flag is the agent's spelling"
+            }
         }
 
         It 'an UNKNOWN action prints no line at all, rather than echoing the token' {
-            # A line printing an internal identifier is worse than no line: it looks like an instruction
-            # the reader has failed to follow.
-            Get-ReviewCampaignActionSentence -Action 'some-future-action-nobody-glossed' | Should -BeNullOrEmpty
+            # A line printing an internal identifier is worse than no line: it looks like an instruction the reader has failed to
+            # follow. Class B: an unknown stop kind refuses rather than rendering, and no stop-kind token reaches any block.
+            { Format-ReviewCampaignStopSurface -Stop (script:New-Stop -Kind 'some-future-stop-nobody-glossed') -OpenFindings @() } | Should -Throw
+            foreach ($block in @(script:Get-StopBlocks)) {
+                foreach ($token in $script:StopKinds) { $block.text | Should -Not -Match ([regex]::Escape($token)) -Because "$($block.name): a stop-kind token is machinery" }
+            }
         }
 
         It 'the run identifier is glossed, not bare' {
-            $block = script:New-StaleBlock
-            $block | Should -Match 'run-20260810-085753967-af5bef76'
-            $block | Should -Match '(?i)\(.*(support|reference|identifies).*\)' -Because 'a bare 30-character id is a thing the reader must look up before the line means anything'
+            foreach ($block in @(script:Get-StopBlocks)) {
+                if ($block.text -notmatch [regex]::Escape($script:RunId)) { continue }
+                $block.text | Should -Match ('(?i)' + [regex]::Escape($script:RunId) + '\s*\(.*(support|reference|identifies).*\)') -Because "$($block.name): a bare 30-character id is a thing the reader must look up"
+            }
         }
 
         It 'the route name is glossed into something a human can act on' {
-            $block = script:New-StaleBlock
-            ($block -split "`n")[0] | Should -Not -Match 'review-stale' -Because 'a raw route name is internal vocabulary in the very first line the reader sees'
+            foreach ($block in @(script:Get-StopBlocks)) {
+                ($block.text -split "`n")[0] | Should -Not -Match '(?i)review-stale|review-stop-open|review-required|-spent|-judgment|-dispute|-outside-order' -Because "$($block.name): a raw route or stop name is internal vocabulary in the very first line the reader sees"
+            }
         }
 
         It 'says NOTHING stuttered, and glosses the crossing id it names' {
-            $block = script:New-StaleBlock -WithCrossing
-            $block | Should -Not -Match 'crossing crossing-' -Because 'the label and the id both said "crossing"'
-            $block | Should -Match 'before-implement' -Because 'the boundaries are the part a human can act on'
+            foreach ($block in @(script:Get-StopBlocks | Where-Object { $_.name -like '*crossing recorded*' })) {
+                $block.text | Should -Not -Match 'crossing crossing-' -Because 'the label and the id both said "crossing"'
+                $block.text | Should -Match 'before-implement' -Because "$($block.name): the boundaries are the part a human can act on"
+                $block.text | Should -Not -Match 'crossing-fdfd' -Because "$($block.name): the 64-character identifier is the agent's, not the reader's"
+            }
         }
     }
 
