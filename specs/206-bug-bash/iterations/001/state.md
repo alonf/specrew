@@ -2,7 +2,7 @@
 
 **Schema**: v2
 **Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Tasks Remaining**: T001-T018 (18 planned)
 **In Progress**: (none)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
 **Updated**: 2026-11-10T02:46:53Z
