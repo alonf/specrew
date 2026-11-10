@@ -80,7 +80,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$fail = 0; foreach ($s in @('tests/unit/review-signoff-lists-findings.Tests.ps1','tests/unit/retro-reads-signoff-listing.Tests.ps1','tests/unit/review-crew-stops.Tests.ps1','tests/unit/review-decision-surface.Tests.ps1','tests/unit/review-loop-stops.Tests.ps1','tests/unit/review-navigator-stops.Tests.ps1','tests/unit/review-stop-answers.Tests.ps1','tests/unit/review-stop-here.Tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 T008 suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; foreach ($s in @('tests/unit/review-signoff-lists-findings.Tests.ps1','tests/unit/retro-reads-signoff-listing.Tests.ps1','tests/unit/review-crew-stops.Tests.ps1','tests/unit/review-decision-surface.Tests.ps1','tests/unit/review-loop-stops.Tests.ps1','tests/unit/review-navigator-stops.Tests.ps1','tests/unit/review-stop-answers.Tests.ps1','tests/unit/review-stop-here.Tests.ps1','tests/unit/design-decision-dates-kept.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 T008 suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 900,
       "env_refs": [

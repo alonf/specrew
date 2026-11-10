@@ -120,6 +120,7 @@ tests/unit/approval-form.tests.ps1
 tests/unit/authorization-ref-not-the-advice.tests.ps1
 tests/unit/capture-disclosure.tests.ps1
 tests/unit/consumer-applicability-firewall.tests.ps1
+tests/unit/design-decision-dates-kept.tests.ps1
 tests/unit/pause-choice-spends-the-budget.tests.ps1
 tests/unit/pinned-review-launch.Tests.ps1
 tests/unit/retro-reads-signoff-listing.Tests.ps1

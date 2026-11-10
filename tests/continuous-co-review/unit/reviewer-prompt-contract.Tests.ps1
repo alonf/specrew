@@ -115,6 +115,36 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
         }
     }
 
+    # Feature 203 T008 step (iv) (B5F-017, FR-005; DRIFT-052 ordering constraint: before T014). The prompt half above
+    # pins the SLIM prompt; every campaign review is sent reviewer-candidate-prompt.md instead, rendered by the harness
+    # contract, and that prompt never asked for the clause the ingest requires. So a finding that stated its scenario in
+    # prose was demoted - eleven rounds of it (B5F-017's instances). The request and the rejection have to be the same rule.
+    Context 'the campaign reviewer is asked for the clause the ingest requires (B5F-017)' {
+        BeforeAll {
+            $script:CandidatePrompt = Render-ReviewFilePrimaryPrompt -Template (Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw) `
+                -Invocation ([pscustomobject]@{ run_id = 'run-b5f017'; target_digest = ('a' * 40); candidate_result_path = (Join-Path $TestDrive 'candidate.json'); review_scope = 'the whole tree'; deadline = '2026-11-10T12:00:00Z' })
+        }
+
+        It 'the prompt every campaign harness renders asks each blocking or major finding for a literal Failure scenario clause' {
+            $script:CandidatePrompt | Should -Match 'Failure scenario:'
+            $script:CandidatePrompt | Should -Match '(?i)blocking or major'
+            $script:CandidatePrompt | Should -Match '(?i)description'
+        }
+
+        It 'the clause the prompt shows passes the ingest rule as written, so following the prompt keeps the severity' {
+            $example = [regex]::Match($script:CandidatePrompt, 'Failure scenario: [^`\r\n]+').Value
+            $example | Should -Not -BeNullOrEmpty
+            Test-ReviewFindingStatesFailureScenario -Description ('The cache is never invalidated. ' + $example) | Should -BeTrue
+        }
+
+        It 'a scenario stated under an emphasised label keeps its severity through the real ingress' {
+            $published = script:Invoke-ScenarioIngress -Root (Join-Path $TestDrive 'ingest-bold-label') `
+                -Description 'The retry never backs off. **Failure scenario**: a host that answers 503 forever gets a request every 10 ms until the run is killed.'
+            $published.result.findings[0].severity | Should -Be 'blocking'
+            $published.result.findings[0].demoted | Should -BeFalse
+        }
+    }
+
     # Maintainer instruction 2026-08-10: verify rather than assume that the contract binds through the
     # REAL ingress entry point, not only through the pure eligibility function.
     #
