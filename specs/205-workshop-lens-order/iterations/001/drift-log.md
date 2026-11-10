@@ -40,8 +40,8 @@
 - **Requirement**: the plan's quality planning inputs (before-plan).
 - **Resolution**: corrected by hand in plan.md, "Quality plan (resolved profile, corrected)", recorded at the
   maintainer's design-analysis verdict (note 3, 2026-11-10).
-- **Class closure**: NONE in this feature. The resolver is out of 205's scope, and the class stays open as recorded
-  at 203: it will misread the next feature in this repository too.
+- **Class closure**: NONE — the resolver is outside 205's scope; the class stays open as recorded at 203 (it will
+  misread the next feature in this repository too).
 
 ### DRIFT-002 — the design-analysis draft was pushed before the iteration plan existed, turning Specrew CI red (crew choice)
 
@@ -70,8 +70,8 @@
 - **Impact on 205**: SC-002 treats product-domain as 0 before and 0 after. The FR-005 tagging checks must recognise
   numbered items as decision points, so that product-domain's eight areas are still proven to sit under exactly one
   sub-heading. 205 does not change the extractor, because changing it is outside the spec.
-- **Class closure**: NONE in this feature. Candidate for the extractor's owner: either fold numbered items as well,
-  or state that product-domain is excluded from extraction by design.
+- **Class closure**: NONE — changing the extractor is outside 205's spec. Candidate for the extractor's owner: fold
+  numbered items too, or state that product-domain is excluded from extraction by design.
 
 <!--
   Every new ### DRIFT-... event includes:

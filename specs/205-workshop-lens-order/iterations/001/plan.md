@@ -76,7 +76,7 @@
 ## Traceability Summary
 
 - Requirement scope for this stub: FR-001, FR-004, FR-005, FR-013, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-022
-- User stories represented in current scope: 
+- User stories represented in current scope: US1 (FR-015, FR-016, FR-017), US2 (FR-001, FR-019), US3 (FR-005), US4 (FR-013, FR-018), US5 (FR-020); cross-cutting FR-004, FR-021, FR-022
 - Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
 - Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
 

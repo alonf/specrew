@@ -6,7 +6,7 @@
 **Iteration Ref**: `specs/205-workshop-lens-order/iterations/001`
 **Requested Review Class**: `strongest-available`
 **Effective Review Class**: `(pending hardening review)`
-**Overall Verdict**: `blocked`
+**Overall Verdict**: `ready`
 **Approval Ref**: `—`
 **Reviewed By**: Reviewer (pending)
 **Reviewed At**: 2026-11-09T23:55:59Z
@@ -29,17 +29,17 @@
 
 | Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list concrete controls: input validation, allowlists, no eval/innerHTML on user data, no persistence APIs unless required, etc.>` | `true` | `<describe the trust boundary, privilege model, and sensitive flows in this iteration>` | `—` |
-| `error-handling-expectations` | `robustness` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list failure modes and the single transition path that handles them, plus positive + negative test coverage you will assert>` | `true` | `<describe expected failure semantics, incomplete-state handling, and recovery preservation rules>` | `—` |
+| `security-surface` | `security` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | No identity, secret, sensitive data or new trust boundary: the iteration edits lens text and the index.yml catalog, adds one refusal branch that echoes only lens ids from the crew's own agenda JSON, and adds tests. The deploy scripts used for copies were verified project-only (no home-folder writes). | `—` |
+| `error-handling-expectations` | `robustness` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Out-of-order new agenda: one terminating refusal via New-SpecrewWorkshopAgendaRefusal naming the out-of-order lenses, the index.yml order and one action, nothing written, never reordered (positive: in-order agenda accepted; negative: out-of-order refused, file unchanged). Parity test: collects every mismatch, prints file:line/expected/found/fix, exits 1 only after the full report (negative fixture with several seeded mismatches must report all). Confirmed agendas never re-checked (FR-013 fixture). | `true` | Failure semantics are fail-closed for new agendas and report-all for the test; an already-confirmed agenda is never touched, so no incomplete-state can arise from this feature. | `—` |
 | `retry-idempotency-requirements` | `resilience` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | No retries, idempotency keys, transactional state or shared resources: the iteration edits lens text, the index.yml catalog, one refusal check in the agenda writer and tests. The agenda writer's existing write path is unchanged. | `—` |
-| `test-integrity-targets` | `verification` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list the FR → named-test mapping, the negative-path requirements, and which evidence artifacts will record empirical results>` | `true` | `<describe coverage strategy: positive + negative per FR; smoke-only is disallowed for failure-mode FRs>` | `—` |
+| `test-integrity-targets` | `verification` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | FR-001/FR-019 and FR-005/FR-015/FR-018 -> tests/unit/lens-order-parity.tests.ps1 (run red-first on the unchanged tree, output kept in quality-evidence.md, then green); FR-016/FR-013 -> tests/integration/workshop-agenda-confirmation.tests.ps1 (refusal + old-agenda resume); SC-002 per-lens counts asserted; FR-021 local run of every workshop test logged in quality-evidence.md; CI named steps. | `true` | Every check has a positive and a negative case; the test is proven able to fail before it is trusted; no question is moved to make a check pass (FR-015). | `—` |
 | `operational-resilience-concerns` | `operability` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | No server, SLO, telemetry pipeline or on-call surface: the iteration ships lens text, catalog data, one agenda-writer check and tests, delivered through the existing deploy scripts and CI. | `—` |
 
 ## Lens Activation (Planning Baseline)
 
 | Lens Ref | Activation | Planned Evidence Path |
 | --- | --- | --- |
-| `security-baseline@v1.0.0` | required | `specs/205-workshop-lens-order/iterations/001/quality/lenses/security-baseline.md` |
+| `security-baseline@v1.0.0` | not-applicable | `specs/205-workshop-lens-order/iterations/001/quality/lenses/security-baseline.md` |
 | `robustness-baseline@v1.0.0` | required | `specs/205-workshop-lens-order/iterations/001/quality/lenses/robustness-baseline.md` |
 | `test-integrity@v1.0.0` | required | `specs/205-workshop-lens-order/iterations/001/quality/lenses/test-integrity.md` |
 
