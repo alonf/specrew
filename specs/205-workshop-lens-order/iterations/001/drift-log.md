@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 100% (4/4 resolved for this feature; DRIFT-001 and DRIFT-004 class closure open)
+**Total drift events**: 5
+**Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001, DRIFT-004 and DRIFT-005 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -89,6 +89,23 @@
 - **Resolution**: reported to the maintainer at the tasks verdict (2026-11-10). No change in 205.
 - **Class closure**: NONE — it is outside 205's scope. Candidate for the sync/turn-end owner: record the packet at
   turn end, when it exists (the turn-end script already holds the declared packet), instead of at sync time.
+
+### DRIFT-005 — Cross-Platform Validation failed fetching Pester from the PowerShell Gallery (finding, not caused by 205)
+
+- **Observed**: 2026-11-10, Cross-Platform Validation run 42734434753 (attempt 1) on `12837d26`, a docs-only commit.
+  - Job: "Deterministic fake-provider review runtime (windows-latest) — never live support evidence".
+  - Step: "Verify PowerShell and install pinned Pester".
+  - Exact message: `Install-Package: No match was found for the specified search criteria and module name 'Pester'. Try Get-PSRepository to see all available registered module repositories.`, thrown as `pester-allusers-install-failed`.
+  - The other 7 jobs passed, including the same job on ubuntu-latest and macos-latest. Test passed.
+- **Pattern for feature 206 (bug bash)**: this is the **second CI red on this feature not caused by its commit**. The
+  first was DRIFT-205-INTAKE-001: the co-review retry test failed once in the Deterministic gate on a docs-only commit
+  (`workshop/intake-drift-log.md`). This one is a gate that depends on a live download from the PowerShell Gallery,
+  and it fails when the Gallery does.
+- **Resolution**: the maintainer approved one rerun of the failed job (attempt 2), with no further rerun if it fails
+  the same way. T005 onward stays on hold until all three workflows are green on `12837d26`. Rerun result: PENDING.
+- **Class closure**: NONE — the CI workflow is outside 205's scope. Candidate for 206: vendor or cache the pinned
+  Pester (or retry the Gallery fetch with a clear infrastructure-failure label), so a Gallery outage reads as
+  infrastructure, not as a red gate.
 
 <!--
   Every new ### DRIFT-... event includes:

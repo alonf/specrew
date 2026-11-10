@@ -147,12 +147,14 @@ try {
     Assert-True $incompleteRefused 'writer refuses an agenda that hides omitted lenses'
     Assert-True ([Convert]::ToBase64String($before) -eq [Convert]::ToBase64String($afterRefusal)) 'incomplete-coverage refusal preserves pending controller state byte-for-byte'
 
-    $selected = @('architecture-core', 'requirements-nfr', 'integration-api', 'code-implementation')
-    $depths = @('medium', 'light', 'medium', 'medium')
+    # Feature 205 (FR-015/FR-016): the selected lenses follow index.yml's problem-first order - requirements-nfr and
+    # integration-api before architecture-core. This order is also valid under the pre-205 catalog (no order check).
+    $selected = @('requirements-nfr', 'integration-api', 'architecture-core', 'code-implementation')
+    $depths = @('light', 'medium', 'medium', 'medium')
     $decisions = @(
-        'Choose the processing pipeline and concurrency boundary.',
         'Choose timeouts, error output, and exit codes.',
         'Choose HTTP behavior for external reference checks.',
+        'Choose the processing pipeline and concurrency boundary.',
         'Choose C# implementation and dependency rules.'
     )
     $skipped = @('data-storage', 'ui-ux', 'devops-operations', 'security-compliance', 'observability-resilience', 'component-design')
@@ -234,7 +236,7 @@ try {
     Assert-True ([string]$state.skipped.'ui-ux' -eq 'The interface is terminal-only.') 'each skipped lens carries its feature-specific reason'
 
     $lifecycle = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef '001-url-checker'
-    Assert-True ($lifecycle.status -eq 'active' -and $lifecycle.current_lens -eq 'architecture-core') 'strict controller opens lens 1 only after complete coverage and human confirmation'
+    Assert-True ($lifecycle.status -eq 'active' -and $lifecycle.current_lens -eq 'requirements-nfr') 'strict controller opens lens 1 (the first selected lens in index.yml order) only after complete coverage and human confirmation'
 
     $validStateJson = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
     $forgedShape = $validStateJson | ConvertFrom-Json -Depth 20
@@ -306,6 +308,78 @@ try {
     Set-Content -LiteralPath (Join-Path $scratch "specs\$typedFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
     $typedRecords = Invoke-ShippedWorkshopProvider -AssistantText 'Product grounding captured. Preparing the technical agenda next.'
     Assert-True ($typedRecords.ExitCode -eq 0 -and $typedRecords.Output -notmatch '(?i)selection channel') 'product records backed by a typed receipt are not accused of arriving through a selection channel'
+    # ---- Feature 205 (FR-016): a NEW agenda whose selected lenses break index.yml's relative order is refused; the
+    # writer names the out-of-order lenses and the index.yml order, writes nothing, and never reorders.
+    Remove-Item -LiteralPath (Join-Path $scratch "specs\$typedFeature") -Recurse -Force
+    $orderFeature = '005-order-check'
+    New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$orderFeature\workshop") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$orderFeature\spec.md") -Value '# Order Check' -Encoding UTF8
+    & $initializer -ProjectRoot $scratch -FeatureRef $orderFeature
+    $null = Add-TypedReply -FeatureRef $orderFeature -Phase 'product-domain' -Lens 'product-domain' -Reply 'The product framing matches.'
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$orderFeature\workshop\product-domain.md") -Value '# Product domain' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$orderFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
+    $orderStatePath = Join-Path $scratch "specs\$orderFeature\lens-applicability.json"
+    $outOfOrderSelected = @('architecture-core', 'requirements-nfr', 'integration-api', 'code-implementation')
+    $outOfOrderJson = [ordered]@{
+        selected = @(for ($i = 0; $i -lt $outOfOrderSelected.Count; $i++) { [ordered]@{ lens = $outOfOrderSelected[$i]; depth = 'medium'; decision = ('Decide {0}.' -f $outOfOrderSelected[$i]) } })
+        skipped = @(for ($i = 0; $i -lt $skipped.Count; $i++) { [ordered]@{ lens = $skipped[$i]; reason = $reasons[$i] } })
+    } | ConvertTo-Json -Depth 6 -Compress
+    foreach ($mode in @('render', 'confirm')) {
+        $beforeOrder = [IO.File]::ReadAllBytes($orderStatePath)
+        $orderMessage = ''
+        $orderRefused = $false
+        try {
+            if ($mode -eq 'render') { & $writer -ProjectRoot $scratch -FeatureRef $orderFeature -AgendaJson $outOfOrderJson -RenderOnly | Out-Null }
+            else { & $writer -ProjectRoot $scratch -FeatureRef $orderFeature -AgendaJson $outOfOrderJson | Out-Null }
+        }
+        catch { $orderMessage = $_.Exception.Message; $orderRefused = $true }
+        Assert-True ($orderRefused -and $orderMessage -match 'architecture-core' -and $orderMessage -match 'requirements-nfr' -and $orderMessage -match 'index\.yml') ("FR-016 ({0}): an out-of-order new agenda is refused, naming the out-of-order lenses and index.yml: {1}" -f $mode, $orderMessage)
+        Assert-True ([Convert]::ToBase64String($beforeOrder) -eq [Convert]::ToBase64String([IO.File]::ReadAllBytes($orderStatePath))) ("FR-016 ({0}): the refusal writes nothing" -f $mode)
+    }
+    $inOrderRendered = @(& $writer -ProjectRoot $scratch -FeatureRef $orderFeature -AgendaJson $agendaJson -RenderOnly) -join [Environment]::NewLine
+    $renderedOrder = @([regex]::Matches($inOrderRendered, '(?m)^- ([a-z][a-z0-9-]+) \(') | ForEach-Object { $_.Groups[1].Value })
+    Assert-True (($renderedOrder -join ',') -eq ($selected -join ',')) ("FR-016: an in-order agenda is accepted and rendered in the given order, never reordered ({0})" -f ($renderedOrder -join ','))
+
+    # ---- Feature 205 (FR-013): an agenda CONFIRMED before the release, in the old order (architecture-core before
+    # requirements-nfr), is never re-checked: it resumes in its own order and completes.
+    Remove-Item -LiteralPath (Join-Path $scratch "specs\$orderFeature") -Recurse -Force
+    $legacyFeature = '006-legacy-order'
+    $legacyDir = Join-Path $scratch "specs\$legacyFeature"
+    New-Item -ItemType Directory -Path (Join-Path $legacyDir 'workshop') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $legacyDir 'spec.md') -Value '# Legacy Order' -Encoding UTF8
+    $legacySelected = @('architecture-core', 'requirements-nfr')
+    $legacyAgenda = [ordered]@{}
+    foreach ($lens in $legacySelected) {
+        $legacyAgenda[$lens] = @(('An open question for {0}?' -f $lens))
+        Set-Content -LiteralPath (Join-Path $legacyDir "workshop\$lens.md") -Value ("# {0}`n`nWhat we agreed, in the human's words." -f $lens) -Encoding UTF8
+    }
+    $legacyController = [ordered]@{
+        schema_version = '1.1'; workshop_intake = $true; confirmation_required = $true; agenda_status = 'confirmed'
+        selected = $legacySelected; agenda = $legacyAgenda; skipped = [ordered]@{}
+        agenda_confirmation = 'human-confirmed'; agenda_confirmation_scope = 'lens-question'; agenda_turn_receipt = 'receipt-fixture'
+        human_turn_contract = 'typed-turns-v1'; workshop = [ordered]@{}
+    }
+    $legacyStatePath = Join-Path $legacyDir 'lens-applicability.json'
+    [IO.File]::WriteAllText($legacyStatePath, ($legacyController | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+    $lensWriter = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\confirm-workshop-lens.ps1'
+    $authorityPath = Join-Path $scratch '.specrew\runtime\workshop-authority.jsonl'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $authorityPath) -Force | Out-Null
+    foreach ($lens in $legacySelected) {
+        $legacyState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef $legacyFeature
+        Assert-True ($legacyState.status -eq 'active' -and $legacyState.current_lens -eq $lens) ("FR-013: the old-order confirmed agenda resumes at '{0}' in its own order (got {1}/{2})" -f $lens, $legacyState.status, $legacyState.current_lens)
+        $receipt = [ordered]@{
+            schema_version = '1'; receipt_id = ('receipt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)); feature_ref = $legacyFeature; iteration_number = ''
+            phase = 'lens'; lens = $lens; question_hash = 'q'; response_hash = 'r'; confirmation = 'human-confirmed'; confirmation_scope = 'lens-question'
+            source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-11-10T00:00:00Z'
+        }
+        ($receipt | ConvertTo-Json -Compress) | Add-Content -LiteralPath $authorityPath -Encoding UTF8
+        $closeOutput = @(& pwsh -NoProfile -File $lensWriter -ProjectRoot $scratch -FeatureRef $legacyFeature -Lens $lens -Decision 'We agreed to keep the existing layering.' -Depth 'medium' -Agenda @('An open question?') 2>&1)
+        Assert-True ($LASTEXITCODE -eq 0) ("FR-013: the lens writer closes '{0}' on the old-order agenda: {1}" -f $lens, ($closeOutput -join ' '))
+    }
+    $legacyFinal = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef $legacyFeature
+    Assert-True ($legacyFinal.status -eq 'complete') ("FR-013: the old-order agenda completes (got {0}/{1})" -f $legacyFinal.status, $legacyFinal.reason)
+    $legacyAfter = Get-Content -LiteralPath $legacyStatePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+    Assert-True ((@($legacyAfter.selected) -join ',') -eq ($legacySelected -join ',')) 'FR-013: the confirmed agenda keeps the order it was confirmed in (never reordered)'
 }
 finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
