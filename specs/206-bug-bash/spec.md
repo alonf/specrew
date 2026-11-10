@@ -89,13 +89,24 @@ as feature 201 did.
   feature.
 - **FR-006**: Every failure and warning the nightly reports for closed iterations gets a one-time triage.
   Each ends in exactly one terminal answer: **fixed mechanically**, **marked abandoned**, or **placed on the
-  frozen legacy list** with a one-line reason. The triage table is shown to the maintainer and approved
-  before any of it is applied.
+  frozen legacy list** with a one-line reason. **Abandoned means the work was not delivered; the frozen list
+  is for work that was delivered but never formally closed.** Ruled answers (maintainer, 2026-11-10):
+  - 198/011 and 197/006: marked abandoned. 174/007 stays abandoned.
+  - 048/001, 197/001, 198/008: frozen list, each with a one-line true reason.
+  - The 15 missing dashboards (141/006-008, 174/006 and 008-011, 182/002-004, 197/003-005, 198/003): frozen
+    list, reason "closed before dashboards were rendered automatically". They may be rendered instead only
+    after it is shown to the maintainer that no evidence digest or seal covers those iteration folders.
 - **FR-007**: The frozen legacy list is closed when the triage is applied. A test fails if an entry is
   added to it afterwards.
 - **FR-008**: A validator rule applies only to iterations closed after the rule shipped; history is not
-  re-judged. **Its mechanism is an open decision** (see Open Decisions). If the chosen mechanism is large,
-  FR-008 becomes its own item, and FR-006 and FR-007 ship first.
+  re-judged. **Mechanism: option D (maintainer, 2026-11-10)** — closure freezes the judgement: a closed
+  iteration is judged only by rules marked retroactive, and each check that looks at closed iterations
+  carries the date it shipped; history before that is covered by the frozen list. A per-rule registry
+  (options A or C) is a later item, not this feature.
+- **FR-008a**: The validator has **one definition of "closed"**, used by every path. Evidence that it has
+  two today: 048/001, 197/001, 197/006 and 198/008 are absent from `.specrew/closed-iterations.yml`, so the
+  nightly validates them as open, while the dashboard check calls them closed from a state.md text
+  heuristic.
 - **FR-009**: The Nightly Truth-Check is silent when green and notifies a person only on a **new** failure:
   the first red after a green run, or a failure set that differs from the previous run's. A run that stays
   red with the same failures sends nothing new.
@@ -148,7 +159,5 @@ as feature 201 did.
 
 ## Open Decisions
 
-- **FR-008's mechanism** (how the validator knows when a rule shipped). Options are in the bug list's item 4
-  section; the maintainer chooses before it is designed.
-- **The triage table's terminal answers** (FR-006), proposed in the bug list; the maintainer approves
-  before they are applied.
+- **The 15 missing dashboards** stay on the frozen list unless the seal/digest check (FR-006) shows nothing
+  covers those folders and the maintainer then chooses rendering.
