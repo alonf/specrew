@@ -90,9 +90,60 @@ Two independent causes.
   - T091 and T093: no trace in 199, 201 or 202 artifacts.
 - **Already on record:** decision `f198-i011-waive-accepted-verdict-finding-release-gate` waived this exact
   finding "for the v0.40.0-beta2 release gate only", saying the red sits on the rule, not on a false field.
-- **Needed for green:** the maintainer's choice for 198/011: close it with a pointer, or make an explicit,
-  recorded hold a state the validator accepts. In scope either way: the wrong "Complete iterations" message
-  corrected, and a nightly failure notification that reaches a person.
+- **Ruling (maintainer, 2026-11-10):** mark 198/011 abandoned, review unchanged; FR-066's mint guard, T091
+  and T093 become one finding owned by feature 203's follow-up, with the parked check as its test (not run).
+
+### Triage of what the nightly reports today (proposed, not applied)
+
+The nightly on main reports one failure and 20 warnings, nothing else (CI run 42570733031, matched by a
+local full-repo CI-mode replay). The dashboard rule shipped on 2026-05-26 (`d4284c8a`); every row below
+last changed on or after that day, so the rule is not retroactive for any of them.
+
+| Iteration | Report | Status today | Proposed terminal answer |
+| --------- | ------ | ------------ | ------------------------ |
+| 198/011 | FAIL: review verdict | retro, needs-rework | marked abandoned (ruled) |
+| 141/006, 141/007, 141/008 | WARN: no dashboard.md | complete, in closed index | fixed mechanically: render dashboard.md from its own artifacts |
+| 174/006, 174/008, 174/009, 174/010, 174/011 | WARN: no dashboard.md | complete, in closed index | fixed mechanically: render |
+| 182/002, 182/003, 182/004 | WARN: no dashboard.md | complete, in closed index | fixed mechanically: render |
+| 197/003, 197/004, 197/005 | WARN: no dashboard.md | complete, in closed index | fixed mechanically: render |
+| 198/003 | WARN: no dashboard.md | complete, in closed index | fixed mechanically: render |
+| 174/007 | WARN: no dashboard.md | abandoned (superseded by 008), in closed index | frozen list: "abandoned before closeout; no dashboard was owed" |
+| 197/006 | WARN: no dashboard.md | retro; state says superseded by 007 before closeout | marked abandoned |
+| 048/001 | WARN: no dashboard.md | retro, review accepted, not in closed index | maintainer's call: frozen list ("reached retro with an accepted review, never formally closed") or formal closure |
+| 197/001 | WARN: no dashboard.md | retro, review accepted, not in closed index | maintainer's call, as 048/001 |
+| 198/008 | WARN: no dashboard.md | blocked at review-signoff (T029 merge handoff, T067 post-publication validation) | maintainer's call: abandoned, or frozen list ("blocked on release steps that happened outside the iteration") |
+
+Two findings came out of the triage:
+
+- **The closed-iteration test disagrees with itself.** 048/001, 197/001, 197/006 and 198/008 are not in
+  `.specrew/closed-iterations.yml`, so the nightly validates them as open, yet the dashboard check calls each
+  a closed iteration (a state.md text heuristic). 198/011 is the same shape and is the one that fails.
+- **The nightly never re-judges most of history already**: it skips the 136 iterations in the closed index
+  (`[validator-scope] closed-iteration filter`). The dashboard check is the exception, which is why all 20
+  warnings are about closed iterations.
+
+### How the validator could know when a rule shipped (FR-008, options)
+
+Facts first:
+
+- **Closure dates on record are mostly wrong.** 131 of the 137 entries in `.specrew/closed-iterations.yml`
+  carry `closed_at: 2026-08-06T14:49:04Z`, the moment the index was rebuilt, not when each iteration closed.
+  Real closure dates exist only in git (the closeout commit of each `state.md`).
+- **Rules have no stable identity.** Some findings carry a category (`over-claim`,
+  `missing-dashboard-auto-render-regression`); many are bare message strings added to an error list.
+- **Consumer projects do not have Specrew's git history**, so anything derived from git at validation time
+  works only in this repository.
+
+Options:
+
+| Option | How it knows the rule's date | How it knows the closure date | Cost |
+| ------ | ---------------------------- | ----------------------------- | ---- |
+| A. Rule registry, hand-kept | every rule gets an id and a `since` version in a registry file | closure records the Specrew version that closed it (new field) | large: inventory every rule in a ~6,000-line validator, give each an id |
+| B. Git at run time | `git log -S` on the rule's text | git log of the closeout commit | small code, but works only in this repo, needs full history, breaks when a message is reworded |
+| C. Registry generated at release | the release diffs rule ids against the previous release and stamps new ones | as A | as A for the ids, then low upkeep |
+| D. Closure freezes judgement | no per-rule dates; a closed iteration is judged only by rules marked retroactive, plus the validation it passed at closure | closure stamp written at closeout from now on; history covered by the frozen list | small: mostly how the closed filter already behaves; only the few checks that look at closed iterations (today: the dashboard check) need a `since` |
+
+Recommendation: D in this feature; A or C as its own item only if per-rule dates are wanted later.
 
 ## 5. Tests registered in no CI step and no verification lane
 
