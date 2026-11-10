@@ -1808,3 +1808,22 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   a turn's token is used up only after every check in that Stop has passed, so a block from any later check keeps the
   turn and its token. Third occurrence the same evening (after the turn declared with `85f91c2a…`).
 - **Class closure**: OPEN; T011 owns it, before T014.
+
+### DRIFT-055 — T008 was marked done with a sign-off-lane suite red; the crew's sweep never runs the sign-off lanes (crew error; observed 2026-11-10)
+
+- **Observed (2026-11-10)**: a targeted sweep for T011 on `4c103512` ran `tests/unit/coverage-is-a-decision.tests.ps1`
+  and it failed: "rounds come from the ONE production counter when the bundle is present - Expected 4, because the
+  default budget, resolved by the engine, never a parallel counter, but got 2." It fails the same way on `3deff62b` and
+  on `2d8839cf` (the head of the green full sweep that closed T008), so T011 did not cause it.
+- **Cause**: `2bfa0ca4` (T008 step i) made the counter take its total from the campaign's budget grant, or the FR-008
+  floor (`$script:ReviewBudgetFloor = 2`) when no grant is recorded. The suite's 4 is the beta3 default. The suite is
+  named only in `.specrew/verification-plan.signoff-lanes.json` (lane `f202-slice-suites-b` and its 202 copy); the
+  crew's sweep driver (`tools/maintenance/sweep/sweep-full.ps1`) runs the suite list and the seven lanes of
+  `.specrew/verification-plan.json`, never the sign-off lanes. T008's migration classification therefore never saw it,
+  and T008 was recorded done (`642aec81`) with it red.
+- **Extent**: all 66 suites named by the sign-off lanes were run on `4c103512` through the sweep driver (redirected home;
+  real home hook files unchanged): 65 pass, `coverage-is-a-decision` is the only red one.
+- **Proposal (maintainer decision pending)**: (1) the expectation becomes the FR-008 floor (2), keeping the property that
+  the coverage state reads the one production counter; (2) the sweep driver also runs every suite the sign-off lanes
+  name, so a sweep that closes a task covers them.
+- **Class closure**: OPEN.
