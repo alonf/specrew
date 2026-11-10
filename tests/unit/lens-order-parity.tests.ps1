@@ -38,6 +38,8 @@ $script:FullSurfaces = @(
 # Runs that must differ from index.yml, each with its reason. A stale entry (matching no run) fails the test.
 $script:Exemptions = @(
     @{ Path = 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'; Pattern = '\(\?:[a-z-]+\|'; Reason = 'Order has no meaning in a regex alternation; the file is owned by feature 203 T011 and is not edited here.' }
+    @{ Path = 'scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1'; Pattern = 'workshop holds architecture-core, requirements-nfr, security-compliance, product-domain'; Reason = 'A comment naming lenses a workshop holds, not an order; the file is under active change in feature 203 (T008) and is not edited here. Temporary: after feature 203 merges, reorder the comment and remove this exemption.' }
+    @{ Path = 'scripts/internal/continuous-co-review/worktree-reviewer.ps1'; Pattern = 'requirements/NFR, data-storage, security-compliance, integration/API'; Reason = 'The reviewer''s prompt text (a short-name lens list, recorded for iteration 3); feature 203''s folder, where a changed file can make the review launch refuse with a runtime-drift error (203 DRIFT-051). Not edited here.' }
 )
 
 # The shipped-text sweep: roots, file types, and the accepted exclusions (plan verdict 2026-11-10).

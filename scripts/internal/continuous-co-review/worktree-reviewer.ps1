@@ -1138,8 +1138,8 @@ deferral-covered - do not copy an escalation forward.
 
 WORKSHOP-DECISION CONFORMANCE: the workshop records + design-analysis are BINDING. Raise a conflict when a change
 bypasses approved seams, absorbs deferred work, edits protected surfaces, or changes host/runtime assumptions - do
-not accept convenience over agreement. Validate against EACH applicable design lens (requirements/NFR,
-security-compliance, data-storage, integration/API, devops/operations, architecture, component design,
+not accept convenience over agreement. Validate against EACH applicable design lens (architecture, component
+design, requirements/NFR, data-storage, security-compliance, integration/API, devops/operations,
 observability/resilience, code-implementation; UI/UX only when supplied) and NAME the violated lens on every
 blocking finding.
 

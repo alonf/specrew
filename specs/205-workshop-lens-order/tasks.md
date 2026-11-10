@@ -11,6 +11,10 @@
 - No question is filed under the wrong heading to make a check pass (FR-015). A tag disagreement goes to the maintainer.
 - `specrew-conformance-provider.ps1` is not edited (203's T011 owns it). `scripts/specrew-update.ps1` is never run in this worktree.
 - `.squad/active-features.yml` is never committed.
+- Not edited by this feature (maintainer, 2026-11-10): anything under `scripts/internal/continuous-co-review/`
+  (feature 203's folder; a changed file there can make the review launch refuse with a runtime-drift error) and
+  the bootstrap capture stores (`scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`, `HandoverStore.ps1`,
+  `HumanAuthorityStore.ps1`). A run found there is exempted with its reason, never edited.
 - **Existing-test safety** (tasks verdict, 2026-11-10). Before any existing workshop test runs, check it for hook
   deployment or writes outside the project, and skip and report any test that does either. Hash the real-home hook
   files before and after each run: `~/.specrew/specrew-hook-launch.ps1`, every file inside

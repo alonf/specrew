@@ -112,3 +112,23 @@ The sweep found six runs outside the named surfaces, all reported against the cu
 | `tests/unit/workshop-delegation.tests.ps1` | PASS | 50s |  |
 | `tests/unit/workshop-question-tool.tests.ps1` | PASS | 1s |  |
 | `tests/unit/workshop-refusal-contract.tests.ps1` | PASS | 1s |  |
+
+## T012 — parity and agenda tests green (SC-001, SC-002, SC-003, SC-004)
+
+**Run**: 2026-11-10, after T005 to T011 and the maintainer's exemption ruling. `worktree-reviewer.ps1` is restored to origin/main.
+
+```text
+index.yml order: product-domain, requirements-nfr, ui-ux, security-compliance, data-storage, integration-api, devops-operations, architecture-core, component-design, observability-resilience, code-implementation
+Exemptions:
+  extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 /\(\?:[a-z-]+\|/ - Order has no meaning in a regex alternation; the file is owned by feature 203 T011 and is not edited here.
+  scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1 /workshop holds architecture-core, requirements-nfr, security-compliance, product-domain/ - A comment naming lenses a workshop holds, not an order; the file is under active change in feature 203 (T008) and is not edited here. Temporary: after feature 203 merges, reorder the comment and remove this exemption.
+  scripts/internal/continuous-co-review/worktree-reviewer.ps1 /requirements/NFR, data-storage, security-compliance, integration/API/ - The reviewer's prompt text (a short-name lens list, recorded for iteration 3); feature 203's folder, where a changed file can make the review launch refuse with a runtime-drift error (203 DRIFT-051). Not edited here.
+Checked: 5 full surfaces, 428 swept files (13 runs), 11 lens files, 22 deployed copies.
+lens-order-parity: all checks passed
+```
+
+- **Parity**: 22 of 22 self-tests pass, and the repository check passes. It went from 72 mismatches on the unchanged tree to 0.
+- **SC-002**: the extractor counts match the expected table for all 11 lenses (product-domain 0, requirements-nfr 6, ui-ux 6, security-compliance 6, data-storage 7, integration-api 7, devops-operations 7, architecture-core 4, component-design 5, observability-resilience 6, code-implementation 7). Each bullet-list lens returns exactly the points under its two sub-headings, and product-domain's 8 numbered points are proven tagged by the test's own count.
+- **SC-003**: the exemption list prints with its reasons on every run. It has 3 entries, all in files feature 203 owns, and the review-signoff comment entry is temporary.
+- **Agenda test** (exit 0): every assertion passes. FR-016: refused at render and at confirm, nothing written, an in-order agenda is not reordered. FR-013: the old-order confirmed agenda resumes in its own order, closes both lenses, completes, and keeps its order.
+- **Tag disagreements**: none. Every lens's questions matched its FR-015 tag.

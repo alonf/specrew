@@ -105,7 +105,9 @@ corrected surfaces are below.
 
 - Iteration 2: problem-space completeness, using this iteration's gap list.
 - Iteration 3 (after 203 merges): the two-pass split, the back-check, amendments and sweeps. **Input recorded here:**
-  the short-name lens lists outside the id sweep (the skill's frontmatter description, launch-contract rule 9a).
+  the short-name lens lists outside the id sweep (the skill's frontmatter description, launch-contract rule 9a, the
+  reviewer prompt in `scripts/internal/continuous-co-review/worktree-reviewer.ps1`), and, after 203 merges,
+  reordering the `review-signoff-evidence-gate.ps1:589` comment and removing its temporary exemption.
 
 ## Phase 2 Hardening and Specialist Review Planning
 

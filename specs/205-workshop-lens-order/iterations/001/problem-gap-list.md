@@ -24,5 +24,11 @@ decides between adding new questions and adding a new lens.
 ## Also carried to iteration 003
 
 The plan verdict accepted that lists written with short names rather than lens ids fall outside the id sweep. These
-are the skill's frontmatter description ("requirements/NFR, ui-ux, security, data, ...", reordered by hand in 001)
-and launch-contract rule 9a. Iteration 003 takes them as input.
+are the skill's frontmatter description ("requirements/NFR, ui-ux, security, data, ...", reordered by hand in 001),
+launch-contract rule 9a, and the reviewer prompt's lens list in
+`scripts/internal/continuous-co-review/worktree-reviewer.ps1`. That last one was restored to origin/main at the
+maintainer's direction (feature 203's folder) and is exempted in the parity test. Iteration 003 takes them as input.
+
+Also for iteration 003: after feature 203 merges, reorder the comment at
+`scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1:589` to index.yml order and remove its
+temporary exemption from `tests/unit/lens-order-parity.tests.ps1`.
