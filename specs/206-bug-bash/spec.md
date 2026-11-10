@@ -118,8 +118,9 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
   heuristic.
 - **FR-009**: The Nightly Truth-Check is silent when green and notifies a person only on a **new** failure:
   the first red after a green run, or a failure set that differs from the previous run's. A run that stays
-  red with the same failures sends nothing new. **How the notification reaches a person is the
-  maintainer's choice** among options brought to them (Open Decisions); none is picked silently.
+  red with the same failures sends nothing new. **Channel (maintainer, 2026-11-10): a tracking issue**,
+  opened by the workflow on the first red night, commented on only when the failure set changes, and closed
+  on the next green run.
 - **FR-010**: The validator's review-verdict finding names the iteration's actual status. A `retro`
   iteration is no longer told "Complete iterations require …".
 
@@ -132,7 +133,14 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
 - **FR-012**: Each of the 35 unregistered integration scripts listed in the bug list is either registered
   in a lane or the release manifest, or listed as excluded with a one-line reason. Before any of them is
   run, it is read for writes outside its project or for hook deployment; one that has them is not run, and
-  is reported instead.
+  is reported instead. (Maintainer, 2026-11-10:)
+  - A script that turns out **red** is either fixed here, if its cause is one of this feature's items, or
+    brought to the maintainer with its failure. "Excluded" is never used for a red script without the
+    maintainer's ruling, and the exclusion list is shown to the maintainer.
+  - `project-path-resolution-regression.ps1` and `validator-hardening-iteration2.ps1` (the B5F-036 suites)
+    end **green and registered**.
+  - Each script's **duration is reported**. A slow script goes to the release manifest, not a per-push
+    lane, and the total per-push time added is reported to the maintainer before anything is registered.
 - **FR-013**: `tests/integration/_ctl-spec.ps1` (an empty file) is deleted.
 
 ### Item 6a — the stray root package.json
@@ -169,16 +177,5 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
 
 ## Open Decisions
 
-- **The nightly notification channel (FR-009).** Options:
-  1. **A tracking issue**: the workflow opens one issue on the first red night, comments only when the
-     failure set changes, and closes it on the next green run. It reaches a person through GitHub's issue
-     notifications, needs only `issues: write` on the workflow token, and keeps the previous failure set in
-     the issue itself, so "new failure" needs no other storage.
-  2. **An email** from the workflow through an SMTP action: it lands in an inbox directly, but needs mail
-     credentials as repository secrets, a third-party action, and stored state from the previous run to tell
-     a new failure from a repeat.
-  3. **GitHub's built-in failed-run notification** (already in place in principle, to whoever last edited
-     the schedule): it fires on every red run, cannot tell new from repeated failures, and evidently reached
-     no one across 94 red nights. Recorded as the baseline, not a candidate.
 - **The 15 missing dashboards** stay on the frozen list unless the seal/digest check (FR-006) shows nothing
   covers those folders and the maintainer then chooses rendering.
