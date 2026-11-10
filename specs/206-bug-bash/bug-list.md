@@ -193,3 +193,44 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   so any replacement needs a stable token, not a blank.
 - **Constraint:** feature 203's FR-033 changes how claims leave this file at merge (B5F-022).
 - Not committed here until decided.
+
+## 7. The Windows review-runtime job hung past its timeout and left no log
+
+- **Observed:** Cross-Platform Validation run 42913380735 on `435332da`, job "Deterministic fake-provider review
+  runtime (windows-latest) — never live support evidence", step "Run bounded deterministic review fault and
+  conformance suites". The job started 2026-11-10T22:18:51Z and was cancelled at 22:48:51Z: 30 minutes, against
+  5 minutes for the same job on `7f9cf310` (run 42740875424). The job's own limit is `timeout-minutes: 25`.
+- **The step is called "bounded" and was not:** it has no `timeout-minutes` of its own, so only the job limit
+  stopped it, and a cancelled job keeps no log. GitHub returned `BlobNotFound` for the job's log, so where it
+  stopped is unknown.
+- **Not caused by the commit:** `435332da` changed only Markdown files and `.specrew/iteration-config.yml`.
+- **Cause: not found.** The step runs the continuous co-review suites (`tests/continuous-co-review/**`), feature
+  203's area.
+- **Disposition (maintainer, 2026-11-11):** no fix in the review-runtime tests. Handed over to feature 203 with
+  item 3 (FR-004), as its own item. Candidate for this feature: give the step its own `timeout-minutes`, shorter
+  than the job's, so a hang fails with its log kept. `.github/workflows/cross-platform-validation.yml` is not in
+  203's protected paths and 203's branch does not change it, so the candidate is on iteration 002's list (T019).
+
+| Run id | Date (UTC) | Commit | Runner | Outcome |
+| ------ | ---------- | ------ | ------ | ------- |
+| 42913380735 | 2026-11-10 | `435332da` | windows-latest | cancelled after 30 min in the bounded step; no log kept |
+
+## 8. Two suites run `specrew-update.ps1` with no home redirect and rewrite the real home's hook files
+
+- **Reported by the maintainer (2026-11-11), from feature 205:** its review preflight ran the lanes in
+  `.specrew/verification-plan.json` (202's and 199's suites), and one of them rewrote four real-home hook files
+  with main's layout.
+- **The two suites:**
+  - `tests/integration/deployed-extension-marker-on-update.tests.ps1:64` runs
+    `pwsh -NoProfile -File scripts/specrew-update.ps1 -ProjectPath $root` on a temp project.
+  - `tests/integration/receipt-outcomes-retired.tests.ps1:28` does the same.
+  - Neither sets `HOME` or `USERPROFILE` (checked by reading, 2026-11-11), so the update's hook deployment
+    writes the real home folder. Both are named in `.specrew/verification-plan.json`'s lanes; neither is in a
+    CI workflow.
+- **Not run on this machine** (maintainer's instruction). No fix in 206 unless the maintainer rules one.
+- **Same shape, not yet read:** 11 more test scripts mention `specrew-update.ps1` (a mention is not proof of a
+  call): `tests/continuous-co-review/unit/verification-plan-materializer.Tests.ps1`, and under
+  `tests/integration/`: `distribution-module-update.ps1`, `forge-neutralization-sweep.tests.ps1`,
+  `project-path-resolution-regression.ps1`, `psgallery-check.tests.ps1`, `refocus-deploy.tests.ps1`,
+  `slash-command-compatibility.tests.ps1`, `slash-command-distribution.tests.ps1`, `update-command.ps1`; and under
+  `tests/unit/`: `consumer-applicability-firewall.tests.ps1`, `extension-deploy-refocus-digests.tests.ps1`.

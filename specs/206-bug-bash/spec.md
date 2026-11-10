@@ -90,6 +90,8 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
   hand-over to feature 203. Every recurrence is added to its log with the run id. No code changes.
   Sightings so far: run 42715079692 ("retries once and recovers") and run 42743719583 ("does NOT retry a
   non-empty result"), both Ubuntu, both a written output read as empty.
+  The hand-over also carries **bug list item 7** (maintainer, 2026-11-11): the Windows review-runtime job
+  hung 30 minutes in its "bounded" step on run 42913380735 and left no log; cause not found, no fix here.
 
 ### Item 4 — the nightly and historic work
 

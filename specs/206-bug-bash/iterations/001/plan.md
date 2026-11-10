@@ -58,7 +58,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T011 | Review-verdict finding names the iteration's actual status (failing test first) | FR-010 | US2 | 0.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, tests/unit/** | planned | | | |
 | T012 | Notifier script with injectable gh, findings file, Pester (open, quiet, comment, close, no private text); notifier job alone has issues: write (condition 4) | FR-009 | US2 | 2.5 | Implementer | scripts/internal/nightly-tracking-issue.ps1, extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, .github/workflows/specrew-nightly-truth-check.yml, tests/unit/** | planned | | | |
 | T013 | Shared test census for the lane guard and the full sweep, content-classified, one exclusion list (failing guard first) | FR-011 | US3 | 2.0 | Implementer | tests/support/test-census.ps1, tests/unit/every-suite-is-named-by-a-lane.tests.ps1, tests/full-powershell-test-sweep.ps1 | planned | | | |
-| T014 | The 35 scripts: read for home writes or hook deployment, run the safe ones with home hashes, durations; STOP with exclusions, red scripts and per-push total for the maintainer | FR-012 | US3 | 2.0 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
+| T014 | The 35 scripts: read for home writes or hook deployment (any call to specrew-update.ps1 or the hook deployment = not run, listed for the maintainer), run the safe ones with home hashes, durations; STOP with exclusions, red scripts and per-push total for the maintainer | FR-012 | US3 | 2.0 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
 | T015 | Register the 35 per the maintainer's ruling; both B5F-036 suites green and registered | FR-012 | US3 | 1.0 | Implementer | .github/workflows/specrew-ci.yml, .specrew/release-gate-suites.txt, .specrew/verification-plan.json, tests/support/test-census.ps1 | planned | | | |
 | T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run; no commit touches a full-validation trigger path | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
 
@@ -131,7 +131,9 @@ list, the frozen-list guard, the T010 replay and the T014 report.
   | ---- | ----- | ----------- | ------ |
   | T016 | Delete the empty tests/integration/_ctl-spec.ps1 | FR-013 | 0.25 |
   | T017 | Resolver suggests no Node/React here (failing test first); f049 assertion onto a fixture; root package.json removed | FR-014 | 1.5 |
+  | T019 | Cross-Platform review-runtime step gets its own `timeout-minutes`, shorter than the job's, so a hang fails with its log kept (bug list item 7) | none yet: a requirement is added when iteration 002 is planned | 0.25 |
 
+  T019 was added on 2026-11-11 as a candidate, not deferred from 001.
   Until T017 lands, the quality resolver keeps suggesting a React preset for this repository (bug 6a); the
   custom PowerShell profile in the feature plan stands in the meantime.
 - **Stops inside implement:** T010 stops if any changed iteration produces a new finding; T014 stops with
@@ -158,7 +160,8 @@ list, the frozen-list guard, the T010 replay and the T014 report.
   - **Blocking finding**: DRIFT-198-I010-004, "T082's containment covers path RESOLUTION, not ENUMERATION;
     -041 is NOT delivered", open and blocking, a security defect on the read path at four enumeration sites in
     `scripts/internal/continuous-co-review/review-authority-store.ps1` (lines 200, 309, 362, 447 at the time).
-    That file is in feature 203's protected area.
+    That file is in feature 203's protected area, so **whatever the maintainer rules for the iteration, the
+    defect itself is handed to feature 203.**
 - **197/006** is marked abandoned, not frozen; the dashboard check applies to `complete` iterations only
   (feature plan, "197/006, resolved").
 - **Which changed paths make CI validate the whole repository.** CI runs `validate-governance.ps1
@@ -173,5 +176,18 @@ list, the frozen-list guard, the T010 replay and the T014 report.
 - **What the whole-repository run reports on this branch today** (CI mode, `-FullRun`, with OVERRIDE 5
   reverted): see the T005 evidence. Its only failure is 198/011's review-verdict finding, which T007 removes,
   plus the 20 dashboard warnings on the frozen and abandoned entries.
+- **Review preflight: no inherited lanes run here** (maintainer, 2026-11-11, after feature 205's review
+  preflight ran the lanes in `.specrew/verification-plan.json`, 202's and 199's suites, and one rewrote four
+  real-home hook files). In this worktree no review round starts and none of those lanes runs. Before 206's
+  review round, a verification plan naming **only 206's own checks**, each first read for writes to the home
+  folder or hook deployment (T014's read-before-run rule, applied to everything the review preflight would
+  run), is brought to the maintainer. T015 registers suites for CI and the release manifest; a suite added to a
+  verification lane is read under the same rule first. This is review-stage work, not priced in SP (Phase
+  Baseline).
+- **Never run on this machine** (maintainer, 2026-11-11; bug list item 8):
+  `tests/integration/deployed-extension-marker-on-update.tests.ps1` and
+  `tests/integration/receipt-outcomes-retired.tests.ps1`. Both run `specrew-update.ps1` with no home redirect. In
+  T014, and for anything the review preflight would run, a script that calls `specrew-update.ps1` or the hook
+  deployment is **not run, and is listed for the maintainer**.
 - **Not touched:** `scripts/internal/continuous-co-review/**`, `scripts/internal/bootstrap/**`,
   `scripts/specrew-update.ps1`, `.squad/active-features.yml`.
