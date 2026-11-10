@@ -102,7 +102,7 @@
   (`workshop/intake-drift-log.md`). This one is a gate that depends on a live download from the PowerShell Gallery,
   and it fails when the Gallery does.
 - **Resolution**: the maintainer approved one rerun of the failed job (attempt 2), with no further rerun if it fails
-  the same way. T005 onward stays on hold until all three workflows are green on `12837d26`. Rerun result: PENDING.
+  the same way. T005 onward stays on hold until all three workflows are green on `12837d26`. Rerun result: attempt 2 of run 42734434753 concluded **success**, all 8 jobs, the Windows job included. Specrew CI and Test on `12837d26` also passed, with no job skipped.
 - **Class closure**: NONE — the CI workflow is outside 205's scope. Candidate for 206: vendor or cache the pinned
   Pester (or retry the Gallery fetch with a clear infrastructure-failure label), so a Gallery outage reads as
   infrastructure, not as a red gate.
