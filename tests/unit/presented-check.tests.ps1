@@ -158,12 +158,11 @@ function Start-Turn {
 }
 
 function Complete-Turn {
-    # Declares the DRAFT, then shows the host's transcript holding the REPLY - which may differ from the draft.
-    param($Project, [string]$Session, [string]$Token, [string]$Kind, [string]$Draft, [string]$Reply)
+    # Declares the turn as the agent does (203 T011 follow-up: no draft, from a file or stdin), then shows the host's
+    # transcript holding the REPLY, which is all the Stop reads.
+    param($Project, [string]$Session, [string]$Token, [string]$Kind, [string]$Reply)
     $script:Turn++
-    $draftPath = Join-Path $Project.Root (".specrew/runtime/draft-{0}.md" -f $script:Turn)
-    [System.IO.File]::WriteAllText($draftPath, $Draft, [System.Text.UTF8Encoding]::new($false))
-    $null = Invoke-Pwsh -Root $Project.Root -Script $declare -Arguments @('-Kind', $Kind, '-MessagePath', $draftPath, '-Summary', ('turn {0}' -f $script:Turn), '-Token', $Token)
+    $null = Invoke-Pwsh -Root $Project.Root -Script $declare -Arguments @('-Kind', $Kind, '-Summary', ('turn {0}' -f $script:Turn), '-Token', $Token)
     $transcript = Join-Path $Project.Root (".specrew/runtime/transcript-{0}.jsonl" -f $script:Turn)
     $lines = @(
         ([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'Continue.' }) } } | ConvertTo-Json -Depth 8 -Compress),
@@ -176,68 +175,56 @@ function Complete-Turn {
 
 $projects = [System.Collections.Generic.List[object]]::new()
 try {
-    # -----------------------------------------------------------------------------------------------
-    Write-Host 'Case 1: the meaning-line set of a packet'
+    # 203 T011 follow-up (FR-046; maintainer ruling 2026-11-11): the draft and its meaning lines are gone. What these
+    # cases checked against a draft is checked against the reply itself, or not at all: cases 1 and 8 to 11 tested only
+    # the draft comparison (the meaning-line set, and how closely a reworded heading or question had to match its
+    # draft) and were removed with it.
     $p1 = New-Project; $projects.Add($p1)
-    $lines1 = @(Get-SpecrewTurnMeaningLines -Message (Get-Packet -Project $p1 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'))
-    $specUrl = ([System.Uri]::new($p1.Spec)).AbsoluteUri
-    Assert-True (@($lines1 | Where-Object { $_ -like '## *' }).Count -eq 6) 'all six headings are meaning lines'
-    Assert-True ($lines1 -contains $specUrl) 'the review-target link is a meaning line'
-    Assert-True ($lines1 -contains 'What would you like to do? Type one of these:') 'the question line is a meaning line'
-    Assert-True (($lines1 -contains 'approved for before-implement') -and ($lines1 -contains 'changes needed: <what to change>') -and ($lines1 -contains 'discuss prompt 1')) 'the approval line and verdict options are meaning lines'
-    Assert-True ($lines1 -contains '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') 'the marker is a meaning line'
-    Assert-True (-not ($lines1 -contains 'Wrote the tasks.')) 'prose between them is not'
 
     # -----------------------------------------------------------------------------------------------
-    Write-Host 'Case 2: a reworded conversational draft that keeps its question line is not blocked (B4F-100)'
+    Write-Host 'Case 2: a conversational reply is not compared with anything (B4F-100)'
     $t2 = Start-Turn -Project $p1 -Session 'sess-2' -UserText 'Where are we?'
-    $draft2 = "The tasks are written and committed. The next step is the first task.`n`nShould I start with T001 now?"
     $reply2 = "Tasks are written and committed; next up is the first task.`n`nShould I start with T001 now?"
-    $r2 = Complete-Turn -Project $p1 -Session 'sess-2' -Token $t2.Token -Kind 'conversational' -Draft $draft2 -Reply $reply2
-    Assert-True (-not $r2.Blocked) 'a tightened sentence around an unchanged question line: 0 blocks'
+    $r2 = Complete-Turn -Project $p1 -Session 'sess-2' -Token $t2.Token -Kind 'conversational' -Reply $reply2
+    Assert-True (-not $r2.Blocked) 'a conversational reply: 0 blocks'
 
     # -----------------------------------------------------------------------------------------------
-    Write-Host 'Case 3: a reworded boundary packet that keeps every meaning line is not blocked'
+    Write-Host 'Case 3: a boundary packet in its own words, with every part, is not blocked'
     $p3 = New-Project -PendingCrossing; $projects.Add($p3)
     $t3 = Start-Turn -Project $p3 -Session 'sess-3' -UserText 'Continue.'
-    $draft3 = Get-Packet -Project $p3 -Opening 'Wrote the tasks for iteration 001 and committed them.' -Reason 'The before-implement boundary needs your verdict before any code is written.'
     $reply3 = Get-Packet -Project $p3 -Opening 'Wrote and committed the iteration 001 tasks.' -Reason 'Code waits for your before-implement verdict.'
-    $r3 = Complete-Turn -Project $p3 -Session 'sess-3' -Token $t3.Token -Kind 'boundary' -Draft $draft3 -Reply $reply3
-    Assert-True (-not $r3.Blocked) 'every meaning line kept, prose tightened: 0 blocks'
+    $r3 = Complete-Turn -Project $p3 -Session 'sess-3' -Token $t3.Token -Kind 'boundary' -Reply $reply3
+    Assert-True (-not $r3.Blocked) ("every part present: 0 blocks ({0})" -f (($r3.Output -split "`n" | Select-Object -First 4) -join ' | '))
 
     # -----------------------------------------------------------------------------------------------
     Write-Host 'Case 4: a dropped verdict option is named'
     $p4 = New-Project -PendingCrossing; $projects.Add($p4)
     $t4 = Start-Turn -Project $p4 -Session 'sess-4' -UserText 'Continue.'
-    $draft4 = Get-Packet -Project $p4 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'
     $reply4 = Get-Packet -Project $p4 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.' -DropDiscuss
-    $r4 = Complete-Turn -Project $p4 -Session 'sess-4' -Token $t4.Token -Kind 'boundary' -Draft $draft4 -Reply $reply4
+    $r4 = Complete-Turn -Project $p4 -Session 'sess-4' -Token $t4.Token -Kind 'boundary' -Reply $reply4
     Assert-True ($r4.Blocked) 'the reply without one offered response is blocked'
     Assert-True ($r4.Output -match 'missing: discuss prompt 1') 'the block names the dropped option'
 
-    # Co-review round 6 (202, FR-015): options written as bullets or inline code were not meaning lines at all, so a reply
-    # that dropped them passed. The option inside its Markdown wrapper is the meaning line; the wrapper is formatting.
-    Write-Host 'Case 4b: verdict options written as bullets or inline code are still meaning lines'
+    # Co-review round 6 (202, FR-015): options written as bullets, quotes, numbers, bold or inline code are still the
+    # options; the wrapper is formatting.
+    Write-Host 'Case 4b: verdict options written as bullets or inline code are still the options'
     $bulleted = ((Get-Packet -Project $p4 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.') -replace "`r`n", "`n") -replace '(?m)^  changes needed: <what to change>$', '- changes needed: <what to change>' -replace '(?m)^  discuss prompt 1$', '- `discuss prompt 1`'
     Assert-True ($bulleted.Contains('- `discuss prompt 1`') -and $bulleted.Contains('- changes needed:')) 'the fixture really carries the bulleted options'
-    $meaning4b = @(Get-SpecrewTurnMeaningLines -Message $bulleted)
-    Assert-True ($meaning4b -contains 'changes needed: <what to change>' -and $meaning4b -contains 'discuss prompt 1') ("bulleted and inline-code options are meaning lines ({0})" -f (($meaning4b | Where-Object { $_ -match 'changes|discuss' }) -join ' | '))
-    $starred = "## Q`n`nWhat would you like to do?`n`n* approved for before-implement`n> discuss prompt 2`n1. discuss prompt 3`n**changes needed:** say what"
-    $meaningStar = @(Get-SpecrewTurnMeaningLines -Message $starred)
-    Assert-True (@($meaningStar | Where-Object { $_ -match '^(?:approved for|discuss prompt|changes needed)' }).Count -eq 4) ("star bullets, quotes, numbered items and bold labels are recognized too ({0})" -f ($meaningStar -join ' | '))
-    $droppedBullets = $bulleted -replace '(?m)^- changes needed: <what to change>\r?\n', '' -replace '(?m)^- `discuss prompt 1`\r?\n', ''
-    $missing4b = @(Get-SpecrewTurnMeaningLinesMissing -MeaningLines $meaning4b -Reply $droppedBullets)
-    Assert-True ($missing4b -contains 'discuss prompt 1' -and $missing4b -contains 'changes needed: <what to change>') ("a reply that drops the bulleted options is missing them ({0})" -f ($missing4b -join ' | '))
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -MeaningLines $meaning4b -Reply $bulleted).Count -eq 0) 'the same bulleted reply, unchanged, misses nothing'
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -MeaningLines $meaning4b -Reply ($bulleted -replace '(?m)^- `discuss prompt 1`$', '  discuss prompt 1')).Count -eq 0) 'changing only the wrapper is not a missing option (FR-012)'
+    $marker4 = '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->'
+    $parts4 = Get-SpecrewReplyDecisionParts -Reply $bulleted -ApprovalPhrase 'approved for before-implement' -Marker $marker4
+    Assert-True (@($parts4.Missing).Count -eq 0) ("bulleted and inline-code options count ({0})" -f (@($parts4.Missing) -join ' | '))
+    $starred = "* approved for before-implement`n> approved for before-implement - keep the order`n1. discuss prompt 3`n**changes needed:** say what`n$marker4"
+    $partsStar = Get-SpecrewReplyDecisionParts -Reply $starred -ApprovalPhrase 'approved for before-implement' -Marker $marker4
+    Assert-True (@($partsStar.Missing).Count -eq 0) ("star bullets, quotes, numbered items and bold labels count too ({0})" -f (@($partsStar.Missing) -join ' | '))
+    $droppedBullets = $bulleted -replace '(?m)^- changes needed: <what to change>\n', '' -replace '(?m)^- `discuss prompt 1`\n', ''
+    $missing4b = @((Get-SpecrewReplyDecisionParts -Reply $droppedBullets -ApprovalPhrase 'approved for before-implement' -Marker $marker4).Missing)
+    Assert-True ($missing4b -contains 'discuss prompt 1' -and $missing4b -contains 'changes needed: <what to change>') ("a reply that drops the bulleted options misses them ({0})" -f ($missing4b -join ' | '))
 
     # -----------------------------------------------------------------------------------------------
-    Write-Host 'Case 5: with no crossing pending, a dropped question line is named without asking for an approval line or marker'
+    Write-Host 'Case 5: with no crossing pending, a reply is not held to a draft'
     $t5 = Start-Turn -Project $p1 -Session 'sess-5' -UserText 'Where are we?'
-    $draft5 = "The spec is drafted.`n`nDo you want the plan next, or a second pass on the spec?"
-    $reply5 = 'The spec is drafted.'
-    $r5 = Complete-Turn -Project $p1 -Session 'sess-5' -Token $t5.Token -Kind 'conversational' -Draft $draft5 -Reply $reply5
-    Assert-True ($r5.Blocked -and $r5.Output -match [regex]::Escape('Do you want the plan next, or a second pass on the spec?')) 'the missing question line is named'
+    $r5 = Complete-Turn -Project $p1 -Session 'sess-5' -Token $t5.Token -Kind 'conversational' -Reply 'The spec is drafted.'
+    Assert-True (-not $r5.Blocked) 'a conversational reply is not blocked for a question it does not ask'
     Assert-True ($r5.Output -notmatch '(?i)approval line|marker') 'no approval line or marker is asked for when none can exist'
 
     # -----------------------------------------------------------------------------------------------
@@ -252,120 +239,29 @@ try {
     $dials = "What I know about you: I'll treat you as learning on Product Strategy, auto on UX/UI Design, expert on Software Architecture, auto on AI Delivery Planning — correct me if that's off (``/specrew-user-profile edit``), and I'll match how much I ask and explain to it."
     Assert-True ($t6.Output -match '\[specrew-system\]' -and $t6.Output.Contains($dials)) 'the first prompt supplies the finished dials line, marked as system output'
     $orientation = "Specrew 0.40.0-beta4 is active here, on Claude Code. Feature 001 is at the tasks stage; your artifacts are under specs/001-feat."
-    $r6 = Complete-Turn -Project $p6 -Session 'sess-6' -Token $t6.Token -Kind 'conversational' -Draft $orientation -Reply $orientation
+    $r6 = Complete-Turn -Project $p6 -Session 'sess-6' -Token $t6.Token -Kind 'conversational' -Reply $orientation
     Assert-True (-not $r6.Blocked) 'an orientation reply without the dials line is not blocked: 0 human-visible cycles'
     $t6b = Start-Turn -Project $p6 -Session 'sess-6' -UserText 'Thanks.'
     Assert-True (-not $t6b.Output.Contains($dials)) 'the line is supplied once per session, not every turn'
 
     # -----------------------------------------------------------------------------------------------
-    # Co-review round 3 (202): the packet validator accepts a Markdown review link to an absolute path, so every reader
-    # of review links must accept it too. The meaning lines and the reviewed-artifact memory read only file:/// URLs:
-    # such a link could be dropped from the reply unnoticed, and a change to its file never lifted suppression.
-    Write-Host 'Case 7: a Markdown review link is a review link everywhere the validator accepts it'
+    # Co-review round 3 (202): a Markdown review link to an absolute path is a review link wherever one is read - the
+    # packet check and the reviewed-artifact memory alike.
+    Write-Host 'Case 7: a Markdown review link is a review link everywhere one is read'
     $p7 = New-Project -PendingCrossing; $projects.Add($p7)
     $specUrl7 = ([System.Uri]::new($p7.Spec)).AbsoluteUri
     $forms = @(('[the spec]({0})' -f $p7.Spec)) + @(if ($IsWindows) { '[the spec](/{0})' -f ($p7.Spec -replace '\\', '/') })
     foreach ($form in $forms) {
-        $draft7 = (Get-Packet -Project $p7 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.').Replace("The specification: $specUrl7", "The specification: $form")
-        Assert-True (@(Test-SpecrewAuthoredPacket -Message $draft7).Count -eq 0 -or -not (@(Test-SpecrewAuthoredPacket -Message $draft7) -contains 'specific review targets with file links')) ("the validator accepts the link: {0}" -f $form)
-        $target = ([regex]::Match($form, '\]\((?<t>[^)]+)\)')).Groups['t'].Value
-        Assert-True (@(Get-SpecrewTurnMeaningLines -Message $draft7) -contains $target) ("the link is a meaning line: {0}" -f $form)
-        $state7 = @(Get-SpecrewReviewedArtifactState -Message $draft7)
+        $reply7f = (Get-Packet -Project $p7 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.').Replace("The specification: $specUrl7", "The specification: $form")
+        $check7 = Test-SpecrewReplyPacket -Reply $reply7f
+        Assert-True ([bool]$check7.present) ("the packet check accepts the link: {0} ({1})" -f $form, (@($check7.problems) -join ' | '))
+        $state7 = @(Get-SpecrewReviewedArtifactState -Message $reply7f)
         Assert-True (@($state7 | Where-Object { [IO.Path]::GetFullPath([string]$_.path) -eq [IO.Path]::GetFullPath($p7.Spec) -and $_.kind -eq 'file' }).Count -eq 1) ("the linked file is fingerprinted: {0}" -f $form)
     }
     $t7 = Start-Turn -Project $p7 -Session 'sess-7' -UserText 'Continue.'
-    $draft7 = (Get-Packet -Project $p7 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.').Replace("The specification: $specUrl7", ('The specification: [the spec]({0})' -f $p7.Spec))
-    $reply7 = $draft7.Replace(('The specification: [the spec]({0})' -f $p7.Spec), 'The specification is in the feature folder.')
-    $r7 = Complete-Turn -Project $p7 -Session 'sess-7' -Token $t7.Token -Kind 'boundary' -Draft $draft7 -Reply $reply7
-    Assert-True ($r7.Blocked -and $r7.Output.Contains($p7.Spec)) 'a reply that drops the Markdown review link is blocked, naming it'
-
-    # -----------------------------------------------------------------------------------------------
-    # 202 DRIFT-030: the first live run of T007 with T014 blocked a reply whose two headings differed from the stdin
-    # draft by a function word, and the whole message was rendered again - the B4F-104 repaint class. A heading is
-    # present when its meaning matches: the same numbers and identifiers, the same negations, and the same content words
-    # up to small wording. The exact lines from that turn come first.
-    Write-Host 'Case 8: a reworded heading with the same meaning is present; a changed number, negation or subject is not'
-    $p8 = New-Project; $projects.Add($p8)
-    $declared8 = @('## The lock: kept at 1000 ms, now as one budget per hook fire', '## T014: turn drafts come in over stdin, stored per session (done)')
-    $replied8 = @('## The lock: kept at 1000 ms, now one budget per hook fire', '## T014: turn drafts come in over stdin and are stored per session (done)')
-    $body8 = "Body text that the author may reword.`n`nShall I start round 4?"
-    $draft8 = ($declared8 -join "`n`nSome prose.`n`n") + "`n`n" + $body8
-    $reply8 = ($replied8 -join "`n`nOther prose.`n`n") + "`n`n" + $body8
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $reply8 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $draft8)).Count -eq 0) 'the two headings from the live turn count as present'
-    $t8 = Start-Turn -Project $p8 -Session 'sess-8' -UserText 'Continue.'
-    $r8 = Complete-Turn -Project $p8 -Session 'sess-8' -Token $t8.Token -Kind 'conversational' -Draft $draft8 -Reply $reply8
-    Assert-True (-not $r8.Blocked) 'the live turn''s reply is not blocked by the Stop (0 repaints)'
-    $mustBlock = [ordered]@{
-        'a changed number'   = @('## Round 4 starts now', '## Round 3 starts now')
-        'a changed id'       = @('## T014 is done', '## T013 is done')
-        'an added negation'  = @('## The lock budget holds per hook fire', '## The lock budget does not hold per hook fire')
-        'a different subject' = @('## The lock: kept at 1000 ms', '## The validator: kept at 17 failures')
-        'a dropped heading'  = @('## What Happens Next', '')
-    }
-    foreach ($case in $mustBlock.GetEnumerator()) {
-        $d = $case.Value[0] + "`n`n" + $body8
-        $r = $case.Value[1] + "`n`n" + $body8
-        $missing = @(Get-SpecrewTurnMeaningLinesMissing -Reply $r -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d))
-        Assert-True ($missing -contains $case.Value[0]) ("{0} is still missing: '{1}'" -f $case.Key, $case.Value[0])
-    }
-    $twoDeclared = "## The lock: kept at 1000 ms, now as one budget per hook fire`n`n## The lock: kept at 1000 ms, as one budget per fire`n`n" + $body8
-    $oneReplied = "## The lock: kept at 1000 ms, now one budget per hook fire`n`n" + $body8
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $oneReplied -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $twoDeclared)).Count -eq 1) 'one reply heading answers for one declared heading, not two'
-
-    # Feature 202 iteration 002, T019 (FR-030; B4F-128): the review sign-off packet of 2026-10-16. The reply reworded
-    # discussion prompt 1, the Stop counted it missing, and the whole packet was rendered again. The two exact lines.
-    Write-Host 'Case 9: a reworded discussion question with the same meaning is present; a changed number or negation is not'
-    $declaredQ = 'Does closing with B4F-127 open fit the consequence grading, since it predates 202 and the interim launch check is in place?'
-    $repliedQ = 'Is closing with B4F-127 open consistent with how you grade defects by consequence, given that it predates 202 and the interim check before launches is in place?'
-    $draft9 = "## Discussion Prompts`n`n1. $declaredQ`n`n## What I Need From You`n`n  approved for review-signoff"
-    $reply9 = "## Discussion Prompts`n`n1. $repliedQ`n`n## What I Need From You`n`n  approved for review-signoff"
-    $meaning9 = @(Get-SpecrewTurnMeaningLines -Message $draft9)
-    Assert-True (@($meaning9 | Where-Object { $_ -like '*B4F-127*' }).Count -eq 1) 'the discussion question is a meaning line'
-    $missing9 = @(Get-SpecrewTurnMeaningLinesMissing -Reply $reply9 -MeaningLines $meaning9)
-    Assert-True ($missing9.Count -eq 0) ("B4F-128's reworded question counts as present ({0})" -f ($missing9 -join ' | '))
-    $mustMiss9 = [ordered]@{
-        'a changed number'  = ($repliedQ -replace 'predates 202', 'predates 201')
-        'a changed id'      = ($repliedQ -replace 'B4F-127', 'B4F-126')
-        'an added negation' = ($repliedQ -replace 'is closing', 'is not closing')
-        'a different question' = 'Should the withdrawal path record a second approval for the sign-off packet?'
-        'a dropped question' = ''
-    }
-    foreach ($case in $mustMiss9.GetEnumerator()) {
-        $r = "## Discussion Prompts`n`n1. $($case.Value)`n`n## What I Need From You`n`n  approved for review-signoff"
-        $m = @(Get-SpecrewTurnMeaningLinesMissing -Reply $r -MeaningLines $meaning9)
-        Assert-True (@($m | Where-Object { $_ -like '*B4F-127 open fit*' }).Count -eq 1) ("{0} is still missing" -f $case.Key)
-    }
-    $twoQ = "## Discussion Prompts`n`n1. $declaredQ`n`n2. Does closing with B4F-127 open fit the consequence grading, since it predates 202 and the interim launch check is still in place?`n`n## What I Need From You`n`n  approved for review-signoff"
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $reply9 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $twoQ)).Count -eq 1) 'one reply question answers for one declared question, not two'
-
-    # Co-review round 5 (iteration 002): a period inside a version or a file name does not end the reply's question.
-    Write-Host 'Case 10: a reworded question that carries a dotted identifier keeps it'
-    foreach ($pair in @(
-            @('Does version 1.2 preserve the approval record?', 'Will version 1.2 preserve the approval record?'),
-            @('Does plan.md still name the reviewer choice?', 'Is the reviewer choice still named in plan.md?'))) {
-        $d10 = "## Discussion Prompts`n`n1. $($pair[0])`n`n## What I Need From You`n`n  approved for review-signoff"
-        $r10 = "## Discussion Prompts`n`n1. $($pair[1])`n`n## What I Need From You`n`n  approved for review-signoff"
-        $m10 = @(Get-SpecrewTurnMeaningLinesMissing -Reply $r10 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d10))
-        Assert-True ($m10.Count -eq 0) ("'{0}' counts as present ({1})" -f $pair[1], ($m10 -join ' | '))
-    }
-    $d10b = "## Discussion Prompts`n`n1. Does version 1.2 preserve the approval record?`n`n## What I Need From You`n`n  approved for review-signoff"
-    $r10b = "## Discussion Prompts`n`n1. Will version 1.3 preserve the approval record?`n`n## What I Need From You`n`n  approved for review-signoff"
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r10b -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d10b)).Count -eq 1) 'a changed version is still missing'
-
-    # Co-review round 6 (iteration 002): 'before' and 'after' were both words any question carries, so a question whose
-    # order was reversed read as the same question.
-    Write-Host 'Case 11: a reversed order or condition is a changed question; a rewording that keeps it is not'
-    foreach ($pair in @(
-            @('Should the migration run before deployment?', 'Should the migration run after deployment?'),
-            @('Should the lock be released after the write?', 'Should the lock be released before the write?'),
-            @('Does the round run if the checks pass?', 'Does the round run unless the checks pass?'))) {
-        $d11 = "## Discussion Prompts`n`n1. $($pair[0])`n`n## What I Need From You`n`n  approved for review-signoff"
-        $r11 = "## Discussion Prompts`n`n1. $($pair[1])`n`n## What I Need From You`n`n  approved for review-signoff"
-        Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r11 -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d11)).Count -eq 1) ("'{0}' is not '{1}'" -f $pair[1], $pair[0])
-    }
-    $d11b = "## Discussion Prompts`n`n1. Should the migration run before deployment?`n`n## What I Need From You`n`n  approved for review-signoff"
-    $r11b = "## Discussion Prompts`n`n1. Does the migration need to run before deployment?`n`n## What I Need From You`n`n  approved for review-signoff"
-    Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r11b -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d11b)).Count -eq 0) 'a rewording that keeps the order counts as present'
+    $reply7 = (Get-Packet -Project $p7 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.').Replace("The specification: $specUrl7", 'The specification is in the feature folder.')
+    $r7 = Complete-Turn -Project $p7 -Session 'sess-7' -Token $t7.Token -Kind 'boundary' -Reply $reply7
+    Assert-True ($r7.Blocked -and $r7.Output.Contains('What Needs Your Review has no file link')) 'a reply whose review section has no link is blocked, saying so'
 
     # ===============================================================================================
     # Feature 203 T011 (FR-046; maintainer ruling 2026-11-10). The Stop checks a boundary reply's decision parts from
@@ -380,21 +276,21 @@ try {
     $draft12 = Get-Packet -Project $p12 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'
     $reply12a = $draft12.Replace($optionWords[0], '- approved for before-implement - start with T001 and keep the order').Replace($optionWords[1], '- changes needed: say what to change').Replace($optionWords[2], '- discuss prompt 2')
     Assert-True ($reply12a.Contains('start with T001') -and -not $reply12a.Contains('<your instructions>')) 'the fixture really rewords the three option lines'
-    $r12a = Complete-Turn -Project $p12 -Session 'sess-12a' -Token $t12a.Token -Kind 'boundary' -Draft $draft12 -Reply $reply12a
+    $r12a = Complete-Turn -Project $p12 -Session 'sess-12a' -Token $t12a.Token -Kind 'boundary' -Reply $reply12a
     Assert-True (-not $r12a.Blocked) ("a reply whose options keep their starts is not blocked ({0})" -f (($r12a.Output -split "`n" | Where-Object { $_ -match 'missing' }) -join ' | '))
 
     Write-Host 'Case 12b: the options come from the record, not the draft'
     $t12b = Start-Turn -Project $p12 -Session 'sess-12b' -UserText 'Continue.'
     $both12b = $draft12.Replace($optionWords[1] + "`n", '').Replace($optionWords[1] + "`r`n", '')
     Assert-True (-not $both12b.Contains('changes needed')) 'the fixture drops the changes-needed option from draft and reply alike'
-    $r12b = Complete-Turn -Project $p12 -Session 'sess-12b' -Token $t12b.Token -Kind 'boundary' -Draft $both12b -Reply $both12b
+    $r12b = Complete-Turn -Project $p12 -Session 'sess-12b' -Token $t12b.Token -Kind 'boundary' -Reply $both12b
     Assert-True ($r12b.Blocked -and $r12b.Output.Contains('missing: changes needed: <what to change>')) 'a draft and reply that both lack an option are blocked, naming it'
 
     Write-Host 'Case 12c: the approval phrase inside a sentence is not the approval line'
     $t12c = Start-Turn -Project $p12 -Session 'sess-12c' -UserText 'Continue.'
     $both12c = ($draft12 -replace '(?m)^  approved for before-implement\r?$', 'Type approved for before-implement when the order is right.')
     Assert-True (-not ($both12c -match '(?m)^\s*approved for before-implement\s*$') -and $both12c.Contains('Type approved for before-implement')) 'the fixture carries the phrase only inside a sentence'
-    $r12c = Complete-Turn -Project $p12 -Session 'sess-12c' -Token $t12c.Token -Kind 'boundary' -Draft $both12c -Reply $both12c
+    $r12c = Complete-Turn -Project $p12 -Session 'sess-12c' -Token $t12c.Token -Kind 'boundary' -Reply $both12c
     Assert-True ($r12c.Blocked -and $r12c.Output.Contains('missing: approved for before-implement')) 'the approval line is required on a line of its own'
 
     Write-Host 'Case 13: the record fails closed - a broken pending-verdict record blocks and says which'
@@ -409,12 +305,12 @@ try {
         $p13 = New-Project -PendingCrossing -Record $rc.Key; $projects.Add($p13)
         $t13 = Start-Turn -Project $p13 -Session ('sess-13-' + $rc.Key) -UserText 'Continue.'
         $packet13 = Get-Packet -Project $p13 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'
-        $r13 = Complete-Turn -Project $p13 -Session ('sess-13-' + $rc.Key) -Token $t13.Token -Kind 'boundary' -Draft $packet13 -Reply $packet13
+        $r13 = Complete-Turn -Project $p13 -Session ('sess-13-' + $rc.Key) -Token $t13.Token -Kind 'boundary' -Reply $packet13
         Assert-True ($r13.Blocked -and $r13.Output.Contains($rc.Value)) ("record {0}: blocked, saying '{1}'" -f $rc.Key, $rc.Value)
     }
     $p13c = New-Project -PendingCrossing -Record 'missing'; $projects.Add($p13c)
     $t13c = Start-Turn -Project $p13c -Session 'sess-13-conv' -UserText 'Where are we?'
-    $r13c = Complete-Turn -Project $p13c -Session 'sess-13-conv' -Token $t13c.Token -Kind 'conversational' -Draft 'We are at the tasks stage.' -Reply 'We are at the tasks stage.'
+    $r13c = Complete-Turn -Project $p13c -Session 'sess-13-conv' -Token $t13c.Token -Kind 'conversational' -Reply 'We are at the tasks stage.'
     Assert-True ($r13c.Blocked -and $r13c.Output.Contains('pending-verdict-stop.md is missing')) 'a turn that declares itself conversational does not make the owed verdict go away'
 
     Write-Host 'Case 14: an approval line for another boundary blocks; the phrase inside a sentence does not'
@@ -429,12 +325,12 @@ try {
         $t14 = Start-Turn -Project $p12 -Session ('sess-14-' + $i14) -UserText 'Continue.'
         $reply14 = $draft12.Replace('  discuss prompt 1', ("  discuss prompt 1`n" + $fc.Value))
         Assert-True ($reply14.Contains($fc.Value)) ("the fixture carries the foreign line: {0}" -f $fc.Value)
-        $r14 = Complete-Turn -Project $p12 -Session ('sess-14-' + $i14) -Token $t14.Token -Kind 'boundary' -Draft $draft12 -Reply $reply14
+        $r14 = Complete-Turn -Project $p12 -Session ('sess-14-' + $i14) -Token $t14.Token -Kind 'boundary' -Reply $reply14
         Assert-True ($r14.Blocked -and $r14.Output.Contains($fc.Key)) ("a reply offering '{0}' is blocked, naming it" -f $fc.Key)
     }
     $t14s = Start-Turn -Project $p12 -Session 'sess-14-sentence' -UserText 'Continue.'
     $reply14s = $draft12.Replace('Wrote the tasks.', 'Wrote the tasks; you typed approved for tasks earlier, which is recorded.')
-    $r14s = Complete-Turn -Project $p12 -Session 'sess-14-sentence' -Token $t14s.Token -Kind 'boundary' -Draft $draft12 -Reply $reply14s
+    $r14s = Complete-Turn -Project $p12 -Session 'sess-14-sentence' -Token $t14s.Token -Kind 'boundary' -Reply $reply14s
     Assert-True (-not $r14s.Blocked) 'another boundary named inside a sentence is not an approval line'
 
     Write-Host 'Case 15: one source for the four lines - the hook''s and the gate-stop skill''s are equal'
@@ -459,6 +355,76 @@ try {
             }
         }
     }
+
+    # ===============================================================================================
+    # Feature 203 T011 follow-up (FR-046; maintainer ruling 2026-11-11, item 1). There is no draft any more: the Stop
+    # reads the packet from the reply itself. The packet is present when the six section headings each start a line
+    # (any heading level, words may follow) and each has text before the next; a section whose only content is stock
+    # placeholder text is empty. What Needs Your Review carries at least one file link, and every one resolves to an
+    # existing file. "recommend" no longer blocks: it is written to the Stop's history line. Nothing is checked
+    # against a draft, and declare-turn-end reads none.
+    Write-Host 'Case 16a: a packet with no draft, headings at other levels with words after them, passes'
+    $p16 = New-Project -PendingCrossing; $projects.Add($p16)
+    $base16 = Get-Packet -Project $p16 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'
+    $reply16a = $base16.Replace('## What I Just Did', '### What I Just Did (tasks)').Replace('## Why I Stopped', '# Why I Stopped here')
+    $t16a = Start-Turn -Project $p16 -Session 'sess-16a' -UserText 'Continue.'
+    $r16a = Complete-Turn -Project $p16 -Session 'sess-16a' -Token $t16a.Token -Kind 'boundary' -Reply $reply16a
+    Assert-True (-not $r16a.Blocked) ("a complete packet declared with no draft is not blocked ({0})" -f (($r16a.Output -split "`n" | Select-Object -First 6) -join ' | '))
+
+    Write-Host 'Case 16b: a missing section, and a section of stock placeholder text only, block naming the section'
+    $sections16 = [ordered]@{
+        'missing section: Why I Stopped'     = ($base16 -replace '(?m)^## Why I Stopped\r?\n', '')
+        'empty section: What Happens Next'   = $base16.Replace('Implementation starts with the first task on approval.', 'On approval the next stage starts.')
+        'empty section: Discussion Prompts'  = $base16.Replace('1. Is the task order right?', '1. Anything above you want changed, questioned, or done differently.')
+        'empty section: What I Just Did'     = $base16.Replace('Wrote the tasks.', '')
+    }
+    $n16 = 0
+    foreach ($sc in $sections16.GetEnumerator()) {
+        $n16++
+        $t16 = Start-Turn -Project $p16 -Session ("sess-16b-{0}" -f $n16) -UserText 'Continue.'
+        $r16 = Complete-Turn -Project $p16 -Session ("sess-16b-{0}" -f $n16) -Token $t16.Token -Kind 'boundary' -Reply $sc.Value
+        Assert-True ($r16.Blocked -and $r16.Output.Contains($sc.Key)) ("blocked, saying '{0}'" -f $sc.Key)
+    }
+
+    Write-Host 'Case 16c: the review link must resolve to an existing file'
+    $specUrl16 = ([System.Uri]::new($p16.Spec)).AbsoluteUri
+    $goneUrl16 = ([System.Uri]::new((Join-Path $p16.Root 'specs/001-feat/gone.md'))).AbsoluteUri
+    $t16c = Start-Turn -Project $p16 -Session 'sess-16c' -UserText 'Continue.'
+    $r16c = Complete-Turn -Project $p16 -Session 'sess-16c' -Token $t16c.Token -Kind 'boundary' -Reply ($base16.Replace($specUrl16, $goneUrl16))
+    Assert-True ($r16c.Blocked -and $r16c.Output.Contains('review link to a missing file: ' + $goneUrl16)) 'a review link to a missing file blocks, naming it'
+    $t16c2 = Start-Turn -Project $p16 -Session 'sess-16c2' -UserText 'Continue.'
+    $r16c2 = Complete-Turn -Project $p16 -Session 'sess-16c2' -Token $t16c2.Token -Kind 'boundary' -Reply ($base16.Replace('The specification: ' + $specUrl16, 'The specification, as discussed.'))
+    Assert-True ($r16c2.Blocked -and $r16c2.Output.Contains('What Needs Your Review has no file link')) 'a review section without a file link blocks'
+
+    Write-Host 'Case 16d: "recommend" does not block; the Stop records whether it was there'
+    $t16d = Start-Turn -Project $p16 -Session 'sess-16d' -UserText 'Continue.'
+    $r16d = Complete-Turn -Project $p16 -Session 'sess-16d' -Token $t16d.Token -Kind 'boundary' -Reply ($base16.Replace(' My recommendation: approve.', ''))
+    Assert-True (-not $r16d.Blocked) 'a packet without the word recommend is not blocked'
+    $journal16 = Join-Path $p16.Root '.specrew/runtime/conformance-journal.jsonl'
+    $last16 = if (Test-Path -LiteralPath $journal16) { @(Get-Content -LiteralPath $journal16 | Where-Object { $_ -match '"event":"observe"' }) | Select-Object -Last 1 } else { '' }
+    $last16 = "$last16"
+    Assert-True ($last16 -match '"recommendation_present":false') ("the Stop's history line records no recommendation ({0})" -f $last16.Substring(0, [Math]::Min(160, $last16.Length)))
+    $t16d2 = Start-Turn -Project $p16 -Session 'sess-16d2' -UserText 'Continue.'
+    $null = Complete-Turn -Project $p16 -Session 'sess-16d2' -Token $t16d2.Token -Kind 'boundary' -Reply $base16
+    $last16b = @(Get-Content -LiteralPath $journal16 | Where-Object { $_ -match '"event":"observe"' }) | Select-Object -Last 1
+    Assert-True ([string]$last16b -match '"recommendation_present":true') 'and records one when it is there'
+
+    Write-Host 'Case 16e: declare-turn-end reads no draft, from a file or from stdin'
+    $t16e = Start-Turn -Project $p16 -Session 'sess-16e' -UserText 'Continue.'
+    $draft16e = Join-Path $p16.Root '.specrew/runtime/draft-16e.md'
+    [System.IO.File]::WriteAllText($draft16e, $base16, [System.Text.UTF8Encoding]::new($false))
+    $json16e = Invoke-Pwsh -Root $p16.Root -Script $declare -Arguments @('-Kind', 'boundary', '-MessagePath', $draft16e, '-Summary', 'turn 16e', '-Token', $t16e.Token, '-AsJson')
+    $d16e = $json16e | ConvertFrom-Json
+    $rec16e = Get-Content -LiteralPath ([string]$d16e.record_path) -Raw | ConvertFrom-Json
+    Assert-True ([string]$d16e.draft_source -eq 'none' -and -not ($rec16e.PSObject.Properties['message'] -and -not [string]::IsNullOrEmpty([string]$rec16e.message))) ("-MessagePath is not read (draft_source '{0}')" -f [string]$d16e.draft_source)
+    $t16e2 = Start-Turn -Project $p16 -Session 'sess-16e2' -UserText 'Continue.'
+    Push-Location -LiteralPath $p16.Root
+    try { $json16e2 = (@($base16 | & pwsh -NoProfile -NonInteractive -File $declare -Kind boundary -Summary 'turn 16e2' -Token $t16e2.Token -AsJson 2>&1) -join "`n") }
+    finally { Pop-Location }
+    $d16e2 = $json16e2 | ConvertFrom-Json
+    Assert-True ([string]$d16e2.draft_source -eq 'none') ("stdin is not read (draft_source '{0}')" -f [string]$d16e2.draft_source)
+    $lines16e = @(([string]$d16e2.text) -split '\r?\n')
+    Assert-True (($lines16e -join '|') -ceq (@('approved for before-implement', 'approved for before-implement - <your instructions>', 'changes needed: <what to change>', 'discuss prompt 1', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') -join '|')) ("a boundary declaration returns the four response lines and the marker from the record ({0})" -f ($lines16e -join ' | '))
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
