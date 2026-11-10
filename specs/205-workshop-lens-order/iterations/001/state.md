@@ -1,16 +1,19 @@
 # Iteration State: 001
 
 **Schema**: v2
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
-**In Progress**: (none)
+**Current Phase**: before-implement
+**Iteration Status**: executing
+**Last Completed Task**: T015
+**Tasks Remaining**: T016
+**In Progress**: T016
 **Baseline Ref**: 6d85718a87c9be71dbb6298364cfdb1cc6fb6d9b
-**Updated**: 2026-11-09T23:55:59Z
+**Updated**: 2026-11-10T04:30:00Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- T001-T004 and T017 (tests first, red-first and baseline) are done. T005-T015 (order, tags, refusal, prose surfaces, copies, green tests, regression, CI steps, proposal) are done.
+- T016 (pre-push gate, push, CI to conclusion) is in progress.
+- The review round is held until T016 by the maintainer's ruling (one codex round for the whole change).
 
 ## Notes
 
