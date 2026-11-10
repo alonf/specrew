@@ -134,6 +134,54 @@ flowchart LR
 two-pass split, problem sections at intake and solution sections at design-analysis, plus the back-check and
 sweeps. The maintainer assigned all of that to iteration 3, after feature 203 merges.
 
+## Applicable Lenses
+
+These lenses were selected in the intake workshop and are recorded in `lens-applicability.json`. Each was worked
+with the maintainer, and its record is under `workshop/`.
+
+- **requirements-nfr** - `extensions/specrew-speckit/knowledge/design-lenses/requirements-nfr.md`
+  - Decision points: Which NFRs are design drivers for this slice?; Which constraints are mandatory rather than preferences?; Which requirements need a measurable threshold?; Which requirements are unknown enough to require clarification?; Which acceptance criteria prove the quality, not only the happy path?
+  - Addressed:
+    - The design drivers are drift-proofing (FR-001, FR-005) and the FR-013 migration.
+    - The binding constraints include "deployed copies are sync-produced only".
+    - The measurable thresholds are SC-001 to SC-006, including the SC-002 count formula.
+    - The acceptance proof is the parity test failing first on today's five orders, with every mismatch reported.
+    - See Option A Quality features and Trade-offs.
+- **architecture-core** - `extensions/specrew-speckit/knowledge/design-lenses/architecture-core.md`
+  - Decision points: Which design method / decomposition style governs the structure?; What are the major building blocks and their responsibilities?; Which areas are volatile and should be isolated?; Which constraints are binding, and which are preferences?; What is deliberately out of scope for this iteration?; Which option best balances simplicity, reversibility, and future cost?
+  - Addressed:
+    - The order is option A, problem-first, with the problem section first inside every lens.
+    - No new structure; the building blocks are in the Co-Design Record.
+    - The volatile point is the lens catalog, and `index.yml` is where a new lens gets its position.
+    - Simplicity and reversibility decided A over generate-during-sync, which was rejected.
+    - Scope: the two-pass split is iteration 3.
+    - See Option A Approach and the Option B rejection.
+- **data-storage** - `extensions/specrew-speckit/knowledge/design-lenses/data-storage.md`
+  - Decision points: Is persistent storage required, or is derived/transient state enough?; What owns each data type?; Which storage model fits?; What consistency model is required?; How are schema changes, migrations, backup, restore, and retention handled?; How does the design avoid services talking directly to another service's private database?
+  - Addressed:
+    - `index.yml` owns the order and the space, and the lens files own the questions under the two `###` sub-headings.
+    - Consistency between them is proven by FR-005 check c and the extractor test.
+    - The migration is "no new field". The order is checked only at confirmation, so confirmed agendas are never re-checked (FR-013).
+    - See Option A Approach and Architectural pattern.
+- **devops-operations** - `extensions/specrew-speckit/knowledge/design-lenses/devops-operations.md`
+  - Decision points: What is the hosting model?; What infrastructure is code-owned, manually configured, or external?; Which environments must be equivalent?; How are secrets and configuration handled?; What CI/CD stages, gates, rollout strategy, and rollback path are required?; Which CI lane belongs to this project's forge?; What users, roles, service identities, and permissions are needed?
+  - Addressed:
+    - Deployed copies are refreshed only by `deploy-speckit-extension.ps1` and `deploy-squad-runtime.ps1`, which were verified project-only in scratch.
+    - `specrew-update.ps1` is never run in this worktree.
+    - CI: a named `specrew-ci.yml` step, markdownlint before each push, and all three workflows followed to conclusion.
+    - Rollback is a revert in the next beta.
+    - See Option A Quality features (devops-operations).
+- **code-implementation** - `extensions/specrew-speckit/knowledge/design-lenses/code-implementation.md`
+  - Decision points: Source of code-rules truth; Resolved stack; Baseline craft posture; Consequential forks (testing posture, error handling, validation boundaries); Dependency selection; Reviewer.
+  - Addressed:
+    - Repo conventions, PowerShell 7, test-first.
+    - The refusal goes through `New-SpecrewWorkshopAgendaRefusal` and never reorders.
+    - No new dependency: `Read-IntakeYaml` was verified to parse `space`.
+    - Reviewer codex.
+    - See Option A Quality features (code-implementation) and `implementation-rules.yml`.
+
+*Not selected (workshop agenda, with reasons in `lens-applicability.json`): component-design, ui-ux, security-compliance, integration-api, observability-resilience.*
+
 ## Co-Design Record
 
 The component map below was agreed in the architecture-core lens. The maintainer's typed reply on 2026-11-10
@@ -195,3 +243,4 @@ Human-agreed: yes (architecture-core lens, typed reply 2026-11-10, receipt aed97
      feature 203's plan verdict (2026-10-31)
 - **Verdict given**: typed by the maintainer on 2026-11-10.
 - **Design-analysis draft commit**: `839ce7c9`
+- **Decision recorded in commit**: `60691a0d` (the commit that recorded this populated decision; differs from the draft commit `839ce7c9`)
