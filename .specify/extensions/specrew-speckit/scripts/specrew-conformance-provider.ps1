@@ -1267,9 +1267,43 @@ try {
     # the #1 intake regex; that check now only evaluates on the stops that already warranted the parse
     # (an idle intake drift is caught by the bootstrap orientation surface instead). ---
     $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false; $markerForPendingCrossing = $false
+    # 203 T011: the same reply with its lines kept (-Raw). The decision parts are anchored at a line start, and the
+    # flattened text above has no lines.
+    $lastAssistantRaw = $null
     $pendingCrossing = $null
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
+    }
+    # FEATURE 203 T011 (FR-046; maintainer ruling 2026-11-10): THE RECORD FAILS CLOSED. Whether a verdict is owed comes
+    # from the lifecycle state ($hasPending), never from the turn's own declaration; what the reply must carry comes
+    # from pending-verdict-stop.md. A record that is missing, unreadable, incomplete or names another crossing blocks
+    # and is named. Not while the stage owes evidence: the record is withheld then by design (HandoverStore, FR-068),
+    # and the evidence-absent block already stands.
+    $verdictRecord = $null
+    $verdictRecordProblem = ''
+    $verdictRecordDetail = ''
+    if ($hasPending -and -not $stageEvidenceAbsent) {
+        if (Get-Command Read-SpecrewPendingVerdictStopRecord -ErrorAction SilentlyContinue) {
+            $verdictRecord = Read-SpecrewPendingVerdictStopRecord -Path (Join-Path $projectRoot '.specrew/runtime/pending-verdict-stop.md')
+            $verdictRecordProblem = [string]$verdictRecord.problem
+            if ([string]::IsNullOrWhiteSpace($verdictRecordProblem) -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
+                try {
+                    $owedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
+                    $owedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
+                    $recordFrom = ''; $recordTo = ''
+                    if ([string]$verdictRecord.boundary -match '^\s*(.+?)\s*->\s*(.+?)\s*$') {
+                        $recordFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary $Matches[1]
+                        $recordTo = Normalize-SpecrewCanonicalBoundaryType -Boundary $Matches[2]
+                    }
+                    if ($recordFrom -ne $owedFrom -or $recordTo -ne $owedTo) {
+                        $verdictRecordProblem = 'other-crossing'
+                        $verdictRecordDetail = ('names the crossing {0}, but the lifecycle state owes {1} -> {2}' -f [string]$verdictRecord.boundary, $owedFrom, $owedTo)
+                    }
+                }
+                catch { $null = $_ }
+            }
+        }
+        else { $verdictRecordProblem = 'unreadable' }
     }
     if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState -or $workshopRepairState -or $missingWorkshopController -or $preScaffoldWorkshopCandidate -or $turnEndDeclared) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
@@ -1283,7 +1317,11 @@ try {
                 $tail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 200 -Encoding UTF8 -ErrorAction Stop)
                 for ($k = $tail.Count - 1; $k -ge 0; $k--) {
                     $turn = Get-SpecrewConversationTurnFromLine -Line $tail[$k]
-                    if ($null -ne $turn -and [string]$turn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$turn.text)) { $lastAssistantText = [string]$turn.text; break }
+                    if ($null -ne $turn -and [string]$turn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$turn.text)) {
+                        $lastAssistantText = [string]$turn.text
+                        try { $rawTurn = Get-SpecrewConversationTurnFromLine -Line $tail[$k] -Raw; if ($null -ne $rawTurn) { $lastAssistantRaw = [string]$rawTurn.text } } catch { $lastAssistantRaw = $null }
+                        break
+                    }
                 }
             }
             catch { $lastAssistantText = $null }
@@ -1319,12 +1357,16 @@ try {
     $declaredMeaningLines = @()
     if (-not [string]::IsNullOrWhiteSpace($declaredMessage)) {
         $declaredMeaningLines = if ($turnEndRecord.PSObject.Properties['meaning_lines']) { @($turnEndRecord.meaning_lines | ForEach-Object { [string]$_ }) } else { @(Get-SpecrewTurnMeaningLines -Message $declaredMessage) }
+        # 203 T011 (FR-046): the approval line, the options and the marker are checked from the record below, by their
+        # starts, not as the draft worded them.
+        $declaredMeaningLines = @($declaredMeaningLines | Where-Object { -not (Test-SpecrewDecisionMeaningLine -Line $_) })
     }
     $declaredLinesMissing = @(if (-not [string]::IsNullOrWhiteSpace($declaredMessage)) { Get-SpecrewTurnMeaningLinesMissing -Reply $lastAssistantText -MeaningLines $declaredMeaningLines })
     $messageVisible = (-not [string]::IsNullOrWhiteSpace($declaredMessage)) -and (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and $declaredLinesMissing.Count -eq 0
     $packetPresent = ($turnEndKind -eq 'boundary' -and $null -ne $turnEndRecord -and
         $turnEndRecord.PSObject.Properties['packet_valid'] -and [bool]$turnEndRecord.packet_valid -and $messageVisible)
     $declaredCrossingMatches = $false
+    $decisionParts = $null
     if ($turnEndKind -eq 'boundary' -and $hasPending -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
         try {
             $declaredBoundary = [string]$turnEndRecord.boundary
@@ -1342,8 +1384,12 @@ try {
                 if (-not [string]::IsNullOrWhiteSpace($declaredTo) -and $declaredFrom -eq $expectedFrom -and $declaredTo -eq $expectedTo -and
                     -not [string]::IsNullOrWhiteSpace($declaredMarker) -and $declaredMarker -match 'SPECREW-VERDICT-BOUNDARY') {
                     $declaredCrossingMatches = $true
-                    $markerForPendingCrossing = $packetPresent -and (Test-SpecrewTurnMessageVisible -Message $lastAssistantText -Expected $declaredMarker) -and
-                        (Test-SpecrewTurnMessageVisible -Message $lastAssistantText -Expected ([string]$turnEndRecord.approval_phrase))
+                    # 203 T011 (FR-046): the decision parts as the record gives them, read from the reply's lines.
+                    if ([string]::IsNullOrWhiteSpace($verdictRecordProblem) -and $null -ne $verdictRecord -and -not [string]::IsNullOrWhiteSpace($lastAssistantRaw)) {
+                        $decisionParts = Get-SpecrewReplyDecisionParts -Reply $lastAssistantRaw -ApprovalPhrase ([string]$verdictRecord.approval_phrase) -Marker ([string]$verdictRecord.marker)
+                    }
+                    $markerForPendingCrossing = $packetPresent -and $null -ne $decisionParts -and
+                        @($decisionParts.Missing).Count -eq 0 -and @($decisionParts.Foreign).Count -eq 0
                 }
             }
         }
@@ -1967,7 +2013,12 @@ try {
                     foreach ($missingLine in @($declaredLinesMissing | Select-Object -First 12)) { [void]$sb.AppendLine(('  {0}' -f $missingLine)) }
                 }
                 elseif ($presentationMissing -eq 'boundary packet') {
+                    if (-not [string]::IsNullOrWhiteSpace($verdictRecordProblem)) { [void]$sb.AppendLine((Get-SpecrewPendingVerdictRecordProblemText -Problem $verdictRecordProblem -Detail $verdictRecordDetail)) }
                     [void]$sb.AppendLine('Specrew: include the boundary packet you declared in your reply, with the pending approval line and marker; for a new packet, pipe it on stdin into declare-turn-end.ps1 -Kind boundary.')
+                    if ($null -ne $decisionParts) {
+                        foreach ($missingLine in @($decisionParts.Missing)) { [void]$sb.AppendLine(('  missing: {0}' -f $missingLine)) }
+                        foreach ($foreignLine in @($decisionParts.Foreign)) { [void]$sb.AppendLine(('  remove, it approves another boundary: {0}' -f $foreignLine)) }
+                    }
                     foreach ($missingLine in @($declaredLinesMissing | Select-Object -First 12)) { [void]$sb.AppendLine(('  missing: {0}' -f $missingLine)) }
                 }
                 else {
@@ -2008,6 +2059,7 @@ try {
                     # next typed reply has a marker to bind to.
                     [void]$sb.AppendLine('Specrew: the human''s reply carried this decision''s approval phrase, but the decision is still pending: that reply was not recorded. Tell the human in one sentence that their approval did not register and nothing advanced, then present the packet again so they can answer it.')
                 }
+                if (-not [string]::IsNullOrWhiteSpace($verdictRecordProblem)) { [void]$sb.AppendLine((Get-SpecrewPendingVerdictRecordProblemText -Problem $verdictRecordProblem -Detail $verdictRecordDetail)) }
                 [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last tool call with your authored packet piped in on stdin; include that packet in your reply and add only the missing approval line and marker it supplies:')
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine('Author the packet with specific review targets, a recommendation and the next step; take the approval line and marker only from the pending crossing.')

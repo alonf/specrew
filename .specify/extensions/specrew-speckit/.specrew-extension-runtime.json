@@ -264,7 +264,7 @@
     },
     {
       "path": "scripts/declare-turn-end.ps1",
-      "sha256": "6653ff1e6fc066a7ed42cd9d12669583cd01f432cb45a391eb7945990707a2a2"
+      "sha256": "baac23f8de76ec783c8dc675dc2141ba4d8b0a8d9b59298c107a63eb29debe4f"
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
@@ -424,7 +424,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "6654aec48f444f5072db058d6520572f5650fbc4a36e218856323f888eefe0d4"
+      "sha256": "10316fab1e6737e4b413a8354284326ed54b90413f9e2d1ff62699bb5b8fbdeb"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "65aca235301c6440419ee9493439ed923811ad1688f864b822de1c5ca8d4f8e9"
+      "sha256": "fab906bcd20b601df82e8c1193bc11aa5fbdaf51698a08a9187176081c650bc7"
     },
     {
       "path": "scripts/validate-governance.ps1",

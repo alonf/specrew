@@ -98,35 +98,8 @@ else {
     Get-SpecrewTurnEndPaths -ProjectRoot $root -HostKind '' -SessionId ''
 }
 
-function Read-SpecrewPendingVerdictStop {
-    # Parses the artifact sync-boundary-state.ps1 writes. THE VALUES COME FROM THE FILE, never from a guess
-    # about which phase comes next - inferring the marker from the intended next phase is the specific
-    # mistake this artifact exists to prevent, and it is worth restating at the one place that reads it.
-    param([string] $Path)
-    $result = [pscustomobject]@{
-        present = $false; boundary = ''; approval_phrase = ''; marker = ''
-        working_boundary = ''; last_authorized = ''; feature = ''; coverage = ''
-    }
-    try {
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $result }
-        $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop)
-        for ($i = 0; $i -lt $lines.Count; $i++) {
-            $line = [string]$lines[$i]
-            if ($line -cmatch '^Boundary to ask for:\s*(.+)$') { $result.boundary = $Matches[1].Trim() }
-            elseif ($line -cmatch '^Human approval phrase:\s*(.+)$') { $result.approval_phrase = $Matches[1].Trim() }
-            elseif ($line -cmatch '^Working boundary:\s*(.+)$') { $result.working_boundary = $Matches[1].Trim() }
-            elseif ($line -cmatch '^Last authorized boundary:\s*(.+)$') { $result.last_authorized = $Matches[1].Trim() }
-            elseif ($line -cmatch '^Feature:\s*(.+)$') { $result.feature = $Matches[1].Trim() }
-            elseif ($line -cmatch '^Coverage line[^:]*:\s*(.+)$') { $result.coverage = $Matches[1].Trim() }
-            elseif ($line -cmatch '^Marker last line exactly:') {
-                if (($i + 1) -lt $lines.Count) { $result.marker = ([string]$lines[$i + 1]).Trim() }
-            }
-        }
-        $result.present = -not [string]::IsNullOrWhiteSpace($result.boundary)
-        return $result
-    }
-    catch { return $result }
-}
+# 203 T011: the record is read by Read-SpecrewPendingVerdictStopRecord in turn-end-store.ps1, the one reader the
+# Stop uses too, so the two cannot parse it differently.
 
 # The agent authors the reply. This declaration verifies the draft and records facts for Stop.
 #
@@ -172,7 +145,7 @@ if ($Kind -eq 'in-flight') {
 }
 if ($Kind -eq 'boundary') {
     $packetCheck = Test-SpecrewAuthoredPacket -Message $message
-    $stop = Read-SpecrewPendingVerdictStop -Path (Join-Path $root '.specrew/runtime/pending-verdict-stop.md')
+    $stop = Read-SpecrewPendingVerdictStopRecord -Path (Join-Path $root '.specrew/runtime/pending-verdict-stop.md')
     if ($owedItems.Count -gt 0) {
         # Missing artifacts cannot acquire approval text or a marker through a drafted packet either.
         if ($message -match 'SPECREW-VERDICT-BOUNDARY|(?im)^\s*approved for ') {

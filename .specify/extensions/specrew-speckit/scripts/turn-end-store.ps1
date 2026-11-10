@@ -774,6 +774,139 @@ function Test-SpecrewAuthoredPacket {
     return [pscustomobject]@{ valid = ($missing.Count -eq 0); missing = @($missing) }
 }
 
+# FEATURE 203 T011 (FR-046; maintainer ruling 2026-11-10): A BOUNDARY REPLY'S DECISION PARTS, FROM THE RECORD.
+# The Stop used to learn the approval line, the options and the marker from the agent's declared draft, so the options
+# a reply had to carry were whatever the draft happened to say, and a reworded option blocked. They now come from
+# .specrew/runtime/pending-verdict-stop.md and from the four response lines below, each held to its fixed start.
+#
+# THE FOUR RESPONSE LINES, ONE SOURCE. `Shown` is the line exactly as the gate-stop skill shows it to the agent
+# (squad-templates/skills/gate-stop.md, the block under "Type one of these:"); tests/unit/presented-check.tests.ps1 holds
+# the two equal. `Pattern` is the start a reply's line must have, with {0} the record's approval phrase: the instructions
+# after " - ", what to change and the prompt number are the author's words.
+$script:SpecrewVerdictOptions = @(
+    [pscustomobject]@{ Shown = 'approved for <to>'; Pattern = '^{0}$' }
+    [pscustomobject]@{ Shown = 'approved for <to> - <your instructions>'; Pattern = '^{0}\s+-\s+\S' }
+    [pscustomobject]@{ Shown = 'changes needed: <what to change>'; Pattern = '^(?i:changes needed)\s*:' }
+    [pscustomobject]@{ Shown = 'discuss prompt 1'; Pattern = '^(?i:discuss prompt)\s+\S' }
+)
+
+function Get-SpecrewDecisionLineCore {
+    # A line without its Markdown wrapper: quote, bullet and number markers, then a leading and trailing code or bold
+    # marker. Co-review round 6 (202, FR-015): the wrapper is formatting; the option inside it is the line.
+    [OutputType([string])]
+    param([AllowNull()][string] $Line)
+    $core = ([string]$Line).Trim()
+    do { $before = $core; $core = $core -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)', '' } while ($core -ne $before)
+    $core = $core -replace '^(?:`+|\*\*|__|\*|_)', ''
+    return ($core -replace '(?:`+|\*\*|__)\s*$', '').Trim()
+}
+
+function Get-SpecrewVerdictOptionIndex {
+    # The indexes (0..3) of the response lines whose start this line has; empty for none. $Line is a core (above).
+    [OutputType([int[]])]
+    param([AllowNull()][string] $Line, [Parameter(Mandatory)][string] $ApprovalPhrase)
+    $phrase = [regex]::Escape($ApprovalPhrase.Trim())
+    $hits = [System.Collections.Generic.List[int]]::new()
+    for ($i = 0; $i -lt $script:SpecrewVerdictOptions.Count; $i++) {
+        if ([regex]::IsMatch([string]$Line, ([string]$script:SpecrewVerdictOptions[$i].Pattern -f $phrase))) { $hits.Add($i) }
+    }
+    return $hits.ToArray()
+}
+
+function Get-SpecrewApprovalTarget {
+    # The boundary an "approved for <target>" line names, or '' when the line does not start that way.
+    [OutputType([string])]
+    param([AllowNull()][string] $Core)
+    $m = [regex]::Match([string]$Core, '^(?i:approved for)\s+(?<t>[^\s,.;:!?`*_]+)')
+    return $(if ($m.Success) { $m.Groups['t'].Value } else { '' })
+}
+
+function Test-SpecrewDecisionMeaningLine {
+    # True for a meaning line the record now checks: an approval or response line, or the marker. The declared-draft
+    # comparison leaves these to Get-SpecrewReplyDecisionParts.
+    [OutputType([bool])]
+    param([AllowNull()][string] $Line)
+    return ([string]$Line -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)' -or [string]$Line -match '^<!--\s*SPECREW-VERDICT-BOUNDARY:')
+}
+
+function Get-SpecrewReplyDecisionParts {
+    # What a boundary reply misses of its decision parts, and the approval lines it offers for another boundary.
+    # $Reply must keep its lines (the transcript read with -Raw): each part is anchored at the start of a line once the
+    # Markdown wrapper is stripped, so the phrase inside a sentence counts in neither direction.
+    #   Missing: the response lines (as Shown, <to> filled in) no reply line starts as, then the marker if absent.
+    #   Foreign: reply lines that start "approved for " and name a boundary other than the record's.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][string] $Reply, [Parameter(Mandatory)][string] $ApprovalPhrase, [Parameter(Mandatory)][string] $Marker)
+    $target = Get-SpecrewApprovalTarget -Core $ApprovalPhrase.Trim()
+    $found = [System.Collections.Generic.HashSet[int]]::new()
+    $foreign = [System.Collections.Generic.List[string]]::new()
+    foreach ($raw in ([string]$Reply -split "`r?`n")) {
+        $core = Get-SpecrewDecisionLineCore -Line $raw
+        if ($core.Length -eq 0) { continue }
+        foreach ($i in @(Get-SpecrewVerdictOptionIndex -Line $core -ApprovalPhrase $ApprovalPhrase)) { [void]$found.Add($i) }
+        $named = Get-SpecrewApprovalTarget -Core $core
+        if ($named.Length -gt 0 -and -not [string]::Equals($named, $target, [StringComparison]::OrdinalIgnoreCase)) { $foreign.Add($core) }
+    }
+    $missing = [System.Collections.Generic.List[string]]::new()
+    for ($i = 0; $i -lt $script:SpecrewVerdictOptions.Count; $i++) {
+        if (-not $found.Contains($i)) { $missing.Add(([string]$script:SpecrewVerdictOptions[$i].Shown).Replace('approved for <to>', $ApprovalPhrase.Trim())) }
+    }
+    if (-not (Test-SpecrewTurnMessageVisible -Message $Reply -Expected $Marker)) { $missing.Add($Marker.Trim()) }
+    return [pscustomobject]@{ Missing = @($missing); Foreign = @($foreign) }
+}
+
+function Read-SpecrewPendingVerdictStopRecord {
+    # Parses the record sync-boundary-state.ps1 writes. THE VALUES COME FROM THE FILE, never from a guess about which
+    # phase comes next. One reader for declare-turn-end.ps1 and the Stop (203 T011). `problem` says why the record
+    # cannot be used, so the Stop can fail closed and name it: missing | unreadable (not UTF-8 text) |
+    # no-boundary-line | no-approval-line | no-marker; '' when usable. `present` keeps its old meaning (a boundary line).
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $Path)
+    $result = [pscustomobject]@{
+        present = $false; problem = ''; boundary = ''; approval_phrase = ''; marker = ''
+        working_boundary = ''; last_authorized = ''; feature = ''; coverage = ''
+    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $result.problem = 'missing'; return $result }
+    $text = $null
+    try { $text = [System.Text.UTF8Encoding]::new($false, $true).GetString([System.IO.File]::ReadAllBytes($Path)) }
+    catch { $result.problem = 'unreadable'; return $result }
+    $lines = @($text.TrimStart([char]0xFEFF) -split "`r?`n")
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = [string]$lines[$i]
+        if ($line -cmatch '^Boundary to ask for:\s*(.+)$') { $result.boundary = $Matches[1].Trim() }
+        elseif ($line -cmatch '^Human approval phrase:\s*(.+)$') { $result.approval_phrase = $Matches[1].Trim() }
+        elseif ($line -cmatch '^Working boundary:\s*(.+)$') { $result.working_boundary = $Matches[1].Trim() }
+        elseif ($line -cmatch '^Last authorized boundary:\s*(.+)$') { $result.last_authorized = $Matches[1].Trim() }
+        elseif ($line -cmatch '^Feature:\s*(.+)$') { $result.feature = $Matches[1].Trim() }
+        elseif ($line -cmatch '^Coverage line[^:]*:\s*(.+)$') { $result.coverage = $Matches[1].Trim() }
+        elseif ($line -cmatch '^Marker last line exactly:') {
+            if (($i + 1) -lt $lines.Count) { $result.marker = ([string]$lines[$i + 1]).Trim() }
+        }
+    }
+    $result.present = -not [string]::IsNullOrWhiteSpace($result.boundary)
+    $result.problem = if (-not $result.present) { 'no-boundary-line' }
+    elseif ([string]::IsNullOrWhiteSpace($result.approval_phrase)) { 'no-approval-line' }
+    elseif ($result.marker -notmatch '^<!--\s*SPECREW-VERDICT-BOUNDARY:.*-->$') { 'no-marker' }
+    else { '' }
+    return $result
+}
+
+function Get-SpecrewPendingVerdictRecordProblemText {
+    # The block line for a record the Stop cannot use. $Detail carries the two crossings for 'other-crossing'.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $Problem, [AllowNull()][string] $Detail)
+    $what = switch ($Problem) {
+        'missing' { 'is missing' }
+        'unreadable' { 'cannot be read (it is not UTF-8 text)' }
+        'no-boundary-line' { "has no 'Boundary to ask for:' line" }
+        'no-approval-line' { "has no 'Human approval phrase:' line" }
+        'no-marker' { "has no marker line after 'Marker last line exactly:'" }
+        'other-crossing' { [string]$Detail }
+        default { ('cannot be used ({0})' -f $Problem) }
+    }
+    return ('Specrew: a boundary verdict is owed, but its record .specrew/runtime/pending-verdict-stop.md {0}, so the approval line and marker the reply must carry are unknown. Re-run the boundary sync for this crossing (sync-boundary-state.ps1); it writes the record again. Then present the packet from that record.' -f $what)
+}
+
 # FEATURE 202 T009 (FR-016, SC-005, B4F-107): ONE ADAPTATION SENTENCE ON EVERY HOST. What stood here rendered the
 # profile's raw keys and numbers ("software_architecture=10, ...") and reached Codex that way, while Claude read
 # the prose sentence the session orientation uses. The prose renderer in user-profile.ps1 is now the only one;
@@ -1351,10 +1484,8 @@ function Get-SpecrewTurnMeaningLines {
         # Approval line and verdict options. Co-review round 6 (202, FR-015): an option written as a bullet, a quote, a
         # numbered item, inline code or a bold label was not a meaning line, so a reply could drop it. The wrapper is
         # formatting: the option inside it is the meaning line, which a reply that keeps the option carries either way.
-        $core = $line
-        do { $before = $core; $core = $core -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)', '' } while ($core -ne $before)
-        $core = $core -replace '^(?:`+|\*\*|__|\*|_)', ''
-        if ($core -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add ($core -replace '(?:`+|\*\*|__)\s*$', ''); continue }
+        $core = Get-SpecrewDecisionLineCore -Line $line
+        if ($core -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add $core; continue }
         # The question line: any line that asks something - a '?' ending a sentence, even when an instruction follows
         # it on the same line ("Does this match? Type move on."). A '?' inside a URL query does not count.
         if ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') { & $add $line }
