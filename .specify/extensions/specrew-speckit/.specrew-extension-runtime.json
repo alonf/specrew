@@ -424,7 +424,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "50dd10f829fe411bd27a88556fcf785000559b35e2bf053a1f5485a6c51e9476"
+      "sha256": "6654aec48f444f5072db058d6520572f5650fbc4a36e218856323f888eefe0d4"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -432,7 +432,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "4c6ee71c9bf6b7e7f5e17c540a58c016866f56b2f8bbd29daed3eac6efc9c2e0"
+      "sha256": "77ac6036ebb1fb34588ea2d17fa447db3c26f7007aed90f76aaa9a5c43be01f5"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",
@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "3349067aca6040a5ea94edf5f539deb8c1128a37887cbe39f7091e86c73aa23f"
+      "sha256": "65aca235301c6440419ee9493439ed923811ad1688f864b822de1c5ca8d4f8e9"
     },
     {
       "path": "scripts/validate-governance.ps1",

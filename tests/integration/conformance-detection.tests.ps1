@@ -394,7 +394,16 @@ function Invoke-Conformance {
             Fail "Workshop refusal did not carry the calm recovery contract: $rendered"
         }
     }
-    return [pscustomobject]@{ Out = $rendered; Code = $LASTEXITCODE; Blocked = ($rendered -match '<<<SPECREW-STOP-BLOCK>>>') }
+    $exitCode = $LASTEXITCODE
+    $blocked = ($rendered -match '<<<SPECREW-STOP-BLOCK>>>')
+    # Feature 203 T011 (DRIFT-054; maintainer ruling 2026-11-10): the provider records its judgment, and the dispatcher ends
+    # the turn at the end of the Stop, after every check. Here the conformance provider is the only Stop check, so the
+    # harness runs the dispatcher's commit after it - the hook as a host runs it.
+    if ($Event -eq 'Stop' -and (Get-Command -Name 'Complete-SpecrewTurnEnd' -ErrorAction SilentlyContinue)) {
+        $commitPaths = Get-SpecrewTurnEndPaths -ProjectRoot $Proj -HostKind 'claude' -SessionId $SessionId
+        if ($null -ne $commitPaths) { $null = Complete-SpecrewTurnEnd -StateRoot ([string]$commitPaths.StateRoot) -Blocked $blocked }
+    }
+    return [pscustomobject]@{ Out = $rendered; Code = $exitCode; Blocked = $blocked }
 }
 
 function Get-TestSessionStatePath {

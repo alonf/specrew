@@ -2400,33 +2400,15 @@ try {
         try { $judgedMaterial = ($null -ne $materialSignal -and [bool]$materialSignal.material) } catch { $judgedMaterial = $false }
         try { $null = Write-SpecrewTurnMaterialVerdict -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId) -DeclarationKind $turnEndKind -Material $judgedMaterial } catch { $null = $_ }
     }
-    if ([string]::IsNullOrWhiteSpace($blockReason) -and $null -ne $turnEndPaths -and
-        (Get-Command Step-SpecrewTurnCounter -ErrorAction SilentlyContinue)) {
-        # A FAILED STEP IS SAID OUT LOUD. Found by the independent review, which made the counter
-        # unwritable and watched what happened: the turn id never advanced, so the PREVIOUS turn's
-        # declaration went on satisfying every later stop - a permanent bypass, silent, with nothing to
-        # notice it by. Failing open is right here (a hook that hangs a session is worse than one that
-        # under-enforces), but failing open QUIETLY is what makes it undiagnosable. This is the convention
-        # the loop-guard counter already uses one branch away: degrade, and WARN on stderr so the
-        # degradation is visible to whoever is wondering why enforcement went quiet.
-        $stepped = -1
-        try { $stepped = Step-SpecrewTurnCounter -StateRoot ([string]$turnEndPaths.StateRoot) } catch { $stepped = -1 }
-        if ($stepped -lt 1) {
-            [Console]::Error.WriteLine(("[specrew-conformance] WARN TURN_COUNTER_UNWRITABLE cannot advance the turn counter at '{0}'; this turn's declaration will keep satisfying later stops until it can be written." -f ([string]$turnEndPaths.StateRoot)))
-        }
-        # THE TOKEN IS CONSUMED HERE, and only here: the turn ended, its declaration has been judged, and
-        # "live" for the next declarer means "a token whose Stop has not yet run". A block does not reach
-        # this line, so a force-continued turn keeps its token and the re-run declaration it demands is
-        # accepted under the same one. A token that cannot be removed is said out loud for the same reason
-        # the counter is: a leftover that looks live costs every later token-less declaration a refusal.
-        if (Get-Command Remove-SpecrewTurnToken -ErrorAction SilentlyContinue) {
-            $tokenWasLive = $false
-            try { $tokenWasLive = -not [string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot))) } catch { $tokenWasLive = $false }
-            $consumed = $false
-            try { $consumed = [bool](Remove-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot)) } catch { $consumed = $false }
-            if ($tokenWasLive -and -not $consumed) {
-                [Console]::Error.WriteLine(("[specrew-conformance] WARN TURN_TOKEN_UNCONSUMED cannot remove this turn's token at '{0}'; it will look live to the next declaration in this project and cost a token-less one a refusal." -f (Get-SpecrewTurnTokenPath -StateRoot ([string]$turnEndPaths.StateRoot))))
-            }
+    # Feature 203 T011 (DRIFT-054; maintainer ruling 2026-11-10): THIS PROVIDER NO LONGER ENDS THE TURN. It records its judgment
+    # as pending - passed or blocked by this provider - and the dispatcher, which sees every Stop check's result, steps the
+    # counter and uses up the token only when no check blocked (Complete-SpecrewTurnEnd in turn-end-store.ps1). A block from
+    # any check, before or after this one, keeps the turn and its token, so the reply to the block can be declared.
+    if ($null -ne $turnEndPaths -and (Get-Command Write-SpecrewTurnCommitPending -ErrorAction SilentlyContinue)) {
+        $pendingWritten = $false
+        try { $pendingWritten = [bool](Write-SpecrewTurnCommitPending -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId) -DeclarationKind $turnEndKind -Passed ([string]::IsNullOrWhiteSpace($blockReason))) } catch { $pendingWritten = $false }
+        if (-not $pendingWritten) {
+            [Console]::Error.WriteLine(("[specrew-conformance] WARN TURN_COMMIT_UNRECORDED cannot record this Stop's judgment at '{0}'; the turn stays open until a Stop can record it." -f ([string]$turnEndPaths.StateRoot)))
         }
     }
 

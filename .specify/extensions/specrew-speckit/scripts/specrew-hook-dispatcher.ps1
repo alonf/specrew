@@ -1541,6 +1541,27 @@ function Write-DecisionOnlyNoopIfNeeded {
 # The blocking StopBlockShapes (a host that force-continues the turn); 'none' is excluded (cannot block).
 $script:SpecrewStopBlockShapes = @('decision-block', 'decision-continue', 'followup-message')
 
+function Complete-DispatcherTurnEnd {
+    # Feature 203 T011 (DRIFT-054): the ordering rule's one call site. The turn-end store lives beside this dispatcher in the
+    # deployed scripts folder; a store that cannot be loaded or a session it cannot place leaves the turn open (fail-open:
+    # the next Stop judges it again) and says so on stderr.
+    param([string]$ProjectRoot, [string]$HostKind, [string]$SessionId, [bool]$Blocked, [string[]]$BlockedBy = @(), [string[]]$BlockNotEmitted = @())
+    try {
+        if (-not (Get-Command -Name 'Complete-SpecrewTurnEnd' -ErrorAction SilentlyContinue)) {
+            $storePath = Join-Path $PSScriptRoot 'turn-end-store.ps1'
+            if (-not (Test-Path -LiteralPath $storePath -PathType Leaf)) {
+                $storePath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'extensions/specrew-speckit/scripts/turn-end-store.ps1'
+            }
+            if (Test-Path -LiteralPath $storePath -PathType Leaf) { . $storePath }
+        }
+        if (-not (Get-Command -Name 'Complete-SpecrewTurnEnd' -ErrorAction SilentlyContinue) -or [string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+        $paths = Get-SpecrewTurnEndPaths -ProjectRoot $ProjectRoot -HostKind $HostKind -SessionId $SessionId
+        if ($null -eq $paths) { return }
+        $null = Complete-SpecrewTurnEnd -StateRoot ([string]$paths.StateRoot) -Blocked $Blocked -BlockedBy $BlockedBy -BlockNotEmitted $BlockNotEmitted
+    }
+    catch { Write-DispatcherWarn -Code 'TURN_END_COMMIT_FAILED' -Message $_.Exception.Message }
+}
+
 function Write-StopBlockOutput {
     # FR-004/FR-005/FR-015 (185): emit the host's STOP-BLOCK envelope (to the hook's stdout) so the agent
     # force-continues and renders the 6-section re-entry packet AT the stop (the $Reason carries the directive).
@@ -1994,6 +2015,8 @@ try {
     # dropping one directive. Collect distinct reasons here and MERGE them below so BOTH survive. A single
     # blocking provider collapses to a 1-element list = identical output to the old single-reason path.
     $stopBlockReasons = New-Object System.Collections.Generic.List[string]
+    # Feature 203 T011 (DRIFT-054): which checks blocked, for the turn's history line.
+    $stopBlockProviders = New-Object System.Collections.Generic.List[string]
     # Feature 203 T006: the lines providers marked for the human (Split-DispatcherVisibleLines).
     $visibleLines = New-Object System.Collections.Generic.List[string]
     foreach ($provider in $providers) {
@@ -2189,6 +2212,7 @@ try {
                 if ((-not [string]::IsNullOrWhiteSpace($thisReason)) -and (-not $stopBlockReasons.Contains($thisReason))) {
                     $stopBlockReasons.Add($thisReason) | Out-Null
                 }
+                if (-not $stopBlockProviders.Contains([string]$providerId)) { $stopBlockProviders.Add([string]$providerId) | Out-Null }
             }
             else {
                 $split = Split-DispatcherVisibleLines -Text $stdoutTrim
@@ -2267,6 +2291,7 @@ try {
         $alreadyContinuing = [bool]$turnRecord.stop_hook_active
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
+            if ($isStopEvent) { Complete-DispatcherTurnEnd -ProjectRoot $projectRoot -HostKind $HostKind -SessionId $sessionId -Blocked $true -BlockedBy $stopBlockProviders.ToArray() }
             Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot -EventName $Event -VisibleField $visibleField -VisibleLines $visibleLines.ToArray()
             if ($Event -eq 'UserPromptSubmit' -or $isStopEvent) {
                 Restore-DispatcherUndeliveredNotRecordedLine -ProjectRoot $projectRoot -SessionId $sessionId -DeliveredPayload ($mergedStopBlockReason + "`n" + ($visibleLines -join "`n"))
@@ -2275,6 +2300,10 @@ try {
         }
         # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).
     }
+
+    # Feature 203 T011 (DRIFT-054; maintainer ruling 2026-11-10): every Stop check has run and none blocked (or the host would
+    # not take a block), so the turn ends here, and only here.
+    if ($isStopEvent) { Complete-DispatcherTurnEnd -ProjectRoot $projectRoot -HostKind $HostKind -SessionId $sessionId -Blocked $false -BlockNotEmitted $stopBlockProviders.ToArray() }
 
     $deliveredPayload = ''
     if ($fragments.Count -gt 0) {

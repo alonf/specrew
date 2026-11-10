@@ -193,6 +193,11 @@ try {
     # fix 2 item (c) (PRED-BETA4-024): the judgment is left beside the counter for the providers that run after.
     $judged3 = Read-SpecrewTurnMaterialVerdict -StateRoot $s3.StateRoot
     Assert-True ($null -ne $judged3 -and [string]$judged3.declaration_kind -ceq 'conversational' -and [string]$judged3.turn_id -ceq 'turn-1' -and -not [bool]$judged3.material) ('3: and left its judgment for whoever runs after - conversational, turn-1, not material ({0})' -f $(if ($null -ne $judged3) { $judged3 | ConvertTo-Json -Compress } else { '(none)' }))
+    # Feature 203 T011 (DRIFT-054; maintainer ruling 2026-11-10): the token is used up only after every Stop check has passed,
+    # which the dispatcher decides at the end of the Stop. This case drives the provider directly, so it runs the commit the
+    # dispatcher runs (Complete-SpecrewTurnEnd); turn-end-after-stop-block drives the whole Stop through the dispatcher.
+    Assert-True ((Read-SpecrewTurnToken -StateRoot $s3.StateRoot) -ceq $issued) '3: the provider alone does not use up the token: other checks of the same Stop may still block'
+    $null = Complete-SpecrewTurnEnd -StateRoot $s3.StateRoot -Blocked $false
     Assert-True ([string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot $s3.StateRoot))) '3: and CONSUMED the token - live means unconsumed'
     Assert-True (@(Get-SpecrewLiveTurnTokens -ProjectRoot $root3).Count -eq 0) '3: so the project now has no live token'
     $next = Invoke-Provider -ProjectRoot $root3 -Event 'UserPromptSubmit' -SessionId 'S3'

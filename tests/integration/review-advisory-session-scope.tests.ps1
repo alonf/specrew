@@ -114,9 +114,14 @@ try {
     Assert-True ($stopA.Code -eq 0 -and -not $stopA.Blocked) 'the conformance provider accepts the declaration (no block)'
     $verdictA = Read-SpecrewTurnMaterialVerdict -StateRoot $pathsA.StateRoot
     Assert-True ($null -ne $verdictA -and [string]$verdictA.declaration_kind -ceq 'conversational' -and [string]$verdictA.turn_id -ceq 'turn-1' -and -not [bool]$verdictA.material) ('and leaves its judgment beside the counter: {0}' -f $(if ($null -ne $verdictA) { $verdictA | ConvertTo-Json -Compress } else { '(none)' }))
-    Assert-True ((Get-SpecrewTurnId -StateRoot $pathsA.StateRoot) -ceq 'turn-2') 'the counter stepped after the judgment was written'
+    # Feature 203 T011 (DRIFT-054; maintainer ruling 2026-11-10): the counter steps only after every Stop check has passed,
+    # so the navigator - a check in the same Stop - reads the judgment for the turn the counter still names, and the
+    # dispatcher steps it at the end of the Stop (Complete-SpecrewTurnEnd, run here as the dispatcher runs it).
+    Assert-True ((Get-SpecrewTurnId -StateRoot $pathsA.StateRoot) -ceq 'turn-1') 'the counter has not stepped while the Stop''s checks are still running'
     $navA = Invoke-Navigator -ProjectRoot $root -SessionId 'reviewer'
     Assert-True ($navA.Code -eq 0 -and -not $navA.Blocked) ('the navigator, running after, says NOTHING to the reviewer session (out: {0})' -f ($navA.Out -replace '\s+', ' ').Trim())
+    $null = Complete-SpecrewTurnEnd -StateRoot $pathsA.StateRoot -Blocked $false
+    Assert-True ((Get-SpecrewTurnId -StateRoot $pathsA.StateRoot) -ceq 'turn-2') 'the counter stepped after the judgment was written, once every check had passed'
     $journalA = @(Read-NavigatorJournal -Root $root)
     Assert-True (($journalA -join "`n") -match '"action":"quiet".*session declared conversational') 'and its journal says why: quiet, the session declared conversational'
 

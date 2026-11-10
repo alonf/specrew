@@ -350,6 +350,118 @@ function Step-SpecrewTurnCounter {
 }
 
 
+# THE ORDERING RULE (feature 203 T011, DRIFT-054; maintainer ruling 2026-11-10): A TURN'S TOKEN IS USED UP, AND ITS COUNTER
+# STEPPED, ONLY AFTER EVERY CHECK IN THAT STOP HAS PASSED. The conformance provider used to do both as soon as it did not block
+# itself, so a check that ran in the same Stop and blocked - the co-review navigator after it, or any other - force-continued
+# a turn that had no token left: the reply to the block could not be declared, and its own Stop counted it as another,
+# undeclared turn (DRIFT-054: the counter went 1 to 3, then 3 to 5). Now the provider only records its judgment here as
+# pending, and the dispatcher - the one party that sees every check's result - commits it at the end of the Stop, or keeps
+# the turn when any check blocked. Every Stop the provider judged leaves one history line, the record DRIFT-054 found missing.
+
+function Get-SpecrewTurnCommitPendingPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    return (Join-Path $StateRoot 'turn-commit-pending.json')
+}
+
+function Write-SpecrewTurnCommitPending {
+    # The conformance provider's half: this Stop's judgment, waiting for the other checks. -Passed is whether the provider
+    # itself let the turn end; a turn it blocked is still recorded, so the history line names the check that blocked.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string] $StateRoot,
+        [Parameter(Mandatory)][string] $TurnId,
+        [Parameter()][AllowNull()][AllowEmptyString()][string] $DeclarationKind,
+        [Parameter()][bool] $Passed = $false
+    )
+    $temp = $null
+    try {
+        if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
+        $path = Get-SpecrewTurnCommitPendingPath -StateRoot $StateRoot
+        $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        $record = [ordered]@{
+            schema_version = '1.0'; turn_id = [string]$TurnId
+            declaration_kind = $(if ([string]::IsNullOrWhiteSpace($DeclarationKind)) { 'absent' } else { [string]$DeclarationKind })
+            passed = [bool]$Passed; judged_at = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        [System.IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $path, $true)
+        return $true
+    }
+    catch { return $false }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+function Read-SpecrewTurnCommitPending {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnCommitPendingPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+        $record = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $record -or [string]$record.schema_version -cne '1.0') { return $null }
+        return $record
+    }
+    catch { return $null }
+}
+
+function Complete-SpecrewTurnEnd {
+    # The dispatcher's half, run once at the end of a Stop, after every check. With no block emitted and the conformance
+    # provider's judgment passed, the turn ends: the counter steps and the token is used up. With any block emitted, the
+    # turn goes on under the same token and the same id; the pending judgment stays until a Stop commits it or the provider
+    # judges again. One history line is appended per Stop. Returns the line, or $null when no judgment was pending (the provider
+    # did not run this Stop). Failing to step or to remove the token is said on stderr, as the provider used to say it.
+    param(
+        [Parameter(Mandatory)][string] $StateRoot,
+        [Parameter()][bool] $Blocked = $false,
+        [Parameter()][string[]] $BlockedBy = @(),
+        [Parameter()][string[]] $BlockNotEmitted = @()
+    )
+    $pending = Read-SpecrewTurnCommitPending -StateRoot $StateRoot
+    if ($null -eq $pending) { return $null }
+    # A BLOCKED STOP KEEPS THE JUDGMENT. The continuation's Stop may be skipped by the provider as a duplicate delivery (an
+    # identical reply is the same observable state), and it must still be able to end the turn; only a commit clears it.
+    if (-not $Blocked -and [bool]$pending.passed) {
+        try { Remove-Item -LiteralPath (Get-SpecrewTurnCommitPendingPath -StateRoot $StateRoot) -Force -ErrorAction Stop } catch { $null = $_ }
+    }
+    $stepped = $false; $counterAfter = $null; $token = 'kept'
+    $tokenWasLive = $false
+    try { $tokenWasLive = -not [string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot $StateRoot)) } catch { $tokenWasLive = $false }
+    if (-not $tokenWasLive) { $token = 'none' }
+    if (-not $Blocked -and [bool]$pending.passed) {
+        $next = -1
+        try { $next = Step-SpecrewTurnCounter -StateRoot $StateRoot } catch { $next = -1 }
+        if ($next -ge 1) { $stepped = $true; $counterAfter = ('turn-{0}' -f $next) }
+        else {
+            [Console]::Error.WriteLine(("[specrew-turn-end] WARN TURN_COUNTER_UNWRITABLE cannot advance the turn counter at '{0}'; this turn's declaration will keep satisfying later stops until it can be written." -f $StateRoot))
+        }
+        if ($tokenWasLive) {
+            $consumed = $false
+            try { $consumed = [bool](Remove-SpecrewTurnToken -StateRoot $StateRoot) } catch { $consumed = $false }
+            if ($consumed) { $token = 'consumed' }
+            else {
+                [Console]::Error.WriteLine(("[specrew-turn-end] WARN TURN_TOKEN_UNCONSUMED cannot remove this turn's token at '{0}'; it will look live to the next declaration in this project and cost a token-less one a refusal." -f (Get-SpecrewTurnTokenPath -StateRoot $StateRoot)))
+            }
+        }
+    }
+    $line = [pscustomobject][ordered]@{
+        schema_version = '1.0'; recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
+        turn_id = [string]$pending.turn_id; declaration_kind = [string]$pending.declaration_kind
+        conformance_passed = [bool]$pending.passed; token = $token
+        counter_stepped = $stepped; counter_after = $counterAfter
+        blocked_by = @($BlockedBy | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        block_not_emitted = @($BlockNotEmitted | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    try {
+        $historyPath = Join-Path $StateRoot 'turn-history.jsonl'
+        [System.IO.File]::AppendAllText($historyPath, (($line | ConvertTo-Json -Compress -Depth 4) + "`n"), [System.Text.UTF8Encoding]::new($false))
+    }
+    catch { [Console]::Error.WriteLine(("[specrew-turn-end] WARN TURN_HISTORY_UNWRITABLE {0}" -f $_.Exception.Message)) }
+    return $line
+}
+
 # THE JUDGMENT, LEFT BESIDE THE COUNTER (fix 2 item (c), PRED-BETA4-024). The conformance provider judges
 # this session's declaration at Stop and steps the counter afterwards. Everything that runs AFTER it in the
 # same Stop - the co-review navigator, by the dispatcher's order - used to know nothing about the session
