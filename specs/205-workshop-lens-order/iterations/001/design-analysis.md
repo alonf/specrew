@@ -181,4 +181,17 @@ Human-agreed: yes (architecture-core lens, typed reply 2026-11-10, receipt aed97
 
 ## Human Decision
 
-Pending the maintainer's typed verdict ("approved for plan with Option A").
+- **Decision verdict**: approved for plan with Option A
+- **Chosen option**: Option A
+- **Reason**: Option A is the workshop's choice (architecture-core, 2026-11-10). `index.yml` is the one order, read
+  at runtime by the agenda writer, and the prose lists are kept and checked by the parity test. That has the
+  fewest moving parts, and the skill stays self-contained. Generate-during-sync was rejected at architecture-core
+  because it adds generation machinery to the sync for no gain over a test that catches every disagreement with
+  the exact fix.
+- **Modifications**: none to the design. The maintainer's notes for plan.md (2026-11-10):
+  1. define the sweep's "run of three or more lens ids" precisely, with matching and non-matching examples
+  2. cover every FR, including FR-017, FR-020, FR-021 and FR-022
+  3. record the quality resolver's node/react misread in the drift log, as a recurrence of the one recorded at
+     feature 203's plan verdict (2026-10-31)
+- **Verdict given**: typed by the maintainer on 2026-11-10.
+- **Design-analysis draft commit**: `839ce7c9`
