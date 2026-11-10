@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001, DRIFT-004 and DRIFT-005 class closure open)
+**Total drift events**: 6
+**Resolution rate**: 100% (6/6 resolved for this feature; DRIFT-001, DRIFT-004, DRIFT-005 and DRIFT-006 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -106,6 +106,21 @@
 - **Class closure**: NONE — the CI workflow is outside 205's scope. Candidate for 206: vendor or cache the pinned
   Pester (or retry the Gallery fetch with a clear infrastructure-failure label), so a Gallery outage reads as
   infrastructure, not as a red gate.
+
+### DRIFT-006 — a turn opened by the maintainer's `!` command got no turn token, so the turn-end declaration was refused (finding)
+
+- **Observed**: 2026-11-10. The maintainer typed `! gh auth refresh -h github.com -s workflow` to add the `workflow`
+  scope after a rejected push (the T016 push of `03bc4c5b`). That turn began with the `!` command's output, not a
+  typed message, and no `[specrew-turn]` line was issued. After pushing, the crew declared the turn end with the most
+  recent token it had, which was from the previous turn. The check said:
+  `Turn-end declaration refused: the token '14f181c5e1bc4a7f957a9473b895dacd' matches no live session in this project (0 live tokens).`
+- **Impact**: none on the work. The push and CI were unaffected, and the turn ended without its declaration record.
+  The maintainer was told in the reply.
+- **Same gap as feature 203's DRIFT-054**, reached by a different route: a turn that starts without a typed message
+  gets no token. There, the turn had no typed message; here, it began with a `!` shell command.
+- **Class closure**: NONE — the turn-token hooks are outside 205's scope. Candidate for the turn-end owner: issue a
+  token, or accept an explicit "no token this turn" declaration, when a turn starts from a `!` command or another
+  non-typed input.
 
 <!--
   Every new ### DRIFT-... event includes:
