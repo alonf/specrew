@@ -11,6 +11,11 @@
 - No question is filed under the wrong heading to make a check pass (FR-015). A tag disagreement goes to the maintainer.
 - `specrew-conformance-provider.ps1` is not edited (203's T011 owns it). `scripts/specrew-update.ps1` is never run in this worktree.
 - `.squad/active-features.yml` is never committed.
+- **Existing-test safety** (tasks verdict, 2026-11-10). Before any existing workshop test runs, check it for hook
+  deployment or writes outside the project, and skip and report any test that does either. Hash the real-home hook
+  files before and after each run: `~/.specrew/specrew-hook-launch.ps1`, every file inside
+  `~/.specrew/hook-bindings/`, `~/.codex/hooks.json`, `~/.copilot/hooks/*.json` and `~/.cursor/hooks.json`. Stop
+  if any hash changes.
 - Before every push: `validate-governance.ps1 -ProjectPath . -ChangedOnly` and the CI markdownlint command must both exit 0. After every push: follow Specrew CI, Test and Cross-Platform Validation to their conclusion; a skipped gate job counts as red.
 
 ## Phase 1: Proof first (red before green)
@@ -18,6 +23,7 @@
 - [ ] T001 [US2] [assigned_to: implementer] [effort: 4] Write `tests/unit/lens-order-parity.tests.ps1` (script-style). It reads `index.yml` through `Read-IntakeYaml`. It has the block scanner from plan.md's sweep definition (prose line, list, table, fenced line, and consecutive code/data lines that each carry an id). It names the full surfaces. It holds the shipped-text scope with the accepted exclusions and the exemption list, with the conformance-provider alternation as its one entry, and fails on a stale exemption. It compares the touched files' deployed copies by full content, ignoring the deploy wrapper. It runs FR-005 checks a/b/c, counting bullet and numbered decision points itself. It runs the extractor test against the SC-002 expected counts and the FR-018 sentence check. Its report is all-mismatch, with file:line, expected order, found order and fix (Trace: FR-001, FR-005, FR-015, FR-018, FR-019, SC-002)
 - [ ] T002 [US2] [assigned_to: implementer] [effort: 1] Add self-test cases to `tests/unit/lens-order-parity.tests.ps1` over scratch fixtures under the test's temp root: every "matches" and "does not match" example from plan.md, and a seeded tree with several mismatches that must all be reported in one run (Trace: FR-001, FR-019)
 - [ ] T003 [US2] [assigned_to: implementer] [effort: 0.5] Run the parity test on the unchanged tree and record the red output in `specs/205-workshop-lens-order/iterations/001/quality/quality-evidence.md`. It must list at least the five known order definitions (Trace: SC-001)
+- [ ] T017 [US2] [assigned_to: implementer] [effort: 1] Baseline, before T005 (tasks verdict). Run every existing workshop test on the unchanged tree under the existing-test safety rule: screen first, hash before and after each run, and skip and report any test that writes outside the project. Record each result in `specs/205-workshop-lens-order/iterations/001/quality/quality-evidence.md`, so that T013 can tell a test that was already red from one this feature broke (Trace: FR-021)
 - [ ] T004 [US4] [assigned_to: implementer] [effort: 1.5] Extend `tests/integration/workshop-agenda-confirmation.tests.ps1` with three cases: an out-of-order new agenda is refused, with nothing written and nothing reordered; an in-order agenda is accepted; an agenda confirmed in the old order resumes and completes (FR-013). Run it red-first (Trace: FR-016, FR-013, SC-004)
 
 ## Phase 2: The one order and the tags
@@ -36,7 +42,7 @@
 
 ## Phase 4: Regression, CI and the proposal
 
-- [ ] T013 [US2] [assigned_to: implementer] [effort: 1] Run every existing workshop test locally (the roughly 31 files named for workshop, lens, agenda, design-analysis, product-domain or code-implementation), out of process, on a committed tree. Report every result. Classify which ones cover a touched file. Report an already-red test as a finding, and do not fix it silently (Trace: FR-021)
+- [ ] T013 [US2] [assigned_to: implementer] [effort: 1] Under the existing-test safety rule, and compared against the T017 baseline, run every existing workshop test locally (the roughly 31 files named for workshop, lens, agenda, design-analysis, product-domain or code-implementation), out of process, on a committed tree. Report every result. Classify which ones cover a touched file. Report an already-red test as a finding, and do not fix it silently (Trace: FR-021)
 - [ ] T014 [US2] [assigned_to: implementer] [effort: 0.5] Add named steps to `.github/workflows/specrew-ci.yml` for `tests/unit/lens-order-parity.tests.ps1`, `tests/integration/workshop-agenda-confirmation.tests.ps1`, and every existing workshop test from T013 that covers a touched file and passes (Trace: FR-021, SC-005)
 - [ ] T015 [P] [US2] [assigned_to: implementer] [effort: 0.5] Update `proposals/220-workshop-lens-order-and-cross-lens-consistency.md` to `status: active`, `shipped-as: feature-205`, plus the status-history line (the three iterations, the fifth order surface, option A). Update `proposals/INDEX.md`, both the table row and the summary line (Trace: FR-022)
 - [ ] T016 [US2] [assigned_to: implementer] [effort: 0.5] Pre-push gate: `validate-governance.ps1 -ProjectPath . -ChangedOnly` and markdownlint, both exit 0. Then push, and follow all three workflows to a green conclusion with no skipped gate job (Trace: SC-005)
@@ -44,6 +50,7 @@
 ## Dependencies
 
 - T001 → T002 → T003 must finish before T005 to T011 (red-first).
+- T017 (baseline) must finish before T005.
 - T004 must finish before T007.
 - T005 must finish before T006, T008, T009 and T010, because the order and the tags come from `index.yml`.
 - T006 to T010 must finish before T011, then T012.
@@ -52,4 +59,4 @@
 
 ## Effort
 
-16 tasks, 17 SP against the 20 SP iteration cap. Proposal 220 estimated 10 to 15 SP. The overshoot is T001/T002, the sweep and self-test machinery the maintainer specified at the plan verdict.
+17 tasks, 18 SP against the 20 SP iteration cap. The prompt 1 ruling keeps the effort whole, and T017 was added at the tasks verdict. Proposal 220 estimated 10 to 15 SP. The overshoot is T001/T002, the sweep and self-test machinery the maintainer specified at the plan verdict.

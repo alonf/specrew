@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 17/20 story_points
+**Capacity**: 18/20 story_points
 **Started**: 2026-11-10
 **Completed**:
 
@@ -43,6 +43,7 @@
 | T001 | Parity test: scanner, full surfaces, sweep, copies, FR-005, extractor, report | FR-001, FR-005, FR-015, FR-018, FR-019, SC-003 | US2 | 4 | implementer | — | planned | — | — | — |
 | T002 | Parity test self-test cases (examples, multi-mismatch) | FR-001, FR-019 | US2 | 1 | implementer | — | planned | — | — | — |
 | T003 | Red-first run recorded in quality-evidence | SC-001 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T017 | Baseline: existing workshop tests on the unchanged tree (safety rule) | FR-021 | US2 | 1 | implementer | — | planned | — | — | — |
 | T004 | Agenda-confirmation test: refusal, in-order, FR-013 resume | FR-016, FR-013 | US4 | 1.5 | implementer | — | planned | — | — | — |
 | T005 | index.yml: problem-first order + space | FR-015 | US1 | 0.5 | implementer | — | planned | — | — | — |
 | T006 | Tag 11 lens files; S1-S3; FR-004 merge/move; gap list | FR-005, FR-004, FR-015, FR-020 | US3 | 2.5 | implementer | — | planned | — | — | — |
@@ -85,9 +86,9 @@
 | ----- | ---------------- | ----- |
 | Planning | done | spec, workshop, design analysis, plan, tasks |
 | Discovery/Spikes | 0 | YAML parse and deploy scripts already verified in scratch |
-| Implementation | 17 | T001-T016 |
+| Implementation | 18 | T001-T017 |
 | Review | in implementation estimate | codex co-review |
-| Rework | 3 | buffer to the 20 SP cap |
+| Rework | 2 | buffer to the 20 SP cap |
 
 ## Traceability Summary
 
@@ -98,7 +99,7 @@
 
 ## Notes
 
-- Planned effort 17 story_points against a 20 cap; proposal 220 estimated 10-15, the overshoot is the sweep/self-test machinery fixed at the plan verdict.
+- Planned effort 18 story_points against a 20 cap (T017 baseline added at the tasks verdict); proposal 220 estimated 10-15, the overshoot is the sweep/self-test machinery fixed at the plan verdict.
 - Add task rows only for work that is traceable to the scoped requirements above.
 - Keep Status: planning until the plan is fully decomposed and approved.
 - If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.

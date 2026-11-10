@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved for this feature; DRIFT-001 class closure open)
+**Total drift events**: 4
+**Resolution rate**: 100% (4/4 resolved for this feature; DRIFT-001 and DRIFT-004 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -72,6 +72,23 @@
   sub-heading. 205 does not change the extractor, because changing it is outside the spec.
 - **Class closure**: NONE — changing the extractor is outside 205's spec. Candidate for the extractor's owner: fold
   numbered items too, or state that product-domain is excluded from extraction by design.
+
+### DRIFT-004 — every boundary records empty handoff evidence, so the validator warns handoff-block-missing (finding)
+
+- **Observed**: 2026-11-10. Local `validate-governance.ps1` warns
+  `[trust-hardening] handoff-block-missing` for each boundary commit: specify `7a4e6d7a` and `700e6127`, clarify
+  `6d85718a`, plan `04ef9a72`, and tasks `0140eff0`.
+- **Cause**: each boundary sync appends an event to `.specrew/handoff-evidence.json` (`sync-boundary-state.ps1:2049`,
+  `Add-SpecrewHandoffEvidence`) carrying `-HandoffText`. The coordinator authors the six-section packet *after* the
+  sync, so no text is passed, and every event records `response_text: ""` and `handoff_present: false`.
+  `Test-SpecrewHandoffBlockPresent` accepts the six-section headings, but there is nothing to read.
+- **Impact**: a soft warning only. `Write-TrustHardeningWarning` counts it as soft and never sets the exit code. A
+  hard failure needs recorded packet text that fails the handoff validator, which empty text cannot produce, so
+  review-signoff and closeout do not refuse on it. The file is gitignored (`.gitignore:26`), so CI never sees it.
+  The warning repeats at every later boundary.
+- **Resolution**: reported to the maintainer at the tasks verdict (2026-11-10). No change in 205.
+- **Class closure**: NONE — it is outside 205's scope. Candidate for the sync/turn-end owner: record the packet at
+  turn end, when it exists (the turn-end script already holds the declared packet), instead of at sync time.
 
 <!--
   Every new ### DRIFT-... event includes:
