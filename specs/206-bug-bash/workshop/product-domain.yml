@@ -1,0 +1,53 @@
+schema_version: "1"
+depth: light
+depth_reason: "Narrow defect sweep in a known product: every item was diagnosed before the feature existed, and nothing changes who Specrew is for or how it is used, so alternatives, competition and business-model discovery have nothing to decide."
+context_scope: feature_standalone
+product_id: null
+product_context_ref: null
+areas:
+  users_and_stakeholders: "The maintainer as release owner; anyone running specrew start without a console (CI, host-launched start, fresh checkout); consumer projects using Copilot; anyone closing an iteration with uncommitted artifacts; feature 203 as receiver of two hand-overs."
+  pain_and_workaround: "Nightly red 94 nights without an alert; B5F-036 suites burn a full sweep limit; 35 scripts give no signal; resolver suggests Node/React presets for a PowerShell repository. Workaround today: noticing by accident and reading logs by hand."
+  mvp_and_scope: "Items 1, 2a, 2b, 4, 5 and 6a of the bug list, each fix with a failing test first and one bug per commit; nightly green, then silent unless a new failure; one-time triage of history with a closed frozen list."
+  non_goals: "Item 3's fix; item 6b's claim identity (B5F-022); feature 204's init/bootstrap scope; any change to the co-review engine or the capture stores; a per-rule validator registry (options A or C)."
+  constraints: "No writes to the real home folder (hook files hashed before and after every run); never specrew-update.ps1; feature 203's protected files untouched; .squad/active-features.yml stays uncommitted; CI markdownlint before every push and CI followed after; first push asked for; never main; no pull request without asking."
+  rollout: "Branch 206-bug-bash merges to main by a pull request only when the maintainer asks. Success shows as the nightly's first green run on main, then a notification only on a new failure. After the merge, features 203 and 205 take the fixes by merging main, and 203 removes its temporary 60-second known-red limits for the two B5F-036 suites."
+  nightly_notification_channel: "Open: options for how the notification reaches a person (for example an issue opened on the first red night and closed on the next green one, versus an email) are brought to the maintainer; none is picked silently."
+statements:
+  - text: "The nightly has been red since 2026-08-08 with no alert reaching anyone."
+    area: pain_and_workaround
+    evidence: known
+  - text: "specrew start with no console and stale session state loops forever."
+    area: users_and_stakeholders
+    evidence: known
+  - text: "Copilot consumer projects are asked to pause and confirm Specrew's own instruction refresh."
+    area: users_and_stakeholders
+    evidence: known
+  - text: "The over-claim dirty-tree check has been inert since 2026-05-16."
+    area: users_and_stakeholders
+    evidence: known
+  - text: "35 integration scripts run in no CI step, lane or release sweep."
+    area: pain_and_workaround
+    evidence: known
+  - text: "The quality resolver suggests Node/React presets for this repository because of a stray root package.json."
+    area: pain_and_workaround
+    evidence: known
+  - text: "Scope, non-goals and constraints are the maintainer's rulings of 2026-11-10."
+    area: mvp_and_scope
+    evidence: known
+  - text: "The nightly stays green once 198/011 is marked abandoned and the frozen list exists."
+    area: rollout
+    evidence: assumed
+  - text: "Features 203 and 205 take the fixes by merging main; 203 then removes its 60-second known-red limits for the two B5F-036 suites."
+    area: rollout
+    evidence: known
+  - text: "The channel by which the nightly notification reaches a person is not yet chosen."
+    area: nightly_notification_channel
+    evidence: unknown
+skipped:
+  - area: alternatives_and_competitors
+    reason: "Light depth: a defect sweep has no alternative product to beat; the current workaround is recorded under pain_and_workaround."
+  - area: outcomes_and_success_metrics
+    reason: "Light depth: success is defined by the spec's success criteria (SC-001 to SC-007)."
+follow_up_research: []
+confirmation: human-confirmed
+confirmation_scope: lens-question

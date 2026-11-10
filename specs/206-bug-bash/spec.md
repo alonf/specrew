@@ -33,6 +33,15 @@ as feature 201 did.
   this feature is therefore empty, and the specify boundary is crossed on the maintainer's verdict with this
   deviation stated, as 201 was.
 
+## Product domain (Light depth, confirmed 2026-11-10)
+
+The full record is file:///C:/Dev/specrew-206-bug-bash/specs/206-bug-bash/workshop/product-domain.md. In
+short: the maintainer and release owner, unattended `specrew start` runs, Copilot consumer projects and
+anyone closing an iteration are affected; the pain is false or missing signals (a red nightly nobody sees,
+suites that never run, checks that pass while broken). Rollout: the branch merges to main by a pull request
+only when the maintainer asks; afterwards **features 203 and 205 take the fixes by merging main, and 203
+removes its temporary 60-second known-red limits for the two B5F-036 suites.**
+
 ## Scope
 
 ### In scope
@@ -109,7 +118,8 @@ as feature 201 did.
   heuristic.
 - **FR-009**: The Nightly Truth-Check is silent when green and notifies a person only on a **new** failure:
   the first red after a green run, or a failure set that differs from the previous run's. A run that stays
-  red with the same failures sends nothing new.
+  red with the same failures sends nothing new. **How the notification reaches a person is the
+  maintainer's choice** among options brought to them (Open Decisions); none is picked silently.
 - **FR-010**: The validator's review-verdict finding names the iteration's actual status. A `retro`
   iteration is no longer told "Complete iterations require …".
 
@@ -159,5 +169,16 @@ as feature 201 did.
 
 ## Open Decisions
 
+- **The nightly notification channel (FR-009).** Options:
+  1. **A tracking issue**: the workflow opens one issue on the first red night, comments only when the
+     failure set changes, and closes it on the next green run. It reaches a person through GitHub's issue
+     notifications, needs only `issues: write` on the workflow token, and keeps the previous failure set in
+     the issue itself, so "new failure" needs no other storage.
+  2. **An email** from the workflow through an SMTP action: it lands in an inbox directly, but needs mail
+     credentials as repository secrets, a third-party action, and stored state from the previous run to tell
+     a new failure from a repeat.
+  3. **GitHub's built-in failed-run notification** (already in place in principle, to whoever last edited
+     the schedule): it fires on every red run, cannot tell new from repeated failures, and evidently reached
+     no one across 94 red nights. Recorded as the baseline, not a candidate.
 - **The 15 missing dashboards** stay on the frozen list unless the seal/digest check (FR-006) shows nothing
   covers those folders and the maintainer then chooses rendering.

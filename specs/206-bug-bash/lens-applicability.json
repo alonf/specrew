@@ -11,5 +11,21 @@
   "agenda_confirmation": "pending",
   "agenda_confirmation_scope": "lens-selection",
   "agenda_turn_receipt": "pending",
-  "workshop": {}
+  "workshop": {
+    "product-domain": {
+      "agenda": [
+        "Who is affected",
+        "What is the pain and current workaround",
+        "What is in scope and out of scope",
+        "Which constraints bind",
+        "How does it roll out"
+      ],
+      "decision": "Light depth confirmed by the maintainer: affected users, pain, scope (items 1, 2a, 2b, 4, 5, 6a), non-goals, constraints and rollout as recorded in workshop/product-domain.md; additions: nightly notification channel options to be brought (not picked silently), and after merge 203 and 205 take the fixes by merging main and 203 removes its 60-second known-red limits for the two B5F-036 suites.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "human_turn_receipt": "fa0b6d95b75e59ce61cf183afa0f0b64ee0d0b0459307e901910c1c2ddf38982"
+    }
+  }
 }
