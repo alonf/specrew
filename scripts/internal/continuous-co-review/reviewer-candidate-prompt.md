@@ -47,6 +47,9 @@ title at most __MAX_TITLE_CHARACTERS__, description at most __MAX_DESCRIPTION_CH
 at most __MAX_LOCATION_CHARACTERS__. Shorten prose instead of exceeding a budget; never truncate the JSON object.
 
 Each `severity` is one of `blocking`, `major`, `minor`, or `note`. Use unique, run-local `local_id` values.
+Every blocking or major finding states a concrete failure scenario, or it is not one: its `description`
+includes the literal clause `Failure scenario: <concrete inputs or state -> the wrong output, crash, or false state that follows>`.
+A blocking or major finding without that clause is recorded as minor. Minor findings and notes need no scenario.
 `location`, when present, must be one plain JSON string such as `path/to/file:line`; never an object,
 array, number, or boolean. Omit it when there is no grounded source location.
 A complete pass has `completion="complete"`, `verdict="pass"`, and an empty findings array. A complete

@@ -25,8 +25,8 @@
       "human_turn": "design decision: option 3",
       "turn_identity": "d63b24f3ae61b4c85944aa2336a67077c3d1d90662f19aed1bd58daef5def048",
       "turn_host": "claude",
-      "turn_observed_at": "2026-11-07T02:10:24.2686599+02:00",
-      "recorded_at": "2026-11-07T02:10:47.0766825+02:00"
+      "turn_observed_at": "2026-11-07T00:10:24.2686599+00:00",
+      "recorded_at": "2026-11-07T00:10:47.0766825+00:00"
     },
     "verdict-pairing-out-of-tail": {
       "question": "How does a verdict pair when its packet has left the transcript tail?",

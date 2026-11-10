@@ -146,20 +146,33 @@ if (-not (Test-Path -LiteralPath $featureDir -PathType Container)) {
     throw ("This feature has no directory yet, so there is nowhere to record the decision: '{0}'. Create the governed feature first." -f $featureDir)
 }
 
-$document = [ordered]@{ schema_version = '1.0'; feature_ref = (Split-Path -Leaf $FeatureRef); decisions = [ordered]@{} }
+# Feature 203 T008 step (iv) (DRIFT-041 item 3, DRIFT-045 item 3): EARLIER RECORDS KEEP THEIR BYTES. ConvertFrom-Json turns
+# an ISO date string into a local DateTime, so reading the document back and writing it again rewrote every earlier
+# record's dates in this machine's offset (B5F-029's record went from +00:00 to +02:00 on 1782a5a8). The document is read
+# as text with date parsing off, only this decision's key is set, and it is written with the serializer ConvertTo-Json
+# uses, so everything else stays as it was written. -DateKind String would do it too, but only from PowerShell 7.5.
+function ConvertFrom-SpecrewDecisionJsonText {
+    param([Parameter(Mandatory)][string]$Text)
+    $reader = [Newtonsoft.Json.JsonTextReader]::new([IO.StringReader]::new($Text))
+    $reader.DateParseHandling = [Newtonsoft.Json.DateParseHandling]::None
+    try { return , [Newtonsoft.Json.Linq.JToken]::ReadFrom($reader) } finally { $reader.Close() }
+}
+
+$documentToken = ConvertFrom-SpecrewDecisionJsonText -Text (ConvertTo-Json -InputObject ([ordered]@{ schema_version = '1.0'; feature_ref = (Split-Path -Leaf $FeatureRef); decisions = [ordered]@{} }) -Depth 4)
 if (Test-Path -LiteralPath $path -PathType Leaf) {
     $existing = Read-SpecrewDesignDecisions -ProjectRoot $root -FeatureRef $FeatureRef
     if (-not $existing.valid) {
         throw ("The recorded design decisions for this feature could not be read, so nothing was changed. Ask for them to be repaired, then record this decision again. ({0})" -f $existing.reason)
     }
-    foreach ($entry in $existing.decisions.GetEnumerator()) { $document.decisions[$entry.Key] = $entry.Value }
+    $documentToken = ConvertFrom-SpecrewDecisionJsonText -Text ([IO.File]::ReadAllText($path, [Text.UTF8Encoding]::new($false)))
 }
-$replaced = $document.decisions.Contains($Key)
-$document.decisions[$Key] = $record
+$decisionsToken = $documentToken.Item('decisions')
+$replaced = ($null -ne $decisionsToken.Item($Key))
+$decisionsToken.Item($Key) = ConvertFrom-SpecrewDecisionJsonText -Text (ConvertTo-Json -InputObject $record -Depth 12)
 
 $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
 try {
-    [System.IO.File]::WriteAllText($temp, ($document | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($temp, $documentToken.ToString([Newtonsoft.Json.Formatting]::Indented), [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::Move($temp, $path, $true)
 }
 finally {

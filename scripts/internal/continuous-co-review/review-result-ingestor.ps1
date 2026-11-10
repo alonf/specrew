@@ -149,7 +149,8 @@ function Test-ReviewFindingStatesFailureScenario {
     param([AllowNull()][AllowEmptyString()][string]$Description)
 
     if ([string]::IsNullOrWhiteSpace($Description)) { return $false }
-    $match = [regex]::Match($Description, '(?is)failure\s+scenario\s*:\s*(?<body>.+)$')
+    # Feature 203 T008 step (iv) (B5F-017): the label may carry emphasis marks (`**Failure scenario**:`); it is the same clause.
+    $match = [regex]::Match($Description, '(?is)failure\s+scenario[\s*_]*:\s*(?<body>.+)$')
     if (-not $match.Success) { return $false }
     return (([string]$match.Groups['body'].Value).Trim().Length -ge 12)
 }
