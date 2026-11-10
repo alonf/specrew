@@ -36,10 +36,10 @@
 
 ## Phase 4: Regression, CI and the proposal
 
-- [ ] T013 [assigned_to: implementer] [effort: 1] Run every existing workshop test locally (the roughly 31 files named for workshop, lens, agenda, design-analysis, product-domain or code-implementation), out of process, on a committed tree. Report every result. Classify which ones cover a touched file. Report an already-red test as a finding, and do not fix it silently (Trace: FR-021)
-- [ ] T014 [assigned_to: implementer] [effort: 0.5] Add named steps to `.github/workflows/specrew-ci.yml` for `tests/unit/lens-order-parity.tests.ps1`, `tests/integration/workshop-agenda-confirmation.tests.ps1`, and every existing workshop test from T013 that covers a touched file and passes (Trace: FR-021, SC-005)
-- [ ] T015 [P] [assigned_to: implementer] [effort: 0.5] Update `proposals/220-workshop-lens-order-and-cross-lens-consistency.md` to `status: active`, `shipped-as: feature-205`, plus the status-history line (the three iterations, the fifth order surface, option A). Update `proposals/INDEX.md`, both the table row and the summary line (Trace: FR-022)
-- [ ] T016 [assigned_to: implementer] [effort: 0.5] Pre-push gate: `validate-governance.ps1 -ProjectPath . -ChangedOnly` and markdownlint, both exit 0. Then push, and follow all three workflows to a green conclusion with no skipped gate job (Trace: SC-005)
+- [ ] T013 [US2] [assigned_to: implementer] [effort: 1] Run every existing workshop test locally (the roughly 31 files named for workshop, lens, agenda, design-analysis, product-domain or code-implementation), out of process, on a committed tree. Report every result. Classify which ones cover a touched file. Report an already-red test as a finding, and do not fix it silently (Trace: FR-021)
+- [ ] T014 [US2] [assigned_to: implementer] [effort: 0.5] Add named steps to `.github/workflows/specrew-ci.yml` for `tests/unit/lens-order-parity.tests.ps1`, `tests/integration/workshop-agenda-confirmation.tests.ps1`, and every existing workshop test from T013 that covers a touched file and passes (Trace: FR-021, SC-005)
+- [ ] T015 [P] [US2] [assigned_to: implementer] [effort: 0.5] Update `proposals/220-workshop-lens-order-and-cross-lens-consistency.md` to `status: active`, `shipped-as: feature-205`, plus the status-history line (the three iterations, the fifth order surface, option A). Update `proposals/INDEX.md`, both the table row and the summary line (Trace: FR-022)
+- [ ] T016 [US2] [assigned_to: implementer] [effort: 0.5] Pre-push gate: `validate-governance.ps1 -ProjectPath . -ChangedOnly` and markdownlint, both exit 0. Then push, and follow all three workflows to a green conclusion with no skipped gate job (Trace: SC-005)
 
 ## Dependencies
 

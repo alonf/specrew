@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 17/20 story_points
 **Started**: 2026-11-10
 **Completed**:
 
@@ -52,10 +52,10 @@
 | T010 | before-specify + catalog README lists | FR-001 | US2 | 0.5 | implementer | — | planned | — | — | — |
 | T011 | Refresh deployed copies (two deploy scripts) | FR-001, FR-019 | US2 | 0.5 | implementer | — | planned | — | — | — |
 | T012 | Parity + agenda tests green; SC-002 counts | SC-001, SC-002, SC-004 | US2 | 0.5 | implementer | — | planned | — | — | — |
-| T013 | Run all existing workshop tests; report | FR-021 | — | 1 | implementer | — | planned | — | — | — |
-| T014 | Named specrew-ci.yml steps | FR-021, SC-005 | — | 0.5 | implementer | — | planned | — | — | — |
-| T015 | Proposal 220 status + INDEX | FR-022 | — | 0.5 | implementer | — | planned | — | — | — |
-| T016 | Pre-push gate, push, CI to conclusion | SC-005 | — | 0.5 | implementer | — | planned | — | — | — |
+| T013 | Run all existing workshop tests; report | FR-021 | US2 | 1 | implementer | — | planned | — | — | — |
+| T014 | Named specrew-ci.yml steps | FR-021, SC-005 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T015 | Proposal 220 status + INDEX | FR-022 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T016 | Pre-push gate, push, CI to conclusion | SC-005 | US2 | 0.5 | implementer | — | planned | — | — | — |
 
 ## Effort Model
 
