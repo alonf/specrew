@@ -32,6 +32,10 @@ BeforeAll {
             New-Item -ItemType Directory -Path (Join-Path $root 'scripts/internal') -Force | Out-Null
             Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review') `
                 -Destination (Join-Path $root 'scripts/internal/continuous-co-review') -Recurse -Force
+            # 203 (ruling 2026-11-11, item 2b): the bundle's loader also needs agent-tasks (process-tree.ps1). Without
+            # it the loader threw part-way and the counter came from a half-loaded engine; a deployed project has both.
+            Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/agent-tasks') `
+                -Destination (Join-Path $root 'scripts/internal/agent-tasks') -Recurse -Force
         }
         & git -C $root init -q 2>&1 | Out-Null
         & git -C $root config user.email 'f@x.invalid'; & git -C $root config user.name 'F'
@@ -110,8 +114,38 @@ Describe 'W52 the coverage state answers the one question' {
     It 'rounds come from the ONE production counter when the bundle is present' {
         $f = New-CoveredProject -WithBundle
         try {
+            # 203 T008 / FR-008 (maintainer ruling 2026-11-11, item 2b): with no grant recorded, the total is the
+            # engine's floor. Read from the engine the coverage state loads (the fixture's bundle), in a child scope
+            # so its functions do not leak into this suite and change what the coverage state loads.
+            $floor = & { . (Join-Path $f.Root 'scripts/internal/continuous-co-review/_load.ps1'); [int]$script:ReviewBudgetFloor }
+            $floor | Should -BeGreaterThan 0 -Because 'the engine defines the floor'
             $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
-            $state.budget_total | Should -Be 4 -Because 'the default budget, resolved by the engine, never a parallel counter'
+            $state.budget_total | Should -Be $floor -Because 'the floor, resolved by the engine, never a parallel counter'
+            $state.rounds_used | Should -Be 1
+            $state.exhausted | Should -BeFalse
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a recorded grant of another size is the total - the counter is the production one' {
+        $f = New-CoveredProject -WithBundle
+        try {
+            # 203 (maintainer ruling 2026-11-11, item 2b): a grant of 5, written by the engine's own writer, is what
+            # the coverage state reports. A parallel counter with its own default would still say the floor.
+            $granted = 5
+            $floor = & {
+                . (Join-Path $f.Root 'scripts/internal/continuous-co-review/_load.ps1')
+                $resolution = [pscustomobject]@{
+                    budget_total = $granted; host_order = @(); host_order_stated = $false; infra_failure_cap = 2
+                    budget_source = 'plan'; ceiling = 10; plan_path = 'specs/001-x/plan.md'; plan_hash = ('a' * 64)
+                }
+                $fact = New-ReviewBudgetGrantFact -CampaignId 'cmp-fixture-i001' -Resolution $resolution -VerdictEntry 'auth-w52-grant' -ObservedAt '2026-08-23T00:00:00.0000000+00:00'
+                $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot (Join-Path $f.Root '.specrew/review/authority') -Fact $fact
+                [int]$script:ReviewBudgetFloor
+            }
+            $granted | Should -Not -Be $floor -Because 'the grant must differ from the floor, or this case proves nothing'
+            $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
+            $state.budget_total | Should -Be $granted -Because 'the recorded grant, read by the production counter'
             $state.rounds_used | Should -Be 1
             $state.exhausted | Should -BeFalse
         }
