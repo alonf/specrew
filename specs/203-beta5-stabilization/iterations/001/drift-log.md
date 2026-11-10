@@ -1703,6 +1703,26 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   is treated at the severity the reviewer reported (`demoted_from`). The crew fixes each one within the approved tasks
   and does not ask for review sign-off while any is unfixed. Recorded in the iteration's review notes as well. A
   prompt-only update of the pin before that review is under the maintainer's consideration (DRIFT-051's conditions).
+- **Prompt-only pin update (maintainer conditions 2026-11-10, as DRIFT-051's)**: side commit `f5bd5738` on local branch
+  `203-pin-reviewer-prompt-side` (parent `bd4635df`): `reviewer-candidate-prompt.md` (+3) and `review-result-ingestor.ps1`
+  (+2/-1), the B5F-017 lines only. Matching patch IDs replace byte-identical files (this branch's copies carry T008 fields
+  the pin's result contract does not know): `ec85087b55a2c795043996c83db7ece71136d79a` for both the side change and
+  `d3ab3f21`'s change to the same files (`a71035b84baef14219aeb8b35258c03de8041a26` on changed lines only). Hook loading,
+  as found: no hook loads the prompt; the co-review-navigator hook (Stop, SessionStart) dot-sources `_load.ps1`, which
+  loads `review-result-ingestor.ps1`, but no hook calls the intake (`Invoke-ReviewResultIngress`) or the changed rule,
+  which run only inside `specrew review` (the orchestrator's launch and the reconciler), and the file loads cleanly. The
+  maintainer accepted this as meeting the condition's purpose (keeping the change away from the hooks that capture
+  approvals); it is recorded as this finding, not as "no hook loads either file". The pin's prompt and intake suites
+  (12) pass on `f5bd5738` exactly as on `bd4635df`, through the sweep driver with the home redirected, real home
+  unchanged; a direct check shows the B5F-017 behaviour on the side and its absence on the pin. The pin advances only on
+  the maintainer's typed `advance the pin`; the side branch stays local until pushing it is approved.
+- **Pin advanced (2026-11-10 04:26:55 local)**: on the maintainer's typed `advance the pin`, `live-engine-pin.ps1 -Action
+  Advance -Commit f5bd5738`. `-Action Show`: usable at `f5bd5738`; the pin checkout is clean at that commit. The hooks run
+  through it: the PostToolUse hook wrote its refocus state at 04:26:59. `.claude/settings.local.json`, the eight
+  real-home hook files and the file in `~/.specrew/hook-bindings/` are unchanged by hash. Read only, the pin's code
+  resolves this project's review launch to the pin's engine (`source = pin`), whose prompt asks for the clause, and
+  refuses a launch from the project tree's copy. The navigator at Stop is checked at the next Stop. The side branch
+  `203-pin-reviewer-prompt-side` stays local.
 - **Placement (maintainer, 2026-11-10)**: T009 (the scoped fix round, FR-013) goes to iteration 002; whether a clean
   scoped round counts toward sign-off is decided at its planning (tasks.md T009). T008 is marked done when the sweep
   on `2d8839cf` and CI on its push are green.
