@@ -29512,3 +29512,50 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7f9cf310c16c67192b4d560c02f2b1c11f4f8d82
 - **Recorded At**: 2026-11-10T02:10:29Z
+
+## 2026-11-10T22:19:03Z — Constraint change detected: capacity_per_iteration
+
+- **Change Key**: constraint-46b0b7611e70230f7684
+- **Boundary Attempt**: plan
+- **Artifact**: .specrew/iteration-config.yml
+- **Previous Value**: 20
+- **Current Value**: 22
+- **Previous Auth Commit**: 7f9cf310c16c67192b4d560c02f2b1c11f4f8d82
+- **Current Auth Commit**: 435332da6c44c7a1a608a2b10b68ce36e23cf5ba
+- **Authority**: This record makes the edit visible; it does not authorize the change.
+
+## 2026-11-10T22:19:04Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 435332da6c44c7a1a608a2b10b68ce36e23cf5ba
+- **Recorded At**: 2026-11-10T22:19:03Z
+
+## 2026-11-10T23:29:40Z — Constraint change detected: capacity_per_iteration
+
+- **Change Key**: constraint-4b0a17f39ad004af00ec
+- **Boundary Attempt**: plan
+- **Artifact**: .specrew/iteration-config.yml
+- **Previous Value**: 22
+- **Current Value**: 20
+- **Previous Auth Commit**: 435332da6c44c7a1a608a2b10b68ce36e23cf5ba
+- **Current Auth Commit**: 0e4400503a219954f6bfcfb32f4ecf0a739f7ec6
+- **Authority**: This record makes the edit visible; it does not authorize the change.
+
+## 2026-11-10T23:29:40Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-11-10T23:29:40Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-11-10T23:29:41Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0e4400503a219954f6bfcfb32f4ecf0a739f7ec6
+- **Recorded At**: 2026-11-10T23:29:40Z
