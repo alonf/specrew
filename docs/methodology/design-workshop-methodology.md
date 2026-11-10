@@ -179,21 +179,21 @@ novelty). Shipped in 0.34.0.
 
 | Lens | Purpose |
 |---|---|
-| `architecture-core` | Structure, boundaries, constraints, volatility, and design method. |
-| `component-design` | Responsibilities, coupling, cohesion, dependency direction, extension seams, and testability. |
 | `requirements-nfr` | Design-driving requirements, constraints, quality attributes, and measurable success criteria. |
 | `ui-ux` | User journeys, screens, prompt flows, state ownership, accessibility, layout, and recovery paths. |
-| `data-storage` | Persistence, ownership, consistency, migrations, lifecycle, backup, restore, and retention. |
 | `security-compliance` | Identity, authorization, secrets, sensitive data, trust boundaries, audit, and compliance. |
+| `data-storage` | Persistence, ownership, consistency, migrations, lifecycle, backup, restore, and retention. |
 | `integration-api` | Service boundaries, contracts, protocols, versioning, idempotency, retries, and compatibility. |
 | `devops-operations` | Hosting, deployment, CI/CD, configuration, secrets, rollout, rollback, and operational roles. |
+| `architecture-core` | Structure, boundaries, constraints, volatility, and design method. |
+| `component-design` | Responsibilities, coupling, cohesion, dependency direction, extension seams, and testability. |
 | `observability-resilience` | Logs, metrics, traces, health, failure modes, retries, recovery, and diagnosability. |
 
 Among the technical lenses, these are normally always-on:
 
+- `requirements-nfr`
 - `architecture-core`
 - `component-design`
-- `requirements-nfr`
 
 The remaining technical lenses are selected when the feature touches their area.
 
@@ -204,6 +204,13 @@ Shipped in 0.35.0.
 | Lens | Purpose |
 |---|---|
 | `code-implementation` | How the code is written — language version, constructs, DI / design-pattern posture, file and function size, comment policy, per-stack conventions, refactor-prevention posture, and dependency selection — captured as binding constraints and fed to the implement-time `specrew-code-rules` guidance skill. Auto-on for any feature that writes code (explicit skip for doc-only / config-only slices). |
+
+**The order (one pass, problem space first).** The workshop runs its lenses in one pass, in the order of the
+lens catalog's `index.yml`, which is the only definition of that order. The bands above list the lenses in that
+order: the problem-space lenses first (product-domain, then requirements-nfr), then the lenses whose questions span
+both spaces, then the solution-space lenses, with code-implementation last. Each lens file tags its questions under
+`### Problem questions` and `### Solution questions`, and inside every lens the problem questions are asked first.
+If any list disagrees with `index.yml`, `index.yml` wins; a confirmed agenda keeps the order it was confirmed in.
 
 ## Lens Catalog Evolution
 
@@ -252,10 +259,10 @@ Example:
 ```text
 Workshop agenda — 5 lenses
 
-architecture-core (full) — decide the decomposition style and major runtime boundaries.
-component-design (full) — decide component responsibilities and dependency direction.
 requirements-nfr (medium) — decide which qualities drive this slice and how to measure them.
 security-compliance (light) — confirm no new identity, secret, or sensitive-data surface.
+architecture-core (full) — decide the decomposition style and major runtime boundaries.
+component-design (full) — decide component responsibilities and dependency direction.
 observability-resilience (medium) — decide failure handling and diagnostic evidence.
 
 Skipped:
@@ -304,14 +311,14 @@ Each lens has a native visual vocabulary:
 | Lens | Typical visual |
 |---|---|
 | `product-domain` | Persona / journey sketch, problem-framing note, or MVP-scope table. |
-| `architecture-core` | Component, service, or flow diagram. |
-| `component-design` | Component map with dependency direction. |
 | `requirements-nfr` | Quality-attribute priority table or comparison matrix. |
 | `ui-ux` | Layout, wireframe, navigation flow, or state sketch. |
 | `security-compliance` | Trust-boundary and attack-surface diagram. |
 | `data-storage` | ERD or NoSQL document relationship sketch. |
 | `integration-api` | Contract sequence or service interaction diagram. |
 | `devops-operations` | Deployment topology and promotion path. |
+| `architecture-core` | Component, service, or flow diagram. |
+| `component-design` | Component map with dependency direction. |
 | `observability-resilience` | Request trace or failure-mode flow. |
 | `code-implementation` | Rule-group checklist or per-stack convention table (text-first). |
 

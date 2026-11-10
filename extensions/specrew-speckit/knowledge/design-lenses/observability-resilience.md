@@ -21,6 +21,12 @@ alerts, and error-handling decisions.
 
 ## Design Decision Points
 
+### Problem questions
+
+No problem questions: the problem facts this lens needs come from product-domain, requirements-nfr and the problem sections of the other lenses; this lens chooses the solution.
+
+### Solution questions
+
 - What must be logged, measured, traced, or reported to understand behavior?
 - What correlation/context should flow through logs or events?
 - What health checks, readiness checks, or validation commands are needed?

@@ -22,14 +22,19 @@ accessibility before planning implementation tasks.
 
 ## Design Decision Points
 
+### Problem questions
+
 - What source of UX truth exists: Figma, screenshots, design system, existing
   product patterns, prototype, or text-only intent?
 - What are the primary user journeys and interruption/recovery paths?
+- What accessibility, localization, RTL, theming, or regulatory constraints
+  apply?
+
+### Solution questions
+
 - Should data operations be client-side, server-side, streamed, or event-driven?
 - How are loading, empty, error, disabled, offline, and conflict states shown?
 - Which UI state belongs on the client, server, URL, cache, or durable store?
-- What accessibility, localization, RTL, theming, or regulatory constraints
-  apply?
 
 ## Workshop Conduct
 

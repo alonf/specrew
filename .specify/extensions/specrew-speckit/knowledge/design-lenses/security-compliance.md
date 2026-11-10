@@ -21,12 +21,17 @@ after implementation.
 
 ## Design Decision Points
 
+### Problem questions
+
+- What data is sensitive?
+- What actions need audit records?
+
+### Solution questions
+
 - Who authenticates, and where is identity established?
 - What authorization model applies: roles, claims, scopes, ownership,
   tenant-boundary, policy, or local trust?
-- What data is sensitive, and how is it protected in transit, at rest, logs,
-  telemetry, backups, and exports?
-- What actions need audit records?
+- How is sensitive data protected in transit, at rest, logs, telemetry, backups, and exports?
 - What threat surfaces are introduced by scripts, plugins, APIs, file writes,
   shell commands, generated code, or third-party dependencies?
 

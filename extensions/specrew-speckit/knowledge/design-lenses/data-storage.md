@@ -20,13 +20,19 @@ before the plan assumes a database or silently avoids one.
 
 ## Design Decision Points
 
+### Problem questions
+
 - Is persistent storage required, or is derived/transient state enough?
 - What owns each data type?
+- How is retention handled?
+
+### Solution questions
+
 - Which storage model fits: file, relational database, document store, key-value
   store, cache, blob, search index, queue, event stream, or hybrid?
 - What consistency model is required: strong, eventual, transactional, or
   compensating?
-- How are schema changes, migrations, backup, restore, and retention handled?
+- How are schema changes, migrations, backup, and restore handled?
 - How does the design avoid services talking directly to another service's
   private database?
 

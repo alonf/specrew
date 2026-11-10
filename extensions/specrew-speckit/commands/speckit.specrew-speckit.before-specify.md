@@ -8,7 +8,7 @@ You are producing a feature specification on a **Specrew-governed project**. Spe
 
 ## Required
 
-1. **Invoke the `specrew-design-workshop` skill** and work the applicable design lenses WITH the human — product-domain first, then architecture-core, component-design, data-storage, integration-api, observability-resilience, devops-operations, requirements-nfr, ui-ux, and code-implementation as applicable. Work **one lens at a time**: present each lens, get the human's decide / delegate / skip, and record the confirmation. Never fabricate a lens agreement — the SC-026 provenance gate validates that each lens record reflects a real human answer.
+1. **Invoke the `specrew-design-workshop` skill** and work the applicable design lenses WITH the human — in `index.yml` order as applicable: product-domain first, then requirements-nfr, ui-ux, security-compliance, data-storage, integration-api, devops-operations, architecture-core, component-design, observability-resilience, and code-implementation last. Work **one lens at a time**: present each lens, get the human's decide / delegate / skip, and record the confirmation. Never fabricate a lens agreement — the SC-026 provenance gate validates that each lens record reflects a real human answer.
 2. Only **after** the workshop is complete and the lens records exist do you write `spec.md`, informed by the confirmed lens decisions (lens-informed, not lens-decorated).
 3. Then **stop at the specify boundary** and render the human re-entry packet for the verdict. Do not free-run into clarify.
 

@@ -183,6 +183,21 @@ if ($missing.Count -gt 0) {
     throw ('Every technical lens must be selected or visibly skipped with a reason. Missing: {0}.' -f ($missing -join ', '))
 }
 
+# Feature 205 (FR-016): index.yml is the one lens order. A NEW agenda must list its selected lenses in that relative
+# order; it is refused, never reordered. Only an agenda awaiting confirmation reaches this point, so an agenda
+# confirmed before this check existed is never re-checked (FR-013).
+$outOfOrder = @(for ($i = 1; $i -lt $SelectedLens.Count; $i++) {
+        if ([array]::IndexOf($catalog, [string]$SelectedLens[$i]) -lt [array]::IndexOf($catalog, [string]$SelectedLens[$i - 1])) {
+            '{0} before {1}' -f $SelectedLens[$i - 1], $SelectedLens[$i]
+        }
+    })
+if ($outOfOrder.Count -gt 0) {
+    $catalogSelectedOrder = @($catalog | Where-Object { $selectedSet.Contains($_) }) -join ', '
+    throw (New-SpecrewWorkshopAgendaRefusal `
+            -Summary ('The selected lenses are not in index.yml order ({0}). The index.yml order for this selection is: {1}.' -f ($outOfOrder -join '; '), $catalogSelectedOrder) `
+            -Action 'List the selected lenses in index.yml order and render the agenda again with -RenderOnly; nothing was written.')
+}
+
 $canonicalAgendaText = Get-CanonicalWorkshopAgendaText -Agenda $agenda -Skipped $skipped
 $agendaBinding = ConvertTo-SpecrewWorkshopAgendaBinding -Agenda $agenda -Skipped $skipped
 $agendaDigest = Get-SpecrewWorkshopAgendaDigest -Binding $agendaBinding

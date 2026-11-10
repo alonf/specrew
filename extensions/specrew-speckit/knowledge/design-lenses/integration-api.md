@@ -19,9 +19,15 @@ message semantics explicit before implementation couples systems accidentally.
 
 ## Design Decision Points
 
+### Problem questions
+
+- What owns the contract?
+
+### Solution questions
+
 - What is the integration style: REST, GraphQL, gRPC, OData, RPC, events,
   pub/sub, queue, webhook, file contract, SDK, or direct library call?
-- What owns the contract and how is it versioned?
+- How is the contract versioned?
 - Are operations synchronous, asynchronous, streaming, or eventually consistent?
 - Which requests are safe, idempotent, cacheable, or replayable?
 - How are authentication, authorization, throttling, and API management handled?

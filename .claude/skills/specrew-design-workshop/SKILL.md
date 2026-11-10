@@ -1,6 +1,6 @@
 ---
 name: "specrew-design-workshop"
-description: "Run Specrew's per-lens design workshop and collaborative design-analysis. Use whenever you work the design lenses for a feature: at specify/intake (the lens workshop) and at the design-analysis stop (co-design the architecture), and RE-INVOKE at the start of EACH new lens (architecture, data, ui-ux, security, integration, devops, requirements/NFR, observability, component). Triggers: design, design lens, lens workshop, design-analysis, architecture, trade-offs, co-design, explore options, decompose, or moving from one lens to the next. Tells you to facilitate each lens as a discussion, surface diagrams the human can actually SEE (console ASCII inline; mermaid/html to a file with a clickable file:/// link), co-design components/responsibilities/flows WITH the human instead of handing over finished options, capture the agreements, and which per-lens md to load."
+description: "Run Specrew's per-lens design workshop and collaborative design-analysis. Use whenever you work the design lenses for a feature: at specify/intake (the lens workshop) and at the design-analysis stop (co-design the architecture), and RE-INVOKE at the start of EACH new lens (requirements/NFR, ui-ux, security, data, integration, devops, architecture, component, observability). Triggers: design, design lens, lens workshop, design-analysis, architecture, trade-offs, co-design, explore options, decompose, or moving from one lens to the next. Tells you to facilitate each lens as a discussion, surface diagrams the human can actually SEE (console ASCII inline; mermaid/html to a file with a clickable file:/// link), co-design components/responsibilities/flows WITH the human instead of handing over finished options, capture the agreements, and which per-lens md to load."
 disallowed-tools: AskUserQuestion
 ---
 
@@ -20,11 +20,17 @@ guarantee a fresh reload per turn, **re-invoke this skill (or re-read it) at the
 ## The Big Picture (read this first, every time)
 
 You are facilitating a design conversation with a human, **one lens at a time**. The lenses live in
-`extensions/specrew-speckit/knowledge/design-lenses/` (deployed under the project's design-lens catalog):
-`architecture-core`, `component-design`, `requirements-nfr`, `ui-ux`, `data-storage`, `security-compliance`,
-`integration-api`, `devops-operations`, `observability-resilience`, `code-implementation`. For each lens you work:
+`extensions/specrew-speckit/knowledge/design-lenses/` (deployed under the project's design-lens catalog), and that
+catalog's `index.yml` is the one definition of their order: `product-domain`, `requirements-nfr`, `ui-ux`,
+`security-compliance`, `data-storage`, `integration-api`, `devops-operations`, `architecture-core`,
+`component-design`, `observability-resilience`, `code-implementation` - problem space first, then the lenses whose
+questions span both spaces, then the solution space. Agendas list their lenses in this order.
 
-1. **Load that lens's md** (`design-lenses/<lens-id>.md`) for its `## Design Decision Points` and
+**If any list disagrees with index.yml, index.yml wins; a confirmed agenda keeps the order it was confirmed in.**
+For each lens you work:
+
+1. **Load that lens's md** (`design-lenses/<lens-id>.md`) for its `## Design Decision Points` (tagged
+   `### Problem questions` and `### Solution questions`) and
    `## Workshop Conduct` — that is the lens's focused agenda. Do not improvise it from memory.
 2. **Facilitate** the discussion for that lens (the method below).
 3. **Record** the decisions + agreement.
@@ -259,6 +265,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    lenses" never chooses the reviewer. The code-implementation lens then records the host the human named, or the
    default they confirmed, without asking again.
 3. **Per-lens facilitated discussion — open with a presentation + an OPEN question, never a menu first (A4/FR-025, A8/FR-041b).**
+   **Problem questions first.** Inside every lens, raise its `### Problem questions` before its
+   `### Solution questions`, so the facts that drive a choice are on the table before the choice is asked.
    The **first turn of every lens** MUST be you *presenting* the lens — its decision points, and as it develops
    its diagram / component map — followed by an **open, free-text question** ("how should we approach this?",
    "what are your constraints?"). Do **NOT** open a lens with an `AskUserQuestion` / structured menu: that is the
@@ -297,7 +305,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    human-confirmed binding. If the human intentionally changes a binding, reconcile every affected lens record
    to the same value before moving on; never leave two durable answers for one architectural fact.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
-   A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
+   A lens with several decision points (security-compliance, architecture-core, component-design) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five
    subjects — and a numbered list of subjects reads like pickable options when it is not. So on a dense lens
    (**three or more** decision points) your closing move **MUST** offer the human a **pacing choice** — *answer it

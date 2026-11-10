@@ -36,6 +36,8 @@ the technical lenses is untouched; this phase precedes it.
 
 Capture these product/problem areas at the selected depth:
 
+### Problem questions
+
 1. **Users, customers, and stakeholders** — separate **user**, **customer/buyer**,
    **operator**, and **stakeholder** when they differ; include who is harmed by bad output,
    downtime, or confusing behavior.
@@ -57,6 +59,10 @@ Capture these product/problem areas at the selected depth:
    current workaround or an existing enterprise platform, not a market rival.
 8. **Adoption, rollout, and change impact** — pilot/beta/rollout, migration, training/docs,
    backwards compatibility, support handoff, adoption risk and incentives.
+
+### Solution questions
+
+No solution questions: product-domain is pre-technical by design; solution choices belong to the technical lenses.
 
 ## Depth Model
 
@@ -121,8 +127,8 @@ depth**.
 - **Keep technical decisions in their technical lenses.** Product-domain may ask whether a
   technology or platform is already externally fixed as a binding constraint. It must not offer
   runtime/stack choices, output-format choices, timeout/reachability semantics, concurrency, or
-  dependency menus. Those decisions belong to code-implementation, ui-ux, requirements-nfr,
-  architecture-core, or integration-api, each with its own lens turn and typed receipt. One
+  dependency menus. Those decisions belong to requirements-nfr, ui-ux, integration-api,
+  architecture-core, or code-implementation, each with its own lens turn and typed receipt. One
   product-domain reply never authorizes decisions harvested for another lens.
 - **Reframe a solution-first request into the problem.** When the human asks to "build X",
   surface the problem, user, pain, MVP, and constraints before proceeding to design. If the

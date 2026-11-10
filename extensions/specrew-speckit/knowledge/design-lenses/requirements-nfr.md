@@ -22,11 +22,18 @@ availability, maintainability, or compliance should shape the architecture.
 
 ## Design Decision Points
 
+### Problem questions
+
 - Which NFRs are design drivers for this slice?
 - Which constraints are mandatory rather than preferences?
 - Which requirements need a measurable threshold?
 - Which requirements are unknown enough to require clarification?
 - Which acceptance criteria prove the quality, not only the happy path?
+- What is deliberately out of scope for this iteration?
+
+### Solution questions
+
+No solution questions: this lens records the drivers and constraints the solution lenses must meet.
 
 ## Workshop Conduct
 

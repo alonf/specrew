@@ -47,7 +47,7 @@ Actively look for evidence that the report could be false. Challenge pass claims
 
 ## Per-Lens Workshop Validation
 
-Validate the change against each applicable design lens represented in the supplied context: architecture, component design, requirements/NFR, data-storage, security-compliance, integration/API, devops/operations, observability/resilience, and code-implementation. For every blocking finding, name the lens or design source that the change violates. UI/UX is not applicable unless the request explicitly supplies UI scope.
+Validate the change against each applicable design lens represented in the supplied context: requirements/NFR, security-compliance, data-storage, integration/API, devops/operations, architecture, component design, observability/resilience, and code-implementation. For every blocking finding, name the lens or design source that the change violates. UI/UX is not applicable unless the request explicitly supplies UI scope.
 
 ## Visibility Policy
 

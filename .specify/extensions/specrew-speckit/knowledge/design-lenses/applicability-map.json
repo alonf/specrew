@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "description": "Specrew design-analysis lens applicability map. Decoupled sibling to index.yml (Feature 141 Iteration 4 / FR-025); index.yml stays pure. Maps fixed questionnaire answers to lenses; selection is deterministic and LLM/network-free. Foundational lenses are always-on; specialized lenses are gated by their question answer.",
   "always_on": [
+    "requirements-nfr",
     "architecture-core",
-    "component-design",
-    "requirements-nfr"
+    "component-design"
   ],
   "questions": [
     { "id": "ui",          "prompt": "Does the feature have a user-facing UI?",                              "gates": ["ui-ux"] },

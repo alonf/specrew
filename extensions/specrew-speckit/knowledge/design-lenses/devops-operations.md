@@ -20,16 +20,21 @@ and operations choices as architecture, not afterthoughts.
 
 ## Design Decision Points
 
+### Problem questions
+
+- Which environments must be equivalent, and where may they differ?
+- What users, roles, service identities, and permissions are needed?
+
+### Solution questions
+
 - What is the hosting model: local tool, web server, VM, container,
   orchestrator, serverless function, serverless container, hybrid, or embedded?
 - What infrastructure is code-owned, manually configured, or external?
-- Which environments must be equivalent, and where may they differ?
 - How are secrets, configuration hierarchy, and dynamic configuration handled?
 - What CI/CD stages, gates, rollout strategy, and rollback path are required?
 - **Which CI lane belongs to THIS project's forge?** (FR-024) Propose the CI lane for the project's own
   forge — a `.gitlab-ci.yml` on GitLab, a GitHub Actions workflow on GitHub, an Azure Pipelines file on
   Azure DevOps, and so on. Never default a non-GitHub project to GitHub Actions.
-- What users, roles, service identities, and permissions are needed?
 
 ## Workshop Conduct
 

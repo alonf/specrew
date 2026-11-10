@@ -31,6 +31,12 @@ explicit skip for doc-only / config-only slices) — people do not opt into code
 
 Surfaced via the **grouping model** (see below); the catalog holds the full rule text + ids.
 
+### Problem questions
+
+No problem questions: the problem facts this lens needs come from product-domain, requirements-nfr and the problem sections of the other lenses; this lens chooses the solution.
+
+### Solution questions
+
 - **Source of code-rules truth** — does the human have an existing coding guideline OR one or more
   example projects (GitHub / local / other) to emulate for style, constructs, and patterns? (Ingest by
   assisted mapping; otherwise use the Specrew defaults.)

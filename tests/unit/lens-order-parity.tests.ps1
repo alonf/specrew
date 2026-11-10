@@ -281,9 +281,9 @@ function Get-MarkdownBody {
 }
 
 function Get-CopyMap {
-    param([string]$Root, [string[]]$LensFiles)
+    param([string[]]$LensFiles)
     $map = [Collections.Generic.List[object]]::new()
-    $catalogFiles = @('index.yml', 'README.md') + $LensFiles
+    $catalogFiles = @('index.yml', 'README.md', 'applicability-map.json', 'diagram-vocabulary.json') + $LensFiles
     foreach ($file in $catalogFiles) {
         $map.Add(@{ Source = "$($script:LensCatalogRelative)/$file"; Copy = ".specify/$($script:LensCatalogRelative)/$file" })
     }
@@ -420,7 +420,7 @@ function Invoke-LensOrderParity {
     $all.AddRange([object[]](Test-Extractor -Root $Root -Catalog $catalog -ExpectedCounts $ExpectedCounts))
     $copyCount = 0
     if (-not $SkipCopies) {
-        $copyMap = Get-CopyMap -Root $Root -LensFiles @($catalog | ForEach-Object { [string]$_.file })
+        $copyMap = Get-CopyMap -LensFiles @($catalog | ForEach-Object { [string]$_.file })
         $copyCount = @($copyMap | Where-Object { Test-Path -LiteralPath (Join-Path $Root $_.Copy) }).Count
         $all.AddRange([object[]](Test-DeployedCopies -Root $Root -CopyMap $copyMap))
         $all.AddRange([object[]](Test-SkillSentences -Root $Root -Paths (@('extensions/specrew-speckit/squad-templates/skills/design-workshop.md') + $script:SkillCopies)))
