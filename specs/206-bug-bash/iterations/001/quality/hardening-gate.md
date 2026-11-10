@@ -6,7 +6,7 @@
 **Iteration Ref**: `specs/206-bug-bash/iterations/001`
 **Requested Review Class**: `strongest-available`
 **Effective Review Class**: `(pending hardening review)`
-**Overall Verdict**: `blocked`
+**Overall Verdict**: `ready`
 **Approval Ref**: `—`
 **Reviewed By**: Reviewer (pending)
 **Reviewed At**: 2026-11-10T02:46:53Z
@@ -29,11 +29,11 @@
 
 | Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list concrete controls: input validation, allowlists, no eval/innerHTML on user data, no persistence APIs unless required, etc.>` | `true` | `<describe the trust boundary, privilege model, and sensitive flows in this iteration>` | `—` |
-| `error-handling-expectations` | `robustness` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list failure modes and the single transition path that handles them, plus positive + negative test coverage you will assert>` | `true` | `<describe expected failure semantics, incomplete-state handling, and recovery preservation rules>` | `—` |
-| `retry-idempotency-requirements` | `resilience` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | `<flip to`addressed`and fill in if this iteration has retries, idempotency keys, transactional state, or shared resources. Otherwise record the rationale for why those primitives have no surface here.>` | `—` |
-| `test-integrity-targets` | `verification` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list the FR → named-test mapping, the negative-path requirements, and which evidence artifacts will record empirical results>` | `true` | `<describe coverage strategy: positive + negative per FR; smoke-only is disallowed for failure-mode FRs>` | `—` |
-| `operational-resilience-concerns` | `operability` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | `<flip to`addressed`and fill in if this iteration ships server, SLO, telemetry pipeline, oncall surface, or operational dependencies. Otherwise record the rationale for why those primitives have no surface here.>` | `—` |
+| `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `tracking-issue text limited to iteration ids, rule names, severities, run id and commit, asserted by test (T012); issues: write granted to the notifier job only, workflow default contents: read; home hook files hashed before and after every test run (T018); no file under scripts/internal/continuous-co-review or scripts/internal/bootstrap touched (T018 diff check)` | `true` | `the one new outward surface is a GitHub issue written by CI: public text that must carry no local paths, user or machine names; the other trust boundary is the developer's real home folder, which tests must never write` | `—` |
+| `error-handling-expectations` | `robustness` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `no-console stale state returns a plain refusal and a non-zero exit, never a prompt (T001); an interactive console gets at most three invalid answers; a missing or unbalanced specrew-managed marker makes the classifier compare the whole file (T003); the notifier fails the job, not silently, when gh fails (T012)` | `true` | `each failure is resolved toward the safe side: refuse rather than loop, pause rather than miss a user change, report rather than swallow a notifier error` | `—` |
+| `retry-idempotency-requirements` | `resilience` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `the notifier acts once per failure-set change: same fingerprint means no call, asserted with recorded gh calls (T012); the frozen list is applied once and guarded (T008)` | `true` | `the nightly runs every day; the tracking issue must stay quiet on a repeated failure set and act exactly once when it changes or turns green` | `—` |
+| `test-integrity-targets` | `verification` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `FR to failing-test mapping in plan.md (every fix RED first, one bug per commit); negative paths per FR listed there; the census guard proves itself with a probe script of any name (SC-004); the frozen guard fails on an added key (SC-005); evidence in iterations/001/quality/quality-evidence.md` | `true` | `bug-bash conduct: each defect is first reproduced by a failing test; smoke-only evidence is not accepted for the refusal, marker and notifier paths` | `—` |
+| `operational-resilience-concerns` | `operability` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `the nightly gains a person-facing signal (tracking issue opened on the first red night, commented on change, closed on green); the local CI-mode replay is run before push (T010)` | `true` | `the nightly was red for 94 nights unseen; making that signal reach a person is the operational fix of this iteration` | `—` |
 
 ## Lens Activation (Planning Baseline)
 
