@@ -1145,7 +1145,8 @@
   Now T004 and T005 are `done` in the plan table, the writer marks T001 to T005 complete (its `completed_at` is the
   time it was called, not when each task finished; the commits carry that), and `tasks.md` ticks the five.
 - **Requirement**: the maintainer's real-home instruction; FR-013 (status for review); B5F-001.
-- **Class closure**: (1), (2) and (4) CLOSED; (3) OPEN, carried by T008.
+- **Class closure**: (1), (2) and (4) CLOSED; (3) CLOSED by T008 step (iv) (`d3ab3f21`): earlier decision records keep their
+  bytes, and B5F-029's record is restored to the UTC form its writer wrote.
 
 ### DRIFT-046 — T006 built: the not-recorded report, the visible line, and the logged items (implementation record)
 
@@ -1687,6 +1688,14 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   pin's engine for unfinished work. T014's check after the pin advance should confirm the stop no longer appears.
 - **Class closure**: OPEN; steps (i) and (ii) built, step (iii) partly built (above). Next: the (b) and (c) entry points,
   the suite migration, then step (iv).
+
+- **Built (2026-11-10), step (iv)** (red `421bee8d`, 4 of 4; built `d3ab3f21`): B5F-017 severity kept (FR-005, before T014): every
+  campaign review is sent `reviewer-candidate-prompt.md`, which never asked for the literal `Failure scenario:` clause the
+  ingest requires; the prompt now asks each blocking or major finding for it, and the ingest also reads the label with
+  emphasis marks. B5F-029 findings 2 and 3: closed by removal in `53bffa4b` (the round-approval slot and the withdrawal
+  writer are gone). Dates written once with their offset: `record-design-decision` no longer re-serializes earlier
+  records (DRIFT-041 item 3, DRIFT-045 item 3); `withdrew_observed_at` went with the withdrawal writer. T008's steps (i)
+  to (iv) are built.
 
 ### DRIFT-053 — CI was red on this branch for 8 days and 40 pushes, and nothing in the crew's routine looked (process gap; proposal, maintainer decision pending)
 
