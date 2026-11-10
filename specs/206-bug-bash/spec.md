@@ -103,8 +103,8 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
   - 198/011 and 197/006: marked abandoned. 174/007 stays abandoned.
   - 048/001, 197/001, 198/008: frozen list, each with a one-line true reason.
   - The 15 missing dashboards (141/006-008, 174/006 and 008-011, 182/002-004, 197/003-005, 198/003): frozen
-    list, reason "closed before dashboards were rendered automatically". They may be rendered instead only
-    after it is shown to the maintainer that no evidence digest or seal covers those iteration folders.
+    list, reason "closed before dashboards were rendered automatically". They are not rendered (see
+    Clarifications).
 - **FR-007**: The frozen legacy list is closed when the triage is applied. A test fails if an entry is
   added to it afterwards.
 - **FR-008**: A validator rule applies only to iterations closed after the rule shipped; history is not
@@ -175,7 +175,21 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
   React preset, and the moved stack-detection assertion passes on its fixture.
 - **SC-007**: The home hook-file hashes are identical before and after every test run in this feature.
 
-## Open Decisions
+## Clarifications
 
-- **The 15 missing dashboards** stay on the frozen list unless the seal/digest check (FR-006) shows nothing
-  covers those folders and the maintainer then chooses rendering.
+### Session 2026-11-10 (narrow clarify, by the maintainer's ruling at the specify verdict)
+
+Clarify was held until Specrew CI, Test and Cross-Platform Validation were green on `1aebddc3` with no job
+skipped (they were), and was scoped to the dashboard seal check. Every other question was settled by the
+maintainer's rulings already written into the requirements above.
+
+- Q: Does any evidence digest or seal cover the 15 iteration folders that lack `dashboard.md`?
+  A: No. The repository holds six iteration seals (199/001-003, 202/001-003), none for these folders; the
+  feature closeout records and the review evidence under `.specrew/review/` hash none of them; boundary
+  verdicts bind to commits and trees in git history, which a new file would not change.
+- Q: Render the 15 dashboards, or keep them on the frozen list?
+  A: Frozen list, reason "closed before dashboards were rendered automatically". Not rendered: a dashboard
+  generated today would carry today's date on a record that closed months ago. (Maintainer, 2026-11-10.)
+- Settled at the specify verdict (recorded in FR-009 and FR-012): the nightly notifies through a tracking
+  issue; a red script among the 35 is fixed here or brought to the maintainer, never excluded without a
+  ruling; each script's duration is reported before anything is registered.
