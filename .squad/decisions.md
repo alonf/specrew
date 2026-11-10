@@ -29503,3 +29503,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 1aebddc38d792217e1a3c0c06bfe4093d7333ae1
 - **Recorded At**: 2026-11-10T01:36:40Z
+
+## 2026-11-10T02:10:31Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7f9cf310c16c67192b4d560c02f2b1c11f4f8d82
+- **Recorded At**: 2026-11-10T02:10:29Z
