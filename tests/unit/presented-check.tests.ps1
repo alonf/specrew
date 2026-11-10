@@ -16,8 +16,17 @@
 #   5. A dropped question line with no crossing pending: named, with no demand for an approval line or marker.
 #   6. The dials line: supplied once at the first prompt, marked as system output; a reply without it is not
 #      blocked (0 human-visible cycles, B4F-106).
+#   12. Feature 203 T011 (FR-046): the decision parts come from pending-verdict-stop.md, not the draft - options
+#       reworded within their starts pass; an option the draft also lacks blocks; the approval phrase inside a
+#       sentence is not the approval line.
+#   13. The record fails closed: missing, unreadable, without its approval line or marker, or naming another crossing,
+#       the Stop blocks and says which - also for a turn that declares itself conversational.
+#   14. An approval line naming another boundary blocks (markup stripped, anchored at the line start); the same
+#       phrase inside a sentence does not.
+#   15. One source for the four response lines: turn-end-store.ps1's and the gate-stop skill's are equal.
 #
 # RED: run with SPECREW_T007_SCRIPTS_ROOT pointing at the pre-T007 scripts; cases 2, 3 and 6 block there.
+# Cases 12 to 15 were written before their fix (203 T011).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -37,7 +46,8 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
 function New-Project {
-    param([switch]$PendingCrossing)
+    # -Record (203 T011): which pending-verdict-stop.md the fixture writes beside a pending crossing.
+    param([switch]$PendingCrossing, [ValidateSet('good', 'missing', 'unreadable', 'no-approval', 'no-marker', 'other-crossing')][string]$Record = 'good')
     $root = [System.IO.Path]::GetFullPath((Join-Path ([System.IO.Path]::GetTempPath()) ("t007-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 10))))
     $feature = Join-Path $root 'specs/001-feat'
     $iter = Join-Path $feature 'iterations/001'
@@ -68,7 +78,22 @@ function New-Project {
         $st = Get-SpecrewBoundaryEnforcementState -ProjectRoot $root
         $upd = [ordered]@{ enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = [string]$scope['to_boundary']; pending_crossing = $scope; verdict_history = @(); correction_history = @(); bypass_history = @() }
         Set-SpecrewBoundaryEnforcementState -ProjectRoot $root -BoundaryEnforcement $upd -Context $st.Context | Out-Null
-        [System.IO.File]::WriteAllText((Join-Path $root '.specrew/runtime/pending-verdict-stop.md'), (@('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: tasks -> before-implement', 'Human approval phrase: approved for before-implement', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') -join "`n"), [System.Text.UTF8Encoding]::new($false))
+        $recordLines = switch ($Record) {
+            'no-approval' { @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: tasks -> before-implement', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') }
+            'no-marker' { @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: tasks -> before-implement', 'Human approval phrase: approved for before-implement') }
+            'other-crossing' { @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: clarify -> plan', 'Human approval phrase: approved for plan', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan -->') }
+            default { @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: tasks -> before-implement', 'Human approval phrase: approved for before-implement', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') }
+        }
+        $recordPath = Join-Path $root '.specrew/runtime/pending-verdict-stop.md'
+        if ($Record -eq 'unreadable') {
+            # Not UTF-8: 0xC3 opens a two-byte sequence that 0x28 cannot continue.
+            $bytes = [System.Collections.Generic.List[byte]]::new([System.Text.Encoding]::UTF8.GetBytes(($recordLines -join "`n")))
+            $bytes.InsertRange(2, [byte[]]@(0xC3, 0x28))
+            [System.IO.File]::WriteAllBytes($recordPath, $bytes.ToArray())
+        }
+        elseif ($Record -ne 'missing') {
+            [System.IO.File]::WriteAllText($recordPath, ($recordLines -join "`n"), [System.Text.UTF8Encoding]::new($false))
+        }
     }
     return [pscustomobject]@{ Root = $root; Spec = (Join-Path $feature 'spec.md'); Iter = $iter }
 }
@@ -341,6 +366,99 @@ try {
     $d11b = "## Discussion Prompts`n`n1. Should the migration run before deployment?`n`n## What I Need From You`n`n  approved for review-signoff"
     $r11b = "## Discussion Prompts`n`n1. Does the migration need to run before deployment?`n`n## What I Need From You`n`n  approved for review-signoff"
     Assert-True (@(Get-SpecrewTurnMeaningLinesMissing -Reply $r11b -MeaningLines @(Get-SpecrewTurnMeaningLines -Message $d11b)).Count -eq 0) 'a rewording that keeps the order counts as present'
+
+    # ===============================================================================================
+    # Feature 203 T011 (FR-046; maintainer ruling 2026-11-10). The Stop checks a boundary reply's decision parts from
+    # the pending-verdict record, not from the declared draft: the approval line and the marker as the record gives
+    # them, and the four responses by their fixed starts. Three additions: the record fails closed; a foreign approval
+    # line blocks; the four lines have one source, held equal to the gate-stop skill.
+    $optionWords = @('  approved for before-implement - <your instructions>', '  changes needed: <what to change>', '  discuss prompt 1')
+
+    Write-Host 'Case 12a: options reworded within their starts pass'
+    $p12 = New-Project -PendingCrossing; $projects.Add($p12)
+    $t12a = Start-Turn -Project $p12 -Session 'sess-12a' -UserText 'Continue.'
+    $draft12 = Get-Packet -Project $p12 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'
+    $reply12a = $draft12.Replace($optionWords[0], '- approved for before-implement - start with T001 and keep the order').Replace($optionWords[1], '- changes needed: say what to change').Replace($optionWords[2], '- discuss prompt 2')
+    Assert-True ($reply12a.Contains('start with T001') -and -not $reply12a.Contains('<your instructions>')) 'the fixture really rewords the three option lines'
+    $r12a = Complete-Turn -Project $p12 -Session 'sess-12a' -Token $t12a.Token -Kind 'boundary' -Draft $draft12 -Reply $reply12a
+    Assert-True (-not $r12a.Blocked) ("a reply whose options keep their starts is not blocked ({0})" -f (($r12a.Output -split "`n" | Where-Object { $_ -match 'missing' }) -join ' | '))
+
+    Write-Host 'Case 12b: the options come from the record, not the draft'
+    $t12b = Start-Turn -Project $p12 -Session 'sess-12b' -UserText 'Continue.'
+    $both12b = $draft12.Replace($optionWords[1] + "`n", '').Replace($optionWords[1] + "`r`n", '')
+    Assert-True (-not $both12b.Contains('changes needed')) 'the fixture drops the changes-needed option from draft and reply alike'
+    $r12b = Complete-Turn -Project $p12 -Session 'sess-12b' -Token $t12b.Token -Kind 'boundary' -Draft $both12b -Reply $both12b
+    Assert-True ($r12b.Blocked -and $r12b.Output.Contains('missing: changes needed: <what to change>')) 'a draft and reply that both lack an option are blocked, naming it'
+
+    Write-Host 'Case 12c: the approval phrase inside a sentence is not the approval line'
+    $t12c = Start-Turn -Project $p12 -Session 'sess-12c' -UserText 'Continue.'
+    $both12c = ($draft12 -replace '(?m)^  approved for before-implement\r?$', 'Type approved for before-implement when the order is right.')
+    Assert-True (-not ($both12c -match '(?m)^\s*approved for before-implement\s*$') -and $both12c.Contains('Type approved for before-implement')) 'the fixture carries the phrase only inside a sentence'
+    $r12c = Complete-Turn -Project $p12 -Session 'sess-12c' -Token $t12c.Token -Kind 'boundary' -Draft $both12c -Reply $both12c
+    Assert-True ($r12c.Blocked -and $r12c.Output.Contains('missing: approved for before-implement')) 'the approval line is required on a line of its own'
+
+    Write-Host 'Case 13: the record fails closed - a broken pending-verdict record blocks and says which'
+    $recordCases = [ordered]@{
+        'missing'        = 'pending-verdict-stop.md is missing'
+        'unreadable'     = 'pending-verdict-stop.md cannot be read'
+        'no-approval'    = "pending-verdict-stop.md has no 'Human approval phrase:' line"
+        'no-marker'      = 'pending-verdict-stop.md has no marker line'
+        'other-crossing' = 'pending-verdict-stop.md names the crossing clarify -> plan'
+    }
+    foreach ($rc in $recordCases.GetEnumerator()) {
+        $p13 = New-Project -PendingCrossing -Record $rc.Key; $projects.Add($p13)
+        $t13 = Start-Turn -Project $p13 -Session ('sess-13-' + $rc.Key) -UserText 'Continue.'
+        $packet13 = Get-Packet -Project $p13 -Opening 'Wrote the tasks.' -Reason 'The boundary needs your verdict.'
+        $r13 = Complete-Turn -Project $p13 -Session ('sess-13-' + $rc.Key) -Token $t13.Token -Kind 'boundary' -Draft $packet13 -Reply $packet13
+        Assert-True ($r13.Blocked -and $r13.Output.Contains($rc.Value)) ("record {0}: blocked, saying '{1}'" -f $rc.Key, $rc.Value)
+    }
+    $p13c = New-Project -PendingCrossing -Record 'missing'; $projects.Add($p13c)
+    $t13c = Start-Turn -Project $p13c -Session 'sess-13-conv' -UserText 'Where are we?'
+    $r13c = Complete-Turn -Project $p13c -Session 'sess-13-conv' -Token $t13c.Token -Kind 'conversational' -Draft 'We are at the tasks stage.' -Reply 'We are at the tasks stage.'
+    Assert-True ($r13c.Blocked -and $r13c.Output.Contains('pending-verdict-stop.md is missing')) 'a turn that declares itself conversational does not make the owed verdict go away'
+
+    Write-Host 'Case 14: an approval line for another boundary blocks; the phrase inside a sentence does not'
+    $foreign = [ordered]@{
+        'approved for review-signoff'          = '  approved for review-signoff'
+        'approved for tasks'                   = '- `approved for tasks`'
+        'approved for before-implementation'   = '> approved for before-implementation'
+    }
+    $i14 = 0
+    foreach ($fc in $foreign.GetEnumerator()) {
+        $i14++
+        $t14 = Start-Turn -Project $p12 -Session ('sess-14-' + $i14) -UserText 'Continue.'
+        $reply14 = $draft12.Replace('  discuss prompt 1', ("  discuss prompt 1`n" + $fc.Value))
+        Assert-True ($reply14.Contains($fc.Value)) ("the fixture carries the foreign line: {0}" -f $fc.Value)
+        $r14 = Complete-Turn -Project $p12 -Session ('sess-14-' + $i14) -Token $t14.Token -Kind 'boundary' -Draft $draft12 -Reply $reply14
+        Assert-True ($r14.Blocked -and $r14.Output.Contains($fc.Key)) ("a reply offering '{0}' is blocked, naming it" -f $fc.Key)
+    }
+    $t14s = Start-Turn -Project $p12 -Session 'sess-14-sentence' -UserText 'Continue.'
+    $reply14s = $draft12.Replace('Wrote the tasks.', 'Wrote the tasks; you typed approved for tasks earlier, which is recorded.')
+    $r14s = Complete-Turn -Project $p12 -Session 'sess-14-sentence' -Token $t14s.Token -Kind 'boundary' -Draft $draft12 -Reply $reply14s
+    Assert-True (-not $r14s.Blocked) 'another boundary named inside a sentence is not an approval line'
+
+    Write-Host 'Case 15: one source for the four lines - the hook''s and the gate-stop skill''s are equal'
+    $optionsDefined = Test-Path variable:script:SpecrewVerdictOptions
+    Assert-True $optionsDefined 'turn-end-store.ps1 defines the four verdict options'
+    $skillCopies = @(
+        (Join-Path $repoRoot 'extensions/specrew-speckit/squad-templates/skills/gate-stop.md'),
+        (Join-Path $repoRoot '.specify/extensions/specrew-speckit/squad-templates/skills/gate-stop.md'),
+        (Join-Path $repoRoot '.claude/skills/specrew-gate-stop/SKILL.md')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+    Assert-True ($skillCopies.Count -ge 1) 'the gate-stop skill source is found'
+    foreach ($copy in $skillCopies) {
+        $skillText = [System.IO.File]::ReadAllText($copy) -replace "`r`n", "`n"
+        $block = [regex]::Match($skillText, '(?s)Type one of these:\n\n(?<lines>(?:[ \t]+\S[^\n]*\n)+)')
+        $skillLines = @(if ($block.Success) { $block.Groups['lines'].Value -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ } })
+        $hookLines = @(if ($optionsDefined) { $script:SpecrewVerdictOptions | ForEach-Object { [string]$_.Shown } })
+        Assert-True ($skillLines.Count -eq 4 -and ($skillLines -join '|') -ceq ($hookLines -join '|')) ("{0}: the skill's four lines equal the hook's ({1})" -f (Split-Path -Leaf (Split-Path -Parent $copy)), ($skillLines -join ' | '))
+        if ($optionsDefined) {
+            for ($k = 0; $k -lt $skillLines.Count; $k++) {
+                $line = $skillLines[$k].Replace('<to>', 'before-implement')
+                $hit = @(Get-SpecrewVerdictOptionIndex -Line $line -ApprovalPhrase 'approved for before-implement')
+                Assert-True ($hit.Count -eq 1 -and $hit[0] -eq $k) ("skill line {0} is matched by its own start and no other: '{1}'" -f ($k + 1), $line)
+            }
+        }
+    }
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
