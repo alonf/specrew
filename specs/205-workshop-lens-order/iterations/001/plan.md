@@ -1,4 +1,4 @@
-# Iteration Plan: 001 (Stub)
+# Iteration Plan: 001
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
@@ -40,6 +40,22 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | Parity test: scanner, full surfaces, sweep, copies, FR-005, extractor, report | FR-001, FR-005, FR-015, FR-018, FR-019, SC-003 | US2 | 4 | implementer | — | planned | — | — | — |
+| T002 | Parity test self-test cases (examples, multi-mismatch) | FR-001, FR-019 | US2 | 1 | implementer | — | planned | — | — | — |
+| T003 | Red-first run recorded in quality-evidence | SC-001 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T004 | Agenda-confirmation test: refusal, in-order, FR-013 resume | FR-016, FR-013 | US4 | 1.5 | implementer | — | planned | — | — | — |
+| T005 | index.yml: problem-first order + space | FR-015 | US1 | 0.5 | implementer | — | planned | — | — | — |
+| T006 | Tag 11 lens files; S1-S3; FR-004 merge/move; gap list | FR-005, FR-004, FR-015, FR-020 | US3 | 2.5 | implementer | — | planned | — | — | — |
+| T007 | Agenda writer relative-order refusal | FR-016, FR-013 | US1 | 1 | implementer | — | planned | — | — | — |
+| T008 | Skill: list, index.yml-wins sentence, problem-first conduct | FR-017, FR-018 | US1 | 1 | implementer | — | planned | — | — | — |
+| T009 | Methodology lists rewritten | FR-017, FR-001 | US1 | 1 | implementer | — | planned | — | — | — |
+| T010 | before-specify + catalog README lists | FR-001 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T011 | Refresh deployed copies (two deploy scripts) | FR-001, FR-019 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T012 | Parity + agenda tests green; SC-002 counts | SC-001, SC-002, SC-004 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T013 | Run all existing workshop tests; report | FR-021 | — | 1 | implementer | — | planned | — | — | — |
+| T014 | Named specrew-ci.yml steps | FR-021, SC-005 | — | 0.5 | implementer | — | planned | — | — | — |
+| T015 | Proposal 220 status + INDEX | FR-022 | — | 0.5 | implementer | — | planned | — | — | — |
+| T016 | Pre-push gate, push, CI to conclusion | SC-005 | — | 0.5 | implementer | — | planned | — | — | — |
 
 ## Effort Model
 
@@ -56,33 +72,33 @@
 ## Concurrency Rationale
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
-- Technology and scope signals: Frontend-oriented signals dominate the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
+- Technology and scope signals: PowerShell 7 scripts, lens markdown, YAML catalog and tests (the scaffold's "frontend" reading is the resolver misread, DRIFT-001).
+- Task dependency graph: see tasks.md "Dependencies"; red-first T001-T004 gate everything, then T005 (index.yml) feeds T006-T010.
 - Workstream separability: Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.
 - Shared-surface conflict risk: elevated due to shared-state / cross-cutting cues in scope text.
 - Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- Recommendation: serial, single implementer; the surfaces share index.yml and the parity test, so parallel same-specialty work would conflict.
 
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | done | spec, workshop, design analysis, plan, tasks |
+| Discovery/Spikes | 0 | YAML parse and deploy scripts already verified in scratch |
+| Implementation | 17 | T001-T016 |
+| Review | in implementation estimate | codex co-review |
+| Rework | 3 | buffer to the 20 SP cap |
 
 ## Traceability Summary
 
 - Requirement scope for this stub: FR-001, FR-004, FR-005, FR-013, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-022
 - User stories represented in current scope: US1 (FR-015, FR-016, FR-017), US2 (FR-001, FR-019), US3 (FR-005), US4 (FR-013, FR-018), US5 (FR-020); cross-cutting FR-004, FR-021, FR-022
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
+- Task table populated from tasks.md; every FR/SC in scope maps to at least one task (traceability checked at after-tasks).
 - Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
+- Planned effort 17 story_points against a 20 cap; proposal 220 estimated 10-15, the overshoot is the sweep/self-test machinery fixed at the plan verdict.
 - Add task rows only for work that is traceable to the scoped requirements above.
 - Keep Status: planning until the plan is fully decomposed and approved.
 - If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
