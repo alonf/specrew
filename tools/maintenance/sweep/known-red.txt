@@ -1,0 +1,6 @@
+# Suites the maintainer has placed elsewhere while they are red (one per line: path | time limit in seconds | finding).
+# A suite listed here runs with its own short limit instead of the sweep's, is reported as "known red, <finding>" by
+# name and does not count toward the sweep's failures; if it passes, the sweep says so, so the entry can be removed.
+# B5F-036 (maintainer, 2026-11-10): both fixed in feature 206; 60 s so neither runs to 900 s again.
+tests/integration/project-path-resolution-regression.ps1 | 60 | B5F-036
+tests/integration/validator-hardening-iteration2.ps1 | 60 | B5F-036
