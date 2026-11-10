@@ -26,7 +26,8 @@ Assert-True ($indexRaw -notmatch '(?im)gated_by|always_on') "index.yml stays pur
 # All-no answers -> only the foundational always-on lenses, in map order.
 $allNo = @{ ui = $false; security = $false; data = $false; integration = $false; ops = $false; perf = $false }
 $selNo = @(Get-SpecrewApplicableLenses -Map $map -Answers $allNo)
-Assert-True (($selNo -join ',') -eq 'architecture-core,component-design,requirements-nfr') "all-no -> exactly the 3 always-on lenses (SC-006), in order"
+# Feature 205: applicability-map.json's always_on follows index.yml's problem-first order (requirements-nfr first).
+Assert-True (($selNo -join ',') -eq 'requirements-nfr,architecture-core,component-design') "all-no -> exactly the 3 always-on lenses (SC-006), in order"
 
 # Never hide an always-on lens, even when everything is 'no'.
 foreach ($f in @('architecture-core', 'component-design', 'requirements-nfr')) {

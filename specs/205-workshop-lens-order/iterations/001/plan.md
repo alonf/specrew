@@ -40,22 +40,22 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Parity test: scanner, full surfaces, sweep, copies, FR-005, extractor, report | FR-001, FR-005, FR-015, FR-018, FR-019, SC-003 | US2 | 4 | implementer | — | planned | — | — | — |
-| T002 | Parity test self-test cases (examples, multi-mismatch) | FR-001, FR-019 | US2 | 1 | implementer | — | planned | — | — | — |
-| T003 | Red-first run recorded in quality-evidence | SC-001 | US2 | 0.5 | implementer | — | planned | — | — | — |
-| T017 | Baseline: existing workshop tests on the unchanged tree (safety rule) | FR-021 | US2 | 1 | implementer | — | planned | — | — | — |
-| T004 | Agenda-confirmation test: refusal, in-order, FR-013 resume | FR-016, FR-013 | US4 | 1.5 | implementer | — | planned | — | — | — |
-| T005 | index.yml: problem-first order + space | FR-015 | US1 | 0.5 | implementer | — | planned | — | — | — |
-| T006 | Tag 11 lens files; S1-S3; FR-004 merge/move; gap list | FR-005, FR-004, FR-015, FR-020 | US3 | 2.5 | implementer | — | planned | — | — | — |
-| T007 | Agenda writer relative-order refusal | FR-016, FR-013 | US1 | 1 | implementer | — | planned | — | — | — |
-| T008 | Skill: list, index.yml-wins sentence, problem-first conduct | FR-017, FR-018 | US1 | 1 | implementer | — | planned | — | — | — |
-| T009 | Methodology lists rewritten | FR-017, FR-001 | US1 | 1 | implementer | — | planned | — | — | — |
-| T010 | before-specify + catalog README lists | FR-001 | US2 | 0.5 | implementer | — | planned | — | — | — |
-| T011 | Refresh deployed copies (two deploy scripts) | FR-001, FR-019 | US2 | 0.5 | implementer | — | planned | — | — | — |
-| T012 | Parity + agenda tests green; SC-002 counts | SC-001, SC-002, SC-004 | US2 | 0.5 | implementer | — | planned | — | — | — |
-| T013 | Run all existing workshop tests; report | FR-021 | US2 | 1 | implementer | — | planned | — | — | — |
-| T014 | Named specrew-ci.yml steps | FR-021, SC-005 | US2 | 0.5 | implementer | — | planned | — | — | — |
-| T015 | Proposal 220 status + INDEX | FR-022 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T001 | Parity test: scanner, full surfaces, sweep, copies, FR-005, extractor, report | FR-001, FR-005, FR-015, FR-018, FR-019, SC-003 | US2 | 4 | implementer | — | done | — | — | — |
+| T002 | Parity test self-test cases (examples, multi-mismatch) | FR-001, FR-019 | US2 | 1 | implementer | — | done | — | — | — |
+| T003 | Red-first run recorded in quality-evidence | SC-001 | US2 | 0.5 | implementer | — | done | — | — | — |
+| T017 | Baseline: existing workshop tests on the unchanged tree (safety rule) | FR-021 | US2 | 1 | implementer | — | done | — | — | — |
+| T004 | Agenda-confirmation test: refusal, in-order, FR-013 resume | FR-016, FR-013 | US4 | 1.5 | implementer | — | done | — | — | — |
+| T005 | index.yml: problem-first order + space | FR-015 | US1 | 0.5 | implementer | — | done | — | — | — |
+| T006 | Tag 11 lens files; S1-S3; FR-004 merge/move; gap list | FR-005, FR-004, FR-015, FR-020 | US3 | 2.5 | implementer | — | done | — | — | — |
+| T007 | Agenda writer relative-order refusal | FR-016, FR-013 | US1 | 1 | implementer | — | done | — | — | — |
+| T008 | Skill: list, index.yml-wins sentence, problem-first conduct | FR-017, FR-018 | US1 | 1 | implementer | — | done | — | — | — |
+| T009 | Methodology lists rewritten | FR-017, FR-001 | US1 | 1 | implementer | — | done | — | — | — |
+| T010 | before-specify + catalog README lists | FR-001 | US2 | 0.5 | implementer | — | done | — | — | — |
+| T011 | Refresh deployed copies (two deploy scripts) | FR-001, FR-019 | US2 | 0.5 | implementer | — | done | — | — | — |
+| T012 | Parity + agenda tests green; SC-002 counts | SC-001, SC-002, SC-004 | US2 | 0.5 | implementer | — | done | — | — | — |
+| T013 | Run all existing workshop tests; report | FR-021 | US2 | 1 | implementer | — | done | — | — | — |
+| T014 | Named specrew-ci.yml steps | FR-021, SC-005 | US2 | 0.5 | implementer | — | done | — | — | — |
+| T015 | Proposal 220 status + INDEX | FR-022 | US2 | 0.5 | implementer | — | done | — | — | — |
 | T016 | Pre-push gate, push, CI to conclusion | SC-005 | US2 | 0.5 | implementer | — | planned | — | — | — |
 
 ## Effort Model

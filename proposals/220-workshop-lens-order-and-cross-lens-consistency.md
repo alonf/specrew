@@ -1,7 +1,8 @@
 ---
 proposal: 220
 title: Workshop Lens Order and Cross-Lens Consistency - Problem Space Before Solution Space, a Back-Check After Every Lens, and a Final Sweep
-status: draft
+status: active
+shipped-as: feature-205
 phase: phase-2
 estimated-sp: 20-30
 priority-tier: 2
@@ -238,3 +239,13 @@ that already exist. Not inside Feature 203.
 
 - 2026-11-09: drafted as `draft` from the maintainer's ruling on the lens order, the end-of-lens back-check and the
   final sweep. Items beyond those three decisions are marked as proposed and listed as open questions.
+- 2026-11-10: `active`, shipped as feature 205 in three iterations.
+  - Iteration 1: the one order in `index.yml` with a space per lens, problem/solution sub-headings in every lens file,
+    the parity proof and the FR-013 migration.
+  - Iteration 2: problem-space completeness, with its own short workshop.
+  - Iteration 3, after feature 203 merges: the two-pass split (FR-002/FR-003), the back-check, amendments and sweeps.
+  - The intake workshop found a **fifth order surface**, the before-specify command's lens list, beside the four
+    listed above.
+  - The workshop chose **order option A**: one pass, problem-first. product-domain and requirements-nfr come first,
+    then the lenses with questions in both spaces, then the solution-space lenses, with the problem section asked
+    first inside every lens.

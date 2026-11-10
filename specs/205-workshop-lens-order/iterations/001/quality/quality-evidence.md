@@ -132,3 +132,45 @@ lens-order-parity: all checks passed
 - **SC-003**: the exemption list prints with its reasons on every run. It has 3 entries, all in files feature 203 owns, and the review-signoff comment entry is temporary.
 - **Agenda test** (exit 0): every assertion passes. FR-016: refused at render and at confirm, nothing written, an in-order agenda is not reordered. FR-013: the old-order confirmed agenda resumes in its own order, closes both lenses, completes, and keeps its order.
 - **Tag disagreements**: none. Every lens's questions matched its FR-015 tag.
+
+## T013 - every existing workshop test after the change, compared with the T017 baseline (FR-021)
+
+**Run**: 2026-11-10 at `d011cd0c`, under the existing-test safety rule. cross-host-workshop was included, as approved
+after its review. The 6 home hook files were unchanged after every run.
+
+- 30 of 31 pass.
+- **One test was broken by this feature**: `tests/unit/lens-applicability-selector.tests.ps1` asserted the old
+  `always_on` order ("all-no -> exactly the 3 always-on lenses (SC-006), in order", expecting
+  `architecture-core,component-design,requirements-nfr`). T009/T010 reordered `applicability-map.json` `always_on`
+  to index.yml order. The expectation was updated to `requirements-nfr,architecture-core,component-design`, and the
+  test now passes in full. It passed in the baseline, so this was not an already-red test.
+- `workshop-agenda-confirmation` (red-first in the baseline) now passes.
+- No test was red in the baseline for a reason unrelated to this feature, so there is no already-red finding to report.
+
+**Correction (CI coverage)**: at the code-implementation lens the crew said that no existing workshop test runs in
+any workflow. That was wrong. 13 of the 31 already run in CI through the F-198 honesty regression registry
+(`tests/f198-regression-suite.ps1`, the Deterministic gate's "F-198 honesty regression suite" step), including
+`workshop-agenda-confirmation` and `lens-conduct-delivery`.
+
+## T014 - named CI steps (FR-021, SC-005)
+
+`specrew-ci.yml`, in the Deterministic gate job after the F-198 suite step, gains 10 named steps:
+
+- the new parity test
+- the 9 existing workshop tests that cover a touched file, pass, and are not already in the F-198 registry:
+  agent-led-workshop-replay, workshop-agenda-vocabulary, workshop-intake-completion-survives-agenda,
+  workshop-material-packet-language, code-implementation-lens, lens-applicability-selector, product-domain-lens,
+  workshop-delegation and workshop-question-tool
+
+The 10 covering tests already in the F-198 registry (workshop-agenda-confirmation, lens-conduct-delivery,
+specify-workshop-routing, design-workshop-claude-tool-safety, product-domain-multihost, workshop-lens-checkpoint,
+workshop-state-transition-table, design-gate-code-implementation-artifact, lens-acknowledgment and
+workshop-refusal-contract) are not duplicated. cross-host-workshop references none of the files 205 touches, so it
+is not registered. The 9 newly registered tests have never run on the Ubuntu lane before, so any Linux-only failure
+is reported as a finding.
+
+## T015 - proposal 220 (FR-022)
+
+- `proposals/220-...md` is now `status: active` and `shipped-as: feature-205`, with a status-history line covering
+  the three iterations, the fifth order surface and option A.
+- `proposals/INDEX.md` follows, in both its table row and its summary line.

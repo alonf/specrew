@@ -237,6 +237,49 @@ jobs:
         timeout-minutes: 30
         run: pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
 
+      # Feature 205 (FR-021): the lens-order parity test plus every existing workshop test that covers a file 205
+      # touches and is not already in the F-198 registry above (workshop-agenda-confirmation, lens-conduct-delivery,
+      # specify-workshop-routing and seven more already run there).
+      - name: Workshop lens order - parity (index.yml is the one order; FR-001/FR-005)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/lens-order-parity.tests.ps1
+
+      - name: Workshop lens order - agent-led workshop replay
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/agent-led-workshop-replay.tests.ps1
+
+      - name: Workshop lens order - agenda vocabulary (skill copies + agenda writer)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/workshop-agenda-vocabulary.tests.ps1
+
+      - name: Workshop lens order - intake completion survives the agenda
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/workshop-intake-completion-survives-agenda.tests.ps1
+
+      - name: Workshop lens order - material packet language
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/workshop-material-packet-language.tests.ps1
+
+      - name: Workshop lens order - code-implementation lens
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/code-implementation-lens.tests.ps1
+
+      - name: Workshop lens order - applicability selector (always-on order)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/lens-applicability-selector.tests.ps1
+
+      - name: Workshop lens order - product-domain lens
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/product-domain-lens.tests.ps1
+
+      - name: Workshop lens order - workshop delegation
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-delegation.tests.ps1
+
+      - name: Workshop lens order - workshop question tool
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-question-tool.tests.ps1
+
       - name: Tier-2 production harness contract dry run (zero provider spend)
         shell: pwsh
         run: pwsh -NoProfile -File ./tests/manual/review-production-harness-dry-run.ps1
