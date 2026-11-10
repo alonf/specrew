@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 21.75/20 story_points
+**Capacity**: 21.75/22 story_points
 **Started**: 2026-11-10
 **Completed**:
 
@@ -52,7 +52,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T006 | Test-SpecrewIterationClosed: one function for the validator filter, dashboard check and renderer; heuristic and verdict rule removed (failing test first) | FR-008a | US2 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/*.ps1, scripts/internal/dashboard-renderer.ps1, tests/unit/** | planned | | | |
 | T007 | Mark 198/011 and 197/006 abandoned; the 203 finding (FR-066 mint guard, T091, T093); frozen list with its 18 entries | FR-005, FR-006 | US2 | 1.0 | Implementer | specs/198-beta2-hardening/iterations/011/state.md, specs/198-beta2-hardening/iterations/011/plan.md, specs/197-*/iterations/006/state.md, specs/197-*/iterations/006/plan.md, .specrew/legacy-frozen.yml, specs/206-bug-bash/** | planned | | | |
 | T008 | Frozen means judged by no check; guard test for added keys; zero-findings test per entry; 197/006 resolved (condition 2) | FR-007 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, tests/unit/** | planned | | | |
-| T009 | `since` on the dashboard check (complete only), closure stamp written at closeout (failing test first) | FR-008 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/*.ps1, tests/unit/** | planned | | | |
+| T009 | `since` on the dashboard check (complete only), closure stamp written at closeout; abandoned only by a recorded maintainer ruling (failing tests first) | FR-008 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/*.ps1, tests/unit/** | planned | | | |
 | T010 | Local nightly replay (CI mode, full repo): no new finding from any changed iteration, else stop for the maintainer (condition 1 acceptance) | FR-008a, FR-006 | US2 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
 | T011 | Review-verdict finding names the iteration's actual status (failing test first) | FR-010 | US2 | 0.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, tests/unit/** | planned | | | |
 | T012 | Notifier script with injectable gh, findings file, Pester (open, quiet, comment, close, no private text); notifier job alone has issues: write (condition 4) | FR-009 | US2 | 2.5 | Implementer | scripts/internal/nightly-tracking-issue.ps1, extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, .github/workflows/specrew-nightly-truth-check.yml, tests/unit/** | planned | | | |
@@ -61,7 +61,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T015 | Register the 35 per the maintainer's ruling; both B5F-036 suites green and registered | FR-012 | US3 | 1.0 | Implementer | .github/workflows/specrew-ci.yml, .specrew/release-gate-suites.txt, .specrew/verification-plan.json, tests/support/test-census.ps1 | planned | | | |
 | T016 | Delete the empty tests/integration/_ctl-spec.ps1 | FR-013 | US3 | 0.25 | Implementer | tests/integration/_ctl-spec.ps1 | planned | | | |
 | T017 | Resolver suggests no Node/React here (failing test first); f049 assertion onto a fixture; root package.json removed | FR-014 | US4 | 1.5 | Implementer | package.json, tests/integration/f049-i003-intake-engine-tests.ps1, tests/fixtures/**, tests/unit/** | planned | | | |
-| T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
+| T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run; capacity set back to 20 at closeout (OVERRIDE 5) | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/**, .specrew/iteration-config.yml | planned | | | |
 
 ## FR to test mapping
 
@@ -71,7 +71,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | FR-002 | `validator-hardening-iteration2.ps1` assertions 1 and 2 | a clean artifact gives no finding; the separator is asserted |
 | FR-003 | `validator-hardening-iteration2.ps1` assertion 3, plus the classifier unit suite | unbalanced or missing marker pauses; user change outside markers pauses |
 | FR-007 | frozen-list guard | an added key fails; every entry yields zero findings |
-| FR-008 | dashboard check with and without a closure stamp, before and after `since` | an unstamped entry is not judged; an abandoned iteration owes no dashboard |
+| FR-008 | dashboard check with and without a closure stamp, before and after `since`; abandonment-ruling suite (T009) | an unstamped entry is not judged; an abandoned iteration owes no dashboard; `abandoned` with no recorded ruling is not closed |
 | FR-008a | `Test-SpecrewIterationClosed` unit suite over index, status and frozen cases | a review verdict alone never makes an iteration closed |
 | FR-009 | notifier suite with recorded `gh` calls | same failures: no call; rendered text has no path, user or machine name |
 | FR-010 | validator message for a `retro` iteration | a `complete` iteration still gets its message |
@@ -86,10 +86,10 @@ list, the frozen-list guard, the T010 replay and the T014 report.
 | Setting | Value | Notes |
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
-| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Capacity per Iteration | 22 | OVERRIDE 5 (maintainer, 2026-11-11): 20 raised to 22 for this iteration only; back to 20 at closeout. |
 | Iteration Bounding | scope | The bug list is fixed by the maintainer; overcommit is surfaced, not auto-deferred. |
 | Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
-| Overcommit Threshold | 1.0 | 21.75 planned exceeds 20 x 1.0; surfaced at the plan boundary. |
+| Overcommit Threshold | 1.0 | 21.75 planned within 22 x 1.0; 0.25 SP of slack. |
 | Defer Strategy | manual | Any deferral is the maintainer's decision. |
 | Calibration Enabled | true | Retro compares actuals to these estimates. |
 
@@ -120,10 +120,24 @@ list, the frozen-list guard, the T010 replay and the T014 report.
 
 ## Notes
 
-- **Capacity:** 21.75 planned against 20, an overcommit of 1.75 SP, surfaced at the plan boundary.
+- **Capacity (OVERRIDE 5, maintainer, 2026-11-11):** 21.75 planned against a cap raised from 20 to 22 for
+  this iteration, recorded in `.specrew/iteration-config.yml` and set back to 20 at iteration closeout, so the
+  merged diff of that file is the comment only. **No second raise:** if any task grows so the total would pass
+  22, work stops and goes to the maintainer. Drop order: T017, then T016, both moved to a follow-up, never cut
+  silently.
 - **Stops inside implement:** T010 stops if any changed iteration produces a new finding; T014 stops with
   the exclusion list, every red script with its failure, each script's duration and the per-push total
   before anything is registered.
+- **Abandoned only by a recorded maintainer ruling (T009).** `Test-SpecrewIterationClosed` counts status
+  `abandoned` as closed only when the iteration records the ruling that abandoned it; `abandoned` with no
+  recorded ruling is not closed and stays judged as open. Index membership is unchanged. The rulings, pinned by
+  T009's tests:
+  - **198/011**: maintainer ruling 2026-11-10 in this feature (spec FR-005, FR-006; bug list item 4): abandoned,
+    review unchanged; the undone work is one finding for 203's follow-up.
+  - **197/006**: maintainer ruling 2026-11-10 in this feature (spec FR-006): abandoned, superseded by 197/007
+    before closeout.
+  - **174/007**: maintainer decision 2026-06-14 at feature 174's iteration 011 closeout, recorded in its
+    `state.md` Disposition: abandoned-superseded by 174/008, closed without a ratified review.
 - **197/006** is marked abandoned, not frozen; the dashboard check applies to `complete` iterations only
   (feature plan, "197/006, resolved").
 - **Not touched:** `scripts/internal/continuous-co-review/**`, `scripts/internal/bootstrap/**`,

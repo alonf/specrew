@@ -68,7 +68,8 @@ description of the bug, not a ruling.
 Under the new definition 197/006 (and 198/011, newly abandoned) count as closed. So that marking them
 abandoned produces no new finding, **the dashboard check applies to `complete` iterations only**: an
 abandoned iteration delivered nothing, so it owes no dashboard. The same rule covers 174/007, which was
-abandoned before this feature. This is the one rule change the triage needs. Condition 1's local replay
+abandoned before this feature. This is the one rule change the triage needs. An iteration counts as
+abandoned only when it records the maintainer's ruling that abandoned it (iteration plan, Notes; tested in T009). Condition 1's local replay
 proves it produces no new finding. If the maintainer prefers a different resolution, it is decided at the
 plan verdict.
 
@@ -108,7 +109,7 @@ kept as FR-014's evidence. **A custom PowerShell composition replaces it:**
 | II/XXVII Layered system | Pass. Validator, start script, CI workflow and tests only; no Squad-layer change |
 | IV Compatibility | Pass. History is not re-judged (FR-008); consumer projects without a closure stamp see no new findings |
 | XV Human oversight | Pass. The 35 scripts' exclusions, durations and per-push cost go to the maintainer before registration |
-| XVI Capacity-aware | Flagged. 21.75 SP against 20, overcommit visible |
+| XVI Capacity-aware | Pass under OVERRIDE 5: 21.75 SP against a cap raised to 22 for iteration 001 by the maintainer (2026-11-11), set back to 20 at closeout; no second raise |
 | XXI/XXIII-XXV Verification | Pass. Failing test first per fix; the nightly is replayed locally before push |
 
 ## Project structure touched

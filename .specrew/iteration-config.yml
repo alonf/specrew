@@ -53,7 +53,13 @@ effort_unit: "story_points"
 # was closed (2026-07-02) so it is grandfathered at 20; iterations 001-009 validate against their own
 # plan capacity. CLOSED 2026-07-26 at F-198 iteration 009 closeout: the
 # f197-i010-cap-revert-obligation restored the global default.
-capacity_per_iteration: 20
+#
+# OVERRIDE 5 (2026-11-11, F-206 iteration 001, maintainer verdict: "1 - raise the capacity to 22 for
+# iteration 001, recorded as OVERRIDE 5 ... and set back to 20 at iteration closeout so the merged diff is
+# the comment only"): raised 20 -> 22 for the 206 bug bash (21.75 SP planned, 18 tasks). No second raise:
+# if the total would pass 22, work stops for the maintainer; drop order T017, then T016, to a follow-up.
+# Set back to 20 at F-206 iteration 001 closeout.
+capacity_per_iteration: 22
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)
