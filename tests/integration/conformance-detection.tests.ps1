@@ -93,9 +93,9 @@ function New-Declaration {
         if (-not [string]::IsNullOrWhiteSpace($From)) {
             $authoredPacket = $authoredPacket.Replace('clarify -> plan', ($From + ' -> ' + $To)).Replace('approved for plan', ('approved for ' + $To))
         }
-        $messagePath = Join-Path $Proj '.specrew/runtime/authored-packet.md'
-        Set-Content -LiteralPath $messagePath -Value $authoredPacket -Encoding UTF8
-        $argsList += @('-MessagePath', $messagePath)
+        # 203 T011 follow-up (ruling 2026-11-11): the Stop resolves review links, so the fixture's file:///fixture/ links
+        # name this fixture project's files.
+        $authoredPacket = $authoredPacket.Replace('file:///fixture/', (([System.Uri]::new($Proj + [System.IO.Path]::DirectorySeparatorChar)).AbsoluteUri))
     }
     if (-not [string]::IsNullOrWhiteSpace($Pending)) { $argsList += @('-Pending', $Pending) }
     if (-not [string]::IsNullOrWhiteSpace($Token)) { $argsList += @('-Token', $Token) }
@@ -103,8 +103,10 @@ function New-Declaration {
     $joined = (@($out) -join "`n")
     try {
         $result = $joined | ConvertFrom-Json
-        # The fixture agent composes its reply; the script supplies only missing machine lines.
-        $result | Add-Member -NotePropertyName reply -NotePropertyValue ($authoredPacket + [Environment]::NewLine + $result.text)
+        # The fixture agent composes its reply (203 T011 follow-up: the script reads no draft). The script returns the four
+        # response lines and the marker; a packet that already carries its marker has them in place, so nothing is added.
+        $machine = if ($authoredPacket.Contains('SPECREW-VERDICT-BOUNDARY')) { '' } else { [Environment]::NewLine + [string]$result.text }
+        $result | Add-Member -NotePropertyName reply -NotePropertyValue ($authoredPacket + $machine)
         return $result
     } catch { throw ("declare-turn-end failed: " + $joined) }
 }
@@ -462,7 +464,7 @@ This is the clarify -> plan boundary. Planning converts the spec into architectu
 
 ## What Needs Your Review
 
-The clarifications at file:///fixture/spec.md and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
+The iteration plan at file:///fixture/specs/050-host-neutral-gate/iterations/001/plan.md and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
 
 ## What Happens Next
 
@@ -498,7 +500,7 @@ This is the clarify -> plan boundary. Planning converts the spec into architectu
 
 ## What Needs Your Review
 
-The clarifications at file:///fixture/spec.md and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
+The iteration plan at file:///fixture/specs/050-host-neutral-gate/iterations/001/plan.md and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
 
 ## What Happens Next
 

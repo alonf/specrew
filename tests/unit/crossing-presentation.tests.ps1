@@ -136,13 +136,11 @@ function Start-SessionTurn {
 }
 
 function Complete-SessionTurn {
-    # Declares the turn end with the draft, writes the transcript the host would hold (the typed reply, then
-    # the draft as the visible reply), and runs the Stop. Returns whether the Stop blocked.
+    # Declares the turn end (203 T011 follow-up: no draft), writes the transcript the host would hold (the typed
+    # reply, then the visible reply), and runs the Stop. Returns whether the Stop blocked.
     param($Fixture, [string]$Session, [string]$Token, [string]$Kind, [string]$UserText, [string]$Reply)
     $script:Turn++
-    $draft = Join-Path $Fixture.Root (".specrew/runtime/draft-{0}.md" -f $script:Turn)
-    [System.IO.File]::WriteAllText($draft, $Reply, [System.Text.UTF8Encoding]::new($false))
-    $declareArgs = @('-Kind', $Kind, '-MessagePath', $draft, '-Summary', ('turn {0}' -f $script:Turn))
+    $declareArgs = @('-Kind', $Kind, '-Summary', ('turn {0}' -f $script:Turn))
     if (-not [string]::IsNullOrWhiteSpace($Token)) { $declareArgs += @('-Token', $Token) }
     $null = Invoke-Pwsh -Root $Fixture.Root -Script $declare -Arguments $declareArgs
     $transcript = Join-Path $Fixture.Root (".specrew/runtime/transcript-{0}.jsonl" -f $script:Turn)

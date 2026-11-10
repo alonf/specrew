@@ -11,33 +11,18 @@ source: "Specrew turn declaration and agent-authored presentation contract."
 **Namespace**: `/specrew`
 
 The script is the **last tool call**, and its return is **for you, never your reply**. You author the
-human-facing question, complete agenda, answer or boundary packet, and pipe that draft into the script on
-**stdin**. You write no draft file: the script keeps the message in this turn's own record, in this
-session's ignored folder, so a draft never lands in the repository and two sessions never share one. From PowerShell 7:
+human-facing question, complete agenda, answer or boundary packet in your own reply. The script takes no
+draft and writes none: it records facts about the turn, and the Stop reads your reply itself.
 
-```powershell
-@'
-<the complete reply you will send>
-'@ | pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
-    -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' `
-    -Token <the token from the latest [specrew-turn] line>
+```text
+pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>
 ```
 
-From a POSIX shell, a heredoc with a quoted delimiter, so nothing in the draft is expanded:
-
-```bash
-pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind conversational \
-    -Token <the token from the latest [specrew-turn] line> <<'DRAFT'
-<the complete reply you will send>
-DRAFT
-```
-
-The script reads the bytes as UTF-8, so Hebrew and other non-ASCII text arrive intact. (Windows PowerShell
-5.1 does not pipe UTF-8; use `pwsh`.) Then send the authored content in your own message. Ordinary
-declarations emit no human-facing text.
-At a boundary the script verifies the draft and supplies only a missing machine-derived approval line
-and/or marker. Incorporate those into your packet, with the marker last. Stop checks that the prepared
-content actually reached your reply; a tool result alone is not presentation.
+Ordinary declarations emit no human-facing text. At a boundary the script returns the four response lines
+and the marker from the pending crossing; put them in your packet as written, with the marker last. The
+Stop checks your reply: the six sections, each with content specific to this boundary (stock placeholder
+text counts as empty); at least one file link under What Needs Your Review, every link resolving; the four
+response lines; and the marker. A tool result alone is not presentation.
 
 ## The token
 
@@ -57,7 +42,7 @@ issue time; if you know that session is gone, its token file can be removed.
 | --- | --- | --- |
 | `boundary` | a lifecycle stage is ready for the human's verdict | `-Owed '<artifact>'` when the stage owes something it has not produced |
 | `in-flight` | background work is still running | `-Pending '<the work>'` — **required** |
-| `conversational` | an answer or a workshop question awaits the human | the authored reply on stdin |
+| `conversational` | an answer or a workshop question awaits the human | the authored reply, in your own message |
 
 **`-Owed` matters.** When a stage owes artifacts it has not produced there is nothing to approve, so the
 packet renders with no options and no verdict marker and names what is owed instead. Offering an approval
@@ -72,7 +57,7 @@ explain what remains pending and what should happen next.
 ## Authorship and declaration
 
 **Author the packet yourself.** Include the six Rule 46 sections, specific review targets, a
-recommendation and the next step. The pending crossing supplies the approval line and marker; you never
+recommendation and the next step. The pending crossing supplies the response lines and marker; you never
 infer them from your intended next phase. A missing-artifact packet names what is owed and the step you
 will perform, and offers no approval or marker. Opening orientation is yours, once; turn-end never repeats
 it. The orientation gate supplies only an absent dials line.

@@ -186,40 +186,23 @@ Tell me if the plan is wrong.
     Write-Host '  --- the boundary render: four sendable lines, then the marker; or the withhold paragraph ---'
     $stopLines = @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: plan -> tasks', 'Human approval phrase: approved for tasks', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->', '', 'Working boundary: tasks', 'Last authorized boundary: plan', 'Feature: 050-host-neutral-gate')
     [IO.File]::WriteAllText((Join-Path $root '.specrew/runtime/pending-verdict-stop.md'), (($stopLines -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
-    $packet = @'
-## What I Just Did
-Authored the task breakdown for the fixture feature.
-## Why I Stopped
-The tasks crossing needs a human verdict.
-## What Needs Your Review
-Read file:///fixture/tasks.md for task ownership and fixture coverage.
-## What Happens Next
-I will prepare the hardening gate, then stop before implementation for its verdict.
-## Discussion Prompts
-1. I recommend the current task order because extraction is tested before resolution.
-## What I Need From You
-Approve the tasks or name the correction before hardening preparation.
-'@
-    $draftPath = Join-Path $root '.specrew/runtime/packet.md'
-    Set-Content -LiteralPath $draftPath -Value $packet
-    $boundaryOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned the feature' -ProjectRoot $root -MessagePath $draftPath -AsJson 2>&1) -join "`n")
+    # 203 T011 follow-up (FR-046; maintainer ruling 2026-11-11): the script takes no draft. At a boundary it returns
+    # the four response lines and the marker from the pending crossing, as the gate-stop skill shows them; the Stop
+    # reads the packet from the reply.
+    $boundaryOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned the feature' -ProjectRoot $root -AsJson 2>&1) -join "`n")
     $boundary = $null
     try { $boundary = ($boundaryOut | ConvertFrom-Json) } catch { $boundary = $null }
     $text = if ($null -ne $boundary) { [string]$boundary.text } else { '' }
-    Assert-True $boundary.packet_valid 'the agent-authored packet is verified'
-    Assert-True ($text -eq ('approved for tasks' + [Environment]::NewLine + '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->')) 'only missing approval and marker lines are supplied'
+    $expected = @('approved for tasks', 'approved for tasks - <your instructions>', 'changes needed: <what to change>', 'discuss prompt 1', '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->') -join [Environment]::NewLine
+    Assert-True ($text -ceq $expected) ("the four sendable response lines, then the marker ({0})" -f ($text -replace '\r?\n', ' | '))
     Assert-True ($text -notmatch '##|Anything above') 'no generic packet or discussion is generated'
-    Set-Content -LiteralPath $draftPath -Value ($packet + [Environment]::NewLine + $text)
-    $complete = & pwsh -NoProfile -File $declarer -Kind boundary -ProjectRoot $root -MessagePath $draftPath -AsJson | ConvertFrom-Json
-    Assert-True ($complete.packet_valid -and $complete.text -eq '') 'a complete packet earns no duplicate lines'
     Assert-True ($text -notmatch '(?m)^\s*1\.\s*Approve') 'no numbered verdict option - a number is a control that cannot authorize'
     Assert-True ($text.TrimEnd() -match '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->$') 'the marker is the VERY LAST line'
-    $owedOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned, but tasks.md is not written' -Owed 'tasks.md' -MessagePath $draftPath -ProjectRoot $root -AsJson 2>&1) -join "`n")
+    $owedOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned, but tasks.md is not written' -Owed 'tasks.md' -ProjectRoot $root -AsJson 2>&1) -join "`n")
     $owed = $null
     try { $owed = ($owedOut | ConvertFrom-Json) } catch { $owed = $null }
     $owedText = if ($null -ne $owed) { [string]$owed.text } else { '' }
-    Assert-True (-not $owed.packet_valid) 'a draft cannot offer approval for missing artifacts'
-    Assert-True (@($owed.owed) -contains 'tasks.md') 'withholding retains the named owed artifact'
+    Assert-True ($null -ne $owed -and @($owed.owed) -contains 'tasks.md') 'withholding retains the named owed artifact'
     Assert-True ($owedText -notmatch 'approved for tasks' -and $owedText -notmatch 'SPECREW-VERDICT-BOUNDARY') 'and offers NO responses and NO marker'
 }
 finally {

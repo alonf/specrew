@@ -395,6 +395,12 @@ try {
     $t16c2 = Start-Turn -Project $p16 -Session 'sess-16c2' -UserText 'Continue.'
     $r16c2 = Complete-Turn -Project $p16 -Session 'sess-16c2' -Token $t16c2.Token -Kind 'boundary' -Reply ($base16.Replace('The specification: ' + $specUrl16, 'The specification, as discussed.'))
     Assert-True ($r16c2.Blocked -and $r16c2.Output.Contains('What Needs Your Review has no file link')) 'a review section without a file link blocks'
+    # A folder that exists is not a missing file: it may be linked beside a file, but it is not the file link.
+    $iterUrl16 = ([System.Uri]::new($p16.Iter + [System.IO.Path]::DirectorySeparatorChar)).AbsoluteUri
+    $withFolder16 = Test-SpecrewReplyPacket -Reply ($base16.Replace('The specification: ' + $specUrl16, ('The specification: {0}{1}The iteration folder: {2}' -f $specUrl16, "`n", $iterUrl16)))
+    Assert-True ([bool]$withFolder16.present) ("a file link with an existing folder beside it passes ({0})" -f (@($withFolder16.problems) -join ' | '))
+    $folderOnly16 = Test-SpecrewReplyPacket -Reply ($base16.Replace('The specification: ' + $specUrl16, 'The iteration folder: ' + $iterUrl16))
+    Assert-True (-not [bool]$folderOnly16.present -and (@($folderOnly16.problems) -join '|').Contains('What Needs Your Review has no file link')) 'a folder link alone is not the file link'
 
     Write-Host 'Case 16d: "recommend" does not block; the Stop records whether it was there'
     $t16d = Start-Turn -Project $p16 -Session 'sess-16d' -UserText 'Continue.'

@@ -77,8 +77,10 @@ Describe 'T109 flush-race forensic analyzer (D-197-I009-003 refuted; reopens on 
         $provider | Should -Not -Match '\$initialHeaderHits\s+-ge\s+1'
         $provider | Should -Not -Match 'Get-Content[^\r\n]+-Tail\s+8'
         $provider | Should -Not -Match 'dx_reread_attempted\s*=\s*\$transcriptRereadAttempted'
-        # Presentation requires both the verified declaration and its visible authored content.
+        # Presentation requires both the boundary declaration and the packet as the reply carries it (203 T011 follow-up:
+        # read from the reply's lines by Test-SpecrewReplyPacket; there is no declared draft).
         $provider | Should -Match '\$packetPresent\s*=\s*\(\$turnEndKind\s+-eq\s+.boundary.\s+-and'
-        $provider | Should -Match '\[bool\]\$turnEndRecord\.packet_valid\s+-and\s+\$messageVisible'
+        $provider | Should -Match '\$replyPacket\s*=\s*Test-SpecrewReplyPacket\s+-Reply\s+\$lastAssistantRaw'
+        $provider | Should -Match '\[bool\]\$replyPacket\.present'
     }
 }

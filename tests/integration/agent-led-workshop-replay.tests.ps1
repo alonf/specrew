@@ -45,8 +45,9 @@ function Prompt([string]$Text) {
     return (@(& pwsh -NoProfile -File $handover --project-root $root --host-kind claude --source-event UserPromptSubmit --last-user-message $Text --transcript-path $transcript --session-id replay --turn-origin typed-user --message-identity declared --message-id $script:promptId 2>&1) -join "`n")
 }
 function Declare([string]$Text, [string]$Kind = 'conversational', [string[]]$Owed = @()) {
-    Set-Content -LiteralPath $draft -Value $Text -Encoding UTF8
-    $argsForDeclare = @('-NoProfile','-File',$declarer,'-ProjectRoot',$root,'-Kind',$Kind,'-MessagePath',$draft,'-Token',$script:token,'-AsJson')
+    # $Text is the reply the fixture agent is about to send. 203 T011 follow-up (ruling 2026-11-11): the script reads no
+    # draft, so it is not passed; the Stop reads the reply.
+    $argsForDeclare = @('-NoProfile','-File',$declarer,'-ProjectRoot',$root,'-Kind',$Kind,'-Token',$script:token,'-AsJson')
     if ($Kind -eq 'in-flight') { $argsForDeclare += @('-Pending','fixture background check') }
     if ($Owed.Count) { $argsForDeclare += @('-Owed',($Owed -join ',')) }
     $out = @(& pwsh @argsForDeclare 2>&1) -join "`n"
@@ -124,7 +125,9 @@ This familiar tiny utility needs no deeper discovery. Does this record stand? Ty
     Check ($controller.agenda_status -eq 'confirmed') 'yes binds and persists the complete agenda once'
     $architecture = 'Architecture-core, light: one script with enumerate files -> extract links -> resolve and check. No shared state or configuration. Does this match your pre-answer? Type move on.'
     $declared = Declare $architecture
-    Check ((Stop-With 'Recorded; nothing needed.') -match 'SPECREW-STOP-BLOCK') 'a declared lens question cannot be replaced with a status line'
+    # 203 T011 follow-up (ruling 2026-11-11, item 1): this was held by the declared draft, which is gone. A status line in
+    # place of a lens question is no longer blocked; the workshop agenda above keeps its own check.
+    Check ((Stop-With 'Recorded; nothing needed.') -notmatch 'SPECREW-STOP-BLOCK') 'with no draft, a status line in place of a lens question is not blocked'
     Check ((Stop-With $architecture) -notmatch 'SPECREW-STOP-BLOCK') 'the architecture question survives the declaration'
     $null = Prompt 'move on'
     Close-Lens architecture-core 'One script: enumerate files, extract links, resolve and check. No shared state or configuration.'
@@ -178,23 +181,23 @@ Clarify checks remaining ambiguities in the spec in the same turn after your app
 ## What I Need From You
 Approve this specify scope or identify a correction to the linked requirements.
 "@
-    # 203 T011 (FR-046; maintainer ruling 2026-11-11, item 2a): the packet carries the four response lines, so the
-    # declaration supplies only the marker. (It cannot supply the approval line alone here: until the draft
-    # reading goes (ruling 1), it finds the phrase inside the "approved for specify - " option line.) The packet as
-    # it stood before (no options) is kept as a block case below.
+    # 203 T011 (FR-046; maintainer rulings 2026-11-11, items 1 and 2a): the packet carries the four response lines; the
+    # declaration reads no draft and returns the four lines and the marker; the Stop reads the packet from the reply.
+    # The packet as it stood before (no options) is kept as a block case below.
     $packetWithoutResponses = $packet
-    $packet = $packet + "Type one of these:`n`napproved for specify`napproved for specify - <your instructions>`nchanges needed: <what to change>`ndiscuss prompt 1`n"
+    $responses = "approved for specify`napproved for specify - <your instructions>`nchanges needed: <what to change>`ndiscuss prompt 1"
+    $packet = $packet + "Type one of these:`n`n" + $responses + "`n"
     $generic = $packet.Replace("Read $specUrl for anchor handling, output fields and the zero-false-positive constraint.", 'The work named above.').Replace('Clarify checks remaining ambiguities in the spec in the same turn after your approval; it produces no code.', 'On approval the next stage starts.').Replace('1. I recommend keeping HTTP links out of scope; adding them would require timeout and network-error decisions.', '1. Anything above you want changed, questioned, or done differently.')
     $declared = Declare $generic boundary
-    Check (-not $declared.packet_valid -and $declared.text -eq '') 'the current generic packet earns neither approval line nor marker'
-    $declaredOld = Declare $packetWithoutResponses boundary
-    $stopOld = Stop-With ($packetWithoutResponses + "`n" + $declaredOld.text)
+    Check ($declared.text -eq ($responses.Replace("`n", [Environment]::NewLine) + [Environment]::NewLine + $marker)) ("boundary return is the four response lines and the marker: $($declared.text)")
+    $stopGeneric = Stop-With ($generic + "`n" + $marker)
+    Check ($stopGeneric -match 'SPECREW-STOP-BLOCK' -and $stopGeneric.Contains('empty section: What Needs Your Review') -and $stopGeneric.Contains('empty section: What Happens Next') -and $stopGeneric.Contains('empty section: Discussion Prompts')) ("the generic packet blocks, naming each placeholder-only section: $stopGeneric")
+    $null = Declare $packetWithoutResponses boundary
+    $stopOld = Stop-With ($packetWithoutResponses + "approved for specify`n" + $marker)
     Check ($stopOld -match 'SPECREW-STOP-BLOCK' -and $stopOld.Contains('missing: approved for specify - <your instructions>') -and $stopOld.Contains('missing: changes needed: <what to change>') -and $stopOld.Contains('missing: discuss prompt 1')) ("the packet without the response options blocks, naming each: $stopOld")
     $declared = Declare $packet boundary
-    Check $declared.packet_valid 'agent packet has real review targets, recommendation and next work'
-    Check ($declared.text -eq $marker) 'boundary return supplies only the missing marker'
-    Check ((Stop-With 'The packet is ready; nothing needed.') -match 'SPECREW-STOP-BLOCK') 'tool-verified packet missing from the reply blocks Stop'
-    $completePacket = $packet + "`n" + $declared.text
+    Check ((Stop-With 'The packet is ready; nothing needed.') -match 'SPECREW-STOP-BLOCK') 'a packet missing from the reply blocks Stop'
+    $completePacket = $packet + "`n" + $marker
     $stop = Stop-With $completePacket
     Check ($stop -notmatch 'SPECREW-STOP-BLOCK') ("specific packet and bound marker pass: $stop")
     $context = Get-Content (Join-Path $root '.specrew/start-context.json') -Raw | ConvertFrom-Json
@@ -204,7 +207,7 @@ Approve this specify scope or identify a correction to the linked requirements.
     $declared = Declare 'I am checking the anchor requirements in clarify.' in-flight
     Check ($declared.text -eq '' -and -not $declared.orientation) 'background declaration emits neither reassurance nor another orientation'
     $declared = Declare $completePacket boundary @('clarifications')
-    Check (-not $declared.packet_valid -and $declared.text -eq '') 'missing artifacts withhold approval and marker even in a supplied packet'
+    Check ($declared.text -eq '' -and @($declared.owed) -contains 'clarifications') 'missing artifacts withhold the response lines and the marker'
     $sourceContract = Get-Content (Join-Path $ModuleRoot 'scripts/internal/launch-contract.ps1') -Raw
     Check ($sourceContract -match 'last tool call' -and $sourceContract -match "never the agent.s reply" -and $sourceContract -notmatch 'nothing is a complete answer') 'the runtime instruction cannot replace the agent reply with the tool return'
 }

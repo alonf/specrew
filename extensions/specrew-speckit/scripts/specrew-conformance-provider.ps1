@@ -1349,22 +1349,15 @@ try {
     # part of that existed because the signal was never designed to be read - it was reconstructed.
     #
     # A declaration is designed to be read. The re-read lane, the header scoring and the sleep all go with it.
-    $declaredMessage = if ($null -ne $turnEndRecord -and $turnEndRecord.PSObject.Properties['message']) { [string]$turnEndRecord.message } else { '' }
-    # Feature 202 T007 (FR-012, FR-015, B4F-100): "the declared draft reached the reply" means its MEANING LINES did -
-    # headings, review-target links, the question line, the approval line and verdict options, the marker - as
-    # declared once in turn-end-store.ps1 and recorded by declare-turn-end. The wording between them is the author's
-    # to tighten after the draft was saved; that used to block the Stop and repaint the whole message.
-    $declaredMeaningLines = @()
-    if (-not [string]::IsNullOrWhiteSpace($declaredMessage)) {
-        $declaredMeaningLines = if ($turnEndRecord.PSObject.Properties['meaning_lines']) { @($turnEndRecord.meaning_lines | ForEach-Object { [string]$_ }) } else { @(Get-SpecrewTurnMeaningLines -Message $declaredMessage) }
-        # 203 T011 (FR-046): the approval line, the options and the marker are checked from the record below, by their
-        # starts, not as the draft worded them.
-        $declaredMeaningLines = @($declaredMeaningLines | Where-Object { -not (Test-SpecrewDecisionMeaningLine -Line $_) })
+    # 203 T011 FOLLOW-UP (FR-046; maintainer ruling 2026-11-11, item 1): there is no draft. The packet is read from the
+    # reply itself (Test-SpecrewReplyPacket, turn-end-store.ps1): the six section headings at line starts, each with
+    # text that is not stock placeholder text, and file links under What Needs Your Review that resolve. Nothing is
+    # compared with a declared message any more.
+    $replyPacket = $null
+    if ($turnEndKind -eq 'boundary' -and (Get-Command Test-SpecrewReplyPacket -ErrorAction SilentlyContinue)) {
+        try { $replyPacket = Test-SpecrewReplyPacket -Reply $lastAssistantRaw } catch { $replyPacket = $null }
     }
-    $declaredLinesMissing = @(if (-not [string]::IsNullOrWhiteSpace($declaredMessage)) { Get-SpecrewTurnMeaningLinesMissing -Reply $lastAssistantText -MeaningLines $declaredMeaningLines })
-    $messageVisible = (-not [string]::IsNullOrWhiteSpace($declaredMessage)) -and (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and $declaredLinesMissing.Count -eq 0
-    $packetPresent = ($turnEndKind -eq 'boundary' -and $null -ne $turnEndRecord -and
-        $turnEndRecord.PSObject.Properties['packet_valid'] -and [bool]$turnEndRecord.packet_valid -and $messageVisible)
+    $packetPresent = ($turnEndKind -eq 'boundary' -and $null -ne $turnEndRecord -and $null -ne $replyPacket -and [bool]$replyPacket.present)
     $declaredCrossingMatches = $false
     $decisionParts = $null
     if ($turnEndKind -eq 'boundary' -and $hasPending -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
@@ -1462,7 +1455,6 @@ try {
     # A tool-rendered proposal or declared draft must reach the assistant's visible reply. The record
     # proves what was prepared; this comparison proves presentation, without granting any authority.
     $presentationMissing = ''
-    if (-not [string]::IsNullOrWhiteSpace($declaredMessage) -and -not $messageVisible) { $presentationMissing = 'declared message' }
     if ($turnEndKind -eq 'boundary' -and $hasPending -and (-not $packetPresent -or ($hasPending -and -not $markerForPendingCrossing))) { $presentationMissing = 'boundary packet' }
     if ($workshopIntermediate -and [string]$workshopQuestion.phase -eq 'agenda' -and
         (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew/handover/workshop-agenda-proposal.json') -PathType Leaf) -and
@@ -1483,7 +1475,7 @@ try {
             $presentedCrossingId = Get-SpecrewPresentedCrossingKey -Pending $pending
             if ($markerForPendingCrossing) {
                 $presentedWritten = Write-SpecrewPresentedCrossing -TurnEndRoot ([string]$turnEndPaths.TurnEndRoot) -CrossingId $presentedCrossingId `
-                    -ApprovalPhrase ([string]$turnEndRecord.approval_phrase) -Marker ([string]$turnEndRecord.marker) -Message $declaredMessage
+                    -ApprovalPhrase ([string]$turnEndRecord.approval_phrase) -Marker ([string]$turnEndRecord.marker) -Message $lastAssistantRaw
                 $presentedReason = if ($presentedWritten) { 'presented' } else { 'presented-unrecorded' }
             }
             else {
@@ -1508,7 +1500,7 @@ try {
     # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, $presentationMissing, $declaredMessage, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("wc={0}" -f [int][bool]$workshopConflict), ("p={0}" -f [int][bool]$hasPending), ("ps={0}" -f [int][bool]$presentedSuppressed), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, $presentationMissing, $(if ($null -ne $replyPacket) { @($replyPacket.problems) -join '|' } else { '' }), ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("wc={0}" -f [int][bool]$workshopConflict), ("p={0}" -f [int][bool]$hasPending), ("ps={0}" -f [int][bool]$presentedSuppressed), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
     $lastFirePath = $materialRuntime.LastFirePath
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
@@ -2008,18 +2000,16 @@ try {
                 # Feature 202 T007 (FR-012, FR-015): substance, named. The block lists the declared meaning lines the
                 # reply does not carry; the wording around them is the author's. An approval line and marker are asked
                 # for only when a crossing is pending (B4F-100: a specify stop with no crossing was asked for both).
-                if ($presentationMissing -eq 'declared message' -and $declaredLinesMissing.Count -gt 0) {
-                    [void]$sb.AppendLine('Specrew: your reply is missing these lines from the message you declared. Add them as written; the wording around them is yours:')
-                    foreach ($missingLine in @($declaredLinesMissing | Select-Object -First 12)) { [void]$sb.AppendLine(('  {0}' -f $missingLine)) }
-                }
-                elseif ($presentationMissing -eq 'boundary packet') {
+                if ($presentationMissing -eq 'boundary packet') {
                     if (-not [string]::IsNullOrWhiteSpace($verdictRecordProblem)) { [void]$sb.AppendLine((Get-SpecrewPendingVerdictRecordProblemText -Problem $verdictRecordProblem -Detail $verdictRecordDetail)) }
-                    [void]$sb.AppendLine('Specrew: include the boundary packet you declared in your reply, with the pending approval line and marker; for a new packet, pipe it on stdin into declare-turn-end.ps1 -Kind boundary.')
+                    [void]$sb.AppendLine('Specrew: your reply is the boundary packet. It needs the six sections, each with content specific to this boundary, the four response lines and the marker last, as declare-turn-end.ps1 -Kind boundary returned them:')
+                    if ($null -ne $replyPacket) {
+                        foreach ($packetProblem in @($replyPacket.problems)) { [void]$sb.AppendLine(('  {0}' -f $packetProblem)) }
+                    }
                     if ($null -ne $decisionParts) {
                         foreach ($missingLine in @($decisionParts.Missing)) { [void]$sb.AppendLine(('  missing: {0}' -f $missingLine)) }
                         foreach ($foreignLine in @($decisionParts.Foreign)) { [void]$sb.AppendLine(('  remove, it approves another boundary: {0}' -f $foreignLine)) }
                     }
-                    foreach ($missingLine in @($declaredLinesMissing | Select-Object -First 12)) { [void]$sb.AppendLine(('  missing: {0}' -f $missingLine)) }
                 }
                 else {
                     [void]$sb.AppendLine(('Specrew: include the complete {0} in your assistant reply; paste it as one unchanged block, exactly as it was produced.' -f $presentationMissing))
@@ -2060,7 +2050,7 @@ try {
                     [void]$sb.AppendLine('Specrew: the human''s reply carried this decision''s approval phrase, but the decision is still pending: that reply was not recorded. Tell the human in one sentence that their approval did not register and nothing advanced, then present the packet again so they can answer it.')
                 }
                 if (-not [string]::IsNullOrWhiteSpace($verdictRecordProblem)) { [void]$sb.AppendLine((Get-SpecrewPendingVerdictRecordProblemText -Problem $verdictRecordProblem -Detail $verdictRecordDetail)) }
-                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last tool call with your authored packet piped in on stdin; include that packet in your reply and add only the missing approval line and marker it supplies:')
+                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last tool call; it returns the four response lines and the marker. Put them in your packet, marker last, and send the packet as your reply:')
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine('Author the packet with specific review targets, a recommendation and the next step; take the approval line and marker only from the pending crossing.')
                 $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
@@ -2292,7 +2282,7 @@ try {
                 }
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' -Token <the token from the latest [specrew-turn] line>")
                 [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
-                [void]$sb.AppendLine('The return is for you, never your reply. Author the human-facing answer, agenda, question or packet; pipe its draft in on stdin.')
+                [void]$sb.AppendLine('The return is for you, never your reply. Author the human-facing answer, agenda, question or packet in your reply; the script takes no draft.')
                 $w52MaterialLine = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { try { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } catch { '' } } else { '' }
                 if (-not [string]::IsNullOrWhiteSpace($w52MaterialLine)) { [void]$sb.AppendLine(('Pass this line through in -Summary: {0}' -f $w52MaterialLine)) }
             }
@@ -2393,7 +2383,7 @@ try {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
             }
             else {
-                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> with your authored packet piped in on stdin; include the packet and supplied pending-crossing approval line and SPECREW-VERDICT-BOUNDARY marker in your reply.") | Out-Null
+                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary -Token <the token from the latest [specrew-turn] line> and include your packet with the four response lines and the SPECREW-VERDICT-BOUNDARY marker it returns in your reply.") | Out-Null
             }
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }
@@ -2404,7 +2394,10 @@ try {
     # Also record EVERY material stop (not only blocks) so a spurious material block is diagnosable against the
     # passing case (D-197-I009 conformance false-negative: a valid packet on disk still evaluated packetPresent=false).
     # A pending crossing that was NOT re-demanded (T006) is journaled too: "why did it not repaint" must be answerable.
-    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop -or $assessmentUnavailable -or $presentedSuppressed -or (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)) -or $orientationNotShown) {
+    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop -or $assessmentUnavailable -or $presentedSuppressed -or (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)) -or $orientationNotShown -or
+        # 203 T011 follow-up (ruling 2026-11-11): every Stop that read a boundary packet writes its history line, so
+        # recommendation_present is on record for each one, passing or not.
+        $null -ne $replyPacket) {
         try {
             $jdir = Split-Path -Parent $journalPath
             if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
@@ -2420,7 +2413,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; presented_crossing = $presentedReason; presented_suppressed = $presentedSuppressed; dials_missing_not_blocked = (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)); orientation_not_shown_not_blocked = $orientationNotShown; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_token_held = (-not [string]::IsNullOrWhiteSpace($turnEndOwnToken)); dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; recommendation_present = $(if ($null -ne $replyPacket) { [bool]$replyPacket.recommendation_present } else { $null }); presented_crossing = $presentedReason; presented_suppressed = $presentedSuppressed; dials_missing_not_blocked = (-not [string]::IsNullOrWhiteSpace($orientationDialsMissing)); orientation_not_shown_not_blocked = $orientationNotShown; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_token_held = (-not [string]::IsNullOrWhiteSpace($turnEndOwnToken)); dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

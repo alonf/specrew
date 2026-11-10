@@ -4,7 +4,8 @@
   Record this turn and verify the agent-authored message. Call as the turn's last tool.
 .DESCRIPTION
   Returns information to the agent, never a replacement reply. Ordinary turns emit no text.
-  Boundary drafts are verified; only missing machine-derived approval/marker lines are supplied.
+  A boundary declaration returns the four response lines and the marker from the pending-verdict record; the Stop
+  reads the packet from the reply itself (203 T011 follow-up). No draft is read.
   Token ownership, missing-artifact withholding and the pending crossing remain authoritative.
 #>
 [CmdletBinding()]
@@ -20,7 +21,7 @@ param(
     [AllowNull()][AllowEmptyString()][string] $Pending,
 
     # Artifacts this stage owes and has not produced. Approval and marker are withheld;
-    # the agent names the missing artifacts and next step in the drafted packet.
+    # the agent names the missing artifacts and next step in its packet.
     [AllowNull()][string[]] $Owed,
 
     # THE TOKEN THE HOOK HANDED YOU AT THE START OF THIS TURN, in a line beginning `[specrew-turn]`. It is
@@ -31,12 +32,12 @@ param(
 
     [AllowNull()][string] $ProjectRoot,
 
-    # The draft of the human-facing reply normally arrives on STDIN (feature 202 T014, FR-021): pipe it in, and the
-    # script saves it in the session's own ignored folder. This file path is still accepted for a caller that has not
-    # moved to stdin. Either way the script verifies the draft but never renders it.
+    # NOT READ (203 T011 follow-up, FR-046; maintainer ruling 2026-11-11). There is no draft any more: the Stop reads
+    # the packet from the reply. Accepted, and ignored, so a caller still passing a draft path declares as before;
+    # stdin is not read either.
     [AllowNull()][string] $MessagePath,
 
-    # Emit the verification and any missing machine lines as JSON for tests and tooling.
+    # Emit the record facts and the lines for the reply as JSON for tests and tooling.
     [switch] $AsJson
 )
 
@@ -101,41 +102,15 @@ else {
 # 203 T011: the record is read by Read-SpecrewPendingVerdictStopRecord in turn-end-store.ps1, the one reader the
 # Stop uses too, so the two cannot parse it differently.
 
-# The agent authors the reply. This declaration verifies the draft and records facts for Stop.
-#
-# Feature 202 T014 (FR-021): the draft arrives on stdin, as raw bytes decoded as strict UTF-8. -MessagePath still works
-# for a caller that has not moved to stdin.
-# Feature 202 iteration 002, T023 (FR-034, retro candidate 7): the message is kept in the turn record only, in the
-# session's own ignored folder. The separate draft copy this script also saved was read by nothing.
-$message = ''
-$draftBytes = $null
+# The agent authors the reply; this declaration records facts for the Stop. 203 T011 follow-up (FR-046; maintainer
+# ruling 2026-11-11): it reads no draft, from a file or stdin, and checks nothing against one. The Stop reads the packet
+# from the reply (Test-SpecrewReplyPacket) and the decision parts from the pending-verdict record.
 $draftSource = 'none'
-if (-not [string]::IsNullOrWhiteSpace($MessagePath)) {
-    $draftBytes = [IO.File]::ReadAllBytes($MessagePath)
-    $draftSource = 'file'
-}
-else {
-    try { $draftBytes = Read-SpecrewTurnDraftFromStdin }
-    catch {
-        [Console]::Error.WriteLine(('Turn-end declaration refused: {0}' -f $_.Exception.Message))
-        exit 2
-    }
-    if ($null -ne $draftBytes) { $draftSource = 'stdin' }
-}
-if ($null -ne $draftBytes) {
-    if ($draftBytes.Length -gt 131072) { throw 'The authored message exceeds 128 KiB.' }
-    try { $message = ConvertFrom-SpecrewTurnDraftBytes -Bytes $draftBytes }
-    catch {
-        [Console]::Error.WriteLine(('Turn-end declaration refused: {0}' -f $_.Exception.Message))
-        exit 2
-    }
-}
 $owedItems = @(@($Owed) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 $declaredBoundary = ''
 $declaredMarker = ''
 $approvalPhrase = ''
 $machineLines = [Collections.Generic.List[string]]::new()
-$packetCheck = [pscustomobject]@{ valid = $false; missing = @() }
 $inFlightRun = 0
 $inFlightExhausted = $false
 if ($Kind -eq 'in-flight') {
@@ -144,31 +119,17 @@ if ($Kind -eq 'in-flight') {
     $inFlightExhausted = $inFlightRun -gt $script:SpecrewTurnEndInFlightBound
 }
 if ($Kind -eq 'boundary') {
-    $packetCheck = Test-SpecrewAuthoredPacket -Message $message
     $stop = Read-SpecrewPendingVerdictStopRecord -Path (Join-Path $root '.specrew/runtime/pending-verdict-stop.md')
-    if ($owedItems.Count -gt 0) {
-        # Missing artifacts cannot acquire approval text or a marker through a drafted packet either.
-        if ($message -match 'SPECREW-VERDICT-BOUNDARY|(?im)^\s*approved for ') {
-            $packetCheck = [pscustomobject]@{ valid = $false; missing = @('withhold approval and marker while artifacts are owed') }
-        }
-    }
-    elseif ($stop.present) {
+    # Missing artifacts acquire no approval text or marker: the stop names what is owed instead.
+    if ($owedItems.Count -eq 0 -and $stop.present) {
         $declaredBoundary = [string]$stop.boundary
         $declaredMarker = [string]$stop.marker
         $approvalPhrase = [string]$stop.approval_phrase
-        $draftMarkers = @([regex]::Matches($message, '<!--\s*SPECREW-VERDICT-BOUNDARY:[^>]*-->') | ForEach-Object { $_.Value })
-        if (@($draftMarkers | Where-Object { $_ -cne $declaredMarker }).Count -gt 0) {
-            $packetCheck = [pscustomobject]@{ valid = $false; missing = @('replace the stale crossing marker with the pending marker') }
-        }
-        if ($packetCheck.valid) {
-            if (-not (Test-SpecrewTurnMessageVisible -Message $message -Expected $approvalPhrase)) { $machineLines.Add($approvalPhrase) }
-            if (-not (Test-SpecrewTurnMessageVisible -Message $message -Expected $declaredMarker)) { $machineLines.Add($declaredMarker) }
-        }
+        # The lines the reply must carry, from the record: the four responses, then the marker last.
+        foreach ($line in @(Get-SpecrewVerdictResponseLines -ApprovalPhrase $approvalPhrase)) { $machineLines.Add($line) }
+        $machineLines.Add($declaredMarker)
     }
 }
-# Feature 202 T007 (FR-015): the meaning lines the reply must carry, declared once in turn-end-store.ps1 and
-# recorded here, so the Stop compares exactly what this declaration said - the lines the script supplied included.
-$meaningSource = if ($machineLines.Count -gt 0) { $message + "`n" + ($machineLines -join "`n") } else { $message }
 $record = [pscustomobject][ordered]@{
     schema_version = '1.0'
     kind = $Kind
@@ -177,11 +138,6 @@ $record = [pscustomobject][ordered]@{
     owner_hash = [string]$paths.OwnerHash
     rendered = $false
     render_reason = 'agent-authored-message'
-    content_hash = Get-SpecrewTurnEndContentHash -Text $message
-    message = $message
-    meaning_lines = @(Get-SpecrewTurnMeaningLines -Message $meaningSource)
-    packet_valid = [bool]$packetCheck.valid
-    packet_missing = @($packetCheck.missing)
     boundary = $declaredBoundary
     marker = $declaredMarker
     approval_phrase = $approvalPhrase
@@ -207,15 +163,10 @@ if ($AsJson) {
         rendered = $false
         render_reason = 'agent-authored-message'
         orientation = $false
-        packet_valid = [bool]$packetCheck.valid
-        packet_missing = @($packetCheck.missing)
         owed = @($owedItems)
         draft_source = $draftSource
         text = $machineText
     } | ConvertTo-Json -Depth 6
     return
-}
-if ($Kind -eq 'boundary' -and -not $packetCheck.valid) {
-    [Console]::Error.WriteLine(('Packet not verified: {0}; pipe the agent-authored packet into this script on stdin, then include it in your reply.' -f ($packetCheck.missing -join ', ')))
 }
 if (-not [string]::IsNullOrWhiteSpace($machineText)) { Write-Output $machineText }

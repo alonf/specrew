@@ -621,51 +621,6 @@ function Get-SpecrewTurnEndPathsForStateRoot {
     }
 }
 
-# Feature 202 T014 (FR-021, DA-4): THE TURN DRAFT ARRIVES ON STDIN, never in a file the agent chose.
-#
-# B4F-101: agents wrote their drafts to paths of their own choosing, inside the repository too, so drafts rode into
-# commits, and two sessions in one project wrote the same file. The agent now pipes the draft into the turn-end script.
-# The bytes are read raw and decoded as strict UTF-8: the child's console input encoding is ibm437 under some agent
-# shells (research.md, DA-4), so any console decoder is the B4F-065 class.
-# Iteration 002, T023 (FR-034): the message is kept in the turn record only; the separate draft copy, read by nothing,
-# is no longer written.
-$script:SpecrewTurnDraftMaxBytes = 131072
-$script:SpecrewTurnDraftFirstByteWaitMs = 1500
-$script:SpecrewTurnDraftCompleteWaitMs = 10000
-
-function Read-SpecrewTurnDraftFromStdin {
-    # The draft's raw bytes, or $null when none was sent. A shell that leaves stdin open and sends nothing must not hang
-    # the turn end, so the first bytes are awaited for a short while only; a draft that has started must finish.
-    [OutputType([byte[]])]
-    param()
-    if (-not [Console]::IsInputRedirected) { return $null }
-    $stdin = [Console]::OpenStandardInput()
-    $buffer = [byte[]]::new(65536)
-    $collected = [IO.MemoryStream]::new()
-    $read = $stdin.ReadAsync($buffer, 0, $buffer.Length)
-    if (-not $read.Wait($script:SpecrewTurnDraftFirstByteWaitMs)) { return $null }
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ($read.Result -gt 0) {
-        $collected.Write($buffer, 0, $read.Result)
-        if ($collected.Length -gt $script:SpecrewTurnDraftMaxBytes) { throw 'The draft on stdin exceeds 128 KiB.' }
-        $read = $stdin.ReadAsync($buffer, 0, $buffer.Length)
-        $left = [Math]::Max(0, $script:SpecrewTurnDraftCompleteWaitMs - [int]$sw.ElapsedMilliseconds)
-        if (-not $read.Wait($left)) { throw ("The draft on stdin did not finish within {0} s; close stdin after the draft." -f ($script:SpecrewTurnDraftCompleteWaitMs / 1000)) }
-    }
-    if ($collected.Length -eq 0) { return $null }
-    return , $collected.ToArray()
-}
-
-function ConvertFrom-SpecrewTurnDraftBytes {
-    # Strict UTF-8: invalid bytes are refused, never replaced, because a replaced character is the human's text lost.
-    # A leading byte-order mark is not part of the text.
-    [OutputType([string])]
-    param([Parameter(Mandatory)][AllowEmptyCollection()][byte[]] $Bytes)
-    $offset = if ($Bytes.Length -ge 3 -and $Bytes[0] -eq 0xEF -and $Bytes[1] -eq 0xBB -and $Bytes[2] -eq 0xBF) { 3 } else { 0 }
-    try { return [Text.UTF8Encoding]::new($false, $true).GetString($Bytes, $offset, $Bytes.Length - $offset) }
-    catch [Text.DecoderFallbackException] { throw 'The draft is not valid UTF-8. Send it as UTF-8 text (PowerShell 7 pipes UTF-8; Windows PowerShell 5.1 does not).' }
-}
-
 function Read-SpecrewTurnEndRecord {
     [OutputType([pscustomobject])]
     param([Parameter(Mandatory)][string] $Path)
@@ -751,27 +706,92 @@ function Get-SpecrewReviewTargetLinks {
     return $links.ToArray()
 }
 
-function Test-SpecrewAuthoredPacket {
-    param([AllowNull()][string]$Message)
-    $missing = [Collections.Generic.List[string]]::new()
-    $sections = @{}
-    $headings = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
-    foreach ($heading in $headings) {
-        $match = [regex]::Match([string]$Message, '(?ims)^##\s+' + [regex]::Escape($heading) + '\s*\r?\n(?<body>.*?)(?=^##\s|\z)')
-        $sections[$heading] = $match.Groups['body'].Value.Trim()
-        if ([string]::IsNullOrWhiteSpace($sections[$heading])) { $missing.Add($heading) }
+# FEATURE 203 T011 FOLLOW-UP (FR-046; maintainer ruling 2026-11-11, item 1): THE PACKET IS READ FROM THE REPLY. There is
+# no draft: declare-turn-end reads none, and nothing is checked against one. A boundary reply's packet is present when
+#   - each of the six section headings starts a line (a Markdown heading of any level; words may follow the name);
+#   - each section has text before the next of the six, and a section whose only content is stock placeholder text
+#     (the lines below) counts as empty;
+#   - What Needs Your Review carries at least one file link (Get-SpecrewReviewTargetLinks), and every one resolves to
+#     an existing file.
+# "recommend" does not block; whether the reply carries it is returned for the Stop's history line.
+$script:SpecrewPacketHeadings = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
+# Stock placeholder text: generic lines a packet template or fallback has used, which say nothing about this boundary.
+# A line is matched whole, after its list or quote marker is removed. One source; the old separate checks are gone.
+$script:SpecrewStockPlaceholderPatterns = @(
+    '^The work named above\.?$'
+    '^On .+ the next stage starts\.?$'
+    '^Your reply decides\.?$'
+    '^Anything above you want changed, questioned, or done differently\.?$'
+    '^<[^<>!]+>$'
+    '^(?:TBD|TODO|\.\.\.|…)$'
+)
+
+function Test-SpecrewStockPlaceholderLine {
+    [OutputType([bool])]
+    param([AllowNull()][string] $Line)
+    $core = ([string]$Line).Trim()
+    do { $before = $core; $core = $core -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)', '' } while ($core -ne $before)
+    $core = $core.Trim()
+    foreach ($pattern in $script:SpecrewStockPlaceholderPatterns) { if ($core -match "(?i)$pattern") { return $true } }
+    return $false
+}
+
+function Test-SpecrewReplyPacket {
+    # The six-section packet as the reply carries it. $Reply must keep its lines (the transcript read with -Raw).
+    # Returns present, the problems (each a line the Stop shows) and recommendation_present.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][string] $Reply)
+    $problems = [System.Collections.Generic.List[string]]::new()
+    $lines = @(([string]$Reply) -split '\r?\n')
+    $starts = [ordered]@{}
+    foreach ($heading in $script:SpecrewPacketHeadings) {
+        $pattern = '(?i)^\s{0,3}#{1,6}\s+(?:\*\*|__)?' + [regex]::Escape($heading) + '\b'
+        for ($n = 0; $n -lt $lines.Count; $n++) { if ($lines[$n] -match $pattern) { $starts[$heading] = $n; break } }
     }
-    if (@(Get-SpecrewReviewTargetLinks -Message $sections['What Needs Your Review']).Count -eq 0) {
-        $missing.Add('specific review targets with file links')
+    $bodies = @{}
+    foreach ($heading in $script:SpecrewPacketHeadings) {
+        if (-not $starts.Contains($heading)) { $problems.Add(('missing section: {0}' -f $heading)); continue }
+        $from = [int]$starts[$heading] + 1
+        $to = $lines.Count
+        foreach ($other in $starts.Values) { if ([int]$other -ge $from -and [int]$other -lt $to) { $to = [int]$other } }
+        $body = @(if ($to -gt $from) { $lines[$from..($to - 1)] })
+        $bodies[$heading] = ($body -join "`n")
+        $content = @($body | Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_) -and
+                ([string]$_).Trim() -notmatch '^<!--.*-->$' -and
+                -not (Test-SpecrewStockPlaceholderLine -Line $_)
+            })
+        if ($content.Count -eq 0) { $problems.Add(('empty section: {0}' -f $heading)) }
     }
-    if ([string]$Message -notmatch '(?i)\brecommend(?:ation|ed)?\b') { $missing.Add('recommendation') }
-    if ($sections['What Happens Next'] -match '(?i)^On .+ the next stage starts\.|^Your reply decides\.?$') {
-        $missing.Add('specific next step')
+    if ($bodies.ContainsKey('What Needs Your Review')) {
+        # Every link must resolve (a folder that exists is not missing), and at least one must be an existing file.
+        $links = @(Get-SpecrewReviewTargetLinks -Message ([string]$bodies['What Needs Your Review']))
+        $fileLinks = 0
+        foreach ($link in $links) {
+            $isFile = $false; $isFolder = $false
+            if (-not [string]::IsNullOrWhiteSpace([string]$link.path)) {
+                try { $isFile = [System.IO.File]::Exists([string]$link.path); $isFolder = [System.IO.Directory]::Exists([string]$link.path) } catch { $isFile = $false; $isFolder = $false }
+            }
+            if ($isFile) { $fileLinks++ }
+            elseif (-not $isFolder) { $problems.Add(('review link to a missing file: {0}' -f [string]$link.text)) }
+        }
+        if ($fileLinks -eq 0 -and @($problems | Where-Object { $_ -like 'review link to a missing file:*' }).Count -eq 0) {
+            $problems.Add('What Needs Your Review has no file link (a file:/// URL or a Markdown link to an existing file)')
+        }
     }
-    if ($sections['Discussion Prompts'] -match '(?i)^1\. Anything above you want changed, questioned, or done differently\.?$') {
-        $missing.Add('specific discussion prompt')
+    return [pscustomobject]@{
+        present                = ($problems.Count -eq 0)
+        problems               = @($problems)
+        recommendation_present = ([string]$Reply -match '(?i)\brecommend(?:ation|ed|s)?\b')
     }
-    return [pscustomobject]@{ valid = ($missing.Count -eq 0); missing = @($missing) }
+}
+
+function Get-SpecrewVerdictResponseLines {
+    # The four response lines with the record's approval phrase filled in, as a boundary reply must carry them.
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string] $ApprovalPhrase)
+    $to = ($ApprovalPhrase.Trim() -replace '^(?i:approved for)\s+', '')
+    return @($script:SpecrewVerdictOptions | ForEach-Object { ([string]$_.Shown).Replace('<to>', $to) })
 }
 
 # FEATURE 203 T011 (FR-046; maintainer ruling 2026-11-10): A BOUNDARY REPLY'S DECISION PARTS, FROM THE RECORD.
@@ -819,14 +839,6 @@ function Get-SpecrewApprovalTarget {
     param([AllowNull()][string] $Core)
     $m = [regex]::Match([string]$Core, '^(?i:approved for)\s+(?<t>[^\s,.;:!?`*_]+)')
     return $(if ($m.Success) { $m.Groups['t'].Value } else { '' })
-}
-
-function Test-SpecrewDecisionMeaningLine {
-    # True for a meaning line the record now checks: an approval or response line, or the marker. The declared-draft
-    # comparison leaves these to Get-SpecrewReplyDecisionParts.
-    [OutputType([bool])]
-    param([AllowNull()][string] $Line)
-    return ([string]$Line -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)' -or [string]$Line -match '^<!--\s*SPECREW-VERDICT-BOUNDARY:')
 }
 
 function Get-SpecrewReplyDecisionParts {
@@ -1454,236 +1466,3 @@ function Get-SpecrewShownCrossingDecision {
     return [pscustomobject]@{ shown = $true; reason = 'shown' }
 }
 
-# THE MEANING-LINE SET (Feature 202 T007, FR-012, FR-015, B4F-100). "The draft reached the reply" is checked over the
-# lines that carry meaning, declared once here and used by both declare-turn-end.ps1 and the conformance Stop:
-#   - headings;
-#   - review-target links (each file:/// URL);
-#   - the question line (a line that asks the human something);
-#   - the approval line and the verdict options (the typed responses offered);
-#   - the marker.
-# What stood before required the WHOLE draft, whitespace-normalized, inside the reply. Tightening one sentence after
-# the draft was saved then blocked the Stop and repainted the whole message (B4F-100, twice in 202's own intake).
-# Wording between the meaning lines is the author's to change; the lines themselves are what the human must see.
-function Get-SpecrewTurnMeaningLines {
-    [OutputType([string[]])]
-    param([AllowNull()][string] $Message)
-
-    $lines = [System.Collections.Generic.List[string]]::new()
-    if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
-    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $add = {
-        param([string]$Text)
-        $normalized = ($Text -replace '\s+', ' ').Trim()
-        if ($normalized.Length -gt 0 -and $seen.Add($normalized)) { $lines.Add($normalized) }
-    }
-    foreach ($raw in ($Message -split "`r?`n")) {
-        $line = $raw.Trim()
-        if ($line.Length -eq 0) { continue }
-        if ($line -match '^#{1,6}\s+\S') { & $add $line; continue }                                             # heading
-        if ($line -match '^<!--\s*SPECREW-VERDICT-BOUNDARY:.*-->$') { & $add $line; continue }                  # marker
-        # Approval line and verdict options. Co-review round 6 (202, FR-015): an option written as a bullet, a quote, a
-        # numbered item, inline code or a bold label was not a meaning line, so a reply could drop it. The wrapper is
-        # formatting: the option inside it is the meaning line, which a reply that keeps the option carries either way.
-        $core = Get-SpecrewDecisionLineCore -Line $line
-        if ($core -match '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)') { & $add $core; continue }
-        # The question line: any line that asks something - a '?' ending a sentence, even when an instruction follows
-        # it on the same line ("Does this match? Type move on."). A '?' inside a URL query does not count.
-        if ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') { & $add $line }
-        foreach ($link in @(Get-SpecrewReviewTargetLinks -Message $line)) { & $add ([string]$link.text) }      # review-target links
-    }
-    return $lines.ToArray()
-}
-
-# A HEADING IS PRESENT WHEN ITS MEANING IS (202 DRIFT-030). The first live run of this check with stdin drafts blocked a
-# reply whose two headings differed from the draft by a function word ("now as one budget" / "now one budget"), and the
-# whole message was rendered again - the B4F-104 repaint class, which FR-012 removed. A heading's meaning is its numbers
-# and identifiers, its negations, and its content words: all three must hold, so "Round 3" never answers for "Round 4",
-# and "does not hold" never answers for "holds". Content words may differ by small wording (Jaccard 0.75 or more).
-# Links, questions, options and the marker stay exact: they are what the human acts on.
-$script:SpecrewHeadingFunctionWords = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
-        'a', 'an', 'the', 'and', 'or', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'now', 'of', 'to', 'in',
-        'on', 'at', 'for', 'by', 'with', 'from', 'into', 'it', 'its', 'this', 'that', 'these', 'those', 'so', 'then',
-        'than', 'also', 'just', 'both', 'all', 'here', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
-$script:SpecrewHeadingNegations = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
-        'not', 'no', 'never', 'without', 'nothing', 'none', 'cannot', 'neither', 'nor', 'unless', 'dont', 'doesnt', 'isnt',
-        'arent', 'wont', 'cant', 'didnt', 'wasnt', 'werent', 'hasnt', 'havent'), [System.StringComparer]::OrdinalIgnoreCase)
-
-function Get-SpecrewHeadingMeaning {
-    [OutputType([pscustomobject])]
-    param([Parameter(Mandatory)][string] $Heading)
-    $text = ($Heading -replace '^\s*#{1,6}\s+', '').ToLowerInvariant() -replace "['’]", ''
-    $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
-        $token = $m.Value
-        if ($token -match '\d') { [void]$anchors.Add($token) }
-        elseif ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token) }
-        elseif (-not $script:SpecrewHeadingFunctionWords.Contains($token)) { [void]$words.Add($token) }
-    }
-    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words }
-}
-
-function Test-SpecrewHeadingMeaningMatch {
-    [OutputType([bool])]
-    param([Parameter(Mandatory)][string] $Declared, [Parameter(Mandatory)][string] $Replied)
-    $d = Get-SpecrewHeadingMeaning -Heading $Declared
-    $r = Get-SpecrewHeadingMeaning -Heading $Replied
-    if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
-    if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
-    if ($d.Words.Count -eq 0 -and $r.Words.Count -eq 0) { return $true }
-    $union = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
-    $union.UnionWith($r.Words)
-    $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
-    $common.IntersectWith($r.Words)
-    return (($common.Count / [double]$union.Count) -ge 0.75)
-}
-
-# A DISCUSSION QUESTION IS PRESENT WHEN ITS MEANING IS (202 iteration 002, T019, FR-030; B4F-128). The review sign-off
-# packet of 2026-10-16: the reply reworded discussion prompt 1 ("Does closing with B4F-127 open fit the consequence
-# grading, ..." became "Is closing with B4F-127 open consistent with how you grade defects by consequence, ..."), the
-# Stop counted it missing, and the whole packet was rendered again - the FR-012 repaint class on a line kind the heading
-# match did not reach. The same three tests as a heading, tuned for a sentence: its numbers and identifiers, and its
-# negations, must be identical; its content words, lightly stemmed ("grading" and "grade" are one word) and without the
-# words any question carries, must largely overlap - nearly all of the shorter question's words in the longer one
-# (0.8), and half of all the words in common (0.5). Options, links and the marker stay exact.
-$script:SpecrewQuestionFunctionWords = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
-        'do', 'does', 'did', 'how', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'whether', 'you', 'your',
-        'we', 'our', 'i', 'my', 'me', 'us', 'should', 'would', 'could', 'can', 'will', 'shall', 'may', 'might', 'must',
-        'given', 'since', 'because', 'before', 'after', 'while', 'if', 'about', 'any', 'some', 'there'), [System.StringComparer]::OrdinalIgnoreCase)
-# Co-review round 6 (iteration 002): the order words are carried by any question, but not interchangeably. 'before' and
-# 'after' were both dropped, so 'Should the migration run before deployment?' and '... after deployment?' read as one
-# question. A rewording may add or drop one ("the interim launch check" became "the interim check before launches" in
-# B4F-128's reply); a question that has one where the other has its opposite is a changed question.
-$script:SpecrewQuestionOrderOpposites = @(@('before', 'after'), @('earlier', 'later'), @('first', 'last'))
-
-function Get-SpecrewQuestionMeaning {
-    [OutputType([pscustomobject])]
-    param([Parameter(Mandatory)][string] $Question)
-    $text = ($Question -replace '^\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+)+', '').ToLowerInvariant() -replace "['’]", ''
-    $last = $text.LastIndexOf('?')
-    if ($last -ge 0) { $text = $text.Substring(0, $last) }
-    $anchors = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $negations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $words = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $order = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    foreach ($m in [regex]::Matches($text, '[\p{L}\p{N}]+(?:[-./][\p{L}\p{N}]+)*')) {
-        $token = $m.Value
-        foreach ($pair in $script:SpecrewQuestionOrderOpposites) { if ($pair -contains $token) { [void]$order.Add($token) } }
-        if ($token -match '\d') { [void]$anchors.Add($token); continue }
-        if ($script:SpecrewHeadingNegations.Contains($token)) { [void]$negations.Add($token); continue }
-        if ($script:SpecrewHeadingFunctionWords.Contains($token) -or $script:SpecrewQuestionFunctionWords.Contains($token)) { continue }
-        $stem = $token
-        foreach ($suffix in @('ing', 'es', 'ed', 's')) {
-            if ($stem.Length -gt ($suffix.Length + 3) -and $stem.EndsWith($suffix)) { $stem = $stem.Substring(0, $stem.Length - $suffix.Length); break }
-        }
-        if ($stem.Length -gt 4 -and $stem.EndsWith('e')) { $stem = $stem.Substring(0, $stem.Length - 1) }
-        [void]$words.Add($stem)
-    }
-    return [pscustomobject]@{ Anchors = $anchors; Negations = $negations; Words = $words; Order = $order }
-}
-
-function Test-SpecrewQuestionMeaningMatch {
-    [OutputType([bool])]
-    param([Parameter(Mandatory)][string] $Declared, [Parameter(Mandatory)][string] $Replied)
-    $d = Get-SpecrewQuestionMeaning -Question $Declared
-    $r = Get-SpecrewQuestionMeaning -Question $Replied
-    if (-not $d.Anchors.SetEquals($r.Anchors)) { return $false }
-    if (-not $d.Negations.SetEquals($r.Negations)) { return $false }
-    foreach ($pair in $script:SpecrewQuestionOrderOpposites) {
-        $dOrder = @($pair | Where-Object { $d.Order.Contains($_) })
-        $rOrder = @($pair | Where-Object { $r.Order.Contains($_) })
-        if ($dOrder.Count -gt 0 -and $rOrder.Count -gt 0 -and (($dOrder -join ' ') -cne ($rOrder -join ' '))) { return $false }
-    }
-    if ($d.Words.Count -eq 0 -or $r.Words.Count -eq 0) { return $false }
-    $common = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
-    $common.IntersectWith($r.Words)
-    $union = [System.Collections.Generic.HashSet[string]]::new($d.Words, [System.StringComparer]::Ordinal)
-    $union.UnionWith($r.Words)
-    $smaller = [Math]::Min($d.Words.Count, $r.Words.Count)
-    return ((($common.Count / [double]$smaller) -ge 0.8) -and (($common.Count / [double]$union.Count) -ge 0.5))
-}
-
-function Get-SpecrewTurnMeaningLinesMissing {
-    # The declared meaning lines the reply does not carry, in draft order. Empty when every one is present - the
-    # wording around them may differ freely. Whitespace is normalized on both sides, as the host accessors do. A heading
-    # absent verbatim is still present when a reply heading carries its meaning (above); each reply heading answers for
-    # one declared heading at most.
-    [OutputType([string[]])]
-    param([AllowNull()][string] $Reply, [AllowNull()][string[]] $MeaningLines)
-
-    $replyText = ([string]$Reply -replace '\s+', ' ').Trim()
-    # The host accessors hand the Stop a FLATTENED reply (whitespace normalized to single spaces), so reply headings
-    # are found by their '#' markers, not by line: each marker starts a slot holding the words up to the next marker.
-    $slots = [System.Collections.Generic.List[object]]::new()
-    $markers = @([regex]::Matches($replyText, '(?:^|(?<=\s))(#{1,6})\s+(?=\S)'))
-    for ($i = 0; $i -lt $markers.Count; $i++) {
-        $start = $markers[$i].Index + $markers[$i].Length
-        $end = if ($i + 1 -lt $markers.Count) { $markers[$i + 1].Index } else { $replyText.Length }
-        $slots.Add([pscustomobject]@{ Hashes = $markers[$i].Groups[1].Value; Words = @($replyText.Substring($start, $end - $start).Trim() -split ' ' | Where-Object { $_ }) ; Used = $false })
-    }
-    $missing = [System.Collections.Generic.List[string]]::new()
-    $pendingHeadings = [System.Collections.Generic.List[string]]::new()
-    $pendingQuestions = [System.Collections.Generic.List[string]]::new()
-    # T019: the reply's questions, from the flattened text - each sentence that ends in '?', without its list marker.
-    $replyQuestions = [System.Collections.Generic.List[object]]::new()
-    # Co-review round 5 (iteration 002): a period inside a version or a file name ('1.2', 'plan.md') is not the end of a
-    # sentence, so the question keeps its identifier and its anchor can match.
-    foreach ($q in [regex]::Matches($replyText, '(?:[^?!.#]|\.(?=\S))+\?')) {
-        $qText = ($q.Value -replace '^\s*(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '').Trim()
-        if ($qText.Length -gt 0) { $replyQuestions.Add([pscustomobject]@{ Text = $qText; Used = $false }) }
-    }
-    foreach ($line in @($MeaningLines)) {
-        if ([string]::IsNullOrWhiteSpace($line)) { continue }
-        if ($line -match '^#{1,6}\s+\S') {
-            if ($replyText.Contains($line, [StringComparison]::Ordinal)) {
-                # Claim the slot this heading occupies verbatim, so no reworded match can take it.
-                $words = @(($line -replace '^#{1,6}\s+', '') -split ' ')
-                foreach ($slot in $slots) {
-                    if (-not $slot.Used -and $slot.Words.Count -ge $words.Count -and (($slot.Words[0..($words.Count - 1)]) -join ' ') -ceq ($words -join ' ')) { $slot.Used = $true; break }
-                }
-                continue
-            }
-            $pendingHeadings.Add($line)
-            continue
-        }
-        if ($replyText.Contains($line, [StringComparison]::Ordinal)) {
-            # A question present verbatim claims its reply question, so no reworded match can take it.
-            foreach ($rq in $replyQuestions) { if (-not $rq.Used -and $line.Contains($rq.Text, [StringComparison]::Ordinal)) { $rq.Used = $true; break } }
-            continue
-        }
-        $optionCore = $line -replace '^(?:>\s*|[-*+]\s+|\d+[.)]\s+)+', '' -replace '^(?:`+|\*\*|__|\*|_)', ''
-        $isQuestion = ($line -match '\?(?:["''\)\]\*_]*)(?:\s|$)') -and ($line -notmatch '^<!--') -and ($optionCore -notmatch '(?i)^(?:approved for\b|changes needed\s*:|discuss prompt\b)')
-        if ($isQuestion) { $pendingQuestions.Add($line) } else { $missing.Add($line) }
-    }
-    foreach ($line in $pendingQuestions) {
-        $hitQ = $null
-        foreach ($rq in $replyQuestions) {
-            if ($rq.Used) { continue }
-            if (Test-SpecrewQuestionMeaningMatch -Declared $line -Replied $rq.Text) { $hitQ = $rq; break }
-        }
-        if ($null -ne $hitQ) { $hitQ.Used = $true } else { $missing.Add($line) }
-    }
-    # A reworded heading matches a slot when the slot's first k words carry its meaning, for k within a few words of the
-    # declared heading's length (the slot also holds the prose that follows the heading).
-    $reworded = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    foreach ($line in $pendingHeadings) {
-        $n = @(($line -replace '^#{1,6}\s+', '') -split ' ' | Where-Object { $_ }).Count
-        $hit = $null
-        foreach ($slot in $slots) {
-            if ($slot.Used) { continue }
-            for ($k = [Math]::Max(1, $n - 3); $k -le [Math]::Min($slot.Words.Count, $n + 3); $k++) {
-                if (Test-SpecrewHeadingMeaningMatch -Declared $line -Replied (($slot.Words[0..($k - 1)]) -join ' ')) { $hit = $slot; break }
-            }
-            if ($null -ne $hit) { break }
-        }
-        if ($null -ne $hit) { $hit.Used = $true } else { [void]$reworded.Add($line) }
-    }
-    # Draft order: rebuild the list with the unmatched headings in their places.
-    $ordered = [System.Collections.Generic.List[string]]::new()
-    foreach ($line in @($MeaningLines)) {
-        if ([string]::IsNullOrWhiteSpace($line)) { continue }
-        if ($reworded.Contains($line) -or $missing.Contains($line)) { $ordered.Add($line) }
-    }
-    return $ordered.ToArray()
-}

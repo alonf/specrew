@@ -1,15 +1,14 @@
-# Feature 202 T014 (FR-021; US6; DA-4): turn drafts arrive over stdin, and the message is kept in the turn record.
+# Feature 202 T014 (FR-021; US6; DA-4) brought turn drafts in over stdin; feature 203 T011's follow-up (FR-046; maintainer
+# ruling 2026-11-11, item 1) removed the draft. The Stop reads the packet from the reply itself, so declare-turn-end.ps1
+# reads nothing from stdin or a draft file, stores no message, and no skill asks for a draft.
 #
-# B4F-101: agents saved their turn drafts wherever they chose, in the repository too, and drafts rode into commits;
-# two sessions in one project wrote the same draft file. B4F-065: a draft passed through a console decoder lost its
-# non-ASCII text. Now the agent pipes the draft into declare-turn-end.ps1, which reads the raw bytes (the child's
-# console input encoding is ibm437 under some agent shells, research.md DA-4) and decodes them as strict UTF-8.
+# What this suite proved for the draft it now proves for its absence: (1) a draft piped on stdin is not read or stored;
+# (2) two sessions declaring at once each get their own record; (3) a host with no session id declares as before; (4) a
+# -MessagePath draft is not read; (5) an open, silent stdin does not hang the declaration; (6) bytes that are not UTF-8
+# on stdin no longer matter; (7) the turn record is git-ignored; (8) no skill asks for a piped draft or a draft file;
+# (9) no shipped file names the old draft copy.
 #
-# Feature 202 iteration 002, T023 (FR-034, retro candidate 7): the script also saved a copy of the draft,
-# turn-message.md, beside the turn record. Nothing read it: the Stop reads the message inline from the record. The copy
-# is gone; the record, in the session's own ignored folder, is the one place the message is kept.
-#
-# RED before T023: a turn-message.md is written for every declaration (cases 1 to 4), and the script reports its path.
+# RED before the T011 follow-up: the script read stdin and -MessagePath and kept the message in the record.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -68,7 +67,7 @@ function Get-RecordMessage {
     if ($null -eq $Result.Json) { return $null }
     $record = Read-SpecrewTurnEndRecord -Path ([string]$Result.Json.record_path)
     if ($null -eq $record) { return $null }
-    return [string]$record.message
+    return $(if ($record.PSObject.Properties['message']) { [string]$record.message } else { '' })
 }
 
 function Test-NoDraftFields {
@@ -86,45 +85,41 @@ try {
     $hebrew = "שלום עולם — the human's question, in Hebrew and English.`r`nשורה שנייה: האם להמשיך? ✅ 🚀 Ünïcödé`r`n"
     $hebrewBytes = [Text.UTF8Encoding]::new($false).GetBytes($hebrew)
 
-    # 1. A non-ASCII draft over stdin reaches the turn record character for character, and no copy is written.
+    # 1. A draft piped on stdin is not read: nothing of it reaches the record, and no copy is written.
     $a = New-SessionRoot -Root $root -HostKind 'claude' -SessionId 'session-a'
     $r = Complete-Declare (Start-Declare -Root $root -Token $a.Token -Bytes $hebrewBytes)
-    Assert-True ($r.ExitCode -eq 0) "[$platform] (1) the declaration with a stdin draft succeeds (exit $($r.ExitCode); $($r.StdErr.Trim()))"
-    Assert-True ((Get-RecordMessage $r) -ceq $hebrew) "[$platform] (1) Hebrew, emoji and CRLF reach the turn record character for character"
+    Assert-True ($r.ExitCode -eq 0) "[$platform] (1) the declaration with a piped draft succeeds (exit $($r.ExitCode); $($r.StdErr.Trim()))"
+    Assert-True ([string]::IsNullOrEmpty((Get-RecordMessage $r)) -and [string]$r.Json.draft_source -eq 'none') "[$platform] (1) the piped draft is not read or stored (draft_source '$([string]$r.Json.draft_source)')"
     Assert-True (@(Get-DraftCopies $root).Count -eq 0) "[$platform] (1) no draft copy is written ($((Get-DraftCopies $root) -join ', '))"
     Assert-True (Test-NoDraftFields $r) "[$platform] (1) neither the record nor the script's report names a draft copy"
 
-    # 2. Two sessions declaring at the same moment each keep their own message.
+    # 2. Two sessions declaring at the same moment each get their own record.
     $b = New-SessionRoot -Root $root -HostKind 'claude' -SessionId 'session-b'
     $c = New-SessionRoot -Root $root -HostKind 'codex' -SessionId 'session-c'
-    $textB = "Session B's packet: אישור לשלב הבא?`n"
-    $textC = "Session C's question: מה הגבולות?`n"
-    $runB = Start-Declare -Root $root -Token $b.Token -Bytes ([Text.Encoding]::UTF8.GetBytes($textB))
-    $runC = Start-Declare -Root $root -Token $c.Token -Bytes ([Text.Encoding]::UTF8.GetBytes($textC))
+    $runB = Start-Declare -Root $root -Token $b.Token
+    $runC = Start-Declare -Root $root -Token $c.Token
     $rB = Complete-Declare $runB; $rC = Complete-Declare $runC
     Assert-True ($rB.ExitCode -eq 0 -and $rC.ExitCode -eq 0) "[$platform] (2) two concurrent declarations both succeed"
-    Assert-True ((Get-RecordMessage $rB) -ceq $textB -and (Get-RecordMessage $rC) -ceq $textC) "[$platform] (2) each session's record holds its own message"
     Assert-True ([string]$rB.Json.record_path -ne [string]$rC.Json.record_path) "[$platform] (2) the two sessions' records are separate files"
-    Assert-True (@(Get-DraftCopies $root).Count -eq 0) "[$platform] (2) no draft copy is written"
 
-    # 3. A host that passes no session id: the message is still recorded, and nothing is said about a draft path.
+    # 3. A host that passes no session id still declares, and nothing is said about a draft.
     $legacy = [IO.Path]::GetFullPath([IO.Path]::Combine([IO.Path]::GetTempPath(), 'tdi-l-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
     [IO.Directory]::CreateDirectory([IO.Path]::Combine($legacy, '.specrew', 'runtime')) | Out-Null
     try {
         $legacyToken = Write-SpecrewTurnToken -StateRoot ([IO.Path]::Combine($legacy, '.specrew', 'runtime')) -TurnId 'turn-1'
         $r = Complete-Declare (Start-Declare -Root $legacy -Token $legacyToken -Bytes ([Text.Encoding]::UTF8.GetBytes("no session id`n")))
-        Assert-True ($r.ExitCode -eq 0 -and (Get-RecordMessage $r) -ceq "no session id`n") "[$platform] (3) without a session id the message is recorded"
-        Assert-True (@(Get-DraftCopies $legacy).Count -eq 0 -and (Test-NoDraftFields $r)) "[$platform] (3) no per-token draft copy is written or reported"
-        Assert-True ($r.StdErr -notmatch 'draft is kept') "[$platform] (3) nothing is said about where a draft is kept"
+        Assert-True ($r.ExitCode -eq 0 -and [string]::IsNullOrEmpty((Get-RecordMessage $r))) "[$platform] (3) without a session id the turn is declared, and no message is stored"
+        Assert-True (@(Get-DraftCopies $legacy).Count -eq 0 -and (Test-NoDraftFields $r)) "[$platform] (3) no draft copy is written or reported"
+        Assert-True ($r.StdErr -notmatch 'draft') "[$platform] (3) nothing is said about a draft"
     }
     finally { Remove-Item -LiteralPath $legacy -Recurse -Force -ErrorAction SilentlyContinue }
 
-    # 4. -MessagePath still works for a caller that has not moved to stdin, and is not copied either.
+    # 4. A -MessagePath draft is accepted and not read.
     $d = New-SessionRoot -Root $root -HostKind 'copilot' -SessionId 'session-d'
     $file = Join-Path $root 'legacy-draft.md'
     [IO.File]::WriteAllBytes($file, $hebrewBytes)
     $r = Complete-Declare (Start-Declare -Root $root -Token $d.Token -Extra @('-MessagePath', $file))
-    Assert-True ($r.ExitCode -eq 0 -and (Get-RecordMessage $r) -ceq $hebrew) "[$platform] (4) -MessagePath is still accepted and decoded as UTF-8"
+    Assert-True ($r.ExitCode -eq 0 -and [string]::IsNullOrEmpty((Get-RecordMessage $r)) -and [string]$r.Json.draft_source -eq 'none') "[$platform] (4) -MessagePath is accepted and not read"
     Assert-True (@(Get-DraftCopies $root).Count -eq 0) "[$platform] (4) a -MessagePath draft is not copied"
 
     # 5. A shell that leaves stdin open and sends nothing must not hang the turn end.
@@ -134,16 +129,14 @@ try {
     $r = Complete-Declare $run -TimeoutMs 30000
     try { $run.Stdin.Close() } catch { $null = $_ }
     Assert-True ($r.Finished -and $r.ExitCode -eq 0) ("[$platform] (5) an open, silent stdin does not hang the declaration ({0:N1} s)" -f $sw.Elapsed.TotalSeconds)
-    Assert-True ((Get-RecordMessage $r) -ceq '') "[$platform] (5) no message is invented when none was sent"
 
-    # 6. Bytes that are not UTF-8 are refused with a plain reason, never recorded as mojibake.
+    # 6. Bytes that are not UTF-8 on stdin are not read, so they no longer refuse the declaration.
     $f = New-SessionRoot -Root $root -HostKind 'claude' -SessionId 'session-f'
     $r = Complete-Declare (Start-Declare -Root $root -Token $f.Token -Bytes ([byte[]](0x53, 0x68, 0xE9, 0x6C, 0x6F, 0x6D, 0xFF, 0x0A)))
-    Assert-True ($r.ExitCode -ne 0 -and $r.StdErr -match 'not valid UTF-8') "[$platform] (6) a draft that is not UTF-8 is refused with a plain reason"
-    Assert-True (@(Get-DraftCopies $root).Count -eq 0) "[$platform] (6) nothing is saved for the refused draft"
+    Assert-True ($r.ExitCode -eq 0) "[$platform] (6) bytes on stdin that are not UTF-8 do not refuse the declaration (exit $($r.ExitCode))"
+    Assert-True (@(Get-DraftCopies $root).Count -eq 0) "[$platform] (6) nothing is saved for them"
 
-    # 7. The turn record, which holds the message, is ignored by git: init writes '.specrew/runtime/' as a per-session
-    #    pattern.
+    # 7. The turn record is ignored by git: init writes '.specrew/runtime/' as a per-session pattern.
     $patterns = @(Get-SpecrewPerSessionPattern)
     Assert-True ($patterns -contains '.specrew/runtime/') "[$platform] (7) init's per-session ignore patterns cover .specrew/runtime/"
     $repo = [IO.Path]::GetFullPath([IO.Path]::Combine([IO.Path]::GetTempPath(), 'tdi-g-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
@@ -157,13 +150,16 @@ try {
     }
     finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
 
-    # 8. The three skills name the stdin form, none asks for a draft file, and none says a draft copy is saved.
+    # 8. No skill asks for a piped draft or a draft file; each names the script with no draft. The launch contract too.
     foreach ($skill in 'turn-end.md', 'gate-stop.md', 'design-workshop.md') {
         $text = [IO.File]::ReadAllText((Join-Path $repoRoot "extensions/specrew-speckit/squad-templates/skills/$skill"))
-        Assert-True ($text -match '\|\s*pwsh -File \.specify/extensions/specrew-speckit/scripts/declare-turn-end\.ps1' -and $text -match 'stdin') "[$platform] (8) $skill names the stdin form"
-        Assert-True ($text -notmatch '-MessagePath <') "[$platform] (8) $skill does not ask for a draft file"
+        Assert-True ($text -match 'pwsh -File \.specify/extensions/specrew-speckit/scripts/declare-turn-end\.ps1') "[$platform] (8) $skill names the script"
+        Assert-True ($text -notmatch '\|\s*pwsh -File \.specify/extensions/specrew-speckit/scripts/declare-turn-end\.ps1' -and $text -notmatch '(?i)\bon \*{0,2}stdin|<<.DRAFT.') "[$platform] (8) $skill does not ask for a piped draft"
+        Assert-True ($text -notmatch '-MessagePath') "[$platform] (8) $skill does not ask for a draft file"
         Assert-True ($text -notmatch 'turn-message\.md|saves (?:it|the draft) in') "[$platform] (8) $skill does not say a draft copy is saved"
     }
+    $contract = [IO.File]::ReadAllText((Join-Path $repoRoot 'scripts/internal/launch-contract.ps1'))
+    Assert-True ($contract -notmatch '(?i)draft on stdin|on stdin into|question on stdin') "[$platform] (8) the launch contract does not ask for a piped draft"
 
     # 9. No shipped file writes or names the copy.
     $shipped = @('extensions', 'scripts', 'hosts') | ForEach-Object { Join-Path $repoRoot $_ } | Where-Object { Test-Path -LiteralPath $_ } |
