@@ -451,7 +451,7 @@ then T014.
     (`templates/specify/templates/plan-template.md` and its `.specify` copy) and the planner guidance (the planner
     charter in `extensions/specrew-speckit/squad-templates/` and in `templates/squad/`, the planning ceremony, and their
     deployed copies under `.specify/` and `.squad/`).
-- [ ] T008 [owner: Implementer] [sp: 5.0] [US1] **Orchestrator loop on the budget.**
+- [X] T008 [owner: Implementer] [sp: 5.0] [US1] **Orchestrator loop on the budget.**
   - **Carries from T004 (DRIFT-027):** removing the per-round approval (FR-010): the `approved for review round` act
     in the classifier, its capture writer and `--approve-round`, in the same change that makes the grant the only
     launch authority. Also from T004 (DRIFT-028): the review CLI's out-of-session form and its out-of-band

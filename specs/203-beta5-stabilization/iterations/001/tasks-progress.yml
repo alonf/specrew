@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-09T09:08:30.1117325Z"
+updated_at: "2026-11-10T02:13:26.3003629Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -47,9 +47,9 @@ tasks:
     blocked_reason: ""
   T008:
     title: "Orchestrator loop: single grant, reservation before invocation, top-up, infra cap, pause facts, navigator, stop layout and phrases"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-11-09T09:08:30.1075828Z"
-    completed_at: ""
+    completed_at: "2026-11-10T02:13:26.2967135Z"
     blocked_reason: ""
   T011:
     title: "Stop check verifies the reply's decision parts; word-for-word comparison removed"
