@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 100% (6/6 resolved for this feature; DRIFT-001, DRIFT-004, DRIFT-005 and DRIFT-006 class closure open)
+**Total drift events**: 8
+**Resolution rate**: 100% (8/8 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-008 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -121,6 +121,69 @@
 - **Class closure**: NONE — the turn-token hooks are outside 205's scope. Candidate for the turn-end owner: issue a
   token, or accept an explicit "no token this turn" declaration, when a turn starts from a `!` command or another
   non-typed input.
+
+### DRIFT-007 — `empty-result-retry` failed again on a records-only commit (finding; second sighting of DRIFT-205-INTAKE-001)
+
+- **Observed**: 2026-11-10, Specrew CI run 42743719583, attempt 1, on `cf01f599` (records only: this drift log and
+  three `.squad` record files). Job "Deterministic gate", runner `ubuntu-latest`, step "F-198 honesty regression
+  suite (NFR-007)": 1 of 131 files failed, `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`.
+  - Case: "does NOT retry a non-empty result (single spawn, no retry telemetry)".
+  - Assertion: "Expected 1, because a healthy result must not be re-run, but got 2."
+  - Contract lane was skipped because it waits on the failed gate.
+- **Same code passed**: `03bc4c5b` passed every job about 40 minutes earlier, and `cf01f599` changed no code.
+  DRIFT-205-INTAKE-001 was the first sighting of this test file failing (a different case).
+- **Resolution**: the maintainer approved one rerun of the failed job. Attempt 2 concluded **success**: Self-leak
+  firewall, Lint, Deterministic gate and Contract lane all passed, and all 10 workshop lens-order steps passed. Test
+  (42743719636) and Cross-Platform Validation (42743720145) on `cf01f599` passed on the first attempt.
+- **Class closure**: NONE — the test and the code under it belong to feature 203 (continuous co-review) and are bug 3
+  of feature 206. Neither is touched by 205.
+
+### DRIFT-008 — the review preflight ran feature 202's verification plan, and two of its suites rewrote the maintainer's real home hook files (finding; hand-over to 203)
+
+- **Observed**: 2026-11-11, review round 1 (approved by the maintainer's typed `approved for review round`). Run
+  `run-20261110-221211306-a1cb90e2` in campaign `cmp-205-workshop-lens-order-i001` ended `preflight-failed` after
+  1,745 s: `verification-command-failed:iteration-003-governance-202,f199-class-guards-a:diagnostics-require-command-scoped-disclosure`.
+  The reviewer was never invoked, and the engine reports that no round was used.
+- **Cause 1, the stale plan**: `.specrew/verification-plan.json` (plan id `f199.i003.slice.v1`, last re-pointed
+  2026-10-21 in `ede19399`) still names 10 lanes of features 202 and 199 (102 suites). One lane validates 202's
+  iteration 003, which no longer applies.
+- **Cause 2, the home writes**: four real-home hook files changed at 00:36:54 to 00:36:55 local, inside the preflight
+  window (00:12 to 00:41): `~/.specrew/specrew-hook-launch.ps1`, `~/.codex/hooks.json`, `~/.cursor/hooks.json`
+  and `~/.copilot/hooks/specrew-refocus.json`. Before, the three host files pointed at
+  `~/.specrew/hooks/b958cbe133e6a88ee358f7c5f89d5a67/specrew-hook-launch.ps1`, and the root launcher was 10,804 bytes
+  with live-engine pin handling. After, they pointed at the root launcher, which was 6,772 bytes with no pin
+  handling: main's layout. The crew first read the direction backwards; the maintainer corrected it.
+- **The suites that wrote them** (read only, not rerun): two suites in the plan run `scripts/specrew-update.ps1`
+  against a temp project without redirecting the home folder. `specrew-update.ps1` calls
+  `Invoke-RefocusHookDeployment` without `-UserHomeOverride`, so `deploy-refocus-hooks.ps1` writes the real home.
+  - `tests/integration/deployed-extension-marker-on-update.tests.ps1` (line 64), lane `f199-slice-suites-a`, the
+    second-to-last lane. Its timing fits the 00:36:55 write best.
+  - `tests/integration/receipt-outcomes-retired.tests.ps1` (line 28), lane `f202-slice-suites-a`, an early lane. It
+    would have written the same layout earlier in the run. The file times show only the last write.
+  - Checked and cleared: `cross-host-workshop` and `turn-record-contract` pass `-UserHomeOverride` to a fixture home;
+    `extension-deploy-refocus-digests` runs `deploy-speckit-extension.ps1`, which does not deploy hooks; the other
+    matches were file names in lists or comments.
+- **Resolution**: with the maintainer's permission for exactly those four files, the crew restored them from the
+  backup taken before the T013 run, kept the changed versions in a second folder and deleted nothing. The hashes
+  after the copy match the backup, and all three host files point at the `hooks/b958…` launcher again. The maintainer
+  compared the four files with the backup and accepted the restore.
+- **Plan re-pointed** (maintainer decision, 2026-11-11): `.specrew/verification-plan.json` (now `f205.i001.v1`) holds
+  two commands, both labelled with this entry:
+  - `iteration-001-governance-205`: governance validation of this iteration.
+  - `f205-lens-order-suites`: the parity test and the 10 workshop suites, each read first and found to write only
+    under the system temp folder.
+
+  Before and after the next preflight the crew hashes every file under `~/.specrew/hooks/`,
+  `~/.specrew/hook-bindings/`, `~/.specrew/specrew-hook-launch.ps1`, `~/.codex/hooks.json`, `~/.cursor/hooks.json`
+  and both files in `~/.copilot/hooks/`, and stops on any change.
+- **Side effect**: `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` compares the plan with the suites on disk. It
+  now fails when run locally, because the plan names 11 suites, not 40 or more. It is not in any CI workflow or the
+  F-198 registry. The mechanism it offers, parking the carried-forward lanes in
+  `.specrew/verification-plan.signoff-lanes.json`, was not used: the parked lanes run before signoff, and they include
+  the two suites that write the home folder.
+- **Class closure**: NONE — the review preflight and both suites belong to feature 203's area and are not edited by
+  205. Handed over to 203 as a finding:
+  `specs/205-workshop-lens-order/iterations/001/handover-to-203.md`.
 
 <!--
   Every new ### DRIFT-... event includes:
