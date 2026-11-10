@@ -88,6 +88,8 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
 
 - **FR-004**: The bug list records item 3 as "cause not found, one candidate", with its evidence, marked for
   hand-over to feature 203. Every recurrence is added to its log with the run id. No code changes.
+  Sightings so far: run 42715079692 ("retries once and recovers") and run 42743719583 ("does NOT retry a
+  non-empty result"), both Ubuntu, both a written output read as empty.
 
 ### Item 4 — the nightly and historic work
 

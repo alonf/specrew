@@ -38,10 +38,16 @@ Two independent causes.
   compares the baseline commit with the working-tree file, which now carries the healed section. Specrew's
   own write is classified as a behavior change by the user.
 
-## 3. `empty-result-retry.Tests.ps1` "retries once and recovers" failed once in the Deterministic gate
+## 3. `empty-result-retry.Tests.ps1` fails intermittently in the Deterministic gate (two cases, two sightings)
 
 - **Observed (run 42715079692, attempt 1, ubuntu):** the retry's stdout was empty
-  (`Expected '"run_id":"t108"' to match <empty>`).
+  (`Expected '"run_id":"t108"' to match <empty>`), case "retries once and recovers".
+- **Observed (run 42743719583, attempt 1, ubuntu; reported by the maintainer from feature 205's CI,
+  confirmed in the run's log):** case "does NOT retry a non-empty result (single spawn, no retry
+  telemetry)" failed at line 87 with `Expected 1, because a healthy result must not be re-run, but got 2`.
+  Commit `cf01f599` on `205-workshop-lens-order` is records-only; the same code passed on `03bc4c5b` about
+  40 minutes earlier. A second spawn for a non-empty result means the first attempt's output was read as
+  empty: the same shape as the first sighting, now in a different case.
 - **Cause: not found.** Not reproduced: the real test passed 200 of 200 cases on Linux (WSL Ubuntu 24.04,
   pinned to 2 cores, 25 runs idle and 25 under CPU load), and a standalone replay of the capture pattern
   lost no output in 300 runs on Windows.
@@ -49,13 +55,15 @@ Two independent causes.
   (`scripts/internal/continuous-co-review/worktree-reviewer.ps1:1598`) keeps stdout only if the
   `ReadToEndAsync` task already shows `RanToCompletion` when `WaitForExit(slice)` returns, and that wait does
   not wait for the reader to reach end-of-stream. The failure's shape (retry stdout empty) fits it, but it was
-  never observed. The file is in feature 203's protected area.
+  never observed. Both sightings fit it: in each, output the fake agent wrote was read as empty (the retry's
+  in the first, the first attempt's in the second). The file is in feature 203's protected area.
 - **Disposition (maintainer, 2026-11-10):** no fix in 206. Hand over to feature 203 as "cause not found,
   one candidate", with the evidence above. Any recurrence is logged here with its run id.
 
 | Run id | Attempt | Date (UTC) | Commit | Runner | Outcome |
 | ------ | ------- | ---------- | ------ | ------ | ------- |
-| 42715079692 | 1 | 2026-11-09 | `700e6127` | ubuntu-latest | failed; passed on rerun (attempt 2) |
+| 42715079692 | 1 | 2026-11-09 | `700e6127` | ubuntu-latest | failed ("retries once and recovers"); passed on rerun (attempt 2) |
+| 42743719583 | 1 | 2026-11-10 | `cf01f599` (205, records-only) | ubuntu-latest | failed ("does NOT retry a non-empty result", got 2 spawns); `03bc4c5b` passed ~40 min earlier |
 
 ## 4. The Nightly Truth-Check on main has been red since 2026-08-08
 
