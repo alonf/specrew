@@ -191,9 +191,7 @@ flowchart LR
   T[nightly] --> Q[notifier script] --> I[tracking issue]
 ```
 
-### Option C: By-the-book — not meaningfully distinct
-
-A by-the-book shape would add a per-rule registry with ship versions (options A or C of the FR-008
+By-the-book is not meaningfully distinct for this problem. A by-the-book shape would add a per-rule registry with ship versions (options A or C of the FR-008
 discussion) and a generic notification abstraction. The maintainer has ruled the registry a later item, and
 one notification channel has been chosen, so By-the-book is not meaningfully distinct from Option B here.
 
