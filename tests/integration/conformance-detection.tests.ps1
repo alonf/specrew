@@ -474,6 +474,42 @@ I will author plan.md with the architecture and the FR-to-test mapping. No code 
 
 ## What I Need From You
 
+Approve as-is, approve with instructions, send back, or discuss prompt #N. Type one of these:
+
+approved for plan
+approved for plan - <your instructions>
+changes needed: <what to change>
+discuss prompt 1
+
+<!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan -->
+'@
+
+# 203 T011 (FR-046; maintainer ruling 2026-11-11, item 2a): the packet as it stood before the Stop read the four
+# response lines from the pending-verdict record - the approval line and marker, but none of the other three
+# options. Kept as a block case (Case 2b-old), so the change from pass to block stays visible in this suite.
+$realPacketWithoutResponses = @'
+## What I Just Did
+
+Completed the clarify phase for feature 050-host-neutral-gate and reconciled the spec clarifications, updating the artifacts under file:///fixture/specs/050-host-neutral-gate/spec.md with the locked scope and the enforce-or-halt north star agreed with the human.
+
+## Why I Stopped
+
+This is the clarify -> plan boundary. Planning converts the spec into architecture and task direction, so spec mistakes become downstream work. Human judgment is required before I author plan.md.
+
+## What Needs Your Review
+
+The clarifications at file:///fixture/spec.md and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
+
+## What Happens Next
+
+I will author plan.md with the architecture and the FR-to-test mapping. No code is written at the plan boundary.
+
+## Discussion Prompts
+
+1. I recommend the locked scope because it isolates the host capability changes. Is that scope correct?
+
+## What I Need From You
+
 Approve as-is, approve with instructions, send back, or discuss prompt #N.
 approved for plan
 
@@ -597,6 +633,21 @@ try {
     $r2b = Invoke-Conformance -Proj $p2b -TranscriptPath $t2b
     if ($r2b.Blocked) { Fail "Case 2b: a DECLARED boundary matching the pending crossing must pass only with the authored packet visible. Out: $($r2b.Out)" }
     Write-Pass "Case 2b (positive control): a declared boundary suppresses the block, and the record is at the path the shared store resolves"
+
+    # ---- Case 2b-old (203 T011, FR-046): the packet Case 2b passed with before the Stop read the response lines
+    # from the pending-verdict record. Same state, same real declaration; the reply carries the approval line and
+    # marker but not the other three options, so the Stop blocks and names each one.
+    $p2bo = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p2bo
+    $d2bo = New-Declaration -Proj $p2bo -Kind 'boundary' -From 'clarify' -To 'plan' -PacketText $realPacketWithoutResponses
+    if (-not $d2bo.record_written) { Fail "Case 2b-old: the declaration script did not write its record. $($d2bo | ConvertTo-Json -Compress)" }
+    $t2bo = New-Transcript -Proj $p2bo -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2bo.reply })
+    $r2bo = Invoke-Conformance -Proj $p2bo -TranscriptPath $t2bo
+    if (-not $r2bo.Blocked) { Fail "Case 2b-old: a packet without the three response options MUST block. Out: $($r2bo.Out)" }
+    foreach ($option in @('approved for plan - <your instructions>', 'changes needed: <what to change>', 'discuss prompt 1')) {
+        if (-not ([string]$r2bo.Out).Contains("missing: $option")) { Fail "Case 2b-old: the block must name the missing option '$option'. Out: $($r2bo.Out)" }
+    }
+    Write-Pass "Case 2b-old: the packet without the response options blocks, naming each missing option"
 
     # ---- Case 2c (the BOUNDARY update transition): a project on the OLD habit at a pending crossing.
     #

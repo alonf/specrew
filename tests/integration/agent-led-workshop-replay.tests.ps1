@@ -178,12 +178,21 @@ Clarify checks remaining ambiguities in the spec in the same turn after your app
 ## What I Need From You
 Approve this specify scope or identify a correction to the linked requirements.
 "@
+    # 203 T011 (FR-046; maintainer ruling 2026-11-11, item 2a): the packet carries the four response lines, so the
+    # declaration supplies only the marker. (It cannot supply the approval line alone here: until the draft
+    # reading goes (ruling 1), it finds the phrase inside the "approved for specify - " option line.) The packet as
+    # it stood before (no options) is kept as a block case below.
+    $packetWithoutResponses = $packet
+    $packet = $packet + "Type one of these:`n`napproved for specify`napproved for specify - <your instructions>`nchanges needed: <what to change>`ndiscuss prompt 1`n"
     $generic = $packet.Replace("Read $specUrl for anchor handling, output fields and the zero-false-positive constraint.", 'The work named above.').Replace('Clarify checks remaining ambiguities in the spec in the same turn after your approval; it produces no code.', 'On approval the next stage starts.').Replace('1. I recommend keeping HTTP links out of scope; adding them would require timeout and network-error decisions.', '1. Anything above you want changed, questioned, or done differently.')
     $declared = Declare $generic boundary
     Check (-not $declared.packet_valid -and $declared.text -eq '') 'the current generic packet earns neither approval line nor marker'
+    $declaredOld = Declare $packetWithoutResponses boundary
+    $stopOld = Stop-With ($packetWithoutResponses + "`n" + $declaredOld.text)
+    Check ($stopOld -match 'SPECREW-STOP-BLOCK' -and $stopOld.Contains('missing: approved for specify - <your instructions>') -and $stopOld.Contains('missing: changes needed: <what to change>') -and $stopOld.Contains('missing: discuss prompt 1')) ("the packet without the response options blocks, naming each: $stopOld")
     $declared = Declare $packet boundary
     Check $declared.packet_valid 'agent packet has real review targets, recommendation and next work'
-    Check ($declared.text -eq ('approved for specify' + [Environment]::NewLine + $marker)) 'boundary return supplies only the missing approval line and marker'
+    Check ($declared.text -eq $marker) 'boundary return supplies only the missing marker'
     Check ((Stop-With 'The packet is ready; nothing needed.') -match 'SPECREW-STOP-BLOCK') 'tool-verified packet missing from the reply blocks Stop'
     $completePacket = $packet + "`n" + $declared.text
     $stop = Stop-With $completePacket
