@@ -215,4 +215,33 @@ on the frozen list. D5 lets FR-009 start with a failing test, as the feature's r
 
 ## Human Decision
 
-**Status**: pending. Awaiting the maintainer's verdict.
+**Verdict (verbatim)**: `approved for plan with Option B`, followed on the same message by conditions to
+be written into the plan as tasks or acceptance checks.
+**Given**: 2026-11-10, by the maintainer, at the design-analysis decision stop rendered over the committed
+draft `d79e051b`.
+**Chosen option**: modified-Option B.
+**Reason**: as recommended: D2's reorder brings the false pause back; D3 and D6 end rules stated twice;
+D4 meets FR-008 as written; D5 gives FR-009 a failing test first.
+**Modifications** (the maintainer's conditions, in substance):
+
+1. **D3, before the definition changes**: a table of every iteration with its closed/open answer under each
+   of the three current rules and under the new function; every iteration whose answer changes is listed
+   with the reason. Then the nightly validation runs locally: no iteration that changes may produce a new
+   finding. If one does, the work stops and it goes to the maintainer; it is not added to the frozen list
+   (FR-007 closes that list).
+2. **D3/D4, what a frozen entry means**: it is judged by no check, neither the open-iteration checks nor the
+   closed-iteration checks. A test proves the validator produces zero findings for every frozen entry.
+   197/006 (both frozen and marked abandoned) is resolved explicitly.
+3. **D2, matched markers only**: a managed block is stripped only when its opening and closing markers are a
+   matched pair. With a missing or unbalanced marker the whole file is compared as today, so the error is
+   toward pausing. Tests cover both cases, plus a user change outside the markers still classified as the
+   user's.
+4. **D5, nothing private in the issue**: the issue title, body and comments carry iteration ids and rule
+   names only, no local paths and no user or machine names; a test proves it. The `issues: write`
+   permission is granted to the notifier job only.
+
+Also to be confirmed in the plan: the custom PowerShell quality profile replaces react-spa-public; nothing
+in feature 203's protected files is touched; `.squad/active-features.yml` stays uncommitted. Push when
+`plan.md` is in and Lint can pass, then follow CI to the end.
+**Transcription disclosure**: agent-transcribed from the maintainer's typed reply in the governing session;
+the commit containing this record is the decision commit, cited in the durable gate packet under `gates/`.
