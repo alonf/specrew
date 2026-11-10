@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 21.75/22 story_points
+**Capacity**: 20/20 story_points
 **Started**: 2026-11-10
 **Completed**:
 
@@ -18,7 +18,8 @@
 
 ## Scope Summary
 
-The whole feature in one iteration: items 1, 2a, 2b, 4, 5 and 6a fixed; item 3 handed over. Design:
+Items 1, 2a, 2b, 4 and 5 fixed, item 3 handed over; FR-013 and FR-014 (T016, T017) are deferred to
+iteration 002 (Notes). Design:
 modified-Option B ([design-analysis.md](design-analysis.md)); the four conditions of the design verdict are
 tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 
@@ -37,8 +38,8 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | FR-010 | the review-verdict finding names the real status | 4 |
 | FR-011 | lane guard and full sweep count every test script | 5 |
 | FR-012 | each of the 35 registered or excluded, by the maintainer's ruling | 5 |
-| FR-013 | the empty `_ctl-spec.ps1` deleted | 5 |
-| FR-014 | no Node or React preset for this repository | 6a |
+| FR-013 | deferred to iteration 002 (T016) | 5 |
+| FR-014 | deferred to iteration 002 (T017) | 6a |
 
 ## Tasks
 
@@ -48,7 +49,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T002 | Over-claim dirty check: one path separator (failing assertions 1 and 2 first) | FR-002 | US1 | 0.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, tests/integration/validator-hardening-iteration2.ps1 | planned | | | |
 | T003 | Change classifier strips matched specrew-managed blocks only; unbalanced compares whole file (condition 3) | FR-003 | US1 | 1.5 | Implementer | scripts/specrew-start.ps1, scripts/internal/instruction-file-merge.ps1, tests/unit/**, tests/integration/validator-hardening-iteration2.ps1 | planned | | | |
 | T004 | Item 3 hand-over record for 203, with the recurrence log | FR-004 | US2 | 0.5 | Implementer | specs/206-bug-bash/bug-list.md, specs/206-bug-bash/iterations/001/** | planned | | | |
-| T005 | Closed-definition table: every iteration under the three current rules and the new function; changes listed with reasons (condition 1, before T006) | FR-008a | US2 | 1.0 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
+| T005 | Closed-definition table: every iteration under the three current rules and the new function; changes listed with reasons; 198/010 included as awaiting the maintainer's ruling (condition 1, before T006) | FR-008a | US2 | 1.0 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
 | T006 | Test-SpecrewIterationClosed: one function for the validator filter, dashboard check and renderer; heuristic and verdict rule removed (failing test first) | FR-008a | US2 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/*.ps1, scripts/internal/dashboard-renderer.ps1, tests/unit/** | planned | | | |
 | T007 | Mark 198/011 and 197/006 abandoned; the 203 finding (FR-066 mint guard, T091, T093); frozen list with its 18 entries | FR-005, FR-006 | US2 | 1.0 | Implementer | specs/198-beta2-hardening/iterations/011/state.md, specs/198-beta2-hardening/iterations/011/plan.md, specs/197-*/iterations/006/state.md, specs/197-*/iterations/006/plan.md, .specrew/legacy-frozen.yml, specs/206-bug-bash/** | planned | | | |
 | T008 | Frozen means judged by no check; guard test for added keys; zero-findings test per entry; 197/006 resolved (condition 2) | FR-007 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, tests/unit/** | planned | | | |
@@ -59,9 +60,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T013 | Shared test census for the lane guard and the full sweep, content-classified, one exclusion list (failing guard first) | FR-011 | US3 | 2.0 | Implementer | tests/support/test-census.ps1, tests/unit/every-suite-is-named-by-a-lane.tests.ps1, tests/full-powershell-test-sweep.ps1 | planned | | | |
 | T014 | The 35 scripts: read for home writes or hook deployment, run the safe ones with home hashes, durations; STOP with exclusions, red scripts and per-push total for the maintainer | FR-012 | US3 | 2.0 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
 | T015 | Register the 35 per the maintainer's ruling; both B5F-036 suites green and registered | FR-012 | US3 | 1.0 | Implementer | .github/workflows/specrew-ci.yml, .specrew/release-gate-suites.txt, .specrew/verification-plan.json, tests/support/test-census.ps1 | planned | | | |
-| T016 | Delete the empty tests/integration/_ctl-spec.ps1 | FR-013 | US3 | 0.25 | Implementer | tests/integration/_ctl-spec.ps1 | planned | | | |
-| T017 | Resolver suggests no Node/React here (failing test first); f049 assertion onto a fixture; root package.json removed | FR-014 | US4 | 1.5 | Implementer | package.json, tests/integration/f049-i003-intake-engine-tests.ps1, tests/fixtures/**, tests/unit/** | planned | | | |
-| T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run; capacity set back to 20 at closeout (OVERRIDE 5) | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/**, .specrew/iteration-config.yml | planned | | | |
+| T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run; no commit touches a full-validation trigger path | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
 
 ## FR to test mapping
 
@@ -76,9 +75,9 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | FR-009 | notifier suite with recorded `gh` calls | same failures: no call; rendered text has no path, user or machine name |
 | FR-010 | validator message for a `retro` iteration | a `complete` iteration still gets its message |
 | FR-011 | lane guard with a probe script of any name | fixtures and support helpers stay excluded |
-| FR-014 | resolver on this repository with 201's spec | the fixture with its own `package.json` still detects `nodejs` |
+| FR-014 | iteration 002: resolver on this repository with 201's spec | iteration 002: the fixture with its own `package.json` still detects `nodejs` |
 
-FR-004, FR-005, FR-006, FR-012 and FR-013 are records, rulings or deletions; their evidence is the bug
+FR-004, FR-005, FR-006 and FR-012 are records, rulings or deletions; their evidence is the bug
 list, the frozen-list guard, the T010 replay and the T014 report.
 
 ## Effort Model
@@ -86,10 +85,10 @@ list, the frozen-list guard, the T010 replay and the T014 report.
 | Setting | Value | Notes |
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
-| Capacity per Iteration | 22 | OVERRIDE 5 (maintainer, 2026-11-11): 20 raised to 22 for this iteration only; back to 20 at closeout. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
 | Iteration Bounding | scope | The bug list is fixed by the maintainer; overcommit is surfaced, not auto-deferred. |
 | Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
-| Overcommit Threshold | 1.0 | 21.75 planned within 22 x 1.0; 0.25 SP of slack. |
+| Overcommit Threshold | 1.0 | 20 planned against 20 x 1.0; no slack. |
 | Defer Strategy | manual | Any deferral is the maintainer's decision. |
 | Calibration Enabled | true | Retro compares actuals to these estimates. |
 
@@ -99,7 +98,7 @@ list, the frozen-list guard, the T010 replay and the T014 report.
 - **Conflict risk:** high on `validate-governance.ps1` (T002, T006, T008, T009, T011, T012) and
   `shared-governance.ps1` (T006, T008, T009).
 - **Recommendation:** run serially, one bug per commit. Order: T001-T004; T005 before T006; T007, T008,
-  T009, T011, then T010's replay; T012; T013 before T014; the T014 stop; T015, T016; T017; T018 last.
+  T009, T011, then T010's replay; T012; T013 before T014; the T014 stop; T015; T018 last.
 
 ## Phase Baseline
 
@@ -113,18 +112,28 @@ list, the frozen-list guard, the T010 replay and the T014 report.
 
 ## Traceability Summary
 
-- **Requirement scope:** FR-001 to FR-014 and FR-008a. SC-001 to SC-007.
+- **Requirement scope:** FR-001 to FR-012 and FR-008a; FR-013 and FR-014 in iteration 002. SC-001 to SC-005
+  and SC-007; SC-006 in iteration 002.
 - Every task traces to an FR or SC; every FR in scope has at least one task.
 - **Stories:** US1 start and checks (items 1, 2), US2 nightly and history (items 3, 4), US3 test census
   (item 5), US4 resolver (item 6a).
 
 ## Notes
 
-- **Capacity (OVERRIDE 5, maintainer, 2026-11-11):** 21.75 planned against a cap raised from 20 to 22 for
-  this iteration, recorded in `.specrew/iteration-config.yml` and set back to 20 at iteration closeout, so the
-  merged diff of that file is the comment only. **No second raise:** if any task grows so the total would pass
-  22, work stops and goes to the maintainer. Drop order: T017, then T016, both moved to a follow-up, never cut
-  silently.
+- **Capacity:** 20 planned against 20. OVERRIDE 5 was reverted on the maintainer's verdict (2026-11-11,
+  "changes needed: a"): `.specrew/iteration-config.yml` is identical to `main`. **No raise:** if any task grows
+  so the total would pass 20, work stops and goes to the maintainer.
+- **Deferred to iteration 002, not cut** (maintainer, 2026-11-11). Reason: iteration 001 was 1.75 SP over its
+  20 SP cap, and raising the cap changes a file that makes CI validate the whole repository. These two were
+  the maintainer's own drop order. Both keep their ids and estimates:
+
+  | Task | Title | Requirement | Effort |
+  | ---- | ----- | ----------- | ------ |
+  | T016 | Delete the empty tests/integration/_ctl-spec.ps1 | FR-013 | 0.25 |
+  | T017 | Resolver suggests no Node/React here (failing test first); f049 assertion onto a fixture; root package.json removed | FR-014 | 1.5 |
+
+  Until T017 lands, the quality resolver keeps suggesting a React preset for this repository (bug 6a); the
+  custom PowerShell profile in the feature plan stands in the meantime.
 - **Stops inside implement:** T010 stops if any changed iteration produces a new finding; T014 stops with
   the exclusion list, every red script with its failure, each script's duration and the per-push total
   before anything is registered.
@@ -138,7 +147,31 @@ list, the frozen-list guard, the T010 replay and the T014 report.
     before closeout.
   - **174/007**: maintainer decision 2026-06-14 at feature 174's iteration 011 closeout, recorded in its
     `state.md` Disposition: abandoned-superseded by 174/008, closed without a ratified review.
+- **198/010 joins the T005 table, awaiting the maintainer's ruling** (2026-11-11). It is marked nothing until
+  the maintainer rules. Found by the full-repo run during OVERRIDE 5; it was never in the nightly's reports
+  because it passes at capacity 20.
+  - **Status**: open. `state.md` says `Iteration Status: reviewing`, phase `review-signoff`, last updated
+    2026-08-01; `plan.md` still says `planning`. Not in the closed index; no `review.md`.
+  - **Needs-rework task**: T082, "DRIFT-198-I009-041 — authority-store containment against reparse points"
+    (FR-008, 5.0 SP), status corrected from `done` to `needs-rework` on 2026-08-01: path resolution is
+    contained, but paths obtained by enumeration bypass the check.
+  - **Blocking finding**: DRIFT-198-I010-004, "T082's containment covers path RESOLUTION, not ENUMERATION;
+    -041 is NOT delivered", open and blocking, a security defect on the read path at four enumeration sites in
+    `scripts/internal/continuous-co-review/review-authority-store.ps1` (lines 200, 309, 362, 447 at the time).
+    That file is in feature 203's protected area.
 - **197/006** is marked abandoned, not frozen; the dashboard check applies to `complete` iterations only
   (feature plan, "197/006, resolved").
+- **Which changed paths make CI validate the whole repository.** CI runs `validate-governance.ps1
+  -ChangedOnly` against the previous push. It falls back to the whole repository when the diff touches any of
+  these paths (`Get-ValidatorGlobalStatePathspecs`, `shared-governance.ps1`): `.specrew/config.yml`,
+  `.specrew/constitution.md`, `.specrew/iteration-config.yml`, `.specrew/role-assignments.yml`,
+  `.specrew/presets/**`, `.specrew/lenses/**`, `.specrew/roadmap.yml`, `.squad/identity/wisdom.md`. It also does
+  so when the base cannot be resolved or the diff fails. **The validator scripts are not among them**, and
+  neither are `.specrew/closed-iterations.yml` or the new `.specrew/legacy-frozen.yml`. **No task in this
+  iteration touches a trigger path**, so no reordering is needed; T018 checks that no commit does. On `main`,
+  and in the nightly, the validator always runs the whole repository.
+- **What the whole-repository run reports on this branch today** (CI mode, `-FullRun`, with OVERRIDE 5
+  reverted): see the T005 evidence. Its only failure is 198/011's review-verdict finding, which T007 removes,
+  plus the 20 dashboard warnings on the frozen and abandoned entries.
 - **Not touched:** `scripts/internal/continuous-co-review/**`, `scripts/internal/bootstrap/**`,
   `scripts/specrew-update.ps1`, `.squad/active-features.yml`.

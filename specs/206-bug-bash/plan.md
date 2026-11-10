@@ -6,7 +6,8 @@
 
 ## Summary
 
-One iteration fixes the diagnosed defects of items 1, 2, 4, 5 and 6a and records item 3's hand-over, under
+Iteration 001 fixes the diagnosed defects of items 1, 2, 4 and 5 and records item 3's hand-over; iteration
+002 carries FR-013 and FR-014 (T016, T017), deferred to keep 001 within its 20 SP cap. All under
 the maintainer's design decision: **modified-Option B** (one source of truth per signal), with four
 conditions that this plan carries as tasks and acceptance checks (see "The maintainer's conditions" below).
 Conduct is bug-bash: every fix starts with a failing test, and each bug lands in its own commit.
@@ -109,7 +110,7 @@ kept as FR-014's evidence. **A custom PowerShell composition replaces it:**
 | II/XXVII Layered system | Pass. Validator, start script, CI workflow and tests only; no Squad-layer change |
 | IV Compatibility | Pass. History is not re-judged (FR-008); consumer projects without a closure stamp see no new findings |
 | XV Human oversight | Pass. The 35 scripts' exclusions, durations and per-push cost go to the maintainer before registration |
-| XVI Capacity-aware | Pass under OVERRIDE 5: 21.75 SP against a cap raised to 22 for iteration 001 by the maintainer (2026-11-11), set back to 20 at closeout; no second raise |
+| XVI Capacity-aware | Pass. Iteration 001 at 20/20; T016 and T017 deferred to iteration 002 by the maintainer (2026-11-11); OVERRIDE 5 reverted |
 | XXI/XXIII-XXV Verification | Pass. Failing test first per fix; the nightly is replayed locally before push |
 
 ## Project structure touched
@@ -127,5 +128,5 @@ extensions/specrew-speckit/scripts/{validate-governance,shared-governance,resolv
 .github/workflows/specrew-nightly-truth-check.yml   D5
 tests/support/test-census.ps1                  D6 (new)
 tests/unit/every-suite-is-named-by-a-lane.tests.ps1, tests/full-powershell-test-sweep.ps1   D6
-package.json                                   FR-014 (deleted)
+package.json                                   FR-014 (deleted, iteration 002)
 ```
