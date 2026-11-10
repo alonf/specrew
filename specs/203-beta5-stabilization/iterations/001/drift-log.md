@@ -1697,6 +1697,16 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   records (DRIFT-041 item 3, DRIFT-045 item 3); `withdrew_observed_at` went with the withdrawal writer. T008's steps (i)
   to (iv) are built.
 
+- **Ruling (maintainer, 2026-11-10), demoted findings in the iteration review**: B5F-017's fix is live only at T014, and the
+  iteration review after T013 runs on the pinned engine (`bd4635df`), whose reviewer prompt has the same gap, so every
+  blocker that review finds can be recorded as minor. Rule for that review, whatever else is done: every demoted finding
+  is treated at the severity the reviewer reported (`demoted_from`). The crew fixes each one within the approved tasks
+  and does not ask for review sign-off while any is unfixed. Recorded in the iteration's review notes as well. A
+  prompt-only update of the pin before that review is under the maintainer's consideration (DRIFT-051's conditions).
+- **Placement (maintainer, 2026-11-10)**: T009 (the scoped fix round, FR-013) goes to iteration 002; whether a clean
+  scoped round counts toward sign-off is decided at its planning (tasks.md T009). T008 is marked done when the sweep
+  on `2d8839cf` and CI on its push are green.
+
 ### DRIFT-053 — CI was red on this branch for 8 days and 40 pushes, and nothing in the crew's routine looked (process gap; proposal, maintainer decision pending)
 
 - **Observed (2026-11-09)**: Specrew CI's Lint job failed on every push of `203-beta5-stabilization` from `0999ff62`

@@ -27,3 +27,14 @@ Also changed by T006, for the same review:
    with new words (DRIFT-018 follow-up), and the assertion matches them.
 5. **The already-approved line** (DRIFT-039 item a; committed with this note) says "nothing was recorded from this reply", which `verdict-pairing`
    case 4b reads as a report.
+
+## Demoted findings count at the reviewer's severity (maintainer ruling, 2026-11-10; DRIFT-052)
+
+This review runs on the pinned engine (`bd4635df`). Its reviewer prompt never asks for the literal `Failure scenario:`
+clause its ingest requires (B5F-017; fixed on this branch in `d3ab3f21`, live only at T014), so a blocking or major
+finding that states its scenario in prose is recorded as minor. For this review:
+
+1. Every demoted finding is treated at the severity the reviewer reported: the result's `demoted_from`, which the
+   sign-off listing also shows ("the reviewer reported it as ...").
+2. The crew fixes each one within the approved tasks, as it would a finding recorded at that severity.
+3. The crew does not ask for review sign-off while any demoted finding is unfixed.

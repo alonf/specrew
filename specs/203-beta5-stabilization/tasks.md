@@ -593,7 +593,11 @@ then T014.
   changed lines and any code that relies on what changed); findings in that zone gate, findings in unrelated
   unchanged code are recorded as non-gating follow-ups. Labelled `scoped`; coverage rule. **Acceptance added:** a
   fix whose break lands in an untouched caller is reported as gating (round 13's finding 2 as the shape); a
-  finding in unrelated unchanged code is a non-gating follow-up. Trace: FR-013. Owns:
+  finding in unrelated unchanged code is a non-gating follow-up. **Placement (maintainer, 2026-11-10): iteration 002**,
+  as the crew recommended: the iteration review after T013 runs on the pinned engine, so T009 could not help it, and it
+  is tried live on the new loop once T014 advances the pin. **Open design question, decided at iteration 002's
+  planning:** does a clean scoped round count toward review sign-off, or does sign-off still need a whole-tree round?
+  Trace: FR-013. Owns:
   `scripts/internal/continuous-co-review/worktree-*.ps1`, `review-target-port.ps1`, `tests/unit/scoped-round.Tests.ps1`.
 - [ ] T010 [owner: Implementer] [sp: 1.5] [US1] **Host-reported token usage.** Per round and at sign-off; "not
   reported by <host>" otherwise. Trace: FR-012. Owns: `scripts/internal/continuous-co-review/review-*-harness-port.ps1`,
