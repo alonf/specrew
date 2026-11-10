@@ -62,7 +62,7 @@
   the CI markdownlint command, and push only if both exit 0.
 - **Class closure**: that standing local validation step, recorded in the crew's memory as well.
 
-### DRIFT-003 — the lens decision-point extractor does not see product-domain's numbered list (observation)
+### DRIFT-003 — the lens decision-point extractor does not see product-domain's numbered list (finding, kept by the maintainer at the plan verdict)
 
 - **Observed**: 2026-11-10, planning SC-002. `Get-SpecrewLensDecisionPoints -LensId product-domain` returns 0 points,
   because product-domain's `## Design Decision Points` is a numbered list (`1. **Users ...**`), and the extractor

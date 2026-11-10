@@ -2,6 +2,13 @@
 
 **Branch**: `205-workshop-lens-order` | **Date**: 2026-11-10 | **Spec**: file:///C:/Dev/specrew-220-workshop-lens-order/specs/205-workshop-lens-order/spec.md
 **Input**: the spec, the workshop records under `workshop/`, and the design analysis `iterations/001/design-analysis.md` (Option A, approved 2026-11-10).
+**Plan verdict**: approved for plan on 2026-11-10, with three changes. They are applied below and marked *(plan verdict)*:
+
+1. `specrew-conformance-provider.ps1` is not edited, and its regex alternation is exempted instead.
+2. In code and data files, consecutive lines that each carry a lens id form one block.
+3. The tagging checks count numbered decision points themselves.
+
+The prompt rulings: observability-resilience stays `solution`; the sweep exclusions are accepted; the short-name limit is accepted, and those lists go to iteration 3's input.
 
 ## Summary
 
@@ -97,7 +104,8 @@ corrected surfaces are below.
 #### Explicit Phase 2+ Deferrals
 
 - Iteration 2: problem-space completeness, using this iteration's gap list.
-- Iteration 3 (after 203 merges): the two-pass split, the back-check, amendments and sweeps.
+- Iteration 3 (after 203 merges): the two-pass split, the back-check, amendments and sweeps. **Input recorded here:**
+  the short-name lens lists outside the id sweep (the skill's frontmatter description, launch-contract rule 9a).
 
 ## Phase 2 Hardening and Specialist Review Planning
 
@@ -158,7 +166,7 @@ corrected surfaces are below.
 | --- | --- | --- |
 | FR-001 | parity test: full lists exact, partial relative, sweep (definition below), copies full-content, full surfaces named in the test | `lens-order-parity.tests.ps1`, red-first then green |
 | FR-004 | architecture-core loses its constraints question (merged) and its scope question (moved); requirements-nfr gains the scope question | tagging checks + the SC-002 per-lens counts |
-| FR-005 | `###` sub-headings in all 11 lens files; checks a/b/c; extractor test | parity test, FR-005 section |
+| FR-005 | `###` sub-headings in all 11 lens files; checks a/b/c, where the **tagging checks count bullet and numbered decision points themselves**, so product-domain's 8 numbered points are proven tagged *(plan verdict)*; extractor test (extractor unchanged, DRIFT-003 stays recorded) | parity test, FR-005 section |
 | FR-013 | the order check runs only in `confirm-workshop-agenda.ps1` at confirmation; an old-order agenda fixture resumes and completes | `workshop-agenda-confirmation.tests.ps1` |
 | FR-015 | `index.yml`: problem-first order plus `space` per lens (the tag table below) | parity test (check c) |
 | FR-016 | relative-order refusal in the agenda writer | `workshop-agenda-confirmation.tests.ps1` (refusal case, no reorder) |
@@ -227,10 +235,11 @@ Classification of every other bullet (P = problem, S = solution):
   balance. Problem side: "No problem questions: binding constraints and scope are owned by requirements-nfr."
 - **component-design**: all 5 are S. Problem side: "No problem questions: ...".
 - **code-implementation**: all 7 are S. Problem side: "No problem questions: ...".
-- **observability-resilience**: S for what must be logged, measured or traced; correlation context; health
-  checks; retry/timeout patterns. Two bullets read as problem questions, see below.
+- **observability-resilience**: all 6 are S. That covers what must be logged, measured or traced; correlation
+  context; health checks; retry/timeout patterns; and, by the plan-verdict ruling, "What errors are expected ..."
+  and "What is the cost of observability ...".
 
-### Tag disagreements to decide (FR-015: brought to the maintainer, not decided by the crew)
+### Tag disagreement, ruled at the plan verdict (FR-015)
 
 The planning pass found one lens whose questions may disagree with its expected tag:
 
@@ -240,7 +249,8 @@ The planning pass found one lens whose questions may disagree with its expected 
     (problem) with a mechanism choice (solution).
   - If these are problem questions, the tag becomes `both` and S4 would split the second bullet. If not, the tag
     stays `solution` and both stay solution questions.
-  - **This is a plan-verdict question for the maintainer.** Nothing will be filed until it is answered.
+  - **Ruling (maintainer, plan verdict 2026-11-10):** observability-resilience stays `solution`. Both bullets are
+    solution questions as worded, and their problem-side halves go to the gap list. There is no S4 split.
 
 ### SC-002 expected counts (`Get-SpecrewLensDecisionPoints`)
 
@@ -255,7 +265,7 @@ integration-api            6       7      S3
 devops-operations          7       7
 architecture-core          6       4      - constraints (merged), - scope (moved)
 component-design           5       5
-observability-resilience   6       6      (7 if the maintainer chooses the S4 split)
+observability-resilience   6       6      no S4 split (plan-verdict ruling)
 code-implementation        7       7
 ```
 
@@ -272,7 +282,9 @@ code-implementation        7       7
     indented continuation lines, ending at a blank line, a heading or a non-list line;
   - a **table** is one block: consecutive rows starting with `|`, read row by row, left to right;
   - **fenced code**: each line is its own block.
-- **Code and data files (`.ps1`, `.psm1`, `.psd1`, `.json`, `.yml`, `.yaml`)**: each line is its own block.
+- **Code and data files (`.ps1`, `.psm1`, `.psd1`, `.json`, `.yml`, `.yaml`)**: consecutive lines that each carry at
+  least one lens id form one block, like consecutive list items *(plan verdict)*. A line with no lens id ends the
+  block, and a single line with three or more ids is a block by itself.
 
 **Run**: the ids in one block, in reading order, keeping only the first occurrence of each id. A block with
 **three or more distinct ids** is a run. Ids separated by other words still form a run inside the block.
@@ -292,6 +304,10 @@ needs an exemption with a reason.
    | `component-design` | ... |                                                            one block, a run)
    | `requirements-nfr` | ... |
 4. $x -match '(?:architecture-core|requirements-nfr|data-storage|ui-ux)'                (one code line: a run)
+5. $ids = @(                                                                               (consecutive code lines that
+     'architecture-core',                                                                   each carry an id: one block,
+     'component-design',                                                                    a run; the plan verdict)
+     'requirements-nfr')
 ```
 
 **Does not match**:
@@ -301,7 +317,7 @@ needs an exemption with a reason.
 2. "... architecture-core ..."  <blank line>  "... ui-ux ... data-storage"   (separate blocks, never joined)
 3. ## heading with architecture-core, then a list of ui-ux, data-storage   (heading ends the list block)
 4. "architecture-core-v2, my-ui-ux, data-storage-x"               (not whole-token ids)
-5. a multi-line PowerShell array, one id per line                  (each code line is its own block)
+5. two code lines with one id each, separated by a line with no id   (the id-free line ends the block)
 6. anything under specs/, proposals/ (and the other excluded paths below)
 ```
 
@@ -315,17 +331,19 @@ root-level `*.md`, with these exclusions:
   - Deployed copies (`.specify/`, `.claude/`, `.agents/`, `.github/skills/`, `.cursor/`): checked by the copy rule
     against their source, so they are not swept twice.
 
-**Expected exemptions**: none planned. A known run is fixed rather than exempted:
+**Exemptions** *(plan verdict)*:
 
-- The conformance provider's regex alternation (`specrew-conformance-provider.ps1:1346/1358`) is re-ordered to
-  `index.yml` order. Order is irrelevant in an alternation, so behaviour is unchanged.
-- The methodology's partial lists are re-ordered.
+| Path | Run | Reason |
+| --- | --- | --- |
+| `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` (the lines near :1346 and :1358, matched by pattern, not line number) | the regex alternations of lens ids | Order has no meaning in a regex alternation. The file is owned by feature 203's T011 and is not edited here. |
 
-The exemption list ships empty, and any entry the implementation finds necessary comes to the maintainer.
+The methodology's partial lists are re-ordered rather than exempted. Any further exemption the implementation finds
+necessary comes to the maintainer before it is added.
 
-**Known limit**: lists that use short names rather than ids are outside the id sweep, for example the skill's
-frontmatter description ("architecture, data, ui-ux, security, ...") and launch-contract rule 9a. They are
-rewritten to the new order by hand, but not enforced.
+**Known limit** (accepted for iteration 1 at the plan verdict): lists that use short names rather than ids are
+outside the id sweep, for example the skill's frontmatter description ("architecture, data, ui-ux, security, ...")
+and launch-contract rule 9a. They are rewritten to the new order by hand, but not enforced. **They are recorded as
+input for iteration 3.**
 
 ## Draft problem-side gap list (FR-020; finalised during tagging)
 
@@ -340,7 +358,7 @@ rewritten to the new order by hand, but not enforced.
 | devops-operations | where it must run (platform constraints) as opposed to how it is hosted; who operates it and when; budget | |
 | architecture-core | n/a (solution lens) | |
 | component-design | n/a (solution lens) | |
-| observability-resilience | what operators need to diagnose; SLO/alerting expectations | depends on the tag decision |
+| observability-resilience | what operators need to diagnose; SLO/alerting expectations; the problem halves of "What errors are expected, and which are exceptional?" (the domain's failure modes) and "What is the cost of observability, and what should not be logged?" (the observability budget, and data that must never be logged) | plan-verdict ruling: the lens stays `solution` |
 | code-implementation | n/a (solution lens) | |
 
 ## Project Structure
@@ -365,7 +383,6 @@ extensions/specrew-speckit/knowledge/design-lenses/README.md           (full lis
 extensions/specrew-speckit/squad-templates/skills/design-workshop.md   (full list, sentences, problem-first conduct)
 extensions/specrew-speckit/commands/speckit.specrew-speckit.before-specify.md   (full list)
 extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1         (relative-order refusal)
-extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1    (regex alternation re-ordered)
 docs/methodology/design-workshop-methodology.md                        (tables + partial lists)
 tests/unit/lens-order-parity.tests.ps1                                 (new)
 tests/integration/workshop-agenda-confirmation.tests.ps1               (extended)
