@@ -1,5 +1,5 @@
 # Part of the 203 sweep driver (see sweep-full.ps1). Runs a list of suites in a detached checkout of -Rev.
-param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path, [Parameter(Mandatory)][string]$Rev, [Parameter(Mandatory)][string]$ListFile, [int]$Throttle = 6, [int]$SuiteTimeoutSeconds = 900)
+param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path, [Parameter(Mandatory)][string]$Rev, [Parameter(Mandatory)][string]$ListFile, [int]$Throttle = 6, [int]$SuiteTimeoutSeconds = 900, [double]$StandbyThresholdSeconds = 20)
 $ErrorActionPreference = 'Stop'
 $scratch = Split-Path -Parent $PSCommandPath
 $outside = [IO.Path]::GetTempPath()
@@ -9,7 +9,7 @@ if (Test-Path $co) { Assert-NotSessionTree $co; & git -C $Repo worktree remove -
 & git -C $Repo worktree add -q --detach $co $Rev
 try {
     Set-Location $co
-    & (Join-Path $scratch 'run-suites.ps1') -ListFile $ListFile -Throttle $Throttle -Repo $co -SuiteTimeoutSeconds $SuiteTimeoutSeconds
+    & (Join-Path $scratch 'run-suites.ps1') -ListFile $ListFile -Throttle $Throttle -Repo $co -SuiteTimeoutSeconds $SuiteTimeoutSeconds -StandbyThresholdSeconds $StandbyThresholdSeconds
     "--- untracked left in the checkout:"
     & git -C $co status --short --untracked-files=all | Select-Object -First 20
 }

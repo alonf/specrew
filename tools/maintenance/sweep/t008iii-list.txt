@@ -135,3 +135,4 @@ tests/unit/review-signoff-lists-findings.Tests.ps1
 tests/unit/slash-command-arg-whitelist.tests.ps1
 tests/unit/typed-act-writer.Tests.ps1
 tests/unit/typed-authority-capture.tests.ps1
+tools/maintenance/sweep/sweep-driver.tests.ps1
