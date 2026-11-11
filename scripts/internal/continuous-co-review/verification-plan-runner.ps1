@@ -89,7 +89,9 @@ function Get-ReviewPreflightHomeHookState {
     # added or removed shows as a difference.
     [OutputType([hashtable])]
     param([Parameter(Mandatory)][string]$HomeRoot)
-    $state = @{}
+    # Ordinal keys (B5F-042 follow-up, CI red on c7b55e5c): a default hashtable folds case, so on a case-sensitive file
+    # system two hook files whose paths differ only by case would share one entry.
+    $state = [hashtable]::new([StringComparer]::Ordinal)
     $root = [IO.Path]::GetFullPath($HomeRoot)
     $files = [System.Collections.Generic.List[string]]::new()
     foreach ($rel in $script:ReviewPreflightHomeHookFiles) { $files.Add((Join-Path $root $rel)) }
@@ -111,9 +113,15 @@ function Compare-ReviewPreflightHomeHookState {
     # Each covered file that differs: 'changed: <path>', 'added: <path>' or 'removed: <path>', sorted by path.
     [OutputType([string[]])]
     param([Parameter(Mandatory)][hashtable]$Before, [Parameter(Mandatory)][hashtable]$After)
-    $out = foreach ($rel in @(@($Before.Keys) + @($After.Keys) | Sort-Object -Unique)) {
-        $b = $Before.ContainsKey($rel); $a = $After.ContainsKey($rel)
-        if ($b -and $a) { if ([string]$Before[$rel] -cne [string]$After[$rel]) { 'changed: ' + $rel } }
+    # Case-sensitive throughout (B5F-042 follow-up, CI red on c7b55e5c): the keys are deduplicated and ordered Ordinal
+    # (`Sort-Object -Unique` folds case), and looked up in Ordinal copies of both tables, whatever comparer the caller's
+    # tables carry.
+    $beforeOrdinal = [hashtable]::new([StringComparer]::Ordinal); foreach ($entry in $Before.GetEnumerator()) { $beforeOrdinal[[string]$entry.Key] = $entry.Value }
+    $afterOrdinal = [hashtable]::new([StringComparer]::Ordinal); foreach ($entry in $After.GetEnumerator()) { $afterOrdinal[[string]$entry.Key] = $entry.Value }
+    $keys = Get-ContinuousCoReviewOrdinalUniquePath -Path @(@($beforeOrdinal.Keys) + @($afterOrdinal.Keys))
+    $out = foreach ($rel in @($keys)) {
+        $b = $beforeOrdinal.ContainsKey($rel); $a = $afterOrdinal.ContainsKey($rel)
+        if ($b -and $a) { if ([string]$beforeOrdinal[$rel] -cne [string]$afterOrdinal[$rel]) { 'changed: ' + $rel } }
         elseif ($a) { 'added: ' + $rel }
         else { 'removed: ' + $rel }
     }
