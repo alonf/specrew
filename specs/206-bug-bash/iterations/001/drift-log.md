@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 80% (4/5 resolved; 001 open until T007 lands)
+**Total drift events**: 6
+**Resolution rate**: 67% (4/6 resolved; 001 open until T007 lands; 006 open until T009 lands)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -123,6 +123,24 @@
 - **Class closure**: NONE — no executable guard is added in this feature; working rule from here on: the self-leak
   lint joins 206's pre-push checks whenever a push touches `extensions/` or `.specify/`.
   The push step now checks the validator's own exit code.
+
+### DRIFT-206-I001-006 — the validator had no way to mark an iteration abandoned once retro.md exists
+
+- **Recorded**: 2026-11-11, at the maintainer's instruction (T007 ruling, condition 5).
+- **What**: T007 marks 198/011 and 197/006 abandoned by ruling. Both have a `retro.md`. The validator accepts
+  only `retro` or `complete` as plan.md `Status` for an iteration with a `retro.md` ("plan.md status 'abandoned'
+  is stale"), and a plan at `retro` is held to the review-verdict rule ("Complete iterations require review.md
+  overall verdict 'accepted'"). No plan status says "abandoned" and passes.
+- **197/006**: keeps plan.md at `Status: retro` with state.md at `Iteration Status: abandoned`, following
+  174/007 (state.md `abandoned`, plan.md `executing`). It has no `review.md`, so the review-verdict rule does not
+  fire, and it passes. Its Disposition section says why plan.md keeps `retro`.
+- **198/011**: has a `review.md` with verdict `needs-rework`; neither form passes. Its abandonment is held back
+  from T007's push (maintainer, 2026-11-11, option 1).
+- **Resolution**: T009 adds the rule, test first: an iteration whose state.md says `abandoned` with a recorded
+  ruling is not held to the plan-status rule or the review-verdict rule; `abandoned` with no recorded ruling
+  still gets both. 198/011's abandonment lands in T009's push. Open until then.
+- **Class closure**: T009's validator rule and its tests: abandonment by recorded ruling becomes a status the
+  validator accepts after `retro.md`, and an unrecorded `abandoned` stays refused.
 
 <!--
   Every new ### DRIFT-... event includes:
