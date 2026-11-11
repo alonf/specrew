@@ -174,3 +174,23 @@ is reported as a finding.
 - `proposals/220-...md` is now `status: active` and `shipped-as: feature-205`, with a status-history line covering
   the three iterations, the fifth order surface and option A.
 - `proposals/INDEX.md` follows, in both its table row and its summary line.
+
+## Review round 1 fixes (campaign `cmp-205-workshop-lens-order-i001`, run `run-20261110-235625865-4ea53fb9`)
+
+Codex reported two findings as major; the engine demoted both to minor for lack of a literal failure-scenario clause
+(B5F-017). The maintainer ruled they count at the reviewer's severity. Each fix was written failing-test first, one
+fix per commit. The 10 home hook files were hashed before and after every run, and none changed.
+
+### Fix 1 - full lists are read independently of the catalog (FR-001 membership)
+
+- **Finding**: `Test-FullSurfaces` extracted a full list's members with a pattern built from the index.yml ids, so a
+  lens the catalog did not know was invisible. A lens removed from index.yml but still listed in every full surface
+  passed, and so did an added unknown lens.
+- **Red** (2026-11-11 02:28): two new self-tests failed and the repository check was not run: "membership: an extra
+  lens the catalog does not know is reported" and "membership: a lens removed from the catalog but still listed is
+  reported". A first attempt at 02:28 failed earlier, on a latent harness bug: with one sweep file `$files` was a
+  scalar and `.Count` threw under strict mode. That was fixed (`@(...)`) so the red run failed on the real assertions.
+- **Fix**: each full surface carries its own `Item` rule (and `Within` for the before-specify sentence), and
+  `Get-SurfaceEntries` reads every entry, duplicates included, without consulting the catalog.
+- **Green** (02:29): all self-tests pass, and the repository check passes on all 5 full surfaces, 428 swept files and
+  22 deployed copies.

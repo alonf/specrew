@@ -25,14 +25,18 @@ $script:OrderFix = 'edit index.yml, or make this surface match it'
 
 #region Surfaces named by this test
 
-# Full surfaces: each must list exactly the index.yml lenses, in order. Lens ids are read from the lines between
-# Start (inclusive) and End (exclusive); Rows, when set, keeps only matching lines (e.g. table rows).
+# Full surfaces: each must list exactly the index.yml lenses, in order. The region is the lines between Start
+# (inclusive) and End (exclusive); Rows, when set, keeps only matching lines (e.g. table rows); Within, when set, keeps
+# only its named group 'list' of the joined region. Each entry is read by the surface's own Item rule (capture group
+# 1), never by a pattern built from index.yml, so an entry the catalog does not know (an extra lens, or one removed
+# from the catalog but still listed) is seen and reported (round-1 review finding, FR-001 "no more and no fewer").
+$script:KebabToken = '(?<![A-Za-z0-9_/.-])([a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![A-Za-z0-9_/.-])'
 $script:FullSurfaces = @(
-    @{ Name = 'workshop skill lens list'; Path = 'extensions/specrew-speckit/squad-templates/skills/design-workshop.md'; Start = 'The lenses live in'; End = '^\s*$'; Rows = $null }
-    @{ Name = 'methodology catalog tables (Band 1-3)'; Path = 'docs/methodology/design-workshop-methodology.md'; Start = '^\*\*Band 1'; End = '^## Lens Catalog Evolution'; Rows = '^\|\s*`[a-z][a-z0-9-]*`\s*\|' }
-    @{ Name = 'methodology visual-vocabulary table'; Path = 'docs/methodology/design-workshop-methodology.md'; Start = 'Each lens has a native visual vocabulary'; End = '^The agent should offer to draw'; Rows = '^\|\s*`[a-z][a-z0-9-]*`\s*\|' }
-    @{ Name = 'catalog README lens list'; Path = "$($script:LensCatalogRelative)/README.md"; Start = '^- `[a-z][a-z0-9-]*\.md` - '; End = '^\s*$'; Rows = $null }
-    @{ Name = 'before-specify command lens list'; Path = 'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-specify.md'; Start = 'Invoke the `specrew-design-workshop` skill'; End = '^\s*$'; Rows = $null }
+    @{ Name = 'workshop skill lens list'; Path = 'extensions/specrew-speckit/squad-templates/skills/design-workshop.md'; Start = 'The lenses live in'; End = '^\s*$'; Rows = $null; Within = $null; Item = '`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`' }
+    @{ Name = 'methodology catalog tables (Band 1-3)'; Path = 'docs/methodology/design-workshop-methodology.md'; Start = '^\*\*Band 1'; End = '^## Lens Catalog Evolution'; Rows = '^\|\s*`[a-z][a-z0-9-]*`\s*\|'; Within = $null; Item = '^\|\s*`([a-z][a-z0-9-]*)`\s*\|' }
+    @{ Name = 'methodology visual-vocabulary table'; Path = 'docs/methodology/design-workshop-methodology.md'; Start = 'Each lens has a native visual vocabulary'; End = '^The agent should offer to draw'; Rows = '^\|\s*`[a-z][a-z0-9-]*`\s*\|'; Within = $null; Item = '^\|\s*`([a-z][a-z0-9-]*)`\s*\|' }
+    @{ Name = 'catalog README lens list'; Path = "$($script:LensCatalogRelative)/README.md"; Start = '^- `[a-z][a-z0-9-]*\.md` - '; End = '^\s*$'; Rows = $null; Within = $null; Item = '^- `([a-z][a-z0-9-]*)\.md` - ' }
+    @{ Name = 'before-specify command lens list'; Path = 'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-specify.md'; Start = 'Invoke the `specrew-design-workshop` skill'; End = '^\s*$'; Rows = $null; Within = 'as applicable:(?<list>.*?) last\.'; Item = $script:KebabToken }
 )
 
 # Runs that must differ from index.yml, each with its reason. A stale entry (matching no run) fails the test.
@@ -205,8 +209,26 @@ function Get-FullSurfaceRegion {
     return [pscustomobject]@{ StartLine = $start + 1; EndLine = $end; Lines = $region }
 }
 
+function Get-SurfaceEntries {
+    # Every entry of a full surface, in reading order and with duplicates kept, read by the surface's own Item rule.
+    # The catalog is not consulted, so the list compared with index.yml is the surface's real membership.
+    param([string[]]$Lines, $Surface)
+    if ([string]::IsNullOrWhiteSpace([string]$Surface.Item)) { throw "Full surface '$($Surface.Name)' has no Item rule." }
+    $chunks = @($Lines)
+    if ($Surface.Within) {
+        $within = [regex]::Match(($Lines -join ' '), $Surface.Within)
+        if (-not $within.Success) { return , @("(the list named by /$($Surface.Within)/ was not found)") }
+        $chunks = @($within.Groups['list'].Value)
+    }
+    $entries = [Collections.Generic.List[string]]::new()
+    foreach ($chunk in $chunks) {
+        foreach ($match in [regex]::Matches($chunk, $Surface.Item)) { $entries.Add($match.Groups[1].Value) }
+    }
+    return , $entries.ToArray()
+}
+
 function Test-FullSurfaces {
-    param([string]$Root, [object[]]$Surfaces, [string[]]$Order, [string]$Pattern)
+    param([string]$Root, [object[]]$Surfaces, [string[]]$Order)
     $mismatches = [Collections.Generic.List[object]]::new()
     $regions = [Collections.Generic.List[object]]::new()
     $expected = $Order -join ', '
@@ -216,7 +238,7 @@ function Test-FullSurfaces {
         $region = Get-FullSurfaceRegion -Lines (Get-NormalizedLines -Path $path) -Surface $surface
         if ($null -eq $region) { $mismatches.Add((New-Mismatch $surface.Path 0 $expected "(anchor '$($surface.Start)' not found for $($surface.Name))" $script:OrderFix)); continue }
         $regions.Add([pscustomobject]@{ Path = $surface.Path; StartLine = $region.StartLine; EndLine = $region.EndLine })
-        $found = Get-DistinctLensIds -Lines $region.Lines -Pattern $Pattern
+        $found = Get-SurfaceEntries -Lines $region.Lines -Surface $surface
         if (($found -join ', ') -cne $expected) {
             $mismatches.Add((New-Mismatch $surface.Path $region.StartLine "$expected (full list: $($surface.Name))" ($found -join ', ') $script:OrderFix))
         }
@@ -413,9 +435,9 @@ function Invoke-LensOrderParity {
     $order = @($catalog | ForEach-Object { [string]$_.id })
     $pattern = Get-LensIdPattern -LensIds $order
     $all = [Collections.Generic.List[object]]::new()
-    $full = Test-FullSurfaces -Root $Root -Surfaces $FullSurfaces -Order $order -Pattern $pattern
+    $full = Test-FullSurfaces -Root $Root -Surfaces $FullSurfaces -Order $order
     $all.AddRange([object[]]$full.Mismatches)
-    $files = if ($PSBoundParameters.ContainsKey('SweepFiles')) { $SweepFiles } else { Get-SweepFiles -Root $Root }
+    $files = @(if ($PSBoundParameters.ContainsKey('SweepFiles')) { $SweepFiles } else { Get-SweepFiles -Root $Root })
     $sweep = Test-Sweep -Root $Root -Files $files -Order $order -Pattern $pattern -Regions $full.Regions -Exemptions $Exemptions
     $all.AddRange([object[]]$sweep.Mismatches)
     $all.AddRange([object[]](Test-LensTagging -Root $Root -Catalog $catalog))
@@ -463,7 +485,7 @@ function Invoke-SelfTests {
     $scratch = Join-Path ([IO.Path]::GetTempPath()) ('lens-parity-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
         New-SelfTestTree -Root $scratch
-        $surfaces = @(@{ Name = 'fixture full list'; Path = 'docs/full.md'; Start = '^Lenses:'; End = '^\s*$'; Rows = $null })
+        $surfaces = @(@{ Name = 'fixture full list'; Path = 'docs/full.md'; Start = '^Lenses:'; End = '^\s*$'; Rows = $null; Within = $null; Item = $script:KebabToken })
         $counts = [ordered]@{ 'alpha-lens' = 1; 'beta-lens' = 1 }
         $result = Invoke-LensOrderParity -Root $scratch -FullSurfaces $surfaces -Exemptions @() -ExpectedCounts $counts -SkipCopies -SweepFiles @('docs/full.md', 'docs/partial.md', 'docs/fine.md')
         $text = ($result.Mismatches | ForEach-Object { Format-Mismatch $_ }) -join "`n"
@@ -477,6 +499,29 @@ function Invoke-SelfTests {
         Assert-True (@($result.Mismatches | Where-Object { $_.Fix }).Count -eq @($result.Mismatches).Count) 'seeded: every mismatch carries a fix'
     }
     finally { if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force } }
+
+    # Membership (round-1 review finding): a full list is read independently of the catalog, so an entry the catalog
+    # does not know is reported. Both cases keep the known lenses in index.yml order, so order alone cannot flag them.
+    $memberScratch = Join-Path ([IO.Path]::GetTempPath()) ('lens-parity-member-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-SelfTestTree -Root $memberScratch
+        $memberSurface = @{ Name = 'fixture full list'; Path = 'docs/member.md'; Start = '^Lenses:'; End = '^\s*$'; Rows = $null; Within = $null; Item = $script:KebabToken }
+        $memberCounts = [ordered]@{ 'alpha-lens' = 1; 'beta-lens' = 1 }
+
+        Set-Content -LiteralPath (Join-Path $memberScratch 'docs/member.md') -Value "Lenses: alpha-lens, beta-lens, gamma-lens, omega-lens`n"
+        $extra = Invoke-LensOrderParity -Root $memberScratch -FullSurfaces @($memberSurface) -Exemptions @() -ExpectedCounts $memberCounts -SkipCopies -SweepFiles @('docs/member.md')
+        $extraText = ($extra.Mismatches | Where-Object { $_.Path -eq 'docs/member.md' } | ForEach-Object { Format-Mismatch $_ }) -join "`n"
+        Assert-True ($extraText -match 'found alpha-lens, beta-lens, gamma-lens, omega-lens') 'membership: an extra lens the catalog does not know is reported'
+
+        $indexPath = Join-Path $memberScratch "$($script:LensCatalogRelative)/index.yml"
+        Set-Content -LiteralPath $indexPath -Value ((Get-Content -LiteralPath $indexPath -Raw) -replace '(?s)\s*- id: gamma-lens.*$', "`n")
+        Set-Content -LiteralPath (Join-Path $memberScratch 'docs/member.md') -Value "Lenses: alpha-lens, beta-lens, gamma-lens`n"
+        $removed = Invoke-LensOrderParity -Root $memberScratch -FullSurfaces @($memberSurface) -Exemptions @() -ExpectedCounts $memberCounts -SkipCopies -SweepFiles @('docs/member.md')
+        $removedText = ($removed.Mismatches | Where-Object { $_.Path -eq 'docs/member.md' } | ForEach-Object { Format-Mismatch $_ }) -join "`n"
+        Assert-True (($removed.Order -join ', ') -eq 'alpha-lens, beta-lens') 'membership fixture: gamma-lens is removed from the catalog'
+        Assert-True ($removedText -match 'found alpha-lens, beta-lens, gamma-lens') 'membership: a lens removed from the catalog but still listed is reported'
+    }
+    finally { if (Test-Path -LiteralPath $memberScratch) { Remove-Item -LiteralPath $memberScratch -Recurse -Force } }
 
     # A stale deployed copy is reported with the project-only refresh commands.
     $copyScratch = Join-Path ([IO.Path]::GetTempPath()) ('lens-parity-copy-' + [guid]::NewGuid().ToString('N'))
