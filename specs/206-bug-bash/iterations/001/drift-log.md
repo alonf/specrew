@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 75% (3/4 resolved; 001 open until T007 lands)
+**Total drift events**: 5
+**Resolution rate**: 80% (4/5 resolved; 001 open until T007 lands)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -101,6 +101,23 @@
 - **Class closure**: a working rule from the maintainer (2026-11-11): any commit that touches a file under
   `.specify/extensions/specrew-speckit/` refreshes the hash file in the same commit. The executable guard (a CI
   step) is proposed in bug-list item 10; no workflow is changed in this feature yet.
+
+### DRIFT-206-I001-005 — T006's comments cited a feature id in the deployed surface; Specrew CI went red
+
+- **Recorded**: 2026-11-11.
+- **Run**: Specrew CI run 43068147301 on `b76dd4d8`. "Self-leak firewall (deploy surface)" failed, and the
+  Deterministic gate failed on the same check (`tests/unit/self-leak-lint.tests.ps1`, 1 of 131). Test and
+  Cross-Platform Validation were green (the macOS fault-matrix case passed).
+- **What**: six comments added by T006 in `extensions/specrew-speckit/scripts/shared-governance.ps1` (4) and
+  `validate-governance.ps1` (2) began with the feature id `F-206`, which the self-leak lint refuses in files
+  deployed to consumer projects.
+- **Process miss**: the pre-push checks were markdownlint and validate -ChangedOnly only; the self-leak lint
+  (`scripts/internal/lint-self-leak.ps1`) was not run locally. It reproduced the 6 hits before the fix and is
+  green after.
+- **Resolution**: the comments name the requirement and the rule, not the feature; the `.specify` mirrors and
+  their hash entries are refreshed in the same commit.
+- **Class closure**: NONE as code — working rule from here on: the self-leak lint joins 206's pre-push checks
+  whenever a push touches `extensions/` or `.specify/`.
 
 <!--
   Every new ### DRIFT-... event includes:
