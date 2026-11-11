@@ -1928,6 +1928,21 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   are in neither the sweep list, the verification plan nor the sweep's neighbour run, so the "full sweep" was not a superset
   of CI's gate. Fixed: the expectation updated (the suite green locally, 91 cases); the sweep before this push, and every
   later one, runs the list plus every honesty-suite file it lacked (63 against the list and the plan).
+- **Pin advanced, the case fix alone (2026-11-11 22:27:56 local)**: on the maintainer's typed `advance the pin`,
+  `live-engine-pin.ps1 -Action Advance -Commit a56ac787`. Two side commits on the local branch
+  `203-pin-b5f044-casefold-side`, each with the same patch ID as a branch commit: `5abbb90e` (`680ce0a5`, the
+  case-sensitive real-home check) and `a56ac787` (`7f894a49`'s hunk for
+  `tests/continuous-co-review/unit/verification-plan-runner.Tests.ps1`). The first full sweep of the side tip, with the
+  pin's own list, failed on `5abbb90e`. `c2b9490b` had carried `7f894a49`'s engine change without that test hunk, so the
+  pin's copy of the suite still expected the old preflight baseline. The previous advance's 15-suite check did not run
+  that case against the pin. `a56ac787` adds the hunk. The re-sweep of `a56ac787` was green: 224 suites, 0 failed, the
+  plan's 5 lanes green, "CI suites not in this sweep: 0", the real home unchanged before and during, 2680 s wall.
+  B5F-044 is not carried. The red install.sh job on `a3d59089` (B5F-047) does not block the advance: the advance
+  carries only the case fix, and its tests are green in CI. After the advance:
+  - `-Action Show` is usable at `a56ac787`.
+  - `.claude/settings.local.json` and the widened home hook set are unchanged by hash (11 files, before and after).
+  - Read only, the pin's code resolves this project's review launch to the pin (`source = pin`), and it refuses a launch
+    from the tree's copy (`review-engine-not-pinned-launch`).
 - **Class closure**: `tests/continuous-co-review/unit/path-identity.Tests.ps1` (the structural case that caught the dedup) and
   `tests/unit/test-home-isolation.Tests.ps1` (every test that runs a hook-writing entry point or the preflight against a plan takes
   a private home, gives it back, and takes it in a Pester file's only root `BeforeAll`), both in lane `f203-i001-t008-suites` and
