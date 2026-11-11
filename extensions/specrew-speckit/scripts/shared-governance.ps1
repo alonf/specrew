@@ -758,9 +758,57 @@ function Normalize-SpecrewIterationNumber {
     return $trimmed
 }
 
+function Get-SpecrewLegacyFrozenIterationKeys {
+    # F-206 (FR-007): the frozen legacy list, .specrew/legacy-frozen.yml. Returns its
+    # "<feature-dir>/<NNN>" keys; an absent or empty file gives none.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $path = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath '.specrew\legacy-frozen.yml'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return @()
+    }
+    $keys = New-Object System.Collections.Generic.List[string]
+    foreach ($rawLine in @(Get-Content -LiteralPath $path -Encoding UTF8)) {
+        if ($rawLine -match '^\s*-\s+iteration:\s*(.+?)\s*$') {
+            $value = $Matches[1].Trim('"').Trim("'")
+            if ($value -match '^(.+)/([^/]+)$') {
+                $keys.Add(('{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2]))) | Out-Null
+            }
+        }
+    }
+    return $keys.ToArray()
+}
+
+function Get-SpecrewIterationStatusValue {
+    # F-206 (FR-008a): the state.md "Iteration Status" value, lower-cased, without markdown backticks.
+    # Returns '' when state.md or the field is missing.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
+        return ''
+    }
+    foreach ($line in @(Get-Content -LiteralPath $StatePath -Encoding UTF8)) {
+        if ($line -match '^\s*\*\*Iteration Status\*\*\s*:\s*(.*)$') {
+            return (($Matches[1] -replace '`', '').Trim()).ToLowerInvariant()
+        }
+    }
+    return ''
+}
+
 function Test-SpecrewIterationClosed {
-    # Proposal 085: returns $true if the (feature, iteration) tuple is recorded
-    # in the closed-iteration index.
+    # F-206 (FR-008a, design D3): THE definition of a closed iteration, used by the validator's closed
+    # filter, the dashboard check and the dashboard renderer.
+    #   closed = in .specrew/closed-iterations.yml (Proposal 085), or state.md Iteration Status
+    #            `complete` / `abandoned`, or a status that claims closure (Test-SpecrewClosureClaimStatus:
+    #            the validator's own claim words, with no negation or future wording before them);
+    #   an entry of .specrew/legacy-frozen.yml is never closed (frozen: judged by no check, FR-007);
+    #   a review verdict never makes an iteration closed, and the old state.md text heuristic decides
+    #   nothing here.
+    # -ClosedIndex / -FrozenKeys let a caller that loops over many iterations read each file once.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
@@ -769,12 +817,58 @@ function Test-SpecrewIterationClosed {
         [string]$Feature,
 
         [Parameter(Mandatory = $true)]
-        [string]$Iteration
+        [string]$Iteration,
+
+        [AllowNull()]
+        [hashtable]$ClosedIndex,
+
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$FrozenKeys
     )
     $normalizedIteration = Normalize-SpecrewIterationNumber -IterationNumber $Iteration
-    $index = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
     $key = "$Feature/$normalizedIteration"
-    return $index.ContainsKey($key)
+
+    $frozen = if ($PSBoundParameters.ContainsKey('FrozenKeys') -and $null -ne $FrozenKeys) { $FrozenKeys } else { @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $ProjectRoot) }
+    if ($frozen -contains $key) {
+        return $false
+    }
+
+    $index = if ($null -ne $ClosedIndex) { $ClosedIndex } else { Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot }
+    if ($index.ContainsKey($key)) {
+        return $true
+    }
+
+    $statePath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath ('specs\{0}\iterations\{1}\state.md' -f $Feature, $Iteration)
+    $status = Get-SpecrewIterationStatusValue -StatePath $statePath
+    return (($status -in @('complete', 'abandoned')) -or (Test-SpecrewClosureClaimStatus -IterationStatus $status))
+}
+
+function Test-SpecrewClosureClaimStatus {
+    # F-206 (FR-008a; maintainer ruling 2026-11-11, option 1 with conditions): true when an Iteration Status
+    # claims closure in the words Test-ClosedIterationStatus already reads as a claim ("closed", "closeout
+    # complete", "closure complete") and no negation or future wording stands before the claim in the same
+    # sentence: "not closed", "not yet closed" and "to be closed after review" are not claims. A status
+    # written before the closed index existed ("iteration closed on 2026-05-13 via ...") still reads closed.
+    # Test-ClosedIterationStatus itself is unchanged; its other caller (the closeout-evidence check) keeps
+    # reading any claim word, so a "not closed" status is still checked for closeout evidence there.
+    param([AllowNull()][string]$IterationStatus)
+
+    if (-not (Test-ClosedIterationStatus -IterationStatus $IterationStatus)) {
+        return $false
+    }
+    foreach ($sentence in @($IterationStatus.ToLowerInvariant() -split '[.;:!?](?:\s+|$)|\s+[-\u2013\u2014]\s+')) {
+        $claim = [regex]::Match($sentence, '\b(?:closed|closeout complete|closure complete)\b')
+        if (-not $claim.Success) {
+            continue
+        }
+        $before = $sentence.Substring(0, $claim.Index)
+        if ($before -match '\b(?:not|never|yet|to be|will be|awaiting|pending|until|unless|once|if)\b') {
+            continue
+        }
+        return $true
+    }
+    return $false
 }
 
 function Add-SpecrewClosedIterationEntry {

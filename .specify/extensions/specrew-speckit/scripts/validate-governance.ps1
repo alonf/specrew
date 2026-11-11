@@ -4366,7 +4366,10 @@ function Test-PlanEffortModel {
         try {
             $relIterationPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
             if ($relIterationPath -match 'specs/([^/]+)/iterations/([^/]+)/?$') {
-                if (Test-SpecrewIterationClosed -ProjectRoot $ProjectRoot -Feature $Matches[1] -Iteration $Matches[2]) {
+                # Index membership only, as before F-206: this grandfathering keys on the durable index entry,
+                # not on the closed definition (Test-SpecrewIterationClosed), which also reads state.md.
+                $capacityIndexKey = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
+                if ((Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot).ContainsKey($capacityIndexKey)) {
                     $isClosedIteration = $true
                 }
             }
@@ -5769,20 +5772,15 @@ try {
         # the index - an iteration whose own state.md says closed but which never made the index was
         # validated as if live. The index stays the fast path; each unindexed candidate now answers
         # from its OWN state.md, so closed is closed whether or not the index heard about it.
+        # F-206 (FR-008a): one definition of closed, Test-SpecrewIterationClosed (index, or Iteration Status
+        # complete/abandoned; frozen entries never closed). The state.md text heuristic no longer decides.
         $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
+        $frozenKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
         $filtered = New-Object System.Collections.Generic.List[string]
         foreach ($tp in $targets) {
             $normalized = $tp -replace '\\', '/'
             if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
-                $feature = $Matches[1]
-                $iteration = $Matches[2]
-                if ($closedIndex.ContainsKey("$feature/$iteration")) {
-                    $closedSkippedCount++
-                    continue
-                }
-                $stateProbe = Join-Path $tp 'state.md'
-                if ((Get-Command -Name 'Get-SpecrewClosedIterationFromStateFile' -ErrorAction SilentlyContinue) -and
-                    ($null -ne (Get-SpecrewClosedIterationFromStateFile -StatePath $stateProbe))) {
+                if (Test-SpecrewIterationClosed -ProjectRoot $resolvedProjectPath -Feature $Matches[1] -Iteration $Matches[2] -ClosedIndex $closedIndex -FrozenKeys $frozenKeys) {
                     $closedSkippedCount++
                     continue
                 }
