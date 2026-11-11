@@ -1884,3 +1884,22 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   refuses a launch from the project tree's copy (`review-engine-not-pinned-launch`). B5F-042 is live; the side branches
   stay local.
 - **Class closure**: OPEN until the widened set is built and B5F-042's suite passes with the guard proven first.
+
+### DRIFT-057 — The pin advanced with a case-folding dedup the full sweep would have caught: the pre-advance check ran a chosen subset (crew error; 2026-11-11)
+
+- **Observed**: CI on `c7b55e5c` was red: Cross-Platform Validation, all three review-runtime jobs, `path-identity.Tests.ps1`
+  "path collections are never deduplicated with a case-folding default", offender `verification-plan-runner.ps1:114`, the
+  `Sort-Object -Unique` in B5F-042's `Compare-ReviewPreflightHomeHookState`. The pin had advanced to `c2b9490b`, which
+  carries it, at 10:47 local. Reported by the maintainer from CI; Specrew CI was red on the same push, Test green.
+- **Cause**: the check before the advance ran 15 suites the crew chose (the dispatcher, preflight, runner and
+  review-record suites) on the side tip and the pin, and `path-identity` was not among them; the structural suites guard
+  every file of the engine, so a subset chosen by what the change touches misses exactly them. The state tables were
+  default hashtables, which fold case as well.
+- **Effect**: none on Windows, whose file system folds case. On a case-sensitive one, a change to one of two hook files
+  whose paths differ only by case passes the preflight. The pin is not rolled back (maintainer ruling).
+- **Fix (test first)**: `48af19ec` (3 red), `680ce0a5`: Ordinal state tables, Ordinal lookups in the comparison, the key
+  dedup through `Get-ContinuousCoReviewOrdinalUniquePath`. It goes to the pin with B5F-044 in one advance, asked for as
+  usual. The B5F-044 commits are not pushed until the full sweep is green with this fix in.
+- **Rule (maintainer, 2026-11-11)**: before any pin advance, the full sweep runs on the side tip, not a chosen subset.
+  The last full sweep took 54 minutes (`43ec7bfc`, 02:32 to 03:26 local), which the crew does not consider too slow, so
+  no subset is proposed.
