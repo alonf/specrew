@@ -1841,3 +1841,33 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   0 failed (the two B5F-036 suites known red at their 60 s limits), none spanned standby; 7 of 7 lanes; the
   keep-awake request held; the real home's hook files unchanged. T008 is recorded closed again on it.
 - **Class closure**: CLOSED. A sweep now runs every suite the sign-off lanes name, and says when it cannot close a task.
+
+### DRIFT-056 — A failing test-first run wrote the maintainer's real ~/.codex/hooks.json (crew error; 2026-11-11)
+
+- **Observed**: at 03:31:38 local (UTC+2), 2026-11-11, the first run of the B5F-042 suite
+  `tests/continuous-co-review/unit/review-preflight-home.Tests.ps1` (uncommitted) rewrote the real
+  `C:\Users\alon\.codex\hooks.json` (SHA-256 `B3A87829…` to `8ADB8157…`). Its Codex hook commands named the launcher
+  folder `~/.specrew/hooks/9b2b4eb9…` (this branch's code, already in the store since 2026-11-08) in place of the pin's
+  `b958cbe1…`; the length was unchanged. No other home hook file changed: the pin-advance snapshot's files match, and
+  nothing under `~/.specrew/hooks/`, `~/.specrew/hook-bindings/` or the root launcher was written after 2026-11-08.
+  Found by the crew within a minute of the run, from the snapshot comparison it ran after the red result.
+- **Cause**: the case under test is "a suite that deploys hooks without its own redirect writes into the preflight's
+  temporary home". Its suite ran `scripts/internal/deploy-refocus-hooks.ps1 -HostKind codex` with no redirect. Before the
+  fix the preflight passes no redirect either, and its runner passes the real `HOME`/`USERPROFILE` through, so on the red
+  run the deployer resolved the real home and wrote it: B5F-039's failure, caused by the crew's own test-first step. The
+  case had no guard refusing to deploy when no temporary home was given.
+- **Restore (maintainer-approved, 2026-11-11 03:37 local)**: `~/.codex/hooks.json` copied back from the copy the sweep
+  driver saved at 02:32 (`%TEMP%\specrew-sweeps\home-before-43ec7bfc\C__Users_alon_.codex_hooks.json`). The source was
+  verified before the copy: its hash `B3A87829…` equals the pin-advance snapshot's (2026-11-10 04:26), and the
+  maintainer compared it with the backup feature 205 restored from. After the copy the file's hash is `B3A87829…`, it
+  names the `b958cbe1…` launcher three times and `9b2b4eb9…` none, and every other home hook file is unchanged. The
+  changed version is kept, not deleted (`codex-hooks.changed-20261111-033138.json` in the session scratchpad).
+- **Guard added before any further run**: the case's suite now exits 9 without deploying unless it was given a home
+  that is not the stand-in for the real one; on a red run it writes nothing, and on a green run it still deploys with no
+  redirect of its own (the maintainer's condition 4).
+- **Rule (maintainer, 2026-11-11)**: for any test about home redirection, the guard that refuses to deploy to the real
+  home is written and proven before the test's first run, red or green.
+- **Also ruled**: the sweep driver's saved and hashed set grows to every file under `~/.specrew/hooks/` (launcher
+  folders and `bindings/`), `~/.specrew/hook-bindings/` and `~/.specrew/specrew-hook-launch.ps1`, beside the files it
+  saves now; a file added or removed counts as a change.
+- **Class closure**: OPEN until the widened set is built and B5F-042's suite passes with the guard proven first.
