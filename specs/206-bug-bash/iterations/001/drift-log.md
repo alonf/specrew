@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 0% (0/1 resolved; open until T007 lands)
+**Total drift events**: 2
+**Resolution rate**: 50% (1/2 resolved; 001 open until T007 lands)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -50,6 +50,22 @@
 - **Class closure**: NONE — no executable guard is added in this feature; the working rule from here on is to
   validate each pushed head alone, changed-only against the push base CI will use (`SPECREW_SCOPE_BASE_REF`
   set to the previous pushed commit), before every push.
+
+### DRIFT-206-I001-002 — external change to a real-home hook file during T001
+
+- **Recorded**: 2026-11-11, at the maintainer's instruction.
+- **What**: `~/.codex/hooks.json` changed between the T001 baseline hash (03:30:55 local) and the pre-test
+  hash (03:32:18 local). File time 03:31:38 local, 43 seconds after the baseline.
+- **Hashes (SHA-256)**: baseline `b3a87829a11e8c2e7f2b360dd4ed0e7220749ec52c59f81009fdea622555dc94`;
+  changed to `8adb8157fb01749d2931b5a6223228ad1885d6d73240fbd3517ee40b49ff0e16`. The other 9 files in the
+  set were unchanged; no file added or removed.
+- **Cause**: feature 203's session (the maintainer's finding). No 206 test or script was running; the T001
+  test run itself left all 10 files unchanged.
+- **Resolution**: 206 stopped and restored nothing. The file was restored outside 206 and a new baseline at
+  10:42:51 local matched the first baseline on all 10 files; T001 resumed.
+- **Class closure**: NONE — the writer is outside 206. Working rule from here on (maintainer): a hash change
+  while none of 206's own tests or scripts ran is reported in one line and work continues on anything that
+  runs no Specrew script; a full stop applies only when the change falls inside one of 206's own runs.
 
 <!--
   Every new ### DRIFT-... event includes:
