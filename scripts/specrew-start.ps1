@@ -2220,7 +2220,21 @@ function Get-RestartTriggerFiles {
 
         $normalizedChangedFile = ([string]$changedFile).Trim() -replace '/', '\'
         if ($normalizedChangedFile -ieq '.github\copilot-instructions.md') {
-            $classification = Test-CopilotInstructionsChangeType -ProjectPath $ResolvedProjectPath -BaselineCommitHash $BaselineCommitHash -TargetPath '.github/copilot-instructions.md'
+            # F-206 T003 (FR-003): start heals Specrew's coordinator block into this file before it classifies,
+            # so compare with Specrew's matched specrew-managed blocks stripped from both sides; an unbalanced
+            # marker on either side compares the whole files.
+            if (-not (Get-Command -Name 'Get-SpecrewInstructionComparisonPair' -ErrorAction SilentlyContinue)) {
+                . (Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1')
+            }
+            $instructionsPath = Join-Path $ResolvedProjectPath '.github\copilot-instructions.md'
+            $afterContent = if (Test-Path -LiteralPath $instructionsPath -PathType Leaf) { Get-Content -LiteralPath $instructionsPath -Raw -Encoding UTF8 } else { '' }
+            $beforeContent = $afterContent
+            if (-not [string]::IsNullOrWhiteSpace($BaselineCommitHash)) {
+                $beforeOutput = @(& git -C $ResolvedProjectPath show ("{0}:.github/copilot-instructions.md" -f $BaselineCommitHash) 2>$null)
+                $beforeContent = if ($LASTEXITCODE -eq 0) { $beforeOutput -join [Environment]::NewLine } else { '' }
+            }
+            $comparisonPair = Get-SpecrewInstructionComparisonPair -BeforeContent $beforeContent -AfterContent $afterContent
+            $classification = Test-CopilotInstructionsChangeType -BeforeContent $comparisonPair.BeforeContent -AfterContent $comparisonPair.AfterContent
             if ($classification.RequiresRestart) {
                 $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
             }

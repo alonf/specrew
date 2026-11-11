@@ -86,6 +86,81 @@ function Merge-SpecrewManagedInstructionSection {
     return $existing + $separator + $block + [Environment]::NewLine
 }
 
+function Remove-SpecrewManagedInstructionBlocks {
+    # Pure (F-206 T003, FR-003): return $Content without its specrew-managed blocks, but ONLY when every
+    # opening and closing marker forms a matched pair (same section name, in order, none nested). A missing,
+    # orphaned or mismatched marker returns the content unchanged with Balanced = $false, so the caller
+    # compares the whole file. Each removed block takes the one line break that follows it.
+    param([AllowNull()][AllowEmptyString()][string]$Content)
+
+    $text = if ($null -eq $Content) { '' } else { $Content }
+    $markerPattern = '<!-- (?<dir>>>>|<<<) specrew-managed (?<name>[^\s<>]+) (?:>>>|<<<) -->'
+    $spans = New-Object System.Collections.Generic.List[object]
+    $openName = $null
+    $openStart = -1
+    foreach ($match in [regex]::Matches($text, $markerPattern)) {
+        $name = $match.Groups['name'].Value
+        if ($match.Groups['dir'].Value -eq '>>>') {
+            if ($null -ne $openName) {
+                return [pscustomobject]@{ Content = $text; Balanced = $false; Stripped = $false }
+            }
+            $openName = $name
+            $openStart = $match.Index
+            continue
+        }
+
+        if ($null -eq $openName -or $openName -cne $name) {
+            return [pscustomobject]@{ Content = $text; Balanced = $false; Stripped = $false }
+        }
+
+        $spanEnd = $match.Index + $match.Length
+        if ($spanEnd -lt $text.Length -and $text[$spanEnd] -eq "`r") { $spanEnd++ }
+        if ($spanEnd -lt $text.Length -and $text[$spanEnd] -eq "`n") { $spanEnd++ }
+        $spans.Add([pscustomobject]@{ Start = $openStart; End = $spanEnd }) | Out-Null
+        $openName = $null
+    }
+
+    if ($null -ne $openName) {
+        return [pscustomobject]@{ Content = $text; Balanced = $false; Stripped = $false }
+    }
+
+    $builder = New-Object System.Text.StringBuilder
+    $cursor = 0
+    foreach ($span in $spans) {
+        $null = $builder.Append($text, $cursor, $span.Start - $cursor)
+        $cursor = $span.End
+    }
+    $null = $builder.Append($text, $cursor, $text.Length - $cursor)
+
+    return [pscustomobject]@{ Content = $builder.ToString(); Balanced = $true; Stripped = ($spans.Count -gt 0) }
+}
+
+function Get-SpecrewInstructionComparisonPair {
+    # Pure (F-206 T003, FR-003, design condition 3): the before/after pair a change classifier compares.
+    # Specrew's own managed blocks are stripped from BOTH sides only when both sides are balanced; if either
+    # side has a missing or unbalanced marker, both are returned whole, as before this change.
+    param(
+        [AllowNull()][AllowEmptyString()][string]$BeforeContent,
+        [AllowNull()][AllowEmptyString()][string]$AfterContent
+    )
+
+    $before = Remove-SpecrewManagedInstructionBlocks -Content $BeforeContent
+    $after = Remove-SpecrewManagedInstructionBlocks -Content $AfterContent
+    if ($before.Balanced -and $after.Balanced) {
+        return [pscustomobject]@{
+            BeforeContent = $before.Content
+            AfterContent  = $after.Content
+            Stripped      = ($before.Stripped -or $after.Stripped)
+        }
+    }
+
+    return [pscustomobject]@{
+        BeforeContent = $(if ($null -eq $BeforeContent) { '' } else { $BeforeContent })
+        AfterContent  = $(if ($null -eq $AfterContent) { '' } else { $AfterContent })
+        Stripped      = $false
+    }
+}
+
 function Set-SpecrewInstructionFileSection {
     # Deploy/refresh the managed section into the InstructionsFile at $Path. Reads the
     # current file (or treats it as empty), merges, and writes atomically ONLY when the
