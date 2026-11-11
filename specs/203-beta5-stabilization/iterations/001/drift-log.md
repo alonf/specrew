@@ -1870,4 +1870,17 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Also ruled**: the sweep driver's saved and hashed set grows to every file under `~/.specrew/hooks/` (launcher
   folders and `bindings/`), `~/.specrew/hook-bindings/` and `~/.specrew/specrew-hook-launch.ps1`, beside the files it
   saves now; a file added or removed counts as a change.
+- **Pin advanced, B5F-040 and B5F-042 together (2026-11-11 10:47:01 local)**: on the maintainer's typed `advance the
+  pin`, `live-engine-pin.ps1 -Action Advance -Commit c2b9490b` (side commits `f4d3041c`, B5F-040, and `c2b9490b`,
+  B5F-042, on local branches `203-pin-hook-git-locks-side` and `203-pin-preflight-home-side`; patch IDs equal to
+  `43ec7bfc` and `7f894a49`). Before it: the pin's 15 suites through the sweep driver, home redirected, 15/15 on
+  `f5bd5738` and 14/15 on `c2b9490b`, the one failure the pin's own assertion that the preflight's baseline is exactly
+  `SPECREW_REVIEW_PREFLIGHT`, which B5F-042 extends (this branch's copy was updated in `7f894a49`); the two new suites
+  16/16 and 10/10 on the side, 8/16 and 9/10 failing on the pin; real home unchanged during both sweeps. After it:
+  `-Action Show` usable at `c2b9490b`, the pin checkout clean at that commit, and its dispatchers set
+  `GIT_OPTIONAL_LOCKS=0`. The hooks run through it: the PostToolUse hook wrote its refocus state at 10:47:18.
+  `.claude/settings.local.json` and every file of the widened home hook set are unchanged by hash (11 files, before and
+  after). Read only, the pin's code resolves this project's review launch to the pin's engine (`source = pin`) and
+  refuses a launch from the project tree's copy (`review-engine-not-pinned-launch`). B5F-042 is live; the side branches
+  stay local.
 - **Class closure**: OPEN until the widened set is built and B5F-042's suite passes with the guard proven first.

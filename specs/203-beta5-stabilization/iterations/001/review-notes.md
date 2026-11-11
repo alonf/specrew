@@ -53,3 +53,6 @@ would drop one. Blocking for this iteration's review. The fix (a temporary home 
 finally block, and a hash check of the real home's hook files that fails the round, spending nothing) is built
 test-first and goes live with B5F-040 in one pin advance, on the maintainer's typed `advance the pin`, before any review
 round on this branch.
+
+**Live (2026-11-11 10:47 local)**: the pin advanced to `c2b9490b` with both fixes on the maintainer's typed `advance the
+pin` (drift-log DRIFT-056). The block on a review round from B5F-042 is lifted.
