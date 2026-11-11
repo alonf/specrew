@@ -20,9 +20,12 @@ each read for home writes first, has been brought to the maintainer.
 
 ## Execution order
 
-T001, T002, T003, T004, T005, T006, T007, T008, T009, T011, T010, T012, T013, T014 (stop), T015, T018.
+T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T013, T014 (stop), T015, T018.
 
-- T005 (the closed/open table) comes before T006 changes the definition (design condition 1).
+- T005 (the closed/open table) comes before T006 changes the definition (design condition 1), and **ends in a
+  stop**: the table goes to the maintainer, who rules on 198/010, before T006 and T007 start (tasks verdict,
+  2026-11-11).
+- T010 runs after T011, out of number order, so the replay sees the corrected message too (tasks verdict).
 - T007, T008, T009 and T011 land before T010's replay, which checks that none of them produced a new finding.
 - T013 (the census) comes before T014, so T014 reads the scripts the census will count.
 - T014 ends in a stop for the maintainer; T015 registers nothing before that ruling.
@@ -61,19 +64,26 @@ T001, T002, T003, T004, T005, T006, T007, T008, T009, T011, T010, T012, T013, T0
 
 ## Phase 2: Nightly and history (US2, items 3 and 4)
 
-- [ ] T004 [owner: Implementer] [sp: 0.5] **Hand-over record for feature 203.**
-  - **Work:** one record for 203's follow-up: bug list item 3 (cause not found, one candidate, its recurrence
-    log), item 7 (the Windows review-runtime hang), and the FR-066 mint guard with T091 and T093 as one finding
-    with `tools/pending/fr066-first-boundary-arrival.pending.ps1` as its test (not run). DRIFT-198-I010-004 goes
-    with it, whatever the maintainer rules for 198/010.
-  - **Acceptance:** each item names its evidence and run ids; no code changes.
+- [ ] T004 [owner: Implementer] [sp: 0.5] **Open the hand-over record for feature 203.**
+  - **Work (tasks verdict, 2026-11-11):** one record, with a separate section per item, each with its own
+    evidence and proposed owner:
+    1. bug list item 3: the flaky retry test, cause not found, one candidate, its recurrence log;
+    2. bug list item 7: the Windows review-runtime hang, run 42913380735, no log kept;
+    3. the FR-066 mint guard with T091 and T093, one finding, with
+       `tools/pending/fr066-first-boundary-arrival.pending.ps1` as its test (not run);
+    4. DRIFT-198-I010-004, whatever the maintainer rules for 198/010;
+    5. bug list item 8: the two update-calling suites, cross-referenced to feature 205's H-001 and feature 203's
+       B5F-039.
+  - **Closed by T018**, after adding anything T014 or the other tasks find that belongs to 203.
+  - **Acceptance:** each section names its evidence, run ids and proposed owner; no code changes.
   - **Trace:** FR-004, FR-005.
   - **Owns:** `specs/206-bug-bash/bug-list.md`, `specs/206-bug-bash/iterations/001/**`.
 - [ ] T005 [owner: Implementer] [sp: 1.0] **Closed/open table before the definition changes (design condition 1).**
   - **Work:** every iteration with its answer under the closed index, the state.md heuristic, the renderer rule and
     the new function; every iteration whose answer changes, listed with the reason. **198/010 is included as
     awaiting the maintainer's ruling**, with its status, T082 and DRIFT-198-I010-004; it is marked nothing.
-  - **Acceptance:** the table is committed before T006's first code commit.
+  - **Acceptance:** the table is committed and brought to the maintainer; **STOP** for the ruling on 198/010.
+    T006 and T007 do not start before it.
   - **Trace:** FR-008a.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
 - [ ] T006 [owner: Implementer] [sp: 2.0] **One definition of "closed".**
@@ -181,6 +191,8 @@ T001, T002, T003, T004, T005, T006, T007, T008, T009, T011, T010, T012, T013, T0
   - `.squad/active-features.yml` is in no commit.
   - No commit touches a full-validation trigger path.
   - The home hook-file hashes match before and after every run (SC-007).
+  - **Close the 203 hand-over record** opened by T004, after adding anything T014 or the other tasks found that
+    belongs to 203.
   - **Trace:** SC-007.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
 

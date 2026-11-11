@@ -1,7 +1,8 @@
 # Quality Evidence: Iteration 001
 
-**Profile Ref**: `quality-profile.pending`
-**Preset Refs**: (pending preset selection)
+**Profile Ref**: `quality-profile.custom-composition.v1` (custom PowerShell composition, feature plan "Quality plan")
+**Preset Refs**: none. The resolver's `react-spa-public@v1.0.0` is rejected: it is bug 6a (the stray root
+`package.json`), kept as FR-014's evidence for iteration 002.
 **Findings Ref**: `specs/206-bug-bash/iterations/001/quality/mechanical-findings.json`
 **Reviewed By**: Reviewer (pending)
 **Reviewed At**: 2026-11-10T02:46:53Z
