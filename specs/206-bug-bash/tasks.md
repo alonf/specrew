@@ -78,7 +78,7 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Acceptance:** each section names its evidence, run ids and proposed owner; no code changes.
   - **Trace:** FR-004, FR-005.
   - **Owns:** `specs/206-bug-bash/bug-list.md`, `specs/206-bug-bash/iterations/001/**`.
-- [ ] T005 [owner: Implementer] [sp: 1.0] **Closed/open table before the definition changes (design condition 1).**
+- [x] T005 [owner: Implementer] [sp: 1.0] **Closed/open table before the definition changes (design condition 1).**
   - **Work:** every iteration with its answer under the closed index, the state.md heuristic, the renderer rule and
     the new function; every iteration whose answer changes, listed with the reason. **198/010 is included as
     awaiting the maintainer's ruling**, with its status, T082 and DRIFT-198-I010-004; it is marked nothing.
