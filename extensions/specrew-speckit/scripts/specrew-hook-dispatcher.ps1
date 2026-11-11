@@ -47,6 +47,12 @@ function Write-EarlyDecisionOnlyNoopIfNeeded {
 # fail — a kill switch placed after catalog/state parsing never gets reached when
 # the bug is in catalog/state parsing. Decision-only hosts still require no-op
 # JSON; use only the baked binding so the switch remains independent of project state.
+# B5F-040 (maintainer ruling 2026-11-11): no git command on the hook path takes an optional lock. The conformance
+# provider runs `git status` in the project on PostToolUse, UserPromptSubmit and Stop; plain `git status` may take
+# .git/index.lock to write refreshed stat data back, and a host that kills the hook mid-run then leaves the lock, so the
+# next commit in the project fails (the 203 worktree, 2026-11-10 16:08:07). Set here, before any provider starts, so
+# this process and every provider it starts inherit it.
+$env:GIT_OPTIONAL_LOCKS = '0'
 if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
     Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
