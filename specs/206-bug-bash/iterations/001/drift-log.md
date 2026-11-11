@@ -22,8 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 67% (4/6 resolved; 001 open until T007 lands; 006 open until T009 lands)
+**Total drift events**: 7
+**Resolution rate**: 57% (4/7 resolved; 001 open until T007 lands; 006 open until T009 lands; 007 deferred to
+iteration 002 as bug list item 12)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -141,6 +142,26 @@
   still gets both. 198/011's abandonment lands in T009's push. Open until then.
 - **Class closure**: T009's validator rule and its tests: abandonment by recorded ruling becomes a status the
   validator accepts after `retro.md`, and an unrecorded `abandoned` stays refused.
+
+### DRIFT-206-I001-007 — the three push runs on 4f315689 are stuck as queued; 4f315689 has no Specrew CI result
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction.
+- **What**: the push of `4f315689` (2026-11-11 20:26Z) created Test 43096082467, Specrew CI 43096082485 and
+  Cross-Platform Validation 43096082509. All three stayed `queued` with 0 jobs (API `updated_at` 20:26:38Z). Runs
+  of other workflows on `main` with the same runner label (`ubuntu-latest`) kept completing, and GitHub's status
+  page showed Actions operational. Feature 205's push runs from 20:30Z are stuck the same way.
+- **GitHub refuses to clear them**: cancel answers "Cannot cancel a workflow run that is completed";
+  force-cancel answers "Cannot cancel a workflow run that has not been queued yet" (HTTP 409); re-run answers
+  "cannot be rerun; its workflow file may be broken". The three runs are still listed as queued.
+- **Re-checked on demand**: Test 43112873232 and Cross-Platform Validation 43112877362 were started manually on
+  `4f315689` (workflow_dispatch) at 22:34Z; both started at once and both are green.
+- **Not re-checked**: Specrew CI has no manual trigger, so **`4f315689` has no Specrew CI result of its own**.
+  Its changes are re-checked only as part of the next push, `ad31b2d5` (T008), whose Specrew CI run is
+  43113590639.
+- **Resolution**: none possible from here for the stuck runs; Specrew CI's missing manual trigger is bug list
+  item 12, a candidate for iteration 002 (no workflow changed now).
+- **Class closure**: NONE — the stuck runs are a GitHub-side state this feature cannot change; the gap that
+  left a commit without a re-check is bug list item 12, deferred to iteration 002 by the maintainer.
 
 <!--
   Every new ### DRIFT-... event includes:

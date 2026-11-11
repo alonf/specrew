@@ -336,3 +336,15 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   nowhere (item 5): no CI step, no lane, no release manifest.
 - **Not fixed here.** Options for the maintainer: time the median of several warm renders, or raise the limit
   with the measurement that justifies it.
+
+## 12. Specrew CI has no manual trigger, so a commit cannot be re-checked without a new push
+
+- **Observed (2026-11-12):** the push runs on `4f315689` stuck as queued, and GitHub refused cancel and re-run
+  (DRIFT-206-I001-007). Test and Cross-Platform Validation declare `workflow_dispatch` and were re-run on that
+  commit by hand; `.github/workflows/specrew-ci.yml` triggers only on `push` and `pull_request`, so the one gate
+  that runs Lint, the self-leak firewall and the Deterministic gate could not be re-run. `4f315689` has no Specrew
+  CI result of its own.
+- **Effect:** when a push run is lost, the only way to get a Specrew CI verdict is another push, which checks a
+  different head.
+- **Candidate fix (iteration 002, maintainer 2026-11-12):** add `workflow_dispatch:` to `specrew-ci.yml`'s
+  triggers, as the other two workflows have. No workflow is changed in iteration 001.
