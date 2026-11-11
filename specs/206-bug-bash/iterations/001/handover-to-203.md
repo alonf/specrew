@@ -69,14 +69,16 @@ FR-005.
 - **Proposed owner**: feature 203, whatever the maintainer rules for the iteration: the defect is in 203's
   protected file.
 
-## HO-206-5 — two suites run `specrew-update.ps1` with no home redirect and rewrite the real home's hook files
+## HO-206-5 — three suites run `specrew-update.ps1` with no home redirect and rewrite the real home's hook files
 
 - **Bug list**: item 8.
 - **Evidence**: `tests/integration/deployed-extension-marker-on-update.tests.ps1:64` and
   `tests/integration/receipt-outcomes-retired.tests.ps1:28` run `scripts/specrew-update.ps1 -ProjectPath <temp>`
   and set neither `HOME` nor `USERPROFILE` (read 2026-11-11). Both are named in `.specrew/verification-plan.json`'s
-  lanes; neither is in a CI workflow. 11 more test scripts mention `specrew-update.ps1` (listed under item 8; a
-  mention is not proof of a call). T014 reads them and adds what it finds here.
+  lanes; neither is in a CI workflow. `tests/integration/distribution-module-update.ps1:213-216` does the same
+  through `Invoke-ModuleScript` (added by the maintainer 2026-11-11). 10 more test scripts mention
+  `specrew-update.ps1` (listed under item 8; a mention is not proof of a call). T014 reads them and adds what it
+  finds here; feature 203's crew is producing the full list.
 - **Cross-references**: feature 205's H-001 (`specs/205-workshop-lens-order/iterations/001/handover-to-203.md` on
   `205-workshop-lens-order`: the review preflight rewrote four real-home hook files in run
   `run-20261110-221211306-a1cb90e2`); feature 203's B5F-039 (`docs/beta5-findings.md` on `203-beta5-stabilization`,

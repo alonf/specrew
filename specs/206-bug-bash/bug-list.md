@@ -217,7 +217,7 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 | ------ | ---------- | ------ | ------ | ------- |
 | 42913380735 | 2026-11-10 | `435332da` | windows-latest | cancelled after 30 min in the bounded step; no log kept |
 
-## 8. Two suites run `specrew-update.ps1` with no home redirect and rewrite the real home's hook files
+## 8. Three suites run `specrew-update.ps1` with no home redirect and rewrite the real home's hook files
 
 - **Reported by the maintainer (2026-11-11), from feature 205:** its review preflight ran the lanes in
   `.specrew/verification-plan.json` (202's and 199's suites), and one of them rewrote four real-home hook files
@@ -226,15 +226,20 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   - `tests/integration/deployed-extension-marker-on-update.tests.ps1:64` runs
     `pwsh -NoProfile -File scripts/specrew-update.ps1 -ProjectPath $root` on a temp project.
   - `tests/integration/receipt-outcomes-retired.tests.ps1:28` does the same.
+  - `tests/integration/distribution-module-update.ps1:213-216` runs `scripts/specrew-update.ps1` through
+    `Invoke-ModuleScript` and sets no home redirect (added by the maintainer 2026-11-11; confirmed by reading).
   - Neither sets `HOME` or `USERPROFILE` (checked by reading, 2026-11-11), so the update's hook deployment
     writes the real home folder. Both are named in `.specrew/verification-plan.json`'s lanes; neither is in a
     CI workflow.
 - **Not run on this machine** (maintainer's instruction). No fix in 206 unless the maintainer rules one.
 - **Hand-over record**: HO-206-5 in `specs/206-bug-bash/iterations/001/handover-to-203.md`, with feature 205's H-001
   and feature 203's B5F-039.
-- **Same shape, not yet read:** 11 more test scripts mention `specrew-update.ps1` (a mention is not proof of a
+- **Feature 203's crew is producing the full list (2026-11-11).** Until it arrives, no test file that mentions
+  `specrew-update.ps1` or the hook deployer is run here unless it has been read and the path it takes confirmed
+  unable to write hook files.
+- **Same shape, not yet read:** 10 more test scripts mention `specrew-update.ps1` (a mention is not proof of a
   call): `tests/continuous-co-review/unit/verification-plan-materializer.Tests.ps1`, and under
-  `tests/integration/`: `distribution-module-update.ps1`, `forge-neutralization-sweep.tests.ps1`,
+  `tests/integration/`: `forge-neutralization-sweep.tests.ps1`,
   `project-path-resolution-regression.ps1`, `psgallery-check.tests.ps1`, `refocus-deploy.tests.ps1`,
   `slash-command-compatibility.tests.ps1`, `slash-command-distribution.tests.ps1`, `update-command.ps1`; and under
   `tests/unit/`: `consumer-applicability-firewall.tests.ps1`, `extension-deploy-refocus-digests.tests.ps1`.

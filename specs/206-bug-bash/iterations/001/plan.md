@@ -185,8 +185,11 @@ list, the frozen-list guard, the T010 replay and the T014 report.
   verification lane is read under the same rule first. This is review-stage work, not priced in SP (Phase
   Baseline).
 - **Never run on this machine** (maintainer, 2026-11-11; bug list item 8):
-  `tests/integration/deployed-extension-marker-on-update.tests.ps1` and
-  `tests/integration/receipt-outcomes-retired.tests.ps1`. Both run `specrew-update.ps1` with no home redirect. In
+  `tests/integration/deployed-extension-marker-on-update.tests.ps1`,
+  `tests/integration/receipt-outcomes-retired.tests.ps1` and `tests/integration/distribution-module-update.ps1`.
+  All three run `specrew-update.ps1` with no home redirect. More may follow: feature 203's crew is producing the full
+  list. Until it arrives, no test file that mentions `specrew-update.ps1` or the hook deployer is run unless it has
+  been read and the path it takes confirmed unable to write hook files. In
   T014, and for anything the review preflight would run, a script that calls `specrew-update.ps1` or the hook
   deployment is **not run, and is listed for the maintainer**.
 - **Not touched:** `scripts/internal/continuous-co-review/**`, `scripts/internal/bootstrap/**`,
