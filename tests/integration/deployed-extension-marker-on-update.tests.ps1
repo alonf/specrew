@@ -1,11 +1,8 @@
 #requires -Version 7.0
 
 # B5F-039 / B5F-042 follow-up (maintainer ruling 2026-11-11): a private home for this run, so no hook file is written
-# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1).
-BeforeAll {
-    . (Join-Path $PSScriptRoot '../support/private-test-home.ps1')
-    $script:PrivateTestHome = Enter-SpecrewPrivateTestHome -Label 'deployed-extension-marker-on-update.tests'
-}
+# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1). It is
+# taken in the file's ONE root BeforeAll below: Pester runs only the last BeforeAll at a level (DRIFT-057).
 AfterAll { Exit-SpecrewPrivateTestHome -State $script:PrivateTestHome }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -27,6 +24,8 @@ $ErrorActionPreference = 'Stop'
 # defect lived exactly in the gap the fast version could not see.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../support/private-test-home.ps1')
+    $script:PrivateTestHome = Enter-SpecrewPrivateTestHome -Label 'deployed-extension-marker-on-update.tests'
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $script:MarkerRelative = '.specify/extensions/specrew-speckit/.specrew-extension-runtime.json'
 
