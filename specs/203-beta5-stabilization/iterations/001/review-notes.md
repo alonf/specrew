@@ -38,3 +38,18 @@ finding that states its scenario in prose is recorded as minor. For this review:
    sign-off listing also shows ("the reviewer reported it as ...").
 2. The crew fixes each one within the approved tasks, as it would a finding recorded at that severity.
 3. The crew does not ask for review sign-off while any demoted finding is unfixed.
+
+## Not covered at sign-off: B5F-041 (maintainer ruling, 2026-11-11)
+
+T011 removed the declared draft (FR-046, the ruling of 2026-11-11), and with it the only check that blocked an agent
+replacing a workshop lens question with a status line. No record of a pending lens question exists for the Stop to
+read; the workshop agenda keeps its own check. The sign-off listing names B5F-041 as not covered by this iteration.
+Proposed placement: 203 iteration 002 (`docs/beta5-findings.md`).
+
+## Before any review round: B5F-042 (maintainer ruling, 2026-11-11)
+
+The review preflight runs the plan's suites with the real home: it sets no `SPECREW_USER_HOME_OVERRIDE`, and its runner
+would drop one. Blocking for this iteration's review. The fix (a temporary home for each preflight run, removed in a
+finally block, and a hash check of the real home's hook files that fails the round, spending nothing) is built
+test-first and goes live with B5F-040 in one pin advance, on the maintainer's typed `advance the pin`, before any review
+round on this branch.

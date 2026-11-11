@@ -508,7 +508,7 @@ then T014.
 
 ## Phase 6: US4 part, the Stop check verifies the reply (P1 for iteration 001)
 
-- [ ] T011 [owner: Implementer] [sp: 1.5] [US4] **Decision parts, not a second copy (FR-046).**
+- [x] T011 [owner: Implementer] [sp: 1.5] [US4] **Decision parts, not a second copy (FR-046).**
   - **Work:** the Stop check verifies the reply itself for the approval line, the marker and the options; a
     reworded content line passes; the word-for-word declared-vs-reply comparison goes. **Tasks verdict addition:**
     piping the packet (or any reply draft) into `declare-turn-end.ps1` goes too. The piped copy shows in the

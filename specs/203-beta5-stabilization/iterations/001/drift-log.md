@@ -1826,4 +1826,18 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Proposal (maintainer decision pending)**: (1) the expectation becomes the FR-008 floor (2), keeping the property that
   the coverage state reads the one production counter; (2) the sweep driver also runs every suite the sign-off lanes
   name, so a sweep that closes a task covers them.
-- **Class closure**: OPEN.
+- **Ruling (maintainer, 2026-11-11)**: (1) yes, with the floor read from the engine's value, not a literal 2, and a case
+  with a recorded grant of another size (5) that expects that size; (2) yes, and T008 is recorded closed again only
+  after a sweep that includes those suites is green. With the index.lock trace (B5F-040) the driver also marks a suite
+  that spanned standby ("spanned standby, rerun", never pass or fail; a sweep with one cannot close a task) and holds a
+  keep-awake request with Windows for the sweep, released in a finally block.
+- **Built**: `f47e24fa` (coverage-is-a-decision: the floor from the engine, the grant of 5 through the engine's own
+  writer; the fixture's bundle gains `agent-tasks`, without which its loader failed part-way); the driver in `58121e18`
+  (self-test, red) and `0f30b977` (sign-off-lane suites at the swept revision, wall and awake seconds per suite, the
+  keep-awake request, the "valid to close a task" line). A first full sweep on `0f30b977` was void: Windows Installer
+  reinstalled PowerShell 7.6.10 between 02:16 and 02:26 local, so no suite ran and no lane started, and the driver
+  reported it as not valid to close a task.
+- **Closed again (2026-11-11)**: the full sweep on `43ec7bfc`: the 203 list with every sign-off-lane suite, 184 suites,
+  0 failed (the two B5F-036 suites known red at their 60 s limits), none spanned standby; 7 of 7 lanes; the
+  keep-awake request held; the real home's hook files unchanged. T008 is recorded closed again on it.
+- **Class closure**: CLOSED. A sweep now runs every suite the sign-off lanes name, and says when it cannot close a task.

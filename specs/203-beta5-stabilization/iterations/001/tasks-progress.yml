@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-10T02:14:08.1922197Z"
+updated_at: "2026-11-11T01:27:00.7480851Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -53,9 +53,9 @@ tasks:
     blocked_reason: ""
   T011:
     title: "Stop check verifies the reply's decision parts; word-for-word comparison removed"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-11-10T02:14:08.1876846Z"
-    completed_at: ""
+    completed_at: "2026-11-11T01:27:00.7448089Z"
     blocked_reason: ""
   T012:
     title: "Audit and correlation: record-to-turn join, citations, turn identity and campaign id"
