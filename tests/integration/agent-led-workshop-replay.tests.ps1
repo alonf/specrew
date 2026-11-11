@@ -185,7 +185,7 @@ Approve this specify scope or identify a correction to the linked requirements.
     # declaration reads no draft and returns the four lines and the marker; the Stop reads the packet from the reply.
     # The packet as it stood before (no options) is kept as a block case below.
     $packetWithoutResponses = $packet
-    $responses = "approved for specify`napproved for specify - <your instructions>`nchanges needed: <what to change>`ndiscuss prompt 1"
+    $responses = "approved for specify`napproved for specify - <your instructions, on this same line>`nchanges needed: <what to change>`ndiscuss prompt 1"
     $packet = $packet + "Type one of these:`n`n" + $responses + "`n"
     $generic = $packet.Replace("Read $specUrl for anchor handling, output fields and the zero-false-positive constraint.", 'The work named above.').Replace('Clarify checks remaining ambiguities in the spec in the same turn after your approval; it produces no code.', 'On approval the next stage starts.').Replace('1. I recommend keeping HTTP links out of scope; adding them would require timeout and network-error decisions.', '1. Anything above you want changed, questioned, or done differently.')
     $declared = Declare $generic boundary
@@ -194,7 +194,7 @@ Approve this specify scope or identify a correction to the linked requirements.
     Check ($stopGeneric -match 'SPECREW-STOP-BLOCK' -and $stopGeneric.Contains('empty section: What Needs Your Review') -and $stopGeneric.Contains('empty section: What Happens Next') -and $stopGeneric.Contains('empty section: Discussion Prompts')) ("the generic packet blocks, naming each placeholder-only section: $stopGeneric")
     $null = Declare $packetWithoutResponses boundary
     $stopOld = Stop-With ($packetWithoutResponses + "approved for specify`n" + $marker)
-    Check ($stopOld -match 'SPECREW-STOP-BLOCK' -and $stopOld.Contains('missing: approved for specify - <your instructions>') -and $stopOld.Contains('missing: changes needed: <what to change>') -and $stopOld.Contains('missing: discuss prompt 1')) ("the packet without the response options blocks, naming each: $stopOld")
+    Check ($stopOld -match 'SPECREW-STOP-BLOCK' -and $stopOld.Contains('missing: approved for specify - <your instructions, on this same line>') -and $stopOld.Contains('missing: changes needed: <what to change>') -and $stopOld.Contains('missing: discuss prompt 1')) ("the packet without the response options blocks, naming each: $stopOld")
     $declared = Declare $packet boundary
     Check ((Stop-With 'The packet is ready; nothing needed.') -match 'SPECREW-STOP-BLOCK') 'a packet missing from the reply blocks Stop'
     $completePacket = $packet + "`n" + $marker

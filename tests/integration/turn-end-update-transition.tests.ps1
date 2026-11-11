@@ -193,7 +193,7 @@ Tell me if the plan is wrong.
     $boundary = $null
     try { $boundary = ($boundaryOut | ConvertFrom-Json) } catch { $boundary = $null }
     $text = if ($null -ne $boundary) { [string]$boundary.text } else { '' }
-    $expected = @('approved for tasks', 'approved for tasks - <your instructions>', 'changes needed: <what to change>', 'discuss prompt 1', '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->') -join [Environment]::NewLine
+    $expected = @('approved for tasks', 'approved for tasks - <your instructions, on this same line>', 'changes needed: <what to change>', 'discuss prompt 1', '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->') -join [Environment]::NewLine
     Assert-True ($text -ceq $expected) ("the four sendable response lines, then the marker ({0})" -f ($text -replace '\r?\n', ' | '))
     Assert-True ($text -notmatch '##|Anything above') 'no generic packet or discussion is generated'
     Assert-True ($text -notmatch '(?m)^\s*1\.\s*Approve') 'no numbered verdict option - a number is a control that cannot authorize'

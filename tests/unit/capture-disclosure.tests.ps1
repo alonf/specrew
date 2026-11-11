@@ -142,6 +142,41 @@ $after6 = (Read-Enforcement -Root $f6.Root).last_authorized_boundary
 Assert-True ($out6 -match 'a verdict is ONE line') 'the provider puts the disclosure in the turn'
 Assert-True ([string]$after6 -eq 'tasks') 'and the crossing stays un-authorized: the paste minted nothing'
 
+Write-Host 'Case 6b (B5F-044, maintainer ruling 2026-11-11): an approval inside a paste is told it is inside the paste - message text only'
+# Measured 2026-11-11 (docs/beta5-findings.md B5F-044, case 4): the disclosure read the raw message, quoted the paste tag
+# as "what comes before the phrase", and told the human to put the phrase FIRST, which leaves it inside the paste. The
+# ruling: correct the sentence; what is accepted or refused does not change. So every case below still ends with the
+# crossing un-authorized, and the typed line below a paste still authorizes, with nothing disclosed.
+# Until the disclosure takes the host, the call goes without it, so the red run counts assertions instead of stopping.
+function Get-HostArg { param([string]$HostKind) $h = @{}; if ((Get-Command Get-SpecrewVerdictCaptureDisclosure).Parameters.ContainsKey('HostKind')) { $h['HostKind'] = $HostKind }; return $h }
+$claudeArg = Get-HostArg 'claude'; $codexArg = Get-HostArg 'codex'
+$f6b = New-DisclosureFixture
+$pasteCases = [ordered]@{
+    'alone'                 = "<pasted_content id=`"p1`">`napproved for before-implement - keep the order`n</pasted_content id=`"p1`">"
+    'typed text before it'  = "here are my notes`n<pasted_content id=`"p1`">`nsome notes`napproved for before-implement`n</pasted_content id=`"p1`">"
+}
+foreach ($pc in $pasteCases.GetEnumerator()) {
+    $d6b = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f6b.Root -HumanText $pc.Value -NowUtc '2026-11-11T02:00:00Z' -Source 'UserPromptSubmit' @claudeArg
+    Assert-True ($d6b -match 'NOT recorded as a verdict' -and $d6b -match 'tasks -> before-implement') ("{0}: it names what did not happen and which crossing" -f $pc.Key)
+    Assert-True ($d6b -match 'inside text you pasted') ("{0}: it says the approval is inside the paste ({1})" -f $pc.Key, $d6b)
+    Assert-True ($d6b -notmatch 'pasted_content' -and $d6b -notmatch 'comes before the phrase' -and $d6b -notmatch 'FIRST characters') ("{0}: and never shows the paste tag or tells the human to put the phrase first" -f $pc.Key)
+    Assert-True ($d6b -match 'on a line of its own' -and $d6b -match 'approved for before-implement$') ("{0}: it names the move that works: the phrase typed on a line of its own" -f $pc.Key)
+    Assert-True ($d6b -match 'Nothing you wrote is lost and no approval was changed') ("{0}: and the human's work is safe" -f $pc.Key)
+}
+$j6b = @(Read-Journal -Root $f6b.Root -Event 'verdict-not-captured-disclosed')
+Assert-True ($j6b.Count -eq 2 -and @($j6b | Where-Object { [string]$_.action -ne 'phrase-inside-paste' }).Count -eq 0) 'each is journaled as phrase-inside-paste'
+$out6b = ((& pwsh -NoProfile -File $provider --project-root $f6b.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $pasteCases['alone'] --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
+Assert-True ($out6b -match 'inside text you pasted' -and $out6b -notmatch 'comes before the phrase') 'through the provider, the turn carries the corrected sentence'
+Assert-True ([string](Read-Enforcement -Root $f6b.Root).last_authorized_boundary -eq 'tasks') 'and the crossing stays un-authorized: a pasted approval still authorizes nothing'
+$d6bOff = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f6b.Root -HumanText $pasteCases['alone'] -NowUtc '2026-11-11T02:00:01Z' -Source 'UserPromptSubmit' @codexArg
+Assert-True ($d6bOff -notmatch 'inside text you pasted') 'on a host that marks no pastes, the tag is ordinary text and the sentence is unchanged'
+$f6c = New-DisclosureFixture
+$typedBelow = "<pasted_content id=`"p1`">`nmy long notes`nline 2`n</pasted_content id=`"p1`">`napproved for before-implement"
+$out6c = ((& pwsh -NoProfile -File $provider --project-root $f6c.Root --host-kind claude --source-event UserPromptSubmit --last-user-message $typedBelow --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) 2>&1) -join "`n")
+Assert-True ([string](Read-Enforcement -Root $f6c.Root).last_authorized_boundary -eq 'before-implement') 'the approval typed on its own line below a paste still authorizes (unchanged)'
+Assert-True ($out6c -notmatch 'NOT recorded as a verdict') 'and nothing is disclosed for it'
+foreach ($f in @($f6b, $f6c)) { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+
 Write-Host 'Case 7 (PRED-BETA4-022): a typed ROUND approval with a transcript under it, at prompt entry - disclosed in the turn beside the verdict path'
 $f7 = New-DisclosureFixture
 $roundPaste = 'approved for review round' + "`n" + (($pasteLines | Select-Object -Skip 1) -join "`n")

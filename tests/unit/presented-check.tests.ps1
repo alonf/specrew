@@ -356,6 +356,28 @@ try {
         }
     }
 
+    # B5F-044 item 2 (maintainer ruling 2026-11-11, a T011 follow-up): the packet offered "approved for <to> - <your
+    # instructions>", and an approval whose instructions continue past its first line is refused, which nothing said. Until
+    # iteration 002 decides on typed instruction blocks, the line says where the instructions go, and one sentence under the
+    # four lines says what to do with longer notes. The line's matching rule does not change.
+    Write-Host 'Case 15b (B5F-044 item 2): the instructions line says they go on the same line, and every surface that shows it agrees'
+    $sameLine = 'approved for <to> - <your instructions, on this same line>'
+    $note = "Instructions go on the approval's line. For longer notes, send them first as their own message, then send the approval line alone."
+    $hookShown = @(if ($optionsDefined) { $script:SpecrewVerdictOptions | ForEach-Object { [string]$_.Shown } })
+    Assert-True ($hookShown.Count -eq 4 -and $hookShown[1] -ceq $sameLine) ("the hook's second line reads '{0}' ({1})" -f $sameLine, ($hookShown -join ' | '))
+    Assert-True ((@(Get-SpecrewVerdictOptionIndex -Line 'approved for before-implement - keep the order' -ApprovalPhrase 'approved for before-implement') -join ',') -eq '1') 'and its matching rule is unchanged: any same-line instruction after the dash'
+    foreach ($copy in $skillCopies) {
+        $skillText = [System.IO.File]::ReadAllText($copy) -replace "`r`n", "`n"
+        Assert-True ($skillText -match ('(?s)Type one of these:\n\n(?:[ \t]+\S[^\n]*\n)+\n' + [regex]::Escape($note) + '\n')) ("{0}: the sentence for longer notes follows the four lines" -f (Split-Path -Leaf (Split-Path -Parent $copy)))
+    }
+    $contractText = [System.IO.File]::ReadAllText((Join-Path $repoRoot 'scripts/internal/launch-contract.ps1')) -replace "`r`n", "`n"
+    $contractBlock = [regex]::Match($contractText, '(?s)Type one of these:\n\n(?<lines>(?:[ \t]+\S[^\n]*\n)+)\n(?<after>[^\n]*)\n')
+    $contractLines = @(if ($contractBlock.Success) { $contractBlock.Groups['lines'].Value -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ } })
+    Assert-True (($contractLines -join '|') -ceq ($hookShown -join '|')) ("the launch contract's four lines equal the hook's ({0})" -f ($contractLines -join ' | '))
+    Assert-True ($contractBlock.Success -and $contractBlock.Groups['after'].Value -ceq $note) 'and the launch contract carries the same sentence under them'
+    $surgeryText = [System.IO.File]::ReadAllText((Join-Path $repoRoot 'scripts/internal/coordinator-prompt-surgery.ps1'))
+    Assert-True (-not $surgeryText.Contains('<your instructions>"') -and $surgeryText.Contains('"approved for <to> - <your instructions, on this same line>"')) 'the host guidance names the same line'
+
     # ===============================================================================================
     # Feature 203 T011 follow-up (FR-046; maintainer ruling 2026-11-11, item 1). There is no draft any more: the Stop
     # reads the packet from the reply itself. The packet is present when the six section headings each start a line
@@ -430,7 +452,7 @@ try {
     $d16e2 = $json16e2 | ConvertFrom-Json
     Assert-True ([string]$d16e2.draft_source -eq 'none') ("stdin is not read (draft_source '{0}')" -f [string]$d16e2.draft_source)
     $lines16e = @(([string]$d16e2.text) -split '\r?\n')
-    Assert-True (($lines16e -join '|') -ceq (@('approved for before-implement', 'approved for before-implement - <your instructions>', 'changes needed: <what to change>', 'discuss prompt 1', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') -join '|')) ("a boundary declaration returns the four response lines and the marker from the record ({0})" -f ($lines16e -join ' | '))
+    Assert-True (($lines16e -join '|') -ceq (@('approved for before-implement', 'approved for before-implement - <your instructions, on this same line>', 'changes needed: <what to change>', 'discuss prompt 1', '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->') -join '|')) ("a boundary declaration returns the four response lines and the marker from the record ({0})" -f ($lines16e -join ' | '))
 }
 finally {
     foreach ($px in $projects) { try { Remove-Item -LiteralPath $px.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
