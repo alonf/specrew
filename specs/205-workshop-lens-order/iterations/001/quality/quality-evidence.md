@@ -194,3 +194,31 @@ fix per commit. The 10 home hook files were hashed before and after every run, a
   `Get-SurfaceEntries` reads every entry, duplicates included, without consulting the catalog.
 - **Green** (02:29): all self-tests pass, and the repository check passes on all 5 full surfaces, 428 swept files and
   22 deployed copies.
+
+### Fix 2 - the applicability selector always returns index.yml order (FR-001)
+
+- **Finding**: `Get-SpecrewApplicableLenses` appended the always-on lenses before every yes-gated lens. With only the
+  UI answer yes it returned `requirements-nfr, architecture-core, component-design, ui-ux`, and
+  `Format-SpecrewApplicableLensesSection` rendered that order into the design-analysis section: a second order.
+- **Red** (2026-11-11 02:31):
+  - The selector suite failed on its first new case: "UI only -> index.yml order".
+  - The parity test's new computed-order check reported 12 mismatches (selector and rendered section, for each
+    single-yes answer and for all yes). Its own self-tests passed: a selector with its own order is reported, one in
+    catalog order is not, and a rendered section out of order is reported.
+  - A first attempt at 02:31 had a wrapper bug in the new check (`return ,` with `@()` nested the array), which
+    failed its self-tests. It was fixed before the red run above.
+- **Fix**:
+  - The selector always sorts its selection by index.yml. Nothing makes the ordering optional: `-CatalogDir` only
+    says where index.yml is, and defaults to the shipped catalog.
+  - If index.yml cannot be read, the selector throws "The lens order could not be read ... index.yml is the only
+    definition of the lens order" and never falls back to an order of its own. A lens that index.yml does not list
+    is an error, never appended.
+  - `Get-SpecrewLensSelection` orders its included and excluded rationale the same way, and the render passes its
+    catalog folder through. The function and file comments were updated.
+- **Tests**: UI only, all yes and all no, each in index.yml order; the rendered section in index.yml order; an
+  unreadable catalog throws a clear error naming index.yml.
+- **Condition 4, how a second order is now caught**: the shipped-text sweep cannot see an order that code computes,
+  because that order never appears as text. The parity test therefore gained a computed-order check
+  (`Test-ComputedOrders`). It runs the shipped selector and its rendered section with no catalog parameter, for
+  all-no, each single-yes and all-yes answers, and reports any result that is not in index.yml's relative order.
+- **Green** (02:32): both suites pass. All 11 suites in the 205 verification plan then passed (02:33).

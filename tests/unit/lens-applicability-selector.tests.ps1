@@ -29,6 +29,21 @@ $selNo = @(Get-SpecrewApplicableLenses -Map $map -Answers $allNo)
 # Feature 205: applicability-map.json's always_on follows index.yml's problem-first order (requirements-nfr first).
 Assert-True (($selNo -join ',') -eq 'requirements-nfr,architecture-core,component-design') "all-no -> exactly the 3 always-on lenses (SC-006), in order"
 
+# Feature 205 review round 1: the selector ALWAYS returns its selection in index.yml order (FR-001: index.yml is the
+# only definition of the lens order). No parameter is needed for this, so no caller can get another order.
+$uiOnly = @{ ui = $true; security = $false; data = $false; integration = $false; ops = $false; perf = $false }
+Assert-True ((@(Get-SpecrewApplicableLenses -Map $map -Answers $uiOnly) -join ',') -eq 'requirements-nfr,ui-ux,architecture-core,component-design') "UI only -> index.yml order (ui-ux before the solution-space lenses)"
+$allYesOrder = @{ ui = $true; security = $true; data = $true; integration = $true; ops = $true; perf = $true }
+Assert-True ((@(Get-SpecrewApplicableLenses -Map $map -Answers $allYesOrder) -join ',') -eq 'requirements-nfr,ui-ux,security-compliance,data-storage,integration-api,devops-operations,architecture-core,component-design,observability-resilience') "all yes -> index.yml order"
+Assert-True (($selNo -join ',') -eq 'requirements-nfr,architecture-core,component-design') "all no -> index.yml order"
+$renderAllYes = Format-SpecrewApplicableLensesSection -Map $map -Answers $allYesOrder
+$renderedIds = @([regex]::Matches($renderAllYes, '(?m)^- \*\*([a-z][a-z0-9-]*)\*\*') | ForEach-Object { $_.Groups[1].Value })
+Assert-True (($renderedIds -join ',') -eq 'requirements-nfr,ui-ux,security-compliance,data-storage,integration-api,devops-operations,architecture-core,component-design,observability-resilience') "render: the Applicable Lenses section lists lenses in index.yml order"
+$noCatalog = Join-Path ([IO.Path]::GetTempPath()) ('no-lens-catalog-' + [guid]::NewGuid().ToString('N'))
+$orderError = $null
+try { $null = Get-SpecrewApplicableLenses -Map $map -Answers $uiOnly -CatalogDir $noCatalog } catch { $orderError = $_.Exception.Message }
+Assert-True ($null -ne $orderError -and $orderError -match 'lens order could not be read' -and $orderError -match 'index\.yml') "unreadable catalog -> a clear error naming index.yml, never a fallback order (got: $orderError)"
+
 # Never hide an always-on lens, even when everything is 'no'.
 foreach ($f in @('architecture-core', 'component-design', 'requirements-nfr')) {
     Assert-True ($selNo -contains $f) "always-on lens '$f' is never hidden"

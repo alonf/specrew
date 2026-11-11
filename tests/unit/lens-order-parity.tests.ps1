@@ -429,8 +429,45 @@ function Test-SkillSentences {
     return , $mismatches.ToArray()
 }
 
+function Test-ComputedOrders {
+    # Orders that code COMPUTES never appear as text, so the shipped-text sweep cannot see them (round-1 review
+    # finding: the applicability selector put the always-on lenses before the gated ones). This runs the selector
+    # and its rendered section for all-no, each single yes, and all-yes answers, and reports any result that is not
+    # in index.yml's relative order. -Select and -Render default to the shipped functions, called with no catalog
+    # parameter, so the default path is the one proven.
+    param(
+        [object]$Map, [string[]]$Order,
+        [scriptblock]$Select = { param($m, $a) Get-SpecrewApplicableLenses -Map $m -Answers $a },
+        [scriptblock]$Render = { param($m, $a) Format-SpecrewApplicableLensesSection -Map $m -Answers $a },
+        [string]$Path = 'scripts/internal/lens-applicability.ps1'
+    )
+    $fix = 'order the computed selection by index.yml (the selector must not define its own order)'
+    $keys = @($Map.questions | ForEach-Object { [string]$_.id })
+    $cases = [ordered]@{ 'all no' = @{} }
+    foreach ($k in $keys) { $cases['all no'][$k] = $false }
+    foreach ($k in $keys) { $one = @{}; foreach ($j in $keys) { $one[$j] = ($j -eq $k) }; $cases["only $k yes"] = $one }
+    $all = @{}; foreach ($k in $keys) { $all[$k] = $true }; $cases['all yes'] = $all
+    $mismatches = [Collections.Generic.List[object]]::new()
+    foreach ($case in $cases.Keys) {
+        $selected = @(& $Select $Map $cases[$case])
+        if (-not (Test-RelativeOrder -Found $selected -Order $Order)) {
+            $mismatches.Add((New-Mismatch $Path 0 "index.yml relative order (selector, $case)" ($selected -join ', ') $fix))
+        }
+        $rendered = [string](& $Render $Map $cases[$case])
+        $listed = @([regex]::Matches($rendered, '(?m)^- \*\*([a-z][a-z0-9-]*)\*\*') | ForEach-Object { $_.Groups[1].Value })
+        $notSelected = [regex]::Match($rendered, '\*Not selected: (?<list>[^*]*)\*')
+        $skipped = if ($notSelected.Success) { @([regex]::Matches($notSelected.Groups['list'].Value, '([a-z][a-z0-9-]*) \(') | ForEach-Object { $_.Groups[1].Value }) } else { @() }
+        foreach ($pair in @(@{ Name = 'rendered Applicable Lenses'; Ids = $listed }, @{ Name = 'rendered Not selected'; Ids = $skipped })) {
+            if (-not (Test-RelativeOrder -Found $pair.Ids -Order $Order)) {
+                $mismatches.Add((New-Mismatch $Path 0 "index.yml relative order ($($pair.Name), $case)" ($pair.Ids -join ', ') $fix))
+            }
+        }
+    }
+    return $mismatches.ToArray()
+}
+
 function Invoke-LensOrderParity {
-    param([string]$Root, [object[]]$FullSurfaces, [object[]]$Exemptions, [System.Collections.IDictionary]$ExpectedCounts, [switch]$SkipCopies, [string[]]$SweepFiles)
+    param([string]$Root, [object[]]$FullSurfaces, [object[]]$Exemptions, [System.Collections.IDictionary]$ExpectedCounts, [switch]$SkipCopies, [string[]]$SweepFiles, [switch]$SkipComputed)
     $catalog = Get-LensCatalog -Root $Root
     $order = @($catalog | ForEach-Object { [string]$_.id })
     $pattern = Get-LensIdPattern -LensIds $order
@@ -442,6 +479,12 @@ function Invoke-LensOrderParity {
     $all.AddRange([object[]]$sweep.Mismatches)
     $all.AddRange([object[]](Test-LensTagging -Root $Root -Catalog $catalog))
     $all.AddRange([object[]](Test-Extractor -Root $Root -Catalog $catalog -ExpectedCounts $ExpectedCounts))
+    if (-not $SkipComputed) {
+        $mapPath = Join-Path $Root "$($script:LensCatalogRelative)/applicability-map.json"
+        $map = Read-SpecrewLensApplicabilityMap -Path $mapPath
+        if ($null -eq $map) { $all.Add((New-Mismatch "$($script:LensCatalogRelative)/applicability-map.json" 0 'a readable applicability map' '(missing or unreadable)' 'restore applicability-map.json beside index.yml')) }
+        else { $all.AddRange([object[]]@(Test-ComputedOrders -Map $map -Order $order)) }
+    }
     $copyCount = 0
     if (-not $SkipCopies) {
         $copyMap = Get-CopyMap -LensFiles @($catalog | ForEach-Object { [string]$_.file })
@@ -487,7 +530,7 @@ function Invoke-SelfTests {
         New-SelfTestTree -Root $scratch
         $surfaces = @(@{ Name = 'fixture full list'; Path = 'docs/full.md'; Start = '^Lenses:'; End = '^\s*$'; Rows = $null; Within = $null; Item = $script:KebabToken })
         $counts = [ordered]@{ 'alpha-lens' = 1; 'beta-lens' = 1 }
-        $result = Invoke-LensOrderParity -Root $scratch -FullSurfaces $surfaces -Exemptions @() -ExpectedCounts $counts -SkipCopies -SweepFiles @('docs/full.md', 'docs/partial.md', 'docs/fine.md')
+        $result = Invoke-LensOrderParity -Root $scratch -FullSurfaces $surfaces -Exemptions @() -ExpectedCounts $counts -SkipCopies -SkipComputed -SweepFiles @('docs/full.md', 'docs/partial.md', 'docs/fine.md')
         $text = ($result.Mismatches | ForEach-Object { Format-Mismatch $_ }) -join "`n"
         Assert-True ($text -match 'docs/full\.md') 'seeded: the out-of-order full list is reported'
         Assert-True ($text -match 'docs/partial\.md') 'seeded: the out-of-order partial list is reported'
@@ -509,19 +552,31 @@ function Invoke-SelfTests {
         $memberCounts = [ordered]@{ 'alpha-lens' = 1; 'beta-lens' = 1 }
 
         Set-Content -LiteralPath (Join-Path $memberScratch 'docs/member.md') -Value "Lenses: alpha-lens, beta-lens, gamma-lens, omega-lens`n"
-        $extra = Invoke-LensOrderParity -Root $memberScratch -FullSurfaces @($memberSurface) -Exemptions @() -ExpectedCounts $memberCounts -SkipCopies -SweepFiles @('docs/member.md')
+        $extra = Invoke-LensOrderParity -Root $memberScratch -FullSurfaces @($memberSurface) -Exemptions @() -ExpectedCounts $memberCounts -SkipCopies -SkipComputed -SweepFiles @('docs/member.md')
         $extraText = ($extra.Mismatches | Where-Object { $_.Path -eq 'docs/member.md' } | ForEach-Object { Format-Mismatch $_ }) -join "`n"
         Assert-True ($extraText -match 'found alpha-lens, beta-lens, gamma-lens, omega-lens') 'membership: an extra lens the catalog does not know is reported'
 
         $indexPath = Join-Path $memberScratch "$($script:LensCatalogRelative)/index.yml"
         Set-Content -LiteralPath $indexPath -Value ((Get-Content -LiteralPath $indexPath -Raw) -replace '(?s)\s*- id: gamma-lens.*$', "`n")
         Set-Content -LiteralPath (Join-Path $memberScratch 'docs/member.md') -Value "Lenses: alpha-lens, beta-lens, gamma-lens`n"
-        $removed = Invoke-LensOrderParity -Root $memberScratch -FullSurfaces @($memberSurface) -Exemptions @() -ExpectedCounts $memberCounts -SkipCopies -SweepFiles @('docs/member.md')
+        $removed = Invoke-LensOrderParity -Root $memberScratch -FullSurfaces @($memberSurface) -Exemptions @() -ExpectedCounts $memberCounts -SkipCopies -SkipComputed -SweepFiles @('docs/member.md')
         $removedText = ($removed.Mismatches | Where-Object { $_.Path -eq 'docs/member.md' } | ForEach-Object { Format-Mismatch $_ }) -join "`n"
         Assert-True (($removed.Order -join ', ') -eq 'alpha-lens, beta-lens') 'membership fixture: gamma-lens is removed from the catalog'
         Assert-True ($removedText -match 'found alpha-lens, beta-lens, gamma-lens') 'membership: a lens removed from the catalog but still listed is reported'
     }
     finally { if (Test-Path -LiteralPath $memberScratch) { Remove-Item -LiteralPath $memberScratch -Recurse -Force } }
+
+    # Computed orders (round-1 review finding): a selector that puts its own order on the result is reported; one that
+    # follows the catalog is not. The fixture selector returns the always-on lens first, like the shipped one did.
+    $fixtureMap = [pscustomobject]@{ always_on = @('gamma-lens'); questions = @([pscustomobject]@{ id = 'q'; gates = @('alpha-lens') }) }
+    $ownOrder = { param($m, $a) $out = @('gamma-lens'); if ($a['q']) { $out += 'alpha-lens' }; $out }
+    $catalogOrder = { param($m, $a) $out = @(); if ($a['q']) { $out += 'alpha-lens' }; $out += 'gamma-lens'; $out }
+    $noRender = { param($m, $a) '' }
+    $computedBad = @(Test-ComputedOrders -Map $fixtureMap -Order $ids -Select $ownOrder -Render $noRender)
+    Assert-True ($computedBad.Count -ge 1 -and (($computedBad | ForEach-Object { Format-Mismatch $_ }) -join "`n") -match 'found gamma-lens, alpha-lens') 'computed: a selector with its own order is reported'
+    Assert-True (@(Test-ComputedOrders -Map $fixtureMap -Order $ids -Select $catalogOrder -Render $noRender).Count -eq 0) 'computed: a selector in catalog order is not reported'
+    $badRender = { param($m, $a) "- **gamma-lens** - x`n- **alpha-lens** - y`n" }
+    Assert-True (@(Test-ComputedOrders -Map $fixtureMap -Order $ids -Select $catalogOrder -Render $badRender).Count -ge 1) 'computed: a rendered section out of catalog order is reported'
 
     # A stale deployed copy is reported with the project-only refresh commands.
     $copyScratch = Join-Path ([IO.Path]::GetTempPath()) ('lens-parity-copy-' + [guid]::NewGuid().ToString('N'))

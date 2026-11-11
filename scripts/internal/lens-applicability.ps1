@@ -6,10 +6,47 @@
   per-question gated specialized lenses) and the recorded questionnaire answers, compute the
   selected lens set. Selection is a deterministic function of (map, answers) — identical answers
   always yield the identical ordered set. No network, no LLM; the only judgment input is the
-  recorded answers. The Proposal 156 catalog `index.yml` is NOT read or modified here (decoupled).
+  recorded answers. The catalog `index.yml` is read only for the lens ORDER (feature 205, FR-001:
+  index.yml is the only definition of the order) and is never modified here; WHICH lenses apply
+  stays decoupled in the sibling applicability map.
 #>
 
 Set-StrictMode -Version Latest
+
+# The shipped design-lens catalog, beside this script in both the repository and the installed module.
+$script:SpecrewDefaultLensCatalogDir = Join-Path $PSScriptRoot '..\..\extensions\specrew-speckit\knowledge\design-lenses'
+
+function Get-SpecrewLensCatalogOrder {
+    # The lens ids in index.yml order. Throws a clear error when index.yml cannot be read: there is no fallback
+    # order, because a second order is exactly what FR-001 forbids.
+    [CmdletBinding()]
+    param([AllowNull()][AllowEmptyString()][string]$CatalogDir)
+
+    if ([string]::IsNullOrWhiteSpace($CatalogDir)) { $CatalogDir = $script:SpecrewDefaultLensCatalogDir }
+    $indexPath = Join-Path $CatalogDir 'index.yml'
+    $refusal = "The lens order could not be read from '{0}' ({1}). index.yml is the only definition of the lens order, so no lens selection is ordered without it. Restore index.yml in the design-lens catalog, or pass the catalog folder that holds it."
+    if (-not (Test-Path -LiteralPath $indexPath -PathType Leaf)) { throw ($refusal -f $indexPath, 'the file does not exist') }
+    $ids = @(Get-Content -LiteralPath $indexPath -Encoding UTF8 | ForEach-Object {
+            if ($_ -match '^\s*-\s+id:\s*["'']?([a-z][a-z0-9-]*)["'']?\s*$') { $Matches[1] }
+        })
+    if ($ids.Count -eq 0) { throw ($refusal -f $indexPath, 'it lists no lens ids') }
+    return $ids
+}
+
+function Get-SpecrewLensIdsInCatalogOrder {
+    # Returns the given lens ids in index.yml order. A lens that index.yml does not list is an error, never appended.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyCollection()][string[]]$LensIds,
+        [Parameter(Mandatory = $true)][string[]]$Order
+    )
+
+    $unknown = @($LensIds | Where-Object { $Order -notcontains $_ })
+    if ($unknown.Count -gt 0) {
+        throw ("Lens(es) {0} are not listed in index.yml, the only definition of the lens order. Add them to index.yml, or remove them from the applicability map." -f ($unknown -join ', '))
+    }
+    return @($Order | Where-Object { $LensIds -contains $_ })
+}
 
 function Read-SpecrewLensApplicabilityMap {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -60,12 +97,15 @@ function Get-SpecrewAnswerValue {
 }
 
 function Get-SpecrewApplicableLenses {
-    # Pure deterministic selector: always-on (foundational) + specialized lenses gated by a yes answer.
-    # Order: always-on first (map order), then gated lenses in question order. Deduplicated.
+    # Pure deterministic selector: always-on (foundational) + specialized lenses gated by a yes answer, deduplicated.
+    # Order: ALWAYS index.yml order (feature 205, FR-001). The map decides WHICH lenses apply, never their order, and
+    # no parameter turns the ordering off. -CatalogDir only says where index.yml is (default: the shipped catalog);
+    # when it cannot be read the selector throws rather than fall back to an order of its own.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Map,
-        [Parameter(Mandatory = $true)][AllowNull()]$Answers
+        [Parameter(Mandatory = $true)][AllowNull()]$Answers,
+        [AllowNull()][AllowEmptyString()][string]$CatalogDir
     )
 
     $selected = [System.Collections.Generic.List[string]]::new()
@@ -92,18 +132,20 @@ function Get-SpecrewApplicableLenses {
         }
     }
 
-    return $selected.ToArray()
+    return @(Get-SpecrewLensIdsInCatalogOrder -LensIds $selected.ToArray() -Order (Get-SpecrewLensCatalogOrder -CatalogDir $CatalogDir))
 }
 
 function Get-SpecrewLensSelection {
-    # Audit wrapper: selected set + per-lens include/exclude rationale (for the JSON + render).
+    # Audit wrapper: selected set + per-lens include/exclude rationale (for the JSON + render). The selected set and
+    # both rationale lists are in index.yml order, like the selector.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Map,
-        [Parameter(Mandatory = $true)][AllowNull()]$Answers
+        [Parameter(Mandatory = $true)][AllowNull()]$Answers,
+        [AllowNull()][AllowEmptyString()][string]$CatalogDir
     )
 
-    $selected = @(Get-SpecrewApplicableLenses -Map $Map -Answers $Answers)
+    $selected = @(Get-SpecrewApplicableLenses -Map $Map -Answers $Answers -CatalogDir $CatalogDir)
     $included = [System.Collections.Generic.List[object]]::new()
     $excluded = [System.Collections.Generic.List[object]]::new()
 
@@ -123,10 +165,12 @@ function Get-SpecrewLensSelection {
         }
     }
 
+    $order = if ($included.Count + $excluded.Count -gt 0) { @(Get-SpecrewLensCatalogOrder -CatalogDir $CatalogDir) } else { @() }
+    $byOrder = { param($entries) @($entries | Sort-Object -Stable -Property { [array]::IndexOf($order, [string]$_.id) }) }
     return [pscustomobject]@{
         selected = $selected
-        included = $included.ToArray()
-        excluded = $excluded.ToArray()
+        included = @(& $byOrder $included.ToArray())
+        excluded = @(& $byOrder $excluded.ToArray())
     }
 }
 
@@ -479,7 +523,8 @@ function Format-SpecrewApplicableLensesSection {
         [AllowNull()][AllowEmptyString()][string]$CatalogDir
     )
 
-    $sel = Get-SpecrewLensSelection -Map $Map -Answers $Answers
+    # Lenses are listed in index.yml order (feature 205); -CatalogDir, when given, is also where index.yml is read.
+    $sel = Get-SpecrewLensSelection -Map $Map -Answers $Answers -CatalogDir $CatalogDir
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add('## Applicable Lenses') | Out-Null
     $lines.Add('') | Out-Null
