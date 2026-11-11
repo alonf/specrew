@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/validate-governance.ps1",
-      "sha256": "7cee2741ed356d8e0071ed6f585a5aaec5479d8da6a5f2d7bb364fc7a5f0e3bc"
+      "sha256": "a7076e719445a36af61b064d434954729b4b0f4178178fb369e9fc1303a4518f"
     },
     {
       "path": "scripts/validate-versions.ps1",
