@@ -408,7 +408,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "93d347461ff6dcbc40457328807e13fec63225234987aa5c41a0be03141870c6"
+      "sha256": "e5eb5f3e4c16535f4b8f5559a967927d183723a385e649c7cdacd25ef2eab777"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/validate-governance.ps1",
-      "sha256": "e7271d700321839fb7582b94c96733c39ee897d088053cffafa4af39e91bad28"
+      "sha256": "56eea0cd5bf30d45aa95fb7f24136e0e131f5e6688581aebf9d81b65c8b01313"
     },
     {
       "path": "scripts/validate-versions.ps1",

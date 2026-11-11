@@ -759,7 +759,7 @@ function Normalize-SpecrewIterationNumber {
 }
 
 function Get-SpecrewLegacyFrozenIterationKeys {
-    # F-206 (FR-007): the frozen legacy list, .specrew/legacy-frozen.yml. Returns its
+    # The frozen legacy list (FR-007), .specrew/legacy-frozen.yml. Returns its
     # "<feature-dir>/<NNN>" keys; an absent or empty file gives none.
     param(
         [Parameter(Mandatory = $true)]
@@ -782,7 +782,7 @@ function Get-SpecrewLegacyFrozenIterationKeys {
 }
 
 function Get-SpecrewIterationStatusValue {
-    # F-206 (FR-008a): the state.md "Iteration Status" value, lower-cased, without markdown backticks.
+    # The state.md "Iteration Status" value (FR-008a), lower-cased, without markdown backticks.
     # Returns '' when state.md or the field is missing.
     param(
         [Parameter(Mandatory = $true)]
@@ -800,7 +800,7 @@ function Get-SpecrewIterationStatusValue {
 }
 
 function Test-SpecrewIterationClosed {
-    # F-206 (FR-008a, design D3): THE definition of a closed iteration, used by the validator's closed
+    # THE definition of a closed iteration (FR-008a), used by the validator's closed
     # filter, the dashboard check and the dashboard renderer.
     #   closed = in .specrew/closed-iterations.yml (Proposal 085), or state.md Iteration Status
     #            `complete` / `abandoned`, or a status that claims closure (Test-SpecrewClosureClaimStatus:
@@ -845,7 +845,7 @@ function Test-SpecrewIterationClosed {
 }
 
 function Test-SpecrewClosureClaimStatus {
-    # F-206 (FR-008a; maintainer ruling 2026-11-11, option 1 with conditions): true when an Iteration Status
+    # FR-008a: true when an Iteration Status
     # claims closure in the words Test-ClosedIterationStatus already reads as a claim ("closed", "closeout
     # complete", "closure complete") and no negation or future wording stands before the claim in the same
     # sentence: "not closed", "not yet closed" and "to be closed after review" are not claims. A status

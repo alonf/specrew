@@ -4366,7 +4366,7 @@ function Test-PlanEffortModel {
         try {
             $relIterationPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
             if ($relIterationPath -match 'specs/([^/]+)/iterations/([^/]+)/?$') {
-                # Index membership only, as before F-206: this grandfathering keys on the durable index entry,
+                # Index membership only, as before the single closed definition: this grandfathering keys on the durable index entry,
                 # not on the closed definition (Test-SpecrewIterationClosed), which also reads state.md.
                 $capacityIndexKey = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
                 if ((Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot).ContainsKey($capacityIndexKey)) {
@@ -5772,7 +5772,7 @@ try {
         # the index - an iteration whose own state.md says closed but which never made the index was
         # validated as if live. The index stays the fast path; each unindexed candidate now answers
         # from its OWN state.md, so closed is closed whether or not the index heard about it.
-        # F-206 (FR-008a): one definition of closed, Test-SpecrewIterationClosed (index, or Iteration Status
+        # FR-008a: one definition of closed, Test-SpecrewIterationClosed (index, or Iteration Status
         # complete/abandoned; frozen entries never closed). The state.md text heuristic no longer decides.
         $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
         $frozenKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
