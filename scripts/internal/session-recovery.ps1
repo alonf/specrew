@@ -427,15 +427,54 @@ function Test-SpecrewStaleSessionState {
     }
 }
 
+function Test-SpecrewConsoleInputAvailable {
+    # A human can answer only when stdin is a console and the host is interactive. A redirected or closed
+    # stdin (CI, a pipe, an agent's shell) or a -NonInteractive host has no one to answer Read-Host.
+    try {
+        if ([Console]::IsInputRedirected) { return $false }
+    }
+    catch {
+        return $false
+    }
+
+    foreach ($argument in [Environment]::GetCommandLineArgs()) {
+        if ($argument -match '^-noni(nteractive)?$') { return $false }
+    }
+
+    return $true
+}
+
+function Get-SpecrewRecoveryRefusalMessage {
+    return @(
+        'specrew start could not continue: this project has stale session state, and no recovery path was chosen.'
+        'Your work is safe; no recovery path was applied.'
+        'To continue, run specrew start again with a choice, for example: specrew start --recovery-choice A'
+        '(A re-anchors to the correct feature, B creates a new feature, C exits so you can fix the state by hand.)'
+    ) -join [Environment]::NewLine
+}
+
 function Read-SpecrewRecoveryChoice {
+    # Returns A, B or C, or $null when no choice can be made: no console input, or three invalid answers.
+    # The caller refuses on $null; this function never loops without bound.
     param([AllowNull()][string]$PreferredChoice)
 
     if (-not [string]::IsNullOrWhiteSpace($PreferredChoice)) {
         return $PreferredChoice.Trim().ToUpperInvariant()
     }
 
-    while ($true) {
-        $selection = Read-Host 'Choose recovery path [A/B/C]'
+    if (-not (Test-SpecrewConsoleInputAvailable)) {
+        return $null
+    }
+
+    $maximumAttempts = 3
+    for ($attempt = 1; $attempt -le $maximumAttempts; $attempt++) {
+        try {
+            $selection = Read-Host 'Choose recovery path [A/B/C]'
+        }
+        catch {
+            return $null
+        }
+
         if (-not [string]::IsNullOrWhiteSpace($selection)) {
             $normalizedSelection = $selection.Trim().ToUpperInvariant()
             if ($normalizedSelection -in @('A', 'B', 'C')) {
@@ -443,8 +482,12 @@ function Read-SpecrewRecoveryChoice {
             }
         }
 
-        Write-Output "WARN: Invalid recovery choice. Enter A, B, or C." | Out-Host
+        if ($attempt -lt $maximumAttempts) {
+            Write-Output "WARN: Invalid recovery choice. Enter A, B, or C." | Out-Host
+        }
     }
+
+    return $null
 }
 
 function New-SpecrewRecoverySession {

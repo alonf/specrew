@@ -3227,6 +3227,10 @@ elseif ($staleSessionStateCheck.IsStale) {
     Write-Output '  C) exit and manually fix state'
 
     $selectedRecoveryChoice = Read-SpecrewRecoveryChoice -PreferredChoice $RecoveryChoice
+    if ([string]::IsNullOrWhiteSpace($selectedRecoveryChoice)) {
+        Write-Output (Get-SpecrewRecoveryRefusalMessage)
+        exit 1
+    }
     $recoveryPlan = Resolve-SpecrewRecoverySelection -Choice $selectedRecoveryChoice -SessionState $validatedSessionState
     $recoverySession = New-SpecrewRecoverySession -EntryMode 'detected-stale-state' -StaleReasons @($staleSessionStateCheck.Issues) -BypassGate $false -SelectedChoice $selectedRecoveryChoice -NextActionMessage $recoveryPlan.NextActionMessage
     $ResumeFeature = $recoveryPlan.ResumeFeatureOverride
