@@ -58,8 +58,80 @@ function Get-ContinuousCoReviewVerificationEngineBaseline {
     # It carries NO value that changes what a command does beyond scoping ONE rule (see
     # Test-ReviewCitedRunEvidence): the cited-run FRESHNESS check, which the round being
     # preflighted exists to satisfy. Every other cited-run rule stays live during preflight.
-    if ($IsWindows) { return @('SPECREW_REVIEW_PREFLIGHT') }
-    return @('SPECREW_REVIEW_PREFLIGHT')
+    #
+    # B5F-042 (maintainer ruling 2026-11-11): SPECREW_USER_HOME_OVERRIDE travels here for the same reason. The preflight
+    # sets it to a fresh temporary home for the length of its plan run (Invoke-ReviewCampaignFrozenVerification), so a
+    # suite that deploys hooks without a redirect of its own writes there and never into the real home. The value is the
+    # engine's, never the caller's: the preflight replaces whatever the caller's environment held.
+    if ($IsWindows) { return @('SPECREW_REVIEW_PREFLIGHT', 'SPECREW_USER_HOME_OVERRIDE') }
+    return @('SPECREW_REVIEW_PREFLIGHT', 'SPECREW_USER_HOME_OVERRIDE')
+}
+
+# B5F-042 (maintainer ruling 2026-11-11): THE PREFLIGHT'S HOME. The suites a review preflight runs get a temporary home,
+# and the real home's hook files are hashed before and after the plan run; a change fails the preflight before any round
+# is spent. "The real home" is the home a suite's deployer writes when nothing redirects it: SPECREW_USER_HOME_OVERRIDE
+# when the caller set one (a test's stand-in), the user profile otherwise. The covered files: every file under
+# ~/.specrew/hooks/ (the launcher folders and bindings/), ~/.specrew/hook-bindings/ and ~/.copilot/hooks/, and
+# ~/.specrew/specrew-hook-launch.ps1, ~/.codex/hooks.json and ~/.cursor/hooks.json. A file added or removed is a change.
+$script:ReviewPreflightHomeHookFiles = @('.specrew/specrew-hook-launch.ps1', '.codex/hooks.json', '.cursor/hooks.json')
+$script:ReviewPreflightHomeHookFolders = @('.specrew/hooks', '.specrew/hook-bindings', '.copilot/hooks')
+
+function Get-ReviewPreflightRealHome {
+    [OutputType([string])]
+    param()
+    $override = [Environment]::GetEnvironmentVariable('SPECREW_USER_HOME_OVERRIDE')
+    if (-not [string]::IsNullOrWhiteSpace($override)) { return [IO.Path]::GetFullPath($override) }
+    return [Environment]::GetFolderPath('UserProfile')
+}
+
+function Get-ReviewPreflightHomeHookState {
+    # The covered files under HomeRoot: relative path ('/'-separated) -> SHA-256. Absent files have no entry, so a file
+    # added or removed shows as a difference.
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory)][string]$HomeRoot)
+    $state = @{}
+    $root = [IO.Path]::GetFullPath($HomeRoot)
+    $files = [System.Collections.Generic.List[string]]::new()
+    foreach ($rel in $script:ReviewPreflightHomeHookFiles) { $files.Add((Join-Path $root $rel)) }
+    foreach ($folder in $script:ReviewPreflightHomeHookFolders) {
+        $dir = Join-Path $root $folder
+        if ([IO.Directory]::Exists($dir)) {
+            foreach ($f in [IO.Directory]::EnumerateFiles($dir, '*', [IO.SearchOption]::AllDirectories)) { $files.Add($f) }
+        }
+    }
+    foreach ($f in $files) {
+        if (-not [IO.File]::Exists($f)) { continue }
+        $rel = ([IO.Path]::GetRelativePath($root, $f)) -replace '\\', '/'
+        $state[$rel] = (Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash
+    }
+    return $state
+}
+
+function Compare-ReviewPreflightHomeHookState {
+    # Each covered file that differs: 'changed: <path>', 'added: <path>' or 'removed: <path>', sorted by path.
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][hashtable]$Before, [Parameter(Mandatory)][hashtable]$After)
+    $out = foreach ($rel in @(@($Before.Keys) + @($After.Keys) | Sort-Object -Unique)) {
+        $b = $Before.ContainsKey($rel); $a = $After.ContainsKey($rel)
+        if ($b -and $a) { if ([string]$Before[$rel] -cne [string]$After[$rel]) { 'changed: ' + $rel } }
+        elseif ($a) { 'added: ' + $rel }
+        else { 'removed: ' + $rel }
+    }
+    return @($out)
+}
+
+function New-ReviewPreflightTemporaryHome {
+    # A fresh, empty folder under the system temp folder, refused if it would fall inside one of ForbiddenRoots (the
+    # project and its frozen target).
+    [OutputType([string])]
+    param([string[]]$ForbiddenRoots = @())
+    $path = [IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ('specrew-preflight-home-' + [guid]::NewGuid().ToString('N'))))
+    foreach ($forbidden in @($ForbiddenRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+        $prefix = [IO.Path]::GetFullPath($forbidden).TrimEnd([char]'\', [char]'/') + [IO.Path]::DirectorySeparatorChar
+        if ($path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { throw ("the temporary home '{0}' would be inside '{1}'" -f $path, $forbidden) }
+    }
+    [void][IO.Directory]::CreateDirectory($path)
+    return $path
 }
 
 # The CONSTRUCTED child environment for a supplier-declared verification command (review findings f2 run

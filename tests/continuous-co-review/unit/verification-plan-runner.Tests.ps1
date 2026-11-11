@@ -372,9 +372,15 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         # the child above launched and exited 0, and the variable carries no value that changes what a
         # command DOES. Any FURTHER addition demands its own paired runtime evidence, which is the
         # standing rule this assertion enforces - by naming the whole set rather than counting it.
-        @(Get-ContinuousCoReviewVerificationEngineBaseline) | Should -Be @('SPECREW_REVIEW_PREFLIGHT')
-        # The constructed map carries ONLY declared refs that exist ambiently - nothing implicit.
-        @((Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs @()).Keys).Count | Should -Be 0
+        # B5F-042 (maintainer ruling 2026-11-11) adds SPECREW_USER_HOME_OVERRIDE: the review preflight sets it to a
+        # temporary home for its plan run, so a suite that deploys hooks with no redirect of its own never writes the real
+        # home. Its paired runtime evidence is tests/continuous-co-review/unit/review-preflight-home.Tests.ps1: a plan child
+        # receives the temporary home, the real hook deployer writes there, and the stand-in real home is unchanged.
+        @(Get-ContinuousCoReviewVerificationEngineBaseline) | Should -Be @('SPECREW_REVIEW_PREFLIGHT', 'SPECREW_USER_HOME_OVERRIDE')
+        # The constructed map carries ONLY declared refs that exist ambiently, and the baseline - nothing implicit. (A caller
+        # may hold a baseline variable ambiently: the sweep driver sets SPECREW_USER_HOME_OVERRIDE for every suite it runs.)
+        $baselineNames = @(Get-ContinuousCoReviewVerificationEngineBaseline)
+        @((Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs @()).Keys | Where-Object { $baselineNames -notcontains $_ }).Count | Should -Be 0
     }
 
     It 'EXCLUDES user-identity + infrastructure ambient values from the child — HOME/USERPROFILE/APPDATA/LOCALAPPDATA/TEMP absent; a parent-PATH sentinel does NOT flow (maintainer decision 2026-07-14)' {

@@ -372,6 +372,16 @@ function Invoke-ReviewCampaignFrozenVerification {
     $executionFailure = $null
     $cleanupFailure = $null
     $preparationComplete = $false
+    # B5F-042 (maintainer ruling 2026-11-11): THE PLAN'S SUITES RUN IN A TEMPORARY HOME, AND THE REAL ONE IS CHECKED. On
+    # 2026-11-11 a preflight on main ran suites that deploy hooks with no redirect, and they rewrote the maintainer's own
+    # hook files (B5F-039). Every suite now gets a fresh home under the system temp folder (the runner passes it in its
+    # baseline), removed in the finally below on success, failure and cancel; the real home's hook files are hashed
+    # before and after, and any change fails the preflight before a round is spent, naming each file and restoring none.
+    $priorUserHome = [Environment]::GetEnvironmentVariable('SPECREW_USER_HOME_OVERRIDE')
+    $realHome = Get-ReviewPreflightRealHome
+    $realHomeBefore = Get-ReviewPreflightHomeHookState -HomeRoot $realHome
+    $temporaryHome = $null
+    $temporaryHomeFailure = $null
     # W39: mark this plan run as a REVIEW PREFLIGHT. The round about to fire is what refreshes the
     # cited run, so gating its own preflight on cited-run freshness makes the fix unreachable by the
     # only thing that can apply it. Set narrowly around this call and always cleared.
@@ -382,6 +392,8 @@ function Invoke-ReviewCampaignFrozenVerification {
     # the freshness rule the round exists to satisfy.
     $env:SPECREW_REVIEW_PREFLIGHT = $snapshotPath
     try {
+        $temporaryHome = New-ReviewPreflightTemporaryHome -ForbiddenRoots @($snapshotPath)
+        $env:SPECREW_USER_HOME_OVERRIDE = $temporaryHome
         $support = Add-ReviewCampaignVerificationSupport -Snapshot $Snapshot
         $execution = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $snapshotPath -Plan $selected.plan
     }
@@ -389,12 +401,36 @@ function Invoke-ReviewCampaignFrozenVerification {
     finally {
         if ($null -eq $priorPreflightMarker) { Remove-Item Env:SPECREW_REVIEW_PREFLIGHT -ErrorAction SilentlyContinue }
         else { $env:SPECREW_REVIEW_PREFLIGHT = $priorPreflightMarker }
+        if ($null -eq $priorUserHome) { Remove-Item Env:SPECREW_USER_HOME_OVERRIDE -ErrorAction SilentlyContinue }
+        else { $env:SPECREW_USER_HOME_OVERRIDE = $priorUserHome }
+        if (-not [string]::IsNullOrWhiteSpace($temporaryHome)) {
+            try { if ([IO.Directory]::Exists($temporaryHome)) { [IO.Directory]::Delete($temporaryHome, $true) } }
+            catch { $temporaryHomeFailure = [string]$_.Exception.Message }
+        }
         if ($null -ne $support) {
             try { Remove-ReviewCampaignVerificationSupport -SnapshotPath $snapshotPath -Manifest $support }
             catch { $cleanupFailure = [string]$_.Exception.Message }
         }
     }
     try {
+    # B5F-042: a changed real home stops here, before every other outcome, and nothing is restored: the human decides.
+    $realHomeChanges = @(Compare-ReviewPreflightHomeHookState -Before $realHomeBefore -After (Get-ReviewPreflightHomeHookState -HomeRoot $realHome))
+    if ($realHomeChanges.Count -gt 0) {
+        $named = @($realHomeChanges | Select-Object -First 40)
+        $reason = 'verification-changed-real-home:' + ($named -join '; ')
+        if ($realHomeChanges.Count -gt $named.Count) { $reason += ('; and {0} more' -f ($realHomeChanges.Count - $named.Count)) }
+        if ($reason.Length -gt 1900) { $reason = $reason.Substring(0, 1890) + ' ...' }
+        return [pscustomobject]@{
+            ok = $false; reason = $reason; state = 'verification-preflight-failed'
+            review_scope_suffix = ''; command_count = $(if ($null -ne $execution) { [int]$execution.command_count } else { 0 }); evidence_count = $(if ($null -ne $execution) { @($execution.evidence).Count } else { 0 })
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($temporaryHomeFailure)) {
+        return [pscustomobject]@{
+            ok = $false; reason = ('verification-temporary-home-cleanup-failed:' + $temporaryHomeFailure); state = 'verification-preflight-failed'
+            review_scope_suffix = ''; command_count = 0; evidence_count = 0
+        }
+    }
     if (-not [string]::IsNullOrWhiteSpace($cleanupFailure)) {
         return [pscustomobject]@{
             ok = $false; reason = ('verification-support-cleanup-failed:' + $cleanupFailure); state = 'verification-preflight-failed'
