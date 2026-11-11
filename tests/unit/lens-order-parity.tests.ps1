@@ -91,6 +91,14 @@ function Format-Mismatch {
     '{0}:{1}: expected {2}; found {3}; fix: {4}' -f $Mismatch.Path, $Mismatch.Line, $Mismatch.Expected, $Mismatch.Found, $Mismatch.Fix
 }
 
+function Get-MismatchReport {
+    # The lines the repository check prints when it fails: a count, then every mismatch with its fix (FR-019).
+    param([object[]]$Mismatches)
+    $list = @($Mismatches)
+    if ($list.Count -eq 0) { return @() }
+    @(('lens-order-parity: {0} mismatch(es):' -f $list.Count)) + @($list | ForEach-Object { '  ' + (Format-Mismatch $_) })
+}
+
 #endregion
 
 #region Reading text
@@ -448,12 +456,22 @@ function Test-ComputedOrders {
     foreach ($k in $keys) { $one = @{}; foreach ($j in $keys) { $one[$j] = ($j -eq $k) }; $cases["only $k yes"] = $one }
     $all = @{}; foreach ($k in $keys) { $all[$k] = $true }; $cases['all yes'] = $all
     $mismatches = [Collections.Generic.List[object]]::new()
+    # An error from the selector or the render (e.g. a lens the map gates but index.yml no longer lists) is one more
+    # mismatch for that case, never the end of the run: every other mismatch must still be reported (FR-019).
+    $errorFix = 'make index.yml and the applicability map name the same lenses (the error above says which), then rerun'
     foreach ($case in $cases.Keys) {
-        $selected = @(& $Select $Map $cases[$case])
-        if (-not (Test-RelativeOrder -Found $selected -Order $Order)) {
-            $mismatches.Add((New-Mismatch $Path 0 "index.yml relative order (selector, $case)" ($selected -join ', ') $fix))
+        try {
+            $selected = @(& $Select $Map $cases[$case])
+            if (-not (Test-RelativeOrder -Found $selected -Order $Order)) {
+                $mismatches.Add((New-Mismatch $Path 0 "index.yml relative order (selector, $case)" ($selected -join ', ') $fix))
+            }
         }
-        $rendered = [string](& $Render $Map $cases[$case])
+        catch { $mismatches.Add((New-Mismatch $Path 0 "a selection in index.yml order (selector, $case)" "an error: $($_.Exception.Message)" $errorFix)) }
+        try { $rendered = [string](& $Render $Map $cases[$case]) }
+        catch {
+            $mismatches.Add((New-Mismatch $Path 0 "a rendered section in index.yml order (render, $case)" "an error: $($_.Exception.Message)" $errorFix))
+            continue
+        }
         $listed = @([regex]::Matches($rendered, '(?m)^- \*\*([a-z][a-z0-9-]*)\*\*') | ForEach-Object { $_.Groups[1].Value })
         $notSelected = [regex]::Match($rendered, '\*Not selected: (?<list>[^*]*)\*')
         $skipped = if ($notSelected.Success) { @([regex]::Matches($notSelected.Groups['list'].Value, '([a-z][a-z0-9-]*) \(') | ForEach-Object { $_.Groups[1].Value }) } else { @() }
@@ -467,7 +485,9 @@ function Test-ComputedOrders {
 }
 
 function Invoke-LensOrderParity {
-    param([string]$Root, [object[]]$FullSurfaces, [object[]]$Exemptions, [System.Collections.IDictionary]$ExpectedCounts, [switch]$SkipCopies, [string[]]$SweepFiles, [switch]$SkipComputed)
+    param([string]$Root, [object[]]$FullSurfaces, [object[]]$Exemptions, [System.Collections.IDictionary]$ExpectedCounts, [switch]$SkipCopies, [string[]]$SweepFiles, [switch]$SkipComputed,
+        # Self-tests only: a selector/render that reads a scratch catalog. The repository check uses the shipped defaults.
+        [scriptblock]$ComputedSelect, [scriptblock]$ComputedRender)
     $catalog = Get-LensCatalog -Root $Root
     $order = @($catalog | ForEach-Object { [string]$_.id })
     $pattern = Get-LensIdPattern -LensIds $order
@@ -483,7 +503,12 @@ function Invoke-LensOrderParity {
         $mapPath = Join-Path $Root "$($script:LensCatalogRelative)/applicability-map.json"
         $map = Read-SpecrewLensApplicabilityMap -Path $mapPath
         if ($null -eq $map) { $all.Add((New-Mismatch "$($script:LensCatalogRelative)/applicability-map.json" 0 'a readable applicability map' '(missing or unreadable)' 'restore applicability-map.json beside index.yml')) }
-        else { $all.AddRange([object[]]@(Test-ComputedOrders -Map $map -Order $order)) }
+        else {
+            $computedArgs = @{ Map = $map; Order = $order }
+            if ($ComputedSelect) { $computedArgs.Select = $ComputedSelect }
+            if ($ComputedRender) { $computedArgs.Render = $ComputedRender }
+            $all.AddRange([object[]]@(Test-ComputedOrders @computedArgs))
+        }
     }
     $copyCount = 0
     if (-not $SkipCopies) {
@@ -578,6 +603,36 @@ function Invoke-SelfTests {
     $badRender = { param($m, $a) "- **gamma-lens** - x`n- **alpha-lens** - y`n" }
     Assert-True (@(Test-ComputedOrders -Map $fixtureMap -Order $ids -Select $catalogOrder -Render $badRender).Count -ge 1) 'computed: a rendered section out of catalog order is reported'
 
+    # Catalog removal with the computed check ON (round-2 review finding, FR-019): a lens removed from index.yml but
+    # still gated by the applicability map makes the shipped selector throw. That error must become a mismatch record,
+    # and the run must still print every other mismatch, rather than end the check with the error alone.
+    $removalScratch = Join-Path ([IO.Path]::GetTempPath()) ('lens-parity-removal-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-SelfTestTree -Root $removalScratch
+        $removalCatalog = Join-Path $removalScratch $script:LensCatalogRelative
+        Set-Content -LiteralPath (Join-Path $removalCatalog 'applicability-map.json') -Value '{ "always_on": ["alpha-lens"], "questions": [ { "id": "q", "gates": ["gamma-lens"] } ] }'
+        $removalIndex = Join-Path $removalCatalog 'index.yml'
+        Set-Content -LiteralPath $removalIndex -Value ((Get-Content -LiteralPath $removalIndex -Raw) -replace '(?s)\s*- id: gamma-lens.*$', "`n")
+        Set-Content -LiteralPath (Join-Path $removalScratch 'docs/member.md') -Value "Lenses: alpha-lens, beta-lens, gamma-lens`n"
+        $removalSurface = @{ Name = 'fixture full list'; Path = 'docs/member.md'; Start = '^Lenses:'; End = '^\s*$'; Rows = $null; Within = $null; Item = $script:KebabToken }
+        $catalogLiteral = $removalCatalog.Replace("'", "''")
+        $scratchSelect = [scriptblock]::Create("param(`$m, `$a) Get-SpecrewApplicableLenses -Map `$m -Answers `$a -CatalogDir '$catalogLiteral'")
+        $scratchRender = [scriptblock]::Create("param(`$m, `$a) Format-SpecrewApplicableLensesSection -Map `$m -Answers `$a -CatalogDir '$catalogLiteral'")
+        $removalReport = @()
+        $removalError = $null
+        try {
+            $removalRun = Invoke-LensOrderParity -Root $removalScratch -FullSurfaces @($removalSurface) -Exemptions @() -ExpectedCounts ([ordered]@{ 'alpha-lens' = 1; 'beta-lens' = 1 }) -SkipCopies -SweepFiles @('docs/member.md') -ComputedSelect $scratchSelect -ComputedRender $scratchRender
+            $removalReport = @(Get-MismatchReport -Mismatches $removalRun.Mismatches)
+        }
+        catch { $removalError = $_.Exception.Message }
+        $removalText = $removalReport -join "`n"
+        Assert-True ($null -eq $removalError) ('removal + computed: the check completes instead of stopping on the selector error (error: {0})' -f $removalError)
+        Assert-True ($removalText -match 'docs/member\.md:\d+: expected .*found alpha-lens, beta-lens, gamma-lens') 'removal + computed: the printed report still carries the full-list mismatch'
+        Assert-True ($removalText -match 'lens-applicability\.ps1.*only q yes.*gamma-lens' -and $removalText -match 'lens-applicability\.ps1.*all yes.*gamma-lens') 'removal + computed: each selector error is printed as a mismatch naming the unknown lens'
+        Assert-True ($removalReport.Count -gt 0 -and $removalReport[0] -match ('^lens-order-parity: {0} mismatch' -f ($removalReport.Count - 1))) 'removal + computed: the report count matches every printed mismatch'
+    }
+    finally { if (Test-Path -LiteralPath $removalScratch) { Remove-Item -LiteralPath $removalScratch -Recurse -Force } }
+
     # A stale deployed copy is reported with the project-only refresh commands.
     $copyScratch = Join-Path ([IO.Path]::GetTempPath()) ('lens-parity-copy-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -635,8 +690,7 @@ foreach ($exemption in $script:Exemptions) { Write-Host ("  {0} /{1}/ - {2}" -f 
 Write-Host ("Checked: {0} full surfaces, {1} swept files ({2} runs), {3} lens files, {4} deployed copies." -f $result.FullSurfaceCount, $result.SweepFileCount, $result.RunCount, $result.LensCount, $result.CopyCount)
 
 if (@($result.Mismatches).Count -gt 0) {
-    Write-Host ("lens-order-parity: {0} mismatch(es):" -f @($result.Mismatches).Count) -ForegroundColor Red
-    foreach ($mismatch in $result.Mismatches) { Write-Host ('  ' + (Format-Mismatch $mismatch)) -ForegroundColor Red }
+    foreach ($line in (Get-MismatchReport -Mismatches $result.Mismatches)) { Write-Host $line -ForegroundColor Red }
     exit 1
 }
 Write-Host 'lens-order-parity: all checks passed' -ForegroundColor Green

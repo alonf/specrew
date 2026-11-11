@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution rate**: 100% (8/8 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-008 class closure open)
+**Total drift events**: 9
+**Resolution rate**: 100% (9/9 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-009 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -184,6 +184,22 @@
 - **Class closure**: NONE — the review preflight and both suites belong to feature 203's area and are not edited by
   205. Handed over to 203 as a finding:
   `specs/205-workshop-lens-order/iterations/001/handover-to-203.md`.
+
+### DRIFT-009 — `~/.codex/hooks.json` changed during review round 2, from another feature's test run (observation)
+
+- **Observed**: 2026-11-11, review round 2, run `run-20261111-012900593-ccd284fa` in campaign
+  `cmp-205-workshop-lens-order-i001`. The 10-file home hash set taken after the round showed one change:
+  `~/.codex/hooks.json` was written at 03:31:38 local (SHA-256 `8ADB8157…`). Before the round it was `B3A87829…`.
+  The other 9 files were unchanged. The crew touched nothing and reported it.
+- **Cause** (per the maintainer): feature 203's test run, in another worktree, changed the file at 03:31. It was not
+  this round's preflight: the re-pointed 205 plan runs no suite that writes the home folder (DRIFT-008).
+- **Resolution**: the maintainer restored the file. By 03:37:51 it was back at `B3A87829…` with its original
+  timestamp. After the maintainer lifted the hold, the crew re-hashed the set: all 10 files match the known-good set,
+  and `~/.codex/hooks.json` is SHA-256 `b3a87829a11e8c2e7f2b360dd4ed0e7220749ec52c59f81009fdea622555dc94`.
+- **Limit of the check**: a before-and-after hash shows only the end state. A write that is put back before the
+  after-hash is invisible to it. This one was caught only because the after-hash ran before the restore.
+- **Class closure**: NONE — the writer is feature 203's test run, outside 205's scope. The same class (a suite
+  writing the real home folder) is already handed over to 203 as H-001.
 
 <!--
   Every new ### DRIFT-... event includes:

@@ -222,3 +222,26 @@ fix per commit. The 10 home hook files were hashed before and after every run, a
   (`Test-ComputedOrders`). It runs the shipped selector and its rendered section with no catalog parameter, for
   all-no, each single-yes and all-yes answers, and reports any result that is not in index.yml's relative order.
 - **Green** (02:32): both suites pass. All 11 suites in the 205 verification plan then passed (02:33).
+
+## Review round 2 fix (campaign `cmp-205-workshop-lens-order-i001`, run `run-20261111-012900593-ccd284fa`)
+
+Codex reported one finding at minor (engine severity: minor). The maintainer ruled it is fixed before they answer the
+round. The 10 home hook files were hashed before and after every run, and none changed.
+
+### Fix - an error in a computed case is a mismatch, not the end of the run (FR-019)
+
+- **Finding**: `Test-ComputedOrders` called the selector and its render without catching errors. A lens removed from
+  index.yml but still gated by the applicability map makes the selector throw, which ended `Invoke-LensOrderParity`
+  before it printed anything. Every other mismatch already collected was lost. The catalog-removal self-test missed
+  this, because it ran with `-SkipComputed`.
+- **Red** (2026-11-11 10:45): a new self-test removes `gamma-lens` from a scratch catalog whose applicability map
+  still gates it, and runs the check with the computed part on. 4 self-test assertions failed and the repository check
+  was not run: the check stopped on "Lens(es) gamma-lens are not listed in index.yml", so no report was printed.
+- **Fix**: `Test-ComputedOrders` catches a selector or render error for each answer set and records it as a mismatch
+  whose Found is the error message, then goes on to the next case. The printed report is built by one function,
+  `Get-MismatchReport`, which the repository check and the self-test both use.
+- **Self-test**: the run completes; the printed report still carries the full-list mismatch for the removed lens; each
+  selector error (`only q yes`, `all yes`) is printed as a mismatch naming `gamma-lens`; the count line matches the
+  number of printed mismatches.
+- **Green** (10:45): the parity test and the selector suite pass, and the repository check passes on all 5 full
+  surfaces, 428 swept files and 22 deployed copies.
