@@ -338,7 +338,7 @@ Commit-Workspace -WorkspaceRoot $overclaimDirtyRoot -Message 'Seed overclaim dir
 Add-Content -LiteralPath (Join-Path $overclaimDirtyRoot 'specs\013-validator-hardening\iterations\001\plan.md') -Value "`nDirty change" -Encoding UTF8
 $overclaimDirtyResult = Invoke-Validator -ProjectPath $overclaimDirtyRoot -IterationPaths @((Join-Path $overclaimDirtyRoot 'specs\013-validator-hardening\iterations\001'))
 if (-not (Assert-True -Condition ($overclaimDirtyResult.ExitCode -ne 0) -FailureMessage 'Dirty iteration artifacts should fail closed-iteration validation.')) { $allChecksPassed = $false }
-if (-not (Assert-Match -Text $overclaimDirtyResult.Text -Pattern 'uncommitted changes: specs\\013-validator-hardening\\iterations\\001\\plan\.md' -FailureMessage 'Dirty-tree failure should name the canonical iteration artifact path.')) { $allChecksPassed = $false }
+if (-not (Assert-Match -Text $overclaimDirtyResult.Text -Pattern 'uncommitted changes: specs/013-validator-hardening/iterations/001/plan\.md' -FailureMessage 'Dirty-tree failure should name the canonical iteration artifact path.')) { $allChecksPassed = $false }
 Write-Pass 'Dirty iteration artifacts fail closed-iteration validation.'
 
 # Over-claim repo-level evidence-only dirt is ignored
