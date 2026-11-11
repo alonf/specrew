@@ -1899,7 +1899,9 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   whose paths differ only by case passes the preflight. The pin is not rolled back (maintainer ruling).
 - **Fix (test first)**: `48af19ec` (3 red), `680ce0a5`: Ordinal state tables, Ordinal lookups in the comparison, the key
   dedup through `Get-ContinuousCoReviewOrdinalUniquePath`. It goes to the pin with B5F-044 in one advance, asked for as
-  usual. The B5F-044 commits are not pushed until the full sweep is green with this fix in.
+  usual. The B5F-044 commits are not pushed until the full sweep is green with this fix in. Revised by the maintainer
+  the same day: B5F-044 does not apply to the pin, which predates T005-T011, so the advance carries this fix alone and
+  the pin keeps the old approval wording until it next moves to a commit that has T005-T011 (B5F-044).
 - **Rule (maintainer, 2026-11-11)**: before any pin advance, the full sweep runs on the side tip, not a chosen subset.
   The last full sweep took 54 minutes (`43ec7bfc`, 02:32 to 03:26 local), which the crew does not consider too slow, so
   no subset is proposed.
