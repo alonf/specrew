@@ -122,7 +122,7 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Owns:** `specs/198-beta2-hardening/iterations/011/{state,plan}.md`,
     `specs/198-beta2-hardening/iterations/010/{state,plan}.md`,
     `specs/197-continuous-co-review/iterations/006/{state,plan}.md`, `.specrew/legacy-frozen.yml`.
-- [ ] T008 [owner: Implementer] [sp: 1.5] **Frozen means judged by nothing (design condition 2).**
+- [x] T008 [owner: Implementer] [sp: 1.5] **Frozen means judged by nothing (design condition 2).**
   - **RED:** a guard test pinning the 18 keys fails on an added key; a test runs the validator over each frozen
     entry and asserts zero findings.
   - **Work:** the validator skips frozen entries in both open-iteration and closed-iteration checks. 197/006 is
@@ -130,7 +130,9 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** FR-007; SC-005.
   - **Depends:** T007.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`,
-    `extensions/specrew-speckit/scripts/shared-governance.ps1`, their `.specify` mirrors, `tests/unit/**`.
+    `extensions/specrew-speckit/scripts/shared-governance.ps1`, their `.specify` mirrors, `tests/unit/**`; the
+    deployed hash file's `validate-governance.ps1` entry (standing ruling 2026-11-11); the suite's line in
+    `.specrew/release-gate-suites.txt`, as T006's.
 - [ ] T009 [owner: Implementer] [sp: 1.5] **`since`, the closure stamp, and abandonment by ruling.**
   - **RED:** the dashboard check with and without a `closed_at_source: closeout` stamp, before and after
     `since: 2026-05-26`; an `abandoned` status with no recorded ruling is not closed.

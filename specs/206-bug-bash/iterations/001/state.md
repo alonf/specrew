@@ -3,8 +3,8 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T006
-**Tasks Remaining**: T008-T015, T018 (9 planned)
+**Last Completed Task**: T008
+**Tasks Remaining**: T009-T015, T018 (8 planned)
 **In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run),
 T007 (198/011 lands with T009)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
@@ -43,6 +43,13 @@ T007 (198/011 lands with T009)
   gone; 7 failures, all frozen entries (141/006, 141/008, 174/006, 174/008-011), judged live until T008; 5
   missing-dashboard warnings on abandoned iterations (197/002, 197/007, 197/008, 198/005, 198/010), which T008's
   "dashboard check applies to complete only" removes. T010 replays after T008-T011.
+- T008 (FR-007, SC-005, frozen means judged by nothing): RED 5/6 in `ad11f315` (the guard pinning the 18 keys
+  passes; 7 of the 18 frozen entries here FAIL before the fix); GREEN 6/6 in the following fix commit. The
+  validator skips a frozen entry in every mode (full-repo, `-IncludeClosed`, changed-only, explicit targets) and
+  says so in a "frozen filter" line; the dashboard check skips an iteration whose status is `abandoned` (read as:
+  every closed iteration except abandoned ones). Also green: T006's suite 16/16, W51 8/8,
+  `non-specrew-session-bypass`, `validate-governance-changed-only`, the self-leak lint. Not run:
+  `feature-017-dashboard-core.ps1` (it runs `scripts/specrew.ps1`, not yet read for home writes).
 
 ## Notes
 

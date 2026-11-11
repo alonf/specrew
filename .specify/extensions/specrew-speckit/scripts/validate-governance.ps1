@@ -2577,6 +2577,11 @@ function Test-DashboardGovernanceSurfaces {
             if (-not $requiresDashboard) {
                 continue
             }
+            # FR-007 (plan verdict): the dashboard check applies to complete iterations only. An abandoned
+            # iteration was never closed out, so no dashboard was rendered for it, and it owes none.
+            if ((Get-SpecrewIterationStatusValue -StatePath (Join-Path $iteration.iteration_directory 'state.md')) -eq 'abandoned') {
+                continue
+            }
 
             $dashboardPath = Join-Path $iteration.iteration_directory 'dashboard.md'
             if (-not (Test-Path -LiteralPath $dashboardPath -PathType Leaf)) {
@@ -5757,6 +5762,33 @@ try {
                     $resolvedBase = if ([string]::IsNullOrWhiteSpace([string]$scopeChangedIterations.BaseRef)) { '(unresolved)' } else { [string]$scopeChangedIterations.BaseRef }
                     $scopeFallbackVerboseMessage = "[validator] Auto-scope fallback to full validation: {0} (base {1})" -f $scopeChangedIterations.Reason, $resolvedBase
                 }
+            }
+        }
+    }
+
+    # FR-007: an entry of .specrew/legacy-frozen.yml is judged by no check, in every mode: full-repo,
+    # -IncludeClosed, changed-only and explicit targets. Frozen is not closed history; it is outside
+    # validation altogether, and the list is closed (no entry after its closed_on date).
+    if ($targets.Count -gt 0) {
+        $frozenTargetKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
+        if ($frozenTargetKeys.Count -gt 0) {
+            $frozenSkippedCount = 0
+            $unfrozen = New-Object System.Collections.Generic.List[string]
+            foreach ($tp in $targets) {
+                $normalized = ([string]$tp) -replace '\\', '/'
+                if ($normalized -match 'specs/([^/]+)/iterations/([^/]+?)/?$') {
+                    $frozenKey = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
+                    if ($frozenTargetKeys -contains $frozenKey) {
+                        $frozenSkippedCount++
+                        continue
+                    }
+                }
+                $null = $unfrozen.Add($tp)
+            }
+            $targets = @($unfrozen.ToArray())
+            if ($frozenSkippedCount -gt 0) {
+                $frozenNoun = if ($frozenSkippedCount -eq 1) { 'iteration' } else { 'iterations' }
+                Write-Host ("[validator-scope] frozen filter: {0} frozen legacy {1} skipped (.specrew/legacy-frozen.yml: judged by no check)" -f $frozenSkippedCount, $frozenNoun)
             }
         }
     }
