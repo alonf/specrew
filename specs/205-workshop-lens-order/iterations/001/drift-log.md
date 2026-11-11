@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 11
-**Resolution rate**: 100% (11/11 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-011 class closure open)
+**Total drift events**: 15
+**Resolution rate**: 100% (15/15 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-015 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -233,6 +233,52 @@
   mirrors the phase when it records the crossing. T016 stays done; that is task truth, not phase.
 - **Class closure**: NONE — the sync's state-truth gate already catches this and refused before any state change; the
   crew's own rule is that phase lines move only through the sync.
+
+### DRIFT-012 — no review.md can pass both the local governance check and CI (finding)
+
+- **Observed**: 2026-11-11, review record for iteration 001 (`cf173030`). The governance check derives an
+  independent-review block for `review.md` from the review authority store under `.specrew/review/`, which is
+  gitignored, so it exists only on the machine that ran the review.
+  - Locally the store holds three runs, and the check observed the implementing session writing `review.md`, so it
+    requires the derived block: a four-bullet block naming tree `bf289776` as the last tree a completed run read.
+  - CI's store is empty, so CI derives a two-bullet block. With the local block in the file, Specrew CI run
+    `43066362500` failed Lint on the mismatch, and the Deterministic gate and Contract lane were skipped.
+  - Without the block, the local check fails ("block required"). No single text passes both.
+- **Resolution**: the maintainer approved one exception to the pre-push rule: `review.md` returns without the derived
+  block, with a plain statement of what its independence rests on, and is pushed with only the local "derived
+  independent-review block required" error failing. CI passes on it.
+- **Class closure**: NONE — the validator and the review store are feature 203's area. Handed over as H-002.
+
+### DRIFT-013 — the sync needs the pre-review phase lines; the governance check needs the review phase once review.md exists (finding)
+
+- **Observed**: 2026-11-11, at the review-signoff sync. The sync's state-truth gate refuses unless state.md and plan.md
+  show the last authorized boundary (`before-implement` / `executing`). The sync binds to HEAD and needs it on origin
+  (`verdict-commit-durable`). The governance check, which must exit 0 before every push, refuses plan Status
+  `executing` once `review.md` exists. So no commit can hold the review record and also be pushed and synced.
+- **Resolution**: the maintainer approved removing `review.md` by a revert commit (`e2748a53`), syncing on that, and
+  restoring the record after the sync moves the phase lines.
+- **Class closure**: NONE — the sync and the validator are feature 203's area. Handed over as H-003.
+
+### DRIFT-014 — the deployed-file check names 5 of 18 drifted files and offers only specrew update (finding)
+
+- **Observed**: 2026-11-11, DRIFT-010's check. The message lists `Select-Object -First 5` of the drifted files, with no
+  count, so 18 drifted files read as five. Its only remedy is `specrew update --project-path ...`, which rewrites the
+  deployed copies from the installed module and, in a Specrew checkout, would replace the feature's own deployed
+  changes. It does not mention refreshing the hash record when the deployed copies are the intended ones.
+- **Resolution**: the full list was taken from `Test-SpecrewDeployedExtensionIntegrity` directly, and the record was
+  refreshed in place (`6331d2be`).
+- **Class closure**: NONE — the check is validator behaviour outside 205's scope. Handed over as H-004.
+
+### DRIFT-015 — Windows journal-fault-injection timing failure on cf173030 (external CI failure)
+
+- **Observed**: 2026-11-11, Cross-Platform Validation run `43066363241` on `cf173030`, Windows job "Deterministic
+  fake-provider review runtime", step "Hook-output journal concurrent append (case e) and outage buffer".
+  journal-fault-injection reported 2 failures: "the fire's first wait runs out the 1000 ms budget (2,650 ms)" and
+  "three waits on a held lock add 2,653 ms". `cf173030` changed only records. The same job was green on `d5d1ae06`
+  and `eec3745b`.
+- **Resolution**: recorded as an external CI failure (runner timing); not rerun. If it fails again on the next push,
+  the crew stops and reports.
+- **Class closure**: NONE — the suite and its timing budget belong to the review runtime, outside 205's scope.
 <!--
   Every new ### DRIFT-... event includes:
 
