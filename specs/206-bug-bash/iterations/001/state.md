@@ -1,16 +1,17 @@
 # Iteration State: 001
 
 **Schema**: v2
-**Last Completed Task**: (none)
-**Tasks Remaining**: T001-T018 (18 planned)
+**Current Phase**: before-implement
+**Iteration Status**: executing
+**Last Completed Task**: T001
+**Tasks Remaining**: T002-T015, T018 (15 planned)
 **In Progress**: (none)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-10T02:46:53Z
+**Updated**: 2026-11-11T08:50:00Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- T001 (FR-001, recovery choice without console input): RED 5/7 in `56f452f3`, GREEN 7/7 in `837b4f09`.
 
 ## Notes
 

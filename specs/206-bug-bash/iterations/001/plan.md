@@ -45,7 +45,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | No-console recovery refusal and three-try cap (failing test first) | FR-001 | US1 | 1.5 | Implementer | scripts/internal/session-recovery.ps1, scripts/specrew-start.ps1, tests/unit/** | planned | | | |
+| T001 | No-console recovery refusal and three-try cap (failing test first) | FR-001 | US1 | 1.5 | Implementer | scripts/internal/session-recovery.ps1, scripts/specrew-start.ps1, tests/unit/** | done | | | |
 | T002 | Over-claim dirty check: one path separator (failing assertions 1 and 2 first) | FR-002 | US1 | 0.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, tests/integration/validator-hardening-iteration2.ps1 | planned | | | |
 | T003 | Change classifier strips matched specrew-managed blocks only; unbalanced compares whole file (condition 3) | FR-003 | US1 | 1.5 | Implementer | scripts/specrew-start.ps1, scripts/internal/instruction-file-merge.ps1, tests/unit/**, tests/integration/validator-hardening-iteration2.ps1 | planned | | | |
 | T004 | Item 3 hand-over record for 203, with the recurrence log | FR-004 | US2 | 0.5 | Implementer | specs/206-bug-bash/bug-list.md, specs/206-bug-bash/iterations/001/** | planned | | | |

@@ -35,7 +35,7 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
 
 ## Phase 1: Start and checks (US1, items 1 and 2)
 
-- [ ] T001 [owner: Implementer] [sp: 1.5] **No-console recovery refusal and a three-try cap.**
+- [x] T001 [owner: Implementer] [sp: 1.5] **No-console recovery refusal and a three-try cap.**
   - **RED:** a unit test calls `Read-SpecrewRecoveryChoice` with console input unavailable and stale session state;
     today it loops on `Read-Host`. A second case gives an interactive console three invalid answers.
   - **Work:** refuse in plain words when console input is not available (what could not be completed, that the
