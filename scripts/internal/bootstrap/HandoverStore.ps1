@@ -839,7 +839,9 @@ function Get-SpecrewVerdictCaptureDisclosure {
         # Feature 203 T005 (FR-019): the capture's refusal of a verdict whose packet has left the tail, when it made one.
         [AllowNull()][string]$CaptureReason,
         # Feature 203 T007 (FR-002): the refusal's own sentence, for a reason that carries one.
-        [AllowNull()][string]$CaptureDetail
+        [AllowNull()][string]$CaptureDetail,
+        # B5F-044 (maintainer ruling 2026-11-11): the host, so a phrase inside a paste it marks is said to be inside it.
+        [AllowNull()][string]$HostKind
     )
     if ([string]::IsNullOrWhiteSpace($HumanText)) { return $null }
     # 203 T004 (co-review round 11, finding 3): AN ACT OF ANOTHER FAMILY IS NOT A BOUNDARY VERDICT. `approved for review
@@ -929,6 +931,19 @@ function Get-SpecrewVerdictCaptureDisclosure {
         $message = ("Specrew: your reply reads as a verdict for '{0}', but the crossing pending right now is '{1} -> {2}', so nothing was recorded. Nothing you wrote is lost and no approval was changed. To authorize the pending crossing, send: {3}" -f [string]$named[0], $from, $to, $phrase)
         Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'other-boundary-named' -From $from -To $to -LeadingText ([string]$named[0]) -NowUtc $NowUtc -Source $Source
         return $message
+    }
+    # B5F-044 (maintainer ruling 2026-11-11): AN APPROVAL INSIDE A PASTE IS SAID TO BE INSIDE THE PASTE. Read on the raw
+    # message, the sentence below quoted the paste tag as "what comes before the phrase" and told the human to put the
+    # phrase first, which leaves it inside the paste. On a host that marks pastes, when the phrase is in a paste and not in
+    # the human's own text, the sentence says so. Message text only: the capture has already refused, and what it
+    # accepts or refuses is unchanged.
+    if (-not [string]::IsNullOrWhiteSpace($HostKind) -and (Get-Command Test-SpecrewHostMarksPastes -ErrorAction SilentlyContinue) -and
+        (Get-Command Remove-SpecrewPairedPastes -ErrorAction SilentlyContinue) -and (Test-SpecrewHostMarksPastes -HostKind $HostKind)) {
+        $ownText = Remove-SpecrewPairedPastes -Text $text
+        if ($ownText -cne $text -and $ownText.IndexOf($phrase, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'phrase-inside-paste' -From $from -To $to -LeadingText '' -NowUtc $NowUtc -Source $Source
+            return ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. The approval is inside text you pasted, so it is not your own line, and only a line you type yourself can authorize a crossing. Nothing you wrote is lost and no approval was changed. To authorize this crossing, type it yourself on a line of its own, outside any paste; a message that is only this line always counts: {2}" -f $from, $to, $phrase)
+        }
     }
     $verdict = $null
     try { $verdict = Test-SpecrewHumanVerdictToken -Text $text } catch { return $null }
@@ -1920,7 +1935,7 @@ function Update-SpecrewRollingHandover {
         if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
             $captureReason = if ($null -ne $captureOutcome) { [string]$captureOutcome.reason } else { '' }
             $captureDetail = if ($null -ne $captureOutcome -and $captureOutcome.PSObject.Properties['reason_detail']) { [string]$captureOutcome.reason_detail } else { '' }
-            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source -CaptureReason $captureReason -CaptureDetail $captureDetail
+            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source -CaptureReason $captureReason -CaptureDetail $captureDetail -HostKind $fromHost
             $verdictNotCaptured = $disclosure
         }
         elseif ((Get-Command Get-SpecrewVerdictCapturedDirective -ErrorAction SilentlyContinue)) {

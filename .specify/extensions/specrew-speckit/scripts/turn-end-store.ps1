@@ -803,9 +803,12 @@ function Get-SpecrewVerdictResponseLines {
 # (squad-templates/skills/gate-stop.md, the block under "Type one of these:"); tests/unit/presented-check.tests.ps1 holds
 # the two equal. `Pattern` is the start a reply's line must have, with {0} the record's approval phrase: the instructions
 # after " - ", what to change and the prompt number are the author's words.
+#
+# B5F-044 item 2 (maintainer ruling 2026-11-11): the second line says the instructions go on the approval's own line,
+# because an approval that continues past its first line is refused (PRED-BETA4-022). Its matching rule is unchanged.
 $script:SpecrewVerdictOptions = @(
     [pscustomobject]@{ Shown = 'approved for <to>'; Pattern = '^{0}$' }
-    [pscustomobject]@{ Shown = 'approved for <to> - <your instructions>'; Pattern = '^{0}\s+-\s+\S' }
+    [pscustomobject]@{ Shown = 'approved for <to> - <your instructions, on this same line>'; Pattern = '^{0}\s+-\s+\S' }
     [pscustomobject]@{ Shown = 'changes needed: <what to change>'; Pattern = '^(?i:changes needed)\s*:' }
     [pscustomobject]@{ Shown = 'discuss prompt 1'; Pattern = '^(?i:discuss prompt)\s+\S' }
 )

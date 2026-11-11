@@ -76,9 +76,11 @@ human can literally send**, exactly, with the real boundary name in place of `<t
 What would you like to do? Type one of these:
 
   approved for <to>
-  approved for <to> - <your instructions>
+  approved for <to> - <your instructions, on this same line>
   changes needed: <what to change>
   discuss prompt 1
+
+Instructions go on the approval's line. For longer notes, send them first as their own message, then send the approval line alone.
 ```
 
 **NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT** (maintainer ruling 2026-08-12). Not a numbered list,

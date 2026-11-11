@@ -542,9 +542,11 @@ OTHERWISE, immediately AFTER you emit the human re-entry packet at a human-verdi
 What would you like to do? Type one of these:
 
   approved for <to>
-  approved for <to> - <your instructions>
+  approved for <to> - <your instructions, on this same line>
   changes needed: <what to change>
   discuss prompt 1
+
+Instructions go on the approval's line. For longer notes, send them first as their own message, then send the approval line alone.
 ``````
 
 **Not a numbered list, not a picker, not a menu — at the VERDICT step.** Only a typed phrase is captured, so a selection affordance here offers a control that cannot do the thing it names, and the user does exactly what they were offered. Measured on two hosts on 2026-08-12: a picker selection was accepted and not captured, and that agent then invoked the authorization writer directly; a numbered option was typed and not captured, and that agent edited and committed the spec on the strength of it. One cause, opposite failure modes.

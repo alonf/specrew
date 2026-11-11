@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "44ca1cca1e872008c3b5e0f4fe1a53b4c2f83096cd2a759b093ecc082cb0e7e8"
+      "sha256": "411fdd62e6b812a6df545c5897538558f61b497f8c9b6f339126239928c4965f"
     },
     {
       "path": "scripts/validate-governance.ps1",
@@ -564,7 +564,7 @@
     },
     {
       "path": "squad-templates/skills/gate-stop.md",
-      "sha256": "17131c3c415037290a3f4b2697e4e7c8570cb3fdc3d5d03ce95b4da37bd8b71c"
+      "sha256": "f257fa2848af411ff88f18a15948ad4b1208a646fdd4695af7e0a5075d61a28f"
     },
     {
       "path": "squad-templates/skills/iteration-resume.md",
