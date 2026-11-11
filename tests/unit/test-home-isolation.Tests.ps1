@@ -63,6 +63,25 @@ Describe 'Tests that can write home hook files, or run the preflight home check,
         $offenders | Should -BeNullOrEmpty -Because ("each enters a private home without exiting it in a finally or AfterAll (offenders: {0})" -f ($offenders -join ', '))
     }
 
+    It 'takes the private home in a Pester file''s only root BeforeAll (a second one silently replaces the first)' {
+        # Measured 2026-11-11 (DRIFT-057): Pester keeps only the LAST BeforeAll at one level. The private home was added as
+        # a second root BeforeAll in deployed-extension-marker-on-update.tests.ps1, never ran, and that suite's
+        # specrew update wrote the sweep's shared home; the text checks above passed. Read from the syntax tree.
+        $offenders = @(foreach ($file in $script:TestFiles) {
+                if ($file.Extension -ne '.ps1') { continue }
+                $text = [IO.File]::ReadAllText($file.FullName)
+                if ($text -notmatch 'Enter-SpecrewPrivateTestHome\s+-') { continue }
+                $ast = [System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$null, [ref]$null)
+                $rootCommands = @($ast.EndBlock.Statements | ForEach-Object {
+                        if ($_ -is [System.Management.Automation.Language.PipelineAst] -and $_.PipelineElements[0] -is [System.Management.Automation.Language.CommandAst]) { $_.PipelineElements[0].GetCommandName() }
+                    })
+                if (@($rootCommands | Where-Object { $_ -eq 'BeforeAll' }).Count -gt 1 -or @($rootCommands | Where-Object { $_ -eq 'AfterAll' }).Count -gt 1) {
+                    Get-RelativeTestPath $file.FullName
+                }
+            })
+        $offenders | Should -BeNullOrEmpty -Because ("each has more than one root BeforeAll or AfterAll, so Pester runs only the last (offenders: {0})" -f ($offenders -join ', '))
+    }
+
     It 'catches the shapes it exists for (the rule''s own falsifiability)' {
         # The suites that escaped: an updater run with no redirect, and a HOME-only redirect.
         $escaped = @(
