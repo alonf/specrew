@@ -76,6 +76,14 @@ index entry contradicts the state file; 206 changes neither and reports it here.
     feature 203 as HO-206-4 whatever the ruling.
   - Passes today only at capacity 20 (seen during OVERRIDE 5); the nightly never reported it.
 
+## Rulings at the T005 stop (maintainer, 2026-11-11)
+
+- **198/010**: abandoned and superseded, applied in T007. Its `state.md` says in plain words that
+  DRIFT-198-I010-004 stays open and was handed to feature 203 as HO-206-4; T082 stays `needs-rework`.
+- **Group C**: the display change is accepted for iteration 001; listed for iteration 002 as candidate T020, with
+  the option of adding the 12 iterations to the closed index.
+- **Group E (198/009)**: change neither; kept in the 203 hand-over record as HO-206-7.
+
 ## Every iteration
 
 | Iteration | Iteration Status | Index | Heuristic | Validator today | Renderer today | New | Change |

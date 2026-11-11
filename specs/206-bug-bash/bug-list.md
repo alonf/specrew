@@ -243,3 +243,26 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   `project-path-resolution-regression.ps1`, `psgallery-check.tests.ps1`, `refocus-deploy.tests.ps1`,
   `slash-command-compatibility.tests.ps1`, `slash-command-distribution.tests.ps1`, `update-command.ps1`; and under
   `tests/unit/`: `consumer-applicability-firewall.tests.ps1`, `extension-deploy-refocus-digests.tests.ps1`.
+
+## 9. The macOS review-runtime job failed one fault-matrix case: process-group membership probe
+
+- **Observed:** Cross-Platform Validation run 42994018357 on `a9ad8aa0` (206's T002-T005 push), job
+  "Deterministic fake-provider review runtime (macos-latest)" (job 130433482347, 2026-11-11T09:18:11Z to
+  09:21:43Z), step "Run bounded deterministic review fault and conformance suites". Case "rejects prose-wrapped
+  output from the codex fake process through strict ingress with no hidden retry" in
+  `tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1` failed with
+  `Expected $true, because macos-process-group-unavailable:macos-process-group-probe-membership-failed, but got
+  $false`; 12 of 13 passed.
+- **Where it is thrown:** `scripts/internal/continuous-co-review/review-macos-runtime-port.ps1:116`, when
+  `Wait-ReviewMacProcessGroupMembership` does not see the probe join its process group. Feature 203's area.
+- **Not caused by the commit, as far as reading shows:** the suite loads
+  `scripts/internal/continuous-co-review/_load.ps1`, which loads none of the files 206 changed, and nothing under
+  `continuous-co-review` changed in the push. The same job passed on `b31ec257` (run 42990069953) 30 minutes
+  earlier.
+- **Cause: not found.** No rerun (maintainer, 2026-11-11). If the same test fails again on 206's next push, the
+  work stops and it is reported before continuing.
+- **Hand-over record**: HO-206-6 in `specs/206-bug-bash/iterations/001/handover-to-203.md`.
+
+| Run id | Date (UTC) | Commit | Runner | Outcome |
+| ------ | ---------- | ------ | ------ | ------- |
+| 42994018357 | 2026-11-11 | `a9ad8aa0` | macos-latest | failed 1 of 13 (process-group probe); not rerun |

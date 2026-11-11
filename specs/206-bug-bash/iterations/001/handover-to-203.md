@@ -64,8 +64,8 @@ FR-005.
   read path at four enumeration sites in `scripts/internal/continuous-co-review/review-authority-store.ps1` (lines
   200, 309, 362, 447 when recorded). T082 (DRIFT-198-I009-041, reparse-point containment, FR-008, 5.0 SP) was
   corrected from `done` to `needs-rework` on 2026-08-01.
-- **Iteration 198/010**: open (`state.md` `reviewing`, phase `review-signoff`; `plan.md` `planning`); no
-  `review.md`. It sits in T005's table awaiting the maintainer's ruling; 206 marks it nothing.
+- **Iteration 198/010**: ruled abandoned and superseded (maintainer, 2026-11-11, T005 stop), applied in T007.
+  Its `state.md` says that DRIFT-198-I010-004 stays open and was handed to 203 here; T082 stays `needs-rework`.
 - **Proposed owner**: feature 203, whatever the maintainer rules for the iteration: the defect is in 203's
   protected file.
 
@@ -85,3 +85,26 @@ FR-005.
   open, owner feature 203), with B5F-042 (the preflight does not redirect the home for the suites it runs).
 - **Not run on this machine** (maintainer's instruction). No fix in 206 unless the maintainer rules one.
 - **Proposed owner**: feature 203, under B5F-039.
+
+## HO-206-6 — the macOS review-runtime job failed a fault-matrix case: process-group membership probe
+
+- **Bug list**: item 9.
+- **Evidence**: Cross-Platform Validation run 42994018357 on `a9ad8aa0`, job 130433482347 "Deterministic
+  fake-provider review runtime (macos-latest)". `review-cross-platform-fault-matrix.Tests.ps1`, case "rejects
+  prose-wrapped output from the codex fake process through strict ingress with no hidden retry":
+  `macos-process-group-unavailable:macos-process-group-probe-membership-failed` (thrown at
+  `review-macos-runtime-port.ps1:116`); 12 of 13 passed. Passed on `b31ec257` (run 42990069953) 30 minutes
+  earlier; the push changed nothing the suite loads.
+- **Cause: not found.** Not rerun (maintainer). A recurrence on 206's next push stops 206's work and is reported.
+- **Proposed owner**: feature 203 (its area).
+
+## HO-206-7 — 198/009 is in the closed index while its state file says it is in review
+
+- **Evidence**: `.specrew/closed-iterations.yml` lists `198-beta2-hardening/009` (entry from the 2026-08-06
+  rebuild), while `specs/198-beta2-hardening/iterations/009/state.md` says `Current Phase: review-signoff`,
+  `Iteration Status: reviewing`. Found by T005's table (group E,
+  `specs/206-bug-bash/iterations/001/closed-open-table.md`).
+- **Ruling (maintainer, 2026-11-11)**: change neither; keep it in this hand-over. Under the new definition it is
+  closed by the index, as the validator already treats it; the dashboard check does not judge it (status is not
+  `complete`).
+- **Proposed owner**: the maintainer decides; 206 changes nothing.

@@ -51,7 +51,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T004 | Item 3 hand-over record for 203, with the recurrence log | FR-004 | US2 | 0.5 | Implementer | specs/206-bug-bash/bug-list.md, specs/206-bug-bash/iterations/001/** | done | | | |
 | T005 | Closed-definition table: every iteration under the three current rules and the new function; changes listed with reasons; 198/010 included as awaiting the maintainer's ruling (condition 1, before T006) | FR-008a | US2 | 1.0 | Implementer | specs/206-bug-bash/iterations/001/** | done | | | |
 | T006 | Test-SpecrewIterationClosed: one function for the validator filter, dashboard check and renderer; heuristic and verdict rule removed (failing test first) | FR-008a | US2 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/*.ps1, scripts/internal/dashboard-renderer.ps1, tests/unit/** | planned | | | |
-| T007 | Mark 198/011 and 197/006 abandoned; the 203 finding (FR-066 mint guard, T091, T093); frozen list with its 18 entries | FR-005, FR-006 | US2 | 1.0 | Implementer | specs/198-beta2-hardening/iterations/011/state.md, specs/198-beta2-hardening/iterations/011/plan.md, specs/197-*/iterations/006/state.md, specs/197-*/iterations/006/plan.md, .specrew/legacy-frozen.yml, specs/206-bug-bash/** | planned | | | |
+| T007 | Mark 198/011, 197/006 and 198/010 abandoned (198/010 by the T005 ruling); the 203 finding (FR-066 mint guard, T091, T093); frozen list with its 18 entries | FR-005, FR-006 | US2 | 1.0 | Implementer | specs/198-beta2-hardening/iterations/011/state.md, specs/198-beta2-hardening/iterations/011/plan.md, specs/198-beta2-hardening/iterations/010/state.md, specs/198-beta2-hardening/iterations/010/plan.md, specs/197-*/iterations/006/state.md, specs/197-*/iterations/006/plan.md, .specrew/legacy-frozen.yml, specs/206-bug-bash/** | planned | | | |
 | T008 | Frozen means judged by no check; guard test for added keys; zero-findings test per entry; 197/006 resolved (condition 2) | FR-007 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, tests/unit/** | planned | | | |
 | T009 | `since` on the dashboard check (complete only), closure stamp written at closeout; abandoned only by a recorded maintainer ruling (failing tests first) | FR-008 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/*.ps1, tests/unit/** | planned | | | |
 | T010 | Local nightly replay (CI mode, full repo): no new finding from any changed iteration, else stop for the maintainer (condition 1 acceptance) | FR-008a, FR-006 | US2 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | planned | | | |
@@ -133,7 +133,12 @@ list, the frozen-list guard, the T010 replay and the T014 report.
   | T017 | Resolver suggests no Node/React here (failing test first); f049 assertion onto a fixture; root package.json removed | FR-014 | 1.5 |
   | T019 | Cross-Platform review-runtime step gets its own `timeout-minutes`, shorter than the job's, so a hang fails with its log kept (bug list item 7) | none yet: a requirement is added when iteration 002 is planned | 0.25 |
 
-  T019 was added on 2026-11-11 as a candidate, not deferred from 001.
+  | T020 | The 12 iterations that count as closed today only by an accepted review (T005 table, group C: 001/002, 001/005-012, 005/001-002, 007/002) show as open on dashboards after T006; option: add them to the closed index | none yet | 0.5 |
+
+  T019 and T020 were added on 2026-11-11 as candidates, not deferred from 001. T020: the display change is
+  accepted for iteration 001 (maintainer, T005 ruling).
+- **198/009's index entry contradicts its state file** (T005 table, group E): neither is changed (maintainer,
+  2026-11-11); it stays in the 203 hand-over record as HO-206-7.
   Until T017 lands, the quality resolver keeps suggesting a React preset for this repository (bug 6a); the
   custom PowerShell profile in the feature plan stands in the meantime.
 - **Stops inside implement:** T010 stops if any changed iteration produces a new finding; T014 stops with
@@ -149,9 +154,11 @@ list, the frozen-list guard, the T010 replay and the T014 report.
     before closeout.
   - **174/007**: maintainer decision 2026-06-14 at feature 174's iteration 011 closeout, recorded in its
     `state.md` Disposition: abandoned-superseded by 174/008, closed without a ratified review.
-- **198/010 joins the T005 table, awaiting the maintainer's ruling** (2026-11-11). It is marked nothing until
-  the maintainer rules. Found by the full-repo run during OVERRIDE 5; it was never in the nightly's reports
-  because it passes at capacity 20.
+- **198/010: ruled abandoned and superseded (maintainer, 2026-11-11, option 1 at the T005 stop); applied in
+  T007**, within T007's estimate, with two conditions: its `state.md` says in plain words that
+  DRIFT-198-I010-004 stays open and was handed to feature 203 as HO-206-4, with the hand-over record's path; T082
+  stays `needs-rework` in the record, neither done nor dropped. Found by the full-repo run during OVERRIDE 5; it
+  was never in the nightly's reports because it passes at capacity 20.
   - **Status**: open. `state.md` says `Iteration Status: reviewing`, phase `review-signoff`, last updated
     2026-08-01; `plan.md` still says `planning`. Not in the closed index; no `review.md`.
   - **Needs-rework task**: T082, "DRIFT-198-I009-041 — authority-store containment against reparse points"

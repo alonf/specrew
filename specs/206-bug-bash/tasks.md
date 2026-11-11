@@ -101,11 +101,15 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     `scripts/internal/dashboard-renderer.ps1`, `tests/unit/**`.
 - [ ] T007 [owner: Implementer] [sp: 1.0] **The triage applied: abandoned and frozen.**
   - **Work:** 198/011 and 197/006 marked `abandoned`, each recording the maintainer's ruling of 2026-11-10;
-    198/011's `review.md` unchanged. `.specrew/legacy-frozen.yml` with exactly 18 entries and one true reason each:
+    198/011's `review.md` unchanged. **198/010 marked `abandoned`, superseded** (maintainer's T005 ruling,
+    2026-11-11): its `state.md` says in plain words that DRIFT-198-I010-004 stays open and was handed to feature
+    203 as HO-206-4, with the hand-over record's path; T082 stays `needs-rework`.
+    `.specrew/legacy-frozen.yml` with exactly 18 entries and one true reason each:
     048/001, 197/001, 198/008, and the 15 dashboards ("closed before dashboards were rendered automatically").
   - **Acceptance:** the nightly's 198/011 failure is gone in a CI-mode full-repository run.
   - **Trace:** FR-005, FR-006.
   - **Owns:** `specs/198-beta2-hardening/iterations/011/{state,plan}.md`,
+    `specs/198-beta2-hardening/iterations/010/{state,plan}.md`,
     `specs/197-continuous-co-review/iterations/006/{state,plan}.md`, `.specrew/legacy-frozen.yml`.
 - [ ] T008 [owner: Implementer] [sp: 1.5] **Frozen means judged by nothing (design condition 2).**
   - **RED:** a guard test pinning the 18 keys fails on an added key; a test runs the validator over each frozen
