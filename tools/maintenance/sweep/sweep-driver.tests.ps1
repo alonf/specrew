@@ -95,11 +95,58 @@ try {
     $named = @(Get-SweepSignoffSuites -Repo $repo -Rev 'HEAD')
     Assert-True ($named.Count -ge 60 -and $named -contains 'tests/unit/coverage-is-a-decision.tests.ps1') ("the sign-off lanes name {0} suites, coverage-is-a-decision among them" -f $named.Count)
     $combined = @(Get-SweepSuiteList -ListPath $list -Repo $repo -Rev 'HEAD')
-    Assert-True ($combined.Count -eq ($named.Count + 2) -and $combined -contains 'tests/quick.ps1' -and $combined -contains 'tests/unit/coverage-is-a-decision.tests.ps1') ("the list given plus the sign-off suites, once each ({0})" -f $combined.Count)
+    $unnamed = @($named | Where-Object { $combined -cnotcontains $_ })
+    Assert-True ($combined -ccontains 'tests/quick.ps1' -and $combined -ccontains 'tests/red.ps1' -and $unnamed.Count -eq 0) ("the list given and every sign-off suite are in it (missing: {0})" -f ($unnamed -join ', '))
+    $combinedSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$combined, [StringComparer]::Ordinal)
+    Assert-True ($combinedSet.Count -eq $combined.Count) ("each suite once ({0} entries, {1} distinct)" -f $combined.Count, $combinedSet.Count)
     $dupList = Join-Path $scratch 'dup.txt'
     Set-Content -LiteralPath $dupList -Value @('tests/unit/coverage-is-a-decision.tests.ps1') -Encoding UTF8
-    Assert-True (@(Get-SweepSuiteList -ListPath $dupList -Repo $repo -Rev 'HEAD').Count -eq $named.Count) 'a suite in both is run once'
+    Assert-True (@(Get-SweepSuiteList -ListPath $dupList -Repo $repo -Rev 'HEAD' | Where-Object { $_ -ceq 'tests/unit/coverage-is-a-decision.tests.ps1' }).Count -eq 1) 'a suite in both is run once'
     Assert-True (@(Get-SweepSuiteList -ListPath $list -Repo $repo -Rev 'HEAD' -SkipSignoffSuites).Count -eq 2) '-SkipSignoffSuites runs only the list given'
+
+    Write-Host "Case 9: the sweep runs every test file CI runs on a push, read at the swept revision, and names any it lacks (maintainer, 2026-11-11; DRIFT-057's fourth defect)"
+    # CI on 50bb6fa8 failed conformance-detection.tests.ps1, which the green 'full' sweep never ran: 61 of the honesty
+    # suite's 132 files, and 24 files the push workflows name directly, were outside it.
+    if (-not (Get-Command Get-SweepCiSuites -ErrorAction SilentlyContinue) -or -not (Get-Command Get-SweepCiMissing -ErrorAction SilentlyContinue)) {
+        Write-Fail 'Get-SweepCiSuites and Get-SweepCiMissing exist in sweep-support.ps1'
+    }
+    else {
+        $ci = @(Get-SweepCiSuites -Repo $repo -Rev 'HEAD')
+        foreach ($expected in @(
+                'tests/integration/conformance-detection.tests.ps1',   # the honesty suite's registry (Specrew CI)
+                'tests/integration/gate-stop-skill.tests.ps1',         # named in specrew-ci.yml
+                'tests/integration/drift-scenario.ps1',                # named in test.yml
+                'tests/unit/wrapper-registry-parity.tests.ps1')) {     # named in cross-platform-validation.yml
+            Assert-True ($ci -ccontains $expected) ("CI's list has {0} ({1} files)" -f $expected, $ci.Count)
+        }
+        Assert-True ($ci -cnotcontains 'tests/f198-regression-suite.ps1') "the honesty suite's runner is expanded into its entries, not run as one suite"
+        # Every workflow that runs on a branch push and names a test file is read; a new one cannot be left out silently.
+        $pushWorkflows = @(Get-ChildItem -LiteralPath (Join-Path $repo '.github/workflows') -Filter '*.yml' | Where-Object {
+                $text = [IO.File]::ReadAllText($_.FullName)
+                $text -match '(?m)^\s*push:' -and $text -notmatch '(?m)^\s*push:\s*\r?\n\s*tags:' -and $text -match 'tests/[A-Za-z0-9_./-]+\.ps1'
+            } | ForEach-Object { '.github/workflows/' + $_.Name })
+        $unread = @($pushWorkflows | Where-Object { $script:SweepCiWorkflows -cnotcontains $_ })
+        Assert-True ($pushWorkflows.Count -ge 3 -and $unread.Count -eq 0) ("every push workflow that names a test file is read ({0}; unread: {1})" -f ($pushWorkflows -join ', '), ($unread -join ', '))
+        # Read at the swept revision, not from the working tree: test-home-isolation joined the registry in 77bd4a2e.
+        Assert-True (@(Get-SweepCiSuites -Repo $repo -Rev '77bd4a2e^') -cnotcontains 'tests/unit/test-home-isolation.Tests.ps1' -and $ci -ccontains 'tests/unit/test-home-isolation.Tests.ps1') 'the list is read at the swept revision'
+        $full = @(Get-SweepSuiteList -ListPath $list -Repo $repo -Rev 'HEAD')
+        $missingFull = @(Get-SweepCiMissing -SuiteList $full -Repo $repo -Rev 'HEAD')
+        Assert-True ($missingFull.Count -eq 0) ("a sweep's list has every file CI runs (missing: {0})" -f ($missingFull -join ', '))
+        # The guard's own falsifiability: a list without them names each one.
+        $missingTargeted = @(Get-SweepCiMissing -SuiteList @(Get-SweepSuiteList -ListPath $list -Repo $repo -Rev 'HEAD' -SkipSignoffSuites) -Repo $repo -Rev 'HEAD')
+        Assert-True ($missingTargeted.Count -eq $ci.Count -and $missingTargeted -ccontains 'tests/integration/conformance-detection.tests.ps1') ("a list without them names each one ({0} of {1})" -f $missingTargeted.Count, $ci.Count)
+        $sweepText = [IO.File]::ReadAllText($sweepFull)
+        Assert-True ($sweepText -match 'Get-SweepCiMissing' -and $sweepText -match 'CI suites not in this sweep') 'the sweep report names the files CI runs that it did not, and such a sweep cannot close a task'
+    }
+
+    Write-Host "Case 10: the sweep runs every lane in the swept revision's verification plan, not a list fixed in the driver"
+    if (-not (Get-Command Get-SweepPlanLanes -ErrorAction SilentlyContinue)) { Write-Fail 'Get-SweepPlanLanes exists in sweep-support.ps1' }
+    else {
+        $planIds = @(([IO.File]::ReadAllText((Join-Path $repo '.specrew/verification-plan.json')) | ConvertFrom-Json).commands | ForEach-Object { [string]$_.command_id })
+        $lanes = @(Get-SweepPlanLanes -Repo $repo -Rev 'HEAD')
+        Assert-True ($lanes.Count -eq $planIds.Count -and @($planIds | Where-Object { $lanes -cnotcontains $_ }).Count -eq 0) ("the lanes are the plan's ({0})" -f ($lanes -join ', '))
+    }
+    Assert-True ([IO.File]::ReadAllText($sweepFull) -notmatch "'f203-i001-suites'") 'the driver names no lane of its own'
 
     Write-Host 'Case 8: the home check saves and hashes every hook file, and a file added or removed is a change (maintainer, 2026-11-11; DRIFT-056)'
     # A stand-in home only: these functions take the home as a parameter, so the real one is never read or written here.
