@@ -100,6 +100,34 @@ try {
     Set-Content -LiteralPath $dupList -Value @('tests/unit/coverage-is-a-decision.tests.ps1') -Encoding UTF8
     Assert-True (@(Get-SweepSuiteList -ListPath $dupList -Repo $repo -Rev 'HEAD').Count -eq $named.Count) 'a suite in both is run once'
     Assert-True (@(Get-SweepSuiteList -ListPath $list -Repo $repo -Rev 'HEAD' -SkipSignoffSuites).Count -eq 2) '-SkipSignoffSuites runs only the list given'
+
+    Write-Host 'Case 8: the home check saves and hashes every hook file, and a file added or removed is a change (maintainer, 2026-11-11; DRIFT-056)'
+    # A stand-in home only: these functions take the home as a parameter, so the real one is never read or written here.
+    $home8 = Join-Path $scratch 'home8'
+    foreach ($rel in @('.claude/settings.json', '.codex/hooks.json', '.cursor/hooks.json', '.copilot/hooks/specrew-refocus.json',
+            '.specrew/specrew-hook-launch.ps1', '.specrew/hooks/b958cbe133e6a88ee358f7c5f89d5a67/specrew-hook-launch.ps1',
+            '.specrew/hooks/bindings/antigravity-1.binding', '.specrew/hook-bindings/antigravity-1.binding')) {
+        $full = Join-Path $home8 $rel
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null
+        Set-Content -LiteralPath $full -Value "original $rel" -Encoding UTF8
+    }
+    $snap8 = @(Get-SweepHomeSnapshot -HomeRoot $home8)
+    $files8 = @($snap8 | Where-Object { $_.Hash -ne 'absent' } | ForEach-Object { ([string]$_.File).Substring($home8.Length).TrimStart('\', '/') -replace '\\', '/' })
+    foreach ($rel in @('.specrew/specrew-hook-launch.ps1', '.specrew/hooks/b958cbe133e6a88ee358f7c5f89d5a67/specrew-hook-launch.ps1', '.specrew/hooks/bindings/antigravity-1.binding', '.specrew/hook-bindings/antigravity-1.binding', '.codex/hooks.json')) {
+        Assert-True ($files8 -contains $rel) ("the snapshot hashes {0}" -f $rel)
+    }
+    $saved8 = Join-Path $scratch 'saved8'
+    Save-SweepHomeSnapshot -HomeRoot $home8 -Destination $saved8
+    Assert-True (@(Get-ChildItem -LiteralPath $saved8 -File).Count -eq $files8.Count) ("every hashed file is saved ({0} of {1})" -f @(Get-ChildItem -LiteralPath $saved8 -File).Count, $files8.Count)
+    Set-Content -LiteralPath (Join-Path $home8 '.specrew/hooks/bindings/antigravity-1.binding') -Value 'changed' -Encoding UTF8
+    New-Item -ItemType Directory -Force -Path (Join-Path $home8 '.specrew/hooks/9b2b4eb94cb52621b2041c509642f2fb') | Out-Null
+    Set-Content -LiteralPath (Join-Path $home8 '.specrew/hooks/9b2b4eb94cb52621b2041c509642f2fb/specrew-hook-launch.ps1') -Value 'added' -Encoding UTF8
+    Remove-Item -LiteralPath (Join-Path $home8 '.specrew/hook-bindings/antigravity-1.binding') -Force
+    $changes8 = @(Get-SweepHomeChanges -From $snap8 -To @(Get-SweepHomeSnapshot -HomeRoot $home8))
+    Assert-True ($changes8.Count -eq 3) ("three changes are reported ({0})" -f ($changes8 -join ' | '))
+    Assert-True (@($changes8 | Where-Object { $_ -match 'hooks[\\/]bindings[\\/]antigravity-1\.binding' -and $_ -match '\bchanged\b' }).Count -eq 1) 'a changed binding is named as changed'
+    Assert-True (@($changes8 | Where-Object { $_ -match '9b2b4eb94cb52621b2041c509642f2fb' -and $_ -match '\badded\b' }).Count -eq 1) 'an added launcher folder file is named as added'
+    Assert-True (@($changes8 | Where-Object { $_ -match 'hook-bindings[\\/]antigravity-1\.binding' -and $_ -match '\bremoved\b' }).Count -eq 1) 'a removed binding is named as removed'
 }
 finally {
     $env:SPECREW_SWEEP_KEEPAWAKE_TRACE = $savedTrace
