@@ -1,6 +1,13 @@
 [CmdletBinding()]
 param()
 
+# B5F-039 / B5F-042 follow-up (maintainer ruling 2026-11-11): a private home for this run, so no hook file is written
+# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1).
+. (Join-Path $PSScriptRoot '../support/private-test-home.ps1')
+$privateTestHome = Enter-SpecrewPrivateTestHome -Label 'psgallery-check.tests'
+try {
+
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -112,3 +119,5 @@ if ($offlineResult.ExitCode -ne 0 -or $offlineOutput -match 'Newer version avail
 Write-Pass 'Offline PSGallery failures stay silent and bounded'
 
 exit 0
+}
+finally { Exit-SpecrewPrivateTestHome -State $privateTestHome }

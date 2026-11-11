@@ -1,4 +1,12 @@
 #requires -Version 7.0
+
+# B5F-039 / B5F-042 follow-up (maintainer ruling 2026-11-11): a private home for this run, so no hook file is written
+# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1).
+BeforeAll {
+    . (Join-Path $PSScriptRoot '../support/private-test-home.ps1')
+    $script:PrivateTestHome = Enter-SpecrewPrivateTestHome -Label 'deployed-extension-marker-on-update.tests'
+}
+AfterAll { Exit-SpecrewPrivateTestHome -State $script:PrivateTestHome }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 

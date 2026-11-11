@@ -1,4 +1,10 @@
 #requires -Version 7.0
+
+# B5F-039 / B5F-042 follow-up (maintainer ruling 2026-11-11): a private home for this run, so no hook file is written
+# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1).
+. (Join-Path $PSScriptRoot '../support/private-test-home.ps1')
+$privateTestHome = Enter-SpecrewPrivateTestHome -Label 'receipt-outcomes-retired.tests'
+try {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -42,3 +48,5 @@ Assert-True ($hits.Count -eq 1 -and $hits[0] -eq 'scripts/specrew-update.ps1') (
 if ($script:Failures -gt 0) { Write-Host ("receipt-outcomes-retired: {0} FAILED" -f $script:Failures); exit 1 }
 Write-Host 'receipt-outcomes-retired: all passed'
 exit 0
+}
+finally { Exit-SpecrewPrivateTestHome -State $privateTestHome }

@@ -1,3 +1,10 @@
+# B5F-039 / B5F-042 follow-up (maintainer ruling 2026-11-11): a private home for this run, so no hook file is written
+# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1).
+BeforeAll {
+    . (Join-Path $PSScriptRoot '../../support/private-test-home.ps1')
+    $script:PrivateTestHome = Enter-SpecrewPrivateTestHome -Label 'verification-plan-end-to-end.Tests'
+}
+AfterAll { Exit-SpecrewPrivateTestHome -State $script:PrivateTestHome }
 $ErrorActionPreference = 'Stop'
 
 # Trace: T065 / FR-048, FR-049 / SC-015, NFR-007.

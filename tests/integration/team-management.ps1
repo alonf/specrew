@@ -1,6 +1,13 @@
 [CmdletBinding()]
 param()
 
+# B5F-039 / B5F-042 follow-up (maintainer ruling 2026-11-11): a private home for this run, so no hook file is written
+# into the real home and no other suite's review preflight sees a change (tests/support/private-test-home.ps1).
+. (Join-Path $PSScriptRoot '../support/private-test-home.ps1')
+$privateTestHome = Enter-SpecrewPrivateTestHome -Label 'team-management'
+try {
+
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -312,3 +319,5 @@ if (Test-Path -Path $scratchRoot) {
 }
 
 exit 0
+}
+finally { Exit-SpecrewPrivateTestHome -State $privateTestHome }

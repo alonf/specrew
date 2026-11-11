@@ -23,7 +23,7 @@ Describe 'Tests that can write home hook files, or run the preflight home check,
         $script:TestFiles = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'tests') -Recurse -File -Include '*.ps1', '*.sh' |
                 Where-Object { $_.FullName -notmatch '[\\/]fixtures[\\/]' -and [IO.Path]::GetFullPath($_.FullName) -cne $script:Self })
         # A private home: the variable assigned (any spelling of the assignment), or the deployer's parameter.
-        $script:PrivateHomePattern = '\$env:SPECREW_USER_HOME_OVERRIDE\s*=|SetEnvironmentVariable\(\s*[''"]SPECREW_USER_HOME_OVERRIDE|SPECREW_USER_HOME_OVERRIDE\s*=\s*\$|-UserHomeOverride\b|--user-home-override\b'
+        $script:PrivateHomePattern = '\$env:SPECREW_USER_HOME_OVERRIDE\s*=|SetEnvironmentVariable\(\s*[''"]SPECREW_USER_HOME_OVERRIDE|SPECREW_USER_HOME_OVERRIDE\s*=\s*\$|-UserHomeOverride\b|--user-home-override\b|Enter-SpecrewPrivateTestHome\b'
         function script:Get-RelativeTestPath { param([string]$Path) return ([IO.Path]::GetRelativePath($script:RepoRoot, $Path) -replace '\\', '/') }
     }
 
@@ -49,6 +49,18 @@ Describe 'Tests that can write home hook files, or run the preflight home check,
                 Get-RelativeTestPath $file.FullName
             })
         $offenders | Should -BeNullOrEmpty -Because ("each runs the preflight's real-home check against the shared home (offenders: {0})" -f ($offenders -join ', '))
+    }
+
+    It 'restores what it set: every file that takes the shared helper''s private home gives it back' {
+        # tests/support/private-test-home.ps1: Exit puts the caller's value back and deletes the folder; a file that
+        # enters without exiting leaves its home set for whatever runs next in the same session.
+        $offenders = @(foreach ($file in $script:TestFiles) {
+                $text = [IO.File]::ReadAllText($file.FullName)
+                if ($text -notmatch 'Enter-SpecrewPrivateTestHome\s+-') { continue }
+                if ($text -match '(?s)(finally\s*\{|AfterAll\s*\{)[^}]*Exit-SpecrewPrivateTestHome') { continue }
+                Get-RelativeTestPath $file.FullName
+            })
+        $offenders | Should -BeNullOrEmpty -Because ("each enters a private home without exiting it in a finally or AfterAll (offenders: {0})" -f ($offenders -join ', '))
     }
 
     It 'catches the shapes it exists for (the rule''s own falsifiability)' {
