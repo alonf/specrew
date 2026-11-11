@@ -371,7 +371,8 @@ tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1
 tests/unit/authority-capture-never-drops-silently.tests.ps1
 tests/integration/agent-led-workshop-replay.tests.ps1
 
-# Feature 206 (bug bash): new suites written by T001 and T002. Per-round cadence is proposed with
+# Feature 206 (bug bash): new suites written by its tasks (T001, T002, T003). Per-round cadence is proposed with
 # 206's own verification plan before its review round; until then they are release-cadence.
 tests/unit/recovery-choice-no-console.tests.ps1
 tests/unit/overclaim-dirty-check-separator.tests.ps1
+tests/unit/instruction-classifier-managed-blocks.tests.ps1
