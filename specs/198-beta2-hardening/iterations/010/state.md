@@ -2,12 +2,23 @@
 
 **Schema**: v1
 **Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Iteration Status**: abandoned
 **Last Completed Task**: T084 (T085 is terminal as DEFERRED — verification passed, certification did not)
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 3c4f2496126f3dc090efd4ef6d549175058641bf
 **Updated**: 2026-08-01T00:00:00Z
+
+## Disposition (2026-11-11, recorded by feature 206, T007)
+
+**Abandoned and superseded, by the maintainer's ruling of 2026-11-11** (at feature 206's T005 stop). Closing
+this iteration as abandoned closes its record only; it does not resolve its open work:
+
+- **DRIFT-198-I010-004 stays open.** T082's containment covers path resolution, not enumeration, and that
+  defect is not fixed. It was handed to feature 203 as HO-206-4, recorded in `specs/206-bug-bash/iterations/001/handover-to-203.md`.
+- **T082 stays `needs-rework`** in `plan.md`. It is neither done nor dropped.
+
+`Current Phase` is left as it was.
 
 ## Execution Summary
 

@@ -4,10 +4,11 @@
 **Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T006
-**Tasks Remaining**: T007-T015, T018 (10 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
+**Tasks Remaining**: T008-T015, T018 (9 planned)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run),
+T007 (198/011 lands with T009)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-11T16:30:00Z
+**Updated**: 2026-11-11T20:45:00Z
 
 ## Execution Summary
 
@@ -28,7 +29,20 @@
   and "blocked" do not); GREEN 16/16 in the following fix commit. Condition 2: the generator rerun after the fix
   keeps the "New" column and totals in every row (`closed-open-table-post-t006.md`); rerun again after T007.
   W51's fixture gains `Iteration Status: complete` (DRIFT-206-I001-003). The deployed hash file is refreshed:
-  T002's entry in `52662ebc`, T006's two in its fix commit (DRIFT-206-I001-004, bug 10).
+  T002's entry in `52662ebc`, T006's two in its fix commit (DRIFT-206-I001-004, bug 10). The self-leak firewall
+  refused six comments citing the feature id; fixed in `ba2d1d8b` (DRIFT-206-I001-005).
+- T007 (FR-005, FR-006), **in progress**: 197/006 abandoned (ruling 2026-11-10), 198/010 abandoned and
+  superseded (ruling 2026-11-11: DRIFT-198-I010-004 stays open, handed to 203 as HO-206-4; T082 stays
+  `needs-rework`), each with a Disposition section; `Current Phase` unchanged. 197/006 keeps plan.md `Status:
+  retro` (it has a `retro.md`), following 174/007 (DRIFT-206-I001-006). `.specrew/legacy-frozen.yml` with 18
+  entries. Table rerun (with 198/011 applied locally): all 18 frozen rows agree; 0 mismatches in 161 rows.
+  **Held back (maintainer, 2026-11-11, option 1):** 198/011's abandonment. With a `retro.md`, its plan.md cannot
+  say `abandoned` (stale-status rule) and with `retro` it keeps the review-verdict finding; the exemption for an
+  iteration abandoned by recorded ruling is T009's, and 198/011 lands in T009's push. The acceptance (the nightly's
+  198/011 failure gone) is not met until then. Local CI-mode full-repository run with 198/011 applied: 198/011
+  gone; 7 failures, all frozen entries (141/006, 141/008, 174/006, 174/008-011), judged live until T008; 5
+  missing-dashboard warnings on abandoned iterations (197/002, 197/007, 197/008, 198/005, 198/010), which T008's
+  "dashboard check applies to complete only" removes. T010 replays after T008-T011.
 
 ## Notes
 

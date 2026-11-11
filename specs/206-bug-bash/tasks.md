@@ -106,6 +106,11 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     touches `.specify/extensions/specrew-speckit/` refreshes it in the same commit). Outside owned files, approved:
     the W51 fixture in `tests/integration/closed-iterations-are-history.tests.ps1` (DRIFT-206-I001-003).
 - [ ] T007 [owner: Implementer] [sp: 1.0] **The triage applied: abandoned and frozen.**
+  - **In progress (maintainer, 2026-11-11, option 1):** 197/006, 198/010 and the frozen list are pushed; 198/011's
+    abandonment is held back. Its `state.md` cannot pass the validator while it has a `retro.md`: plan `Status:
+    abandoned` is refused as stale, and plan `Status: retro` brings back the review-verdict finding. The rule that
+    lets it pass is in T009; 198/011's abandonment lands in T009's push, and T007 closes then. Until then the
+    acceptance below is not met.
   - **Work:** 198/011 and 197/006 marked `abandoned`, each recording the maintainer's ruling of 2026-11-10;
     198/011's `review.md` unchanged. **198/010 marked `abandoned`, superseded** (maintainer's T005 ruling,
     2026-11-11): its `state.md` says in plain words that DRIFT-198-I010-004 stays open and was handed to feature
@@ -132,6 +137,10 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Work:** the dashboard check declares `since` and `applies_to_status: complete`, replacing the feature-number
     cut-off; iteration closeout writes `closed_at_source: closeout`; an unstamped entry is not judged by a `since`
     check. The tests pin the rulings for 198/011 and 197/006 (2026-11-10) and 174/007 (2026-06-14).
+  - **Added (maintainer, 2026-11-11, T007 option 1; within the 1.5 points, capacity file unchanged):** an iteration
+    whose `state.md` says `abandoned` with a recorded ruling is not held to the plan-status rule or the
+    review-verdict rule; `abandoned` with no recorded ruling still gets both. Test first. 198/011's abandonment
+    (T007) lands in the same push, and T007 closes then. If this does not fit in 1.5 points: stop with the estimate.
   - **Trace:** FR-008.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`,
     `extensions/specrew-speckit/scripts/shared-governance.ps1`, their `.specify` mirrors, `tests/unit/**`.
