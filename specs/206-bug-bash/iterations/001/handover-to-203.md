@@ -78,7 +78,7 @@ FR-005.
   lanes; neither is in a CI workflow. `tests/integration/distribution-module-update.ps1:213-216` does the same
   through `Invoke-ModuleScript` (added by the maintainer 2026-11-11). 10 more test scripts mention
   `specrew-update.ps1` (listed under item 8; a mention is not proof of a call). T014 reads them and adds what it
-  finds here; feature 203's crew is producing the full list.
+  finds here. Feature 203's census (2026-11-11) found 16 test files that can write the home hook files; they are listed under bug list item 8 and none is run from 206's worktree.
 - **Cross-references**: feature 205's H-001 (`specs/205-workshop-lens-order/iterations/001/handover-to-203.md` on
   `205-workshop-lens-order`: the review preflight rewrote four real-home hook files in run
   `run-20261110-221211306-a1cb90e2`); feature 203's B5F-039 (`docs/beta5-findings.md` on `203-beta5-stabilization`,

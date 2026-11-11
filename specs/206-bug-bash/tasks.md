@@ -13,11 +13,10 @@ against the push base CI will use (DRIFT-206-I001-001). Before and after every t
 hashed: `~/.specrew/specrew-hook-launch.ps1`, every file in `~/.specrew/hook-bindings/`, `~/.codex/hooks.json`,
 `~/.copilot/hooks/*.json`, `~/.cursor/hooks.json`. Any change stops the work.
 
-**Never run on this machine:** `tests/integration/deployed-extension-marker-on-update.tests.ps1`,
-`tests/integration/receipt-outcomes-retired.tests.ps1` and `tests/integration/distribution-module-update.ps1` (bug
-list item 8), and no lane from `.specrew/verification-plan.json`. Until feature 203's full list arrives, no test file
-that mentions `specrew-update.ps1` or the hook deployer is run unless it has been read and the path it takes
-confirmed unable to write hook files (maintainer, 2026-11-11). No review round starts until a verification plan naming only 206's own checks,
+**Never run on this machine:** the 16 test files feature 203's census found able to write the home hook files (listed
+in the iteration plan's notes and bug list item 8), and no lane from `.specrew/verification-plan.json`. Anything else
+that reaches `specrew init`, `start`, `update` or the hook deployer is not run unless it has been read and the path it
+takes confirmed unable to write hook files (maintainer, 2026-11-11). No review round starts until a verification plan naming only 206's own checks,
 each read for home writes first, has been brought to the maintainer.
 
 ## Execution order

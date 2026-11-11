@@ -234,9 +234,27 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **Not run on this machine** (maintainer's instruction). No fix in 206 unless the maintainer rules one.
 - **Hand-over record**: HO-206-5 in `specs/206-bug-bash/iterations/001/handover-to-203.md`, with feature 205's H-001
   and feature 203's B5F-039.
-- **Feature 203's crew is producing the full list (2026-11-11).** Until it arrives, no test file that mentions
-  `specrew-update.ps1` or the hook deployer is run here unless it has been read and the path it takes confirmed
-  unable to write hook files.
+- **Feature 203's census (2026-11-11, on 203's code) found 16 test files that can write the home hook files.**
+  None is run from this worktree:
+  - `tests/integration/bootstrap-asset-blocker-recovery.ps1`
+  - `tests/integration/bootstrap-to-iteration.ps1`
+  - `tests/integration/brownfield-conflict-handling.ps1`
+  - `tests/integration/deployed-extension-marker-on-update.tests.ps1`
+  - `tests/integration/distribution-module-update.ps1`
+  - `tests/integration/psgallery-check.tests.ps1`
+  - `tests/integration/receipt-outcomes-retired.tests.ps1`
+  - `tests/integration/start-command-non-interactive-first-run.tests.ps1`
+  - `tests/integration/start-command.ps1`
+  - `tests/integration/start-recovery-flow.tests.ps1`
+  - `tests/integration/task-progress-tracking.tests.ps1`
+  - `tests/integration/team-management.ps1`
+  - `tests/integration/update-command.ps1`
+  - `tests/integration/validate-baseline-team.ps1`
+  - `tests/integration/version-checks.tests.ps1`
+  - `tests/manual/copilot-squad-smoke.ps1`
+
+  Anything else that reaches `specrew init`, `start`, `update` or the hook deployer is run only after it has been
+  read and the path it takes confirmed unable to write hook files.
 - **Same shape, not yet read:** 10 more test scripts mention `specrew-update.ps1` (a mention is not proof of a
   call): `tests/continuous-co-review/unit/verification-plan-materializer.Tests.ps1`, and under
   `tests/integration/`: `forge-neutralization-sweep.tests.ps1`,
