@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 18/20 story_points
 **Started**: 2026-11-10
 **Completed**:
@@ -56,7 +56,7 @@
 | T013 | Run all existing workshop tests; report | FR-021 | US2 | 1 | implementer | — | done | — | — | — |
 | T014 | Named specrew-ci.yml steps | FR-021, SC-005 | US2 | 0.5 | implementer | — | done | — | — | — |
 | T015 | Proposal 220 status + INDEX | FR-022 | US2 | 0.5 | implementer | — | done | — | — | — |
-| T016 | Pre-push gate, push, CI to conclusion | SC-005 | US2 | 0.5 | implementer | — | planned | — | — | — |
+| T016 | Pre-push gate, push, CI to conclusion | SC-005 | US2 | 0.5 | implementer | — | done | — | — | — |
 
 ## Effort Model
 
