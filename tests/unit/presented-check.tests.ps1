@@ -420,7 +420,7 @@ try {
     $draft16e = Join-Path $p16.Root '.specrew/runtime/draft-16e.md'
     [System.IO.File]::WriteAllText($draft16e, $base16, [System.Text.UTF8Encoding]::new($false))
     $json16e = Invoke-Pwsh -Root $p16.Root -Script $declare -Arguments @('-Kind', 'boundary', '-MessagePath', $draft16e, '-Summary', 'turn 16e', '-Token', $t16e.Token, '-AsJson')
-    $d16e = $json16e | ConvertFrom-Json
+    $d16e = (@($json16e -split "`r?`n") | Where-Object { $_ -notlike 'declare-turn-end: -MessagePath*' }) -join "`n" | ConvertFrom-Json
     $rec16e = Get-Content -LiteralPath ([string]$d16e.record_path) -Raw | ConvertFrom-Json
     Assert-True ([string]$d16e.draft_source -eq 'none' -and -not ($rec16e.PSObject.Properties['message'] -and -not [string]::IsNullOrEmpty([string]$rec16e.message))) ("-MessagePath is not read (draft_source '{0}')" -f [string]$d16e.draft_source)
     $t16e2 = Start-Turn -Project $p16 -Session 'sess-16e2' -UserText 'Continue.'

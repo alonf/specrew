@@ -264,7 +264,7 @@
     },
     {
       "path": "scripts/declare-turn-end.ps1",
-      "sha256": "dee53e25a24e948498fc1c17ec0c8fbb70f01c4fd3ec1b212b586b193175a4bf"
+      "sha256": "fdc37369766ed1e76521bb75646775fc95580882fa82f761bf547c223678ab5d"
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",

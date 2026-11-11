@@ -106,6 +106,10 @@ else {
 # ruling 2026-11-11): it reads no draft, from a file or stdin, and checks nothing against one. The Stop reads the packet
 # from the reply (Test-SpecrewReplyPacket) and the decision parts from the pending-verdict record.
 $draftSource = 'none'
+# Maintainer ruling 2026-11-11: a caller still passing a draft path is told, once, that it is not read.
+if ($PSBoundParameters.ContainsKey('MessagePath')) {
+    [Console]::Error.WriteLine('declare-turn-end: -MessagePath is no longer read, and the draft it names is ignored: the Stop reads your reply itself. Drop -MessagePath from the call.')
+}
 $owedItems = @(@($Owed) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 $declaredBoundary = ''
 $declaredMarker = ''
