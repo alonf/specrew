@@ -3871,7 +3871,8 @@ function Get-IterationDirtyCanonicalArtifacts {
             $normalizedPath = $Matches[1].Trim()
         }
 
-        $normalizedPath = $normalizedPath -replace '/', '\'
+        # git reports forward slashes on every platform, and the canonical list uses them too: keep one separator.
+        $normalizedPath = $normalizedPath -replace '\\', '/'
         if ($normalizedPath.ToLowerInvariant() -notin $canonicalPaths) {
             continue
         }
