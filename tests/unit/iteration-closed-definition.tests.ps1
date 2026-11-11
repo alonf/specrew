@@ -1,5 +1,8 @@
 # Feature 206, T006 (FR-008a, design D3): one definition of "closed", used by every path.
-#   closed = in .specrew/closed-iterations.yml, or state.md Iteration Status `complete` / `abandoned`;
+#   closed = in .specrew/closed-iterations.yml, or state.md Iteration Status `complete` / `abandoned`, or a
+#            status that claims closure in the words the validator already reads as a claim ("closed",
+#            "closeout complete", "closure complete") with no negation or future wording before it
+#            (maintainer ruling 2026-11-11, option 1 with conditions);
 #   a .specrew/legacy-frozen.yml entry is never closed (it is judged by nothing, T008);
 #   a review verdict alone never makes an iteration closed, and the state.md text heuristic decides nothing.
 # The validator's closed filter, the dashboard check (through the renderer) and the renderer use it.
@@ -37,6 +40,18 @@ BeforeAll {
     New-FixtureIteration -Feature '901-fixture' -Iteration '007' -StateBody "**Iteration Status**: ``Complete```n"
     New-FixtureIteration -Feature '901-fixture' -Iteration '008' -StateBody $null -ReviewVerdict 'accepted'
     New-FixtureIteration -Feature '901-fixture' -Iteration '009' -StateBody "**Iteration Status**: executing`n"
+    # Option 1: a status that claims closure in the validator's own closure-claim words, no index entry.
+    New-FixtureIteration -Feature '901-fixture' -Iteration '010' -StateBody "**Iteration Status**: iteration closed on 2026-05-02 via iteration-closeout boundary commit ``abc1234```n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '011' -StateBody "**Iteration Status**: iteration-closeout complete on 2026-05-18; feature-closeout remains unopened`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '012' -StateBody "**Iteration Status**: Closure complete`n"
+    # Negative cases (maintainer condition 1): none of these is a claim of closure.
+    New-FixtureIteration -Feature '901-fixture' -Iteration '013' -StateBody "**Iteration Status**: not closed`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '014' -StateBody "**Iteration Status**: not yet closed`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '015' -StateBody "**Iteration Status**: to be closed after review`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '016' -StateBody "**Iteration Status**: blocked`n"
+    # A real status shape from this repository: the claim is in the first sentence; the later 'pending' is about
+    # feature-closeout, not this iteration.
+    New-FixtureIteration -Feature '901-fixture' -Iteration '017' -StateBody "**Iteration Status**: Iteration 001 is closed. Feature-closeout remains unopened pending fresh authorization.`n"
 
     Set-Content -LiteralPath (Join-Path $script:Root '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
 closed:
@@ -92,6 +107,25 @@ Describe 'Test-SpecrewIterationClosed: one definition (FR-008a)' {
         Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration '006' | Should -BeFalse
     }
 
+    It 'is closed when the status claims closure in the validator''s closure-claim words (option 1)' {
+        foreach ($n in '010', '011', '012', '017') {
+            Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n | Should -BeTrue -Because "iteration $n"
+        }
+    }
+
+    It 'is not closed by a negated or future closure word, or by blocked (condition 1)' {
+        foreach ($n in '013', '014', '015', '016') {
+            Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n | Should -BeFalse -Because "iteration $n"
+        }
+    }
+
+    It 'leaves Test-ClosedIterationStatus unchanged for its other callers' {
+        # The closeout-evidence check still reads any closure word as a claim, as before T006.
+        Test-ClosedIterationStatus -IterationStatus 'not closed' | Should -BeTrue
+        Test-ClosedIterationStatus -IterationStatus 'to be closed after review' | Should -BeTrue
+        Test-ClosedIterationStatus -IterationStatus 'blocked' | Should -BeFalse
+    }
+
     It 'is open for an in-flight status' {
         Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration '009' | Should -BeFalse
     }
@@ -100,7 +134,7 @@ Describe 'Test-SpecrewIterationClosed: one definition (FR-008a)' {
         $index = Get-SpecrewClosedIterationIndex -ProjectRoot $script:Root
         $frozen = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $script:Root)
         $frozen | Should -Be @('901-fixture/006')
-        foreach ($n in '001', '002', '003', '004', '005', '006', '007', '008', '009') {
+        foreach ($n in '001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017') {
             $plain = Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n
             $preloaded = Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n -ClosedIndex $index -FrozenKeys $frozen
             $preloaded | Should -Be $plain -Because "iteration $n"
@@ -116,7 +150,7 @@ Describe 'The renderer and the dashboard check use the same definition (FR-008a)
             $expected = Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $iteration.iteration_ref
             [bool]$iteration.is_closed | Should -Be $expected -Because "iteration $($iteration.iteration_ref)"
         }
-        @($feature.closed_iterations | ForEach-Object { $_.iteration_ref }) | Sort-Object | Should -Be @('001', '002', '003', '007')
+        @($feature.closed_iterations | ForEach-Object { $_.iteration_ref }) | Sort-Object | Should -Be @('001', '002', '003', '007', '010', '011', '012', '017')
     }
 
     It 'still reports the review verdict for display without using it for closure' {
