@@ -116,8 +116,13 @@
   green after.
 - **Resolution**: the comments name the requirement and the rule, not the feature; the `.specify` mirrors and
   their hash entries are refreshed in the same commit.
+- **Second miss, same push sequence**: the fix and this entry were pushed as `dc932cda` although validate
+  -ChangedOnly had failed on this entry's Class closure format; the push step tested the home-hash script's exit
+  code instead of the validator's. Specrew CI run 43071573503 went red at Lint for it (Deterministic gate skipped).
+  `f37e639d` fixed the format; its CI runs (Specrew CI 43071834486, Test, Cross-Platform Validation) were all green.
 - **Class closure**: NONE — no executable guard is added in this feature; working rule from here on: the self-leak
   lint joins 206's pre-push checks whenever a push touches `extensions/` or `.specify/`.
+  The push step now checks the validator's own exit code.
 
 <!--
   Every new ### DRIFT-... event includes:
