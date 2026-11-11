@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 9
-**Resolution rate**: 100% (9/9 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-009 class closure open)
+**Total drift events**: 10
+**Resolution rate**: 100% (10/10 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-010 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -201,6 +201,27 @@
 - **Class closure**: NONE — the writer is feature 203's test run, outside 205's scope. The same class (a suite
   writing the real home folder) is already handed over to 203 as H-001.
 
+### DRIFT-010 — T011 changed 18 deployed copies without refreshing their hashes; the check runs only once a review record exists (finding)
+
+- **Observed**: 2026-11-11, writing the iteration 001 review record. `validate-governance.ps1 -ChangedOnly` failed:
+  "The deployed Specrew machinery under .specify/extensions/specrew-speckit does not match what was installed
+  (modified: commands/speckit.specrew-speckit.before-specify.md, knowledge/design-lenses/applicability-map.json,
+  knowledge/design-lenses/architecture-core.md, knowledge/design-lenses/code-implementation.md,
+  knowledge/design-lenses/component-design.md)." The same check passed on the same tree before the review record
+  existed.
+- **What it compares**: the sha256 of each deployed file (`Get-SpecrewDeployedExtensionManifest`) against the hash
+  record `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` (`managed_files`), in
+  `Test-SpecrewDeployedExtensionIntegrity`. It does not read the installed module. The message lists only the first 5
+  drifted files; 18 had drifted.
+- **Why only now**: `Test-DeployedExtensionIntegrity` is called only from the review-record validation in
+  `validate-governance.ps1`, so a deployed-copy change made at implement time is invisible until a `review.md` exists.
+- **Cause**: T011 refreshed the deployed copies through the two deploy scripts in `9040b34c` (T005 to T011), but the
+  hash record was last written at `2ea34f92` and was not refreshed. All 18 drifted files changed only in `9040b34c`, and
+  each deployed copy is byte-identical to its source under `extensions/specrew-speckit/`.
+- **Resolution**: the 18 `sha256` values in the hash record were refreshed in place, as feature 203 did in `43ec7bfc`,
+  without `specrew update` (the maintainer's ruling). The check then reports 0 drifted and 0 missing.
+- **Class closure**: NONE — the check's placement and the deploy scripts not writing the hash record are validator and
+  deploy behaviour outside 205's scope; feature 206 hit the same thing today.
 <!--
   Every new ### DRIFT-... event includes:
 

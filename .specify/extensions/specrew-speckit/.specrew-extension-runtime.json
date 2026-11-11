@@ -20,7 +20,7 @@
     },
     {
       "path": "commands/speckit.specrew-speckit.before-specify.md",
-      "sha256": "e4115a26f804a8b804d4d0d569f356e770c2d39c3d4dceb659bad23e32947154"
+      "sha256": "d0f4954f6e176c12f2d8adc2cb8d791ba56d041a5e0c464e2e9b301ccce0f1a3"
     },
     {
       "path": "commands/speckit.specrew-speckit.sync-clarify.md",
@@ -80,15 +80,15 @@
     },
     {
       "path": "knowledge/design-lenses/applicability-map.json",
-      "sha256": "2774babbf5b25da94c6914858f2423ea709b0f86fd8322824e678f722aef4e54"
+      "sha256": "e69e9e37bf0229fa7ed662d7f32fb88cf355da4a2d595d93504a17831f880909"
     },
     {
       "path": "knowledge/design-lenses/architecture-core.md",
-      "sha256": "81a13dc2ff813205eaa2d8c2cd7469e31498eaeabe6bad29e061f4330c5df69a"
+      "sha256": "2fa4c653967c2e7255b69f45a4d00cbc2bde5b119b272a5dd053e5baaf0615b8"
     },
     {
       "path": "knowledge/design-lenses/code-implementation.md",
-      "sha256": "2658198794be43f3b2cdc96dcb2ea3815b9b11ea9fc22af73b90cf0f07392048"
+      "sha256": "4d9a25ba1a30bcf989b103643d5e086b0316621b7afe82e95b25e622bd01e504"
     },
     {
       "path": "knowledge/design-lenses/code-rules.yml",
@@ -96,19 +96,19 @@
     },
     {
       "path": "knowledge/design-lenses/component-design.md",
-      "sha256": "5b84adb0ecbb051809e68915082efd93c26042cf8c512814a61810d00b7aabd4"
+      "sha256": "cb789ab88c496fa221da9b319a11c7894cd957a5fa17190350d6a3846b07c202"
     },
     {
       "path": "knowledge/design-lenses/data-storage.md",
-      "sha256": "a4f92e883eb1cab61ca71188d4874e791e3369f113e60d1c6c0970c0f8b325f6"
+      "sha256": "8582a2f10ade9b9bd724239227d314f4a1f717e08df73f230843dd5640c9be12"
     },
     {
       "path": "knowledge/design-lenses/devops-operations.md",
-      "sha256": "fa47b6c4c18b041bc59e12d66f299b0d872332306e0a6f0a59794f4e146648f3"
+      "sha256": "333431d5495ca0df8a2e6f16a0d66cf0b083602e2e7735f89b334173523cf5a1"
     },
     {
       "path": "knowledge/design-lenses/diagram-vocabulary.json",
-      "sha256": "5cc886972daae426ec04295dfc51c474665e909298cd506984b9674b01d73591"
+      "sha256": "87eeb947a0a90e07944274f1ce3bad87a820b0474daff2f3878e3fc7cc9a544b"
     },
     {
       "path": "knowledge/design-lenses/implementation-rules.schema.json",
@@ -116,11 +116,11 @@
     },
     {
       "path": "knowledge/design-lenses/index.yml",
-      "sha256": "4d11bf5069783d49235edcda68ed96f7a0f99fccd455ab629046a215e54d5ab3"
+      "sha256": "0752b5643a7d0e57ced025a937a9d9c73fb13abd1760466d66a30b2d93bbea2e"
     },
     {
       "path": "knowledge/design-lenses/integration-api.md",
-      "sha256": "01827b756d37a4580e9530b73ba633fbac83d8f5634960ea38f7d6b875834f43"
+      "sha256": "5ea59e57057a8134bf583d5c4aca27c4ed313a09b34002b78c4e4f35f5fe40ad"
     },
     {
       "path": "knowledge/design-lenses/lens-schema.md",
@@ -132,11 +132,11 @@
     },
     {
       "path": "knowledge/design-lenses/observability-resilience.md",
-      "sha256": "d277a1f6af5432e1ae718e6feea29c138ea827ce9fa6b1112eb1664edcf2a470"
+      "sha256": "b3478be704bd234badd781840723774b5b108002e1d3ac7c6b4df448f1eff2ec"
     },
     {
       "path": "knowledge/design-lenses/product-domain.md",
-      "sha256": "70323fdc2c4c622df3c643e08eadfaa3338a79c0b5afdc3b3a908bed969c97df"
+      "sha256": "b9059b76847a12de3123c28059d9a4644f58603812bb05d9921e11bf95234ce6"
     },
     {
       "path": "knowledge/design-lenses/product-domain.schema.json",
@@ -144,15 +144,15 @@
     },
     {
       "path": "knowledge/design-lenses/README.md",
-      "sha256": "8d757f9b195172606dc82b411547cc9af0af2160d39562bca486c9722770e5e0"
+      "sha256": "65c873bd484702e6b79ab15a0619c155473ba978a8d2fe4db4b665f54546c9c7"
     },
     {
       "path": "knowledge/design-lenses/requirements-nfr.md",
-      "sha256": "e506429e65f6009993ce3f91e2113ce95c2bc86c94b49397dd8c5166ba81dc13"
+      "sha256": "b67ef1e2a02944459d97d0898a63e7537bcea687f302b9e9ff2db641809ab1f0"
     },
     {
       "path": "knowledge/design-lenses/security-compliance.md",
-      "sha256": "cb90e8ab27a33c33acb4a87b0fed37798c97dab3264cc567fe7f44e8e3b8c60b"
+      "sha256": "1cee06ee37d3e7725504182cf6e239cb2ba141f3931450883187f087edf2b23d"
     },
     {
       "path": "knowledge/design-lenses/sources.md",
@@ -160,7 +160,7 @@
     },
     {
       "path": "knowledge/design-lenses/ui-ux.md",
-      "sha256": "08b6e98e5c7891487f3735656a7c0e1f9ea09e706657ef00615b9874483f7dce"
+      "sha256": "da06bd8bb540e2d46789ba87bb553f803daa772d42c012e9a5867c58344d4918"
     },
     {
       "path": "knowledge/repository-governance.schema.json",
@@ -248,7 +248,7 @@
     },
     {
       "path": "scripts/confirm-workshop-agenda.ps1",
-      "sha256": "0bd68e94c5239057ccbb348a94828b766c9b5356a772a4ab9c45e539bf583c4d"
+      "sha256": "590415e1469bcd8ab5a0b1ad001b6948bc648d9a873a2abdeb6f479643075896"
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
@@ -552,7 +552,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "1f31a20d697a5760fc900e756597ce73d0649a98f0bb6a41669c60212ccf9dca"
+      "sha256": "d5cb1ee8d7d65a7fc0d3e4ea098588a74a3915afa07e23770128f708c34af541"
     },
     {
       "path": "squad-templates/skills/drift-check.md",
