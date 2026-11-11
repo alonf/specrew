@@ -1911,3 +1911,16 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   share one redirected home. No product change (maintainer ruling): every test that runs a hook-writing entry point or the
   preflight against a plan takes a private home and gives it back, held by a guard (`77bd4a2e` red, `b69cc5ca`); the census of
   79 files is in B5F-039.
+- **Third defect, found by the full sweep on `a14f63cf` (2026-11-11)**: 5 hook files reached the sweep's shared home at 12:24:42
+  (the real home unchanged). `b69cc5ca` had added the private home to `deployed-extension-marker-on-update.tests.ps1` as a second
+  root `BeforeAll`, and Pester keeps only the last one at a level (measured with a two-block file: the first never ran), so
+  that suite's `specrew update` wrote whatever home it inherited; the guard's text checks passed. Fixed test-first: `28458501`
+  (a guard case reading the syntax tree: a file that takes the private home has one root `BeforeAll` and `AfterAll`; red on
+  that file) and the fix that moves the private home into the file's own `BeforeAll`, proven by a run with an outer canary
+  home (5/5, the canary empty, the caller's value given back, the real home unchanged by hash). The same sweep's
+  `iteration-001-governance-203` lane failed on this entry's missing Class closure line, added below.
+- **Class closure**: `tests/continuous-co-review/unit/path-identity.Tests.ps1` (the structural case that caught the dedup) and
+  `tests/unit/test-home-isolation.Tests.ps1` (every test that runs a hook-writing entry point or the preflight against a plan takes
+  a private home, gives it back, and takes it in a Pester file's only root `BeforeAll`), both in lane `f203-i001-t008-suites` and
+  in the CI honesty suite. The cause of the missed check, a chosen subset before a pin advance, has no executable guard: it is
+  the maintainer's process rule above (the full sweep on the side tip before any pin advance).
