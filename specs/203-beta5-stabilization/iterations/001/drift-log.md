@@ -1903,3 +1903,11 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Rule (maintainer, 2026-11-11)**: before any pin advance, the full sweep runs on the side tip, not a chosen subset.
   The last full sweep took 54 minutes (`43ec7bfc`, 02:32 to 03:26 local), which the crew does not consider too slow, so
   no subset is proposed.
+- **Second defect, same CI run (2026-11-11)**: Specrew CI's honesty suite also failed `review-campaign-verification.Tests.ps1`
+  (expected `verification-command-failed:...`, got `verification-changed-real-home:added: .codex/hooks.json; ...`). The suite ran the
+  real preflight with no home of its own, so its real home was the runner's `C:\Users\alon`, and `distribution-module-update.ps1`, running
+  beside it, deployed hooks there through `specrew-update.ps1` with no redirect (a third unsafe suite; B5F-039). B5F-042's check
+  covers the whole home, so any concurrent writer fails an unrelated preflight; the same race was open in the sweep, whose suites
+  share one redirected home. No product change (maintainer ruling): every test that runs a hook-writing entry point or the
+  preflight against a plan takes a private home and gives it back, held by a guard (`77bd4a2e` red, `b69cc5ca`); the census of
+  79 files is in B5F-039.
