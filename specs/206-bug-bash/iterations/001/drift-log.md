@@ -116,8 +116,8 @@
   green after.
 - **Resolution**: the comments name the requirement and the rule, not the feature; the `.specify` mirrors and
   their hash entries are refreshed in the same commit.
-- **Class closure**: NONE as code — working rule from here on: the self-leak lint joins 206's pre-push checks
-  whenever a push touches `extensions/` or `.specify/`.
+- **Class closure**: NONE — no executable guard is added in this feature; working rule from here on: the self-leak
+  lint joins 206's pre-push checks whenever a push touches `extensions/` or `.specify/`.
 
 <!--
   Every new ### DRIFT-... event includes:
