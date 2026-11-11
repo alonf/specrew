@@ -1919,8 +1919,17 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   that file) and the fix that moves the private home into the file's own `BeforeAll`, proven by a run with an outer canary
   home (5/5, the canary empty, the caller's value given back, the real home unchanged by hash). The same sweep's
   `iteration-001-governance-203` lane failed on this entry's missing Class closure line, added below.
+- **Fourth defect, CI on `50bb6fa8` (2026-11-11)**: the full sweep on that commit was green (199 suites, 7 lanes), and CI's
+  Deterministic gate failed 1 of 132: `conformance-detection.tests.ps1` Case 2b-old still expected the option text B5F-044
+  replaced (`approved for plan - <your instructions>`; now `... <your instructions, on this same line>`). The product is
+  as ruled; the expectation was stale. The sweep never ran that suite: 61 of the 132 files in `tests/f198-regression-suite.ps1`
+  are in neither the sweep list, the verification plan nor the sweep's neighbour run, so the "full sweep" was not a superset
+  of CI's gate. Fixed: the expectation updated (the suite green locally, 91 cases); the sweep before this push, and every
+  later one, runs the list plus every honesty-suite file it lacked (63 against the list and the plan).
 - **Class closure**: `tests/continuous-co-review/unit/path-identity.Tests.ps1` (the structural case that caught the dedup) and
   `tests/unit/test-home-isolation.Tests.ps1` (every test that runs a hook-writing entry point or the preflight against a plan takes
   a private home, gives it back, and takes it in a Pester file's only root `BeforeAll`), both in lane `f203-i001-t008-suites` and
   in the CI honesty suite. The cause of the missed check, a chosen subset before a pin advance, has no executable guard: it is
-  the maintainer's process rule above (the full sweep on the side tip before any pin advance).
+  the maintainer's process rule above (the full sweep on the side tip before any pin advance). The sweep's coverage of
+  CI's Deterministic gate has no executable guard either: today it is a list the crew builds from the honesty suite;
+  proposed, not built, that the sweep driver adds the honesty suite's files itself.

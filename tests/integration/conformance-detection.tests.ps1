@@ -646,7 +646,8 @@ try {
     $t2bo = New-Transcript -Proj $p2bo -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2bo.reply })
     $r2bo = Invoke-Conformance -Proj $p2bo -TranscriptPath $t2bo
     if (-not $r2bo.Blocked) { Fail "Case 2b-old: a packet without the three response options MUST block. Out: $($r2bo.Out)" }
-    foreach ($option in @('approved for plan - <your instructions>', 'changes needed: <what to change>', 'discuss prompt 1')) {
+    # B5F-044 (maintainer ruling 2026-11-11): the instructions option names the same line, as the record shows it.
+    foreach ($option in @('approved for plan - <your instructions, on this same line>', 'changes needed: <what to change>', 'discuss prompt 1')) {
         if (-not ([string]$r2bo.Out).Contains("missing: $option")) { Fail "Case 2b-old: the block must name the missing option '$option'. Out: $($r2bo.Out)" }
     }
     Write-Pass "Case 2b-old: the packet without the response options blocks, naming each missing option"
