@@ -133,3 +133,61 @@ function Get-SweepStandbyEvents {
     }
     catch { return @() }
 }
+
+# THE REAL-HOME CHECK (DRIFT-045 item 2, DRIFT-050; widened by the maintainer 2026-11-11, DRIFT-056). The files are those
+# a hook deployment writes in a user's home: the fixed list below, and every file under ~/.specrew/hooks/ (the
+# content-addressed launcher folders and bindings/) and ~/.specrew/hook-bindings/. Each is copied before a sweep and
+# hashed before and after; a file changed, added or removed is reported. The home is a parameter, so the self-test runs
+# on a stand-in.
+$script:SweepHomeFixedFiles = @(
+    '.claude/settings.json', '.claude/settings.local.json', '.codex/hooks.json', '.codex/config.toml', '.copilot/config.json',
+    '.copilot/hooks/specrew-refocus.json', '.cursor/hooks.json', '.gemini/settings.json', '.specrew/specrew-hook-launch.ps1')
+$script:SweepHomeHookFolders = @('.specrew/hooks', '.specrew/hook-bindings', '.copilot/hooks')
+
+function Get-SweepHomeHookFiles {
+    # Absolute paths: the fixed files (present or not) and every file in the hook folders.
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string]$HomeRoot)
+    $paths = [System.Collections.Generic.List[string]]::new()
+    foreach ($rel in $script:SweepHomeFixedFiles) { $paths.Add([IO.Path]::GetFullPath((Join-Path $HomeRoot $rel))) }
+    foreach ($folder in $script:SweepHomeHookFolders) {
+        $dir = Join-Path $HomeRoot $folder
+        if (Test-Path -LiteralPath $dir -PathType Container) {
+            foreach ($f in @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force -ErrorAction SilentlyContinue)) { $paths.Add([IO.Path]::GetFullPath($f.FullName)) }
+        }
+    }
+    return @($paths | Sort-Object -Unique)
+}
+
+function Get-SweepHomeSnapshot {
+    # One row per file: File, Hash ('absent' for a fixed file that does not exist), Written.
+    param([Parameter(Mandatory)][string]$HomeRoot)
+    foreach ($f in @(Get-SweepHomeHookFiles -HomeRoot $HomeRoot)) {
+        if (Test-Path -LiteralPath $f -PathType Leaf) { [pscustomobject]@{ File = $f; Hash = (Get-FileHash -LiteralPath $f).Hash; Written = (Get-Item -LiteralPath $f).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } }
+        else { [pscustomobject]@{ File = $f; Hash = 'absent'; Written = '' } }
+    }
+}
+
+function Get-SweepHomeChanges {
+    # Every file whose state differs between two snapshots: changed, added (absent or unlisted before) or removed.
+    param($From, $To)
+    $before = @{}; foreach ($r in @($From)) { if ($null -ne $r) { $before[[string]$r.File] = $r } }
+    $after = @{}; foreach ($r in @($To)) { if ($null -ne $r) { $after[[string]$r.File] = $r } }
+    foreach ($file in @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique)) {
+        $b = if ($before.ContainsKey($file)) { [string]$before[$file].Hash } else { 'absent' }
+        $a = if ($after.ContainsKey($file)) { [string]$after[$file].Hash } else { 'absent' }
+        if ($b -ceq $a) { continue }
+        if ($b -ceq 'absent') { '  {0} (added, written {1} local)' -f $file, [string]$after[$file].Written }
+        elseif ($a -ceq 'absent') { '  {0} (removed)' -f $file }
+        else { '  {0} (changed, written {1} local)' -f $file, [string]$after[$file].Written }
+    }
+}
+
+function Save-SweepHomeSnapshot {
+    # Copies every existing hook file into Destination, each named by its full path with ':' and '\' replaced by '_'.
+    param([Parameter(Mandatory)][string]$HomeRoot, [Parameter(Mandatory)][string]$Destination)
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    foreach ($f in @(Get-SweepHomeHookFiles -HomeRoot $HomeRoot)) {
+        if (Test-Path -LiteralPath $f -PathType Leaf) { Copy-Item -LiteralPath $f -Destination (Join-Path $Destination ($f -replace '[:\\/]', '_')) -Force }
+    }
+}

@@ -34,22 +34,9 @@ try {
     New-Item -ItemType Directory -Force -Path $scratch | Out-Null
     $listPath = if (Test-Path -LiteralPath $List) { (Resolve-Path -LiteralPath $List).Path } else { Join-Path $tools $List }
     function Assert-NotSessionTree([string]$Path) { $p = [IO.Path]::GetFullPath($Path).TrimEnd('\') + '\'; $s = [IO.Path]::GetFullPath($Repo).TrimEnd('\') + '\'; if ($s.StartsWith($p, [StringComparison]::OrdinalIgnoreCase)) { throw "refusing to remove ${Path}: it is the session's worktree or a parent of it (B5F-035)" } }
-    $homeHookFiles = @(
-        "$env:USERPROFILE\.claude\settings.json", "$env:USERPROFILE\.claude\settings.local.json",
-        "$env:USERPROFILE\.codex\hooks.json", "$env:USERPROFILE\.codex\config.toml",
-        "$env:USERPROFILE\.copilot\config.json", "$env:USERPROFILE\.copilot\hooks\specrew-refocus.json", "$env:USERPROFILE\.cursor\hooks.json", "$env:USERPROFILE\.gemini\settings.json")
-    function Get-HomeSnapshot {
-        foreach ($f in $homeHookFiles) {
-            if (Test-Path -LiteralPath $f) { [pscustomobject]@{ File = $f; Hash = (Get-FileHash -LiteralPath $f).Hash; Written = (Get-Item -LiteralPath $f).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } }
-            else { [pscustomobject]@{ File = $f; Hash = 'absent'; Written = '' } }
-        }
-    }
-    function Get-HomeChanges($From, $To) {
-        foreach ($t in $To) {
-            $f = $From | Where-Object File -eq $t.File
-            if ($null -eq $f -or $f.Hash -ne $t.Hash) { '  {0} (written {1} local)' -f $t.File, $(if ($t.Written) { $t.Written } else { 'removed' }) }
-        }
-    }
+    # The real home's hook files: the fixed list and every file under ~/.specrew/hooks/, ~/.specrew/hook-bindings/ and
+    # ~/.copilot/hooks/ (sweep-support.ps1; widened 2026-11-11, DRIFT-056). Added and removed files are changes.
+    $realHome = $env:USERPROFILE
 
     # The suites to run: the list given, then every suite the sign-off lanes name at this revision (DRIFT-055).
     $suiteList = @(Get-SweepSuiteList -ListPath $listPath -Repo $Repo -Rev $Rev -SkipSignoffSuites:$SkipSignoffSuites)
@@ -64,13 +51,13 @@ try {
     New-Item -ItemType Directory -Force -Path $fakeHome | Out-Null
     $env:SPECREW_USER_HOME_OVERRIDE = $fakeHome
 
-    $before = @(Get-HomeSnapshot)
+    $before = @(Get-SweepHomeSnapshot -HomeRoot $realHome)
     # Changes made between the previous sweep and this one are reported too, not only changes during this sweep.
     $lastAfterPath = Join-Path $scratch 'home-last-after.json'
     $hadPrevious = Test-Path -LiteralPath $lastAfterPath
-    $sincePrevious = @(if ($hadPrevious) { Get-HomeChanges (Get-Content -LiteralPath $lastAfterPath -Raw | ConvertFrom-Json) $before })
+    $sincePrevious = @(if ($hadPrevious) { Get-SweepHomeChanges -From (Get-Content -LiteralPath $lastAfterPath -Raw | ConvertFrom-Json) -To $before })
     $keep = Join-Path $scratch "home-before-$Rev"; New-Item -ItemType Directory -Force -Path $keep | Out-Null
-    foreach ($f in $homeHookFiles) { if (Test-Path -LiteralPath $f) { Copy-Item -LiteralPath $f -Destination (Join-Path $keep (($f -replace '[:\\]', '_'))) -Force } }
+    Save-SweepHomeSnapshot -HomeRoot $realHome -Destination $keep
 
     $neighbourPath = Join-Path $scratch "neighbour-$Rev$Tag.txt"
     & pwsh -NoProfile -File (Join-Path $tools 'sweep-list.ps1') -Repo $Repo -Rev $Rev -ListFile $combinedList -SuiteTimeoutSeconds $SuiteTimeoutSeconds -Throttle $Throttle -StandbyThresholdSeconds $StandbyThresholdSeconds *> $neighbourPath
@@ -91,8 +78,8 @@ try {
         }
         finally { Assert-NotSessionTree $co; & git -C $Repo worktree remove --force $co 2>&1 | Out-Null }
     }
-    $after = @(Get-HomeSnapshot)
-    $during = @(Get-HomeChanges $before $after)
+    $after = @(Get-SweepHomeSnapshot -HomeRoot $realHome)
+    $during = @(Get-SweepHomeChanges -From $before -To $after)
     $after | ConvertTo-Json | Set-Content -LiteralPath $lastAfterPath -Encoding UTF8
     $out += $(if ($hadPrevious) { 'real home hook files changed since the previous sweep, before this one started: {0}' -f $sincePrevious.Count } else { 'real home hook files changed since the previous sweep: no previous sweep recorded' })
     $out += $sincePrevious
