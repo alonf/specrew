@@ -121,6 +121,11 @@ try {
     $r = Complete-Declare (Start-Declare -Root $root -Token $d.Token -Extra @('-MessagePath', $file))
     Assert-True ($r.ExitCode -eq 0 -and [string]::IsNullOrEmpty((Get-RecordMessage $r)) -and [string]$r.Json.draft_source -eq 'none') "[$platform] (4) -MessagePath is accepted and not read"
     Assert-True (@(Get-DraftCopies $root).Count -eq 0) "[$platform] (4) a -MessagePath draft is not copied"
+    # Maintainer ruling 2026-11-11: an old caller learns, once, that its draft is not read.
+    $notice = @(($r.StdErr -split '\r?\n') | Where-Object { $_ -like '*-MessagePath is no longer read*' })
+    Assert-True ($notice.Count -eq 1) "[$platform] (4) stderr says once that -MessagePath is not read ($($r.StdErr.Trim()))"
+    $rNo = Complete-Declare (Start-Declare -Root $root -Token $d.Token)
+    Assert-True ($rNo.StdErr -notmatch 'MessagePath') "[$platform] (4) without -MessagePath nothing is said about it"
 
     # 5. A shell that leaves stdin open and sends nothing must not hang the turn end.
     $e = New-SessionRoot -Root $root -HostKind 'claude' -SessionId 'session-e'
