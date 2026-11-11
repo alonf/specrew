@@ -108,8 +108,56 @@ function Get-SweepSignoffSuites {
     return @([regex]::Matches($json, 'tests/[A-Za-z0-9_./-]+?\.ps1') | ForEach-Object { $_.Value } | Sort-Object -Unique)
 }
 
+# CI'S LIST (maintainer ruling 2026-11-11, DRIFT-057's fourth defect): CI on 50bb6fa8 failed a suite the green "full" sweep
+# never ran. The sweep now runs every test file CI runs on a push, read at the swept revision: the honesty suite's registry
+# (tests/f198-regression-suite.ps1, run by Specrew CI; its runner is expanded into its entries) and every test file the
+# push workflows below name. sweep-driver.tests.ps1 case 9 fails when a push workflow that names a test file is not here.
+$script:SweepCiWorkflows = @('.github/workflows/specrew-ci.yml', '.github/workflows/test.yml', '.github/workflows/cross-platform-validation.yml')
+$script:SweepCiRegistry = 'tests/f198-regression-suite.ps1'
+
+function Get-SweepCiSuites {
+    # Every test file CI runs on a push, as the swept revision has them; each once, in a stable order.
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string]$Repo, [Parameter(Mandatory)][string]$Rev)
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $out = [System.Collections.Generic.List[string]]::new()
+    $registry = (@(& git -C $Repo show ("{0}:{1}" -f $Rev, $script:SweepCiRegistry) 2>$null) -join "`n")
+    $entries = @([regex]::Matches($registry, "\bpath\s*=\s*'(tests/[^']+?\.ps1)'") | ForEach-Object { $_.Groups[1].Value })
+    if ($entries.Count -eq 0) { throw "The honesty suite's registry ($script:SweepCiRegistry) could not be read at $Rev, or names no suite." }
+    foreach ($entry in $entries) { if ($seen.Add($entry)) { $out.Add($entry) } }
+    foreach ($workflow in $script:SweepCiWorkflows) {
+        $text = (@(& git -C $Repo show ("{0}:{1}" -f $Rev, $workflow) 2>$null) -join "`n")
+        if ([string]::IsNullOrWhiteSpace($text)) { throw "The workflow $workflow could not be read at $Rev." }
+        foreach ($m in [regex]::Matches($text, 'tests/[A-Za-z0-9_./-]+?\.ps1')) {
+            if ($m.Value -ceq $script:SweepCiRegistry) { continue }
+            if ($seen.Add($m.Value)) { $out.Add($m.Value) }
+        }
+    }
+    return $out.ToArray()
+}
+
+function Get-SweepCiMissing {
+    # The guard: every test file CI runs on a push that the sweep's list does not name (Ordinal, as git names them).
+    [OutputType([string[]])]
+    param([AllowEmptyCollection()][string[]]$SuiteList = @(), [Parameter(Mandatory)][string]$Repo, [Parameter(Mandatory)][string]$Rev)
+    $have = [System.Collections.Generic.HashSet[string]]::new([string[]]@($SuiteList | ForEach-Object { ([string]$_).Trim() }), [StringComparer]::Ordinal)
+    return @(Get-SweepCiSuites -Repo $Repo -Rev $Rev | Where-Object { -not $have.Contains($_) })
+}
+
+function Get-SweepPlanLanes {
+    # Every lane in the swept revision's verification plan, in its order (a sweep of the pin's side tip runs the pin's).
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string]$Repo, [Parameter(Mandatory)][string]$Rev)
+    $json = (@(& git -C $Repo show ("{0}:.specrew/verification-plan.json" -f $Rev) 2>$null) -join "`n")
+    if ([string]::IsNullOrWhiteSpace($json)) { throw "The verification plan could not be read at $Rev." }
+    $ids = @(($json | ConvertFrom-Json).commands | ForEach-Object { [string]$_.command_id } | Where-Object { $_ })
+    if ($ids.Count -eq 0) { throw "The verification plan at $Rev names no lane." }
+    return $ids
+}
+
 function Get-SweepSuiteList {
-    # The list given, then every sign-off-lane suite it does not already name; each suite once.
+    # The list given, then every sign-off-lane suite and every test file CI runs on a push that it does not already name;
+    # each suite once. -SkipSignoffSuites (a targeted check) runs only the list given, and such a sweep cannot close a task.
     [OutputType([string[]])]
     param([Parameter(Mandatory)][string]$ListPath, [Parameter(Mandatory)][string]$Repo, [Parameter(Mandatory)][string]$Rev, [switch]$SkipSignoffSuites)
     $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -117,6 +165,7 @@ function Get-SweepSuiteList {
     foreach ($line in @(Get-Content -LiteralPath $ListPath | ForEach-Object { $_.Trim() } | Where-Object { $_ })) { if ($seen.Add($line)) { $out.Add($line) } }
     if (-not $SkipSignoffSuites) {
         foreach ($suite in @(Get-SweepSignoffSuites -Repo $Repo -Rev $Rev)) { if ($seen.Add($suite)) { $out.Add($suite) } }
+        foreach ($suite in @(Get-SweepCiSuites -Repo $Repo -Rev $Rev)) { if ($seen.Add($suite)) { $out.Add($suite) } }
     }
     return $out.ToArray()
 }

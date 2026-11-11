@@ -1933,5 +1933,9 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   a private home, gives it back, and takes it in a Pester file's only root `BeforeAll`), both in lane `f203-i001-t008-suites` and
   in the CI honesty suite. The cause of the missed check, a chosen subset before a pin advance, has no executable guard: it is
   the maintainer's process rule above (the full sweep on the side tip before any pin advance). The sweep's coverage of
-  CI's Deterministic gate has no executable guard either: today it is a list the crew builds from the honesty suite;
-  proposed, not built, that the sweep driver adds the honesty suite's files itself.
+  CI (maintainer ruling 2026-11-11, test first: `b4a48a2b`, 3 red, and the fix after it): the sweep driver adds every
+  test file CI runs on a push, read at the swept revision (the honesty suite's registry and every test file the three
+  push workflows name, 166 at `ff7245c3`), names any its list lacks in the report ("CI suites not in this sweep"), and
+  such a sweep cannot close a task; it runs every lane of the swept revision's plan, with no lane list of its own.
+  `tools/maintenance/sweep/sweep-driver.tests.ps1` cases 9 and 10 hold it, including a push workflow that names a test
+  file and is not read.

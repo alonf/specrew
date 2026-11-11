@@ -12,6 +12,8 @@
 #     log for the sweep's window is printed as supporting evidence;
 #   - while the sweep runs it holds a keep-awake request with Windows (system required; the display may sleep), released
 #     in the finally block below, on error and on cancel too. Self-test: sweep-driver.tests.ps1.
+#   - (later the same day, DRIFT-057's fourth defect) the sweep also runs every test file CI runs on a push, read at the
+#     swept revision, names any its list lacks, and runs every lane in the swept revision's plan (no lane list of its own).
 # Usage: pwsh -File tools/maintenance/sweep/sweep-full.ps1 -Rev <commit> [-List <file in this folder or a path>] [-SkipLanes] [-SkipSignoffSuites]
 param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path, [Parameter(Mandatory)][string]$Rev, [string]$List = 't008iii-list.txt', [switch]$SkipLanes,
     [switch]$SkipSignoffSuites, [int]$SuiteTimeoutSeconds = 900, [int]$Throttle = 6, [string]$Tag = '', [double]$StandbyThresholdSeconds = 20,
@@ -39,7 +41,10 @@ try {
     $realHome = $env:USERPROFILE
 
     # The suites to run: the list given, then every suite the sign-off lanes name at this revision (DRIFT-055).
+    # And every test file CI runs on a push, read at this revision; any the list still lacks is named in the report and
+    # the sweep cannot close a task (maintainer ruling 2026-11-11, DRIFT-057's fourth defect).
     $suiteList = @(Get-SweepSuiteList -ListPath $listPath -Repo $Repo -Rev $Rev -SkipSignoffSuites:$SkipSignoffSuites)
+    $ciMissing = @(Get-SweepCiMissing -SuiteList $suiteList -Repo $Repo -Rev $Rev)
     $givenCount = @(Get-Content -LiteralPath $listPath | Where-Object { $_.Trim() }).Count
     $combinedList = Join-Path $scratch ("list-{0}{1}.txt" -f $Rev, $Tag)
     Set-Content -LiteralPath $combinedList -Value $suiteList -Encoding UTF8
@@ -63,7 +68,8 @@ try {
     & pwsh -NoProfile -File (Join-Path $tools 'sweep-list.ps1') -Repo $Repo -Rev $Rev -ListFile $combinedList -SuiteTimeoutSeconds $SuiteTimeoutSeconds -Throttle $Throttle -StandbyThresholdSeconds $StandbyThresholdSeconds *> $neighbourPath
 
     $co = Join-Path ([IO.Path]::GetTempPath()) ('lanes-' + $Rev)
-    $lanes = @(if (-not $SkipLanes) { 'iteration-001-governance-203', 'f203-i001-suites', 'f203-i001-t008-suites', 'f203-i001-validator-scope', 'f203-i001-carried', 'f199-class-guards-a', 'f199-class-guards-b' })
+    # Every lane in this revision's verification plan (a sweep of the pin's side tip runs the pin's own lanes).
+    $lanes = @(if (-not $SkipLanes) { Get-SweepPlanLanes -Repo $Repo -Rev $Rev })
     $out = @("lanes: " + ($lanes -join ', '))
     $lanesStandby = ''
     if ($lanes.Count -gt 0) {
@@ -98,7 +104,10 @@ try {
     $out += ('Windows standby log during the sweep (supporting evidence): {0} event(s)' -f $standbyEvents.Count)
     $out += $standbyEvents
     $out += $(if ($SkipSignoffSuites) { 'sign-off-lane suites: skipped (-SkipSignoffSuites)' } else { 'sign-off-lane suites: included ({0} suites run; {1} from the list given)' -f $suiteList.Count, $givenCount })
+    $out += 'CI suites not in this sweep: {0}' -f $ciMissing.Count
+    $out += @($ciMissing | Select-Object -First 12 | ForEach-Object { '  ' + $_ })
     $reasons = @()
+    if ($ciMissing.Count -gt 0) { $reasons += ('{0} test file(s) CI runs on a push were not in this sweep' -f $ciMissing.Count) }
     if (-not $suitesValid) { $reasons += 'a suite spanned standby, or the suite run reported no result' }
     if ($lanesStandby) { $reasons += 'the lanes spanned standby' }
     if ($SkipSignoffSuites) { $reasons += 'the sign-off-lane suites were skipped' }
