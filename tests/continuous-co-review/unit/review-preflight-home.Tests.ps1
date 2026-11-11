@@ -288,4 +288,37 @@ Invoke-ReviewCampaignRun -StoreRoot $Store -StagingRoot $Staging -CampaignId cmp
             'remove' { Test-Path -LiteralPath $target | Should -BeFalse -Because 'nothing is restored' }
         }
     }
+
+    # B5F-042 follow-up (CI red on c7b55e5c, 2026-11-11; maintainer ruling): the comparison deduplicated the two key lists
+    # with `Sort-Object -Unique`, which folds case, and both state tables were default hashtables, which fold case too. On
+    # a case-sensitive file system two hook files whose paths differ only by case are two files; folded, one is never
+    # compared, and a change to it passes the preflight. Pure checks on fixture tables and TestDrive folders: nothing
+    # deploys and no home is redirected.
+    It 'compares two paths that differ only by case as two files, and names the one that changed' {
+        $before = [hashtable]::new([StringComparer]::Ordinal)
+        $before['.copilot/hooks/hooks.json'] = 'AAAA'; $before['.copilot/hooks/Hooks.json'] = 'BBBB'
+        $after = [hashtable]::new([StringComparer]::Ordinal)
+        $after['.copilot/hooks/hooks.json'] = 'AAAA'; $after['.copilot/hooks/Hooks.json'] = 'CCCC'
+        @(Compare-ReviewPreflightHomeHookState -Before $before -After $after) | Should -Be @('changed: .copilot/hooks/Hooks.json')
+
+        $removed = [hashtable]::new([StringComparer]::Ordinal)
+        $removed['.copilot/hooks/Hooks.json'] = 'BBBB'
+        @(Compare-ReviewPreflightHomeHookState -Before $before -After $removed) | Should -Be @('removed: .copilot/hooks/hooks.json')
+    }
+
+    It 'keeps the hashed state case-sensitive, so a path differing only by case is a different key' {
+        $home2 = New-PhRealHome -Path (Join-Path $TestDrive 'case-home')
+        $state = Get-ReviewPreflightHomeHookState -HomeRoot $home2
+        $state.ContainsKey('.codex/hooks.json') | Should -BeTrue
+        $state.ContainsKey('.CODEX/HOOKS.JSON') | Should -BeFalse -Because 'the state table compares keys ordinally, not case-folded'
+        # Where the file system keeps two case-distinct files (Linux, macOS when case-sensitive), both are hashed.
+        $lower = Join-Path $home2 '.copilot/hooks/case.json'; $upper = Join-Path $home2 '.copilot/hooks/CASE.json'
+        [IO.File]::WriteAllText($lower, 'lower'); [IO.File]::WriteAllText($upper, 'upper')
+        if (@(Get-ChildItem -LiteralPath (Join-Path $home2 '.copilot/hooks') -File | Where-Object { $_.Name -ieq 'case.json' }).Count -eq 2) {
+            $both = Get-ReviewPreflightHomeHookState -HomeRoot $home2
+            $both.ContainsKey('.copilot/hooks/case.json') | Should -BeTrue
+            $both.ContainsKey('.copilot/hooks/CASE.json') | Should -BeTrue
+            [string]$both['.copilot/hooks/case.json'] | Should -Not -Be ([string]$both['.copilot/hooks/CASE.json'])
+        }
+    }
 }
