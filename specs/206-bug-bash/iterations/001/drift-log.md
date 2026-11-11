@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 50% (1/2 resolved; 001 open until T007 lands)
+**Total drift events**: 4
+**Resolution rate**: 75% (3/4 resolved; 001 open until T007 lands)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -66,6 +66,41 @@
 - **Class closure**: NONE — the writer is outside 206. Working rule from here on (maintainer): a hash change
   while none of 206's own tests or scripts ran is reported in one line and work continues on anything that
   runs no Specrew script; a full stop applies only when the change falls inside one of 206's own runs.
+
+### DRIFT-206-I001-003 — T006 changed a test file outside its owned files: the W51 fixture
+
+- **Recorded**: 2026-11-11, at the maintainer's instruction (T006 ruling, condition 3).
+- **What**: `tests/integration/closed-iterations-are-history.tests.ps1` is not in T006's owned files. Its shared
+  fixture (`New-TwoIterationProject`) closed iteration 001 only through `**Current Phase**: iteration-closeout`
+  plus `RETRO COMPLETE`, which is the state.md text heuristic that FR-008a removes from the closed definition.
+  After T006, W51 part 2 read that iteration as open and failed ("closed-iteration filter: 1 closed iterations
+  skipped" not printed).
+- **Change**: the fixture's state.md gains `**Iteration Status**: complete`, plus a comment naming the reason.
+  W51's point is kept: the iteration is closed by its own state.md, with no closed-index entry.
+- **Approval**: the maintainer, 2026-11-11 ("approved to add Iteration Status: complete to its test iteration").
+- **Resolution**: lands in T006's fix commit.
+- **Class closure**: NONE — a one-off fixture follow-up to a definition change the maintainer ruled on; no
+  mechanism is needed to stop a test from following a ruled definition.
+
+### DRIFT-206-I001-004 — T002 changed a deployed file without refreshing its hash
+
+- **Recorded**: 2026-11-11, at the maintainer's instruction (T006 ruling, hash-file item 4).
+- **What**: T002's fix commit `6acb84aa` edited the `.specify` mirror of `validate-governance.ps1` and left its
+  entry in `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` at the old value. The
+  validator's deployed-machinery integrity check then reports "The deployed Specrew machinery ... does not match
+  what was installed" for every iteration with a review.md that it validates. T006's uncommitted change added
+  `shared-governance.ps1` to the mismatch.
+- **Evidence**: hashes computed the way the check computes them (`Get-SpecrewDeployedExtensionManifest`,
+  CR-stripped, SHA-256) match the file at `6acb84aa~1` for both files; from `6acb84aa`, `validate-governance.ps1`
+  differs. `tests/integration/validate-governance-changed-only.tests.ps1` failed 3 assertions on it, all with
+  this error (run from this worktree, a short path, on the T006 working tree).
+- **Why nothing caught it**: 206's own iteration has no review.md, so 206's validator runs stayed green, and no
+  CI workflow runs the suite that fails (bug-list item 10).
+- **Resolution**: `52662ebc` refreshes T002's entry (old `7cee2741...e3bc`, new `a7076e71...518f`); T006's fix
+  commit refreshes both entries for its own change. Values in the bug-list item.
+- **Class closure**: a working rule from the maintainer (2026-11-11): any commit that touches a file under
+  `.specify/extensions/specrew-speckit/` refreshes the hash file in the same commit. The executable guard (a CI
+  step) is proposed in bug-list item 10; no workflow is changed in this feature yet.
 
 <!--
   Every new ### DRIFT-... event includes:

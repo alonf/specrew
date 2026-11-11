@@ -87,17 +87,24 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     T006 and T007 do not start before it.
   - **Trace:** FR-008a.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
-- [ ] T006 [owner: Implementer] [sp: 2.0] **One definition of "closed".**
+- [x] T006 [owner: Implementer] [sp: 2.0] **One definition of "closed".**
   - **RED:** a unit suite for `Test-SpecrewIterationClosed` over index, status and frozen cases; a review verdict
     alone never makes an iteration closed.
   - **Work:** closed = in the closed index, or `Iteration Status` `complete` / `abandoned` (abandoned only with a
     recorded ruling, T009); frozen entries are not closed. Used by the validator's closed filter, the dashboard
-    check and the renderer; the state.md heuristic and the review-verdict rule are removed.
+    check and the renderer; the state.md heuristic and the review-verdict rule are removed. Maintainer ruling
+    2026-11-11, option 1 with conditions: a status that claims closure in the validator's own words ("closed",
+    "closeout complete", "closure complete") with no negation or future wording before it also counts; "not
+    closed", "not yet closed", "to be closed after review" and "blocked" do not; `Test-ClosedIterationStatus` is
+    unchanged for its other caller.
   - **Trace:** FR-008a.
   - **Depends:** T005.
   - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`,
     `extensions/specrew-speckit/scripts/validate-governance.ps1`, their `.specify` mirrors,
-    `scripts/internal/dashboard-renderer.ps1`, `tests/unit/**`.
+    `scripts/internal/dashboard-renderer.ps1`, `tests/unit/**`; the deployed hash file
+    `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` (maintainer, 2026-11-11: a commit that
+    touches `.specify/extensions/specrew-speckit/` refreshes it in the same commit). Outside owned files, approved:
+    the W51 fixture in `tests/integration/closed-iterations-are-history.tests.ps1` (DRIFT-206-I001-003).
 - [ ] T007 [owner: Implementer] [sp: 1.0] **The triage applied: abandoned and frozen.**
   - **Work:** 198/011 and 197/006 marked `abandoned`, each recording the maintainer's ruling of 2026-11-10;
     198/011's `review.md` unchanged. **198/010 marked `abandoned`, superseded** (maintainer's T005 ruling,

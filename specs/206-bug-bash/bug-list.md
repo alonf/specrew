@@ -284,3 +284,55 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 | Run id | Date (UTC) | Commit | Runner | Outcome |
 | ------ | ---------- | ------ | ------ | ------- |
 | 42994018357 | 2026-11-11 | `a9ad8aa0` | macos-latest | failed 1 of 13 (process-group probe); not rerun |
+
+## 10. A deployed file changed without its hash, and no CI job runs the suite that would have caught it
+
+- **Observed:** T002's fix commit `6acb84aa` edited the `.specify` mirror of `validate-governance.ps1` and left
+  its entry in `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` at the old value. The
+  validator's deployed-machinery integrity check (`Test-DeployedExtensionIntegrity`) then fails every iteration
+  with a review.md that it validates. `tests/integration/validate-governance-changed-only.tests.ps1` failed 3
+  assertions on it ("... should pass when only the touched iteration remains in scope", the auto-scoped and the
+  missing-origin/HEAD variants), all with this error. Drift entry DRIFT-206-I001-004.
+- **Why nothing caught it:** the check runs only while an iteration with a review.md is validated, and 206's
+  iteration has none, so 206's own validator runs stayed green. The suite that fails is named only in
+  `.specrew/release-gate-suites.txt` and the release full sweep; no workflow under `.github/workflows/` runs it,
+  so Specrew CI, Test and Cross-Platform Validation were green on the pushes after T002.
+- **Hash values** (computed the way the check does: `Get-SpecrewDeployedExtensionManifest`, CR-stripped text,
+  SHA-256; the method reproduces the recorded value for every file nobody changed):
+
+  | Commit | File | Old | New |
+  | ------ | ---- | --- | --- |
+  | `52662ebc` (T002) | `scripts/validate-governance.ps1` | `7cee2741ed356d8e0071ed6f585a5aaec5479d8da6a5f2d7bb364fc7a5f0e3bc` | `a7076e719445a36af61b064d434954729b4b0f4178178fb369e9fc1303a4518f` |
+  | T006 fix | `scripts/shared-governance.ps1` | `34ae4e744303151e38d8eb866bf9be4dfe8f3d2422e90c70fe8482a3f8ea2097` | `93d347461ff6dcbc40457328807e13fec63225234987aa5c41a0be03141870c6` |
+  | T006 fix | `scripts/validate-governance.ps1` | `a7076e719445a36af61b064d434954729b4b0f4178178fb369e9fc1303a4518f` | `e7271d700321839fb7582b94c96733c39ee897d088053cffafa4af39e91bad28` |
+
+- **Working rule (maintainer, 2026-11-11):** any commit that touches a file under
+  `.specify/extensions/specrew-speckit/` refreshes the hash file in the same commit.
+- **Proposed placement (no workflow changed yet):**
+  1. A fast guard in Specrew CI's Deterministic gate: one step that dot-sources `shared-governance.ps1` and fails
+     when `Test-SpecrewDeployedExtensionIntegrity -ProjectRoot .` reports any drifted or missing file. It takes
+     under a second and catches this class on every push, whatever iteration is touched.
+  2. `validate-governance-changed-only.tests.ps1` itself in the Nightly Truth-Check (about 15 minutes on Windows
+     here, too long for every push), so the scoping behaviour it covers is exercised daily, not only at release.
+
+## 11. `feature-018-render-budget.ps1` sits on its 1.5-second budget on this machine, with or without T006
+
+- **Observed (2026-11-11, Windows, this worktree):** the suite times one dashboard render, the second call in a
+  fresh `pwsh` process, against a fixed 1,500 ms limit. Five alternating runs on a quiet machine:
+
+  | Tree | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Over budget |
+  | ---- | ----- | ----- | ----- | ----- | ----- | ----------- |
+  | pre-fix `719f1cef` | 1,469 ms | 2,061 ms | 1,648 ms | 1,464 ms | 1,660 ms | 3 of 5 |
+  | T006 fix tree | 1,538 ms | 1,781 ms | 1,680 ms | 1,517 ms | 2,068 ms | 5 of 5 |
+
+  Under load (another suite running), both trees failed 5 of 5 (pre-fix 1.8 to 3.3 s, fix tree 2.1 to 4.3 s).
+- **Not caused by T006, as measured:** the same render timed in one warm process, 15 runs per tree, twice:
+  pre-fix medians 554 ms and 581 ms, fix-tree medians 571 ms and 547 ms, none over 1,500 ms. The difference
+  between trees is inside the run-to-run spread; what the suite measures is mostly the second call's cost in a new
+  process, which is near the limit on this machine before T006.
+- **Cause:** a wall-clock limit set when the suite was written (`cdc53480`) on a cold-ish single sample; not in
+  feature 203's protected files (the renderer is `scripts/internal/dashboard-renderer.ps1`), so no hand-over.
+- **Lane:** none. The file name does not end in `.tests.ps1`, so it is one of the 35 integration scripts that run
+  nowhere (item 5): no CI step, no lane, no release manifest.
+- **Not fixed here.** Options for the maintainer: time the median of several warm renders, or raise the limit
+  with the measurement that justifies it.
