@@ -64,7 +64,7 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
 
 ## Phase 2: Nightly and history (US2, items 3 and 4)
 
-- [ ] T004 [owner: Implementer] [sp: 0.5] **Open the hand-over record for feature 203.**
+- [x] T004 [owner: Implementer] [sp: 0.5] **Open the hand-over record for feature 203.**
   - **Work (tasks verdict, 2026-11-11):** one record, with a separate section per item, each with its own
     evidence and proposed owner:
     1. bug list item 3: the flaky retry test, cause not found, one candidate, its recurrence log;

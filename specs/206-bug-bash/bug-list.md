@@ -59,6 +59,7 @@ Two independent causes.
   in the first, the first attempt's in the second). The file is in feature 203's protected area.
 - **Disposition (maintainer, 2026-11-10):** no fix in 206. Hand over to feature 203 as "cause not found,
   one candidate", with the evidence above. Any recurrence is logged here with its run id.
+- **Hand-over record**: HO-206-1 in `specs/206-bug-bash/iterations/001/handover-to-203.md`.
 
 | Run id | Attempt | Date (UTC) | Commit | Runner | Outcome |
 | ------ | ------- | ---------- | ------ | ------ | ------- |
@@ -210,6 +211,7 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   item 3 (FR-004), as its own item. Candidate for this feature: give the step its own `timeout-minutes`, shorter
   than the job's, so a hang fails with its log kept. `.github/workflows/cross-platform-validation.yml` is not in
   203's protected paths and 203's branch does not change it, so the candidate is on iteration 002's list (T019).
+- **Hand-over record**: HO-206-2 in `specs/206-bug-bash/iterations/001/handover-to-203.md`.
 
 | Run id | Date (UTC) | Commit | Runner | Outcome |
 | ------ | ---------- | ------ | ------ | ------- |
@@ -228,6 +230,8 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
     writes the real home folder. Both are named in `.specrew/verification-plan.json`'s lanes; neither is in a
     CI workflow.
 - **Not run on this machine** (maintainer's instruction). No fix in 206 unless the maintainer rules one.
+- **Hand-over record**: HO-206-5 in `specs/206-bug-bash/iterations/001/handover-to-203.md`, with feature 205's H-001
+  and feature 203's B5F-039.
 - **Same shape, not yet read:** 11 more test scripts mention `specrew-update.ps1` (a mention is not proof of a
   call): `tests/continuous-co-review/unit/verification-plan-materializer.Tests.ps1`, and under
   `tests/integration/`: `distribution-module-update.ps1`, `forge-neutralization-sweep.tests.ps1`,
