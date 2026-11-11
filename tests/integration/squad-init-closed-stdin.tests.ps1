@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs the squad deploy helpers against a fake squad and reads init text only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 #requires -Version 7.0
 [CmdletBinding()]
 param()

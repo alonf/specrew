@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - lists entry-point paths and dot-sources the host registry only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 [CmdletBinding()]
 param()
 

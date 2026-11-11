@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads or parses the entry point's text and never runs it (census 2026-11-11, docs/beta5-findings.md B5F-039)
 #requires -Version 7.0
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

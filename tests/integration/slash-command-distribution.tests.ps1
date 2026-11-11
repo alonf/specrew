@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs the squad-runtime deployer only and reads init and update text (census 2026-11-11, docs/beta5-findings.md B5F-039)
 [CmdletBinding()]
 param()
 

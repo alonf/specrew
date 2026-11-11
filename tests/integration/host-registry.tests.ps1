@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - extracts one launch function from specrew-start.ps1 and runs only that (census 2026-11-11, docs/beta5-findings.md B5F-039)
 [CmdletBinding()]
 param()
 

@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - byte-compares the deployer with its twin and runs nothing (census 2026-11-11, docs/beta5-findings.md B5F-039)
 # Feature 202 T002 (plan risk "Twin copies"): the hook dispatcher and the bootstrap, handover and refocus
 # providers (and the hook deployer) exist as two byte-identical copies - the module source under
 # scripts/internal/ and the extension copy under extensions/specrew-speckit/scripts/ that `specify extension add`

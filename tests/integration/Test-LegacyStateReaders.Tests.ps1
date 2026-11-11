@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - imports reader functions from the start helpers and runs no process (census 2026-11-11, docs/beta5-findings.md B5F-039)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'

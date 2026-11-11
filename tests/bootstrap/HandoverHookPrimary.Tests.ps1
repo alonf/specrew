@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads the deployer's text; runs the handover provider only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 # F-174 iteration 9: the Stop hook is the PRIMARY author of the rolling handover - it captures the git/fs
 # session delta into the MECHANICAL body sections every material stop (never hollow, no agent cooperation),
 # accumulates the activity arc across the boundary window, stamps the real host, and preserves an agent

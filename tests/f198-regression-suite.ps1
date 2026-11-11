@@ -117,6 +117,7 @@ $registry = @(
     # filesystem, the mutation gate that proves that harness can FAIL, and the grant write-scope
     # regression for DRIFT-198-I009-028.
     @{ area = 'the ONE path-identity primitive + structural enforcement (DRIFT-198-I009-015/016/017/027/031/033)'; path = 'tests/continuous-co-review/unit/path-identity.Tests.ps1'; kind = 'pester' }
+    @{ area = 'B5F-042 follow-up and B5F-039: every test that runs a hook-writing entry point or the preflight home check gives itself a private home (CI red on c7b55e5c)'; path = 'tests/unit/test-home-isolation.Tests.ps1'; kind = 'pester' }
     @{ area = 'path identity DIFFERENTIAL harness - the volume is the oracle (DRIFT-198-I009-032/033)'; path = 'tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1'; kind = 'pester' }
     @{ area = 'differential harness falsifiability - mutation gate (maintainer decision 2026-07-29)'; path = 'tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'machinery path resolution + case-distinct dedup (DRIFT-198-I009-016/019)'; path = 'tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1'; kind = 'pester' }

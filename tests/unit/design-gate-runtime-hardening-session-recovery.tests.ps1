@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - specrew-start.ps1 is named in a comment; loads session-recovery only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 [CmdletBinding()]
 param()
 

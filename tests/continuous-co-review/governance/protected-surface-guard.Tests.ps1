@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - lists entry-point paths and runs git diff only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 $ErrorActionPreference = 'Stop'
 
 Describe 'Proposal 197 protected surface guard' {

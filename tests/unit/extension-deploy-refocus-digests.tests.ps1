@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs the spec-kit extension deployer, not the hook deployer (census 2026-11-11, docs/beta5-findings.md B5F-039)
 # PRED-BETA4-046 / B4F-088: `specrew update` REFRESHES THE REFOCUS DIGESTS.
 #
 # Found verifying the router-skill project's update to 79ab618d: integrity read 0 drifted, and the project's

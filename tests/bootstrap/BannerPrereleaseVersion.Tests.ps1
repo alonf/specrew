@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs the bootstrap provider only; specrew-start.ps1 is named in a comment (census 2026-11-11, docs/beta5-findings.md B5F-039)
 $ErrorActionPreference = 'Stop'
 
 # Trace: T011 / FR-019 / SC-010 / ledger obs-2.

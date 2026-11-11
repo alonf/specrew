@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads the deployer's text; runs the handover provider and a copied dispatcher only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 # Feature 203 T006 (FR-026, FR-027; B4F-151): A TYPED APPROVAL THAT RECORDS NOTHING SAYS SO, IN THE SAME TURN, WHERE THE HUMAN READS.
 #
 # B4F-151: a message whose approval form could not be read recorded nothing and said nothing. The classifier already

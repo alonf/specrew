@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - extracts two functions from specrew-start.ps1 and runs specrew-where and the bootstrap provider only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 #requires -Version 7.0
 # Feature 202 T010 (FR-017, FR-018, SC-006, DA-5; B4F-105): one answer to "what are we working on".
 #

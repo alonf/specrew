@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# specrew-test-home: not-a-writer - runs a stubbed specrew-start.ps1 in a temp copy, Unix only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 # Regression guard for the feature-140 interactive-`start` TTY bug found in beta2 validation.
 #
 # Symptom: `specrew start` via the native wrapper launched the host (Copilot) HEADLESS and

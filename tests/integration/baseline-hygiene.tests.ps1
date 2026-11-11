@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - lifts one function out of specrew-start.ps1 and runs the boundary sync only (census 2026-11-11, docs/beta5-findings.md B5F-039)
 [CmdletBinding()]
 param()
 

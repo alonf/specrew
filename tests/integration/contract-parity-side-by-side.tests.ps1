@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - dot-sources launch-contract and bootstrap helpers; specrew-start.ps1 is named in comments (census 2026-11-11, docs/beta5-findings.md B5F-039)
 $ErrorActionPreference = 'Stop'
 
 # F-174 iteration 007 (T046): the AUTOMATABLE half of the side-by-side acceptance gate (Ruling d).

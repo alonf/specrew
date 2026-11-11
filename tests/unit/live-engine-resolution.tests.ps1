@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs a stand-in deployer stub with -EmitBindingOnly, never the real deployer (census 2026-11-11, docs/beta5-findings.md B5F-039)
 # Feature 203 T002 (DA-8): the live-engine pin. With no pin configured, engine resolution is exactly today's (the
 # project tree's scripts/internal). With a valid pin, engine code loads from the pin and never from the project
 # tree. With a configured pin that is missing or corrupt, the hooks refuse in plain words and load NOTHING - no
