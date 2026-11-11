@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-10-24T15:04:41Z",
+  "recorded_at": "2026-11-11T10:40:24Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-d2b2575be53ed6dbbbaeeb08",
-      "target_tree_id": "b88152e7543d072ccbc9c4ea42ce3e2035689d68",
-      "campaign_id": "cmp-202-beta4-1-ux-stabilization-i003",
-      "run_id": "run-20261022-211453497-9ebe9c9c",
+      "request_id": "override-0154fc5b01bd0d281913edfa",
+      "target_tree_id": "c515195bc88a6debb7057b25f77316d7156b7751",
+      "campaign_id": "cmp-205-workshop-lens-order-i001",
+      "run_id": "run-20261111-012900593-ccd284fa",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - since round 4 on f00da0f2 no product source changed; only records, runtime copies identical to the reviewed sources, and the walk's eight test fixtures, whose suites pass",
-      "rationale": "since round 4 on f00da0f2 no product source changed; only records, runtime copies identical to the reviewed sources, and the walk's eight test fixtures, whose suites pass",
-      "response_hash": "c0bd99072f86a25eabf401536ff11e03774e389a5abd1ce2b4b90b2939ef9229",
+      "verdict_text": "approved for partial review signoff - the change after round 2 is the fix for that round's finding, in one test file, read by my reviewer, with all three workflows green on d5d1ae06",
+      "rationale": "the change after round 2 is the fix for that round's finding, in one test file, read by my reviewer, with all three workflows green on d5d1ae06",
+      "response_hash": "823831860dd5235fa9d4f96dcde8be1f7ee03a14c238b5401d9e834d509e3c9f",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-10-24T15:04:14.2942668Z"
+      "observed_at": "2026-11-11T10:35:01.2283381Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
