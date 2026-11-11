@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 10
-**Resolution rate**: 100% (10/10 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-010 class closure open)
+**Total drift events**: 11
+**Resolution rate**: 100% (11/11 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-011 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -222,6 +222,17 @@
   without `specrew update` (the maintainer's ruling). The check then reports 0 drifted and 0 missing.
 - **Class closure**: NONE — the check's placement and the deploy scripts not writing the hash record are validator and
   deploy behaviour outside 205's scope; feature 206 hit the same thing today.
+
+### DRIFT-011 — the crew set state.md and plan.md to the review phase ahead of the boundary sync (crew error)
+
+- **Observed**: 2026-11-11, at the review-signoff sync. In `cf173030` the crew set state.md to Current Phase
+  `review-signoff` and Iteration Status `reviewing`, and plan.md to Status `reviewing`, by hand. The last authorized
+  boundary is still `before-implement`, so the sync refused with `[iteration-state-truth-gate]`: state.md and plan.md
+  were ahead of the authority record.
+- **Resolution**: both lines were put back to `before-implement` / `executing`, which match the record. The sync
+  mirrors the phase when it records the crossing. T016 stays done; that is task truth, not phase.
+- **Class closure**: NONE — the sync's state-truth gate already catches this and refused before any state change; the
+  crew's own rule is that phase lines move only through the sync.
 <!--
   Every new ### DRIFT-... event includes:
 

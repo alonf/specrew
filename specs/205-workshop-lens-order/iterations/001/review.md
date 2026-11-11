@@ -86,7 +86,7 @@ These are drift-log items, not review findings:
 
 - **H-001**: hand-over to feature 203: the review preflight can run suites that write the real home hook files
   (DRIFT-008, DRIFT-009).
-- **Class closures**: DRIFT-001 and DRIFT-004 to DRIFT-010 have their class closure open.
+- **Class closures**: DRIFT-001 and DRIFT-004 to DRIFT-011 have their class closure open.
 
 ## Independence
 
