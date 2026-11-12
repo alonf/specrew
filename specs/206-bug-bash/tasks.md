@@ -225,8 +225,8 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** FR-012; SC-001, SC-007.
   - **Depends:** T013.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
-- [ ] T015 [owner: Implementer] [sp: 1.0] **Register the 35 per the maintainer's ruling.**
-  - **Stopped (2026-11-12) for the maintainer's review of SC-001's supervised run:** 23 scripts per push (a Specrew
+- [x] T015 [owner: Implementer] [sp: 1.0] **Register the 35 per the maintainer's ruling.**
+  - **Done (2026-11-13; CI green on `66d70fa3`), SC-001 and SC-002 moved to iteration 002 by ruling:** 23 scripts per push (a Specrew
     CI step), `validator-hardening-iteration1.ps1` to the release manifest, 12 excluded with reasons, the held list
     empty and required empty (RED 16/49 `ec541bae`, GREEN 49/49 `95c28953`). The start-path scripts point the user
     profile at a temp file (RED 9/34 `963fc149`, GREEN `8f1e5f0c`; DRIFT-206-I001-013). A T003 regression found here
@@ -251,6 +251,9 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
 ## Phase 4: Acceptance
 
 - [ ] T018 [owner: Implementer] [sp: 0.5] **Acceptance checks.**
+  - **Run (2026-11-13), stopped for the maintainer:** four checks pass, and the 203 hand-over is closed (ten items).
+    "No commit touches a trigger path" fails as worded: two plan-stage commits (OVERRIDE 5 and its revert,
+    DRIFT-206-I001-001), net zero. Record: `iterations/001/t018-acceptance.md`.
   - The branch diff against `main` touches nothing under `scripts/internal/continuous-co-review/**` or
     `scripts/internal/bootstrap/**`.
   - `.squad/active-features.yml` is in no commit.

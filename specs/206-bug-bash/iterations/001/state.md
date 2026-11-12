@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T014
-**Tasks Remaining**: T015, T018 (2 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 red, SC-002 required in iteration 002 by ruling 2026-11-12), T015 (stopped with its report: `t015-registration.md`; SC-001 and SC-002 not met in iteration 001, both required in iteration 002)
+**Last Completed Task**: T015
+**Tasks Remaining**: T018 (1 planned)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 red, SC-002 required in iteration 002 by ruling 2026-11-12), T018 (stopped for the maintainer: one check fails as worded, `t018-acceptance.md`)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T22:20:00Z
+**Updated**: 2026-11-13T01:10:00Z
 
 ## Execution Summary
 
@@ -106,6 +106,13 @@
   `t015-registration.md`. SC-001 is not met in iteration 001 (maintainer, option 1): runs 3 and 4 of its script wrote into this
   repository (bug list items 23-25); the script refuses to run until they are fixed; required in iteration 002
   (DRIFT-206-I001-015 to -019). For iteration 002 planning: `specrew-start-facts.md`.
+- T015, done 2026-11-13 (CI green on `66d70fa3`). After the SC-001 runs: `mechanical-findings-contract.ps1` was red on
+  one Ubuntu image (bug list item 26). It is fixed, RED 1/55 `ff8a39a8`, GREEN 55/55 `6fd9fcd9`, DRIFT-206-I001-020.
+  The macOS journal failure (item 27) went to 203 as HO-206-10.
+- T018 (SC-007), run 2026-11-13, stopped for the maintainer. Four checks pass: no 203-protected path,
+  `active-features.yml` in no commit, the home hook files unchanged at every check, and the 203 hand-over closed with
+  ten items. "No commit touches a trigger path" fails as worded: two plan-stage commits, net zero, DRIFT-206-I001-001.
+  Record: `t018-acceptance.md`.
 
 ## Notes
 

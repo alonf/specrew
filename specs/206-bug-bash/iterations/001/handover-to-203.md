@@ -1,7 +1,7 @@
 # Hand-over to feature 203: findings 206 does not fix
 
-**From**: feature 206 (bug bash), iteration 001 | **Opened**: 2026-11-11 by T004 | **Status**: open (T018 closes
-it, after adding anything T014 or the other tasks find that belongs to 203)
+**From**: feature 206 (bug bash), iteration 001 | **Opened**: 2026-11-11 by T004 | **Status**: closed 2026-11-13 by T018,
+with ten items (HO-206-1 to HO-206-10)
 
 Feature 206 does not edit `scripts/internal/continuous-co-review/` or the capture stores under
 `scripts/internal/bootstrap/` (maintainer rule: feature 203 is rewriting them). Each section below is one item,
@@ -150,3 +150,14 @@ FR-005.
 - **Not rerun** (reviewer ruling 2026-11-12, under the maintainer's delegation). A recurrence on 206's next push stops
   206's work and is reported.
 - **Proposed owner**: feature 203.
+
+## Closing (T018, 2026-11-13)
+
+- **Ten items handed over**: HO-206-1 to HO-206-10. Each has its evidence and a proposed owner. HO-206-10 (the macOS
+  journal case, bug list item 27) was added at T015 at a higher severity than the timing class.
+- **Considered, not handed over**: bug list items 23 (`specrew start` writes into a feature outside its project),
+  25 (`specrew init` probes Squad in the install root) and the start-only boundary authorization with no verdict.
+  None is in feature 203's area. They are on `specrew-start-facts.md` for the maintainer's iteration 002 decision
+  on `specrew start`. Feature 203 found the authorization item itself (its B5F-066).
+- No later 206 finding belongs to 203. A recurrence of HO-206-8, -9 or -10 on 206's pushes would stop 206's work
+  and be reported. None recurred on `66d70fa3`.
