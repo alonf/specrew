@@ -2133,3 +2133,58 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Class closure**: `tests/unit/mint-path-fixtures.Tests.ps1` (lane `f203-i001-suites`) holds a peer cell and a
   record-origin cell for every mint path; `tests/unit/turn-record-contract.tests.ps1` holds the peer prompt through
   Claude's deployed hook.
+
+### DRIFT-065 — T013 builds the use-time sender check for every authorization (scope added; 2026-11-12)
+
+- **Ruling** (maintainer, typed, 2026-11-12, B5F-066 item 2 and the rule): an authorization is honoured only if, when it
+  is used, the transcript record of the turn that created it says the human typed it, by the per-field rule (isMeta not
+  true; origin.kind human where present; turnOrigin human where present; promptSource typed or queued, or sdk only with
+  origin.kind human); a turn that cannot be found is refused; a record with no sender fields, or a host whose hook input
+  carries no transcript path (Copilot), is unverified, journaled and shown on the status health line by host; the record is
+  bound to what its turn said (kind and text); the check names the sender and stores it against the turn.
+- **Measured before building** (2026-11-12): the hook input for a typed, a peer and a scheduled prompt carries no origin
+  (recorded, Claude Code 2.1.322), and the prompt hook runs before the host writes the transcript record. A survey of 47
+  local Claude Code transcripts gave the shape table, pinned with versions in
+  `tests/fixtures/hook-payloads/claude/transcript-origins/record-shapes.json`; Remote Control was added from the
+  maintainer's own message (human / queued / origin human).
+- **Built**, each part test first: the ledger row keeps the transcript path and message id (`96d465f0`); the check in the
+  store readers of the allowance reset, pause decision, stop answers, partial sign-off, coverage deferral and the shared
+  boundary verdict matcher (`731e6500`); Remote Control's shape (`919cda36`); the check loads from a project's deployed
+  `.specify` copy (`f2147e45`); Copilot unverified and text binding (`e7552074`); the Stop fallback registers the turn of
+  a verdict it records (`67da3938`); workshop repair and replies (`827cd080`).
+- **The 14 suites that went red on 731e6500**, all classified as the rule doing its job (fixtures that recorded an approval
+  with no findable turn, or a transcript record in a shape Claude never writes); fixed with the shared helper
+  (`tests/support/cited-typed-turn.ps1`: `Register-SpecrewTestTypedTurn`, `New-SpecrewTypedTurnFixture`), no switch:
+  - human-authority-store: sign-off written with no turn;
+  - signoff-gate-wiring: sign-off written with no turn;
+  - agent-led-workshop-replay: transcript record with origin.kind only;
+  - prose-alias-sync: sign-off written with no turn;
+  - timestamp-read: allowance reset written with no turn;
+  - authority-audit: pause written for a turn with no ledger row, and a transcript record with origin.kind only;
+  - boundary-ratchet: captured verdicts in hand-written history with no turn (given real typed turns, not moved to
+    out-of-band);
+  - coverage-is-a-decision: deferral written with no turn;
+  - new-feature-reset: transcript record with origin.kind only;
+  - review-budget-snapshot: transcript record with origin.kind only;
+  - review-stop-answers: the prompt capture called with no transcript;
+  - review-stop-here: the prompt capture called with no transcript;
+  - typed-act-writer: transcript records with origin.kind only, and writers handed turns with no ledger row;
+  - typed-authority-capture: writers with no turn, the capture with no transcript, and a Stop transcript with origin.kind
+    only.
+- **Gaps the triage found in the build, fixed**: the loader looked for the engine under `.specify\` and fell back to an
+  older installed module (gap 1, `f8c96bee`/`f2147e45`); the Stop fallback never registered its verdict's turn (gap 2,
+  `fe3dc5c1`/`67da3938`); Copilot approvals were refused for want of a transcript path (gap 3, ruled unverified,
+  `e7552074`).
+- **Lane**: `f203-i001-suites` took 889 s of its 900 s on the sweep of `00d9cdcc`; the three authority suites
+  (mint-path-fixtures, authorization-sender, authorization-consumers) moved to their own lane `f203-i001-authority-sender`
+  (600 s), rather than raising the limit.
+- **Ownership**: `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `HandoverStore.ps1`,
+  `extensions/specrew-speckit/scripts/shared-governance.ps1` and `workshop-authority-store.ps1` with their `.specify`
+  copies (install record refreshed in each commit), `scripts/specrew-where.ps1` and `.specrew/verification-plan.json` are
+  outside T013's files.
+- **Points**: scope added by the maintainer's rulings of 2026-11-12. Item 2 was estimated at 2.25 and is about 3.5 (the
+  overrun of about 1.25 accepted by the maintainer); text binding adds about 0.5. The capacity file is unchanged.
+- **Class closure**: `tests/unit/authorization-sender.Tests.ps1` (each pinned shape, the check, the loader, Copilot, text
+  binding), `tests/unit/authorization-consumers.Tests.ps1` (every consumer, typed and scheduled, and the whole path from
+  the prompt hook), `tests/unit/mint-path-fixtures.Tests.ps1` (record cells per shape), in lane
+  `f203-i001-authority-sender`.
