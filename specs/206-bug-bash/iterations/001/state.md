@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T013
 **Tasks Remaining**: T014, T015, T018 (3 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run), T014 (stopped for the maintainer's ruling: `t014-held-scripts.md`)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T11:44:00Z
+**Updated**: 2026-11-12T12:05:00Z
 
 ## Execution Summary
 
@@ -90,6 +90,11 @@
   CI-run registries. SC-004 is proved both ways on temp fixtures for five file names. The sweep was not run for
   real: `-ListOnly` (475 to run, 36 held) and a temp-repository run of two trivial scripts test it. The one guard
   failure is this repository's 36 unregistered tests, green at T015 (DRIFT-206-I001-012).
+- T014 (FR-012; SC-001, SC-007), stopped: the 36 held scripts read; 19 read safe and run alone with the home hook files
+  hashed before and after each (unchanged every time; repository status unchanged): 18 green, 1 red
+  (`substantive-interaction-model-iteration2.ps1`, a README section removed by `b27f35c4`). Not run: 2 read safe and
+  held for the maintainer, 10 that write the home folder (including SC-001's and SC-002's scripts), 1 unsure, 4 on the
+  never-run list. Report: `t014-held-scripts.md`.
 
 ## Notes
 
