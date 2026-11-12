@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Current Phase**: retro
-**Iteration Status**: retro
+**Iteration Status**: abandoned
 **Closure Attempt (REVERSED)**: closed 2026-08-06T13:19:56Z on an approved verdict, then **un-closed the
 same day** when the release gate (`validate-governance.ps1 -IncludeClosed`) rejected the closure as
 `over-claim`: the status claimed closure while `review.md` and `quality/hardening-gate.md` did not exist.
@@ -13,6 +13,14 @@ backfilled under it**, so the record never shows closure preceding its evidence.
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
 **Updated**: 2026-08-06T20:15:10.3996504Z
+
+## Disposition (2026-11-11, recorded by feature 206, T007)
+
+**Abandoned, by the maintainer's ruling of 2026-11-10.** This iteration is closed as abandoned; its
+`review.md` is unchanged and keeps its recorded verdict. Its undone work (FR-066's mint guard, with T091 and
+T093) is one finding owned by feature 203's follow-up, with the parked check as its test (not run): HO-206-3 in
+`specs/206-bug-bash/iterations/001/handover-to-203.md`. `Current Phase` is left as it was. `plan.md` keeps `Status: retro`: this iteration has a `retro.md`, and the validator accepts only
+`retro` or `complete` for a plan with one; the iteration's status is the `Iteration Status` above.
 
 ## Execution Summary
 
