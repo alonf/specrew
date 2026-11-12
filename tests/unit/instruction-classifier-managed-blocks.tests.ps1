@@ -87,6 +87,51 @@ Describe 'A missing or unbalanced marker compares the whole file (FR-003, condit
     }
 }
 
+Describe 'A copilot-instructions.md missing on one side does not stop specrew start (FR-003; found at T015)' {
+    # T003 called the classifier with content, and its mandatory -BeforeContent/-AfterContent refuse an empty
+    # string: when the file did not exist at the baseline commit (or no longer exists), the second `specrew start`
+    # stopped with "Cannot bind argument to parameter 'BeforeContent' because it is an empty string." Before T003
+    # the classifier read the files itself and compared an absent side as empty; that comparison stands.
+    BeforeAll {
+        $source = Get-Content -LiteralPath $script:StartScript -Raw
+        $script:RestartTriggerFunction = [regex]::Match($source, '(?s)function Get-RestartTriggerFiles \{.*?\r?\n\}\r?\n').Value
+        $script:ClassifierRepo = Join-Path ([IO.Path]::GetTempPath()) ('classifier-missing-side-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:ClassifierRepo '.github') -Force
+        [IO.File]::WriteAllText((Join-Path $script:ClassifierRepo 'README.md'), "fixture`n")
+        & git -C $script:ClassifierRepo init --quiet
+        & git -C $script:ClassifierRepo add -A
+        & git -C $script:ClassifierRepo -c user.name='Classifier Fixture' -c user.email='classifier-fixture@example.invalid' commit --quiet -m 'baseline without instructions'
+        $script:BaselineWithout = (& git -C $script:ClassifierRepo rev-parse HEAD).Trim()
+        $healed = Merge-SpecrewManagedInstructionSection -ExistingContent $script:Before -ManagedContent $script:Fragment
+        [IO.File]::WriteAllText((Join-Path $script:ClassifierRepo '.github\copilot-instructions.md'), $healed)
+        & git -C $script:ClassifierRepo add -A
+        & git -C $script:ClassifierRepo -c user.name='Classifier Fixture' -c user.email='classifier-fixture@example.invalid' commit --quiet -m 'instructions added'
+        $script:BaselineWith = (& git -C $script:ClassifierRepo rev-parse HEAD).Trim()
+    }
+    AfterAll {
+        Remove-Item -LiteralPath $script:ClassifierRepo -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'classifies a file added since the baseline as changed instead of throwing' {
+        $script:RestartTriggerFunction | Should -Not -BeNullOrEmpty
+        . ([scriptblock]::Create($script:RestartTriggerFunction))
+        $result = @(Get-RestartTriggerFiles -ResolvedProjectPath $script:ClassifierRepo -BaselineCommitHash $script:BaselineWithout -ChangedFiles @('.github/copilot-instructions.md'))
+        $result | Should -Contain '.github\copilot-instructions.md'
+    }
+
+    It 'classifies a file deleted since the baseline as changed instead of throwing' {
+        . ([scriptblock]::Create($script:RestartTriggerFunction))
+        Remove-Item -LiteralPath (Join-Path $script:ClassifierRepo '.github\copilot-instructions.md') -Force
+        try {
+            $result = @(Get-RestartTriggerFiles -ResolvedProjectPath $script:ClassifierRepo -BaselineCommitHash $script:BaselineWith -ChangedFiles @('.github/copilot-instructions.md'))
+            $result | Should -Contain '.github\copilot-instructions.md'
+        }
+        finally {
+            & git -C $script:ClassifierRepo checkout --quiet -- .github/copilot-instructions.md
+        }
+    }
+}
+
 Describe 'specrew start classifies the compared pair (FR-003)' {
     It 'passes the stripped pair to the classifier in Get-RestartTriggerFiles' {
         $source = Get-Content -LiteralPath $script:StartScript -Raw
