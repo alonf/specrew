@@ -2188,3 +2188,36 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   binding), `tests/unit/authorization-consumers.Tests.ps1` (every consumer, typed and scheduled, and the whole path from
   the prompt hook), `tests/unit/mint-path-fixtures.Tests.ps1` (record cells per shape), in lane
   `f203-i001-authority-sender`.
+
+### DRIFT-066 — The crew force-removed its own worktree, erasing the project's gitignored state (incident; 2026-11-13)
+
+- **What happened**: stopping the background sweep of `c407d15d`, the crew cleaned up its sweep worktrees by matching
+  `git worktree list` against a pattern, not by path. The command, run from `C:\Dev\specrew-b4f-142`:
+
+  ```powershell
+  git worktree list | Select-String 'c407d15d|t013-final' | ForEach-Object {
+      $p = ($_.Line -split '\s+')[0]; git worktree remove --force $p 2>&1; "removed $p" }
+  ```
+
+  The project's own worktree had HEAD `c407d15d`, so its line matched, and `git worktree remove --force
+  C:/Dev/specrew-b4f-142` ran. Git deleted every file in the working directory and unregistered the worktree; only the
+  empty folder survived, because the shell's working directory was inside it ("Permission denied" on the folder itself).
+- **What was lost**: every gitignored file that lived only in the worktree: `.specrew/start-context.json` (the lifecycle
+  position, the boundary state and the verdict history), `.specrew/authority/` (the turn ledger and the sender journal),
+  the gitignored parts of `.specrew/review/` (captures and the campaign authority stores), and `.specrew/runtime/`
+  (including `live-engine.json`, the pin record, and `live-engine-bindings.json`). Not lost: every commit (the shared
+  object store at `C:\Dev\specrew`; branch `203-beta5-stabilization` still at `c407d15d`); the tracked tree, including
+  `.claude/settings.local.json`; the live-engine pin checkout at `~\.specrew\live-engine\203-beta5-stabilization`
+  (`a56ac787`); the home hook files.
+- **Recovery so far** (maintainer ruling 2026-11-13, step by step): the worktree re-created at the branch tip
+  (`git -C C:\Dev\specrew worktree add C:\Dev\specrew-b4f-142 203-beta5-stabilization`; HEAD `c407d15d`, tree clean);
+  the 17 commits not yet on the feature branch backed up to `origin/backup/203-c407d15d`. Nothing lost is written by hand
+  or restored from memory: the maintainer retypes the boundary verdict, and the pin record and the hooks wait for the
+  maintainer's word. No sweep, no push to the feature branch and no T013 work until then.
+- **Cause**: a destructive command keyed on a pattern that matched a commit hash instead of an exact path, with no check
+  that the target was not the crew's own worktree.
+- **Class closure**: a standing rule from the maintainer (2026-11-13), for the crew and every agent it starts: never run
+  `git worktree remove`, `git clean`, `rm -rf` or `Remove-Item -Recurse` on a path that is not inside the crew's own
+  scratchpad or a temp folder it created in that session; sweep worktrees are cleaned up by their path under that temp
+  root, never by matching a commit. Executable guard: NONE — the rule lives in the crew's standing memory, not in code;
+  B5F-069 proposes the product side.
