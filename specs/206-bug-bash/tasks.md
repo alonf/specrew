@@ -233,7 +233,10 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     and fixed (RED 2/10 `968022f3`, GREEN 10/10 `30fa853a`; DRIFT-206-I001-014). SC-002 is not met in iteration 001
     (maintainer, option 1): `validator-hardening-iteration2.ps1` is red at assertion 3 (bug list item 21) and is
     required in iteration 002. `project-path-resolution-regression.ps1` is not registered until the maintainer has
-    seen its supervised run. Report: `iterations/001/t015-registration.md`.
+    seen its supervised run. Both supervised runs were red with home unchanged: run 1 on the developer's stale
+    session state copied into the fixture (fixed: tracked files only, RED 1/50 `b9354aff`, GREEN 50/50 `7c8b5cf7`;
+    DRIFT-206-I001-015), run 2 on the missing session files read as stale (open for the maintainer). Report:
+    `iterations/001/t015-registration.md`.
   - **Work:** a per-push lane or the release manifest per the ruling; slow scripts to the release manifest; a
     suite added to a verification lane is read under T014's rule first.
   - **Acceptance:** `project-path-resolution-regression.ps1` and `validator-hardening-iteration2.ps1` green and

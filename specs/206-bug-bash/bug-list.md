@@ -458,3 +458,28 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   and registered, in the release manifest (not per push). For iteration 002 planning, a design of one page at most:
   what `specrew start` does with whole files it created or repaired itself, and which session-loaded files get the
   matched-block treatment.
+
+## 22. `project-path-resolution-regression.ps1` copied the developer's gitignored session state into its fixture
+
+- **Observed (T015, 2026-11-12, supervised run 1, 39 s, home hook files unchanged):** red: "specrew start --no-launch
+  (default path) exited with code 1." Start refused: "Session-state file is present but stale or unparseable:
+  last-start-prompt.md ... specrew start could not continue: this project has stale session state, and no recovery
+  path was chosen" (item 1's path, working as T001 fixed it).
+- **Cause:** the script built its fixture by copying this repository's `.specrew` working folder, which holds
+  gitignored session state (`.gitignore:59`, `:61`): `last-start-prompt.md`, `start-context.json`, and the
+  authority, review and runtime stores. This worktree's prompt has no frontmatter, so start read it as stale. The
+  result depended on who ran the script; a fresh CI checkout has neither file.
+- **Fix (reviewer ruling 2026-11-12, under the maintainer's delegation):** the fixture copies only the files git
+  tracks under `.specrew` (197 files instead of the working folder's 308). RED 1/50 in `b9354aff`, GREEN 50/50 in
+  `7c8b5cf7`; DRIFT-206-I001-015.
+- **Supervised run 2 (T015, 2026-11-12, on `7c8b5cf7`, 33 s, home hook files unchanged): still red, a different
+  stale state.** With no session files copied, start reports "Session-state file missing on disk:
+  last-start-prompt.md" and "... start-context.json (re-anchor will recreate it from the current spec)", and refuses
+  with no console: "specrew start could not continue: this project has stale session state, and no recovery path
+  was chosen ... run specrew start again with a choice, for example: specrew start --recovery-choice A". The
+  fixture copies `specs/` (features with iterations) and the tracked `.specrew` files, so to start it is a governed
+  project whose session files are missing. A fresh checkout of this repository meets the same refusal. The other
+  four cases pass (init --dry-run, update --info, team list, review, and the static GetFullPath scan).
+- **Open (maintainer):** SC-001 needs either the test to pass a recovery choice (`--recovery-choice`) or `specrew
+  start` to treat a governed project with no session files, as in a fresh clone, as not stale. No third run without
+  the maintainer.

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 14
-**Resolution rate**: 86% (12/14 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 15
+**Resolution rate**: 87% (13/15 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
@@ -297,6 +297,22 @@ iteration 002 as a required item: feature 206 does not close without it)
 - **Approval**: the maintainer, 2026-11-12 (fix here: the cause is this feature's item, FR-003).
 - **Class closure**: the six `specrew-start-*` scripts now run per push (T015), so a change to the start path's
   classification is executed on every push; the T003 suite executes the call site instead of reading its text.
+
+### DRIFT-206-I001-015 — T015 changed SC-001's script: its fixture copies tracked files only
+
+- **Recorded**: 2026-11-12, at the reviewer's ruling under the maintainer's delegation (T015 report, SC-001 option 1).
+- **What**: `tests/integration/project-path-resolution-regression.ps1` is outside T015's owned files (DRIFT-013
+  already covers its profile override). Its first supervised run was red because it copied the developer's
+  gitignored session state into its fixture (bug list item 22). Its `.specrew` copy now takes only the files git
+  tracks, as a fresh checkout has them; the other four fixture folders are copied as before. The ruling preferred
+  tracked-only over dropping the two named files, because the class fix also keeps the authority, review and
+  runtime stores out of a temp copy.
+- **Approval**: the reviewer session, 2026-11-12, under the maintainer's delegation (a routine ruling inside the plan;
+  no approval carried).
+- **Resolution**: RED 1/50 in `b9354aff`, GREEN 50/50 in `7c8b5cf7`; supervised run 2 (red, a different cause: missing session files read as stale) reported in
+  `t015-registration.md`.
+- **Class closure**: the lane guard fails if the script's `.specrew` copy stops going through `git ls-files`. The
+  other fixture builders that copy repository folders are not covered.
 
 <!--
   Every new ### DRIFT-... event includes:

@@ -138,3 +138,44 @@ Nothing under `~/.specrew`, `~/.copilot` or `~/.cursor` changed, and no file was
 to the script. A listing taken twice before the run, with nothing running, already differed by one transcript.
 
 **Not registered.** The script stays excluded ("awaits the maintainer") until your ruling.
+
+## SC-001: Supervised Run 2 (after the fixture fix)
+
+By the reviewer's ruling of 2026-11-12, given under the maintainer's delegation, the fixture's `.specrew` copy takes
+only the files git tracks: RED 1/50 in `b9354aff`, GREEN 50/50 in `7c8b5cf7`, DRIFT-206-I001-015, bug-list item 22.
+Run 2 used the same protocol as run 1: on `7c8b5cf7`, alone, override set, no console, home hook files hashed, and
+the five folders listed. It ran from 19:55:02 to 19:55:37 local time.
+
+**Red, 33 s.** The home hook files were unchanged and so was the repository's `git status`.
+
+**The failure has moved.** With no session files copied, start reports "Session-state file missing on disk:
+last-start-prompt.md" and "... start-context.json (re-anchor will recreate it from the current spec)". It then
+refuses because there is no console: "specrew start could not continue: this project has stale session state, and
+no recovery path was chosen ... run specrew start again with a choice, for example: specrew start --recovery-choice
+A". The fixture also copies `specs/` (features with iterations), so to start it is a governed project whose session
+files are missing. A fresh checkout of this repository meets the same refusal. The script's other cases pass: init
+--dry-run, update --info, team list, review, and the static GetFullPath scan.
+
+**The home folders:** 40,055 files before and 40,055 after. These are the differences, and the paths I treat as
+other activity:
+
+| Change | File | Attributed to |
+| --- | --- | --- |
+| new | `.claude/backups/.claude.json.backup.1794506118180` (modified 17:52 UTC, before the run) | Claude Code's rotation of its `.claude.json` backups |
+| removed | `.claude/backups/.claude.json.backup.1794504635593` | the same rotation (the oldest backup dropped) |
+| changed | `.claude/plugins/store/cc-plugin-diff_builtin-....json` (same size) | Claude Code (rewritten 39 s before the run, too) |
+| changed | `.claude/projects/C--Dev-specrew-206-bug-bash/10b872c0-....jsonl` | this session's transcript |
+| changed | `.claude/projects/C--Dev-specrew-220-workshop-lens-order/d523bc82-....jsonl` | the Claude session in the 220 worktree |
+| changed | `.claude/projects/C--Dev-specrew-b4f-142/d8f18eb4-....jsonl`, its subagent transcript and `.meta.json` | the Claude session in `C:\Dev\specrew-b4f-142` |
+
+Nothing under `~/.specrew`, `~/.copilot`, `~/.codex` or `~/.cursor` changed. No change is attributable to the script.
+The paths I treat as other activity are `~/.claude/projects/**`, `~/.claude/backups/**`, `~/.claude/file-history/**`,
+`~/.claude/plugins/store/**`, and `~/.codex/.codex-global-state.json` with its `.bak`. Every change in either run
+falls under one of these.
+
+**Not registered; no third run** (the reviewer's ruling). For the maintainer, SC-001 has two possible fixes:
+
+1. The test passes a recovery choice, for example `--recovery-choice A`, so start re-anchors in the fixture. This is
+   a test change, and SC-001 then measures path resolution after a re-anchor.
+2. `specrew start` treats a governed project with no session files, as in a fresh clone, as a first start rather than
+   stale state. This is a product change on item 1's path, and new design.
