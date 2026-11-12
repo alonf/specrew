@@ -433,6 +433,25 @@ else {
     Assert-True $false "SC-001's script, run, refuses and writes nothing (not run: the refusal is not its first statement, and the old script must not run)"
 }
 
+# --- A registered script decides on Test-Json's result, not on whether it throws (bug list item 26) ------------------
+# mechanical-findings-contract.ps1, registered per push at T015, went red on one Ubuntu image and green on another
+# with no change to it: its helper threw Test-Json's result away ($null = Test-Json ...) and counted a document as
+# invalid only when Test-Json threw. On a PowerShell where a schema mismatch returns $false without throwing, an
+# invalid document passes. The helper is lifted from the script and run against a Test-Json stand-in in its own scope.
+$mfcSource = Get-Content -LiteralPath (Join-Path $repoRoot 'tests/integration/mechanical-findings-contract.ps1') -Raw -Encoding UTF8
+$mfcHelper = [regex]::Match($mfcSource, '(?s)function Test-FixtureAgainstSchema \{.*?\r?\n\}\r?\n').Value
+$mfcVerdicts = & {
+    param($HelperText)
+    function Test-Json { [CmdletBinding()] param([string]$Path, [string]$SchemaFile) return ($Path -eq 'valid') }
+    . ([scriptblock]::Create($HelperText))
+    [pscustomobject]@{
+        Mismatch = Test-FixtureAgainstSchema -Path 'mismatch' -SchemaPath 'schema'
+        Valid    = Test-FixtureAgainstSchema -Path 'valid' -SchemaPath 'schema'
+    }
+} $mfcHelper
+Assert-True (-not [string]::IsNullOrWhiteSpace($mfcHelper) -and $mfcVerdicts.Mismatch -eq $false -and $mfcVerdicts.Valid -eq $true) ("mechanical-findings-contract.ps1 reports a schema mismatch as invalid when Test-Json returns false without throwing (mismatch: {0}; valid: {1})" -f
+    $mfcVerdicts.Mismatch, $mfcVerdicts.Valid)
+
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
     Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
