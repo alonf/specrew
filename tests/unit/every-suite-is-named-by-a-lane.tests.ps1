@@ -397,6 +397,42 @@ $sc001Isolated = ($sc001Text -match '\$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Pat
     ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+init') -and ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+rev-parse\s+--show-toplevel')
 Assert-True $sc001Isolated "SC-001's fixture is built outside this repository, has its own git repository, and the script checks that the fixture's git top level is not this repository"
 
+# Supervised runs 3 and 4 rewrote this repository's state.md (bug list item 23, through the tracked
+# .squad/identity/now.md) and run 4 left an init probe folder in it (item 25). Being excluded keeps the script out of
+# the automated lists only, so it refuses to run at all until iteration 002 fixes those items: its first statement
+# exits, before any fixture is built, with no switch or variable to bypass it (reviewer ruling 2026-11-12, maintainer's
+# option 1). It is executed below only once the refusal is in place, so this check never runs the old script.
+$sc001Path = Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1'
+$sc001Raw = Get-Content -LiteralPath $sc001Path -Raw -Encoding UTF8
+$refusalAt = $sc001Raw.IndexOf('bug list items 23, 24 and 25', [StringComparison]::Ordinal)
+$firstWriteAt = [regex]::Match($sc001Raw, '(?m)^[^#\r\n]*\b(New-Item|Copy-Item|Remove-Item|Set-Content|git\s+-C)\b').Index
+$refusalFirst = $refusalAt -ge 0 -and $refusalAt -lt $firstWriteAt -and ($sc001Raw.Substring($refusalAt, [Math]::Min(400, $sc001Raw.Length - $refusalAt)) -match '\bexit\s+1\b') -and
+    ($sc001Raw -notmatch 'SPECREW_[A-Z_]*(ALLOW|BYPASS|FORCE)')
+Assert-True $refusalFirst ("SC-001's script refuses before it writes anything, naming bug list items 23, 24 and 25, with no bypass (refusal at {0}; first write at {1})" -f $refusalAt, $firstWriteAt)
+if ($refusalFirst) {
+    $refusalTemp = Join-Path ([IO.Path]::GetTempPath()) ('sc001-refusal-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    $null = New-Item -ItemType Directory -Path $refusalTemp -Force
+    $repoStateBefore = ((& git -C $repoRoot status --porcelain=v1 --untracked-files=all) -join "`n") + "`n" + ((& git -C $repoRoot diff --no-ext-diff) -join "`n")
+    $savedTemp = $env:TEMP; $savedTmp = $env:TMP; $savedTmpDir = $env:TMPDIR
+    try {
+        $env:TEMP = $refusalTemp; $env:TMP = $refusalTemp; $env:TMPDIR = $refusalTemp
+        $refusalOutput = @(& pwsh -NoProfile -NonInteractive -File $sc001Path 2>&1 | ForEach-Object { [string]$_ })
+        $refusalExit = $LASTEXITCODE
+    }
+    finally {
+        $env:TEMP = $savedTemp; $env:TMP = $savedTmp; $env:TMPDIR = $savedTmpDir
+    }
+    $repoStateAfter = ((& git -C $repoRoot status --porcelain=v1 --untracked-files=all) -join "`n") + "`n" + ((& git -C $repoRoot diff --no-ext-diff) -join "`n")
+    $tempWrites = @(Get-ChildItem -LiteralPath $refusalTemp -Recurse -Force -ErrorAction SilentlyContinue)
+    Remove-Item -LiteralPath $refusalTemp -Recurse -Force -ErrorAction SilentlyContinue
+    $refusalText = $refusalOutput -join ' '
+    Assert-True ($refusalExit -ne 0 -and $refusalText -match '23' -and $refusalText -match '24' -and $refusalText -match '25' -and $tempWrites.Count -eq 0 -and $repoStateAfter -eq $repoStateBefore) ("SC-001's script, run, refuses and writes nothing in the repository or the temp folder (exit {0}; temp entries {1}; repository unchanged {2}; output: {3})" -f
+        $refusalExit, $tempWrites.Count, ($repoStateAfter -eq $repoStateBefore), $refusalText)
+}
+else {
+    Assert-True $false "SC-001's script, run, refuses and writes nothing (not run: the refusal is not its first statement, and the old script must not run)"
+}
+
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
     Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
