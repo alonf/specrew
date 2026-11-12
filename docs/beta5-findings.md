@@ -61,3 +61,53 @@
 
   The test: one `review.md` with the derived block passes against a populated store, passes with the notice against an empty store, and still fails when its block is edited against the populated store. Nothing built.
 - **B5F-050 — The review-signoff sync and the governance check need opposite phase lines once `review.md` exists, and the pre-push rule needs both: a crew that writes `review.md` before the sync is deadlocked (open; 2026-11-11, feature 205 on main's engine):** severity high (crew's rating). The sync's state-truth gate (`sync-boundary-state.ps1:928`, `[iteration-state-truth-gate]`) refuses unless `state.md` and `plan.md` show the last authorized boundary, which before the review is `before-implement` / `executing`. It binds to HEAD and needs HEAD on origin (`verdict-commit-durable`, `gate-preflight.ps1`). The governance check refuses plan Status `executing` once `review.md` exists (`validate-governance.ps1:5076`), and the pre-push rule needs that check to exit 0. So no commit can hold the review record and also be pushed and synced. 205 removed `review.md` with a revert (`e2748a53`), synced, and restored it afterwards (205 DRIFT-013, handed over as H-003). 205's DRIFT-011, the crew setting the phase lines by hand, is the crew error that showed it, not this finding. **This branch behaves the same**: neither the state-truth gate, the plan-status rule nor the durability check changed on the 203 branch. **Proposed, for feature 203 iteration 002, test first**: the governance check reads the authority record. A `review.md` with pre-review phase lines is accepted, with a warning naming the sync, while the review-signoff crossing is the next one pending. The phase lines then move only through the sync, as the crew rule says. The test: a fixture with `review.md`, `executing` and last boundary `before-implement` passes the check, the sync accepts it, and after the sync the check requires `reviewing` as now. Nothing built.
+- **B5F-051 — Review-runtime tests fail on slow shared runners: 14 sites in three classes assert how fast something happened, not what happened (open; 2026-11-12, feature 205's H-006 and its DRIFT-018, with feature 206's failures):** severity major (crew's rating). The 205 crew rates the class high. These are test defects except where noted, but they turn a CI gate red on commits that could not have caused the failure. Five such failures in two days:
+  - 205's Windows journal budget, `cf173030`, Cross-Platform `43066363241`, 2,650 ms against 1,600;
+  - 206's macOS process-group probe, `a9ad8aa0`, `42994018357`;
+  - 206's Linux lease handoff, `03bc7a48`, Specrew CI `43116326615`;
+  - 206's macOS drain budget, `03bc7a48`, reported by the maintainer and not confirmed from the log;
+  - an earlier empty-result-retry failure, whose output was not read.
+
+  **Verified on this branch, by reading, 2026-11-12**: all 14 sites exist at the cited lines. One path correction: site 6 is `tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1:297`, not `tests/unit/`. Paths below are under `tests/continuous-co-review/` unless they start with `tests/unit/`.
+  - **(A) Speed caps: a stopwatch on a fast path, with an upper bound.**
+    1. `tests/unit/journal-fault-injection.tests.ps1:89-91, 97, 104`: the first wait is 950 to 1,500 ms, later waits and appends are under 100 ms, and the total is under 1,600 ms.
+    2. `unit/review-posix-runtime.Tests.ps1:126`: a 25 ms drain returns in under 250 ms.
+    3. `integration/timeout-partial-stdout.Tests.ps1:34`: under 20 s.
+    4. `unit/isolated-task-launcher.Tests.ps1:104` and `:173`: under 8 s and under 35 s.
+    5. `unit/review-target-port.Tests.ps1:72`: under 8 s.
+    6. `unit/hook-health-receipt.Tests.ps1:297`: under 8 s.
+    7. `integration/detached-spawn-no-block.Tests.ps1:55`: under 4 s, Windows only.
+  - **(B) Real deadlines that must succeed.**
+    8. `integration/review-cross-platform-fault-matrix.Tests.ps1:150`: the macOS runtime preflight, which is product code. Split out as B5F-052.
+    9. `unit/review-posix-runtime.Tests.ps1:169`: three injected probe calls within a 100 ms budget. Lines 174-178 were loosened for this; 169 was not.
+    10. `unit/review-posix-runtime.Tests.ps1:103`: two ready-file reads within 100 ms.
+    11. `tests/unit/hook-output-journal.tests.ps1:203, 266` and the cases after them: a 4,000 ms lock hold must outlast the 1,000 ms budget.
+    12. `unit/empty-result-retry.Tests.ps1`: real `pwsh` cold starts under a 30 s timeout. Inferred by 205; not re-measured.
+  - **(C) Kill, then check at once.**
+    13. `unit/co-review-service.Tests.ps1:127-129`, against production `co-review-service.ps1:216`, which runs `Stop-Process -Force` with no wait. A killed process can still be listed until it is reaped, so the production side reports success it has not observed.
+    14. `unit/bounded-verification.Tests.ps1:60-63`: a fixed 800 ms sleep, then the grandchild must be gone.
+  - **Sleeps used as barriers (lower risk)**: `unit/lineage-lease.Tests.ps1:54` (500 ms) and `tests/unit/journal-fault-injection.tests.ps1:149` (1,500 ms).
+  - **The model to copy**: `unit/isolated-task-containment.Tests.ps1:174-179` kills the process, then polls until it is gone with a 10 s deadline, then asserts.
+
+  All of these suites run in CI (`cross-platform-validation.yml` and the honesty suite), so every red one blocks a push gate. **Proposed, for feature 203 iteration 002, after B5F-052**, 205's proposals 1 to 4, 6 and 7, test first:
+  - **Proposal 7 first**: a static guard that fails on any new elapsed-time upper bound in the review-runtime suites unless the line carries an allow annotation. Today's 14 sites carry the annotation until each is converted, so the class stops growing while it is fixed.
+  - Then, one commit per class:
+    - **(A)** an injected clock and sleep for the budget logic, so the tests assert the accounting, not milliseconds;
+    - **(B)** handshakes, not sleeps;
+    - **(C)** wait for exit after a kill, with a bounded `WaitForExit`, and production reports a survivor;
+    - **DRIFT-023's 1,000 ms lock budget** keeps one coarse wall-clock check: at least 950 ms, and under 10 s.
+
+  Nothing built.
+- **B5F-052 — On macOS, every review launch waits at most 1,000 ms for a live `ps` probe to see the new process group, so a loaded machine refuses the review (open; 2026-11-12, 205's H-006 item 8, seen as 206's Cross-Platform failure `42994018357` on `a9ad8aa0`):** severity high (crew's rating): it is a product bound, and a user's laptop under load fails it as surely as a shared runner. `Wait-ReviewMacProcessGroupMembership` (`scripts/internal/continuous-co-review/review-macos-runtime-port.ps1:79`) defaults to 1,000 ms, polling every 25 ms. Each poll runs `Get-SpecrewProcessGroupId`, a live `ps` call. **Verified on this branch, by reading**: the default is used twice on every macOS reviewer launch, not only in the preflight H-006 names.
+  1. **The preflight**: `Test-ReviewMacProcessGroupAvailability` (:116) starts a probe `pwsh`, waits up to 15,000 ms for its ready file, then gives membership 1,000 ms. On failure: `macos-process-group-probe-membership-failed`, and the launch's preflight reports `macos-runtime-preflight-failed:...`.
+  2. **The real launch**: the containment check (:147-150, called at `review-posix-runtime-common.ps1:146-147`) uses the same default on the reviewer process. On failure: `macos-containment-verification-failed`.
+
+  A single `ps` call that takes more than a second under load gets one observation. The parameter's range caps it at 5,000 ms (`ValidateRange(25, 5000)`), so H-006's proposal of 15 s also needs that cap raised. Not checked: whether a launch refused this way spends the human's round. Related, not counted: the cleanup check (:152) also waits 1,000 ms, but only after a 5,000 ms wait has already found the group empty (`review-posix-runtime-common.ps1:190-192`), so it is low risk. **This branch behaves the same as main.** The live behaviour can be seen only on macOS: this machine is Windows, so a fix is proven by injected-probe tests here and by CI's macOS review-runtime job. **Proposed, for feature 203 iteration 002 as its first task, test first, then the pin procedure** (the review engine runs from the pin):
+  - The membership wait takes the handshake's budget (`ReviewPosixContainmentHandshakeTimeoutMilliseconds`, 15,000 ms), with the range cap raised to match.
+  - It always makes at least three observations, however long each `ps` call takes, so a slow probe is not a refusal by itself.
+  - The failing tests come first, with an injected probe:
+    - a probe whose first two calls each take longer than the old 1,000 ms budget and whose third succeeds is accepted;
+    - a probe that never succeeds is refused within the new budget;
+    - both launch paths use the new default.
+
+  Nothing built.
