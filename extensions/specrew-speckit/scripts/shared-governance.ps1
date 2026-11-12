@@ -4196,7 +4196,9 @@ function Invoke-SpecrewReviewBudgetSnapshot {
         [AllowNull()][AllowEmptyString()][string]$FeatureRef,
         [AllowNull()][AllowEmptyString()][string]$IterationNumber,
         [Parameter(Mandatory)][string]$VerdictEntry,
-        [Parameter(Mandatory)][string]$ObservedAt
+        [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-041): the typed turn the verdict was captured from, named on the budget grant it snapshots.
+        [AllowNull()][AllowEmptyString()][string]$TurnIdentity = ''
     )
     $feature = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { '' } else { Split-Path -Leaf $FeatureRef.Trim() }
     $iteration = if ([string]::IsNullOrWhiteSpace($IterationNumber)) { '' } else { $IterationNumber.Trim() }
@@ -4222,7 +4224,10 @@ function Invoke-SpecrewReviewBudgetSnapshot {
         throw (New-SpecrewReviewBudgetRefusal -Message ([string]$resolution.refusal))
     }
     $campaignId = Get-ReviewCampaignIdForIteration -FeatureId $feature -IterationNumber $iteration
-    $fact = New-ReviewBudgetGrantFact -CampaignId $campaignId -Resolution $resolution -VerdictEntry $VerdictEntry -ObservedAt $ObservedAt
+    $grantArgs = @{ CampaignId = $campaignId; Resolution = $resolution; VerdictEntry = $VerdictEntry; ObservedAt = $ObservedAt }
+    # A review engine older than T012 has no -TurnIdentity; the grant is still written, without the turn.
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity) -and (Get-Command New-ReviewBudgetGrantFact).Parameters.ContainsKey('TurnIdentity')) { $grantArgs['TurnIdentity'] = $TurnIdentity }
+    $fact = New-ReviewBudgetGrantFact @grantArgs
     $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot (Join-Path $ProjectRoot '.specrew/review/authority') -Fact $fact
     return $fact
 }
@@ -4512,7 +4517,7 @@ function Add-SpecrewBoundaryAuthorization {
         $budgetFeature = if ([string]::IsNullOrWhiteSpace($authorizationFeatureRef)) { '' } else { Split-Path -Leaf ([string]$authorizationFeatureRef).Trim() }
         $budgetIteration = if ($null -ne $budgetSession -and $budgetSession.Contains('iteration_number') -and $budgetSessionFeature -ceq $budgetFeature) { [string]$budgetSession['iteration_number'] } else { $null }
         $null = Invoke-SpecrewReviewBudgetSnapshot -ProjectRoot $ProjectRoot -FeatureRef $authorizationFeatureRef -IterationNumber $budgetIteration `
-            -VerdictEntry ([string]$newAuthorization['authorization_id']) -ObservedAt $effectiveRecordedAt
+            -VerdictEntry ([string]$newAuthorization['authorization_id']) -ObservedAt $effectiveRecordedAt -TurnIdentity $citedTurnIdentity
     }
     $verdictHistory.Add($newAuthorization) | Out-Null
 

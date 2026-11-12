@@ -275,14 +275,17 @@ function Request-ReviewCampaignReservationFact {
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][string]$ReservationId,
-        [Parameter(Mandatory)][string]$ObservedAt
+        [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-024): the budget grant and the reset that opened the current window, and the typed turn behind it.
+        [AllowEmptyString()][string]$BudgetGrantId = '', [AllowEmptyString()][string]$ResetId = '', [AllowEmptyString()][string]$TurnIdentity = ''
     )
     for ($attempt = 0; $attempt -lt 101; $attempt++) {
         $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind grants)
         $reservations = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind reservations)
         $spends = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind spend)
         $releases = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind releases)
-        $decision = Resolve-ReviewCampaignReservationDecision -CampaignId $CampaignId -RunId $RunId -ReservationId $ReservationId -ObservedAt $ObservedAt -Grants $grants -Reservations $reservations -Spends $spends -Releases $releases
+        $decision = Resolve-ReviewCampaignReservationDecision -CampaignId $CampaignId -RunId $RunId -ReservationId $ReservationId -ObservedAt $ObservedAt -Grants $grants -Reservations $reservations -Spends $spends -Releases $releases `
+            -BudgetGrantId $BudgetGrantId -ResetId $ResetId -TurnIdentity $TurnIdentity
         if (-not $decision.permitted) { return [pscustomobject]@{ acquired = $false; reason = $decision.reason; fact = $null } }
         $fact = $decision.fact
         # A pre-invocation release restores an allowance slot. Each reuse appends an immutable

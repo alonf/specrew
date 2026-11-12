@@ -753,6 +753,9 @@ function Get-ReviewCampaignRoundBudgetState {
     $budgetTotal = $script:ReviewBudgetFloor
     $source = 'floor'
     $authorityRef = $null
+    # Feature 203 T012 (FR-024): the window's citations - the budget grant, the reset that opened the window when one did,
+    # and the typed turn of whichever opened it - which every launch grant and reservation in the window names.
+    $budgetGrantId = ''; $windowResetId = ''; $windowTurn = ''
     if ($null -ne $grant) {
         $countsFrom = Get-ReviewAuthorityProperty -Object $grant -Name 'counts_from'
         if ($null -eq $countsFrom -or [string]::IsNullOrWhiteSpace([string]$countsFrom)) { $countsFrom = Get-ReviewAuthorityProperty -Object $grant -Name 'observed_at' }
@@ -760,12 +763,16 @@ function Get-ReviewCampaignRoundBudgetState {
         $budgetTotal = [int](Get-ReviewAuthorityProperty -Object $grant -Name 'budget_total')
         $source = 'grant'
         $authorityRef = [string](Get-ReviewAuthorityProperty -Object $grant -Name 'grant_id')
+        $budgetGrantId = $authorityRef
+        $windowTurn = [string](Get-ReviewAuthorityProperty -Object $grant -Name 'turn_identity')
     }
     if ($null -ne $resetAt -and ($null -eq $origin -or $resetAt -gt $origin)) {
         $origin = $resetAt
         $budgetTotal = $script:ReviewBudgetFloor
         $source = 'reset'
         $authorityRef = [string](Get-ReviewAuthorityProperty -Object $reset -Name 'reset_id')
+        $windowResetId = $authorityRef
+        $windowTurn = [string](Get-ReviewAuthorityProperty -Object $reset -Name 'turn_identity')
     }
 
     $runIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -805,6 +812,9 @@ function Get-ReviewCampaignRoundBudgetState {
         counts_from            = $origin
         budget_source          = $source
         authority_ref          = $authorityRef
+        budget_grant_id        = $budgetGrantId
+        reset_id               = $windowResetId
+        turn_identity          = $windowTurn
     }
 }
 
@@ -1046,8 +1056,10 @@ function Test-ReviewBudgetPlan {
 
 function New-ReviewBudgetGrantFact {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)]$Resolution, [Parameter(Mandatory)][string]$VerdictEntry, [Parameter(Mandatory)][string]$ObservedAt)
-    return [pscustomobject][ordered]@{
+    param([Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)]$Resolution, [Parameter(Mandatory)][string]$VerdictEntry, [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-041): the typed turn of the before-implement verdict, when it was captured from one.
+        [AllowEmptyString()][string]$TurnIdentity = '')
+    $fact = [pscustomobject][ordered]@{
         schema_version    = '1.0'
         fact_type         = 'budget-grant'
         campaign_id       = $CampaignId
@@ -1064,6 +1076,8 @@ function New-ReviewBudgetGrantFact {
         authority_kind    = 'human'
         observed_at       = $ObservedAt
     }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
+    return $fact
 }
 
 function Add-ReviewCampaignBudgetGrantFact {
@@ -1133,6 +1147,9 @@ function Get-ReviewCampaignBeforeImplementVerdict {
             $recordedAt = Get-ReviewJsonStringProperty -Element $entry -Name 'recorded_at'
             if ([string]::IsNullOrWhiteSpace($authorizationId) -or [string]::IsNullOrWhiteSpace($recordedAt)) { continue }
             $found = [pscustomobject][ordered]@{ authorization_id = $authorizationId; recorded_at = $recordedAt }
+            # Feature 203 T012 (FR-041): the floor grant names the verdict's typed turn when the entry carries one.
+            $entryTurn = Get-ReviewJsonStringProperty -Element $entry -Name 'turn_identity'
+            if (-not [string]::IsNullOrWhiteSpace($entryTurn)) { $found | Add-Member -NotePropertyName turn_identity -NotePropertyValue $entryTurn }
         }
         return $found
     }
@@ -1148,7 +1165,7 @@ function New-ReviewCampaignFloorGrantFact {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)]$Verdict, [Parameter(Mandatory)][string]$ObservedAt, [AllowEmptyString()][string]$RepoRoot = '')
     $ceiling = Get-ReviewBudgetCeiling -RepoRoot $RepoRoot
-    return [pscustomobject][ordered]@{
+    $fact = [pscustomobject][ordered]@{
         schema_version    = '1.0'
         fact_type         = 'budget-grant'
         campaign_id       = $CampaignId
@@ -1167,6 +1184,10 @@ function New-ReviewCampaignFloorGrantFact {
         floor_reason      = ('The before-implement approval {0}, recorded {1}, was given before Specrew recorded review budgets, so no budget was snapshotted for this campaign. It gets the floor of {2} rounds: one review and one fix verification, with no host order and the default cap, and the plan is not read.' -f [string]$Verdict.authorization_id, [string]$Verdict.recorded_at, [int]$script:ReviewBudgetFloor)
         counts_from       = [string]$Verdict.recorded_at
     }
+    # Feature 203 T012 (FR-041): the verdict's typed turn, when the verdict was captured from one.
+    $verdictTurn = if ($null -ne $Verdict -and $Verdict.PSObject.Properties['turn_identity']) { [string]$Verdict.turn_identity } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace($verdictTurn)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $verdictTurn.Trim() }
+    return $fact
 }
 
 function Resolve-ReviewCampaignLaunchAuthority {
@@ -1196,7 +1217,9 @@ function Add-ReviewCampaignLaunchGrant {
     # launches racing derive the same ordinal and so the same grant: one wins its slot, the other is refused.
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$AuthorityRef, [Parameter(Mandatory)][string]$ObservedAt,
-        [AllowEmptyString()][string]$ReviewerHost = '')
+        [AllowEmptyString()][string]$ReviewerHost = '',
+        # Feature 203 T012 (FR-041): the typed turn of the grant or reset that opened the window ($AuthorityRef).
+        [AllowEmptyString()][string]$TurnIdentity = '')
     $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind grants)
     $state = Get-ReviewCampaignAllowanceState -CampaignId $CampaignId -Grants $grants `
         -Reservations @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind reservations) `
@@ -1212,6 +1235,7 @@ function Add-ReviewCampaignLaunchGrant {
     }
     # Feature 203 T008 (FR-009): the reviewer the engine chose for this round, which an empty host order approves.
     if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $fact | Add-Member -NotePropertyName reviewer_host -NotePropertyValue $ReviewerHost.Trim().ToLowerInvariant() }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
     try { $null = Add-ReviewCampaignGrantFact -StoreRoot $StoreRoot -Fact $fact }
     catch {
         # The same ordinal minted by a concurrent launch, with its own time: that launch's grant is the one.
@@ -1226,12 +1250,15 @@ function Add-ReviewCampaignAllowedReviewerFact {
     # approved order. Immutable and idempotent: allowing the same reviewer twice records it once.
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$HostName,
-        [Parameter(Mandatory)][string]$AuthorizationRef, [Parameter(Mandatory)][string]$ObservedAt)
+        [Parameter(Mandatory)][string]$AuthorizationRef, [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-041): the typed turn of the `allow reviewer <host>` line.
+        [AllowEmptyString()][string]$TurnIdentity = '')
     $name = $HostName.Trim().ToLowerInvariant()
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'allowed-reviewer'; campaign_id = $CampaignId; host = $name
         authority_kind = 'human'; authorization_ref = $AuthorizationRef; observed_at = $ObservedAt
     }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/allowed-reviewers/$name.json"
     try { return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $fact -ContractName AllowedReviewerFact -ExpectedCampaignId $CampaignId }
     catch {
@@ -1384,7 +1411,9 @@ function Add-ReviewCampaignFindingDisposition {
     param(
         [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId, [Parameter(Mandatory)][string]$FindingKey,
         [Parameter(Mandatory)][ValidateSet('defer', 'drop', 'fix')][string]$Answer, [AllowEmptyString()][string]$Argument = '',
-        [Parameter(Mandatory)][string]$AuthorizationRef, [Parameter(Mandatory)][string]$ObservedAt
+        [Parameter(Mandatory)][string]$AuthorizationRef, [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-041): the typed turn of the finding's answer.
+        [AllowEmptyString()][string]$TurnIdentity = ''
     )
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'finding-disposition'; campaign_id = $CampaignId; finding_key = $FindingKey
@@ -1392,6 +1421,7 @@ function Add-ReviewCampaignFindingDisposition {
     }
     # Only a deferral names a destination; an empty argument is left out rather than stored empty.
     if ([string]::IsNullOrWhiteSpace($Argument)) { $fact.PSObject.Properties.Remove('argument') }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
     $token = Get-ReviewCampaignStableToken -Value ('{0}/{1}/{2}/{3}' -f $FindingKey, $Answer, $Argument, $ObservedAt) -Length 20
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/finding-dispositions/disp-$token.json"
     return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $fact -ContractName FindingDispositionFact -ExpectedCampaignId $CampaignId
@@ -1683,28 +1713,30 @@ function Invoke-ReviewCampaignStopAnswerLanding {
         if ($null -eq $answer) { continue }
         $kind = [string]$answer.answer
         $ref = 'typed-stop-answer:' + ([string]$answer.response_hash).Substring(0, [Math]::Min(32, ([string]$answer.response_hash).Length))
+        # Feature 203 T012 (FR-024, FR-041): each landed fact names the answer's typed turn.
+        $answerTurn = if ($answer.PSObject.Properties['turn_identity']) { [string]$answer.turn_identity } else { '' }
         $at = [DateTimeOffset]::UtcNow.ToString('o')
         switch ($kind) {
             'allow-reviewer' {
-                $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $StoreRoot -CampaignId $CampaignId -HostName ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at
+                $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $StoreRoot -CampaignId $CampaignId -HostName ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at -TurnIdentity $answerTurn
             }
             { $_ -cin @('defer', 'drop', 'fix') } {
                 $named = [string]$answer.finding
                 $target = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.finding_id -ceq $named -or [string]$_.finding_key -ceq $named }) | Select-Object -First 1
                 if ($null -eq $target) { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'finding-not-open' }) | Out-Null; continue }
                 $null = Add-ReviewCampaignFindingDisposition -StoreRoot $StoreRoot -CampaignId $CampaignId -FindingKey ([string]$target.finding_key) `
-                    -Answer $kind -Argument ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at
+                    -Answer $kind -Argument ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at -TurnIdentity $answerTurn
             }
             'judgment' {
                 if ($stopKind -cne 'c-judgment') { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'not-a-judgment-stop' }) | Out-Null; continue }
-                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at
+                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at -TurnIdentity $answerTurn
                 $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact $decisionFact
             }
             default { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'unknown-answer' }) | Out-Null; continue }
         }
         # A dispute or deferral stop (b) is answered once its finding has the human's line.
         if ($stopKind -ceq 'b-dispute-or-defer' -and $kind -cin @('defer', 'drop', 'fix')) {
-            try { $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at) }
+            try { $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at -TurnIdentity $answerTurn) }
             catch { if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw } }
         }
         $null = & $CompleteAnswer $answer $ref
@@ -1851,7 +1883,8 @@ function Invoke-ReviewCampaignHaltLanding {
     $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $runId -TargetDigest $digest -Decision $decision -ObservedAt $at -StopKind 'c-judgment' -StopReason 'human-halt'
     $fact | Add-Member -NotePropertyName recommendation -NotePropertyValue 'The human stopped the review here between stops.' -Force
     $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact
-    $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $runId -Choice stop-here -ObservedAt $at)
+    $haltTurn = if ($capture.PSObject.Properties['turn_identity']) { [string]$capture.turn_identity } else { '' }
+    $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $runId -Choice stop-here -ObservedAt $at -TurnIdentity $haltTurn)
     if (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue) {
         $null = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $ProjectRoot -Choice stop-here -AuthorizationRef ('review-halt:' + $runId)
     }
@@ -2015,6 +2048,8 @@ function Invoke-ReviewCampaignStopHereLanding {
         [Parameter(Mandatory)][string]$AuthorizedBy,
         [Parameter(Mandatory)][string]$AuthorizationRef,
         [Parameter(Mandatory)][string]$Rationale,
+        # Feature 203 T012 (FR-024, FR-041): the typed turn of the `stop the review here` this landing spends.
+        [AllowEmptyString()][string]$TurnIdentity = '',
         [scriptblock]$GatingPrecondition,
         [scriptblock]$VerifyPort,
         [scriptblock]$AcceptPort,
@@ -2023,7 +2058,7 @@ function Invoke-ReviewCampaignStopHereLanding {
 
     $context = [pscustomobject]@{
         project_root = $ProjectRoot; store_root = $StoreRoot; campaign_id = $CampaignId; run_id = $RunId
-        authorized_by = $AuthorizedBy; authorization_ref = $AuthorizationRef; rationale = $Rationale
+        authorized_by = $AuthorizedBy; authorization_ref = $AuthorizationRef; rationale = $Rationale; turn_identity = $TurnIdentity
     }
 
     if ($null -eq $VerifyPort) {
@@ -2110,7 +2145,7 @@ function Invoke-ReviewCampaignStopHereLanding {
             param($ctx)
             $disposition = Add-ReviewCampaignHumanDisposition -StoreRoot $ctx.store_root -CampaignId $ctx.campaign_id `
                 -RunId $ctx.run_id -Decision accept-current -AuthorizedBy $ctx.authorized_by `
-                -AuthorizationRef $ctx.authorization_ref -Rationale $ctx.rationale
+                -AuthorizationRef $ctx.authorization_ref -Rationale $ctx.rationale -TurnIdentity ([string]$ctx.turn_identity)
             return [pscustomobject]@{ ok = ($null -ne $disposition); reason = 'residuals-accepted' }
         }
     }
@@ -2886,7 +2921,8 @@ function Invoke-ReviewCampaignCommand {
     }
     try {
         $null = Add-ReviewCampaignLaunchGrant -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -AuthorityRef ([string]$launchBudget.authority_ref) `
-            -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -ReviewerHost $(if ([bool]$hostDecision.Enforced) { $launchHost } else { '' })
+            -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -ReviewerHost $(if ([bool]$hostDecision.Enforced) { $launchHost } else { '' }) `
+            -TurnIdentity ([string]$launchBudget.turn_identity)
     }
     catch {
         return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
@@ -2908,7 +2944,8 @@ function Invoke-ReviewCampaignCommand {
         -RuntimePort $Ports.runtime -VerificationPort $Ports.verification -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `
         -ReviewScope $ReviewScope -DesignContextEmpty:([bool]$designContext.design_context_empty) `
         -FeatureId $(if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId } else { Split-Path -Leaf $root }) -RepoRoot $root `
-        -ProgressSink $progressCollector.sink -AuthorityConfigPath $AuthorityConfigPath
+        -ProgressSink $progressCollector.sink -AuthorityConfigPath $AuthorityConfigPath `
+        -BudgetGrantId ([string]$launchBudget.budget_grant_id) -WindowResetId ([string]$launchBudget.reset_id) -TurnIdentity ([string]$launchBudget.turn_identity)
     # THIS PROJECTION IS WHERE TWO CAPABILITIES DIED, and both were fully built on either side of it.
     # Invoke-ReviewCampaignRun returns `pause` on a terminal round and slot_restored/_note on a
     # pre-invocation failure; specrew-review.ps1 already contains the code to render the restored-slot
@@ -2941,7 +2978,9 @@ function Add-ReviewCampaignHumanDisposition {
         [Parameter(Mandatory)][ValidateSet('accept-current', 'require-correction')][string]$Decision,
         [Parameter(Mandatory)][string]$AuthorizedBy,
         [Parameter(Mandatory)][string]$AuthorizationRef,
-        [Parameter(Mandatory)][string]$Rationale
+        [Parameter(Mandatory)][string]$Rationale,
+        # Feature 203 T012 (FR-041): the typed turn of the decision this disposition records.
+        [AllowEmptyString()][string]$TurnIdentity = ''
     )
     $result = Get-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage result
     if ($null -eq $result) { throw 'review-human-disposition-result-missing' }
@@ -3010,6 +3049,7 @@ function Add-ReviewCampaignHumanDisposition {
         authority_kind = 'human'; authorized_by = $AuthorizedBy; authorization_ref = $AuthorizationRef; rationale = $Rationale
         observed_at = [DateTimeOffset]::UtcNow.ToString('o')
     }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
     $existing = @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId | Where-Object { [string]$_.disposition_id -ceq $fact.disposition_id })
     if ($existing.Count -gt 0) {
         return [pscustomobject]@{ fact = $existing[0]; created = $false; idempotent = $true; path = $null }
@@ -3027,6 +3067,11 @@ function Add-ReviewCampaignHumanDisposition {
 function Invoke-ReviewCampaignRun {
     [CmdletBinding()]
     param(
+        # Feature 203 T012 (FR-024): the window the reservation is spent in (the budget grant, and the reset that opened the
+        # window when one did) and the typed turn that opened it, named on the reservation itself.
+        [AllowEmptyString()][string]$BudgetGrantId = '',
+        [AllowEmptyString()][string]$WindowResetId = '',
+        [AllowEmptyString()][string]$TurnIdentity = '',
         [Parameter(Mandatory)][string]$StoreRoot,
         [Parameter(Mandatory)][string]$StagingRoot,
         [Parameter(Mandatory)][string]$CampaignId,
@@ -3070,7 +3115,8 @@ function Invoke-ReviewCampaignRun {
 
     $placeholderDigest = 'pending-target'
     Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage requested -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -State requested) | Out-Null
-    $reservationResult = Request-ReviewCampaignReservationFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -ReservationId $ReservationId -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort)
+    $reservationResult = Request-ReviewCampaignReservationFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -ReservationId $ReservationId -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) `
+        -BudgetGrantId $BudgetGrantId -ResetId $WindowResetId -TurnIdentity $TurnIdentity
     if (-not $reservationResult.acquired) {
         Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message ([string]$reservationResult.reason) -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
         return [pscustomobject]@{ status = 'not-started'; reason = $reservationResult.reason; invoked = $false; result = $null }

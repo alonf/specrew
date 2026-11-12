@@ -1946,8 +1946,11 @@ function Write-SpecrewTypedAct {
             # into a fresh one. No reservation, no mint.
             $reserved = $false
             try {
+                # Feature 203 T012 (FR-024): the classifier minted this act only after the transcript showed the human typed it
+                # (origin typed-user, Resolve-SpecrewCitedTypedAct), so the row says so, and the authority audit can tell it from
+                # a row nothing confirmed.
                 $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity) -HostKind $HostKind -SourceEvent $SourceEvent `
-                        -MintedWriters '' -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -NowUtc $NowUtc)
+                        -MintedWriters '' -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -NowUtc $NowUtc)
             }
             catch { $reserved = $false }
             if (-not $reserved) { $act.Kind = 'none'; $act.Reason = 'not-reserved'; $act.Report = $true; return $result }
@@ -1980,7 +1983,7 @@ function Write-SpecrewTypedAct {
     }
     if ($result.Written) {
         $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity) -HostKind $HostKind -SourceEvent $SourceEvent `
-            -MintedWriters ([string]$act.Kind) -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -NowUtc $NowUtc
+            -MintedWriters ([string]$act.Kind) -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -NowUtc $NowUtc
     }
     return $result
 }
@@ -2668,6 +2671,9 @@ function Write-SpecrewPauseDecisionAuthorization {
         [Parameter(Mandatory)][string]$Response,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SourceEvent,
+        # Feature 203 T012 (FR-024, FR-041): the typed turn of the `stop the review here` line. The typed-act sink passes it to
+        # every writer that declares it.
+        [AllowNull()][AllowEmptyString()][string]$TurnIdentity = '',
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
@@ -2697,6 +2703,7 @@ function Write-SpecrewPauseDecisionAuthorization {
         campaign_id = $(if ($null -ne $pending) { [string]$pending.campaign_id } else { '' })
         run_id = $(if ($null -ne $pending) { [string]$pending.run_id } else { '' })
         target_digest = $(if ($null -ne $pending) { [string]$pending.target_digest } else { '' })
+        turn_identity = $(if ([string]::IsNullOrWhiteSpace($TurnIdentity)) { '' } else { $TurnIdentity.Trim() })
         observed_at = $NowUtc; spent_at = $null; authorization_ref = $null
     }
     if ([IO.File]::Exists($path)) {

@@ -2012,3 +2012,33 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   census is the evidence that this case was the only one. **Proposed for iteration 002, not built** (maintainer,
   2026-11-12): a guard so that no unit test can reach the real detached reviewer spawn. For example, the spawn refuses
   under the test harness unless the test opts in, and a test proves that refusal.
+
+### DRIFT-060 — T012 changed files outside its plan's ownership, and three of its rules are the crew's reading of FR-024 and FR-041 (finding; 2026-11-12)
+
+- **Ownership**: the plan gives T012 `scripts/internal/bootstrap/*.ps1`, `review-authority-store.ps1`,
+  `review-authority-core.ps1` and `tests/unit/**`. The records that name a turn are built and written elsewhere too:
+  - `review-campaign-orchestrator.ps1`: the budget and floor grants, the launch grant, the reservation call, stop-answer
+    landings, the halt and the stop-here disposition;
+  - `scripts/specrew-review.ps1`: the reset fact and the CLI's stop-here decision;
+  - `shared-governance.ps1` and its `.specify` mirror: the before-implement budget snapshot, with the mirror's install
+    record refreshed;
+  - `Specrew.psd1`: the new `AuthorityAudit.ps1` in the file list.
+
+  Each change only passes the turn identity through. No behaviour of those files changed.
+- **Readings for the maintainer to confirm**:
+  1. **Stops are not joined.** A pending pause (stop) fact takes authority away and its answer is what the human types,
+     so the audit joins the answer, not the stop. Otherwise every crew-raised stop (b) and (c) would fail.
+  2. **Run facts join through their run.** Run states, the result, recovery, spend, release, claim and finalization
+     carry no turn of their own; each joins the turn of the reservation, or the human pause decision, that authorized
+     its run.
+  3. **The turn end's recovered act is a typed turn.** Its ledger rows now say `turn_origin: typed-user`, because the
+     classifier mints only after the transcript shows the human typed the message. A turn-end row without that origin,
+     which is every one written before T012, does not join.
+- **Not done in T012**:
+  - the refusal journals (multi-line, partial sign-off too short or too long, crossing not minted) still carry no turn
+    identity;
+  - the allowance-reset capture still carries no campaign id;
+  - drift entries are written by hand.
+
+  The audit is a function (`Invoke-SpecrewAuthorityAudit`), not yet on any command. Records written before T012 name
+  no turn, so the audit fails this repository's own store until those records are retired.

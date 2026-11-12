@@ -1051,9 +1051,14 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 $resetActor = (& git -C $resolvedProjectPath config user.name 2>$null)
                 if ([string]::IsNullOrWhiteSpace([string]$resetActor)) { $resetActor = [string]$env:USERNAME }
                 if ([string]::IsNullOrWhiteSpace([string]$resetActor)) { $resetActor = 'human' }
+                # Feature 203 T012 (FR-024, FR-041): the reset names the typed turn of the approval it spends, so the window it
+                # opens - and every launch grant and reservation in it - joins that turn.
+                $resetTurnArgs = @{}
+                if ($null -ne $capturedAllowanceReset -and $capturedAllowanceReset.PSObject.Properties['turn_identity'] -and
+                    -not [string]::IsNullOrWhiteSpace([string]$capturedAllowanceReset.turn_identity)) { $resetTurnArgs['TurnIdentity'] = [string]$capturedAllowanceReset.turn_identity }
                 $resetFact = New-ReviewCampaignBudgetResetFact -CampaignId $resetIdentity.campaign_id `
                     -AuthorizedBy ([string]$resetActor) -Reason ([string]$parsedArgs.AckReason) `
-                    -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+                    -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) @resetTurnArgs
                 Write-ReviewCampaignBudgetResetFact -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -Fact $resetFact | Out-Null
                 # Feature 203 T008 step (iii) (maintainer ruling 2026-11-09): the reset no longer answers the outstanding pause
                 # as fix-and-continue, which is removed. A reset recorded after stop (a) closes that stop by itself
@@ -1312,8 +1317,10 @@ if ($Live) {
                     }
                 }
 
+                # Feature 203 T012 (FR-024, FR-041): the decision names the typed turn of the capture it spends.
+                $decisionTurn = if ($null -ne $pauseDecisionAuthorization -and $pauseDecisionAuthorization.PSObject.Properties['turn_identity']) { [string]$pauseDecisionAuthorization.turn_identity } else { '' }
                 $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId `
-                    -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+                    -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -TurnIdentity $decisionTurn
 
                 # A REFUSED ATTEMPT MUST NOT CONSUME THE ANSWER.
                 #
@@ -1337,7 +1344,7 @@ if ($Live) {
                     $landingRef = "pause-stop-here:$answeredRunId"
                     $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $resolvedProjectPath -StoreRoot $campaignStoreRoot `
                         -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId -AuthorizedBy 'human' `
-                        -AuthorizationRef $landingRef -Rationale $rationale
+                        -AuthorizationRef $landingRef -Rationale $rationale -TurnIdentity $decisionTurn
                     if ([bool]$landing.landed) {
                         # Recorded only now that it has actually landed. Ordering, not bookkeeping: this
                         # is the line that decides whether a failure is recoverable.

@@ -159,12 +159,12 @@ Describe 'the audit joins every authority record to a typed human turn (FR-024, 
         }
         $null = Add-ReviewCampaignGrantFact -StoreRoot $project.store -Fact $grant
         $reservation = Request-ReviewCampaignReservationFact -StoreRoot $project.store -CampaignId $script:CampaignId -RunId 'run-round-4' `
-            -ReservationId 'reservation-round-4-000001' -ObservedAt '2026-11-02T10:00:00Z'
+            -ReservationId 'res-round-4-000001' -ObservedAt '2026-11-02T10:00:00Z'
         $reservation.acquired | Should -BeTrue
         $audit = script:Invoke-Audit -Project $project
         $audit.passed | Should -BeFalse
         @($audit.failures | Where-Object { [string]$_.kind -eq 'launch-grant' -and [string]$_.id -eq 'grant-2ea3d06fc52ba0d3f381' }).Count | Should -Be 1 -Because (script:Get-AuditReasons $audit)
-        @($audit.failures | Where-Object { [string]$_.kind -eq 'reservation' -and [string]$_.id -eq 'reservation-round-4-000001' }).Count | Should -Be 1 -Because (script:Get-AuditReasons $audit)
+        @($audit.failures | Where-Object { [string]$_.kind -eq 'reservation' -and [string]$_.id -eq 'res-round-4-000001' }).Count | Should -Be 1 -Because (script:Get-AuditReasons $audit)
         @($audit.failures | Where-Object { [string]$_.kind -eq 'budget-grant' }).Count | Should -Be 0 -Because (script:Get-AuditReasons $audit)
     }
 

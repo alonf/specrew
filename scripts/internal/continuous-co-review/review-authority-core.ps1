@@ -262,10 +262,12 @@ function New-ReviewCampaignBudgetResetFact {
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$AuthorizedBy,
         [Parameter(Mandatory)][string]$Reason,
-        [Parameter(Mandatory)][string]$ObservedAt
+        [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-041): the typed turn of the `approved for allowance reset` the reset spends.
+        [AllowEmptyString()][string]$TurnIdentity = ''
     )
     $token = Get-ReviewCampaignStableToken -Value "$CampaignId/$ObservedAt/$Reason" -Length 20
-    return [pscustomobject][ordered]@{
+    $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'
         fact_type      = 'round-budget-reset'
         campaign_id    = $CampaignId
@@ -275,6 +277,8 @@ function New-ReviewCampaignBudgetResetFact {
         reason         = $Reason
         observed_at    = $ObservedAt
     }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
+    return $fact
 }
 
 function New-ReviewCampaignPauseDecisionFact {
@@ -286,9 +290,11 @@ function New-ReviewCampaignPauseDecisionFact {
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][ValidateSet('stop-here', 'answered')][string]$Choice,
-        [Parameter(Mandatory)][string]$ObservedAt
+        [Parameter(Mandatory)][string]$ObservedAt,
+        # Feature 203 T012 (FR-024, FR-041): the typed turn of the answer this decision lands.
+        [AllowEmptyString()][string]$TurnIdentity = ''
     )
-    return [pscustomobject][ordered]@{
+    $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'
         fact_type      = 'pause-decision'
         campaign_id    = $CampaignId
@@ -296,6 +302,8 @@ function New-ReviewCampaignPauseDecisionFact {
         choice         = $Choice
         observed_at    = $ObservedAt
     }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
+    return $fact
 }
 
 function Test-ReviewCampaignFeatureIdentity {
@@ -515,24 +523,28 @@ function Test-ReviewAuthorityContractObject {
         'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths', 'finding_resolutions') }
         'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected', 'reviewer_host', 'finding_resolutions') }
         # Feature 203 T008 (FR-009): a launch grant names the reviewer the engine chose for that round.
-        'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host') }
+        'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host', 'turn_identity') }
         # Feature 203 T008 (FR-009, FR-006(d)): `allow reviewer <host>` appends a reviewer to the campaign's approved order.
-        'AllowedReviewerFact' { @('schema_version', 'fact_type', 'campaign_id', 'host', 'authority_kind', 'authorization_ref', 'observed_at') }
+        'AllowedReviewerFact' { @('schema_version', 'fact_type', 'campaign_id', 'host', 'authority_kind', 'authorization_ref', 'observed_at', 'turn_identity') }
         # Feature 203 T008 step (iii) (FR-011): the human's typed `defer finding <id> to <destination>`, `drop finding <id>` or
         # `fix finding <id>` for one open finding. Defer and drop close it; fix keeps it open for the crew.
-        'FindingDispositionFact' { @('schema_version', 'fact_type', 'campaign_id', 'finding_key', 'answer', 'argument', 'authority_kind', 'authorization_ref', 'observed_at') }
+        'FindingDispositionFact' { @('schema_version', 'fact_type', 'campaign_id', 'finding_key', 'answer', 'argument', 'authority_kind', 'authorization_ref', 'observed_at', 'turn_identity') }
         # Feature 203 T007 (FR-003): the review budget, snapshotted from the plan when the before-implement verdict is recorded.
         'BudgetGrantFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'grant_id', 'budget_total', 'host_order', 'host_order_stated',
             'infra_failure_cap', 'budget_source', 'ceiling', 'plan_path', 'plan_hash', 'verdict_entry', 'authority_kind', 'observed_at',
             # Feature 203 T008 (DRIFT-052 item 2): a floor grant records why it is the floor and the verdict time it counts from.
-            'floor_reason', 'counts_from'
+            'floor_reason', 'counts_from',
+            # Feature 203 T012 (FR-041): the typed turn of the before-implement verdict the grant was snapshotted from.
+            'turn_identity'
         ) }
-        'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at') }
+        # Feature 203 T012 (FR-024): a reservation cites the budget grant and the reset that opened the current window, and the
+        # typed turn that authorized it; grant_id is the launch grant whose slot it holds, which may be older than the window.
+        'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at', 'budget_grant_id', 'reset_id', 'turn_identity') }
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
         'ReleaseFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'reason', 'observed_at') }
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
-        'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at') }
+        'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at', 'turn_identity') }
         'ReviewFinalizationFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'reviewed_digest', 'finalization_commit') }
         'PendingPauseFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'blocking_count',
@@ -542,11 +554,11 @@ function Test-ReviewAuthorityContractObject {
             # written before step (iii), when every round paused; it is history and stops nothing.
             'stop_kind', 'stop_reason', 'next_host'
         ) }
-        'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }
+        'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at', 'turn_identity') }
         # The round budget is topped up by RECORDING a decision, never by mutating a count. Rounds
         # already run are immutable facts and stay on the record; this fact says where the human chose
         # to start counting again, and carries who chose and why.
-        'RoundBudgetResetFact' { @('schema_version', 'fact_type', 'campaign_id', 'reset_id', 'authority_kind', 'authorized_by', 'reason', 'observed_at') }
+        'RoundBudgetResetFact' { @('schema_version', 'fact_type', 'campaign_id', 'reset_id', 'authority_kind', 'authorized_by', 'reason', 'observed_at', 'turn_identity') }
         'RecoveryFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
@@ -570,6 +582,13 @@ function Test-ReviewAuthorityContractObject {
     if ($fields -contains 'target_digest') { Test-ReviewAuthorityStringField -Object $InputObject -Name 'target_digest' -Errors $errors -MaxLength 128 }
     if ($fields -contains 'harness_id') { Test-ReviewAuthorityStringField -Object $InputObject -Name 'harness_id' -Errors $errors -MaxLength 64 }
     if ($fields -contains 'disposition_id') { Test-ReviewAuthorityIdField -Object $InputObject -Name 'disposition_id' -Kind disposition -Errors $errors }
+    # Feature 203 T012 (FR-024, FR-041): the typed human turn that authorized the record. Optional, because every fact stored
+    # before T012 lacks it and must still read; the authority audit (AuthorityAudit.ps1) is what fails a record without one.
+    if ($fields -contains 'turn_identity') { Test-ReviewAuthorityStringField -Object $InputObject -Name 'turn_identity' -Errors $errors -MaxLength 256 -Optional }
+    if ($ContractName -ceq 'ReservationFact') {
+        Test-ReviewAuthorityStringField -Object $InputObject -Name 'budget_grant_id' -Errors $errors -MaxLength 64 -Optional
+        Test-ReviewAuthorityStringField -Object $InputObject -Name 'reset_id' -Errors $errors -MaxLength 128 -Optional
+    }
 
     switch ($ContractName) {
         'ReviewCampaign' {
@@ -1087,7 +1106,9 @@ function Resolve-ReviewCampaignReservationDecision {
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][string]$ReservationId,
         [Parameter(Mandatory)][string]$ObservedAt,
-        [object[]]$Grants = @(), [object[]]$Reservations = @(), [object[]]$Spends = @(), [object[]]$Releases = @()
+        [object[]]$Grants = @(), [object[]]$Reservations = @(), [object[]]$Spends = @(), [object[]]$Releases = @(),
+        # Feature 203 T012 (FR-024): the window the reservation is spent in, and the typed turn that opened it.
+        [AllowEmptyString()][string]$BudgetGrantId = '', [AllowEmptyString()][string]$ResetId = '', [AllowEmptyString()][string]$TurnIdentity = ''
     )
     if (-not (Test-ReviewAuthorityIdentifier -Value $RunId -Kind run) -or -not (Test-ReviewAuthorityIdentifier -Value $ReservationId -Kind reservation)) {
         return [pscustomobject]@{ permitted = $false; reason = 'invalid-reservation-identity'; fact = $null }
@@ -1107,6 +1128,11 @@ function Resolve-ReviewCampaignReservationDecision {
         reservation_id = $ReservationId; grant_id = [string]$slot.grant_id; slot = [int]$slot.slot
         run_id = $RunId; observed_at = $ObservedAt
     }
+    # Feature 203 T012 (FR-024): the slot's launch grant may have been minted in an older window (a released slot is reused),
+    # so the reservation names the window it is spent in, and the turn that opened that window, on its own record.
+    if (-not [string]::IsNullOrWhiteSpace($BudgetGrantId)) { $fact | Add-Member -NotePropertyName budget_grant_id -NotePropertyValue $BudgetGrantId.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($ResetId)) { $fact | Add-Member -NotePropertyName reset_id -NotePropertyValue $ResetId.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
     return [pscustomobject]@{ permitted = $true; reason = 'slot-available'; fact = $fact }
 }
 
