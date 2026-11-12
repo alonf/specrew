@@ -45,7 +45,7 @@ function Get-SpecrewTestCensusExclusions {
         'tests/integration/feature-017-dashboard-core.ps1'               = 'red: its healthy fixture is not a Specrew project to `specrew where` ("requires a Specrew-managed project"); bug list item 19, fixed in iteration 002'
         'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: the rendered rich dashboard no longer matches rich-capable-expected.txt (golden file or velocity change, not established); bug list item 20, fixed in iteration 002'
         'tests/integration/validator-hardening-iteration2.ps1'           = 'red: specrew start classifies the agent and charter files it wrote itself as user changes and pauses (assertion 3; bug 2b''s cause beyond copilot-instructions); bug list item 21; SC-002 required in iteration 002, then the release manifest'
-        'tests/integration/project-path-resolution-regression.ps1'       = 'awaits the maintainer: SC-001''s supervised run (T015) is reported before it is registered'
+        'tests/integration/project-path-resolution-regression.ps1'       = 'SC-001 not met in iteration 001: supervised runs 3 and 4 wrote into this repository (both rewrote specs/206-bug-bash/iterations/001/state.md; run 4 left a .specrew-squad-probe-* folder at its root); the script refuses to run until bug list items 23, 24 and 25 are fixed; required in iteration 002'
     }
 }
 
