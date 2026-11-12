@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-11-11T10:40:24Z",
+  "recorded_at": "2026-11-12T09:37:31Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-0154fc5b01bd0d281913edfa",
-      "target_tree_id": "c515195bc88a6debb7057b25f77316d7156b7751",
+      "request_id": "override-8f8d952577533deb363dd645",
+      "target_tree_id": "b3857cb76f227c633a43ae10bd901168b18b32b8",
       "campaign_id": "cmp-205-workshop-lens-order-i001",
       "run_id": "run-20261111-012900593-ccd284fa",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - the change after round 2 is the fix for that round's finding, in one test file, read by my reviewer, with all three workflows green on d5d1ae06",
-      "rationale": "the change after round 2 is the fix for that round's finding, in one test file, read by my reviewer, with all three workflows green on d5d1ae06",
-      "response_hash": "823831860dd5235fa9d4f96dcde8be1f7ee03a14c238b5401d9e834d509e3c9f",
+      "verdict_text": "approved for partial review signoff - no source or test file changed since the round 2 fix d5d1ae06, the only changes are review records and 18 refreshed hashes that my reviewer verified, and Test and Cross-Platform are green on b56aaeda",
+      "rationale": "no source or test file changed since the round 2 fix d5d1ae06, the only changes are review records and 18 refreshed hashes that my reviewer verified, and Test and Cross-Platform are green on b56aaeda",
+      "response_hash": "0a58c3d04107c56673366054ad0bcc859f7e41aaf0c967c37a736ae571043657",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-11-11T10:35:01.2283381Z"
+      "observed_at": "2026-11-12T09:36:20.0841964Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
