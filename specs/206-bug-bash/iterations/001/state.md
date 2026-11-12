@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T010
-**Tasks Remaining**: T012-T015, T018 (5 planned)
+**Last Completed Task**: T012
+**Tasks Remaining**: T013-T015, T018 (4 planned)
 **In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T02:10:00Z
+**Updated**: 2026-11-12T10:38:00Z
 
 ## Execution Summary
 
@@ -79,6 +79,11 @@
   well, all PASS: 197/002, 197/006-008, 198/005, 198/009-011. The 6 warnings are `handoff-block-missing` on 206's
   own boundary commits; none names a closed iteration. No new finding. 017/001 and 040/001 have no `plan.md` and
   are not iterations to the validator (159 against the table's 161; their rows did not change).
+- T012 (FR-009; design condition 4): RED 13/14 in `ae9a3c9d`, GREEN 14/14 in `ff0e78b9`. The validator writes a
+  findings file (`-FindingsJsonPath`); `.github/scripts/nightly-tracking-issue.ps1` keeps one tracking issue
+  (open, quiet, comment, close; no path, user or machine name); the notify job alone holds `issues: write`. By
+  the maintainer's ruling the notifier is workflow-only (not in the module FileList), and the notify job runs only
+  for the default branch: RED 1/15 in `85d275bb`, GREEN 15/15 in `867d4752` (DRIFT-206-I001-011).
 
 ## Notes
 

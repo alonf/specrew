@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 10
-**Resolution rate**: 80% (8/10 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 11
+**Resolution rate**: 82% (9/11 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
@@ -212,6 +212,23 @@ iteration 002 as a required item: feature 206 does not close without it)
   change. The T009 exemption is unaffected: it already applies only to iterations with a recorded ruling.
 - **Class closure**: deferred — iteration 002's rule and its test (an `abandoned` status with no recorded ruling
   is not closed), with the closed definition's suite covering it.
+
+### DRIFT-206-I001-011 — T012's notifier is at .github/scripts/, not scripts/internal/
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (T012 ruling, option 2).
+- **What**: tasks.md and plan.md name `scripts/internal/nightly-tracking-issue.ps1`. A shippable file beside
+  `scripts/internal/lint-self-leak.ps1` must be in `Specrew.psd1`'s FileList (the release-gate
+  `package-filelist-completeness` guard failed on it). The maintainer ruled the script workflow-only: a script
+  that writes GitHub issues does not belong in the installed module.
+- **Change**: the notifier is `.github/scripts/nightly-tracking-issue.ps1`, after
+  `.github/scripts/sync-specrew-board.ps1`; the workflow and the test use that path. `Specrew.psd1` is unchanged.
+  The approved tasks.md and plan.md text keeps the old path.
+- **Same ruling, scope added**: the notify job runs only for the default branch, so a manual run on a feature
+  branch cannot close or rewrite main's tracking issue; the validator job still runs on any branch. Test first:
+  RED 1/15 in `85d275bb`, GREEN 15/15 in `867d4752`. T012's points are unchanged.
+- **Resolution**: human-decision; landed in `ae9a3c9d` (test path), `ff0e78b9` (fix) and `867d4752`.
+- **Class closure**: NONE — a one-off placement decision; `package-filelist-completeness` already refuses a
+  shippable file missing from the FileList, and the T012 suite pins both the path and the branch condition.
 
 <!--
   Every new ### DRIFT-... event includes:

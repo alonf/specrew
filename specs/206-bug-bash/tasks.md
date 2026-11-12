@@ -179,7 +179,11 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** FR-006, FR-008a; SC-003.
   - **Depends:** T006, T007, T008, T009, T011.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
-- [ ] T012 [owner: Implementer] [sp: 2.5] **Nightly tracking issue (design condition 4).**
+- [x] T012 [owner: Implementer] [sp: 2.5] **Nightly tracking issue (design condition 4).**
+  - **Done (2026-11-12):** RED 13/14 in `ae9a3c9d`, GREEN 14/14 in `ff0e78b9`; the notify job runs only for the
+    default branch (maintainer ruling): RED 1/15 in `85d275bb`, GREEN 15/15 in `867d4752`
+    (`tests/unit/nightly-tracking-issue.tests.ps1`). The notifier is at `.github/scripts/nightly-tracking-issue.ps1`,
+    not the path below, by the maintainer's ruling (DRIFT-206-I001-011).
   - **RED:** a Pester suite with recorded `gh` calls: the first red opens, the same failures stay quiet, changed
     failures comment, green closes; the rendered title, body and comments contain no path, user or machine name.
   - **Work:** `scripts/internal/nightly-tracking-issue.ps1` with injectable `gh`; the validator writes a findings
