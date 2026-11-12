@@ -359,6 +359,11 @@ $script:SpecrewVerdictOptionLinePattern = '^(?:approv(?:e|ed)\s+for\b|changes\s+
 # from an untagged paste, so the one-line rule decides it - which is what keeps a large pasted transcript with the phrase
 # at its top refused on Claude as well (PRED-BETA4-022).
 $script:SpecrewTypedTextMaxLines = 8
+
+# Feature 203 T013 (B5F-064): the wrapper Claude Code puts around another session's message when it delivers it as a prompt
+# (tests/fixtures/hook-payloads/claude/peer-message). The same text rule is in Claude's host binding and the dispatcher's
+# defaults, so the prompt hook gives such a prompt origin host-injected.
+$script:SpecrewPeerMessagePattern = '(?s)^\s*Another Claude session sent a message:\s*<cross-session-message\b'
 $script:SpecrewTypedTextMaxChars = 674
 
 function Test-SpecrewHostMarksPastes {
@@ -1298,6 +1303,9 @@ function Resolve-SpecrewTypedAct {
     $compact = & $prop $Turn 'is_compact_summary'
     if ($compact -eq $true -or [string]$compact -match '(?i)^\s*true\s*$') { return (& $none 'not-human' $false) }
     $origin = ([string](& $prop $Turn 'origin')).Trim()
+    # Feature 203 T013 (B5F-064): another Claude session's message, in the wrapper the host puts around it, is never the
+    # human's turn, whatever origin the prompt hook could give it (the hook runs before the host writes the record).
+    if ($text -match $script:SpecrewPeerMessagePattern) { return (& $none 'not-human' $false) }
     if ($origin -ceq 'host-injected') { return (& $none 'not-human' $false) }
     if ($origin -cne 'typed-user') { return (& $none $(if ($isAct) { 'origin-unconfirmed' } else { 'not-an-act' }) $isAct) }
 

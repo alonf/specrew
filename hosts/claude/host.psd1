@@ -103,6 +103,10 @@
                 @{ Origin = 'host-injected'; Rule = 'hook-output-journal' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*<(?:task-notification|hook_prompt|turn_aborted|system-reminder|environment_context)\b' },
                 @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-\u2014]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)' },
+                # Feature 203 T013 (B5F-064; maintainer ruling 2026-11-12): another Claude session's message reaches the prompt
+                # hook as a prompt, wrapped by the host. The hook runs before the host writes the message's transcript record
+                # (turnOrigin peer), so the wrapper is what it can see; the record decides wherever a reader can read it.
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?s)^\s*Another Claude session sent a message:\s*<cross-session-message\b' },
                 @{ Origin = 'typed-user'; Rule = 'prompt-present' }
             )
         }
