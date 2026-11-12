@@ -159,9 +159,11 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     deployed hash file's two entries (standing ruling 2026-11-11); the suite's line in
     `.specrew/release-gate-suites.txt`. Outside owned files, approved: the fixture in
     `tests/integration/non-specrew-session-bypass.tests.ps1` (DRIFT-206-I001-009).
-- [ ] T011 [owner: Implementer] [sp: 0.5] **The review-verdict finding names the real status.**
+- [x] T011 [owner: Implementer] [sp: 0.5] **The review-verdict finding names the real status.**
   - **RED:** the validator's message for a `retro` iteration says "Complete iterations require …".
   - **Acceptance:** a `retro` iteration is named as such; a `complete` iteration keeps its message.
+  - **Done (2026-11-12):** RED 1/2 in `5b1695a3`, GREEN 2/2 in `85f62dc4`
+    (`tests/unit/review-verdict-names-status.tests.ps1`).
   - **Trace:** FR-010.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1` and its `.specify` mirror,
     `tests/unit/**`.

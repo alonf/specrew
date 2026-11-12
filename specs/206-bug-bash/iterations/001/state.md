@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T009 (T007 closed with it)
-**Tasks Remaining**: T010-T015, T018 (7 planned)
+**Last Completed Task**: T011
+**Tasks Remaining**: T010, T012-T015, T018 (6 planned)
 **In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T01:12:00Z
+**Updated**: 2026-11-12T01:42:00Z
 
 ## Execution Summary
 
@@ -69,6 +69,10 @@
   `closeout-records-on-approval.tests.ps1` (drives `sync-boundary-state.ps1`, home path unread; it counts
   `- feature:` lines only, so the stamp line does not change it; no lane runs it) and
   `sealed-iteration-writers.tests.ps1` (runs `scripts/specrew.ps1`).
+- T011 (FR-010): RED 1/2 in `5b1695a3`, GREEN 2/2 in `85f62dc4`. The review-verdict finding reads the
+  iteration's status: a `retro` iteration is told "Retro iterations require ..."; a `complete` one keeps its
+  message. Also green: T009 23/23, T008 6/6, T006 16/16, `closed-iterations-are-history` 8/8,
+  `non-specrew-session-bypass`, the self-leak lint.
 
 ## Notes
 
