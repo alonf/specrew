@@ -1,12 +1,22 @@
 {
-  "schema": "transcript-origin-shapes/1",
-  "note": "How Claude Code's transcript marks who wrote a user-role record: turnOrigin, promptSource, isMeta and origin.kind, one row per shape. Read from the transcript records of one real Claude Code session (feature 203's implementer session, 2026-11-09 to 2026-11-12); texts are not kept. A test builds a turn's record fields from a row.",
+  "schema": "transcript-origin-shapes/2",
+  "note": "How Claude Code's transcript marks who wrote a user-role record: turnOrigin, promptSource, isMeta and origin.kind, one row per shape, with the Claude Code version and entry point it was seen on. These fields are not a documented contract (B5F-068); each shape is pinned here so a new Claude version that changes one turns a test red. Read from 47 local Claude Code session logs, 2026-10-13 to 2026-11-12 (feature 203 T013; the reviewer session's survey of 60 logs agrees), texts not kept. expected_sender is what Resolve-SpecrewTranscriptRecordSender must return; accepted is whether the turn counts as the human's (maintainer ruling 2026-11-12). Remote Control is not yet in the table; the rule does not ship until it is.",
   "shapes": [
-    { "kind": "typed", "turnOrigin": "human", "promptSource": "typed", "isMeta": null, "origin_kind": "human", "seen": 43, "first_seen_utc": "2026-11-09T20:38:24Z" },
-    { "kind": "queued", "turnOrigin": "human", "promptSource": "queued", "isMeta": null, "origin_kind": "human", "seen": 2, "first_seen_utc": "2026-11-11T09:27:26Z" },
-    { "kind": "bang-command-output", "turnOrigin": "human", "promptSource": null, "isMeta": null, "origin_kind": null, "seen": 3, "first_seen_utc": "2026-11-11T22:26:58Z" },
-    { "kind": "task-notification", "turnOrigin": "task_notification", "promptSource": "system", "isMeta": null, "origin_kind": "task-notification", "seen": 42, "first_seen_utc": "2026-11-09T23:14:11Z" },
-    { "kind": "scheduled", "turnOrigin": "scheduled", "promptSource": "system", "isMeta": true, "origin_kind": null, "seen": 2, "first_seen_utc": "2026-11-12T06:47:00Z" },
-    { "kind": "peer", "turnOrigin": "peer", "promptSource": "system", "isMeta": true, "origin_kind": "peer", "seen": 2, "first_seen_utc": "2026-11-12T16:45:44Z" }
+    { "kind": "typed", "turnOrigin": "human", "promptSource": "typed", "isMeta": null, "origin_kind": "human", "entrypoint": "cli", "version": "2.1.322", "seen": 986, "expected_sender": "human", "accepted": true },
+    { "kind": "queued", "turnOrigin": "human", "promptSource": "queued", "isMeta": null, "origin_kind": "human", "entrypoint": "cli", "version": "2.1.319", "seen": 24, "expected_sender": "human", "accepted": true },
+    { "kind": "typed-older-cli", "turnOrigin": null, "promptSource": "typed", "isMeta": null, "origin_kind": "human", "entrypoint": "cli", "version": "2.1.274", "seen": 50, "expected_sender": "human", "accepted": true },
+    { "kind": "typed-vscode", "turnOrigin": null, "promptSource": "sdk", "isMeta": null, "origin_kind": "human", "entrypoint": "claude-vscode", "version": "2.1.268", "seen": 15, "expected_sender": "human", "accepted": true },
+    { "kind": "typed-desktop", "turnOrigin": "human", "promptSource": "sdk", "isMeta": null, "origin_kind": "human", "entrypoint": "claude-desktop", "version": "2.1.309", "seen": 1, "expected_sender": "human", "accepted": true },
+    { "kind": "desktop-old-no-origin", "turnOrigin": null, "promptSource": "sdk", "isMeta": null, "origin_kind": null, "entrypoint": "claude-desktop", "version": "2.1.181", "seen": 13, "expected_sender": "other", "accepted": false },
+    { "kind": "sdk-program", "turnOrigin": "sdk", "promptSource": "sdk", "isMeta": null, "origin_kind": null, "entrypoint": "sdk-cli", "version": "2.1.316", "seen": 10, "expected_sender": "other", "accepted": false },
+    { "kind": "task-notification-vscode", "turnOrigin": null, "promptSource": "sdk", "isMeta": null, "origin_kind": "task-notification", "entrypoint": "claude-vscode", "version": "2.1.268", "seen": 7, "expected_sender": "task-notification", "accepted": false },
+    { "kind": "task-notification", "turnOrigin": "task_notification", "promptSource": "system", "isMeta": null, "origin_kind": "task-notification", "entrypoint": "cli", "version": "2.1.319", "seen": 274, "expected_sender": "task-notification", "accepted": false },
+    { "kind": "task-notification-older", "turnOrigin": null, "promptSource": "system", "isMeta": null, "origin_kind": "task-notification", "entrypoint": "cli", "version": "2.1.322", "seen": 3, "expected_sender": "task-notification", "accepted": false },
+    { "kind": "peer", "turnOrigin": "peer", "promptSource": "system", "isMeta": true, "origin_kind": "peer", "entrypoint": "cli", "version": "2.1.322", "seen": 14, "expected_sender": "peer", "accepted": false },
+    { "kind": "scheduled", "turnOrigin": "scheduled", "promptSource": "system", "isMeta": true, "origin_kind": null, "entrypoint": "cli", "version": "2.1.322", "seen": 4, "expected_sender": "scheduled", "accepted": false },
+    { "kind": "system", "turnOrigin": "system", "promptSource": "system", "isMeta": true, "origin_kind": null, "entrypoint": "cli", "version": "2.1.322", "seen": 6, "expected_sender": "other", "accepted": false },
+    { "kind": "bang-command-output", "turnOrigin": "human", "promptSource": null, "isMeta": null, "origin_kind": null, "entrypoint": "cli", "version": "2.1.322", "seen": 5, "expected_sender": "self-command", "accepted": false },
+    { "kind": "stop-hook-feedback", "turnOrigin": null, "promptSource": null, "isMeta": true, "origin_kind": null, "entrypoint": "cli", "version": "2.1.319", "seen": 451, "expected_sender": "other", "accepted": false },
+    { "kind": "no-fields", "turnOrigin": null, "promptSource": null, "isMeta": null, "origin_kind": null, "entrypoint": "cli", "version": "2.1.319", "seen": 115, "expected_sender": "unverified", "accepted": true }
   ]
 }
