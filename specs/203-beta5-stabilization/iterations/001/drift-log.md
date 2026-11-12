@@ -2105,3 +2105,31 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   file is unchanged.
 - **Class closure**: `tests/unit/mint-path-fixtures.Tests.ps1` (lane `f203-i001-suites`) holds every mint path's pasted
   and typed-on cells, and `tests/continuous-co-review/unit/human-authority-store.Tests.ps1` the writer's.
+
+### DRIFT-064 — T013 changed the dispatcher, Claude's host binding and the classifier: who typed a turn (scope added; 2026-11-12)
+
+- **What happened**: T013's matrix found that a cross-session (peer) message is a typed turn to the prompt hook and is
+  recorded as a judgment answer or a workshop reply (`69e6d8dc`, 5 red; B5F-064), and that a scheduled prompt, a peer
+  message, a task notification and `!` command output all mint when a reader has their transcript record (`e69261ae`,
+  60 red; B5F-066).
+- **Ruling** (maintainer, typed, 2026-11-12): build the text rule for the peer wrapper (part 1) and the positive rule
+  where the transcript record is readable (part 2): a turn is the human's only when its record says turnOrigin human with
+  promptSource typed or queued; a record without these fields falls back to the text rules.
+- **Measured before building**: the prompt hook runs before Claude Code writes the message's transcript record. In this
+  session's transcript the hook's own output is written ahead of the record of the message it answered, for a typed
+  message, a peer message and a task notification alike; the hook sees only its input (session_id, transcript_path, cwd,
+  prompt_id, permission_mode, prompt).
+- **Change**, test first, then one fix commit per defect:
+  - `007fd5f0` (B5F-064): Claude's binding and the dispatcher's defaults (all three copies; the `.specify` mirror's install
+    record refreshed in the same commit) read the peer wrapper as host-injected, and the classifier refuses the wrapper
+    whatever origin it is handed.
+  - `1f882a4c` (B5F-066, part 2): the cited-turn reader carries the record's turnOrigin and promptSource, and the
+    classifier applies the positive rule.
+- **Not covered yet**: an act captured at prompt time, before its record exists. The maintainer has ruled that it cannot
+  wait (a scheduled prompt has no wrapper); the use-time check is B5F-066's remaining part, to be sized before it is built.
+- **Ownership**: `extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1` and its two copies, `hosts/claude/host.psd1`
+  and `scripts/internal/bootstrap/HumanAuthorityStore.ps1` are outside T013's files. **Scope added by the maintainer's
+  ruling of 2026-11-12**, about 0.5 points for parts 1 and 2; the capacity file is unchanged.
+- **Class closure**: `tests/unit/mint-path-fixtures.Tests.ps1` (lane `f203-i001-suites`) holds a peer cell and a
+  record-origin cell for every mint path; `tests/unit/turn-record-contract.tests.ps1` holds the peer prompt through
+  Claude's deployed hook.
