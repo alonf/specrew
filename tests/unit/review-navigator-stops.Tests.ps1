@@ -107,6 +107,43 @@ Describe 'the navigator stops only on an open stop, and only during implement (F
         $decision.stop_block | Should -BeNullOrEmpty -Because ([string]$decision.reason)
     }
 
+    # Feature 203 T013 (reviewer request at the maintainer's ask, 2026-11-13): on main's engine, feature 205's crew is told
+    # after almost every turn that its last review no longer covers its files, with iteration 001 closed and iteration 002
+    # in its workshop. These two cases hold this branch quiet in both shapes.
+    It 'the last completed review belongs to a closed iteration and files changed since: no stop and no round request' {
+        $root = script:New-NavProject -Name 'closed-iteration' -Boundary 'specify'
+        $store = Join-Path $root '.specrew/review/authority'
+        $result = [pscustomobject][ordered]@{
+            schema_version = '1.0'; campaign_id = $script:CampaignId; run_id = 'run-nav-closed'; target_digest = ('c' * 40); harness_id = 'fixture'
+            completion = 'complete'; verdict = 'pass'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+            currentness = 'current'; validation = 'valid'; can_approve_current = $true; summary = 'clean'; findings = @()
+            started_at = '2026-11-09T08:00:00Z'; ended_at = '2026-11-09T08:01:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $true
+        }
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:CampaignId -RunId 'run-nav-closed' -TargetLineage 'lin-001-demo' -ObservedAt '2026-11-09T08:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $script:CampaignId -RunId 'run-nav-closed' -Fact $result | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:CampaignId -RunId 'run-nav-closed' -TargetLineage 'lin-001-demo' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root '.specrew/closed-iterations.yml'), "closed:`n  - feature: 001-demo`n    iteration: '007'`n    closed_at: '2026-11-10T00:00:00Z'`n", $script:Utf8)
+        $context = [ordered]@{ session_state = [ordered]@{ boundary_type = 'specify'; feature_ref = '001-demo'; iteration_number = '008' } }
+        [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($context | ConvertTo-Json -Depth 6), $script:Utf8)
+        [IO.File]::WriteAllText((Join-Path $root 'src/feature.ps1'), "function Get-Feature { 'changed after the review' }`n", $script:Utf8)
+        script:Invoke-NavGit $root @('add', '-A')
+        script:Invoke-NavGit $root @('commit', '-qm', 'changed after the closed iteration''s review')
+        $decision = script:Invoke-Nav -Root $root
+        $decision.stop_block | Should -BeNullOrEmpty -Because ([string]$decision.reason)
+        [string]$decision.stop_block | Should -Not -Match 'approved for review round|review round of these files'
+    }
+
+    It 'before implement, with only documents changed: no stop and no round request (<boundary>)' -ForEach @(
+        @{ boundary = 'specify' }, @{ boundary = 'clarify' }, @{ boundary = 'plan' }, @{ boundary = 'tasks' }
+    ) {
+        $root = script:New-NavProject -Name ('docs-' + $boundary) -Boundary $boundary
+        [IO.File]::WriteAllText((Join-Path $root 'specs/001-demo/spec.md'), "# Demo design context`n`nAn amended requirement.`n", $script:Utf8)
+        script:Invoke-NavGit $root @('add', '-A')
+        script:Invoke-NavGit $root @('commit', '-qm', 'spec amendment')
+        $decision = script:Invoke-Nav -Root $root
+        $decision.stop_block | Should -BeNullOrEmpty -Because ([string]$decision.reason)
+    }
+
     It 'the navigator has no round request left: no "What to do" line, and no block built from a review-required or review-stale route' {
         $navigator = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1') -Raw
         $navigator | Should -Not -Match "AppendLine\(\('What to do"
