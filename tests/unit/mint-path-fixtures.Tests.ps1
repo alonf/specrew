@@ -65,6 +65,8 @@ function Get-Act { param($Turn, $Pending) Resolve-SpecrewTypedAct -Turn $Turn -P
 # the origin rule says, a peer message must mint nothing.
 $peerShape = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\fixtures\hook-payloads\claude\peer-message\peer-message-shape.json') -Raw | ConvertFrom-Json
 function New-PeerText { param([string]$Body) return ([string]$peerShape.prefix + $Body + [string]$peerShape.suffix) }
+$peerHookPrompt = [string]((Get-Content -LiteralPath (Join-Path $repoRoot 'tests\fixtures\hook-payloads\claude\tui-userpromptsubmit-peer-message.json') -Raw | ConvertFrom-Json).prompt)
+$peerHookPrefix = $peerHookPrompt.Substring(0, $peerHookPrompt.IndexOf("`n") + 1)
 $recordShapes = @((Get-Content -LiteralPath (Join-Path $repoRoot 'tests\fixtures\hook-payloads\claude\transcript-origins\record-shapes.json') -Raw | ConvertFrom-Json).shapes)
 function Test-Minted { param($Act) [string]$Act.Kind -cne 'none' }
 
@@ -94,7 +96,10 @@ foreach ($p in $paths) {
     # (a') A peer message whose body is the act's text alone on its own line, on Claude, with the origin it gets today.
     $peer = Get-Act (New-Turn -Text (New-PeerText -Body ([string]$p.Text))) $p.Pending
     Assert-True (-not (Test-Minted $peer)) ("{0}: a cross-session (peer) message mints nothing (got {1}/{2}/{3})" -f $id, $peer.Kind, $peer.Answer, $peer.Reason)
-    $cells['peer-message'] = -not (Test-Minted $peer)
+    # The prompt hook's input for the same message is the wrapper alone (recorded, claude/tui-userpromptsubmit-peer-message.json).
+    $peerHook = Get-Act (New-Turn -Text ([string]$peerHookPrefix + [string]$p.Text + "`n</cross-session-message>")) $p.Pending
+    Assert-True (-not (Test-Minted $peerHook)) ("{0}: a peer message as the prompt hook receives it mints nothing (got {1}/{2}/{3})" -f $id, $peerHook.Kind, $peerHook.Answer, $peerHook.Reason)
+    $cells['peer-message'] = -not ((Test-Minted $peer) -or (Test-Minted $peerHook))
 
     # (a'') The transcript record decides (maintainer ruling 2026-11-12): a turn is the human's only when its record says
     # turnOrigin human with promptSource typed or queued. A scheduled prompt is raw text the session wrote when it

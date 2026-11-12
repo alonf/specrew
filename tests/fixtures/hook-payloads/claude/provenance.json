@@ -132,6 +132,45 @@
       "console_input_encoding": "ibm437",
       "sha256": "7eb885316753d9a466402b03493e4c248b81b770bd9f6086f7848002b003b284",
       "note": "HOST-INJECTED: a background Bash task completed and Claude Code fired UserPromptSubmit with a <task-notification> prompt and a new prompt_id. Keys are identical to a typed prompt; only the content differs."
+    },
+    {
+      "fixture": "tui-userpromptsubmit-typed-2.1.322.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-11-12T18:48:25.151Z",
+      "host_version": "Claude Code 2.1.322",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\53c60a34c3d96665\\d8f18eb4-83d9-40d0-8cfd-000bc7e8bea4\\scratchpad\\capture-origin",
+      "stdin_bytes": 722,
+      "stdin_valid_utf8": true,
+      "sha256": "77db25c184efccb03fda95205c27305287760f577fe7a3f3303db680b9fa7e41",
+      "origin": "recorded",
+      "note": "Feature 203 T013 (maintainer ruling 2026-11-12): a typed prompt, harmless text, captured by a capture-only UserPromptSubmit hook in an interactive TUI session with no Specrew. Its transcript record: turnOrigin human, promptSource typed, origin.kind human. The hook input carries no origin field."
+    },
+    {
+      "fixture": "tui-userpromptsubmit-peer-message.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-11-12T18:49:14.350Z",
+      "host_version": "Claude Code 2.1.322",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\53c60a34c3d96665\\d8f18eb4-83d9-40d0-8cfd-000bc7e8bea4\\scratchpad\\capture-origin",
+      "stdin_bytes": 1015,
+      "stdin_valid_utf8": true,
+      "sha256": "50da0a680201ea4351f87b66e2ff9048a26360e1824fe40e783bb0139ce7b54b",
+      "origin": "recorded",
+      "note": "Feature 203 T013 (maintainer ruling 2026-11-12): a peer prompt, harmless text, captured by a capture-only UserPromptSubmit hook in an interactive TUI session with no Specrew. Its transcript record: turnOrigin peer, promptSource system, isMeta true, origin.kind peer. The hook input carries no origin field."
+    },
+    {
+      "fixture": "tui-userpromptsubmit-scheduled.json",
+      "event": "UserPromptSubmit",
+      "captured_utc": "2026-11-12T18:50:00.627Z",
+      "host_version": "Claude Code 2.1.322",
+      "entrypoint": "cli",
+      "scratch_path": "C:\\Users\\alon\\AppData\\Local\\Temp\\claude\\53c60a34c3d96665\\d8f18eb4-83d9-40d0-8cfd-000bc7e8bea4\\scratchpad\\capture-origin",
+      "stdin_bytes": 745,
+      "stdin_valid_utf8": true,
+      "sha256": "9e9e6e2195b315b9c7e70e3557ee7947c1e8852d1d92dbb70a42ac1fd81658bf",
+      "origin": "recorded",
+      "note": "Feature 203 T013 (maintainer ruling 2026-11-12): a scheduled prompt, harmless text, captured by a capture-only UserPromptSubmit hook in an interactive TUI session with no Specrew. Its transcript record: turnOrigin scheduled, promptSource system, isMeta true, no origin. The hook input carries no origin field."
     }
   ]
 }

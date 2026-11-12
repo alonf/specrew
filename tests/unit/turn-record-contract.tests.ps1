@@ -158,6 +158,9 @@ $cases = @(
     # human's; the origin the dispatcher hands the providers is what the turn ledger records as turn_origin. ASSEMBLED
     # payload (claude/peer-message/provenance.json): verbatim wrapper, body the approval phrase alone on its own line.
     @('claude', 'assembled-userpromptsubmit-peer-message', 'prompt', 'host-injected', 'ASSEMBLED cross-session (peer) message'),
+    # Recorded 2026-11-12 (Claude Code 2.1.322, maintainer ruling): the hook's input for a peer message is the wrapper alone,
+    # without the "Another Claude session sent a message:" line the transcript record adds.
+    @('claude', 'tui-userpromptsubmit-peer-message', 'prompt', 'host-injected', 'recorded cross-session (peer) message'),
     @('codex', 'tui-userpromptsubmit-typed', 'prompt', 'typed-user', 'recorded typed prompt'),
     @('codex', 'exec-userpromptsubmit-typed', 'prompt', 'typed-user', 'recorded typed prompt (exec)'),
     @('codex', 'synthetic-userpromptsubmit-host-injected', 'prompt-journaled', 'host-injected', 'SYNTHETIC host-injected text caught by the journal match'),
