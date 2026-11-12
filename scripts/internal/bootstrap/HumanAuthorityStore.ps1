@@ -1312,7 +1312,8 @@ function Resolve-SpecrewTypedAct {
     # these fields is the human's only when they say so; a record without them (an older host) leaves the text rules to
     # decide, as before.
     $recordSender = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop $Turn 'record_turn_origin')) -PromptSource ([string](& $prop $Turn 'record_prompt_source')) `
-        -IsMeta (& $prop $Turn 'record_is_meta') -OriginKind ([string](& $prop $Turn 'record_origin_kind'))
+        -IsMeta (& $prop $Turn 'record_is_meta') -OriginKind ([string](& $prop $Turn 'record_origin_kind')) `
+        -RecordKind ([string](& $prop $Turn 'record_kind')) -HumanTurn (& $prop $Turn 'record_human_turn') -CommandMode ([string](& $prop $Turn 'record_command_mode'))
     if ([bool]$recordSender.fields_present) {
         if ([bool]$recordSender.accepted) { $origin = 'typed-user' }
         else { return (& $none 'not-human' $false) }
@@ -1778,7 +1779,25 @@ function Read-SpecrewCitedTypedTurn {
             if ($entryType -ceq 'attachment') {
                 $attachment = & $prop $o 'attachment'
                 $attachmentType = [string](& $prop $attachment 'type')
-                if ($attachmentType -ceq 'queued_command') { if (-not [string]::IsNullOrWhiteSpace($uuid)) { [void]$records.Add($uuid) } }
+                if ($attachmentType -ceq 'queued_command') {
+                    if (-not [string]::IsNullOrWhiteSpace($uuid)) { [void]$records.Add($uuid) }
+                    # B5F-070 (maintainer ruling 2026-11-13): a message typed while the crew is working has no user record; its
+                    # turn is this attachment, its act identity resolved through the hook output under it.
+                    $queuedText = [string](& $prop $attachment 'prompt')
+                    if (-not [string]::IsNullOrWhiteSpace($uuid) -and -not [string]::IsNullOrWhiteSpace($queuedText) -and -not ($hostKey -cin @('codex'))) {
+                        $queuedOrigin = & $prop $attachment 'origin'
+                        $queuedSender = Get-SpecrewTranscriptRecordSender -RecordKind 'queued_command' -OriginKind ([string](& $prop $queuedOrigin 'kind')) `
+                            -HumanTurn (& $prop $attachment 'humanTurn') -CommandMode ([string](& $prop $attachment 'commandMode'))
+                        $queuedAt = & $prop $attachment 'timestamp'
+                        $queuedTurn = [pscustomobject]@{ host = 'claude'; message_id = ('queued:' + $uuid); message_identity = $identityKind
+                            origin = $(if ([bool]$queuedSender.accepted) { 'typed-user' } else { 'host-injected' }); text = $queuedText; record_uuid = $uuid
+                            observed_at = $(if ($queuedAt -is [datetime]) { $queuedAt.ToUniversalTime().ToString('o') } else { [string]$queuedAt })
+                            record_kind = 'queued_command'; record_origin_kind = [string](& $prop $queuedOrigin 'kind'); record_human_turn = (& $prop $attachment 'humanTurn')
+                            record_command_mode = [string](& $prop $attachment 'commandMode'); record_turn_origin = ''; record_prompt_source = ''; record_is_meta = $null }
+                        $queuedAsCited = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $hostKey; message_id = ('queued:' + $uuid); text = $queuedText })).Identity
+                        $entries.Add([pscustomobject]@{ Turn = $queuedTurn; Base = [string](Get-SpecrewTypedActIdentity -Turn $queuedTurn).Identity; AsCited = $queuedAsCited; Session = [string](& $prop $o 'sessionId') }) | Out-Null
+                    }
+                }
                 elseif (-not [string]::IsNullOrWhiteSpace($uuid)) { $parentOf[$uuid] = [string](& $prop $o 'parentUuid') }
                 if ($attachmentType -ceq 'hook_additional_context' -and [string](& $prop $attachment 'hookEvent') -ceq 'UserPromptSubmit') {
                     $content = (@(& $prop $attachment 'content') | ForEach-Object { [string]$_ }) -join "`n"
@@ -2391,9 +2410,22 @@ function Get-SpecrewTranscriptRecordSender {
         [AllowNull()]$IsMeta,
         [AllowNull()][AllowEmptyString()][string]$OriginKind,
         [AllowNull()][AllowEmptyString()][string]$PeerName,
-        [AllowNull()][AllowEmptyString()][string]$PeerAddress
+        [AllowNull()][AllowEmptyString()][string]$PeerAddress,
+        # B5F-070 (maintainer ruling 2026-11-13): a message typed while the crew is working is a queued_command attachment,
+        # not a user record. It is the human's only when origin.kind is human, humanTurn is true and commandMode is prompt.
+        [AllowNull()][AllowEmptyString()][string]$RecordKind,
+        [AllowNull()]$HumanTurn,
+        [AllowNull()][AllowEmptyString()][string]$CommandMode
     )
     $to = ([string]$TurnOrigin).Trim(); $ps = ([string]$PromptSource).Trim(); $ok = ([string]$OriginKind).Trim()
+    if (([string]$RecordKind).Trim() -ceq 'queued_command') {
+        $humanTurn = ($HumanTurn -eq $true) -or ([string]$HumanTurn -match '(?i)^\s*true\s*$')
+        $queuedHuman = ($ok -ceq 'human') -and $humanTurn -and (([string]$CommandMode).Trim() -ceq 'prompt')
+        $queuedSender = if ($queuedHuman) { 'human' } elseif ($ok -ceq 'peer') { 'peer' } elseif ($ok -ceq 'task-notification') { 'task-notification' } else { 'other' }
+        $queued = [pscustomobject][ordered]@{ sender = $queuedSender; accepted = [bool]$queuedHuman; fields_present = $true; peer_name = ''; peer_address = '' }
+        if ($queuedSender -ceq 'peer') { $queued.peer_name = ([string]$PeerName).Trim(); $queued.peer_address = ([string]$PeerAddress).Trim() }
+        return $queued
+    }
     $meta = ($IsMeta -eq $true) -or ([string]$IsMeta -match '(?i)^\s*true\s*$')
     $result = [pscustomobject][ordered]@{ sender = 'unverified'; accepted = $true; fields_present = $false; peer_name = ''; peer_address = '' }
     if ([string]::IsNullOrWhiteSpace($to) -and [string]::IsNullOrWhiteSpace($ps) -and [string]::IsNullOrWhiteSpace($ok) -and -not $meta) { return $result }
@@ -2488,7 +2520,8 @@ function Resolve-SpecrewAuthorizationSender {
     else {
         $prop = { param($n) if ($turn.PSObject.Properties[$n]) { $turn.$n } else { $null } }
         $s = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop 'record_turn_origin')) -PromptSource ([string](& $prop 'record_prompt_source')) `
-            -IsMeta (& $prop 'record_is_meta') -OriginKind ([string](& $prop 'record_origin_kind')) -PeerName ([string](& $prop 'record_peer_name')) -PeerAddress ([string](& $prop 'record_peer_address'))
+            -IsMeta (& $prop 'record_is_meta') -OriginKind ([string](& $prop 'record_origin_kind')) -PeerName ([string](& $prop 'record_peer_name')) -PeerAddress ([string](& $prop 'record_peer_address')) `
+            -RecordKind ([string](& $prop 'record_kind')) -HumanTurn (& $prop 'record_human_turn') -CommandMode ([string](& $prop 'record_command_mode'))
         $result.accepted = [bool]$s.accepted; $result.sender = [string]$s.sender; $result.peer_name = [string]$s.peer_name; $result.peer_address = [string]$s.peer_address
         $result.record_uuid = [string](& $prop 'record_uuid')
         $result.reason = if ($s.accepted) { $(if ($s.fields_present) { 'typed-by-human' } else { 'fields-absent-text-rules' }) } else { 'not-typed-by-human' }
