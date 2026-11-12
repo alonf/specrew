@@ -1332,6 +1332,26 @@ function Invoke-SpecrewBoundaryVerdictCapture {
                 -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
                 -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
                 -EvidenceSource $evidenceSource -Kind $authorizationKind -HostKind $HostKind @citation | Out-Null
+            # Feature 203 T013 (B5F-066; T013 triage, gap 2): a verdict read from the transcript is registered on the turn
+            # ledger with the transcript it came from, as Write-SpecrewTypedAct does, so the sender check finds its turn when
+            # the verdict is used. The prompt hook registers the turns it reserves; this is the turn it did not see.
+            if (-not [string]::IsNullOrWhiteSpace([string]$citation.TranscriptPath) -and (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) {
+                try {
+                    $recorded = $null
+                    $contextFile = Join-Path $ProjectRoot '.specrew/start-context.json'
+                    if (Test-Path -LiteralPath $contextFile -PathType Leaf) {
+                        $recordedContext = Get-Content -LiteralPath $contextFile -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+                        $recorded = @($recordedContext.boundary_enforcement.verdict_history)[-1]
+                    }
+                    $recordedTurn = if ($null -ne $recorded -and $recorded.PSObject.Properties['turn_identity']) { [string]$recorded.turn_identity } else { '' }
+                    if (-not [string]::IsNullOrWhiteSpace($recordedTurn)) {
+                        $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $recordedTurn -HostKind $HostKind -SourceEvent $Source `
+                            -MintedWriters 'boundary-verdict' -ContentHash (Get-SpecrewHumanAuthorityHash -Text ([string]$captured.VerdictText).Trim()) `
+                            -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -TranscriptPath ([string]$citation.TranscriptPath) -MessageId $capturedMessageId -NowUtc $NowUtc
+                    }
+                }
+                catch { $null = $_ }
+            }
             Sync-SpecrewPendingVerdictArtifactAfterAuthorization -ProjectRoot $ProjectRoot -NowUtc $NowUtc
             $result.authorized = $true
             $result.reason = 'authorized'
