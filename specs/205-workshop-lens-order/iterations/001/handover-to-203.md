@@ -196,6 +196,24 @@ barrier.
 **Already speed-proof, the model to copy**: `unit/isolated-task-containment.Tests.ps1:174-179` and `:259-264` kill, poll
 until the process is gone with a 10 s deadline, then assert.
 
+### Sites the census missed (added 2026-11-12, DRIFT-026)
+
+`tests/continuous-co-review/unit/review-windows-runtime.Tests.ps1` reads the fixture's `child.pid` file with
+`[IO.File]::ReadAllText($harness.child_pid_path)` and no wait or existence check, after the runtime has returned. The
+fixture runner writes that file only after it has started its child. If the runtime ends the root first, the file
+does not exist and the read throws.
+
+| Line | Test | Runtime budget | Seen failing |
+| ---- | ---- | -------------- | ------------ |
+| 151 | reaps a background descendant and closes inherited streams after a clean root exit | 5 s, complete mode | no |
+| 175 | kills the root and descendant, closes streams, then returns the timeout reason | 1 s, timeout mode | no |
+| 213 | publishes timeout authority only after the runtime has verified the process tree dead | 1 s, timeout mode | yes: Cross-Platform 43213641373 attempt 1 (windows-latest), `ee98b23d`, after 77 ms; attempt 2 passed |
+
+The census listed elapsed-time assertions; these sites have no stopwatch, so it did not find them. They belong to
+class C (kill-then-check): the check after the kill assumes the child got far enough to record itself. Proposal 4's
+handshake covers them: start the runtime's clock only after the fixture signals that its child is running and its pid
+is written.
+
 ### Proposals (for 203 to decide)
 
 1. **Inject the clock into budget logic.** The lock-wait budget, the drain wait and both membership waits take a clock
@@ -219,7 +237,7 @@ until the process is gone with a 10 s deadline, then assert.
    stopwatch, or `-lt` on `Elapsed…`) in the review-runtime suites, unless the line carries an explicit allow
    annotation.
 
-**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-018. Feature 205 does no further work on it.
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-018 and DRIFT-026. Feature 205 does no further work on it.
 
 ## H-007 — a partial sign-off given before review.md is written is voided by writing it
 

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 25
-**Resolution rate**: 100% (25/25 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-025 class closure open)
+**Total drift events**: 26
+**Resolution rate**: 100% (26/26 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-026 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -421,6 +421,21 @@
   item failing locally, and Specrew CI may be red on Lint only for this item on that one push. Feature 202 took the
   same path in `071c6f70`.
 - **Class closure**: NONE — the sync and the validator are feature 203's area. Handed over as H-011.
+
+### DRIFT-026 — a Windows review-runtime test read a pid file that did not exist yet (external CI failure; census gap)
+
+- **Observed**: 2026-11-12, Cross-Platform Validation 43213641373 on the retro commit `ee98b23d`, job "Deterministic
+  fake-provider review runtime (windows-latest)", attempt 1.
+  `tests/continuous-co-review/unit/review-windows-runtime.Tests.ps1`, "publishes timeout authority only after the
+  runtime has verified the process tree dead", failed after 77 ms:
+  `Could not find file '…\ingress-order\stage\child.pid'`. `ee98b23d` changed only `retro.md`, the drift log and the
+  hand-over, so it could not have caused the failure.
+- **Resolution**: the maintainer approved one re-run of the failed job (job 131167270228). Attempt 2 passed, and all
+  8 jobs were green. The retro sync then ran, bound to `ee98b23d`.
+- **Census gap**: the H-006 census looked for elapsed-time assertions and missed this shape. The test reads the
+  fixture's `child.pid` with no wait after a 1 s runtime budget. The same read is at lines 151 and 175 as well as at
+  line 213, the one that failed.
+- **Class closure**: NONE — the review-runtime tests are feature 203's area. Added to H-006 as sites the census missed.
 <!--
   Every new ### DRIFT-... event includes:
 
