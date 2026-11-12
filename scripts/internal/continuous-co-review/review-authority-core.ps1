@@ -523,7 +523,7 @@ function Test-ReviewAuthorityContractObject {
         'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths', 'finding_resolutions') }
         'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths', 'review_collected', 'reviewer_host', 'finding_resolutions') }
         # Feature 203 T008 (FR-009): a launch grant names the reviewer the engine chose for that round.
-        'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host', 'turn_identity') }
+        'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at', 'reviewer_host', 'turn_identity', 'turn_identity_source') }
         # Feature 203 T008 (FR-009, FR-006(d)): `allow reviewer <host>` appends a reviewer to the campaign's approved order.
         'AllowedReviewerFact' { @('schema_version', 'fact_type', 'campaign_id', 'host', 'authority_kind', 'authorization_ref', 'observed_at', 'turn_identity') }
         # Feature 203 T008 step (iii) (FR-011): the human's typed `defer finding <id> to <destination>`, `drop finding <id>` or
@@ -536,11 +536,11 @@ function Test-ReviewAuthorityContractObject {
             # Feature 203 T008 (DRIFT-052 item 2): a floor grant records why it is the floor and the verdict time it counts from.
             'floor_reason', 'counts_from',
             # Feature 203 T012 (FR-041): the typed turn of the before-implement verdict the grant was snapshotted from.
-            'turn_identity'
+            'turn_identity', 'turn_identity_source'
         ) }
         # Feature 203 T012 (FR-024): a reservation cites the budget grant and the reset that opened the current window, and the
         # typed turn that authorized it; grant_id is the launch grant whose slot it holds, which may be older than the window.
-        'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at', 'budget_grant_id', 'reset_id', 'turn_identity') }
+        'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at', 'budget_grant_id', 'reset_id', 'turn_identity', 'turn_identity_source') }
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
         'ReleaseFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'reason', 'observed_at') }
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
@@ -585,6 +585,10 @@ function Test-ReviewAuthorityContractObject {
     # Feature 203 T012 (FR-024, FR-041): the typed human turn that authorized the record. Optional, because every fact stored
     # before T012 lacks it and must still read; the authority audit (AuthorityAudit.ps1) is what fails a record without one.
     if ($fields -contains 'turn_identity') { Test-ReviewAuthorityStringField -Object $InputObject -Name 'turn_identity' -Errors $errors -MaxLength 256 -Optional }
+    # Maintainer ruling 2026-11-12: a record whose turn is not its own message's says where it borrowed it from.
+    if ($fields -contains 'turn_identity_source') {
+        Test-ReviewAuthorityStringField -Object $InputObject -Name 'turn_identity_source' -Errors $errors -MaxLength 32 -Optional -Enum @('window', 'cited-verdict')
+    }
     if ($ContractName -ceq 'ReservationFact') {
         Test-ReviewAuthorityStringField -Object $InputObject -Name 'budget_grant_id' -Errors $errors -MaxLength 64 -Optional
         Test-ReviewAuthorityStringField -Object $InputObject -Name 'reset_id' -Errors $errors -MaxLength 128 -Optional
@@ -1132,7 +1136,11 @@ function Resolve-ReviewCampaignReservationDecision {
     # so the reservation names the window it is spent in, and the turn that opened that window, on its own record.
     if (-not [string]::IsNullOrWhiteSpace($BudgetGrantId)) { $fact | Add-Member -NotePropertyName budget_grant_id -NotePropertyValue $BudgetGrantId.Trim() }
     if (-not [string]::IsNullOrWhiteSpace($ResetId)) { $fact | Add-Member -NotePropertyName reset_id -NotePropertyValue $ResetId.Trim() }
-    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) {
+        $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim()
+        # Borrowed from the grant or reset that opened the window, not typed for this reservation.
+        $fact | Add-Member -NotePropertyName turn_identity_source -NotePropertyValue 'window'
+    }
     return [pscustomobject]@{ permitted = $true; reason = 'slot-available'; fact = $fact }
 }
 

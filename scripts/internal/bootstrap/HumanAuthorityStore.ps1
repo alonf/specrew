@@ -140,7 +140,7 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
             if ($dropDir -and -not (Test-Path -LiteralPath $dropDir)) { New-Item -ItemType Directory -Path $dropDir -Force | Out-Null }
             (([pscustomobject][ordered]@{ event = 'authority-phrase-matched-but-rejected'; phrase = 'review-signoff-partial-override'; reason = $(if ($rationale.Length -gt 2000) { 'rationale-too-long' } else { 'rationale-too-short' }); rationale_length = $rationale.Length; recorded_at = $NowUtc
                         # Feature 203 T012 (FR-041): the refusal names the typed turn it refused.
-                        turn_identity = [string]$TurnIdentity }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
+                        turn_identity = [string]$TurnIdentity; turn_identity_source = $(if ([string]::IsNullOrWhiteSpace($TurnIdentity)) { '' } else { 'refused-message' }) }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
         }
         catch { $null = $_ }
         return $null
@@ -569,7 +569,7 @@ function Write-SpecrewAuthorityMultiLineDrop {
                 reason = $(if ($Refusal.PSObject.Properties['Reason'] -and -not [string]::IsNullOrWhiteSpace([string]$Refusal.Reason)) { [string]$Refusal.Reason } else { 'multi-line' })
                 first_line = $shown; line_count = [int]$Refusal.LineCount
                 host_kind = [string]$HostKind; source_event = [string]$SourceEvent; recorded_at = $NowUtc
-                turn_identity = [string]$TurnIdentity
+                turn_identity = [string]$TurnIdentity; turn_identity_source = $(if ([string]::IsNullOrWhiteSpace($TurnIdentity)) { '' } else { 'refused-message' })
                 fix = ("send exactly one line: '{0}' or '{0} - <your instructions>'" -f [string]$Refusal.Retype)
             }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
         [Console]::Error.WriteLine(("[specrew-authority] YOUR {0} WAS NOT RECORDED. {1}" -f ([string]$Refusal.Kind).ToUpperInvariant().Replace('-', ' '), $message))

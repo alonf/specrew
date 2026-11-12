@@ -3013,6 +3013,9 @@ function Write-SpecrewCrossingMintRefusal {
         [AllowNull()][AllowEmptyString()][string]$TurnIdentity
     )
     $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
+    # Maintainer ruling 2026-11-12: the record says how it got its turn. A sync can run in a continuation nobody typed (a
+    # background task finishing, a scheduled task), and then the newest typed turn is an older, unrelated message.
+    $turnSource = if ([string]::IsNullOrWhiteSpace($TurnIdentity)) { '' } else { 'caller' }
     if ([string]::IsNullOrWhiteSpace($TurnIdentity)) {
         try {
             if (-not (Get-Command Find-SpecrewNewestTypedTurn -ErrorAction SilentlyContinue)) {
@@ -3021,7 +3024,7 @@ function Write-SpecrewCrossingMintRefusal {
             }
             if (Get-Command Find-SpecrewNewestTypedTurn -ErrorAction SilentlyContinue) {
                 $newestTurn = Find-SpecrewNewestTypedTurn -ProjectRoot $ProjectRoot -Text ''
-                if ([bool]$newestTurn.Found) { $TurnIdentity = [string]$newestTurn.TurnIdentity }
+                if ([bool]$newestTurn.Found) { $TurnIdentity = [string]$newestTurn.TurnIdentity; $turnSource = 'newest-typed-turn' }
             }
         }
         catch { $TurnIdentity = '' }
@@ -3034,7 +3037,7 @@ function Write-SpecrewCrossingMintRefusal {
         $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
         $dir = Split-Path -Parent $journal
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        (([pscustomobject]@{ event = 'crossing-not-minted-owed-artifacts-absent'; recorded_at = $when; from = $FromBoundary; to = $ToBoundary; missing = @($Missing); expected_under = $ExpectedUnder; iteration = $Iteration; message = $message; turn_identity = [string]$TurnIdentity }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+        (([pscustomobject]@{ event = 'crossing-not-minted-owed-artifacts-absent'; recorded_at = $when; from = $FromBoundary; to = $ToBoundary; missing = @($Missing); expected_under = $ExpectedUnder; iteration = $Iteration; message = $message; turn_identity = [string]$TurnIdentity; turn_identity_source = $turnSource }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
     }
     catch { $null = $_ }
     return $message

@@ -1186,7 +1186,11 @@ function New-ReviewCampaignFloorGrantFact {
     }
     # Feature 203 T012 (FR-041): the verdict's typed turn, when the verdict was captured from one.
     $verdictTurn = if ($null -ne $Verdict -and $Verdict.PSObject.Properties['turn_identity']) { [string]$Verdict.turn_identity } else { '' }
-    if (-not [string]::IsNullOrWhiteSpace($verdictTurn)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $verdictTurn.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($verdictTurn)) {
+        $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $verdictTurn.Trim()
+        # Borrowed: the floor grant is written at a launch, citing a verdict typed earlier.
+        $fact | Add-Member -NotePropertyName turn_identity_source -NotePropertyValue 'cited-verdict'
+    }
     return $fact
 }
 
@@ -1235,7 +1239,11 @@ function Add-ReviewCampaignLaunchGrant {
     }
     # Feature 203 T008 (FR-009): the reviewer the engine chose for this round, which an empty host order approves.
     if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $fact | Add-Member -NotePropertyName reviewer_host -NotePropertyValue $ReviewerHost.Trim().ToLowerInvariant() }
-    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) {
+        $fact | Add-Member -NotePropertyName turn_identity -NotePropertyValue $TurnIdentity.Trim()
+        # Borrowed from the grant or reset that opened the window, not typed for this launch.
+        $fact | Add-Member -NotePropertyName turn_identity_source -NotePropertyValue 'window'
+    }
     try { $null = Add-ReviewCampaignGrantFact -StoreRoot $StoreRoot -Fact $fact }
     catch {
         # The same ordinal minted by a concurrent launch, with its own time: that launch's grant is the one.
