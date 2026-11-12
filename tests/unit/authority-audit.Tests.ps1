@@ -279,3 +279,122 @@ Describe 'the records name the turn that authorized them (FR-024, FR-041)' {
         $audit.passed | Should -BeTrue -Because (script:Get-AuditReasons $audit)
     }
 }
+
+Describe 'T012 after the maintainer''s ruling of 2026-11-12: a stop''s decision authorizes no spend, the window is cited and joined, refusals name the turn, and the reset names its campaign' {
+    BeforeAll {
+        # A launch grant and a reservation written through the store, with the citations given.
+        function script:Add-CitedReservation([pscustomobject]$Project, [string]$RunId, [string]$BudgetGrantId = '', [string]$ResetId = '', [string]$Turn = 'turn-launch') {
+            $grant = [pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'grant'; campaign_id = $script:CampaignId; grant_id = ('grant-' + ('{0:x20}' -f [Math]::Abs($RunId.GetHashCode())).PadLeft(20, '0').Substring(0, 20))
+                slots = 1; authority_kind = 'human'; authorization_ref = 'fixture'; observed_at = '2026-11-12T08:00:00Z'; turn_identity = $Turn
+            }
+            $null = Add-ReviewCampaignGrantFact -StoreRoot $Project.store -Fact $grant
+            $reservation = Request-ReviewCampaignReservationFact -StoreRoot $Project.store -CampaignId $script:CampaignId -RunId $RunId `
+                -ReservationId ('res-' + $RunId) -ObservedAt '2026-11-12T08:01:00Z' -BudgetGrantId $BudgetGrantId -ResetId $ResetId -TurnIdentity $Turn
+            $reservation.acquired | Should -BeTrue -Because ([string]$reservation.reason)
+            return $reservation.fact
+        }
+        # The audit's reason for the run's reservation, or '(passed)' when the audit did not fail it.
+        function script:Get-ReservationReason($Audit, [string]$RunId) {
+            $found = @($Audit.failures | Where-Object { [string]$_.kind -eq 'reservation' -and [string]$_.id -eq ('res-' + $RunId) })
+            if ($found.Count -eq 0) { return '(passed)' }
+            return [string]$found[0].reason
+        }
+        function script:Get-DropRows([pscustomobject]$Project) {
+            $journal = Join-Path $Project.root '.specrew/runtime/authority-capture-drops.jsonl'
+            if (-not (Test-Path -LiteralPath $journal)) { return @() }
+            return @(Get-Content -LiteralPath $journal | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
+        }
+    }
+
+    It 'reading 2: a run with spend, result or claim facts and a typed pause decision, but no reservation, fails' {
+        $project = script:New-AuditProject -Name 'decision-no-spend'
+        script:Add-TypedTurn -Project $project -TurnId 'turn-halt'
+        $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 0 -BudgetTotal 2
+        $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $project.store -Fact (New-ReviewCampaignPendingPauseFact -CampaignId $script:CampaignId -RunId 'run-decided' `
+                -TargetDigest ('a' * 40) -Decision $decision -ObservedAt '2026-11-12T08:00:00Z' -StopKind 'c-judgment' -StopReason 'human-halt')
+        $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $project.store -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $script:CampaignId -RunId 'run-decided' `
+                -Choice stop-here -ObservedAt '2026-11-12T08:01:00Z' -TurnIdentity 'turn-halt')
+        Request-ReviewAuthorityClaim -StoreRoot $project.store -CampaignId $script:CampaignId -RunId 'run-decided' -TargetLineage 'lin-001-demo' -ObservedAt '2026-11-12T08:02:00Z' | Out-Null
+        $audit = script:Invoke-Audit -Project $project
+        $audit.passed | Should -BeFalse
+        @($audit.failures | Where-Object { [string]$_.kind -eq 'run-fact' -and [string]$_.id -eq 'run-decided' -and [string]$_.reason -eq 'run-without-authorized-reservation' }).Count | Should -Be 1 -Because (script:Get-AuditReasons $audit)
+        @($audit.failures | Where-Object { [string]$_.kind -eq 'pause-decision' }).Count | Should -Be 0 -Because 'the decision itself joins its typed turn'
+    }
+
+    It 'FR-024: a reservation that names no budget grant fails, with or without a reset' {
+        $project = script:New-AuditProject -Name 'no-budget-grant'
+        script:Add-TypedTurn -Project $project -TurnId 'turn-launch'
+        $null = script:Add-CitedReservation -Project $project -RunId 'run-cites-nothing'
+        $null = script:Add-CitedReservation -Project $project -RunId 'run-cites-reset-only' -ResetId 'reset-abc'
+        $audit = script:Invoke-Audit -Project $project
+        (script:Get-ReservationReason $audit 'run-cites-nothing') | Should -BeExactly 'no-window-citation' -Because (script:Get-AuditReasons $audit)
+        (script:Get-ReservationReason $audit 'run-cites-reset-only') | Should -BeExactly 'no-window-citation' -Because (script:Get-AuditReasons $audit)
+    }
+
+    It 'FR-024: the cited budget grant must exist in the campaign and join a typed turn' {
+        $project = script:New-AuditProject -Name 'cited-grant'
+        script:Add-TypedTurn -Project $project -TurnId 'turn-launch'
+        $unjoined = script:Set-BudgetGrant -Project $project -TurnIdentity ''
+        $null = script:Add-CitedReservation -Project $project -RunId 'run-cites-absent-grant' -BudgetGrantId 'grant-00000000000000000000'
+        $null = script:Add-CitedReservation -Project $project -RunId 'run-cites-unjoined-grant' -BudgetGrantId ([string]$unjoined.grant_id)
+        $audit = script:Invoke-Audit -Project $project
+        (script:Get-ReservationReason $audit 'run-cites-absent-grant') | Should -BeExactly 'cited-budget-grant-missing' -Because (script:Get-AuditReasons $audit)
+        (script:Get-ReservationReason $audit 'run-cites-unjoined-grant') | Should -BeExactly 'cited-budget-grant-not-joined' -Because (script:Get-AuditReasons $audit)
+    }
+
+    It 'FR-024: a cited reset must exist in the campaign and join a typed turn' {
+        $project = script:New-AuditProject -Name 'cited-reset'
+        script:Add-TypedTurn -Project $project -TurnId 'turn-launch'
+        script:Add-TypedTurn -Project $project -TurnId 'turn-before-implement'
+        $budget = script:Set-BudgetGrant -Project $project -TurnIdentity 'turn-before-implement'
+        $unjoinedReset = New-ReviewCampaignBudgetResetFact -CampaignId $script:CampaignId -AuthorizedBy 'maintainer' -Reason 'no turn' -ObservedAt '2026-11-12T07:00:00Z'
+        $null = Write-ReviewCampaignBudgetResetFact -StoreRoot $project.store -Fact $unjoinedReset
+        $null = script:Add-CitedReservation -Project $project -RunId 'run-cites-absent-reset' -BudgetGrantId ([string]$budget.grant_id) -ResetId 'reset-00000000000000000000'
+        $null = script:Add-CitedReservation -Project $project -RunId 'run-cites-unjoined-reset' -BudgetGrantId ([string]$budget.grant_id) -ResetId ([string]$unjoinedReset.reset_id)
+        $audit = script:Invoke-Audit -Project $project
+        (script:Get-ReservationReason $audit 'run-cites-absent-reset') | Should -BeExactly 'cited-reset-missing' -Because (script:Get-AuditReasons $audit)
+        (script:Get-ReservationReason $audit 'run-cites-unjoined-reset') | Should -BeExactly 'cited-reset-not-joined' -Because (script:Get-AuditReasons $audit)
+    }
+
+    It 'FR-041: a multi-line approval refused at capture is journaled with the turn identity of the message' {
+        $project = script:New-AuditProject -Name 'refusal-multi-line'
+        Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $project.root -Response "approved for allowance reset`nand here is a pasted block`nof notes" -HostKind 'codex' `
+            -SourceEvent 'UserPromptSubmit' -MessageId 'msg-multi-line-1' -SessionId 's1' -TurnOrigin 'typed-user' | Out-Null
+        $rows = @(script:Get-DropRows -Project $project | Where-Object { [string]$_.event -eq 'authority-phrase-matched-but-rejected' })
+        $rows.Count | Should -BeGreaterThan 0
+        $ledgerTurn = [string]((Get-Content -LiteralPath (Join-Path $project.root '.specrew/authority/exhausted-turns.jsonl') | Select-Object -Last 1 | ConvertFrom-Json).turn_id)
+        $ledgerTurn | Should -Not -BeNullOrEmpty
+        [string]$rows[-1].turn_identity | Should -BeExactly $ledgerTurn
+    }
+
+    It 'FR-041: a partial sign-off refused for its reason''s length is journaled with the turn identity' {
+        $project = script:New-AuditProject -Name 'refusal-partial'
+        $null = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $project.root -Response 'approved for partial review signoff - short' `
+            -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-partial-short'
+        $rows = @(script:Get-DropRows -Project $project | Where-Object { [string]$_.phrase -eq 'review-signoff-partial-override' })
+        $rows.Count | Should -Be 1
+        [string]$rows[0].turn_identity | Should -BeExactly 'turn-partial-short'
+    }
+
+    It 'FR-041: a crossing the sync could not open is journaled with the turn identity of the newest typed turn' {
+        $project = script:New-AuditProject -Name 'refusal-crossing'
+        script:Add-TypedTurn -Project $project -TurnId 'turn-sync-ran-in'
+        $null = Write-SpecrewCrossingMintRefusal -ProjectRoot $project.root -FromBoundary 'plan' -ToBoundary 'tasks' -Missing @('tasks.md') `
+            -ExpectedUnder 'specs/001-demo' -Iteration '007'
+        $journal = Join-Path $project.root '.specrew/runtime/handover-journal.jsonl'
+        $row = @(Get-Content -LiteralPath $journal | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.event -eq 'crossing-not-minted-owed-artifacts-absent' })[-1]
+        [string]$row.turn_identity | Should -BeExactly 'turn-sync-ran-in'
+    }
+
+    It 'FR-041: the allowance-reset capture names the campaign of the active iteration' {
+        $project = script:New-AuditProject -Name 'reset-campaign'
+        $context = [ordered]@{ session_state = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = '001-demo'; iteration_number = '007' } }
+        [IO.File]::WriteAllText((Join-Path $project.root '.specrew/start-context.json'), ($context | ConvertTo-Json -Depth 6), $script:Utf8)
+        $capture = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $project.root -Response 'approved for allowance reset' -HostKind 'claude' `
+            -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-reset'
+        $capture | Should -Not -BeNullOrEmpty
+        $stored = Get-Content -LiteralPath (Join-Path $project.root '.specrew/review/allowance-reset/pending-allowance-reset.json') -Raw | ConvertFrom-Json
+        [string]$stored.campaign_id | Should -BeExactly $script:CampaignId
+    }
+}
