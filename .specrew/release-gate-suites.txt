@@ -381,3 +381,7 @@ tests/unit/legacy-frozen-judged-by-nothing.tests.ps1
 tests/unit/closed-check-since-and-ruling.tests.ps1
 tests/unit/review-verdict-names-status.tests.ps1
 tests/unit/nightly-tracking-issue.tests.ps1
+
+# Feature 206 T015 (maintainer ruling 2026-11-12): a script suite no lane ran before the test census, too slow for
+# the per-push CI step (98 s alone here).
+tests/integration/validator-hardening-iteration1.ps1

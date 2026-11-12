@@ -361,6 +361,51 @@ jobs:
         shell: pwsh
         run: ./tests/integration/github-actions-node-runtime-pins.tests.ps1
 
+      - name: Integration - script suites no lane ran before the test census (F-206 T015)
+        shell: pwsh
+        timeout-minutes: 20
+        # Feature 206 (FR-011, FR-012): these script-style suites ran in no lane, CI step or release manifest
+        # until the test census counted them. Each was read for writes to the real home folder and run alone with
+        # the home hook files hashed before it was listed here (maintainer ruling 2026-11-12). The slow ones are
+        # in .specrew/release-gate-suites.txt instead. Each runs in its own process; every one runs, and the step
+        # fails if any exits non-zero.
+        run: |
+          $suites = @(
+            'tests/integration/brownfield-merge.ps1'
+            'tests/integration/carry-forward-closed-iteration.ps1'
+            'tests/integration/concurrency-sizing.ps1'
+            'tests/integration/descriptive-reference-authored-prose.ps1'
+            'tests/integration/descriptive-reference-excluded-surfaces.ps1'
+            'tests/integration/feature-018-render-budget.ps1'
+            'tests/integration/gap-governance.ps1'
+            'tests/integration/hardening-gate-contract.ps1'
+            'tests/integration/lockout-chain-cap.ps1'
+            'tests/integration/mechanical-findings-contract.ps1'
+            'tests/integration/quality-evidence-governance.ps1'
+            'tests/integration/quality-profile-foundation.ps1'
+            'tests/integration/reviewer-artifacts.ps1'
+            'tests/integration/reviewer-closeout-governance.ps1'
+            'tests/integration/reviewer-regression-event.ps1'
+            'tests/integration/reviewer-regression-ledger.ps1'
+            'tests/integration/reviewer-regression-withdrawal.ps1'
+            'tests/integration/specrew-start-auto-continue-preservation.ps1'
+            'tests/integration/specrew-start-baseline-tracking.ps1'
+            'tests/integration/specrew-start-change-detector.ps1'
+            'tests/integration/specrew-start-end-to-end.ps1'
+            'tests/integration/specrew-start-parameter-handling.ps1'
+            'tests/integration/specrew-start-pause-and-confirm.ps1'
+          )
+          $failed = @()
+          foreach ($suite in $suites) {
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            & pwsh -NoProfile -NonInteractive -File "./$suite"
+            $code = $LASTEXITCODE
+            Write-Host ("RESULT {0}: exit {1} in {2:N0} s" -f $suite, $code, $watch.Elapsed.TotalSeconds)
+            if ($code -ne 0) { $failed += $suite }
+          }
+          if ($failed.Count -gt 0) { Write-Host ("FAILED ({0}): {1}" -f $failed.Count, ($failed -join ', ')); exit 1 }
+          Write-Host ("All {0} script suites green" -f $suites.Count)
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest

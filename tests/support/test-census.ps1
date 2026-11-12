@@ -31,58 +31,31 @@ function Get-SpecrewTestCensusExclusions {
         'tests/host-probes/host-payload-capture-probe.ps1' = 'live host probe, run by hand: records real host payloads; no lane can run it'
         'tests/host-probes/walk-capture-hook.ps1'          = 'not a test: a capture hook installed for a live walk'
         'tests/integration/_ctl-spec.ps1'                  = 'empty 0-byte file, not a test; deleted by T016 (feature 206, iteration 002)'
+
+        # The T014/T015 rulings (maintainer, 2026-11-12) on the scripts no lane ran before this census. Each was
+        # read for writes to the real home folder; a red one is excluded only by the maintainer's ruling (FR-012).
+        'tests/integration/substantive-interaction-model-iteration2.ps1' = 'stale README assertion (section removed by b27f35c4); bug list item 16, fixed in iteration 002'
+        'tests/integration/distribution-module-init.ps1'                 = 'writes the real home; not run until feature 203''s private test home is merged (specrew-init deploys the hook files)'
+        'tests/manual/multi-host-smoke.ps1'                              = 'writes the real home; not run until feature 203''s private test home is merged (installed specrew init and start; bug list item 18)'
+        'tests/integration/team-management.ps1'                         = 'writes the real home; not run until feature 203''s private test home is merged'
+        'tests/integration/update-command.ps1'                           = 'writes the real home; not run until feature 203''s private test home is merged'
+        'tests/integration/validate-baseline-team.ps1'                   = 'writes the real home; not run until feature 203''s private test home is merged'
+        'tests/manual/copilot-squad-smoke.ps1'                           = 'writes the real home; not run until feature 203''s private test home is merged'
+        'tests/integration/distribution-module-publish.ps1'              = 'would publish to PSGallery if PSGALLERY_API_KEY is set; bug list item 17 (severity high)'
+        'tests/integration/feature-017-dashboard-core.ps1'               = 'red: its healthy fixture is not a Specrew project to `specrew where` ("requires a Specrew-managed project"); bug list item 19, fixed in iteration 002'
+        'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: the rendered rich dashboard no longer matches rich-capable-expected.txt (golden file or velocity change, not established); bug list item 20, fixed in iteration 002'
+        'tests/integration/validator-hardening-iteration2.ps1'           = 'red: specrew start classifies the agent and charter files it wrote itself as user changes and pauses (assertion 3; bug 2b''s cause beyond copilot-instructions); bug list item 21; SC-002 required in iteration 002, then the release manifest'
+        'tests/integration/project-path-resolution-regression.ps1'       = 'awaits the maintainer: SC-001''s supervised run (T015) is reported before it is registered'
     }
 }
 
-# HELD (maintainer, 2026-11-12): tests that no lane, CI step or registry ran before this census counted
-# them. They are tests - the lane guard counts them, and fails until each is registered - but the release
-# full sweep lists them as held and does not run them, because a script is read for writes to the real
-# home folder before it is run (FR-012), and that reading is T014. At T015 every entry moves to registered
-# or to the exclusions with its reason, and a test then requires this list to be empty. The lane guard
-# fails if an entry here is already named somewhere, or is not a test.
+# HELD (maintainer, 2026-11-12): a test that no lane, CI step or registry ran before this census counted it
+# is held - counted by the lane guard, listed but not run by the release full sweep - until it is read for
+# writes to the real home folder (FR-012). T014 read the 36 that were held; T015 registered or excluded each
+# by the maintainer's ruling, and the lane guard requires this list to be empty. An entry added here later
+# must name a test that nothing runs, with its reason.
 function Get-SpecrewTestCensusHeld {
-    $reason = 'not read yet (T014)'
-    $held = [ordered]@{}
-    foreach ($path in @(
-            'tests/integration/brownfield-merge.ps1'
-            'tests/integration/carry-forward-closed-iteration.ps1'
-            'tests/integration/concurrency-sizing.ps1'
-            'tests/integration/descriptive-reference-authored-prose.ps1'
-            'tests/integration/descriptive-reference-excluded-surfaces.ps1'
-            'tests/integration/distribution-module-init.ps1'
-            'tests/integration/distribution-module-publish.ps1'
-            'tests/integration/feature-017-dashboard-core.ps1'
-            'tests/integration/feature-018-render-budget.ps1'
-            'tests/integration/feature-018-rich-dashboard.ps1'
-            'tests/integration/gap-governance.ps1'
-            'tests/integration/hardening-gate-contract.ps1'
-            'tests/integration/lockout-chain-cap.ps1'
-            'tests/integration/mechanical-findings-contract.ps1'
-            'tests/integration/project-path-resolution-regression.ps1'
-            'tests/integration/quality-evidence-governance.ps1'
-            'tests/integration/quality-profile-foundation.ps1'
-            'tests/integration/reviewer-artifacts.ps1'
-            'tests/integration/reviewer-closeout-governance.ps1'
-            'tests/integration/reviewer-regression-event.ps1'
-            'tests/integration/reviewer-regression-ledger.ps1'
-            'tests/integration/reviewer-regression-withdrawal.ps1'
-            'tests/integration/specrew-start-auto-continue-preservation.ps1'
-            'tests/integration/specrew-start-baseline-tracking.ps1'
-            'tests/integration/specrew-start-change-detector.ps1'
-            'tests/integration/specrew-start-end-to-end.ps1'
-            'tests/integration/specrew-start-parameter-handling.ps1'
-            'tests/integration/specrew-start-pause-and-confirm.ps1'
-            'tests/integration/substantive-interaction-model-iteration2.ps1'
-            'tests/integration/team-management.ps1'
-            'tests/integration/update-command.ps1'
-            'tests/integration/validate-baseline-team.ps1'
-            'tests/integration/validator-hardening-iteration1.ps1'
-            'tests/integration/validator-hardening-iteration2.ps1'
-            'tests/manual/copilot-squad-smoke.ps1'
-            'tests/manual/multi-host-smoke.ps1')) {
-        $held[$path] = $reason
-    }
-    return $held
+    return [ordered]@{}
 }
 
 # Runners that a CI step runs and that list the scripts they run. A script one of them lists runs whenever
