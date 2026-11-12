@@ -111,8 +111,12 @@ foreach ($p in $paths) {
         $t = New-Turn -Text ([string]$p.Text)
         $t | Add-Member -NotePropertyName record_turn_origin -NotePropertyValue ([string]$shape.turnOrigin)
         $t | Add-Member -NotePropertyName record_prompt_source -NotePropertyValue $(if ($null -eq $shape.promptSource) { '' } else { [string]$shape.promptSource })
+        $t | Add-Member -NotePropertyName record_origin_kind -NotePropertyValue $(if ($null -eq $shape.origin_kind) { '' } else { [string]$shape.origin_kind })
+        $t | Add-Member -NotePropertyName record_is_meta -NotePropertyValue $shape.isMeta
         $got = Get-Act $t $p.Pending
-        $human = ([string]$shape.turnOrigin -ceq 'human') -and (@('typed', 'queued') -ccontains [string]$shape.promptSource)
+        # The shape's expected answer (maintainer ruling 2026-11-12). A record with no fields leaves the text rules to decide,
+        # and this typed line passes them.
+        $human = [bool]$shape.accepted
         $ok = if ($human) { [string]$got.Kind -ceq [string]$p.Kind } else { -not (Test-Minted $got) }
         Assert-True $ok ("{0}: a turn whose transcript record is {1} {2} (got {3}/{4}/{5})" -f $id, $shape.kind, $(if ($human) { 'mints' } else { 'mints nothing' }), $got.Kind, $got.Answer, $got.Reason)
         if (-not $ok) { $recordOk = $false }

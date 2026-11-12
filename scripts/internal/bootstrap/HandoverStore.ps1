@@ -1406,6 +1406,8 @@ function Invoke-SpecrewTypedAuthorityCapture {
         [AllowEmptyString()][AllowNull()][string]$MessageId,
         # Co-review round 1 (iteration 002): the session the message belongs to, recorded on the reservation.
         [AllowEmptyString()][AllowNull()][string]$SessionId,
+        # Feature 203 T013 (B5F-066): where the message's transcript record will be, kept on the turn's ledger row.
+        [AllowEmptyString()][AllowNull()][string]$TranscriptPath,
         # Co-review round 6 (iteration 002): where the dispatcher says the message came from (typed-user | host-injected |
         # unknown). Empty from a path that reads no origin (the turn end), which keeps its own checks.
         [AllowEmptyString()][AllowNull()][string]$TurnOrigin,
@@ -1588,7 +1590,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId `
                     -HostKind $HostKind -SourceEvent $SourceEvent -MintedWriters '' -ContentHash $contentHash `
-                    -SessionId $SessionId -Identity $identityKind -TurnOrigin $TurnOrigin -PromptEvent $PromptEvent -NowUtc $NowUtc)
+                    -SessionId $SessionId -Identity $identityKind -TurnOrigin $TurnOrigin -PromptEvent $PromptEvent -TranscriptPath $TranscriptPath -MessageId $MessageId -NowUtc $NowUtc)
         }
         catch { $reserved = $false }
         if (-not $reserved) { return }
@@ -1731,7 +1733,7 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind `
                 -SourceEvent $SourceEvent -MintedWriters ($mintedBy -join ',') -ContentHash $contentHash `
-                -SessionId $SessionId -Identity $identityKind -PromptEvent $PromptEvent -NowUtc $NowUtc | Out-Null
+                -SessionId $SessionId -Identity $identityKind -PromptEvent $PromptEvent -TranscriptPath $TranscriptPath -MessageId $MessageId -NowUtc $NowUtc | Out-Null
         }
         catch { $null = $_ }
     }
@@ -1869,7 +1871,7 @@ function Update-SpecrewRollingHandover {
         # which is a second act - correctly.
         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
             -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc `
-            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId -TurnOrigin $TurnOrigin -MessageIdentity $MessageIdentity -PromptEvent $PromptEvent
+            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc -MessageId $MessageId -SessionId $SessionId -TurnOrigin $TurnOrigin -MessageIdentity $MessageIdentity -PromptEvent $PromptEvent -TranscriptPath $TranscriptPath
         $promptActKey = [string]$script:SpecrewTypedAuthorityLastKey
         # T017 (DA-2 condition 2): an approval an earlier turn end found not recorded on this host is said here,
         # once, in the turn the human reads.
@@ -2303,7 +2305,7 @@ function Update-SpecrewRollingHandover {
                         $null = Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
                             -Response $ratText -HostKind $fromHost `
                             -SourceEvent 'stop-transcript' -NowUtc $NowUtc `
-                            -TurnPosition ([string]$rat) -TurnArrival $ratArrival -MessageId $ratMessageId -SessionId $SessionId
+                            -TurnPosition ([string]$rat) -TurnArrival $ratArrival -MessageId $ratMessageId -SessionId $SessionId -TranscriptPath $TranscriptPath
                     }
                     break
                 }

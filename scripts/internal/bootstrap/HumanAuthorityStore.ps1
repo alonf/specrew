@@ -1309,10 +1309,10 @@ function Resolve-SpecrewTypedAct {
     # promptSource. A scheduled prompt is raw text with no wrapper, so no text rule can see it. A turn whose record carries
     # these fields is the human's only when they say so; a record without them (an older host) leaves the text rules to
     # decide, as before.
-    $recordOrigin = ([string](& $prop $Turn 'record_turn_origin')).Trim()
-    if (-not [string]::IsNullOrWhiteSpace($recordOrigin)) {
-        $recordSource = ([string](& $prop $Turn 'record_prompt_source')).Trim()
-        if ($recordOrigin -ceq 'human' -and @('typed', 'queued') -ccontains $recordSource) { $origin = 'typed-user' }
+    $recordSender = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop $Turn 'record_turn_origin')) -PromptSource ([string](& $prop $Turn 'record_prompt_source')) `
+        -IsMeta (& $prop $Turn 'record_is_meta') -OriginKind ([string](& $prop $Turn 'record_origin_kind'))
+    if ([bool]$recordSender.fields_present) {
+        if ([bool]$recordSender.accepted) { $origin = 'typed-user' }
         else { return (& $none 'not-human' $false) }
     }
     # Feature 203 T013 (B5F-064): another Claude session's message, in the wrapper the host puts around it, is never the
@@ -1817,10 +1817,16 @@ function Read-SpecrewCitedTypedTurn {
             if (Test-SpecrewConversationMetaFlag -Object $o) { $turn | Add-Member -NotePropertyName is_compact_summary -NotePropertyValue $true }
             # Feature 203 T013 (maintainer ruling 2026-11-12): the record's own word on who wrote it, for the classifier's
             # positive rule (turnOrigin human with promptSource typed or queued). Absent on older hosts.
-            $recordTurnOrigin = & $prop $o 'turnOrigin'
-            if ($null -ne $recordTurnOrigin -and -not [string]::IsNullOrWhiteSpace([string]$recordTurnOrigin)) {
-                $turn | Add-Member -NotePropertyName record_turn_origin -NotePropertyValue ([string]$recordTurnOrigin)
-                $turn | Add-Member -NotePropertyName record_prompt_source -NotePropertyValue ([string](& $prop $o 'promptSource'))
+            # Every field Get-SpecrewTranscriptRecordSender reads, each where the record has it (an older host has some or none).
+            $recordOriginKind = [string](& $prop $entryOrigin 'kind')
+            $recordMeta = & $prop $o 'isMeta'
+            $turn | Add-Member -NotePropertyName record_turn_origin -NotePropertyValue ([string](& $prop $o 'turnOrigin'))
+            $turn | Add-Member -NotePropertyName record_prompt_source -NotePropertyValue ([string](& $prop $o 'promptSource'))
+            $turn | Add-Member -NotePropertyName record_origin_kind -NotePropertyValue $recordOriginKind
+            $turn | Add-Member -NotePropertyName record_is_meta -NotePropertyValue $recordMeta
+            if ($recordOriginKind -ceq 'peer') {
+                $turn | Add-Member -NotePropertyName record_peer_name -NotePropertyValue ([string](& $prop $entryOrigin 'name'))
+                $turn | Add-Member -NotePropertyName record_peer_address -NotePropertyValue ([string](& $prop $entryOrigin 'from'))
             }
             # The id-and-text key a caller with no host label computed, so its citation still finds the entry; the turn and
             # its identity keep the entry's own host.
@@ -2009,7 +2015,7 @@ function Write-SpecrewTypedAct {
                 # (origin typed-user, Resolve-SpecrewCitedTypedAct), so the row says so, and the authority audit can tell it from
                 # a row nothing confirmed.
                 $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity) -HostKind $HostKind -SourceEvent $SourceEvent `
-                        -MintedWriters '' -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -NowUtc $NowUtc)
+                        -MintedWriters '' -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -TranscriptPath $TranscriptPath -NowUtc $NowUtc)
             }
             catch { $reserved = $false }
             if (-not $reserved) { $act.Kind = 'none'; $act.Reason = 'not-reserved'; $act.Report = $true; return $result }
@@ -2042,7 +2048,7 @@ function Write-SpecrewTypedAct {
     }
     if ($result.Written) {
         $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId ([string]$act.TurnIdentity) -HostKind $HostKind -SourceEvent $SourceEvent `
-            -MintedWriters ([string]$act.Kind) -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -NowUtc $NowUtc
+            -MintedWriters ([string]$act.Kind) -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -TranscriptPath $TranscriptPath -NowUtc $NowUtc
     }
     return $result
 }
@@ -2368,6 +2374,130 @@ function Get-SpecrewAuthorityNotRecordedDisclosure {
     catch { return $null }
 }
 
+function Get-SpecrewTranscriptRecordSender {
+    # Feature 203 T013 (B5F-066; maintainer rulings 2026-11-12): WHO SENT A MESSAGE, from its transcript record's own fields.
+    # Pure. The rule, field by field: isMeta not true; origin.kind human where present; turnOrigin human where present;
+    # promptSource typed or queued, or sdk only when origin.kind is human (a human in the VS Code extension or the desktop
+    # app; a program has no origin.kind). Any other combination is refused. A record with none of the fields (an older
+    # host) is 'unverified': the text rules decided when it was captured.
+    # These fields are not a documented host contract (B5F-068); every shape is pinned with its Claude version in
+    # tests/fixtures/hook-payloads/claude/transcript-origins/record-shapes.json.
+    [OutputType([pscustomobject])]
+    param(
+        [AllowNull()][AllowEmptyString()][string]$TurnOrigin,
+        [AllowNull()][AllowEmptyString()][string]$PromptSource,
+        [AllowNull()]$IsMeta,
+        [AllowNull()][AllowEmptyString()][string]$OriginKind,
+        [AllowNull()][AllowEmptyString()][string]$PeerName,
+        [AllowNull()][AllowEmptyString()][string]$PeerAddress
+    )
+    $to = ([string]$TurnOrigin).Trim(); $ps = ([string]$PromptSource).Trim(); $ok = ([string]$OriginKind).Trim()
+    $meta = ($IsMeta -eq $true) -or ([string]$IsMeta -match '(?i)^\s*true\s*$')
+    $result = [pscustomobject][ordered]@{ sender = 'unverified'; accepted = $true; fields_present = $false; peer_name = ''; peer_address = '' }
+    if ([string]::IsNullOrWhiteSpace($to) -and [string]::IsNullOrWhiteSpace($ps) -and [string]::IsNullOrWhiteSpace($ok) -and -not $meta) { return $result }
+    $result.fields_present = $true
+    $human = (-not $meta) -and ([string]::IsNullOrWhiteSpace($ok) -or $ok -ceq 'human') -and ([string]::IsNullOrWhiteSpace($to) -or $to -ceq 'human') -and
+        ((@('typed', 'queued') -ccontains $ps) -or ($ps -ceq 'sdk' -and $ok -ceq 'human'))
+    $result.accepted = [bool]$human
+    $result.sender = if ($human) { 'human' }
+    elseif ($to -ceq 'peer' -or $ok -ceq 'peer') { 'peer' }
+    elseif ($to -ceq 'scheduled') { 'scheduled' }
+    elseif ($to -ceq 'task_notification' -or $ok -ceq 'task-notification') { 'task-notification' }
+    elseif ($to -ceq 'human' -and [string]::IsNullOrWhiteSpace($ps)) { 'self-command' }
+    else { 'other' }
+    if ($result.sender -ceq 'peer') { $result.peer_name = ([string]$PeerName).Trim(); $result.peer_address = ([string]$PeerAddress).Trim() }
+    return $result
+}
+
+function Get-SpecrewAuthorizationSenderRefusal {
+    # The sentence the human reads when an authorization is not used because of who sent it (maintainer ruling 2026-11-12:
+    # it says what to do next).
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$Sender, [AllowNull()][AllowEmptyString()][string]$Purpose, [AllowNull()][AllowEmptyString()][string]$PeerName)
+    $what = if ([string]::IsNullOrWhiteSpace($Purpose)) { 'approval' } else { $Purpose.Trim() }
+    if ($Sender -ceq 'not-found') {
+        return ("Specrew: this {0} was not used, because Specrew could not find the message it came from in your Claude conversation, so it cannot confirm you typed it. Nothing else changed. Type the line again yourself in the terminal session where the crew is working." -f $what)
+    }
+    $from = switch -CaseSensitive ($Sender) {
+        'peer' { if ([string]::IsNullOrWhiteSpace($PeerName)) { 'another Claude session' } else { "another Claude session ('$PeerName')" } }
+        'scheduled' { 'a scheduled prompt the session wrote for itself' }
+        'task-notification' { 'a background task notification' }
+        'self-command' { 'command output the session produced' }
+        default { 'a message Specrew cannot confirm you typed' }
+    }
+    return ("Specrew: this {0} was not used: it came from {1}, not from you typing it. Nothing else changed. To approve, type the line yourself in the terminal session; if you typed it in a Claude app, update Claude Code and type it again there." -f $what, $from)
+}
+
+function Resolve-SpecrewAuthorizationSender {
+    # Feature 203 T013 (B5F-066; maintainer rulings 2026-11-12): THE CHECK WHEN AN AUTHORIZATION IS USED. The prompt hook runs
+    # before the host writes the message's transcript record, so who sent it is read here, from the record the turn's ledger
+    # row points at (Register-SpecrewExhaustedTurn -TranscriptPath -MessageId). Returns { accepted; sender; peer_name;
+    # peer_address; reason; message }. The sender is stored against the turn (.specrew/authority/turn-senders.jsonl) for the
+    # audit and for a later delegated grant; text the session wrote for itself is refused at every level.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$TurnIdentity,
+        [AllowNull()][AllowEmptyString()][string]$Purpose,
+        [AllowNull()][AllowEmptyString()][string]$HostKind = 'claude',
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $result = [pscustomobject][ordered]@{ accepted = $false; sender = 'not-found'; peer_name = ''; peer_address = ''; reason = 'turn-not-found'; message = ''; record_uuid = '' }
+    $root = [IO.Path]::GetFullPath($ProjectRoot)
+    $turn = $null
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) {
+        $row = $null
+        $ledger = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $root
+        if ([IO.File]::Exists($ledger)) {
+            foreach ($line in [IO.File]::ReadAllLines($ledger)) {
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                $entry = $null
+                try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+                if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or [string]$entry.turn_id -cne $TurnIdentity.Trim()) { continue }
+                if ($entry.PSObject.Properties['transcript_path'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.transcript_path)) { $row = $entry }
+            }
+        }
+        if ($null -ne $row -and [IO.File]::Exists([string]$row.transcript_path)) {
+            try {
+                $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity $TurnIdentity.Trim() -TranscriptPath ([string]$row.transcript_path) -MaxLines 1000000
+                if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
+                if ($null -eq $turn -and $row.PSObject.Properties['message_id'] -and -not [string]::IsNullOrWhiteSpace([string]$row.message_id)) {
+                    $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity ([string]$row.message_id) -TranscriptPath ([string]$row.transcript_path) -MaxLines 1000000
+                    if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
+                }
+            }
+            catch { $turn = $null }
+        }
+    }
+    if ($null -eq $turn) {
+        $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender 'not-found' -Purpose $Purpose
+    }
+    else {
+        $prop = { param($n) if ($turn.PSObject.Properties[$n]) { $turn.$n } else { $null } }
+        $s = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop 'record_turn_origin')) -PromptSource ([string](& $prop 'record_prompt_source')) `
+            -IsMeta (& $prop 'record_is_meta') -OriginKind ([string](& $prop 'record_origin_kind')) -PeerName ([string](& $prop 'record_peer_name')) -PeerAddress ([string](& $prop 'record_peer_address'))
+        $result.accepted = [bool]$s.accepted; $result.sender = [string]$s.sender; $result.peer_name = [string]$s.peer_name; $result.peer_address = [string]$s.peer_address
+        $result.record_uuid = [string](& $prop 'record_uuid')
+        $result.reason = if ($s.accepted) { $(if ($s.fields_present) { 'typed-by-human' } else { 'fields-absent-text-rules' }) } else { 'not-typed-by-human' }
+        if (-not $s.accepted) { $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender $result.sender -Purpose $Purpose -PeerName $result.peer_name }
+    }
+    try {
+        $dir = Join-Path $root '.specrew/authority'
+        [IO.Directory]::CreateDirectory($dir) | Out-Null
+        $row = [pscustomobject][ordered]@{ turn_identity = [string]$TurnIdentity; sender = $result.sender; accepted = $result.accepted; reason = $result.reason
+            peer_name = $result.peer_name; peer_address = $result.peer_address; record_uuid = $result.record_uuid; purpose = [string]$Purpose; checked_at = $NowUtc }
+        Add-Content -LiteralPath (Join-Path $dir 'turn-senders.jsonl') -Value ($row | ConvertTo-Json -Compress) -Encoding UTF8 -ErrorAction Stop
+        if ($result.sender -ceq 'unverified') {
+            # The unprotected path (maintainer ruling 2026-11-12): journaled, and shown on the status health line.
+            $runtime = Join-Path $root '.specrew/runtime'
+            [IO.Directory]::CreateDirectory($runtime) | Out-Null
+            Add-Content -LiteralPath (Join-Path $runtime 'authorization-sender-unverified.jsonl') -Value ($row | ConvertTo-Json -Compress) -Encoding UTF8 -ErrorAction Stop
+        }
+    }
+    catch { $null = $_ }
+    return $result
+}
+
 function Register-SpecrewExhaustedTurn {
     # Record that this turn has minted. Append-only: the ledger is history, and history that can be
     # rewritten is not a control.
@@ -2389,6 +2519,11 @@ function Register-SpecrewExhaustedTurn {
         # Co-review round 8 (T004): the id the prompt hook gave this prompt event and printed in its output, which Claude
         # records under the message's own transcript record. It is how the turn end finds which message this row is.
         [AllowEmptyString()][AllowNull()][string]$PromptEvent,
+        # Feature 203 T013 (B5F-066; maintainer ruling 2026-11-12): where the message's transcript record will be. The prompt
+        # hook runs before the host writes it, so the check of who sent the message runs when an authorization is used
+        # (Resolve-SpecrewAuthorizationSender), and finds the record by these.
+        [AllowEmptyString()][AllowNull()][string]$TranscriptPath,
+        [AllowEmptyString()][AllowNull()][string]$MessageId,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
@@ -2403,6 +2538,8 @@ function Register-SpecrewExhaustedTurn {
         }
         if (-not [string]::IsNullOrWhiteSpace($TurnOrigin)) { $entry | Add-Member -NotePropertyName turn_origin -NotePropertyValue ([string]$TurnOrigin).Trim() }
         if (-not [string]::IsNullOrWhiteSpace($PromptEvent)) { $entry | Add-Member -NotePropertyName prompt_event -NotePropertyValue ([string]$PromptEvent).Trim() }
+        if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) { $entry | Add-Member -NotePropertyName transcript_path -NotePropertyValue ([string]$TranscriptPath).Trim() }
+        if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $entry | Add-Member -NotePropertyName message_id -NotePropertyValue ([string]$MessageId).Trim() }
         # -ErrorAction Stop, and it is load-bearing. Add-Content raises a NON-TERMINATING error, so a
         # plain try/catch around it never fires: the append failed, the catch was skipped, and this
         # returned $true. A reservation that reports success it did not achieve is precisely the

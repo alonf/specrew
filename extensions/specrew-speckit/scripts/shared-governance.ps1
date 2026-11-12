@@ -2661,6 +2661,22 @@ function Get-SpecrewReplyRecordingHealthLine {
     catch { return $null }
 }
 
+function Get-SpecrewAuthorizationSenderHealthLine {
+    # Feature 203 T013 (B5F-066; maintainer ruling 2026-11-12): ONE line, shown while an approval was used whose transcript
+    # record carried none of the fields that say who sent it (an older Claude), so the text rules alone decided it was the
+    # human's. That is the unprotected path, and it must be visible. $null when no such approval has been used.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    try {
+        $path = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/authorization-sender-unverified.jsonl'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+        $rows = @(Get-Content -LiteralPath $path -ErrorAction Stop | Where-Object { $_.Trim() } | ForEach-Object { try { $_ | ConvertFrom-Json -ErrorAction Stop } catch { $null } } | Where-Object { $null -ne $_ })
+        if ($rows.Count -eq 0) { return $null }
+        $last = [string]$rows[$rows.Count - 1].checked_at
+        return ('Approvals: {0} used since {1} whose Claude transcript could not confirm you typed them (an older Claude records no sender), so only the text rules checked them. Update Claude Code so the sender is recorded.' -f $rows.Count, $(if ($last) { $last } else { 'an earlier session' }))
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewPendingVerdictState {
     # F-174 iteration 011 (T006, FR-027 / decision f174-i011-verdict-authority-stop-hook): is the session's
     # WORKING boundary ahead of the last HUMAN-AUTHORIZED boundary? A committed / in-progress boundary is NOT an

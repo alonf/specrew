@@ -522,6 +522,11 @@ try {
         $replyHealthLine = Get-SpecrewReplyRecordingHealthLine -ProjectRoot $parsed.ProjectPath
         if (-not [string]::IsNullOrWhiteSpace([string]$replyHealthLine)) { $enforcementLines = @($replyHealthLine, '') + $enforcementLines }
     }
+    # Feature 203 T013 (B5F-066): approvals only the text rules checked, because the transcript recorded no sender.
+    if (Get-Command Get-SpecrewAuthorizationSenderHealthLine -ErrorAction SilentlyContinue) {
+        $senderHealthLine = Get-SpecrewAuthorizationSenderHealthLine -ProjectRoot $parsed.ProjectPath
+        if (-not [string]::IsNullOrWhiteSpace([string]$senderHealthLine)) { $enforcementLines = @($senderHealthLine, '') + $enforcementLines }
+    }
     $lines = @($enforcementLines + @('') + $lines)
 
     if (-not [string]::IsNullOrWhiteSpace($parsed.OutputPath)) {
