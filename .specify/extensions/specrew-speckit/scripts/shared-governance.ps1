@@ -867,13 +867,15 @@ function Test-SpecrewClosedCheckApplies {
     if (-not $ClosedIndex.ContainsKey($key)) {
         return $false
     }
+    # Read by key, not by property: an index from an older reader has no closed_at_source key, and under
+    # strict mode a missing key read as a property throws. A missing key means no stamp.
     $entry = $ClosedIndex[$key]
-    if ([string]$entry.closed_at_source -ne 'closeout') {
+    if ($entry -isnot [System.Collections.IDictionary] -or -not $entry.Contains('closed_at_source') -or [string]$entry['closed_at_source'] -ne 'closeout') {
         return $false
     }
     $closedAt = [datetimeoffset]::MinValue
     $styles = [System.Globalization.DateTimeStyles]::AssumeUniversal
-    if (-not [datetimeoffset]::TryParse([string]$entry.closed_at, [System.Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$closedAt)) {
+    if (-not $entry.Contains('closed_at') -or -not [datetimeoffset]::TryParse([string]$entry['closed_at'], [System.Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$closedAt)) {
         return $false
     }
     return ($closedAt.UtcDateTime.Date -ge $Since.Date)

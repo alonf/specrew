@@ -2545,6 +2545,11 @@ function Test-DashboardGovernanceSurfaces {
         return
     }
 
+    # FR-008 (T009): read the closed index with this validator's own reader, before the renderer is loaded.
+    # A renderer from an installed Specrew module dot-sources that module's shared-governance.ps1, which may
+    # be older and replace the reader with one that drops the closure stamp.
+    $dashboardClosedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
+
     . $rendererPath
 
     $features = @(Get-SpecrewFeatureRecords -ProjectRoot $ProjectRoot)
@@ -2574,7 +2579,6 @@ function Test-DashboardGovernanceSurfaces {
         since             = [datetime]::new(2026, 5, 26)
         applies_to_status = 'complete'
     }
-    $dashboardClosedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
 
     foreach ($feature in $features) {
         $featureOrdinal = Get-FeatureOrdinalFromRef -FeatureRef $feature.feature_ref
