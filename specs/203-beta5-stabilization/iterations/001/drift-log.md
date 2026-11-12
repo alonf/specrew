@@ -2045,3 +2045,27 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Class closure**: `tests/unit/authority-audit.Tests.ps1`, in lane `f203-i001-suites` (`4c8042ff`), pins the three
   readings as built, so a ruling that changes one changes a test first. The ownership list in the plan has no executable
   check; this entry is its record.
+
+### DRIFT-061 — T012 meets FR-041 only in part, and ran past its 1.5 points (finding; 2026-11-12)
+
+- **FR-041 partly met** (maintainer ruling 2026-11-12):
+  - **Carry the turn identity**: the authority records, the review captures and the three refusal journals.
+  - **Carry the campaign id**: the review records, now including the allowance-reset capture.
+  - **Deferred to iteration 002**: drift entries carrying the turn identity. Drift entries are written by hand, and
+    nothing writes them programmatically.
+
+  The T012 row in `plan.md` says so.
+- **The maintainer's follow-up to DRIFT-060, built test first** (`53bb5117`, 8 red):
+  - Reading 2 changed: a pause decision authorizes its stop and no run fact (`c975ffc7`).
+  - FR-024: a reservation names its budget grant, and the cited grant and reset exist and join a typed turn
+    (`969fe3c5`).
+  - The refusal journals carry the turn identity (`0aa7958c`). The sync's crossing refusal has no message of its own,
+    so it takes the newest typed turn the prompt hook reserved, the turn the sync ran in.
+  - The allowance-reset capture names its campaign (`e14c79a1`).
+- **Capacity**: T012 was planned at 1.5 points.
+  - The first pass came close: the audit, the record formats and their writers.
+  - The follow-up adds about 0.75 points: the four rules above, eight cases, and the refusal and campaign writers.
+  - Total about 2.25 points, about 0.75 (50%) over. Recorded here and in the plan row, as the maintainer asked; the
+    capacity file is unchanged.
+- **Class closure**: `tests/unit/authority-audit.Tests.ps1` (lane `f203-i001-suites`) pins each rule. FR-041's deferred
+  part, drift entries, has no executable guard until iteration 002 builds one; NONE for it until then.
