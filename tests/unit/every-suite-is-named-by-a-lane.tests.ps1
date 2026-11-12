@@ -319,6 +319,65 @@ foreach ($startPathScript in $startPathScripts) {
         $startPathScript, $profileOverride.Success, $firstStartCall)
 }
 
+# --- T015 (maintainer ruling 2026-11-12): the held list is empty, and each held script is where the ruling put it ---
+# Every script T014 read is now registered (a CI step or the release manifest) or excluded with its reason; the
+# held list exists only while a reading is owed, and none is.
+Assert-True ($held.Count -eq 0) ("the census holds no script back: each is registered or excluded with its reason (held: {0})" -f (@($held.Keys) -join ', '))
+
+$perPush = @(
+    'tests/integration/brownfield-merge.ps1'
+    'tests/integration/carry-forward-closed-iteration.ps1'
+    'tests/integration/concurrency-sizing.ps1'
+    'tests/integration/descriptive-reference-authored-prose.ps1'
+    'tests/integration/descriptive-reference-excluded-surfaces.ps1'
+    'tests/integration/feature-018-render-budget.ps1'
+    'tests/integration/gap-governance.ps1'
+    'tests/integration/hardening-gate-contract.ps1'
+    'tests/integration/lockout-chain-cap.ps1'
+    'tests/integration/mechanical-findings-contract.ps1'
+    'tests/integration/quality-evidence-governance.ps1'
+    'tests/integration/quality-profile-foundation.ps1'
+    'tests/integration/reviewer-artifacts.ps1'
+    'tests/integration/reviewer-closeout-governance.ps1'
+    'tests/integration/reviewer-regression-event.ps1'
+    'tests/integration/reviewer-regression-ledger.ps1'
+    'tests/integration/reviewer-regression-withdrawal.ps1'
+    'tests/integration/specrew-start-auto-continue-preservation.ps1'
+    'tests/integration/specrew-start-baseline-tracking.ps1'
+    'tests/integration/specrew-start-change-detector.ps1'
+    'tests/integration/specrew-start-end-to-end.ps1'
+    'tests/integration/specrew-start-parameter-handling.ps1'
+    'tests/integration/specrew-start-pause-and-confirm.ps1'
+)
+$releaseOnly = @(
+    'tests/integration/validator-hardening-iteration1.ps1'
+)
+$notInCi = @($perPush | Where-Object { -not $names.CiNamed.Contains($_) })
+Assert-True ($notInCi.Count -eq 0) ("the scripts registered per push are named by a CI step (missing: {0})" -f ($notInCi -join ', '))
+$notInRelease = @($releaseOnly | Where-Object { -not $names.LaneNamed.Contains($_) -or $names.CiNamed.Contains($_) })
+Assert-True ($notInRelease.Count -eq 0) ("the slow scripts are in the release manifest, not a per-push CI step (wrong: {0})" -f ($notInRelease -join ', '))
+
+$homeWriter = 'writes the real home; not run until feature 203''s private test home is merged'
+$rulingExclusions = [ordered]@{
+    'tests/integration/substantive-interaction-model-iteration2.ps1' = 'stale README assertion (section removed by b27f35c4)'
+    'tests/integration/distribution-module-init.ps1'                 = $homeWriter
+    'tests/manual/multi-host-smoke.ps1'                              = $homeWriter
+    'tests/integration/team-management.ps1'                          = $homeWriter
+    'tests/integration/update-command.ps1'                           = $homeWriter
+    'tests/integration/validate-baseline-team.ps1'                   = $homeWriter
+    'tests/manual/copilot-squad-smoke.ps1'                           = $homeWriter
+    'tests/integration/distribution-module-publish.ps1'              = 'would publish to PSGallery if PSGALLERY_API_KEY is set'
+    'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
+    'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
+    'tests/integration/validator-hardening-iteration2.ps1'           = 'red: '
+    'tests/integration/project-path-resolution-regression.ps1'       = 'awaits the maintainer'
+}
+foreach ($excludedPath in $rulingExclusions.Keys) {
+    $declared = if ($exclusions.Contains($excludedPath)) { [string]$exclusions[$excludedPath] } else { '' }
+    Assert-True ($declared.StartsWith([string]$rulingExclusions[$excludedPath], [StringComparison]::Ordinal) -and -not $names.Named.Contains($excludedPath)) ("{0} is excluded with the reason '{1}' and is named by no lane (declared: '{2}')" -f
+        $excludedPath, $rulingExclusions[$excludedPath], $declared)
+}
+
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
     Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
