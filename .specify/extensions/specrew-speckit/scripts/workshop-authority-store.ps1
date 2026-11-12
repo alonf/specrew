@@ -219,8 +219,39 @@ function Test-SpecrewWorkshopRecordSender {
     [OutputType([bool])]
     param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Record, [AllowNull()][string]$Purpose)
     if ($null -eq $Record) { return $false }
+    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
+        # T013 (the workshop scripts that load only this store: confirm-workshop-agenda.ps1, repair-workshop-controller-state.ps1):
+        # the check is loaded here, from the same places shared-governance looks - the module the launcher named
+        # (SPECREW_MODULE_PATH), the project this file sits in (walking up: extensions/ and the deployed .specify copy), then the
+        # installed module - once, into a global module, taking only a store that has the check.
+        $candidates = [System.Collections.Generic.List[string]]::new()
+        if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts\internal\bootstrap')) }
+        $walk = $PSScriptRoot
+        for ($depth = 0; $depth -lt 8 -and -not [string]::IsNullOrWhiteSpace($walk); $depth++) {
+            $candidates.Add((Join-Path $walk 'scripts\internal\bootstrap'))
+            $walk = Split-Path -Parent $walk
+        }
+        foreach ($module in @(Get-Module -Name Specrew) + @(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending)) {
+            if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts\internal\bootstrap')) }
+        }
+        foreach ($dir in $candidates) {
+            $store = Join-Path $dir 'HumanAuthorityStore.ps1'
+            $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
+            if (-not ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf))) { continue }
+            if (-not (Select-String -LiteralPath $store -Pattern 'function Test-SpecrewAuthorizationRecordSender\b' -Quiet)) { continue }
+            try {
+                $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
+                    param($AccessorPath, $StorePath)
+                    . $AccessorPath
+                    . $StorePath
+                    Export-ModuleMember -Function *
+                } | Import-Module -Global -Force -DisableNameChecking -PassThru
+            }
+            catch { $null = $_ }
+            if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { break }
+        }
+    }
     if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { return [bool](Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $Record -Purpose $Purpose) }
-    if (Get-Command Test-SpecrewAuthorizationSenderForUse -ErrorAction SilentlyContinue) { return [bool](Test-SpecrewAuthorizationSenderForUse -ProjectRoot $ProjectRoot -Record $Record -Purpose $Purpose) }
     try { [Console]::Error.WriteLine(("Specrew: this {0} was not used, because Specrew could not load the check that confirms you typed it. Nothing else changed. Run 'specrew update', then type the line again in the terminal session." -f $(if ($Purpose) { $Purpose } else { 'workshop answer' }))) } catch { $null = $_ }
     return $false
 }
@@ -1308,7 +1339,11 @@ function Get-SpecrewWorkshopLensClosingReceipt {
     for ($i = $forLens.Count - 1; $i -ge 0; $i--) {
         $c = [string]$forLens[$i].confirmation
         if ($c -ceq 'human-confirmed' -and $forLens[$i].PSObject.Properties['answer_kind'] -and [string]$forLens[$i].answer_kind -ceq 'reviewer-pick') { continue }
-        if ($c -ceq 'human-delegated' -and $forLens[$i].PSObject.Properties['delegation_breadth'] -and [string]$forLens[$i].delegation_breadth -ceq 'remaining-lenses') { return $forLens[$i] }
+        if ($c -ceq 'human-delegated' -and $forLens[$i].PSObject.Properties['delegation_breadth'] -and [string]$forLens[$i].delegation_breadth -ceq 'remaining-lenses') {
+            # Feature 203 T013 (B5F-066): the delegation the lens closes on is checked like the newest receipt.
+            if (-not (Test-SpecrewWorkshopRecordSender -ProjectRoot $ProjectRoot -Record $forLens[$i] -Purpose 'workshop delegation')) { return $null }
+            return $forLens[$i]
+        }
         break
     }
     return $latest

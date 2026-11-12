@@ -171,6 +171,10 @@ try {
     Assert-True ($noAuthorityMessage -notmatch '(?i)\bcontroller\b|lens-applicability|governed writer') 'in project language, with no machinery vocabulary'
 
     . $projectAuthority
+    # Feature 203 T013 (B5F-066): the project's deployed copy finds the engine the way a project's does - through the module
+    # the launcher names (SPECREW_MODULE_PATH), here the engine under test - since the installed Specrew may predate the check.
+    $priorModulePath = $env:SPECREW_MODULE_PATH
+    $env:SPECREW_MODULE_PATH = $repoRoot
     # Feature 203 T013 (B5F-066): the repair is used only when the human typed the approval - the record names the typed
     # turn, whose transcript record (the shape Claude writes for a typed message) the turn's ledger row points at. The
     # fixture is built in its own module scope, so the check it loads does not reach the repair script this test runs in
@@ -223,6 +227,7 @@ try {
 }
 finally {
     if (Get-Variable -Name typedTurnModule -ErrorAction SilentlyContinue) { Remove-Module -ModuleInfo $typedTurnModule -ErrorAction SilentlyContinue }
+    if (Get-Variable -Name priorModulePath -ErrorAction SilentlyContinue) { $env:SPECREW_MODULE_PATH = $priorModulePath }
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
 }
 
