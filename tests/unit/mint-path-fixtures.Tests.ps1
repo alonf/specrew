@@ -134,7 +134,15 @@ foreach ($p in $paths) {
     Assert-True ($pasteMinted.Count -eq 0) ("{0}: a pasted phrase mints nothing on Claude, Copilot or Codex (minted: {1})" -f $id, ($pasteMinted -join ' || '))
     $below = Get-Act (New-Turn -Text ('<pasted_content id="p4">{0}{1}{0}</pasted_content id="p4">{0}{2}' -f "`n", $pasteBody, $phrase)) $p.Pending
     Assert-True ([string]$below.Kind -ceq [string]$p.Kind) ("{0}: the phrase typed on its own line under a Claude paste mints {1} (got {2}/{3})" -f $id, $p.Kind, $below.Kind, $below.Reason)
-    $cells['pasted'] = ($pasteMinted.Count -eq 0) -and ([string]$below.Kind -ceq [string]$p.Kind)
+    $continuesOk = $true
+    if ($id -ceq 'partial-signoff') {
+        # Maintainer ruling 2026-11-12: the partial sign-off's reason is the phrase's own line on every host. On Claude, text
+        # typed on the lines after it (no paste marks) refuses as it does on Copilot and Codex, and the human is told.
+        $typedOn = Get-Act (New-Turn -Text ($phrase + "`nand one more thought typed below it")) $p.Pending
+        $continuesOk = (-not (Test-Minted $typedOn)) -and [bool]$typedOn.Report
+        Assert-True $continuesOk ("{0}: on Claude a message typed on past the phrase's line mints nothing and is reported (got {1}/{2}/report={3})" -f $id, $typedOn.Kind, $typedOn.Reason, $typedOn.Report)
+    }
+    $cells['pasted'] = ($pasteMinted.Count -eq 0) -and ([string]$below.Kind -ceq [string]$p.Kind) -and $continuesOk
     $matrix[$id] = $cells
 }
 

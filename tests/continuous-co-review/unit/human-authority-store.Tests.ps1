@@ -41,6 +41,28 @@ Describe 'Review-signoff partial override human authority store' {
             -SourceEvent 'UserPromptSubmit') | Should -BeNullOrEmpty
     }
 
+    It 'records nothing when the message continues past the phrase''s own line, on any host, and journals the refusal with its turn (maintainer ruling 2026-11-12)' {
+        # Feature 203 T013 (PRED-BETA4-022's class): a pasted transcript that starts with the phrase used to have every line
+        # after the dash read as the reason. The reason is the phrase's own line; anything after it refuses.
+        foreach ($hostKind in 'copilot', 'codex', 'claude') {
+            $multi = $script:Verdict + "`nline one of a pasted log`nline two of a pasted log"
+            (Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $script:Project -Response $multi -HostKind $hostKind `
+                    -SourceEvent 'UserPromptSubmit' -TurnIdentity "turn-multi-$hostKind" -NowUtc '2026-08-14T10:01:00Z') | Should -BeNullOrEmpty -Because "$hostKind records nothing"
+        }
+        (Get-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $script:Project -ExpectedTargetTreeId $script:TreeA `
+                -ExpectedCampaignId $script:Campaign) | Should -BeNullOrEmpty
+        $rows = @(Get-Content -LiteralPath (Join-Path $script:Project '.specrew/runtime/authority-capture-drops.jsonl') | ForEach-Object { $_ | ConvertFrom-Json })
+        $rows.Count | Should -Be 3
+        foreach ($row in $rows) {
+            [string]$row.reason | Should -BeExactly 'rationale-not-one-line'
+            [string]$row.turn_identity | Should -Match '^turn-multi-'
+            [string]$row.turn_identity_source | Should -BeExactly 'refused-message'
+        }
+        # The one-line reason of 10 to 2000 characters is still accepted.
+        (Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $script:Project -Response $script:Verdict -HostKind 'copilot' `
+                -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-14T10:02:00Z').verdict_text | Should -BeExactly $script:Verdict
+    }
+
     It 'is idempotent for the same captured reply and rejects conflicting authority' {
         $first = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $script:Project `
             -Response $script:Verdict -HostKind 'copilot' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-14T10:01:00Z'
