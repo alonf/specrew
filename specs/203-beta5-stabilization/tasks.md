@@ -547,7 +547,7 @@ then T014.
 
 ## Phase 7: Evidence and deployment
 
-- [ ] T013 [owner: Implementer] [sp: 1.5] **Test evidence suite.**
+- [x] T013 [owner: Implementer] [sp: 1.5] **Test evidence suite.**
   - **Work:** no-human-turn fixtures for every mint path; non-approval phrase fixtures; cross-host replay with
     recorded payloads, including a compaction; budget economics fixtures; all census-selected and in a PR lane.
     **Added (maintainer, 2026-11-07; DRIFT-043):** the Codex replay covers T005's out-of-tail path: a recorded Codex

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-12T16:20:32Z"
+updated_at: "2026-11-12T23:28:38Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -65,9 +65,9 @@ tasks:
     blocked_reason: ""
   T013:
     title: "Test evidence suite: mint-path and non-approval phrase fixtures, cross-host replay incl. compaction, economics fixtures"
-    status: "pending"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-11-12T23:28:38Z"
     blocked_reason: ""
   T014:
     title: "Deployment point (pin advance) and the Claude-only capture check"

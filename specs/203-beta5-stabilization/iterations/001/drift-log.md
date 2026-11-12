@@ -2234,3 +2234,23 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   scratchpad or a temp folder it created in that session; sweep worktrees are cleaned up by their path under that temp
   root, never by matching a commit. Executable guard: NONE — the rule lives in the crew's standing memory, not in code;
   B5F-069 proposes the product side.
+
+### DRIFT-067 — T013 accepts an approval typed while the crew is working (scope added; 2026-11-13)
+
+- **What happened**: checking the maintainer's own mid-turn message, the crew found that Claude Code stores a message typed
+  while the crew is working as a `queued_command` attachment, with no user record, which the sender check built in T013
+  could not read: once live, it would have refused every approval typed mid-turn as turn-not-found (B5F-070). The pinned
+  engine captures such an approval today.
+- **Ruling** (maintainer, typed, 2026-11-13): accept the shape. A queued record is the human's only when origin.kind is
+  human, humanTurn is true and commandMode is prompt; any other queued record is refused; the text binding applies to it;
+  the shape is pinned with its Claude version.
+- **Change**, test first (`09f2b8bd`, 27 red, from the maintainer's recorded step-8 message), then `9754dc05`: the per-field
+  rule knows the queued shape and the cited-turn reader builds a turn from a queued_command attachment.
+- **Also in T013's close** (maintainer rulings 2026-11-13): the Claude real-hook compaction replay (`549cf3a8`, about 0.25);
+  the Codex out-of-tail replay and the Copilot and Codex compaction replays moved to the iteration-002 three-host walk; two
+  navigator cases the reviewer asked for at the maintainer's ask, showing the review Stop hook quiet when there is nothing
+  to review (`a74a2973`).
+- **Ownership**: `scripts/internal/bootstrap/HumanAuthorityStore.ps1` is outside T013's files. **Scope added by the
+  maintainer's ruling of 2026-11-13**, about 0.5 points with the replay; the capacity file is unchanged.
+- **Class closure**: `tests/unit/authorization-sender.Tests.ps1` (the recorded mid-turn message and a queued record of any
+  other origin) and the record cells of `tests/unit/mint-path-fixtures.Tests.ps1`, in lane `f203-i001-authority-sender`.
