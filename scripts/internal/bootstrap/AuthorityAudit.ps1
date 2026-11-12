@@ -10,8 +10,9 @@
 #   - the review authority store's human facts (budget grants, launch grants, reservations, resets, allowed reviewers,
 #     finding dispositions, human dispositions, pause decisions): their own turn_identity. A reservation also cites the
 #     window it is spent in (budget_grant_id, and reset_id when a reset opened it).
-#   - run facts (run states, result, recovery, spend, release, claim, finalization): through their run, which a reservation
-#     or a human pause decision that passed the audit authorizes.
+#   - run facts (run states, result, recovery, spend, release, claim, finalization): through their run's reservation, which
+#     must pass the audit. A human pause decision authorizes the stop it answers, never a spend (maintainer, 2026-11-12):
+#     a run with run facts, a pause decision and no reservation fails.
 #   - stops (pending pause facts) are not grants: a stop takes authority away and its answer is what the human types, so a
 #     stop is not joined; its answer is.
 # Read only: the audit writes nothing.
@@ -146,9 +147,9 @@ function Invoke-SpecrewAuthorityAudit {
                 foreach ($runDir in @(Get-ChildItem -LiteralPath $runsDir -Directory | Sort-Object Name)) {
                     foreach ($file in @(Get-ChildItem -LiteralPath $runDir.FullName -Filter '*.json' -File | Sort-Object Name)) {
                         if ($file.Name -ceq 'pause-decision.json') {
-                            $fact = & $readJson $file.FullName
-                            # A human pause decision authorizes its run's stop (the halt between stops has no reservation).
-                            if (& $joinTurn 'pause-decision' $runDir.Name $file.FullName (& $property $fact 'turn_identity')) { $null = $authorizedRuns.Add($runDir.Name) }
+                            # The decision joins its own typed turn and authorizes the stop it answers; it adds nothing to
+                            # the runs whose facts are authorized (the halt between stops writes no run facts).
+                            $null = & $joinTurn 'pause-decision' $runDir.Name $file.FullName (& $property (& $readJson $file.FullName) 'turn_identity')
                         }
                         elseif ($file.Name -ceq 'pending-pause.json') { continue }
                         else { $runFacts.Add([pscustomobject]@{ run_id = $runDir.Name; path = $file.FullName }) | Out-Null }
