@@ -4,6 +4,11 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# `specrew start` writes the user profile when it is missing (scripts/specrew-start.ps1). This script points
+# that write at a temp file itself, so it never writes the real home folder and never relies on the shell
+# that runs it (maintainer ruling 2026-11-12, feature 206 T015).
+$env:SPECREW_USER_PROFILE_PATH = Join-Path ([IO.Path]::GetTempPath()) ('specrew-test-profile-' + [guid]::NewGuid().ToString('N') + '.yml')
+
 function Write-Pass {
     param([string]$Message)
     Write-Host "PASS: $Message" -ForegroundColor Green
