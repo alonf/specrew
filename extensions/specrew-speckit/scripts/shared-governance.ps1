@@ -3007,9 +3007,25 @@ function Write-SpecrewCrossingMintRefusal {
         [AllowNull()][string[]]$Missing,
         [AllowNull()][string]$ExpectedUnder,
         [AllowNull()][string]$Iteration,
-        [AllowNull()][string]$NowUtc
+        [AllowNull()][string]$NowUtc,
+        # Feature 203 T012 (FR-041): the typed turn the refused sync ran in. The sync has no message of its own, so when the
+        # caller names none it is the newest turn the prompt hook reserved (Find-SpecrewNewestTypedTurn).
+        [AllowNull()][AllowEmptyString()][string]$TurnIdentity
     )
     $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
+    if ([string]::IsNullOrWhiteSpace($TurnIdentity)) {
+        try {
+            if (-not (Get-Command Find-SpecrewNewestTypedTurn -ErrorAction SilentlyContinue)) {
+                $decisionStore = Join-Path $PSScriptRoot 'design-decision-store.ps1'
+                if (Test-Path -LiteralPath $decisionStore -PathType Leaf) { . $decisionStore }
+            }
+            if (Get-Command Find-SpecrewNewestTypedTurn -ErrorAction SilentlyContinue) {
+                $newestTurn = Find-SpecrewNewestTypedTurn -ProjectRoot $ProjectRoot -Text ''
+                if ([bool]$newestTurn.Found) { $TurnIdentity = [string]$newestTurn.TurnIdentity }
+            }
+        }
+        catch { $TurnIdentity = '' }
+    }
     $iterationText = if ([string]::IsNullOrWhiteSpace($Iteration)) { '' } else { (' for iteration {0}' -f $Iteration) }
     $whereText = if ([string]::IsNullOrWhiteSpace($ExpectedUnder)) { '' } else { (' (expected under {0})' -f $ExpectedUnder) }
     $message = ("The '{0}' -> '{1}' crossing was not opened: '{1}' owes {2}{3}{4} and it does not exist. The approvals already recorded are unchanged, and no new verdict is being asked for. Produce {2} through the '{1}' stage's own step, then run that boundary's sync again." -f $FromBoundary, $ToBoundary, (@($Missing) -join ', '), $iterationText, $whereText)
@@ -3018,7 +3034,7 @@ function Write-SpecrewCrossingMintRefusal {
         $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
         $dir = Split-Path -Parent $journal
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        (([pscustomobject]@{ event = 'crossing-not-minted-owed-artifacts-absent'; recorded_at = $when; from = $FromBoundary; to = $ToBoundary; missing = @($Missing); expected_under = $ExpectedUnder; iteration = $Iteration; message = $message }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+        (([pscustomobject]@{ event = 'crossing-not-minted-owed-artifacts-absent'; recorded_at = $when; from = $FromBoundary; to = $ToBoundary; missing = @($Missing); expected_under = $ExpectedUnder; iteration = $Iteration; message = $message; turn_identity = [string]$TurnIdentity }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
     }
     catch { $null = $_ }
     return $message

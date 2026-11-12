@@ -1696,7 +1696,10 @@ function Invoke-SpecrewTypedAuthorityCapture {
         try {
             $refusal = Get-SpecrewAuthorityMultiLineRefusal -Text $receivedResponse -HostKind $HostKind
             if ($null -ne $refusal) {
-                Write-SpecrewAuthorityMultiLineDrop -ProjectRoot $ProjectRoot -Refusal $refusal -HostKind $HostKind -SourceEvent $SourceEvent -NowUtc $NowUtc | Out-Null
+                # A store older than T012 has no -TurnIdentity; the refusal is still journaled, without the turn.
+                $dropArgs = @{ ProjectRoot = $ProjectRoot; Refusal = $refusal; HostKind = $HostKind; SourceEvent = $SourceEvent; NowUtc = $NowUtc }
+                if ((Get-Command Write-SpecrewAuthorityMultiLineDrop).Parameters.ContainsKey('TurnIdentity')) { $dropArgs['TurnIdentity'] = [string]$turnId }
+                Write-SpecrewAuthorityMultiLineDrop @dropArgs | Out-Null
             }
         }
         catch { $null = $_ }
