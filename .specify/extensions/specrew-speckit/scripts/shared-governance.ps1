@@ -8275,18 +8275,35 @@ function Test-SpecrewAuthorizationSenderForUse {
     [OutputType([bool])]
     param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Record, [AllowNull()][AllowEmptyString()][string]$Purpose)
     if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
+        # Where the engine is, in order: the module the launcher named (SPECREW_MODULE_PATH); the project this file sits in,
+        # found by walking up (the working tree in the self-host repo; this file may be extensions/ or the deployed .specify/
+        # copy, at different depths); then the installed module. The first that holds the check is loaded once, into a
+        # global module, so it stays loaded for every later call instead of being dot-sourced into this call's scope.
         $candidates = [System.Collections.Generic.List[string]]::new()
-        $candidates.Add((Join-Path $PSScriptRoot '..\..\..\scripts\internal\bootstrap'))
+        if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts\internal\bootstrap')) }
+        $walk = $PSScriptRoot
+        for ($depth = 0; $depth -lt 8 -and -not [string]::IsNullOrWhiteSpace($walk); $depth++) {
+            $candidates.Add((Join-Path $walk 'scripts\internal\bootstrap'))
+            $walk = Split-Path -Parent $walk
+        }
         foreach ($module in @(Get-Module -Name Specrew) + @(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending)) {
             if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts\internal\bootstrap')) }
         }
         foreach ($dir in $candidates) {
             $store = Join-Path $dir 'HumanAuthorityStore.ps1'
             $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
-            if ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf)) {
-                try { . $accessor; . $store } catch { $null = $_ }
-                if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { break }
+            if (-not ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf))) { continue }
+            if (-not (Select-String -LiteralPath $store -Pattern 'function Test-SpecrewAuthorizationRecordSender\b' -Quiet)) { continue }
+            try {
+                $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
+                    param($AccessorPath, $StorePath)
+                    . $AccessorPath
+                    . $StorePath
+                    Export-ModuleMember -Function *
+                } | Import-Module -Global -Force -DisableNameChecking -PassThru
             }
+            catch { $null = $_ }
+            if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { break }
         }
     }
     if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
