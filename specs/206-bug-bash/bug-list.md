@@ -483,3 +483,55 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **Open (maintainer):** SC-001 needs either the test to pass a recovery choice (`--recovery-choice`) or `specrew
   start` to treat a governed project with no session files, as in a fresh clone, as not stale. No third run without
   the maintainer.
+
+## 23. `specrew start` re-anchors to, and writes into, a feature outside the `-ProjectPath` it was given
+
+- **Observed (T015, 2026-11-12, SC-001 supervised runs 3 and 4, home hook files unchanged both times):** this
+  repository's real `specs/206-bug-bash/iterations/001/state.md` was rewritten during the start case of
+  `project-path-resolution-regression.ps1`, at 21:29:17 UTC (run 3, on `3e3ae481`) and at 21:44:52 UTC (run 4, on
+  `e416edc6`, with the fixture in the temp folder as its own git repository). The same change both times: a
+  `specrew:task-progress-summary` block added; `Tasks Remaining` "T002, T003, T015, T018" and `In Progress` "(none)";
+  the `Updated` stamp; the escalation block's closing marker line removed. The fixture's `start-context.json` recorded
+  `feature_path: C:\Dev\specrew-206-bug-bash\specs\206-bug-bash`. Both times `state.md` was restored from git at the
+  maintainer's word; the two diffs are kept as evidence.
+- **Route (read, nothing run):**
+  1. `.squad/identity/now.md` is tracked, and the boundary sync wrote an absolute path into it
+     (`session_state_feature_path: "C:\Dev\specrew-206-bug-bash\specs\206-bug-bash"`; last written by `47c0c026`).
+     The fixture copies `.squad` whole.
+  2. `Get-SpecrewSessionStateSnapshot` takes the first non-empty of prompt, start context, identity and decisions
+     (`scripts/internal/session-recovery.ps1:111`, `:131`). A fresh copy has no prompt or start context, so the
+     identity file supplies the session state (`Get-SpecrewIdentitySessionState`, `:47-57`).
+  3. Recovery A takes that `feature_path` (`session-recovery.ps1:519-520`) and, because the path exists on this
+     machine, makes it the resume override (`:544`).
+  4. `specrew-start.ps1:3258` sets `$ResumeFeature` to it; `Resolve-FeatureDirectory` (`:3309`) accepts a rooted path
+     as it is (`:664-669`), with no check that it lies inside the project root.
+  5. Start then writes that feature's task-progress summary into its `state.md`.
+  The enclosing git repository (run 3's first diagnosis) is not the route: run 4's fixture had its own.
+- **Also:** a tracked file carries a machine-specific absolute path, the same class as item 6b.
+- **Not fixed here.** A start-only item for iteration 002 (`iterations/001/specrew-start-facts.md`). SC-001 is not
+  met in iteration 001 and is required in iteration 002.
+
+## 24. `project-path-resolution-regression.ps1` built its fixture inside this repository
+
+- **Observed:** item 23, run 3. The scratch root was `<repository>/.scratch/project-path-resolution-regression`, and
+  the fixture had no git repository of its own.
+- **Fix (maintainer's option 1, 2026-11-12):** the scratch root is under the temp folder; the fixture gets its own
+  `git init` and one commit; the script exits 1 if the fixture's git top level is not the fixture. RED 1/52 in
+  `e29b179f`, GREEN 52/52 in `e416edc6`; DRIFT-206-I001-018. Necessary, not sufficient: run 4 still wrote into this
+  repository through item 23's route.
+
+## 25. `specrew init` runs its Squad probe in the install root, even with `-DryRun`, and its cleanup fails silently
+
+- **Observed (T015, 2026-11-12, SC-001 supervised run 4):** an untracked folder appeared at this repository's root
+  during the `specrew init -DryRun` case: `.specrew-squad-probe-51b037d112c14c728e686658de66bba0/.github/skills/
+  cross-squad-communication/SKILL.md` (19,574 bytes, SHA-256 `6395CA66...DEAB0439`, created 21:44:58 UTC). It was
+  deleted at the maintainer's word; a copy and its listing are kept as evidence.
+- **Cause (read):** `scripts/specrew-init.ps1:755` calls `Get-SquadInitPlan -ProbeRoot $repoRoot`, the Specrew install
+  root, which in a dev checkout is this repository. `Test-SquadInitSupportsNonInteractive`
+  (`scripts/init/squad-deploy.ps1:34`) creates `.specrew-squad-probe-<guid>` there and runs a real
+  `squad init --non-interactive` in it, dry run or not. Its cleanup is `Remove-Item ... -ErrorAction
+  SilentlyContinue` in a `finally`, so a file it cannot remove stays without a word.
+- **Same run:** the init case was red ("did not emit expected output pattern '...\init-project'"); the captured
+  output is the dry-run summary with no project path. Cause not established.
+- **Not fixed here.** For iteration 002, with item 23: the probe belongs in a temp folder, and a failed cleanup should
+  be reported.

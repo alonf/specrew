@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T014
 **Tasks Remaining**: T015, T018 (2 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 red, SC-002 required in iteration 002 by ruling 2026-11-12), T015 (stopped for the maintainer's review of SC-001's supervised run: `t015-registration.md`)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 red, SC-002 required in iteration 002 by ruling 2026-11-12), T015 (stopped with its report: `t015-registration.md`; SC-001 and SC-002 not met in iteration 001, both required in iteration 002)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T19:30:00Z
+**Updated**: 2026-11-12T22:20:00Z
 
 ## Execution Summary
 
@@ -103,7 +103,9 @@
   DRIFT-206-I001-013). A T003 regression found here, fixed: RED 2/10 `968022f3`, GREEN 10/10 `30fa853a`
   (DRIFT-206-I001-014). SC-002 is not met in iteration 001 (`validator-hardening-iteration2.ps1` red at assertion 3,
   bug list item 21; required in iteration 002). `.specrew/verification-plan.json` unchanged. Report:
-  `t015-registration.md`; SC-001's supervised run is reported there, not registered until the maintainer has seen it.
+  `t015-registration.md`. SC-001 is not met in iteration 001 (maintainer, option 1): runs 3 and 4 of its script wrote into this
+  repository (bug list items 23-25); the script refuses to run until they are fixed; required in iteration 002
+  (DRIFT-206-I001-015 to -019). For iteration 002 planning: `specrew-start-facts.md`.
 
 ## Notes
 

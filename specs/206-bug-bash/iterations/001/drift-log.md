@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 15
-**Resolution rate**: 87% (13/15 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 19
+**Resolution rate**: 84% (16/19 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
@@ -313,6 +313,71 @@ iteration 002 as a required item: feature 206 does not close without it)
   `t015-registration.md`.
 - **Class closure**: the lane guard fails if the script's `.specrew` copy stops going through `git ls-files`. The
   other fixture builders that copy repository folders are not covered.
+
+### DRIFT-206-I001-016 — T015 changed SC-001's start case: it passes a recovery choice
+
+- **Recorded**: 2026-11-12, by the maintainer's choice of option 1 ("Yes for 1 about the Specrew start", relayed by the
+  reviewer session).
+- **What**: supervised run 2 showed that a fresh copy of a governed project (features under `specs/`, the tracked
+  `.specrew` files, no session files) is stale state to `specrew start`: "Session-state file missing on disk:
+  last-start-prompt.md ... start-context.json", and with no console it refuses (item 1, as T001 fixed it). The
+  start case of `tests/integration/project-path-resolution-regression.ps1` now passes `-RecoveryChoice A`, so start
+  re-anchors and the case measures path resolution. Recovery A was read before the run: it sets an in-memory resume
+  override and a directive (`scripts/internal/session-recovery.ps1:513-560`), read before run 3; no home path, no hook deployment.
+- **Approval**: the maintainer, 2026-11-12 (option 1).
+- **Resolution**: RED 1/51 in `0b54a3e6`, GREEN 51/51 in `3e3ae481`. Supervised run 3 was green on every check but
+  rewrote this repository's `state.md` (bug list item 23); see DRIFT-206-I001-018 and -019.
+- **Class closure**: NONE in the product: the question whether a governed project with no session files (a fresh
+  clone) is stale state is left open for the maintainer, with the input in DRIFT-206-I001-017.
+
+### DRIFT-206-I001-017 — input to iteration 002: the maintainer no longer uses `specrew start`
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (relayed by the reviewer session). Not acted on.
+- **What the maintainer said**: "I do not use Specrew start for a long time since we have the startup hook."
+- **Context the reviewer found**: `docs/getting-started.md:135` says the SessionStart hook is the primary path and
+  `specrew start` is optional; `README.md:150` says that on a hook-capable host you just launch the CLI.
+  `scripts/specrew-start.ps1` is 3,562 lines.
+- **Bearing on this feature**: SC-001 and SC-002 both run through `specrew start`, and so do the T003 regression
+  (DRIFT-206-I001-014), bug list item 21 (SC-002's cause) and the open question whether a fresh clone is stale state
+  (item 22), and the outside write and the init probe found later (items 23 and 25). For iteration 002 planning, a one-page fact sheet (`iterations/001/specrew-start-facts.md`) lists what `specrew start`
+  still does that the session hooks do not and what each start-only item would cost, so that the maintainer can
+  decide whether it is kept, frozen to bug fixes, or retired before any new design work on it.
+- **Resolution**: deferred to iteration 002 planning (maintainer's decision).
+- **Class closure**: NONE — an input to a decision, not a defect.
+
+### DRIFT-206-I001-018 — T015 isolated SC-001's fixture from this repository
+
+- **Recorded**: 2026-11-12, by the maintainer's option 1 ("1", relayed by the reviewer session at about 23:45 local),
+  with the reviewer's conditions.
+- **What**: supervised run 3 of `tests/integration/project-path-resolution-regression.ps1` was green on every check
+  but rewrote this repository's real `state.md` (bug list item 23). The fixture sat under this repository's `.scratch`
+  without a git repository of its own (item 24). `state.md` was restored from git at the maintainer's word; the diff
+  was kept as evidence. The script's scratch root is now under the temp folder, the fixture has its own `git init`
+  and commit, and the script refuses to run if the fixture's git top level is not the fixture.
+- **Approval**: the maintainer, 2026-11-12 (option 1).
+- **Resolution**: RED 1/52 in `e29b179f`, GREEN 52/52 in `e416edc6`; supervised run 4 (repository compared as well as
+  home) was red and still wrote into this repository: `state.md` again, through the tracked `.squad/identity/now.md`
+  (item 23's route), and an init probe folder (item 25). The isolation was necessary, not sufficient.
+- **Class closure**: the lane guard fails if the script's fixture moves back inside the repository or loses its own
+  git repository, and the script itself checks its fixture's git top level at run time. The product side (start
+  writing outside its project) is item 23, open for iteration 002.
+
+### DRIFT-206-I001-019 — SC-001 is not met in iteration 001, and its script refuses to run
+
+- **Recorded**: 2026-11-12, by the maintainer's option 1 ("Option 1 it is", relayed by the reviewer session at about
+  23:55 local), with the reviewer's conditions.
+- **What**: after run 4, SC-001 moves to iteration 002 as a required item, with bug list items 23, 24 and 25. Because
+  exclusion keeps the script out of the automated lists only, and a run by hand would rewrite `state.md` again (and,
+  after closeout, break the iteration's seal), `tests/integration/project-path-resolution-regression.ps1` now refuses
+  to run: its first statement prints one line naming the three items and exits 1, before any fixture is built, with
+  no switch or variable to bypass it. Its census exclusion reason says what runs 3 and 4 wrote. `state.md` was
+  restored and the probe folder deleted at the maintainer's word; both diffs and the probe file are kept as evidence.
+- **Approval**: the maintainer, 2026-11-12 (option 1).
+- **Resolution**: RED 2/54 in `4f8205ff`, GREEN 54/54 in `f0201deb` (the refusal; run with the temp folder pointed at
+  an empty directory, it writes nothing in the repository or the temp folder); RED 1/54 in `8f8e34cb`, GREEN 54/54
+  in `3977131d` (the exclusion reason).
+- **Class closure**: the lane guard fails if the refusal stops being the script's first statement, gains a bypass,
+  or the script writes anything when run. Iteration 002 removes the refusal together with the fixes.
 
 <!--
   Every new ### DRIFT-... event includes:

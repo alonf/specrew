@@ -47,7 +47,7 @@ console (stdin from an empty file, `-NonInteractive`), and `git status` compared
 | `feature-017-dashboard-core.ps1` | **red** | 1 | excluded (bug list item 19) |
 | `feature-018-rich-dashboard.ps1` | **red** | 2 | excluded (bug list item 20) |
 | `validator-hardening-iteration2.ps1` (SC-002) | **red** | 944 | excluded (bug list item 21) |
-| `project-path-resolution-regression.ps1` (SC-001) | see below | | excluded until the maintainer has seen this report |
+| `project-path-resolution-regression.ps1` (SC-001) | red, and wrote into this repository (runs 3 and 4) | | excluded; SC-001 not met in iteration 001 |
 
 Before the T003 fix, four of the six `specrew-start-*` scripts were red (change-detector, end-to-end,
 parameter-handling, pause-and-confirm): see "The T003 Regression" below.
@@ -90,7 +90,7 @@ that execute it ran nowhere. Fixed (`968022f3`, `30fa853a`); DRIFT-206-I001-014.
 | `tests/integration/feature-017-dashboard-core.ps1` | red: its fixture is not a Specrew project to `specrew where`; bug list item 19 |
 | `tests/integration/feature-018-rich-dashboard.ps1` | red: the rendered dashboard no longer matches its golden file; bug list item 20 |
 | `tests/integration/validator-hardening-iteration2.ps1` | red: start classifies the agent and charter files it wrote itself as user changes; bug list item 21 |
-| `tests/integration/project-path-resolution-regression.ps1` | awaits the maintainer: SC-001's supervised run is reported before it is registered |
+| `tests/integration/project-path-resolution-regression.ps1` | SC-001 not met in iteration 001: supervised runs 3 and 4 wrote into this repository (both rewrote `specs/206-bug-bash/iterations/001/state.md`; run 4 left a `.specrew-squad-probe-*` folder at its root); the script refuses to run until bug list items 23, 24 and 25 are fixed; required in iteration 002 |
 
 ## Files Feature 203 Also Changed
 
@@ -179,3 +179,48 @@ falls under one of these.
    a test change, and SC-001 then measures path resolution after a re-anchor.
 2. `specrew start` treats a governed project with no session files, as in a fresh clone, as a first start rather than
    stale state. This is a product change on item 1's path, and new design.
+
+## SC-001: Supervised Runs 3 and 4, and the Outcome
+
+**Run 3** (on `3e3ae481`; the start case passes `-RecoveryChoice A` by the maintainer's option 1; RED 1/51 in
+`0b54a3e6`, GREEN 51/51 in `3e3ae481`; DRIFT-206-I001-016). **Green on all 7 checks, 44 s**, home hook files
+unchanged, but **it wrote into this repository**: `specs/206-bug-bash/iterations/001/state.md` was rewritten at
+21:29:17 UTC, during the start case. A task-progress summary block was added, the task lines and `Updated` stamp were
+changed, and the escalation block's closing marker line was removed. Nothing under the five host folders was
+attributable to it.
+
+**Run 4** (on `e416edc6`; the fixture under the temp folder as its own git repository; RED 1/52 in `e29b179f`, GREEN
+52/52 in `e416edc6`; DRIFT-206-I001-018; the repository fingerprinted before and after). **Red, 61 s**: "specrew init
+--dry-run (default path) did not emit expected output pattern"; the other five checks passed. Home hook files
+unchanged. **It wrote into this repository again**:
+
+- `specs/206-bug-bash/iterations/001/state.md`, the same change, at 21:44:52 UTC during the start case;
+- `.specrew-squad-probe-51b037d112c14c728e686658de66bba0/.github/skills/cross-squad-communication/SKILL.md`, untracked
+  at the repository root, created at 21:44:58 UTC during the init case.
+
+Under the five host folders, nothing changed in `~/.specrew`, `~/.copilot` or `~/.cursor`. The `~/.claude` and
+`~/.codex` changes all fell under the paths treated as other activity: `~/.claude/projects/**` (including the reviewer
+session's transcript), `sessions/*.json`, `backups/**`, `file-history/**`, `plugins/store/**`, and the Codex app's
+`.codex-global-state.json` with its `.bak`.
+
+**Why:** run 4's fixture had its own git repository, so the enclosing git was not the route (run 3's first diagnosis
+was incomplete). The route, read without running anything, is bug list item 23. The tracked `.squad/identity/now.md`
+holds an absolute `session_state_feature_path` to this repository's feature, and the fixture copies `.squad` whole.
+With no prompt or start context, the session-state snapshot falls back to that file. Recovery A makes the path the
+resume override, and `Resolve-FeatureDirectory` accepts any rooted path. The probe folder is item 25: `specrew init`
+probes Squad in the install root, which is this repository in a dev checkout, even with `-DryRun`, and its cleanup
+fails silently.
+
+**Outcome (maintainer, option 1, 2026-11-12; reviewer's conditions):**
+
+- `state.md` was restored from git after each run, and the probe folder was deleted. Both diffs and the probe file are
+  kept as evidence.
+- SC-001 is not met in iteration 001. It is a required item for iteration 002, with bug list items 23, 24 and 25.
+- The script refuses to run: its first statement names the three items and exits 1, before any fixture is built,
+  with no bypass. Run with the temp folder pointed at an empty directory, it writes nothing in the repository or the
+  temp folder. RED 2/54 in `4f8205ff`, GREEN 54/54 in `f0201deb`; DRIFT-206-I001-019.
+- Its census exclusion reason now says what runs 3 and 4 wrote (RED 1/54 in `8f8e34cb`, GREEN 54/54 in `3977131d`).
+- No further run of this script in iteration 001.
+
+For iteration 002 planning: `specrew-start-facts.md` in this folder (one page, facts only) and DRIFT-206-I001-017,
+which records the maintainer's remark that `specrew start` is no longer used since the startup hook.
