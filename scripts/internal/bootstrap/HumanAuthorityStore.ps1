@@ -2447,6 +2447,7 @@ function Resolve-SpecrewAuthorizationSender {
     $result = [pscustomobject][ordered]@{ accepted = $false; sender = 'not-found'; peer_name = ''; peer_address = ''; reason = 'turn-not-found'; message = ''; record_uuid = '' }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
     $turn = $null
+    $anyRow = $null
     if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) {
         $row = $null
         $ledger = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $root
@@ -2456,6 +2457,7 @@ function Resolve-SpecrewAuthorizationSender {
                 $entry = $null
                 try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
                 if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id'] -or [string]$entry.turn_id -cne $TurnIdentity.Trim()) { continue }
+                $anyRow = $entry
                 if ($entry.PSObject.Properties['transcript_path'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.transcript_path)) { $row = $entry }
             }
         }
@@ -2471,7 +2473,16 @@ function Resolve-SpecrewAuthorizationSender {
             catch { $turn = $null }
         }
     }
-    if ($null -eq $turn) {
+    $rowHost = if ($null -ne $anyRow -and $anyRow.PSObject.Properties['host_kind']) { ([string]$anyRow.host_kind).Trim().ToLowerInvariant() } else { '' }
+    $result | Add-Member -NotePropertyName host_kind -NotePropertyValue $(if ($rowHost) { $rowHost } else { ([string]$HostKind).Trim().ToLowerInvariant() })
+    $result | Add-Member -NotePropertyName turn -NotePropertyValue $turn
+    $noPathHost = ($null -eq $turn -and $null -ne $anyRow -and $null -eq $row -and -not [string]::IsNullOrWhiteSpace($rowHost) -and $rowHost -cne 'claude')
+    if ($noPathHost) {
+        # Maintainer ruling 2026-11-12: a host whose hook input carries no transcript path (Copilot) cannot be checked; the
+        # approval is unverified, as on Codex, where the record carries no sender fields. The text rules decided at capture.
+        $result.accepted = $true; $result.sender = 'unverified'; $result.reason = 'host-has-no-transcript'
+    }
+    elseif ($null -eq $turn) {
         $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender 'not-found' -Purpose $Purpose
     }
     else {
@@ -2487,7 +2498,7 @@ function Resolve-SpecrewAuthorizationSender {
         $dir = Join-Path $root '.specrew/authority'
         [IO.Directory]::CreateDirectory($dir) | Out-Null
         $row = [pscustomobject][ordered]@{ turn_identity = [string]$TurnIdentity; sender = $result.sender; accepted = $result.accepted; reason = $result.reason
-            peer_name = $result.peer_name; peer_address = $result.peer_address; record_uuid = $result.record_uuid; purpose = [string]$Purpose; checked_at = $NowUtc }
+            peer_name = $result.peer_name; peer_address = $result.peer_address; record_uuid = $result.record_uuid; purpose = [string]$Purpose; host_kind = [string]$result.host_kind; checked_at = $NowUtc }
         Add-Content -LiteralPath (Join-Path $dir 'turn-senders.jsonl') -Value ($row | ConvertTo-Json -Compress) -Encoding UTF8 -ErrorAction Stop
         if ($result.sender -ceq 'unverified') {
             # The unprotected path (maintainer ruling 2026-11-12): journaled, and shown on the status health line.
@@ -2512,10 +2523,62 @@ function Test-SpecrewAuthorizationRecordSender {
     $hostKind = if ($Record -is [System.Collections.IDictionary]) { [string]$Record['host_kind'] } elseif ($Record.PSObject.Properties['host_kind']) { [string]$Record.host_kind } else { '' }
     if ([string]::IsNullOrWhiteSpace($hostKind)) { $hostKind = 'claude' }
     $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $ProjectRoot -TurnIdentity $turnIdentity -Purpose $Purpose -HostKind $hostKind
+    if ([bool]$sender.accepted -and $null -ne $sender.turn) {
+        # Maintainer ruling 2026-11-12: the record is bound to what its turn said. Its kind must be that turn's act, and its
+        # text must be what the turn said (the phrase, or the phrase with the same-line instruction the turn carried).
+        $binding = Test-SpecrewAuthorizationRecordMatchesTurn -Record $Record -Turn $sender.turn
+        if (-not $binding) {
+            $what = if ([string]::IsNullOrWhiteSpace($Purpose)) { 'approval' } else { $Purpose }
+            try { [Console]::Error.WriteLine(("Specrew: this {0} was not used: the message it cites does not say it. Nothing else changed. To approve, type the line yourself in the terminal session." -f $what)) } catch { $null = $_ }
+            return $false
+        }
+    }
     if (-not [bool]$sender.accepted) {
         try { [Console]::Error.WriteLine([string]$sender.message) } catch { $null = $_ }
     }
     return [bool]$sender.accepted
+}
+
+function Test-SpecrewAuthorizationRecordMatchesTurn {
+    # Feature 203 T013 (maintainer ruling 2026-11-12): does the record say what the turn it cites said? $true when the
+    # record's kind is the turn's act and its text is the turn's own line (whitespace normalized; the turn may carry a
+    # same-line instruction after the phrase). A judgment answer keeps no text (FR-023), so only its kind is checked.
+    [OutputType([bool])]
+    param([AllowNull()]$Record, [AllowNull()]$Turn)
+    if ($null -eq $Record -or $null -eq $Turn) { return $false }
+    $get = { param($o, $n) if ($o -is [System.Collections.IDictionary]) { $o[$n] } elseif ($null -ne $o -and $o.PSObject.Properties[$n]) { $o.$n } else { $null } }
+    $norm = { param($t) (([string]$t) -replace '\s+', ' ').Trim().ToLowerInvariant() }
+    $turnText = [string](& $get $Turn 'text')
+    $own = $turnText
+    try { $form = Resolve-SpecrewApprovalForm -Text $turnText -HostKind ([string](& $get $Turn 'host')); if (-not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $own = [string]$form.Text } } catch { $own = $turnText }
+    # The turn's act, from its own line.
+    $turnKind = ''
+    $shape = $null
+    try { $shape = Get-SpecrewTypedAuthorityShape -Text $own } catch { $shape = $null }
+    if ($null -ne $shape) { $turnKind = [string]$shape.Kind }
+    elseif ($null -ne (Get-SpecrewStopAnswerShape -Text $own)) { $turnKind = 'stop-answer' }
+    elseif ((Get-Command Test-SpecrewHumanVerdictToken -ErrorAction SilentlyContinue) -and [bool](Test-SpecrewHumanVerdictToken -Text $own).IsApproval) { $turnKind = 'boundary-verdict' }
+    # The record's kind.
+    $factType = [string](& $get $Record 'fact_type')
+    $recordKinds = switch -CaseSensitive ($factType) {
+        'allowance-reset-approval' { @('allowance-reset') }
+        'review-pause-decision' { @('pause-decision') }
+        'review-stop-answer' { @('stop-answer', 'pause-decision') }
+        'review-signoff-partial-override' { @('partial-review-signoff') }
+        'coverage-deferral' { @('coverage-deferral') }
+        'workshop-repair' { @('workshop-repair') }
+        default { if (-not [string]::IsNullOrWhiteSpace([string](& $get $Record 'to_boundary'))) { @('boundary-verdict') } else { @() } }
+    }
+    $answer = [string](& $get $Record 'answer')
+    if ($factType -ceq 'review-stop-answer' -and $answer -ceq 'judgment') { return $true }
+    if (@($recordKinds).Count -gt 0 -and @($recordKinds) -cnotcontains $turnKind) { return $false }
+    $recordText = & $norm (& $get $Record 'verdict_text')
+    if ([string]::IsNullOrWhiteSpace($recordText)) { return $false }
+    foreach ($said in @((& $norm $own), (& $norm $turnText))) {
+        if ($said -ceq $recordText) { return $true }
+        if ($said.StartsWith($recordText + ' ') -or $said.StartsWith($recordText + '-')) { return $true }
+    }
+    return $false
 }
 
 function Register-SpecrewExhaustedTurn {

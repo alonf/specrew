@@ -2672,7 +2672,9 @@ function Get-SpecrewAuthorizationSenderHealthLine {
         $rows = @(Get-Content -LiteralPath $path -ErrorAction Stop | Where-Object { $_.Trim() } | ForEach-Object { try { $_ | ConvertFrom-Json -ErrorAction Stop } catch { $null } } | Where-Object { $null -ne $_ })
         if ($rows.Count -eq 0) { return $null }
         $last = [string]$rows[$rows.Count - 1].checked_at
-        return ('Approvals: {0} used since {1} whose Claude transcript could not confirm you typed them (an older Claude records no sender), so only the text rules checked them. Update Claude Code so the sender is recorded.' -f $rows.Count, $(if ($last) { $last } else { 'an earlier session' }))
+        # Maintainer ruling 2026-11-12: shown by host. Codex and Copilot record no sender, and an older Claude may not either.
+        $byHost = @($rows | Group-Object { $h = [string]$_.host_kind; if ([string]::IsNullOrWhiteSpace($h)) { 'claude' } else { $h } } | Sort-Object Name | ForEach-Object { '{0}: {1}' -f $_.Name, $_.Count }) -join ', '
+        return ('Approvals: {0} used since {1} that Specrew could not confirm you typed ({2}): the host records no sender, so only the text rules checked them. On Claude, update Claude Code so the sender is recorded.' -f $rows.Count, $(if ($last) { $last } else { 'an earlier session' }), $byHost)
     }
     catch { return $null }
 }

@@ -171,7 +171,7 @@ Describe 'the check loads where a project runs it: the deployed .specify copy of
 param([string]$Repo, [string]$Project, [string]$Turn)
 $env:SPECREW_MODULE_PATH = $Repo
 . (Join-Path $Repo '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1')
-$record = [pscustomobject]@{ turn_identity = $Turn; host_kind = 'claude' }
+$record = [pscustomobject]@{ fact_type = 'allowance-reset-approval'; verdict_text = 'approved for allowance reset'; turn_identity = $Turn; host_kind = 'claude' }
 $first = Test-SpecrewAuthorizationSenderForUse -ProjectRoot $Project -Record $record -Purpose 'probe'
 $loaded = [bool](Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)
 'first={0} loaded-after={1}' -f $first, $loaded
