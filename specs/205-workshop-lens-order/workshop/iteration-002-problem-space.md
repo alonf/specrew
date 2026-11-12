@@ -87,6 +87,26 @@ reading. Two conditions on the recommendation blocks:
 
 The plan reports the three numbers for Light, Standard and Deep, before and after this iteration's changes.
 
+### Clarification: the six product-domain facts at Light
+
+**Answer (reviewer, under delegation; a clarification of its own earlier answer, sent before the clarify sync)**:
+FR-023 ("MUST ask at every depth") and FR-028 (Light capped at today's 50 must-answer points) contradicted each other,
+because product-domain is the first lens and nothing can be handed forward into it.
+
+1. At Light the six facts are recommendation lines, not must-answer questions. Each is shown with a default the system
+   states without asking: what the repository and earlier answers show, or "none stated". Examples given: compliance
+   regime "none stated", data residency "no constraint stated", platform "as the repository shows", operators "the team
+   that builds it", budget "not stated". The human accepts the list in one reply or changes a line.
+2. At Standard and Deep, product-domain asks them as questions.
+3. The length test counts them where they are shown: recommendation lines at Light, must-answer points at Standard and
+   Deep. Product-domain's must-answer count at Light stays at eight. A fact folded into an existing area still counts
+   as its own line.
+4. A "none stated" default is still handed forward (FR-024): the later lens shows "product-domain: none stated" as its
+   recommended answer.
+5. FR-023 is reworded from "MUST ask", and SC-009's fixture proves the Light behaviour as well as the hand-forward.
+
+A default that would be wrong or misleading for one of the six goes to the maintainer at the clarify packet.
+
 ## Scope of iteration 002 (reviewer, under delegation)
 
 - The lens-specific gap questions under those rules, the product-domain deepening and the hand-forward.

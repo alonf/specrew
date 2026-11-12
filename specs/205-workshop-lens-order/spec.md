@@ -177,13 +177,18 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 Source: the iteration 002 workshop, answered by the reviewer session under the maintainer's delegation
 (`workshop/iteration-002-problem-space.md`). Input: `iterations/001/problem-gap-list.md`.
 
-- **FR-023**: product-domain MUST ask, at every depth including Light, the six cross-cutting facts that the gap list
-  found missing from later lenses: the named compliance or regulatory regime (or none), data residency, the existing
-  systems and data that must be carried over, platform constraints (where it must run), who operates it and when, and
-  the budget. These replace the six gap questions that repeat product-domain, which are NOT added to security-compliance,
-  data-storage or devops-operations.
+- **FR-023**: product-domain MUST cover the six cross-cutting facts that the gap list found missing from later lenses:
+  the named compliance or regulatory regime, data residency, the existing systems and data that must be carried over,
+  platform constraints (where it must run), who operates it and when, and the budget. At Light they MUST be shown as
+  recommendation lines, each with a default the system states without asking (what the repository and earlier answers
+  show, or "none stated" where nothing shows), accepted in one reply or changed line by line; product-domain's
+  must-answer count at Light stays at today's eight. At Standard and Deep they MUST be asked as questions. These replace
+  the six gap questions that repeat product-domain, which are NOT added to security-compliance, data-storage or
+  devops-operations.
 - **FR-024**: Each FR-023 answer MUST be handed forward: the later lens it bears on shows it as that lens's recommended
-  answer, naming product-domain as its source. The plan MUST choose the mechanism that adds the least new machinery.
+  answer, naming product-domain as its source. A "none stated" default is handed forward too, shown as "product-domain:
+  none stated", so the gap is visible where it matters. The plan MUST choose the mechanism that adds the least new
+  machinery.
 - **FR-025**: The remaining lens-specific gap questions MUST be added under their lenses' `### Problem questions`:
   - requirements-nfr: which regulatory or compliance obligations become NFRs
   - ui-ux: who the UI's users are (skills, devices, context of use)
@@ -203,7 +208,9 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
   lenses, code-implementation, security-compliance, data-storage and integration-api) at Light, Standard and Deep:
   must-answer decision points, typed replies, and recommendation lines. It MUST fail when Light exceeds 50 must-answer
   decision points or 18 typed replies, and MUST fail when any other number changes without its recorded value being
-  updated in the same change. A self-test MUST prove both failures.
+  updated in the same change. Each item is counted where it is shown: as a recommendation line at Light, as a
+  must-answer point at Standard and Deep. A fact folded into an existing area still counts as its own line. A self-test
+  MUST prove both failures.
 - **FR-029**: Every question this iteration adds MUST name its consumer, and the consumer MUST exist today: a named
   spec.md section the reviewer reads, or a later lens that uses the answer as its recommended answer. A "Plan
   Obligations" entry is not a consumer. A test MUST prove that each named consumer exists.
@@ -258,8 +265,10 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
   records the numbers.
 - **SC-008** (iteration 002): Every question added or changed carries a recommended answer, a reason and a named
   consumer that exists, and a test proves it.
-- **SC-009** (iteration 002): product-domain asks the six FR-023 facts at Light, and a fixture proves that each one
-  appears in its later lens as the recommended answer, citing product-domain.
+- **SC-009** (iteration 002): A fixture proves that at Light product-domain shows the six FR-023 facts as
+  recommendation lines with their defaults, accepted in one reply, with its must-answer count still eight; that at
+  Standard it asks them as questions; and that each answer, including "none stated", appears in its later lens as the
+  recommended answer, citing product-domain.
 - **SC-010** (iteration 002): The FR-025 questions sit under their lenses' problem headings, the iteration 001 parity
   and tagging tests still pass, and each lens's extractor count changes by exactly its added questions.
 - **SC-011** (iteration 002): Each code-implementation stack rule carries a sources-checked date, no rule text holds a
