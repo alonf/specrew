@@ -698,7 +698,8 @@ function Get-SpecrewClosedIterationIndexPath {
 
 function Get-SpecrewClosedIterationIndex {
     # Proposal 085: reads .specrew/closed-iterations.yml; returns a hashtable
-    # keyed by "<feature>/<iteration>" with values @{ closed_at = '<ISO8601>' }.
+    # keyed by "<feature>/<iteration>" with values @{ closed_at = '<ISO8601>'; closed_at_source = 'closeout' | $null }.
+    # closed_at_source (FR-008) is 'closeout' only on entries iteration closeout wrote; the rest have none.
     # Returns an empty hashtable when the file is missing or empty.
     param(
         [Parameter(Mandatory = $true)]
@@ -724,7 +725,7 @@ function Get-SpecrewClosedIterationIndex {
         if ($line -match '^\s*-\s+feature:\s*(.+?)\s*$') {
             if ($null -ne $current -and $current.ContainsKey('feature') -and $current.ContainsKey('iteration')) {
                 $key = "$($current['feature'])/$($current['iteration'])"
-                $result[$key] = @{ closed_at = $current['closed_at'] }
+                $result[$key] = @{ closed_at = $current['closed_at']; closed_at_source = $current['closed_at_source'] }
             }
             $current = @{ feature = $Matches[1].Trim('"').Trim("'") }
             continue
@@ -738,10 +739,14 @@ function Get-SpecrewClosedIterationIndex {
             $current['closed_at'] = $Matches[1].Trim('"').Trim("'")
             continue
         }
+        if ($line -match '^\s*closed_at_source:\s*(.+?)\s*$') {
+            $current['closed_at_source'] = $Matches[1].Trim('"').Trim("'")
+            continue
+        }
     }
     if ($null -ne $current -and $current.ContainsKey('feature') -and $current.ContainsKey('iteration')) {
         $key = "$($current['feature'])/$($current['iteration'])"
-        $result[$key] = @{ closed_at = $current['closed_at'] }
+        $result[$key] = @{ closed_at = $current['closed_at']; closed_at_source = $current['closed_at_source'] }
     }
     return $result
 }
@@ -797,6 +802,81 @@ function Get-SpecrewIterationStatusValue {
         }
     }
     return ''
+}
+
+function Test-SpecrewIterationRulingRecorded {
+    # FR-008 (T009): true when state.md records a maintainer ruling on the iteration: a `## Disposition`
+    # section whose text names the maintainer's ruling or decision and carries its date (YYYY-MM-DD).
+    # 174/007, 197/006, 198/010 and 198/011 record one; an abandonment reason with no Disposition does not.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
+        return $false
+    }
+    $inDisposition = $false
+    $section = New-Object System.Collections.Generic.List[string]
+    foreach ($line in @(Get-Content -LiteralPath $StatePath -Encoding UTF8)) {
+        if ($line -match '^##\s') {
+            if ($inDisposition) { break }
+            if ($line -match '^##\s+Disposition\b') {
+                $inDisposition = $true
+                $section.Add($line) | Out-Null
+            }
+            continue
+        }
+        if ($inDisposition) { $section.Add($line) | Out-Null }
+    }
+    if ($section.Count -eq 0) {
+        return $false
+    }
+    $text = $section -join ' '
+    return (($text -match "(?i)\bmaintainer(?:'s|’s)?\s+(?:ruling|decision)\b") -and ($text -match '\b\d{4}-\d{2}-\d{2}\b'))
+}
+
+function Test-SpecrewIterationAbandonedByRuling {
+    # FR-008 (T009; maintainer, 2026-11-11): state.md says `abandoned` and records the maintainer's ruling.
+    # Such an iteration is not held to the plan-status rule (retro.md exists) or the review-verdict rule.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    return ((Get-SpecrewIterationStatusValue -StatePath $StatePath) -eq 'abandoned') -and (Test-SpecrewIterationRulingRecorded -StatePath $StatePath)
+}
+
+function Test-SpecrewClosedCheckApplies {
+    # FR-008 (T009): a check that judges closed iterations declares the date it shipped (`since`). It judges
+    # an iteration only when iteration closeout stamped its index entry (closed_at_source: closeout) with a
+    # closed_at on or after that date. An entry without the stamp (the 2026-08-06 rebuild and every older
+    # one), or no entry, has no trusted closure date; that history is covered by the frozen list.
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$ClosedIndex,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Feature,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Iteration,
+
+        [Parameter(Mandatory = $true)]
+        [datetime]$Since
+    )
+    $key = '{0}/{1}' -f $Feature, (Normalize-SpecrewIterationNumber -IterationNumber $Iteration)
+    if (-not $ClosedIndex.ContainsKey($key)) {
+        return $false
+    }
+    $entry = $ClosedIndex[$key]
+    if ([string]$entry.closed_at_source -ne 'closeout') {
+        return $false
+    }
+    $closedAt = [datetimeoffset]::MinValue
+    $styles = [System.Globalization.DateTimeStyles]::AssumeUniversal
+    if (-not [datetimeoffset]::TryParse([string]$entry.closed_at, [System.Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$closedAt)) {
+        return $false
+    }
+    return ($closedAt.UtcDateTime.Date -ge $Since.Date)
 }
 
 function Test-SpecrewIterationClosed {
@@ -873,6 +953,8 @@ function Test-SpecrewClosureClaimStatus {
 
 function Add-SpecrewClosedIterationEntry {
     # Proposal 085: appends a {feature, iteration, closed_at} entry to the index.
+    # Its one caller is the iteration-closeout approval, so the entry carries closed_at_source: closeout
+    # (FR-008): closed_at is the real closure time. -RebuildClosedIndex writes entries without it.
     # Idempotent: if an entry already exists, no-op. Uses Invoke-WithFileLock to
     # serialize concurrent writes (multi-dev safety).
     param(
@@ -906,7 +988,8 @@ function Add-SpecrewClosedIterationEntry {
         $newEntryLines = @(
             "  - feature: $Feature",
             "    iteration: $normalizedIteration",
-            "    closed_at: $ClosedAt"
+            "    closed_at: $ClosedAt",
+            "    closed_at_source: closeout"
         )
         $needsHeader = -not (Test-Path -LiteralPath $indexPath -PathType Leaf) -or [string]::IsNullOrWhiteSpace((Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8))
         if ($needsHeader) {

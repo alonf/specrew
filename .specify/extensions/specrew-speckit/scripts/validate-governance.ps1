@@ -2561,24 +2561,30 @@ function Test-DashboardGovernanceSurfaces {
         }
     }
 
+    # The feature-closeout dashboard check below keeps its feature-number cut-off (features 017 and later).
     $dashboardRolloutFeatureOrdinal = 17
     $dashboardRolloutIterationFloor = 2
 
+    # FR-008 (T009): the closed-iteration dashboard check declares the date it shipped (d4284c8a) and the
+    # status it applies to. It judges an iteration only when iteration closeout stamped it on or after that
+    # date (Test-SpecrewClosedCheckApplies); this replaces its feature-number cut-off. Earlier history is
+    # covered by the frozen list (FR-007).
+    $closedDashboardCheck = @{
+        name              = 'missing-dashboard-auto-render-regression'
+        since             = [datetime]::new(2026, 5, 26)
+        applies_to_status = 'complete'
+    }
+    $dashboardClosedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
+
     foreach ($feature in $features) {
         $featureOrdinal = Get-FeatureOrdinalFromRef -FeatureRef $feature.feature_ref
-        if ($null -eq $featureOrdinal -or $featureOrdinal -lt $dashboardRolloutFeatureOrdinal) {
-            continue
-        }
 
         foreach ($iteration in @($feature.closed_iterations)) {
-            $iterationOrdinal = Get-IterationOrdinalFromRef -IterationRef $iteration.iteration_ref
-            $requiresDashboard = ($featureOrdinal -gt $dashboardRolloutFeatureOrdinal) -or `
-                ($featureOrdinal -eq $dashboardRolloutFeatureOrdinal -and $null -ne $iterationOrdinal -and $iterationOrdinal -ge $dashboardRolloutIterationFloor)
-            if (-not $requiresDashboard) {
+            if (-not (Test-SpecrewClosedCheckApplies -ClosedIndex $dashboardClosedIndex -Feature ([string]$feature.feature_ref) -Iteration ([string]$iteration.iteration_ref) -Since $closedDashboardCheck.since)) {
                 continue
             }
-            # FR-007 (plan verdict): the dashboard check applies to complete iterations only. An abandoned
-            # iteration was never closed out, so no dashboard was rendered for it, and it owes none.
+            # applies_to_status (FR-007, plan verdict): complete iterations only. An abandoned iteration was
+            # never closed out, so no dashboard was rendered for it, and it owes none.
             if ((Get-SpecrewIterationStatusValue -StatePath (Join-Path $iteration.iteration_directory 'state.md')) -eq 'abandoned') {
                 continue
             }
@@ -2597,6 +2603,10 @@ function Test-DashboardGovernanceSurfaces {
                     Write-DashboardGovernanceWarning -Category 'dashboard-artifact-ansi' -Detail ("Iteration dashboard '{0}' still contains ANSI escape sequences; stored snapshots must strip ANSI while preserving Unicode." -f $dashboardPath)
                 }
             }
+        }
+
+        if ($null -eq $featureOrdinal -or $featureOrdinal -lt $dashboardRolloutFeatureOrdinal) {
+            continue
         }
 
         $hasFeatureCloseout = $false
@@ -5080,12 +5090,16 @@ function Test-IterationGovernance {
     $hasReviewArtifact = $reviewLines.Count -gt 0
     $hasRetroArtifact = $retroLines.Count -gt 0
     $hasCompleteEvidence = $status -eq 'complete'
+    # FR-008 (T009; maintainer, 2026-11-11): state.md says `abandoned` and records the maintainer's ruling.
+    # Not held to the plan-status rule (retro.md exists) or the review-verdict rule; `abandoned` with no
+    # recorded ruling still gets both.
+    $abandonedByRuling = Test-SpecrewIterationAbandonedByRuling -StatePath $statePath
 
     if ($hasReviewArtifact -and $status -in @('planning', 'executing')) {
         $errors.Add("plan.md status '$status' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete")
     }
 
-    if ($hasRetroArtifact -and $status -notin @('retro', 'complete')) {
+    if ($hasRetroArtifact -and $status -notin @('retro', 'complete') -and -not $abandonedByRuling) {
         $errors.Add("plan.md status '$status' is stale: retro.md exists, so the iteration must be in retro or complete")
     }
 
@@ -5164,7 +5178,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Retro iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict:(-not $abandonedByRuling)
             Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'complete' {
@@ -5175,7 +5189,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Complete iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict:(-not $abandonedByRuling)
             Test-RetroArtifact -RetroPath $retroPath -Errors $errors
             Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
