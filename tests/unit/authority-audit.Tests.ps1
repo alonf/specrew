@@ -191,6 +191,9 @@ Describe 'the records name the turn that authorized them (FR-024, FR-041)' {
         $reservation = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $project.store -CampaignId $script:CampaignId -Kind reservations)[0]
         [string]$reservation.turn_identity | Should -BeExactly 'turn-before-implement'
         [string]$reservation.budget_grant_id | Should -BeExactly ([string]$budget.grant_id)
+        # Maintainer 2026-11-12: a record whose turn is not its own message's says where the turn came from.
+        [string]$grant.turn_identity_source | Should -BeExactly 'window'
+        [string]$reservation.turn_identity_source | Should -BeExactly 'window'
         $reservation.PSObject.Properties['reset_id'] | Should -BeNullOrEmpty
         $audit = script:Invoke-Audit -Project $project
         $audit.passed | Should -BeTrue -Because (script:Get-AuditReasons $audit)
@@ -366,6 +369,7 @@ Describe 'T012 after the maintainer''s ruling of 2026-11-12: a stop''s decision 
         $ledgerTurn = [string]((Get-Content -LiteralPath (Join-Path $project.root '.specrew/authority/exhausted-turns.jsonl') | Select-Object -Last 1 | ConvertFrom-Json).turn_id)
         $ledgerTurn | Should -Not -BeNullOrEmpty
         [string]$rows[-1].turn_identity | Should -BeExactly $ledgerTurn
+        [string]$rows[-1].turn_identity_source | Should -BeExactly 'refused-message'
     }
 
     It 'FR-041: a partial sign-off refused for its reason''s length is journaled with the turn identity' {
@@ -375,6 +379,7 @@ Describe 'T012 after the maintainer''s ruling of 2026-11-12: a stop''s decision 
         $rows = @(script:Get-DropRows -Project $project | Where-Object { [string]$_.phrase -eq 'review-signoff-partial-override' })
         $rows.Count | Should -Be 1
         [string]$rows[0].turn_identity | Should -BeExactly 'turn-partial-short'
+        [string]$rows[0].turn_identity_source | Should -BeExactly 'refused-message'
     }
 
     It 'FR-041: a crossing the sync could not open is journaled with the turn identity of the newest typed turn' {
@@ -385,6 +390,16 @@ Describe 'T012 after the maintainer''s ruling of 2026-11-12: a stop''s decision 
         $journal = Join-Path $project.root '.specrew/runtime/handover-journal.jsonl'
         $row = @(Get-Content -LiteralPath $journal | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.event -eq 'crossing-not-minted-owed-artifacts-absent' })[-1]
         [string]$row.turn_identity | Should -BeExactly 'turn-sync-ran-in'
+        # Maintainer 2026-11-12: a sync can run in a continuation nobody typed, so the record says its turn was inferred.
+        [string]$row.turn_identity_source | Should -BeExactly 'newest-typed-turn'
+    }
+
+    It 'a floor grant borrows the turn of the verdict it cites, and says so' {
+        $verdict = [pscustomobject]@{ authorization_id = 'auth-floor-0001'; recorded_at = '2026-11-01T10:00:00Z'; turn_identity = 'turn-old-verdict' }
+        $floor = New-ReviewCampaignFloorGrantFact -CampaignId $script:CampaignId -Verdict $verdict -ObservedAt '2026-11-12T08:00:00Z'
+        [string]$floor.turn_identity | Should -BeExactly 'turn-old-verdict'
+        [string]$floor.turn_identity_source | Should -BeExactly 'cited-verdict'
+        (Test-ReviewAuthorityContractObject -ContractName BudgetGrantFact -InputObject $floor).valid | Should -BeTrue
     }
 
     It 'FR-041: the allowance-reset capture names the campaign of the active iteration' {
