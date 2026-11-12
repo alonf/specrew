@@ -2567,7 +2567,20 @@ function Test-SpecrewAuthorizationRecordMatchesTurn {
         'review-signoff-partial-override' { @('partial-review-signoff') }
         'coverage-deferral' { @('coverage-deferral') }
         'workshop-repair' { @('workshop-repair') }
-        default { if (-not [string]::IsNullOrWhiteSpace([string](& $get $Record 'to_boundary'))) { @('boundary-verdict') } else { @() } }
+        default {
+            if (-not [string]::IsNullOrWhiteSpace([string](& $get $Record 'to_boundary'))) { @('boundary-verdict') }
+            elseif (-not [string]::IsNullOrWhiteSpace([string](& $get $Record 'proposal_id'))) { @('workshop-repair') }
+            else { @() }
+        }
+    }
+    # A workshop record keeps the reply's hash, not its text (a workshop reply is any text, so it has no act kind to match).
+    $recordHash = ([string](& $get $Record 'response_hash')).Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace([string](& $get $Record 'verdict_text')) -and -not [string]::IsNullOrWhiteSpace($recordHash) -and
+        ($factType -ceq '' -or $factType -ceq 'workshop-repair')) {
+        if (@($recordKinds).Count -gt 0 -and @($recordKinds) -cnotcontains $turnKind) { return $false }
+        $sha = { param([string]$t) ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($t)))).ToLowerInvariant() }
+        foreach ($candidate in @($turnText, $turnText.Trim(), $own, $own.Trim())) { if ((& $sha $candidate) -ceq $recordHash) { return $true } }
+        return $false
     }
     $answer = [string](& $get $Record 'answer')
     if ($factType -ceq 'review-stop-answer' -and $answer -ceq 'judgment') { return $true }

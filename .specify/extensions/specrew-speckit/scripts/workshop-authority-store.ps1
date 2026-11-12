@@ -213,6 +213,18 @@ function Resolve-SpecrewWorkshopStateTransition {
     }
 }
 
+function Test-SpecrewWorkshopRecordSender {
+    # Feature 203 T013 (B5F-066; maintainer rulings 2026-11-12): a workshop record is used only when the human typed the reply
+    # it came from. The bootstrap store's check where it is loaded, else shared-governance's loader; neither loaded refuses.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Record, [AllowNull()][string]$Purpose)
+    if ($null -eq $Record) { return $false }
+    if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { return [bool](Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $Record -Purpose $Purpose) }
+    if (Get-Command Test-SpecrewAuthorizationSenderForUse -ErrorAction SilentlyContinue) { return [bool](Test-SpecrewAuthorizationSenderForUse -ProjectRoot $ProjectRoot -Record $Record -Purpose $Purpose) }
+    try { [Console]::Error.WriteLine(("Specrew: this {0} was not used, because Specrew could not load the check that confirms you typed it. Nothing else changed. Run 'specrew update', then type the line again in the terminal session." -f $(if ($Purpose) { $Purpose } else { 'workshop answer' }))) } catch { $null = $_ }
+    return $false
+}
+
 function Get-SpecrewWorkshopRepairAuthorization {
     [CmdletBinding()]
     param(
@@ -231,6 +243,8 @@ function Get-SpecrewWorkshopRepairAuthorization {
         if ([string]$record.authorization -cne 'human-approved') { throw 'workshop-repair-authority-record-invalid' }
         $latest = $record
     }
+    # Feature 203 T013 (B5F-066): used only when the human typed it.
+    if ($null -ne $latest -and -not (Test-SpecrewWorkshopRecordSender -ProjectRoot $ProjectRoot -Record $latest -Purpose 'workshop repair')) { return $null }
     return $latest
 }
 
@@ -243,7 +257,9 @@ function Write-SpecrewWorkshopRepairAuthorization {
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][string]$Response,
         [AllowNull()][string]$HostKind,
-        [AllowNull()][string]$SourceEvent
+        [AllowNull()][string]$SourceEvent,
+        # Feature 203 T013 (B5F-066): the typed turn, so the record can be checked against its transcript record when used.
+        [AllowNull()][string]$TurnIdentity
     )
 
     if ($Response.Trim() -cne 'approved for workshop repair') { return $null }
@@ -279,6 +295,7 @@ function Write-SpecrewWorkshopRepairAuthorization {
         host_kind        = [string]$HostKind
         recorded_at      = [DateTimeOffset]::UtcNow.ToString('o')
     }
+    if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $record['turn_identity'] = $TurnIdentity.Trim() }
     $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $root
     $dir = Split-Path -Parent $path
     if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
@@ -929,7 +946,9 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         # Co-review round 5 (202): the session the reply was typed in; T022 records its outcome in that session's own folder.
         [AllowNull()][string] $SessionId,
         # T020 (FR-031, DA-2): the host's ID for this message, so every receipt one message produces is bound to it.
-        [AllowNull()][string] $MessageId
+        [AllowNull()][string] $MessageId,
+        # Feature 203 T013 (B5F-066): the typed turn, so the receipt can be checked against its transcript record when used.
+        [AllowNull()][string] $TurnIdentity
     )
 
     $script:SpecrewWorkshopLastReceiptOutcome = $null
@@ -1058,6 +1077,7 @@ function Write-SpecrewWorkshopAuthorityReceipt {
                 recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
             }
             if (-not [string]::IsNullOrWhiteSpace($MessageId)) { $record['message_id'] = [string]$MessageId }
+            if (-not [string]::IsNullOrWhiteSpace($TurnIdentity)) { $record['turn_identity'] = $TurnIdentity.Trim() }
             if ($wideDelegation) { $record['delegation_breadth'] = 'remaining-lenses' }
             if ($phase -eq 'lens' -and [string]$authority.confirmation -ceq 'human-confirmed' -and (Test-SpecrewWorkshopReviewerPick -Response $Response -Question $(if ($question.PSObject.Properties['question']) { [string]$question.question } else { '' }))) { $record['answer_kind'] = 'reviewer-pick' }
             if ($phase -eq 'agenda') {
@@ -1248,6 +1268,8 @@ function Get-SpecrewWorkshopAuthorityReceipt {
             if (-not [string]::IsNullOrWhiteSpace($Confirmation) -and [string]$record.confirmation -cne $Confirmation) { continue }
             $latest = $record
         }
+        # Feature 203 T013 (B5F-066): used only when the human typed the reply.
+        if ($null -ne $latest -and -not (Test-SpecrewWorkshopRecordSender -ProjectRoot $ProjectRoot -Record $latest -Purpose 'workshop answer')) { return $null }
         return $latest
     }
     catch { throw ('workshop-authority-store-invalid:' + $_.Exception.Message) }

@@ -1918,6 +1918,8 @@ function Update-SpecrewRollingHandover {
             $receiptArgs = @{ ProjectRoot = $ProjectRoot; Response = $LastUserMessage; HostKind = $fromHost; SourceEvent = $Source; TurnOrigin = $TurnOrigin; SessionId = $SessionId }
             # T020 (FR-031): every receipt one message produces is bound to that message's ID.
             if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt).Parameters.ContainsKey('MessageId')) { $receiptArgs['MessageId'] = $MessageId }
+            # Feature 203 T013 (B5F-066): the receipt carries the typed turn the router reserved, for the sender check when used.
+            if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt).Parameters.ContainsKey('TurnIdentity') -and -not [string]::IsNullOrWhiteSpace($promptActKey)) { $receiptArgs['TurnIdentity'] = $promptActKey }
             $receipt = Write-SpecrewWorkshopAuthorityReceipt @receiptArgs
             # T020 (FR-031, DA-4): a delegation says what it covered - every remaining lens, or only this one while others
             # are still open, with the phrase that covers them.

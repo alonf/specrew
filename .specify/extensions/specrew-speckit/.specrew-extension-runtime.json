@@ -480,7 +480,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "9508b74abc8e477c12d33a101e2257f5e7b3414e63b0be9157a5f97bb84819c7"
+      "sha256": "914739b615501e94d8b3077ceac3a52b6a03d434115b24c920416f2efb07ab62"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
