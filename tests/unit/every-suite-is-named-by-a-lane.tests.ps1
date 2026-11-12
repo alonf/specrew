@@ -297,6 +297,28 @@ finally {
     Remove-Item -LiteralPath $sweepBase -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# --- T015 (maintainer ruling 2026-11-12): the start-path scripts redirect the user profile themselves -----
+# `specrew start` writes ~/.specrew/user-profile.yml when it is missing (scripts/specrew-start.ps1, the path
+# from scripts/internal/user-profile.ps1). Each script below runs it, so each points SPECREW_USER_PROFILE_PATH
+# at a temp file before its first start call, and never relies on the shell that runs it to have done so.
+$startPathScripts = @(
+    'tests/integration/project-path-resolution-regression.ps1'
+    'tests/integration/specrew-start-auto-continue-preservation.ps1'
+    'tests/integration/specrew-start-baseline-tracking.ps1'
+    'tests/integration/specrew-start-change-detector.ps1'
+    'tests/integration/specrew-start-end-to-end.ps1'
+    'tests/integration/specrew-start-parameter-handling.ps1'
+    'tests/integration/specrew-start-pause-and-confirm.ps1'
+    'tests/integration/validator-hardening-iteration2.ps1'
+)
+foreach ($startPathScript in $startPathScripts) {
+    $startPathText = Get-UncommentedText -Path (Join-Path $repoRoot $startPathScript)
+    $profileOverride = [regex]::Match($startPathText, '(?m)^\s*\$env:SPECREW_USER_PROFILE_PATH\s*=\s*[^\r\n]*GetTempPath\(\)')
+    $firstStartCall = $startPathText.IndexOf('specrew-start.ps1', [StringComparison]::OrdinalIgnoreCase)
+    Assert-True ($profileOverride.Success -and $firstStartCall -ge 0 -and $profileOverride.Index -lt $firstStartCall) ("{0} sets SPECREW_USER_PROFILE_PATH to a temp file before it first names specrew-start.ps1 (override found: {1}; first start reference at {2})" -f
+        $startPathScript, $profileOverride.Success, $firstStartCall)
+}
+
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
     Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
