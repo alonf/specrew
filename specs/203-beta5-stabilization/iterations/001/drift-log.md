@@ -2214,6 +2214,19 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   the 17 commits not yet on the feature branch backed up to `origin/backup/203-c407d15d`. Nothing lost is written by hand
   or restored from memory: the maintainer retypes the boundary verdict, and the pin record and the hooks wait for the
   maintainer's word. No sweep, no push to the feature branch and no T013 work until then.
+- **Restored** (maintainer, 2026-11-13): the maintainer mounted the machine's Veeam whole-computer backup of 2026-11-12
+  (job finished 15:28 local; the worktree's files as of about 14:50) and had the reviewer session copy the missing
+  gitignored files at about 01:01 local on 2026-11-13: 185 files, byte for byte with their original timestamps, each
+  checked by SHA-256 against the backup, among them `.specrew/start-context.json`, `.specrew/runtime/live-engine.json` and
+  `live-engine-bindings.json`, `.specrew/review/pause-decision/`, `.specrew/review/round-approval/` and
+  `.specrew/last-start-prompt.md`. Four append-only logs the hooks had re-created were merged, the backup's rows first:
+  the turn ledger (152 + 2), the hook-output journal (467 + 6), the conformance journal (72 + 1) and the co-review
+  navigator journal (50 + 2). Verified by the crew, read-only: the pin record names `a56ac787`, which is the pin checkout's
+  HEAD and the bindings' commit; the boundary state reads before-implement, authorized, with the 5 verdicts of 2026-10-31;
+  the session state names feature 203, iteration 001, before-implement; the tree is clean.
+- **Not restored**: the backup predates them, so the ledger rows and hook journal entries written from about 14:30 on
+  2026-11-12 to the deletion at 00:46 on 2026-11-13 are gone. In that window no boundary verdict, review round, stop
+  answer, pause decision, reset or sign-off capture was made, and the sender journal did not exist in the real store.
 - **Cause**: a destructive command keyed on a pattern that matched a commit hash instead of an exact path, with no check
   that the target was not the crew's own worktree.
 - **Class closure**: a standing rule from the maintainer (2026-11-13), for the crew and every agent it starts: never run
