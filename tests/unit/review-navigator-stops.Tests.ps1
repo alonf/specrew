@@ -134,6 +134,8 @@ Describe 'with campaign authority off, the navigator still stops on a completed 
         Set-Content -LiteralPath $resultPath -Encoding UTF8 -Value '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.ps1", "comment": "a blocking finding", "disposition": "blocking" } ] }'
         ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest } | ConvertTo-Json) |
             Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+        # The navigator fired the run that wrote this verdict, so it recorded the tree as fired; the fixture lacked that record.
+        Set-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $root -TreeId (Get-ContinuousCoReviewCheckpointIdentity -RepoRoot $root) -RunId $runId
         # No real reviewer from a unit test (DRIFT-059): every run of this case from 2026-11-09 to 2026-11-12 spawned a
         # detached worktree-review-detached-entry.ps1 into $TestDrive, and its transcript raced Pester's TestDrive cleanup
         # ("entry.out.log ... being used by another process"), so the container failed while all six tests passed.

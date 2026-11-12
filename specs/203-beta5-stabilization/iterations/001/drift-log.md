@@ -1983,3 +1983,32 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Class closure**: `tools/maintenance/sweep/sweep-driver.tests.ps1` case 11 (the section is extracted, and a change
   outside it is not a change while one inside it is). The crew's own home check is a session tool, not in the
   repository, so it has no executable guard.
+
+### DRIFT-059 — A unit test started a real detached reviewer on every run, and its log raced Pester's cleanup (finding; 2026-11-12)
+
+- **Observed**: the full sweep of `fddd83bd` (02:31 to 03:35 local) ran 279 suites with 0 failed, but one lane,
+  `f203-i001-t008-suites`, failed on `tests/unit/review-navigator-stops.Tests.ps1`. Run alone the way the lane runs it
+  (`pwsh -File`), it failed three times out of three: all six tests passed, and the container failed with "Exception
+  calling Delete ... The process cannot access the file 'entry.out.log' because it is being used by another process"
+  in Pester's TestDrive cleanup.
+- **Cause**: the last case (campaign authority off, a done blocking verdict on the current files, added in `dec8529a`)
+  reaches the legacy navigator's fire step. Its fixture records the verdict but not the tree as already fired, so the
+  navigator called `Start-ContinuousCoReviewServiceRun`. That spawned a real `worktree-review-detached-entry.ps1` into
+  `$TestDrive`, which opens `entry.out.log` as a transcript at once. Whether Pester's cleanup or the reviewer's
+  transcript came first decided the result.
+- **How long**: `%TEMP%` holds 22 `legacy-blocking` test folders with such a run, from 2026-11-09 13:24 to 2026-11-12
+  03:38 local, one per run of the case (the sweep's at 03:10, the crew's reproductions after it). Each run's `status.json` says `failed` / `orchestrator-exception` within about
+  1 s (the repository was already gone: "not a git repository"), so none reached a reviewer host. Earlier sweeps passed
+  the lane because the reviewer usually started after the cleanup and re-created only its own run folder (the likely
+  reading of why the folders exist while the lane passed). No other test project name has such a leftover run
+  since 2026-11-01.
+- **Fix**: `ecc131b2` (test first, 1 red) asserts that the case does not fire and never calls
+  `Start-ContinuousCoReviewServiceRun` (mocked, so a red run spawns nothing). The fix records the tree as fired, as a
+  real run would have. Green three times out of three the lane's way.
+- **Noted, not a finding for 203**: in the legacy authority mode (not the shipped mode), a done verdict that the
+  navigator did not fire itself, such as one from a manual run, leaves the last-fired record unset, and the next Stop
+  fires a second review of the same files.
+- **Left alone**: the 22 leftover test folders in `%TEMP%`.
+- **Class closure**: the case's `Should -Invoke Start-ContinuousCoReviewServiceRun -Times 0` guard. There is no
+  repository-wide guard against a unit test reaching the detached spawn; the `%TEMP%` census is the evidence that this
+  case was the only one.
