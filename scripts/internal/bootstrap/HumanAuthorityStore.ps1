@@ -2918,6 +2918,31 @@ function Invoke-SpecrewAllowanceResetSlotLocked {
     }
 }
 
+function Resolve-SpecrewActiveReviewCampaignId {
+    # Feature 203 T012 (FR-041): the review campaign of the active iteration (start-context session_state), through the
+    # review engine's one derivation (Get-ReviewCampaignIdForIteration), loaded the way the budget snapshot loads it when
+    # the caller has not. '' when the session names no feature or iteration, or no engine can be loaded.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    try {
+        $contextPath = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/start-context.json'
+        if (-not (Test-Path -LiteralPath $contextPath -PathType Leaf)) { return '' }
+        $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 16 -ErrorAction Stop
+        $session = if ($context.PSObject.Properties['session_state']) { $context.session_state } else { $null }
+        if ($null -eq $session) { return '' }
+        $feature = if ($session.PSObject.Properties['feature_ref']) { [string]$session.feature_ref } else { '' }
+        $iteration = if ($session.PSObject.Properties['iteration_number']) { ([string]$session.iteration_number).Trim() } else { '' }
+        if ([string]::IsNullOrWhiteSpace($feature) -or $iteration -notmatch '^\d+$') { return '' }
+        if (-not (Get-Command Get-ReviewCampaignIdForIteration -ErrorAction SilentlyContinue) -and (Get-Command Get-SpecrewReviewEngineLoadPath -ErrorAction SilentlyContinue)) {
+            $engine = Get-SpecrewReviewEngineLoadPath -ProjectRoot $ProjectRoot
+            if (-not [string]::IsNullOrWhiteSpace([string]$engine)) { . $engine }
+        }
+        if (-not (Get-Command Get-ReviewCampaignIdForIteration -ErrorAction SilentlyContinue)) { return '' }
+        return [string](Get-ReviewCampaignIdForIteration -FeatureId (Split-Path -Leaf $feature.Trim()) -IterationNumber ('{0:000}' -f [int]$iteration))
+    }
+    catch { return '' }
+}
+
 function Write-SpecrewAllowanceResetAuthorization {
     # SPECREW-AUTHORITY-CONTROL: allowance-reset
     [CmdletBinding()]
@@ -2952,6 +2977,8 @@ function Write-SpecrewAllowanceResetAuthorization {
         response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
         evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
         observed_at = $NowUtc; spent_at = $null; turn_identity = [string]$TurnIdentity
+        # Feature 203 T012 (FR-041): the review campaign whose budget the reset tops up.
+        campaign_id = (Resolve-SpecrewActiveReviewCampaignId -ProjectRoot $ProjectRoot)
     }
     if ([IO.File]::Exists($path)) {
         $existing = $null
