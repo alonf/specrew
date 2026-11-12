@@ -378,6 +378,14 @@ foreach ($excludedPath in $rulingExclusions.Keys) {
         $excludedPath, $rulingExclusions[$excludedPath], $declared)
 }
 
+# --- SC-001's fixture is what a fresh checkout has (reviewer ruling 2026-11-12, under the maintainer's delegation) --
+# project-path-resolution-regression.ps1 builds its fixture by copying this repository's .specrew. A copy of the
+# working folder took the developer's gitignored session state with it (last-start-prompt.md, start-context.json,
+# and the authority, review and runtime stores), so `specrew start` met a stale prompt and the result depended on
+# whoever ran it. The copy takes the files git tracks.
+$sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
+Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture copies only the files git tracks under .specrew, so its result does not depend on the developer's session files"
+
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
     Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
