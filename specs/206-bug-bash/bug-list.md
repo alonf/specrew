@@ -535,3 +535,40 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   output is the dry-run summary with no project path. Cause not established.
 - **Not fixed here.** For iteration 002, with item 23: the probe belongs in a temp folder, and a failed cleanup should
   be reported.
+
+## 26. `mechanical-findings-contract.ps1` passed an invalid document whenever `Test-Json` returned false without throwing
+
+- **Observed (2026-11-12, CI on `103a5e3b`):** Specrew CI run 43315180157, job 131523011721 (Deterministic gate,
+  T015's per-push step): "FAIL: Schema contract should reject demoted findings that omit dispositionRef." The other
+  22 scripts in the step passed. The same script passed on `d258e060` (run 43274075287) and locally, and nothing in
+  it or in the product changed between the two heads.
+- **Runner image:** green on `ubuntu24/20261111.370`, red on the older `ubuntu24/20261101.360`.
+- **Cause:** its helper `Test-FixtureAgainstSchema` ran `$null = Test-Json ...` and returned `$true` unless an
+  exception was thrown. Depending on the PowerShell version, a schema mismatch either throws or returns `$false`, and
+  the helper dropped the `$false`. The check reproduces the defect on this machine's pwsh 7.6.10 with a `Test-Json`
+  stand-in that returns `$false`.
+- **Fix (reviewer ruling 2026-11-12, under the maintainer's delegation):** the helper returns `Test-Json`'s own result;
+  an exception still counts as invalid. RED 1/55 in `ff8a39a8`, GREEN 55/55 in `6fd9fcd9`; DRIFT-206-I001-020.
+- **Same pattern elsewhere:** none. A search of `tests/` for a `try` block that discards a command's result with
+  `$null =` and then returns `$true` finds only this helper.
+
+## 27. `journal-fault-injection.tests.ps1` failed on macOS: concurrent dispatchers exited non-zero and journaled nothing
+
+- **Observed (2026-11-12, CI on `103a5e3b`):** Cross-Platform Validation run 43315180135, job 131521200957
+  "Deterministic fake-provider review runtime (macos-latest)", step "Hook-output journal concurrent append (case e)
+  and outage buffer". Part 1 of case (e), with 4 writers and 4,000 appends, passed: no torn line, nothing missing,
+  no degradation. In part 2 (real dispatcher processes on Stop, two at a time), pair 1 exited 0 but pairs 2 to 5
+  each exited non-zero, and "every concurrent dispatcher journaled its stop reason (8 missing of 10)": 9 failures.
+  The same job was green on `d258e060` (run 43274075221).
+- **Not a timing assertion.** The dispatcher processes failed, and the stop reasons of the 8 that failed were never
+  journaled. That is product behaviour in the hook dispatcher under concurrent Stop, so it is a higher severity than
+  the timing class of items 13 and 14.
+- **Why the dispatchers exited: the log does not say.** Case (e) discards each dispatcher's standard output and error
+  (`$null = $p.StandardOutput.ReadToEndAsync()`, the same for error) and asserts only `ExitCode -eq 0`, so neither an
+  exit code nor a message reaches the log. Everything after pair 1 failing is consistent with state left by pair 1
+  (a lock or marker) rather than with load, but that is not shown.
+- **No 206 commit caused it:** 206 never changed the dispatcher or this test; the push touched records, the census,
+  the lane guard and two test scripts.
+- **Disposition (reviewer ruling 2026-11-12, under the maintainer's delegation):** not rerun. Handed to feature 203 as
+  HO-206-10, at higher severity than the timing class. A recurrence on 206's next push stops 206's work and is
+  reported.

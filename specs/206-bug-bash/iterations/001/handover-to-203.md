@@ -133,3 +133,20 @@ FR-005.
 - **Cause: not found.** Not rerun (maintainer, 2026-11-12). A recurrence on 206's next push stops 206's work and
   is reported.
 - **Proposed owner**: feature 203 (its area).
+
+## HO-206-10 — `journal-fault-injection.tests.ps1`: concurrent Stop dispatchers exit non-zero on macOS (higher severity)
+
+- **Bug list**: item 27.
+- **Evidence**: Cross-Platform Validation run 43315180135 on `103a5e3b`, job 131521200957 "Deterministic fake-provider
+  review runtime (macos-latest)", step "Hook-output journal concurrent append (case e) and outage buffer". Case (e)
+  part 2: dispatcher pair 1 exits 0; pairs 2 to 5 each exit non-zero; 8 of 10 stop reasons are missing from the
+  journal. Part 1 (4 writers, 4,000 appends) passed.
+- **Severity: higher than HO-206-8 and HO-206-9.** This is not a timing assertion: real dispatcher processes failed
+  under concurrent Stop, and their stop reasons were not journaled.
+- **What the log shows about why: nothing.** The test discards each dispatcher's stdout and stderr and prints no exit
+  code (`tests/unit/journal-fault-injection.tests.ps1`, part 2). A first step for the owner is to print them.
+- **Not caused by 206**: the same job was green on `d258e060` (run 43274075221); 206 never changed the dispatcher or
+  the test.
+- **Not rerun** (reviewer ruling 2026-11-12, under the maintainer's delegation). A recurrence on 206's next push stops
+  206's work and is reported.
+- **Proposed owner**: feature 203.

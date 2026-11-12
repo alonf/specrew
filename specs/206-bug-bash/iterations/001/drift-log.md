@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 19
-**Resolution rate**: 84% (16/19 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 20
+**Resolution rate**: 85% (17/20 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
@@ -378,6 +378,20 @@ iteration 002 as a required item: feature 206 does not close without it)
   in `3977131d` (the exclusion reason).
 - **Class closure**: the lane guard fails if the refusal stops being the script's first statement, gains a bypass,
   or the script writes anything when run. Iteration 002 removes the refusal together with the fixes.
+
+### DRIFT-206-I001-020 — T015 fixed a registered script outside its owned files: mechanical-findings-contract.ps1
+
+- **Recorded**: 2026-11-12, at the reviewer's ruling under the maintainer's delegation (CI on `103a5e3b`).
+- **What**: `tests/integration/mechanical-findings-contract.ps1`, registered per push by T015, went red on CI on one
+  Ubuntu image (`20261101.360`) and green on another (`20261111.370`) with no change to it (bug list item 26). Its
+  helper now returns `Test-Json`'s own result. The same CI run had a macOS failure in the hook dispatcher's journal
+  test (item 27), not rerun and handed to 203 as HO-206-10.
+- **Approval**: the reviewer session, 2026-11-12, under the maintainer's delegation (routine, inside the plan; no
+  approval carried).
+- **Resolution**: RED 1/55 in `ff8a39a8`, GREEN 55/55 in `6fd9fcd9`.
+- **Class closure**: the lane guard runs the lifted helper against a `Test-Json` that returns `$false`, so this script
+  cannot again depend on whether `Test-Json` throws. A search of `tests/` found no other helper that discards a result
+  with `$null =` and counts only an exception as failure; nothing enforces that for new scripts.
 
 <!--
   Every new ### DRIFT-... event includes:
