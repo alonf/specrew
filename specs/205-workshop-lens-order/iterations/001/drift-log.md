@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 23
-**Resolution rate**: 100% (23/23 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-023 class closure open)
+**Total drift events**: 25
+**Resolution rate**: 100% (25/25 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-025 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -398,6 +398,29 @@
   record stays without the block (B5F-049: without the block CI only warns, with it CI fails, as on `cf173030`). Any
   other local governance failure still stops the push.
 - **Class closure**: NONE — the validator is feature 203's area. Added to H-002.
+
+### DRIFT-024 — the retro scaffold refuses a review verdict that wraps onto a second line (finding)
+
+- **Observed**: 2026-11-12, at the start of the retro.
+  `scaffold-retro-artifact.ps1 -IterationDirectory .\specs\205-workshop-lens-order\iterations\001` stopped with
+  `review.md contains an invalid overall verdict: 'accepted: two rounds, three findings, all three fixed failing-test first; stopped by the'.`
+  It read only the first line of the wrapped `**Overall Verdict**` value. The governance check accepts the same
+  `review.md`.
+- **Resolution**: `retro.md` was written by hand to the ceremony's output contract. `review.md` is signed off and was
+  not changed.
+- **Class closure**: NONE — the scaffold is part of the deployed Specrew extension, which 205 changes only through the
+  deploy scripts. Handed over as H-012.
+
+### DRIFT-025 — the retro has the same one-red-commit pattern as review sign-off (finding)
+
+- **Observed**: 2026-11-12. With `retro.md` written and plan.md at `reviewing`, the local governance check fails:
+  `plan.md status 'reviewing' is stale: retro.md exists, so the iteration must be in retro or complete`. The retro sync
+  needs `retro.md` in the commit it binds to with plan.md still at `reviewing`, so that commit fails Lint, as
+  DRIFT-013's did at review sign-off.
+- **Resolution** (maintainer's ruling, 2026-11-12): `retro.md` is pushed with this item and the standing derived-block
+  item failing locally, and Specrew CI may be red on Lint only for this item on that one push. Feature 202 took the
+  same path in `071c6f70`.
+- **Class closure**: NONE — the sync and the validator are feature 203's area. Handed over as H-011.
 <!--
   Every new ### DRIFT-... event includes:
 

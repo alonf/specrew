@@ -285,3 +285,36 @@ source file(s) changed since; 2 of 4 rounds remaining in campaign cmp-205-wor...
 the marker, and keep the consumed pending-stop record in the authority store.
 
 **Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-022.
+
+## H-011 — the retro has the same one-red-commit pattern as review sign-off
+
+**Severity**: medium. Every iteration pays a second red Specrew CI commit, at the retro.
+
+**Failure scenario**: the retro sync needs `retro.md` in the commit it binds to, with plan.md still at `reviewing`
+(the last authorized boundary). The governance check refuses that pair, locally and in CI: "plan.md status
+'reviewing' is stale: retro.md exists, so the iteration must be in retro or complete". So the commit the retro sync
+binds to always fails Lint. It is H-003's pattern at the next boundary.
+
+**Observed**: 2026-11-12, feature 205 iteration 001; feature 202 iteration 003 took the same path in `071c6f70`.
+
+**Proposed class closure (for 203 to decide)**: one fix for both boundaries. Let the check accept the owed artifact
+with the previous phase line while that boundary's crossing is pending, or let the sync bind to the commit before the
+artifact and check the artifact in the working tree.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-025.
+
+## H-012 — the retro scaffold reads only the first line of a wrapped Overall Verdict
+
+**Severity**: low. The scaffold refuses a `review.md` that the governance check accepts.
+
+**Failure scenario**: `scaffold-retro-artifact.ps1` reads the `**Overall Verdict**` value from its first line only.
+A verdict wrapped at the line-length limit is cut mid-sentence and rejected as invalid, so the retro is written without
+the scaffold.
+
+**Observed**: 2026-11-12, feature 205 iteration 001:
+`review.md contains an invalid overall verdict: 'accepted: two rounds, three findings, all three fixed failing-test first; stopped by the'.`
+
+**Proposed class closure (for 203 to decide)**: read the verdict up to the next field or blank line, as the validator
+does, and add a test with a wrapped verdict.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-024.
