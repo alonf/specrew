@@ -304,3 +304,81 @@ Describe 'T012: workflow permissions' {
         $script:Jobs['full-repo-validator'] | Should -Match '-FindingsJsonPath'
     }
 }
+
+Describe 'T012 (ruling 2026-11-12): the tracking issue belongs to the default branch' {
+    BeforeAll {
+        $text = Get-Content -LiteralPath $script:Workflow -Raw
+        $jobsText = $text.Substring($text.IndexOf("`njobs:"))
+        $script:BranchJobs = @{}
+        foreach ($m in [regex]::Matches($jobsText, '(?ms)^  ([A-Za-z0-9_-]+):\s*\r?\n(.*?)(?=^  [A-Za-z0-9_-]+:\s*\r?\n|\z)')) {
+            $script:BranchJobs[$m.Groups[1].Value] = $m.Groups[2].Value
+        }
+
+        # Evaluates a job's `if:` expression for one trigger. Only the tokens the condition needs are known;
+        # any other token fails the test rather than being guessed at. Comparison is case-insensitive, as in
+        # Actions. Parenthesize mixed && and ||: -and and -or share one precedence in PowerShell.
+        function Test-JobCondition {
+            param([string]$Expression, [hashtable]$Context)
+            $e = $Expression.Trim()
+            if ($e -match '^\$\{\{\s*(.*?)\s*\}\}$') { $e = $Matches[1] }
+            $contextMap = @{
+                'github.event_name' = 'event_name'
+                'github.ref' = 'ref'
+                'github.ref_name' = 'ref_name'
+                'github.event.repository.default_branch' = 'default_branch'
+            }
+            $out = New-Object System.Text.StringBuilder
+            $tokens = [regex]::Matches($e, "\s+|'(?:[^']|'')*'|\(|\)|,|==|!=|&&|\|\||!|[A-Za-z_][A-Za-z0-9_.\-]*|.")
+            for ($i = 0; $i -lt $tokens.Count; $i++) {
+                $t = $tokens[$i].Value
+                if ($t -match '^\s+$') { [void]$out.Append(' '); continue }
+                if ($t.StartsWith("'")) { [void]$out.Append($t); continue }
+                switch -CaseSensitive ($t) {
+                    '(' { [void]$out.Append('('); continue }
+                    ')' { [void]$out.Append(')'); continue }
+                    ',' { [void]$out.Append(','); continue }
+                    '==' { [void]$out.Append(' -eq '); continue }
+                    '!=' { [void]$out.Append(' -ne '); continue }
+                    '&&' { [void]$out.Append(' -and '); continue }
+                    '||' { [void]$out.Append(' -or '); continue }
+                    '!' { [void]$out.Append(' -not '); continue }
+                    'always' {
+                        if ($i + 2 -lt $tokens.Count -and $tokens[$i + 1].Value -eq '(' -and $tokens[$i + 2].Value -eq ')') {
+                            [void]$out.Append('$true'); $i += 2; continue
+                        }
+                        throw "always must be called as always()"
+                    }
+                    'format' { [void]$out.Append('[string]::Format'); continue }
+                    default {
+                        if ($contextMap.ContainsKey($t)) { [void]$out.Append(('([string]$Context[''{0}''])' -f $contextMap[$t])); continue }
+                        throw "Unknown token in the job condition: '$t'"
+                    }
+                }
+            }
+            return [bool](& ([scriptblock]::Create("param(`$Context) $($out.ToString())")) $Context)
+        }
+    }
+
+    It 'notifies for the scheduled run and a manual run on main, never for a manual run on another branch; the validator still runs anywhere' {
+        $script:BranchJobs.ContainsKey('notify') | Should -BeTrue
+        $ifMatch = [regex]::Match($script:BranchJobs['notify'], '(?m)^    if:[ \t]*(.+?)[ \t]*\r?$')
+        $ifMatch.Success | Should -BeTrue -Because 'the notify job needs a job-level condition'
+        $condition = $ifMatch.Groups[1].Value
+        $condition | Should -Match '\balways\(\)' -Because 'a red validator night must still reach the notifier'
+
+        $cases = @(
+            # A scheduled run is always on the default branch; its event carries no repository object.
+            @{ Name = 'schedule (no repository in the event)'; Expected = $true; Context = @{ event_name = 'schedule'; ref = 'refs/heads/main'; ref_name = 'main'; default_branch = '' } }
+            @{ Name = 'schedule'; Expected = $true; Context = @{ event_name = 'schedule'; ref = 'refs/heads/main'; ref_name = 'main'; default_branch = 'main' } }
+            @{ Name = 'manual run on main'; Expected = $true; Context = @{ event_name = 'workflow_dispatch'; ref = 'refs/heads/main'; ref_name = 'main'; default_branch = 'main' } }
+            @{ Name = 'manual run on a feature branch'; Expected = $false; Context = @{ event_name = 'workflow_dispatch'; ref = 'refs/heads/206-bug-bash'; ref_name = '206-bug-bash'; default_branch = 'main' } }
+            @{ Name = 'manual run on a branch named like main'; Expected = $false; Context = @{ event_name = 'workflow_dispatch'; ref = 'refs/heads/main-copy'; ref_name = 'main-copy'; default_branch = 'main' } }
+            @{ Name = 'manual run on a tag named main'; Expected = $false; Context = @{ event_name = 'workflow_dispatch'; ref = 'refs/tags/main'; ref_name = 'main'; default_branch = 'main' } }
+        )
+        foreach ($case in $cases) {
+            Test-JobCondition -Expression $condition -Context $case.Context | Should -Be $case.Expected -Because "notify on '$($case.Name)' (condition: $condition)"
+        }
+
+        $script:BranchJobs['full-repo-validator'] | Should -Not -Match '(?m)^    if:' -Because 'the validator job runs on any branch'
+    }
+}
