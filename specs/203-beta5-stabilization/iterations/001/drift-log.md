@@ -2042,3 +2042,6 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 
   The audit is a function (`Invoke-SpecrewAuthorityAudit`), not yet on any command. Records written before T012 name
   no turn, so the audit fails this repository's own store until those records are retired.
+- **Class closure**: `tests/unit/authority-audit.Tests.ps1`, in lane `f203-i001-suites` (`4c8042ff`), pins the three
+  readings as built, so a ruling that changes one changes a test first. The ownership list in the plan has no executable
+  check; this entry is its record.
