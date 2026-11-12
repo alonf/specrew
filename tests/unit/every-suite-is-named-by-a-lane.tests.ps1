@@ -385,6 +385,10 @@ foreach ($excludedPath in $rulingExclusions.Keys) {
 # whoever ran it. The copy takes the files git tracks.
 $sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
 Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture copies only the files git tracks under .specrew, so its result does not depend on the developer's session files"
+# A fresh copy of a governed project has features but no session files, which `specrew start` reads as stale
+# state; with no console it refuses (item 1, T001). The start case chooses recovery A itself, so SC-001 measures
+# path resolution (maintainer, option 1, 2026-11-12).
+Assert-True ($sc001Text -match "(?s)scripts\\specrew-start\.ps1'\s*\r?\n\s*Arguments\s*=\s*'[^']*-RecoveryChoice A\b") "SC-001's start case passes -RecoveryChoice A, so a fresh fixture's missing session files cannot stop it"
 
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
