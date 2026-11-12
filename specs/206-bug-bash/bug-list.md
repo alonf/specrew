@@ -372,3 +372,89 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   was green on the same job (run 43113590661).
 - **Not rerun** (maintainer, 2026-11-12). Handed to feature 203 as HO-206-9. A recurrence on 206's next push
   stops 206's work and is reported.
+
+## 15. Tests depend on the installed Specrew module's dashboard renderer
+
+- **Recorded (maintainer, 2026-11-12, T014 ruling item 1):** a test should not depend on the installed module.
+- **Observed (T014's reading):** when a scratch project has no `scripts/internal/dashboard-renderer.ps1`, the
+  validator (`extensions/specrew-speckit/scripts/validate-governance.ps1:2561-2576`), the reviewer scaffold
+  (`scaffold-reviewer-artifacts.ps1:2169-2187`) and the feature-closeout scaffold
+  (`scaffold-feature-closeout-dashboard.ps1:158-166`) load the renderer from the installed Specrew module
+  (`Get-Module -ListAvailable Specrew`). Several of the scripts T015 registers run them on such scratch projects. On
+  this machine they load 0.40.0 from the Documents module folder; on a CI runner with no module they take the
+  no-renderer path. The result can then depend on which Specrew version the machine has installed, not on the tree
+  under test.
+- **Not fixed here.** Fix shape for iteration 002: the scratch fixtures carry the tree's own renderer, or the
+  scripts take the renderer path explicitly, so no test reads the installed module.
+
+## 16. `substantive-interaction-model-iteration2.ps1` asserts a README section that was removed
+
+- **Observed (T014, 2026-11-12):** "Docs/template truth scenario missing expected pattern 'Feature 016 Interaction
+  Model' in README.md" (`tests/integration/substantive-interaction-model-iteration2.ps1:107`). The section was
+  removed by `b27f35c4` ("docs: refresh README + getting-started + user-guide", 2026-05-22). The script stops at its
+  first failure, so its later assertions are unmeasured.
+- **Disposition (maintainer, 2026-11-12):** excluded from the census with the reason "stale README assertion
+  (section removed by b27f35c4)"; fixed in iteration 002.
+
+## 17. `distribution-module-publish.ps1` would publish to PSGallery when `PSGALLERY_API_KEY` is set (severity: high)
+
+- **Observed (T014's reading, 2026-11-12):** its last case (`tests/integration/distribution-module-publish.ps1:250-256`)
+  runs the release script with `-ReleaseMode publish-stable` and a valid tag ref, and expects it to fail because no
+  API key is present. The script does not clear `PSGALLERY_API_KEY`, which the release script reads by default. In a
+  shell or runner where that variable is set, the case runs a real stable publish. Also unsure: PowerShellGet's
+  `Publish-Module -WhatIf` runs its NuGet bootstrap before the `-WhatIf` check, which can write under
+  `%LOCALAPPDATA%`.
+- **Severity: high (maintainer, 2026-11-12).**
+- **Disposition (maintainer, 2026-11-12):** excluded from the census with the reason "would publish to PSGallery if
+  PSGALLERY_API_KEY is set". Fix shape: the case clears the variable (and restores it) itself, or the release script
+  refuses a publish whose caller did not ask for one explicitly.
+
+## 18. `multi-host-smoke.ps1` assigns to PowerShell's read-only `$Host`
+
+- **Observed (T014's reading, 2026-11-12):** `tests/manual/multi-host-smoke.ps1:91` is `foreach ($host in $Hosts)`.
+  PowerShell variable names are case-insensitive, so the loop variable is the automatic `$Host`, which cannot be
+  assigned; the loop is expected to fail with "Cannot overwrite variable Host because it is read-only or constant".
+  Not run (it runs the installed `specrew init` and `specrew start`, and init deploys hooks), so the failure is read,
+  not observed.
+- **Disposition (maintainer, 2026-11-12):** the script is excluded (writes the real home). Fix: rename the loop
+  variable.
+
+## 19. `feature-017-dashboard-core.ps1` is red: its fixture is not a Specrew project to `specrew where`
+
+- **Observed (T015, 2026-11-12, run alone, home hook files unchanged):** "FAIL: Healthy fixture: specrew where should
+  succeed." `scripts/specrew.ps1 where --project-path <fixture copy>` exits 1 with "ERROR: 'specrew where' requires a
+  Specrew-managed project" and "WARNING: Specrew project setup is missing". The fixture
+  `tests/integration/fixtures/feature-017-dashboard/healthy-repository` was last changed on 2026-05-15 (`17e2a4c2`);
+  the check's message first appears in `29a130b2` (Feature 021's slash-command surface, 2026-05-18). The script stops
+  at its first failure.
+- **Disposition (maintainer, 2026-11-12):** excluded with its cause as the reason; fixed in iteration 002.
+
+## 20. `feature-018-rich-dashboard.ps1` is red: the rendered dashboard no longer matches its golden file
+
+- **Observed (T015, 2026-11-12, run alone, home hook files unchanged):** "FAIL: Rich-capable replay should match the
+  expected rich dashboard contract." The test renders `fixtures/feature-018-dashboard/rich-capable-repository` with
+  the tree's renderer and compares it with `rich-capable-expected.txt`.
+- **Probe (same fixture and renderer, outside the test's scratch layout):** 59 lines against 57 expected. The
+  velocity headline differs (6.08 against 3.65 SP/day; 12 against 20 calendar days for the same 73 SP), and an
+  added line "Chosen: Feature 018-velocity-dashboard-visual-richness, from an older feature pointer that does not
+  record its branch." The probe's repository name, branch and rendering mode also differ, which is the probe's
+  layout, not evidence.
+- **Cause: not established.** Either the golden file is stale against later renderer changes or the velocity
+  calculation changed behaviour; the fix decides which.
+- **Disposition (maintainer, 2026-11-12):** excluded with its cause as the reason; fixed in iteration 002.
+
+## 21. `validator-hardening-iteration2.ps1` is red: `specrew start` pauses on agent and charter files it wrote itself
+
+- **Observed (T015, 2026-11-12, run alone, 944 s, home hook files unchanged):** 14 of its first 15 checks pass;
+  assertion 3 fails: "Bookkeeping-only copilot-instructions changes should not trigger pause-and-confirm." The second
+  `specrew start -NoLaunch` writes PAUSE-AND-CONFIRM naming `.github/agents/squad.agent.md` and five
+  `.squad/agents/*/charter.md` files.
+- **Cause:** item 2b's cause beyond the file T003 fixed. The first start run heals `squad.agent.md` (the fixture has
+  a one-line stub) and creates the five charters (the fixture has none); the test commits everything (`git add -A`);
+  the next run classifies those Specrew-written files as user changes. T003's approved design strips matched
+  `specrew-managed` blocks in `.github/copilot-instructions.md` only.
+- **Disposition (maintainer, 2026-11-12, SC-002 option 1):** excluded with its cause as the reason. SC-002 is not met
+  in iteration 001 and is a required item for iteration 002: feature 206 does not close without this script green
+  and registered, in the release manifest (not per push). For iteration 002 planning, a design of one page at most:
+  what `specrew start` does with whole files it created or repaired itself, and which session-loaded files get the
+  matched-block treatment.

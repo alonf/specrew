@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T013
-**Tasks Remaining**: T014, T015, T018 (3 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run), T014 (stopped for the maintainer's ruling: `t014-held-scripts.md`)
+**Last Completed Task**: T014
+**Tasks Remaining**: T015, T018 (2 planned)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 red, SC-002 required in iteration 002 by ruling 2026-11-12), T015 (stopped for the maintainer's review of SC-001's supervised run: `t015-registration.md`)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T12:05:00Z
+**Updated**: 2026-11-12T19:30:00Z
 
 ## Execution Summary
 
@@ -90,11 +90,20 @@
   CI-run registries. SC-004 is proved both ways on temp fixtures for five file names. The sweep was not run for
   real: `-ListOnly` (475 to run, 36 held) and a temp-repository run of two trivial scripts test it. The one guard
   failure is this repository's 36 unregistered tests, green at T015 (DRIFT-206-I001-012).
-- T014 (FR-012; SC-001, SC-007), stopped: the 36 held scripts read; 19 read safe and run alone with the home hook files
+- T014 (FR-012; SC-001, SC-007), done (ruled 2026-11-12): the 36 held scripts read; 19 read safe and run alone with the home hook files
   hashed before and after each (unchanged every time; repository status unchanged): 18 green, 1 red
   (`substantive-interaction-model-iteration2.ps1`, a README section removed by `b27f35c4`). Not run: 2 read safe and
   held for the maintainer, 10 that write the home folder (including SC-001's and SC-002's scripts), 1 unsure, 4 on the
   never-run list. Report: `t014-held-scripts.md`.
+- T015 (FR-012; SC-001, SC-002), stopped for the maintainer: by the T014 ruling and the rulings after it, 23 scripts
+  run per push in a Specrew CI step (the 17 read-safe green scripts and the six `specrew-start-*`, each under 60 s),
+  `validator-hardening-iteration1.ps1` is in the release manifest, and 12 are excluded with their reasons; the held
+  list is empty and the lane guard requires it (RED 16/49 `ec541bae`, GREEN 49/49 `95c28953`). The eight start-path
+  scripts point the user profile at a temp file themselves (RED 9/34 `963fc149`, GREEN `8f1e5f0c`;
+  DRIFT-206-I001-013). A T003 regression found here, fixed: RED 2/10 `968022f3`, GREEN 10/10 `30fa853a`
+  (DRIFT-206-I001-014). SC-002 is not met in iteration 001 (`validator-hardening-iteration2.ps1` red at assertion 3,
+  bug list item 21; required in iteration 002). `.specrew/verification-plan.json` unchanged. Report:
+  `t015-registration.md`; SC-001's supervised run is reported there, not registered until the maintainer has seen it.
 
 ## Notes
 

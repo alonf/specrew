@@ -208,7 +208,9 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** FR-011; SC-004.
   - **Owns:** `tests/support/test-census.ps1`, `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`,
     `tests/full-powershell-test-sweep.ps1`.
-- [ ] T014 [owner: Implementer] [sp: 2.0] **The 35 scripts: read, run the safe ones, then stop for the maintainer.**
+- [x] T014 [owner: Implementer] [sp: 2.0] **The 35 scripts: read, run the safe ones, then stop for the maintainer.**
+  - **Done (2026-11-12):** the 36 held scripts read; 19 run alone with home unchanged (18 green, 1 red); report
+    `iterations/001/t014-held-scripts.md` (`fd8c6d28`); ruled by the maintainer on 2026-11-12, built in T015.
   - **Read first:** each script for writes outside its project or hook deployment. **Any script that calls
     `specrew-update.ps1` or the hook deployment is not run and is listed for the maintainer.**
   - **`project-path-resolution-regression.ps1`** (maintainer, plan verdict): it calls `specrew-update.ps1` only
@@ -224,6 +226,14 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Depends:** T013.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
 - [ ] T015 [owner: Implementer] [sp: 1.0] **Register the 35 per the maintainer's ruling.**
+  - **Stopped (2026-11-12) for the maintainer's review of SC-001's supervised run:** 23 scripts per push (a Specrew
+    CI step), `validator-hardening-iteration1.ps1` to the release manifest, 12 excluded with reasons, the held list
+    empty and required empty (RED 16/49 `ec541bae`, GREEN 49/49 `95c28953`). The start-path scripts point the user
+    profile at a temp file (RED 9/34 `963fc149`, GREEN `8f1e5f0c`; DRIFT-206-I001-013). A T003 regression found here
+    and fixed (RED 2/10 `968022f3`, GREEN 10/10 `30fa853a`; DRIFT-206-I001-014). SC-002 is not met in iteration 001
+    (maintainer, option 1): `validator-hardening-iteration2.ps1` is red at assertion 3 (bug list item 21) and is
+    required in iteration 002. `project-path-resolution-regression.ps1` is not registered until the maintainer has
+    seen its supervised run. Report: `iterations/001/t015-registration.md`.
   - **Work:** a per-push lane or the release manifest per the ruling; slow scripts to the release manifest; a
     suite added to a verification lane is read under T014's rule first.
   - **Acceptance:** `project-path-resolution-regression.ps1` and `validator-hardening-iteration2.ps1` green and

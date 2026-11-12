@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 12
-**Resolution rate**: 83% (10/12 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 14
+**Resolution rate**: 86% (12/14 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
@@ -248,6 +248,55 @@ iteration 002 as a required item: feature 206 does not close without it)
 - **Resolution**: lands in T013's fix commit `798ded31`; the suite passes after it.
 - **Class closure**: NONE — a one-off fixture follow-up; the lane guard's fixture run of the sweep now copies the
   census the same way, so a sweep that cannot find its census fails there first.
+
+### DRIFT-206-I001-013 — T015 changed test files outside its owned files: the profile override and the lane guard
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (T014 ruling, item 3: "This is a change to test files
+  outside T015's list; drift entry").
+- **What**: T015 owns `.github/workflows/specrew-ci.yml`, `.specrew/release-gate-suites.txt`,
+  `.specrew/verification-plan.json` and `tests/support/test-census.ps1`. By the ruling it also changes:
+  - the eight scripts that run `scripts/specrew-start.ps1` (`project-path-resolution-regression.ps1`, the six
+    `specrew-start-*.ps1`, `validator-hardening-iteration2.ps1`): each sets `SPECREW_USER_PROFILE_PATH` to a temp
+    file at its top, so `specrew start` writes its user profile there and never to the real home, whatever shell
+    runs the script;
+  - `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` (T013's file): the test the ruling requires (item 6: the
+    held list is empty), the profile override checked in each of the eight scripts, and each held script found where
+    the ruling put it.
+- **Same ruling, decisions recorded**: `feature-017-dashboard-core.ps1` and `feature-018-rich-dashboard.ps1`, run
+  alone at T015, are red, and so is `validator-hardening-iteration2.ps1` (SC-002, ruled 2026-11-12 option 1); excluding a red script needs the maintainer's ruling under FR-012, and the ruling
+  (2026-11-12) excludes each with its cause as the reason, a bug-list entry each (items 19, 20 and 21), fix in iteration 002; SC-002 is not met in iteration 001 and is
+  required in iteration 002. `project-path-resolution-regression.ps1` (SC-001) is not registered until the maintainer has seen its
+  supervised run (item 3c); the held list must still be empty (item 6), so it is excluded with the reason "awaits
+  the maintainer" until that ruling.
+- **Approval**: the maintainer, 2026-11-12 (T014 ruling, items 3 and 6; the dashboard ruling).
+- **Resolution**: RED 9/34 in `963fc149`, GREEN 33/34 in `8f1e5f0c` (the override); RED 16/49 in `ec541bae`, GREEN
+  49/49 in `95c28953` (the held list empty, each script where the rulings put it).
+- **Class closure**: the lane guard fails if any of the eight scripts loses its override or sets it after its first
+  `specrew start` call. Scripts outside the eight that run `specrew start` (those CI already ran before 206) are not
+  covered by that check.
+
+### DRIFT-206-I001-014 — T003's fix stopped `specrew start` when copilot-instructions.md is missing on one side
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (SC-002 ruling, item 4).
+- **What**: found at T015, when the six `specrew-start-*` scripts ran for the first time. Four were red: the second
+  `specrew start` exited 1 with "Cannot bind argument to parameter 'BeforeContent' because it is an empty string."
+  T003's fix (`0621a076`) made `Get-RestartTriggerFiles` read both versions of `.github/copilot-instructions.md`
+  and call the classifier with content; the classifier's mandatory `-BeforeContent` and `-AfterContent` allow
+  `$null` but not an empty string, which is what a file added or deleted since the baseline commit gives. Before
+  T003 the classifier read the files itself and assigned the empty side internally, so binding never saw it. In a
+  user's project this hits the second `specrew start` after the first one created the instructions file.
+- **How it escaped T003's own tests**: T003's unit suite exercised the pure functions with content on both sides,
+  and its one check on `specrew-start.ps1` read the source text (that the call passes `-BeforeContent`) without
+  executing `Get-RestartTriggerFiles`. The two runs that would have executed it were not available: assertion 3 of
+  `validator-hardening-iteration2.ps1` was not run until the start path was read for home writes (T014), and the six
+  `specrew-start-*` scripts ran in no lane (item 5), so nothing ran them after T003 either.
+- **Fix**: RED 2/10 in `968022f3` (the function, extracted from `specrew-start.ps1`, is executed on a temp
+  repository: a file added since the baseline, a file deleted since it); GREEN 10/10 in `30fa853a`. With either side
+  missing or empty, the classifier reads the files itself and compares the absent side as empty, as before T003.
+  The six `specrew-start-*` scripts are green after it, each run alone with home unchanged.
+- **Approval**: the maintainer, 2026-11-12 (fix here: the cause is this feature's item, FR-003).
+- **Class closure**: the six `specrew-start-*` scripts now run per push (T015), so a change to the start path's
+  classification is executed on every push; the T003 suite executes the call site instead of reading its text.
 
 <!--
   Every new ### DRIFT-... event includes:
