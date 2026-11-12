@@ -134,8 +134,16 @@ Describe 'with campaign authority off, the navigator still stops on a completed 
         Set-Content -LiteralPath $resultPath -Encoding UTF8 -Value '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.ps1", "comment": "a blocking finding", "disposition": "blocking" } ] }'
         ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest } | ConvertTo-Json) |
             Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+        # No real reviewer from a unit test (DRIFT-059): every run of this case from 2026-11-09 to 2026-11-12 spawned a
+        # detached worktree-review-detached-entry.ps1 into $TestDrive, and its transcript raced Pester's TestDrive cleanup
+        # ("entry.out.log ... being used by another process"), so the container failed while all six tests passed.
+        Mock -CommandName Start-ContinuousCoReviewServiceRun -MockWith { [pscustomobject]@{ run_id = 'run-nav-mock'; status = 'running' } }
         $decision = script:Invoke-Nav -Root $root
         [string]$decision.stop_block | Should -Not -BeNullOrEmpty -Because ([string]$decision.reason)
         [string]$decision.agent_directives | Should -Not -BeNullOrEmpty
+        # The verdict already covers these files: the navigator fired the review that wrote it, so the same Stop does not
+        # start a second review of the same tree.
+        [string]$decision.action | Should -Not -Be 'fired' -Because ([string]$decision.reason)
+        Should -Invoke -CommandName Start-ContinuousCoReviewServiceRun -Times 0 -Exactly
     }
 }
