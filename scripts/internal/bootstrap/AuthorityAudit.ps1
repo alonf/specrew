@@ -9,7 +9,8 @@
 #     answers, pause decisions, the allowance reset, the partial sign-off, the coverage deferral): their own turn_identity.
 #   - the review authority store's human facts (budget grants, launch grants, reservations, resets, allowed reviewers,
 #     finding dispositions, human dispositions, pause decisions): their own turn_identity. A reservation also cites the
-#     window it is spent in (budget_grant_id, and reset_id when a reset opened it).
+#     window it is spent in: budget_grant_id always, and reset_id when a reset opened it, each existing in the campaign and
+#     joining a typed turn itself.
 #   - run facts (run states, result, recovery, spend, release, claim, finalization): through their run's reservation, which
 #     must pass the audit. A human pause decision authorizes the stop it answers, never a spend (maintainer, 2026-11-12):
 #     a run with run facts, a pause decision and no reservation fails.
@@ -119,21 +120,38 @@ function Invoke-SpecrewAuthorityAudit {
                 'allowed-reviewers'    = @('allowed-reviewer', 'host')
                 'finding-dispositions' = @('finding-disposition', 'finding_key')
             }
+            # Whether each budget grant and reset in this campaign joined a typed turn, for the reservations that cite them.
+            $windowJoined = @{ 'budget-grant' = @{}; 'budget-reset' = @{} }
             foreach ($folder in $simple.Keys) {
                 $kind = $simple[$folder][0]; $idName = $simple[$folder][1]
                 foreach ($file in (& $jsonFiles (Join-Path $dir $folder))) {
                     $fact = & $readJson $file.FullName
-                    $null = & $joinTurn $kind (& $property $fact $idName) $file.FullName (& $property $fact 'turn_identity')
+                    $factId = & $property $fact $idName
+                    $joinedFact = & $joinTurn $kind $factId $file.FullName (& $property $fact 'turn_identity')
+                    if ($windowJoined.ContainsKey($kind) -and -not [string]::IsNullOrWhiteSpace($factId)) { $windowJoined[$kind][$factId] = [bool]$joinedFact }
                 }
             }
             foreach ($file in (& $jsonFiles (Join-Path $dir 'reservations') -Recurse)) {
                 $fact = & $readJson $file.FullName
                 $id = & $property $fact 'reservation_id'
                 $joined = & $joinTurn 'reservation' $id $file.FullName (& $property $fact 'turn_identity')
-                # FR-024: a reservation cites the window it is spent in, not only the (possibly older) slot it holds.
-                if ($joined -and [string]::IsNullOrWhiteSpace((& $property $fact 'budget_grant_id')) -and [string]::IsNullOrWhiteSpace((& $property $fact 'reset_id'))) {
-                    & $fail 'reservation' $id $file.FullName 'no-window-citation' (& $property $fact 'turn_identity')
-                    $joined = $false
+                # FR-024 (maintainer, 2026-11-12): a reservation cites the window it is spent in, not only the (possibly older)
+                # slot it holds. It names the budget grant whether or not a reset opened the window; the grant, and the reset
+                # when one is named, exist in this campaign and themselves join a typed turn.
+                if ($joined) {
+                    $citedGrant = & $property $fact 'budget_grant_id'
+                    $citedReset = & $property $fact 'reset_id'
+                    $windowReason = if ([string]::IsNullOrWhiteSpace($citedGrant)) { 'no-window-citation' }
+                    elseif (-not $windowJoined['budget-grant'].ContainsKey($citedGrant)) { 'cited-budget-grant-missing' }
+                    elseif (-not $windowJoined['budget-grant'][$citedGrant]) { 'cited-budget-grant-not-joined' }
+                    elseif ([string]::IsNullOrWhiteSpace($citedReset)) { '' }
+                    elseif (-not $windowJoined['budget-reset'].ContainsKey($citedReset)) { 'cited-reset-missing' }
+                    elseif (-not $windowJoined['budget-reset'][$citedReset]) { 'cited-reset-not-joined' }
+                    else { '' }
+                    if ($windowReason -ne '') {
+                        & $fail 'reservation' $id $file.FullName $windowReason (& $property $fact 'turn_identity')
+                        $joined = $false
+                    }
                 }
                 if ($joined) { $null = $authorizedRuns.Add((& $property $fact 'run_id')) }
             }
