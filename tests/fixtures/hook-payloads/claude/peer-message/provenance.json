@@ -1,0 +1,18 @@
+{
+  "task": "T013 (feature 203, iteration 001); reviewer ruling 2026-11-12 under the maintainer's delegation",
+  "host": "claude",
+  "method": "ASSEMBLED, not byte-recorded. The wrapper text (prefix and suffix) is verbatim from the transcript record of a real cross-session message this session received on 2026-11-12 at 16:45:44Z (promptId 1ad3e14e-e515-4c1c-bd9b-1a7573a1ee81; type user, isMeta true, promptSource system, turnOrigin peer, origin.kind peer). The hook payload bytes for that message were not captured, and the prompt text the hook received is unverified: the turn ledger's content hash for that prompt event matched none of the transcript text's variants (raw, trimmed, without the trailing note, the body alone). The payload fixture takes its keys from the recorded task-notification payload (tui-userpromptsubmit-host-injected-task-notification.json) and its prompt from the wrapper with the body replaced by the approval phrase. Record the raw payload on the iteration-002 three-host walk.",
+  "fixtures": [
+    {
+      "fixture": "peer-message/peer-message-shape.json",
+      "origin": "assembled-from-transcript",
+      "observed_utc": "2026-11-12T16:45:44Z",
+      "host_version": "Claude Code (this session)"
+    },
+    {
+      "fixture": "assembled-userpromptsubmit-peer-message.json",
+      "event": "UserPromptSubmit",
+      "origin": "assembled"
+    }
+  ]
+}

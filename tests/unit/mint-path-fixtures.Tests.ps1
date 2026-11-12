@@ -57,6 +57,14 @@ $paths = @(
 )
 
 function Get-Act { param($Turn, $Pending) Resolve-SpecrewTypedAct -Turn $Turn -Pending $Pending }
+
+# A cross-session (peer) message: another Claude session's message, delivered to the prompt hook as a prompt (reviewer
+# ruling 2026-11-12, under the maintainer's delegation). The wrapper is verbatim from a real transcript record
+# (fixtures claude/peer-message; assembled, see its provenance.json). The dispatcher gives it origin typed-user today
+# (turn-record-contract.tests.ps1 proves that seam), so the cell feeds it to the classifier with that origin: whatever
+# the origin rule says, a peer message must mint nothing.
+$peerShape = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\fixtures\hook-payloads\claude\peer-message\peer-message-shape.json') -Raw | ConvertFrom-Json
+function New-PeerText { param([string]$Body) return ([string]$peerShape.prefix + $Body + [string]$peerShape.suffix) }
 function Test-Minted { param($Act) [string]$Act.Kind -cne 'none' }
 
 $matrix = [ordered]@{}
@@ -81,6 +89,11 @@ foreach ($p in $paths) {
         Assert-True ([string]$u.Reason -ceq 'origin-unconfirmed' -and [bool]$u.Report) ("{0}: an unconfirmed origin with the act's shape is reported (got {1}/{2})" -f $id, $u.Reason, $u.Report)
     }
     $cells['no-human-turn'] = -not ((Test-Minted $a) -or (Test-Minted $c) -or (Test-Minted $u))
+
+    # (a') A peer message whose body is the act's text alone on its own line, on Claude, with the origin it gets today.
+    $peer = Get-Act (New-Turn -Text (New-PeerText -Body ([string]$p.Text))) $p.Pending
+    Assert-True (-not (Test-Minted $peer)) ("{0}: a cross-session (peer) message mints nothing (got {1}/{2}/{3})" -f $id, $peer.Kind, $peer.Answer, $peer.Reason)
+    $cells['peer-message'] = -not (Test-Minted $peer)
 
     if ($null -eq $p.Phrase) {
         $cells['quoted'] = 'n/a'; $cells['backticks'] = 'n/a'; $cells['pasted'] = 'n/a'
@@ -134,11 +147,11 @@ foreach ($id in $matrix.Keys) {
     }
 }
 Write-Host ''
-Write-Host ('{0,-28} {1,-11} {2,-14} {3,-7} {4,-10} {5}' -f 'mint path', 'legitimate', 'no-human-turn', 'quoted', 'backticks', 'pasted')
+Write-Host ('{0,-28} {1,-11} {2,-14} {3,-6} {4,-7} {5,-10} {6}' -f 'mint path', 'legitimate', 'no-human-turn', 'peer', 'quoted', 'backticks', 'pasted')
 foreach ($id in $matrix.Keys) {
     $r = $matrix[$id]
     $show = { param($v) if ($v -is [string]) { [string]$v } elseif ($v -eq $true) { 'ok' } else { 'FAIL' } }
-    Write-Host ('{0,-28} {1,-11} {2,-14} {3,-7} {4,-10} {5}' -f $id, (& $show $r['legitimate']), (& $show $r['no-human-turn']), (& $show $r['quoted']), (& $show $r['backticks']), (& $show $r['pasted']))
+    Write-Host ('{0,-28} {1,-11} {2,-14} {3,-6} {4,-7} {5,-10} {6}' -f $id, (& $show $r['legitimate']), (& $show $r['no-human-turn']), (& $show $r['peer-message']), (& $show $r['quoted']), (& $show $r['backticks']), (& $show $r['pasted']))
 }
 
 if ($script:failCount -gt 0) { Write-Host "mint-path-fixtures: $($script:failCount) failure(s), $($script:passCount) passed" -ForegroundColor Red; exit 1 }

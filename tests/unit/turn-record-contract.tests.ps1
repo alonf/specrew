@@ -154,6 +154,10 @@ $cases = @(
     @('claude', 'print-userpromptsubmit-typed-hebrew', 'prompt', 'typed-user', 'recorded typed prompt (Hebrew)'),
     @('claude', 'tui-userpromptsubmit-typed', 'prompt', 'typed-user', 'recorded typed prompt'),
     @('claude', 'tui-userpromptsubmit-host-injected-task-notification', 'prompt', 'host-injected', 'recorded host-injected <task-notification>'),
+    # Feature 203 T013 (reviewer ruling 2026-11-12): a cross-session (peer) message is another session's text, not the
+    # human's; the origin the dispatcher hands the providers is what the turn ledger records as turn_origin. ASSEMBLED
+    # payload (claude/peer-message/provenance.json): verbatim wrapper, body the approval phrase alone on its own line.
+    @('claude', 'assembled-userpromptsubmit-peer-message', 'prompt', 'host-injected', 'ASSEMBLED cross-session (peer) message'),
     @('codex', 'tui-userpromptsubmit-typed', 'prompt', 'typed-user', 'recorded typed prompt'),
     @('codex', 'exec-userpromptsubmit-typed', 'prompt', 'typed-user', 'recorded typed prompt (exec)'),
     @('codex', 'synthetic-userpromptsubmit-host-injected', 'prompt-journaled', 'host-injected', 'SYNTHETIC host-injected text caught by the journal match'),
