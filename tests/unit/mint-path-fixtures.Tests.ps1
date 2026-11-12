@@ -65,6 +65,7 @@ function Get-Act { param($Turn, $Pending) Resolve-SpecrewTypedAct -Turn $Turn -P
 # the origin rule says, a peer message must mint nothing.
 $peerShape = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\fixtures\hook-payloads\claude\peer-message\peer-message-shape.json') -Raw | ConvertFrom-Json
 function New-PeerText { param([string]$Body) return ([string]$peerShape.prefix + $Body + [string]$peerShape.suffix) }
+$recordShapes = @((Get-Content -LiteralPath (Join-Path $repoRoot 'tests\fixtures\hook-payloads\claude\transcript-origins\record-shapes.json') -Raw | ConvertFrom-Json).shapes)
 function Test-Minted { param($Act) [string]$Act.Kind -cne 'none' }
 
 $matrix = [ordered]@{}
@@ -94,6 +95,24 @@ foreach ($p in $paths) {
     $peer = Get-Act (New-Turn -Text (New-PeerText -Body ([string]$p.Text))) $p.Pending
     Assert-True (-not (Test-Minted $peer)) ("{0}: a cross-session (peer) message mints nothing (got {1}/{2}/{3})" -f $id, $peer.Kind, $peer.Answer, $peer.Reason)
     $cells['peer-message'] = -not (Test-Minted $peer)
+
+    # (a'') The transcript record decides (maintainer ruling 2026-11-12): a turn is the human's only when its record says
+    # turnOrigin human with promptSource typed or queued. A scheduled prompt is raw text the session wrote when it
+    # scheduled the task, with no wrapper, so no text rule can see it; it reaches the classifier with the origin the
+    # dispatcher gives every prompt today (typed-user) and its whole text the act. Shapes from a real transcript
+    # (fixtures claude/transcript-origins/record-shapes.json); no live phrase is typed in this repository.
+    $recordOk = $true
+    foreach ($shape in @($recordShapes)) {
+        $t = New-Turn -Text ([string]$p.Text)
+        $t | Add-Member -NotePropertyName record_turn_origin -NotePropertyValue ([string]$shape.turnOrigin)
+        $t | Add-Member -NotePropertyName record_prompt_source -NotePropertyValue $(if ($null -eq $shape.promptSource) { '' } else { [string]$shape.promptSource })
+        $got = Get-Act $t $p.Pending
+        $human = ([string]$shape.turnOrigin -ceq 'human') -and (@('typed', 'queued') -ccontains [string]$shape.promptSource)
+        $ok = if ($human) { [string]$got.Kind -ceq [string]$p.Kind } else { -not (Test-Minted $got) }
+        Assert-True $ok ("{0}: a turn whose transcript record is {1} {2} (got {3}/{4}/{5})" -f $id, $shape.kind, $(if ($human) { 'mints' } else { 'mints nothing' }), $got.Kind, $got.Answer, $got.Reason)
+        if (-not $ok) { $recordOk = $false }
+    }
+    $cells['record-origin'] = $recordOk
 
     if ($null -eq $p.Phrase) {
         $cells['quoted'] = 'n/a'; $cells['backticks'] = 'n/a'; $cells['pasted'] = 'n/a'
@@ -155,11 +174,11 @@ foreach ($id in $matrix.Keys) {
     }
 }
 Write-Host ''
-Write-Host ('{0,-28} {1,-11} {2,-14} {3,-6} {4,-7} {5,-10} {6}' -f 'mint path', 'legitimate', 'no-human-turn', 'peer', 'quoted', 'backticks', 'pasted')
+Write-Host ('{0,-28} {1,-11} {2,-14} {3,-6} {4,-7} {5,-7} {6,-10} {7}' -f 'mint path', 'legitimate', 'no-human-turn', 'peer', 'record', 'quoted', 'backticks', 'pasted')
 foreach ($id in $matrix.Keys) {
     $r = $matrix[$id]
     $show = { param($v) if ($v -is [string]) { [string]$v } elseif ($v -eq $true) { 'ok' } else { 'FAIL' } }
-    Write-Host ('{0,-28} {1,-11} {2,-14} {3,-6} {4,-7} {5,-10} {6}' -f $id, (& $show $r['legitimate']), (& $show $r['no-human-turn']), (& $show $r['peer-message']), (& $show $r['quoted']), (& $show $r['backticks']), (& $show $r['pasted']))
+    Write-Host ('{0,-28} {1,-11} {2,-14} {3,-6} {4,-7} {5,-7} {6,-10} {7}' -f $id, (& $show $r['legitimate']), (& $show $r['no-human-turn']), (& $show $r['peer-message']), (& $show $r['record-origin']), (& $show $r['quoted']), (& $show $r['backticks']), (& $show $r['pasted']))
 }
 
 if ($script:failCount -gt 0) { Write-Host "mint-path-fixtures: $($script:failCount) failure(s), $($script:passCount) passed" -ForegroundColor Red; exit 1 }

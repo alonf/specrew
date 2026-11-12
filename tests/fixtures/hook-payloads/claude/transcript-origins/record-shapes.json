@@ -1,0 +1,12 @@
+{
+  "schema": "transcript-origin-shapes/1",
+  "note": "How Claude Code's transcript marks who wrote a user-role record: turnOrigin, promptSource, isMeta and origin.kind, one row per shape. Read from the transcript records of one real Claude Code session (feature 203's implementer session, 2026-11-09 to 2026-11-12); texts are not kept. A test builds a turn's record fields from a row.",
+  "shapes": [
+    { "kind": "typed", "turnOrigin": "human", "promptSource": "typed", "isMeta": null, "origin_kind": "human", "seen": 43, "first_seen_utc": "2026-11-09T20:38:24Z" },
+    { "kind": "queued", "turnOrigin": "human", "promptSource": "queued", "isMeta": null, "origin_kind": "human", "seen": 2, "first_seen_utc": "2026-11-11T09:27:26Z" },
+    { "kind": "bang-command-output", "turnOrigin": "human", "promptSource": null, "isMeta": null, "origin_kind": null, "seen": 3, "first_seen_utc": "2026-11-11T22:26:58Z" },
+    { "kind": "task-notification", "turnOrigin": "task_notification", "promptSource": "system", "isMeta": null, "origin_kind": "task-notification", "seen": 42, "first_seen_utc": "2026-11-09T23:14:11Z" },
+    { "kind": "scheduled", "turnOrigin": "scheduled", "promptSource": "system", "isMeta": true, "origin_kind": null, "seen": 2, "first_seen_utc": "2026-11-12T06:47:00Z" },
+    { "kind": "peer", "turnOrigin": "peer", "promptSource": "system", "isMeta": true, "origin_kind": "peer", "seen": 2, "first_seen_utc": "2026-11-12T16:45:44Z" }
+  ]
+}
