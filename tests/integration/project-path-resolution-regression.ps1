@@ -4,6 +4,16 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# REFUSES TO RUN (feature 206, T015; reviewer ruling 2026-11-12, maintainer's option 1). Supervised runs 3 and 4 wrote
+# into the repository that holds this script: both rewrote specs/206-bug-bash/iterations/001/state.md, and run 4 left
+# a .specrew-squad-probe-* folder at its root. The items, in specs/206-bug-bash/bug-list.md: 23, specrew start
+# re-anchors to, and writes into, a feature outside the project it was given (through the tracked
+# .squad/identity/now.md); 24, this script's fixture was not isolated; 25, specrew init runs its Squad probe in the
+# install root even with -DryRun, and its cleanup fails silently. No switch or variable bypasses this; iteration 002
+# removes it when those items are fixed.
+Write-Host 'project-path-resolution-regression.ps1 does not run until feature 206 bug list items 23, 24 and 25 are fixed (specs/206-bug-bash/bug-list.md). Nothing was run.' -ForegroundColor Yellow
+exit 1
+
 # `specrew start` writes the user profile when it is missing (scripts/specrew-start.ps1). This script points
 # that write at a temp file itself, so it never writes the real home folder and never relies on the shell
 # that runs it (maintainer ruling 2026-11-12, feature 206 T015).
