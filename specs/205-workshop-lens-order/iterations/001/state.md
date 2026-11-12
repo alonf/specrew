@@ -4,18 +4,12 @@
 **Current Phase**: iteration-closeout
 **Iteration Status**: complete
 **Last Completed Task**: T016
-**Tasks Remaining**: (none)
-**In Progress**: (none)
+**Tasks Remaining**: none
+**In Progress**: none
 **Baseline Ref**: 6d85718a87c9be71dbb6298364cfdb1cc6fb6d9b
-**Updated**: 2026-11-11T22:18:28.3510599Z
+**Updated**: 2026-11-11T16:20:00Z
 
 ## Execution Summary
-
-<!-- specrew:task-progress-summary:begin -->
-- Implementation tasks are complete; review-signoff is next.
-- Task progress: 17 complete, 0 in-progress, 0 pending, 0 blocked.
-- Latest completed task: T016
-<!-- specrew:task-progress-summary:end -->
 
 - T001-T004 and T017 (tests first, red-first and baseline) are done. T005-T015 (order, tags, refusal, prose surfaces, copies, green tests, regression, CI steps, proposal) are done.
 - T016 (pre-push gate, push, CI to conclusion) is done: all three workflows green on `d5d1ae06`.

@@ -129,7 +129,11 @@ neither the human nor the crew chose, and a later commit can carry it unnoticed.
 **Proposed class closure (for 203 to decide)**: make the resume summary read-only, computing the summary without
 writing, and leave state.md and tasks-progress.yml to the commands that own them.
 
-**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-017.
+**Update, 2026-11-12** (DRIFT-027): the iteration-closeout seal hashed the rewritten state.md and the untracked
+`tasks-progress.yml` as they stood in the working copy, so the resume rewrite's stale lines were sealed into the closed
+iteration. Undoing it took a maintainer-authorized re-seal. See H-013.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-017 and DRIFT-027.
 
 ## H-006 — review-runtime tests depend on runner speed; one production wait is too short
 
@@ -336,3 +340,37 @@ the scaffold.
 does, and add a test with a wrapped verdict.
 
 **Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-024.
+
+## H-013 — the closeout seals whatever is in the working copy, including an untracked file
+
+**Severity**: medium. A closed iteration can be sealed with content that is in no commit and that no one chose.
+
+**Failure scenario**: at the iteration-closeout verdict the seal hashes the iteration folder's files as they stand in the
+working copy. A session resume had rewritten state.md and created an untracked `tasks-progress.yml` (H-005); both were
+sealed. Committing the files as they should be then breaks the seal, which the governance check fails
+(`Test-ClosedIterationSeals`); keeping the seal means committing the stale lines.
+
+**Observed**: 2026-11-12, feature 205 iteration 001, closeout commit `dce293ad`; undone by a maintainer-authorized
+`specrew reseal`.
+
+**Proposed class closure (for 203 to decide)**: before sealing, refuse a dirty or untracked file in the iteration
+folder, naming it; or seal the committed tree, not the working copy.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-027.
+
+## H-014 — the closeout leaves Completed empty and seals the hardening gate unchecked
+
+**Severity**: medium. Every closeout commit fails Specrew CI Lint unless the closed iteration is re-sealed.
+
+**Failure scenario**: the closeout sets plan.md Status `complete` but leaves `**Completed**:` empty, and seals
+`quality/hardening-gate.md` with rows still `pending-post-implementation`. The governance check fails both ("Complete
+iterations must record a Completed date in plan.md"; "hardening-gate.md still requires runtime evidence or explicit
+closure follow-through"), and fixing either edits a sealed file.
+
+**Observed**: 2026-11-12, feature 205 `dce293ad`. The same on main in feature 202's closeout `794f6559` (Specrew CI run
+40138299911, Lint red on both items).
+
+**Proposed class closure (for 203 to decide)**: the closeout writes the Completed date with the status, and refuses to
+seal while a hardening row is still pending, naming the row; the same governance check runs before sealing, not after.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-028.

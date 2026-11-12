@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "feature": "205-workshop-lens-order",
   "iteration": "001",
-  "sealed_at": "2026-11-12T17:39:19.0632630+00:00",
+  "sealed_at": "2026-11-12T17:54:43.8311785+00:00",
   "sealed_files": [
     {
       "path": "dashboard.md",
@@ -14,15 +14,15 @@
     },
     {
       "path": "drift-log.md",
-      "sha256": "42293b320d46b4b048e0fa5a5b8b3d865bd3f3f8bbb2f7ea4bcdf76136f6f6c7"
+      "sha256": "5368df6d1253d7e127b4367875f9c8e0e6eefeda293e9eba29001843f6cead18"
     },
     {
       "path": "handover-to-203.md",
-      "sha256": "26ef67d9fe186903dd357813fcdabe4181d5e88fa3c97818558f465363f1a57b"
+      "sha256": "a285ceebc3bc9ae80becefa76b411052fd1e41effdbad009e300fe5d96e42a49"
     },
     {
       "path": "plan.md",
-      "sha256": "ea52feca838de429b4644f3767830521be493cd9379f97a0080d9df8cd81a492"
+      "sha256": "79e16e026720338aef9a910fabd6e808bb44600ba73d46a0197d643b8f6804f7"
     },
     {
       "path": "problem-gap-list.md",
@@ -30,7 +30,7 @@
     },
     {
       "path": "quality/hardening-gate.md",
-      "sha256": "e16db2db8780da33941df8e90b8aef2bc21f38868fbaea43040c90a8a840fd9e"
+      "sha256": "faf3c43a6fcd665bceaafdee41de05380b125344e9de32f85c041a6ca22cabcb"
     },
     {
       "path": "quality/mechanical-findings.json",
@@ -50,12 +50,8 @@
     },
     {
       "path": "state.md",
-      "sha256": "9e84cf135f0f7a3018e43d1152fa2c4088a68f9e99b8fae100e796b6b5314c1c"
-    },
-    {
-      "path": "tasks-progress.yml",
-      "sha256": "e837384b2601f1366d92981728504a662c41b2a0c2618802b083ca4a2f2922a3"
+      "sha256": "0c45011dcbbffb9cfc33ba7c397eb76f34ddb25c260e182bb7692367b2791e58"
     }
   ],
-  "source": "iteration-closeout-authorization"
+  "source": "specrew-reseal"
 }

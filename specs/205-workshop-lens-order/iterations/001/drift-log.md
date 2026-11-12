@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 26
-**Resolution rate**: 100% (26/26 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-026 class closure open)
+**Total drift events**: 28
+**Resolution rate**: 100% (28/28 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-028 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -436,6 +436,31 @@
   fixture's `child.pid` with no wait after a 1 s runtime budget. The same read is at lines 151 and 175 as well as at
   line 213, the one that failed.
 - **Class closure**: NONE — the review-runtime tests are feature 203's area. Added to H-006 as sites the census missed.
+
+### DRIFT-027 — the closeout seal captured the working copy, including an untracked file (finding)
+
+- **Observed**: 2026-11-12, at the iteration-closeout verdict. The seal (`.specrew-iteration-seal.json`, sealed
+  17:39:19Z) hashed 13 files as they stood in the working copy, line endings normalized. Two of them were not in any
+  commit:
+  - state.md with the session-resume rewrite (DRIFT-017): its stale Iteration Status, its managed summary block ("review-signoff is next") and its 2026-11-11T22:18:28Z Updated stamp, under the closeout lines.
+  - The untracked `tasks-progress.yml`, which the same resume had created.
+- **Why it matters**: the seal fixed in place lines no one chose and a file never committed. The maintainer's ruling to
+  commit neither could only be carried out by re-sealing.
+- **Resolution**: the closeout commit `dce293ad` holds the files as sealed. The correction commit restores state.md to
+  the closeout lines only, deletes `tasks-progress.yml`, and re-seals with `specrew reseal` (maintainer-authorized).
+- **Class closure**: NONE — the closeout and the seal are feature 203's area. Handed over as H-013, and added to H-005.
+
+### DRIFT-028 — the closeout leaves Completed empty and does not check the hardening gate before sealing (finding)
+
+- **Observed**: 2026-11-12, closeout commit `dce293ad`. The closeout set plan.md Status to `complete` and sealed it with
+  `**Completed**:` empty, and sealed `quality/hardening-gate.md` with two rows still `pending-post-implementation`.
+  The governance check then failed on both: "Complete iterations must record a Completed date in plan.md" and
+  "hardening-gate.md still requires runtime evidence or explicit closure follow-through for concern(s):
+  error-handling-expectations, test-integrity-targets". Fixing either meant editing a sealed file.
+- **Same on main**: feature 202's closeout `794f6559` failed Specrew CI Lint on the same two items (run 40138299911).
+- **Resolution**: `dce293ad` was not pushed alone. The correction commit records Completed 2026-11-12, closes both
+  hardening rows with their runtime evidence, and re-seals.
+- **Class closure**: NONE — the closeout is feature 203's area. Handed over as H-014.
 <!--
   Every new ### DRIFT-... event includes:
 
