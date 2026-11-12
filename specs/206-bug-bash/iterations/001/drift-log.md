@@ -327,7 +327,7 @@ iteration 002 as a required item: feature 206 does not close without it)
 - **Approval**: the maintainer, 2026-11-12 (option 1).
 - **Resolution**: RED 1/51 in `0b54a3e6`, GREEN 51/51 in `3e3ae481`. Supervised run 3 was green on every check but
   rewrote this repository's `state.md` (bug list item 23); see DRIFT-206-I001-018 and -019.
-- **Class closure**: NONE in the product: the question whether a governed project with no session files (a fresh
+- **Class closure**: NONE — a test change only; in the product, the question whether a governed project with no session files (a fresh
   clone) is stale state is left open for the maintainer, with the input in DRIFT-206-I001-017.
 
 ### DRIFT-206-I001-017 — input to iteration 002: the maintainer no longer uses `specrew start`
