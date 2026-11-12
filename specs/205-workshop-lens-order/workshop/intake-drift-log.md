@@ -26,3 +26,25 @@
 ## DRIFT-205-INTAKE-003 — B5F-005 recurred: a stale working directory produced a wrong-cause refusal
 
 **Observed**: 2026-11-10, while closing the code-implementation lens. `confirm-workshop-lens.ps1 -ProjectRoot .` was invoked while the process working directory was `specs/205-workshop-lens-order` (the PowerShell location had been reset to the root, but the .NET current directory had not). It refused with "This feature has no recorded workshop plan yet ... confirm its agenda first", although the agenda was confirmed. Retrying once with an absolute `-ProjectRoot` closed the lens. This is the same shape as B5F-005 (already recorded on main). No new finding, recurrence evidence only.
+
+## DRIFT-205-INTAKE-004 — iteration 002's workshop answers were given by the reviewer session, under the maintainer's delegation
+
+**Observed**: 2026-11-13. The maintainer typed in the crew session that the reviewer session (`specrewreviewer-84`)
+answers iteration 002's workshop questions on their behalf, and that every boundary approval stays theirs, typed in the
+crew session.
+
+**Evidence**:
+
+- The crew asked two workshop questions (the shape of the fix, and which of four rules apply) after the research page
+  the maintainer asked for.
+- The reviewer first sent a hold: "This is not a workshop answer. Hold both pending questions; record nothing as
+  answered." Nothing was recorded during the hold.
+- The reviewer then sent the answers: option 4, and rules 1 to 4 with scope. It reports that the maintainer discussed
+  and agreed them at about 01:20 local on 2026-11-13.
+- No answer was typed by the maintainer in the crew session. The workshop hook logged no receipt for the hold or the
+  answers (last receipt 2026-11-10), so no reviewer message is recorded as a typed human reply (the B5F-064 risk did not
+  occur here).
+
+**Disposition**: the answers are recorded in `workshop/iteration-002-problem-space.md` as the reviewer's, given under
+the maintainer's delegation. This record and the drift log are where that provenance lives. Iteration 002 has no
+`plan.md` yet, so its records are kept in the feature-level `workshop/` folder rather than an iteration folder.

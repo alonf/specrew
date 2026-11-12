@@ -119,6 +119,21 @@ While tagging each lens, the crew lists every problem-side gap it sees for that 
 
 1. **Given** the tagging pass, **When** it completes, **Then** a per-lens gap list is recorded in the feature's iteration artifacts and no question was added.
 
+---
+
+### User Story 6 - The workshop covers the problem space without asking the human more (Priority: P1 for iteration 002)
+
+A human running a design workshop is asked the problem facts that later lenses need (the compliance regime, existing systems and data, where it runs, who operates it, the budget, the users, the threat actors, the data, the outside systems, what operators need), each once, with a recommended answer they can accept in one reply.
+
+**Why this priority**: Amendment A1. A good workshop is the foundation for the later stages, and the gaps found in iteration 001 leave decisions to be made late. The workshop must not get longer for what the human has to decide.
+
+**Independent Test**: The length test reports the reference profile's numbers at each depth; at Light it stays within 50 must-answer decision points and 18 typed replies.
+
+**Acceptance Scenarios**:
+
+1. **Given** a product-domain answer about the compliance regime, **When** security-compliance opens, **Then** that answer is its recommended answer, citing product-domain.
+2. **Given** a touched lens at Light, **When** it opens, **Then** its added questions appear as one list of recommendation lines, each with its reason and consumer, closed by one reply.
+
 ### Edge Cases
 
 - A lens with questions in only one space (for example requirements-nfr, or architecture-core after the move) keeps both sub-headings, with a one-line reason under the empty one.
@@ -157,6 +172,50 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - **FR-021**: Every existing workshop test MUST be run locally and its result reported. Named `specrew-ci.yml` steps MUST cover the new parity test, the extended agenda-confirmation test, and every existing workshop test that covers a file this feature touches and passes. An already-red workshop test MUST be reported as a finding.
 - **FR-022**: Proposal 220 MUST move to `status: active` with `shipped-as: feature-205`. Its status history MUST gain a line recording the three iterations (1: order, tagging, parity, migration; 2: problem-space completeness; 3: two-pass split, back-check, amendments and sweeps after 203), the fifth order surface found at intake (the before-specify command list), and the choice of order option A. `proposals/INDEX.md` MUST follow in both its table row and its summary line.
 
+### Iteration 002 requirements (Amendment A1, 2026-11-13)
+
+Source: the iteration 002 workshop, answered by the reviewer session under the maintainer's delegation
+(`workshop/iteration-002-problem-space.md`). Input: `iterations/001/problem-gap-list.md`.
+
+- **FR-023**: product-domain MUST ask, at every depth including Light, the six cross-cutting facts that the gap list
+  found missing from later lenses: the named compliance or regulatory regime (or none), data residency, the existing
+  systems and data that must be carried over, platform constraints (where it must run), who operates it and when, and
+  the budget. These replace the six gap questions that repeat product-domain, which are NOT added to security-compliance,
+  data-storage or devops-operations.
+- **FR-024**: Each FR-023 answer MUST be handed forward: the later lens it bears on shows it as that lens's recommended
+  answer, naming product-domain as its source. The plan MUST choose the mechanism that adds the least new machinery.
+- **FR-025**: The remaining lens-specific gap questions MUST be added under their lenses' `### Problem questions`:
+  - requirements-nfr: which regulatory or compliance obligations become NFRs
+  - ui-ux: who the UI's users are (skills, devices, context of use)
+  - security-compliance: who the threat actors are
+  - data-storage: what data exists; how sensitive it is; how much there is and how fast it grows
+  - integration-api: which outside systems exist and whose contracts must be honoured; their limits, quotas and SLAs
+  - observability-resilience: what operators need to diagnose; SLO and alerting expectations; the domain's expected
+    failure modes; the observability budget and data that must never be logged
+- **FR-026**: Every question this iteration adds or changes MUST ship with a recommended answer and its reason, written
+  so that a bare "accept" is unambiguous. A lens's recommendations MUST be shown once, as one list closed by one reply,
+  never one prompt per line, and one reply MUST be able to close the lens by accepting all of them. Each line MUST state
+  the recommended answer, its reason in a few words, and where the answer goes.
+- **FR-027**: Each lens this iteration touches MUST define what Light, Standard and Deep ask. Added problem questions
+  default to Light, where they are shown as recommendation lines and accepted unless the human changes them. Depth
+  content for lenses this iteration does not touch is out of scope.
+- **FR-028**: A length test MUST compute, for the reference profile (product-domain, the agenda, the three always-on
+  lenses, code-implementation, security-compliance, data-storage and integration-api) at Light, Standard and Deep:
+  must-answer decision points, typed replies, and recommendation lines. It MUST fail when Light exceeds 50 must-answer
+  decision points or 18 typed replies, and MUST fail when any other number changes without its recorded value being
+  updated in the same change. A self-test MUST prove both failures.
+- **FR-029**: Every question this iteration adds MUST name its consumer, and the consumer MUST exist today: a named
+  spec.md section the reviewer reads, or a later lens that uses the answer as its recommended answer. A "Plan
+  Obligations" entry is not a consumer. A test MUST prove that each named consumer exists.
+- **FR-030**: The code-implementation lens MUST be refreshed against official release notes fetched at implementation
+  time, for each of its six stacks. Each per-stack rule MUST carry the date its sources were checked, and the lens MUST
+  show one "last checked" line per stack when it runs, marked stale after 90 days. Version numbers MUST appear only in
+  that dated line and in the lens's Source Notes, each source with its URL and date. Facts that could not be confirmed
+  MUST be left out.
+- **FR-031**: Proposal 220's status history MUST record the order agreed for after iteration 002: proposal 177 as its
+  own feature (implementer side first, reviewer side after feature 203 merges), then the testing lens (proposals 178 and
+  195 merged), and no new solution-side lens before 177.
+
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: Each user story maps to functional requirements:
@@ -166,8 +225,9 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   - US4: FR-013, FR-018
   - US5: FR-020
   - FR-004, FR-021 and FR-022 cut across the stories.
+  - US6 (iteration 002): FR-023 to FR-029; FR-030 and FR-031 cut across.
 - **TG-002**: The implementer owns all FRs, the reviewer (codex co-review) owns review evidence, and the spec steward owns drift.
-- **TG-003**: All FRs above are in iteration 001. Problem-space completeness is iteration 002. Iteration 003, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014).
+- **TG-003**: FR-001 to FR-022 are in iteration 001. FR-023 to FR-031 (Amendment A1, problem-space completeness) are in iteration 002; if the plan shows they are too much for one iteration, the gap questions and the rules (FR-023 to FR-029) come first and the rest moves to a further iteration, stated at the plan boundary with the sizes. Iteration 003, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014).
 - **TG-004**: Any spec or implementation conflict is recorded in the iteration drift log and routed through clarify, never edited silently into this spec.
 
 ### Key Entities
@@ -177,6 +237,11 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - **Order surface**: a shipped text location listing lenses, classified in the test as full or partial.
 - **Exemption**: a surface that must differ, with its stated reason.
 - **Problem-side gap list**: per lens, the problem questions it lacks. Iteration 2's input.
+- **Recommendation line** (iteration 002): a question shown with a recommended answer, its reason, and its consumer,
+  accepted unless the human changes it.
+- **Reference profile** (iteration 002): product-domain, the agenda, the three always-on lenses, code-implementation,
+  security-compliance, data-storage and integration-api. Today it presents 50 decision points and needs at least 16 typed
+  replies.
 
 ## Success Criteria *(mandatory)*
 
@@ -188,6 +253,17 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - **SC-004**: The old-order agenda fixture resumes and completes, and an out-of-order new agenda is refused with zero reordering.
 - **SC-005**: The named CI steps pass on the feature branch's push, and Specrew CI, Test and Cross-Platform Validation all conclude green with no skipped gate job.
 - **SC-006**: The problem-side gap list covers all 11 lenses.
+- **SC-007** (iteration 002): The length test reports all three numbers for Light, Standard and Deep, before and after
+  the change. At Light the reference profile stays within 50 must-answer decision points and 18 typed replies. The plan
+  records the numbers.
+- **SC-008** (iteration 002): Every question added or changed carries a recommended answer, a reason and a named
+  consumer that exists, and a test proves it.
+- **SC-009** (iteration 002): product-domain asks the six FR-023 facts at Light, and a fixture proves that each one
+  appears in its later lens as the recommended answer, citing product-domain.
+- **SC-010** (iteration 002): The FR-025 questions sit under their lenses' problem headings, the iteration 001 parity
+  and tagging tests still pass, and each lens's extractor count changes by exactly its added questions.
+- **SC-011** (iteration 002): Each code-implementation stack rule carries a sources-checked date, no rule text holds a
+  version number, and a fixture with an old date shows the stale marker.
 
 ## Clarifications
 
@@ -200,6 +276,17 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   - FR-022, the proposal status
   - the before-specify list counts as a full list
 - Clarify ran only after Specrew CI, Test and Cross-Platform Validation all concluded green on `700e6127` with no skipped job, as the maintainer instructed. Specrew CI passed on its approved single rerun; the first-attempt failure is recorded as DRIFT-205-INTAKE-001 in `workshop/intake-drift-log.md`.
+
+### Session 2026-11-13 (Amendment A1, iteration 002)
+
+- The iteration 002 workshop answered the shape and the rules (`workshop/iteration-002-problem-space.md`). The reviewer
+  session answered under the maintainer's delegation; the provenance is recorded in DRIFT-205-INTAKE-004.
+- Shape: no new lens. product-domain carries the cross-cutting facts and hands them forward (FR-023, FR-024); the
+  lens-specific gaps go inside their lenses (FR-025).
+- Rules: recommended answers (FR-026), depth for touched lenses (FR-027), a measured length budget counting must-answer
+  points, typed replies and recommendation lines separately (FR-028), and no question without a consumer (FR-029).
+- Placement of proposals 162, 164, 175, 177, 178, 179, 195, 210 and 214: none is built in iteration 002 (FR-031 records
+  the order after it).
 
 ## Assumptions
 
