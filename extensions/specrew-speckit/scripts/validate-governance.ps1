@@ -12,7 +12,10 @@ param(
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
-    [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity
+    [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity,
+    # FR-009: write the run's findings (iteration id, rule, severity; an uncategorized message only as a hash)
+    # to this JSON file, for the nightly's tracking-issue notifier.
+    [string]$FindingsJsonPath
 )
 
 Set-StrictMode -Version Latest
@@ -31,6 +34,71 @@ $script:ValidatorStartTime = [System.Diagnostics.Stopwatch]::StartNew()
 $script:ValidatorMode = 'unscoped'
 $script:ValidatorIterationsValidated = 0
 $script:ValidatorTriggerSource = if ($env:CI) { 'ci' } else { 'local' }
+$script:ValidatorFindingRecords = New-Object System.Collections.Generic.List[object]
+
+function Add-ValidatorFindingRecord {
+    # FR-009: one finding for the findings file. The iteration is "<feature>/<NNN>" for a path under
+    # specs/<feature>/iterations/<NNN>, else "(repository)". The rule is the failure's category; a message
+    # with no category is "uncategorized" and contributes only a hash of its normalized text, never the text.
+    param(
+        [AllowNull()][string]$TargetPath,
+        [AllowNull()][string]$ProjectRoot,
+        [AllowNull()][string]$Message,
+        [string]$Rule = ''
+    )
+    $iteration = '(repository)'
+    if (-not [string]::IsNullOrWhiteSpace($TargetPath)) {
+        $normalizedTarget = ([string]$TargetPath) -replace '\\', '/'
+        if ($normalizedTarget -match 'specs/([^/]+)/iterations/([^/]+?)/?$') {
+            $iteration = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
+        }
+    }
+    $text = if ($null -eq $Message) { '' } else { [string]$Message }
+    if ([string]::IsNullOrWhiteSpace($Rule) -and $text -match '\bcategory=([^\s|]+)') {
+        $Rule = $Matches[1]
+    }
+    $Rule = (([string]$Rule).ToLowerInvariant() -replace '[^a-z0-9-]+', '-').Trim('-')
+    $record = [ordered]@{ iteration = $iteration; rule = $Rule; severity = 'error' }
+    if ([string]::IsNullOrWhiteSpace($Rule)) {
+        $normalized = $text
+        if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+            $normalized = $normalized.Replace([string]$ProjectRoot, '').Replace((([string]$ProjectRoot) -replace '\\', '/'), '')
+        }
+        $normalized = (($normalized -replace '\\', '/') -replace '\s+', ' ').Trim()
+        $hashBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($normalized))
+        $record['rule'] = 'uncategorized'
+        $record['message_hash'] = ([System.BitConverter]::ToString($hashBytes) -replace '-', '').Substring(0, 16).ToLowerInvariant()
+    }
+    $script:ValidatorFindingRecords.Add([pscustomobject]$record) | Out-Null
+}
+
+function Write-ValidatorFindingsFile {
+    # FR-009: a red run is never written as an empty list; a stop with no recorded finding is written as one
+    # repository finding named by -FailureRule.
+    param([int]$ExitCode, [string]$FailureRule)
+    if ([string]::IsNullOrWhiteSpace($FindingsJsonPath)) {
+        return
+    }
+    try {
+        $records = @()
+        if ($ExitCode -ne 0) {
+            if ($script:ValidatorFindingRecords.Count -eq 0) {
+                $rule = if ([string]::IsNullOrWhiteSpace($FailureRule)) { 'validator-failed' } else { $FailureRule }
+                Add-ValidatorFindingRecord -TargetPath $null -ProjectRoot $null -Message $null -Rule $rule
+            }
+            $records = @($script:ValidatorFindingRecords.ToArray())
+        }
+        $directory = Split-Path -Parent ([System.IO.Path]::GetFullPath($FindingsJsonPath))
+        if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $directory -Force
+        }
+        $json = [ordered]@{ schema = 'v1'; findings = @($records) } | ConvertTo-Json -Depth 5
+        [System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($FindingsJsonPath), $json, [System.Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        Write-Host ("WARN [findings-file] could not write the findings file: {0}" -f $_.Exception.Message)
+    }
+}
 
 function Write-ValidatorSummaryAndExit {
     param(
@@ -40,8 +108,13 @@ function Write-ValidatorSummaryAndExit {
         [Parameter(Mandatory = $true)]
         [int]$ExitCode,
 
-        [int]$HardWarnings = 0
+        [int]$HardWarnings = 0,
+
+        # FR-009: the rule a stop with no per-iteration finding is written under in the findings file.
+        [string]$FailureRule = ''
     )
+
+    Write-ValidatorFindingsFile -ExitCode $ExitCode -FailureRule $FailureRule
 
     $durationMs = if ($null -ne $script:ValidatorStartTime) {
         [int]$script:ValidatorStartTime.ElapsedMilliseconds
@@ -5620,7 +5693,7 @@ try {
 
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets @() -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 }) -FailureRule 'response-validation'
     }
 
     # Proposal 086 Pillar 5: repetition detector. Log the invocation; if the
@@ -5858,13 +5931,13 @@ try {
     Test-ClosedIterationSeals -ProjectRoot $resolvedProjectPath -Errors $closedSealErrors
     if ($closedSealErrors.Count -gt 0) {
         foreach ($sealError in $closedSealErrors) { Write-Host ("FAIL [trust-hardening] closed-iteration-edited: {0}" -f $sealError) -ForegroundColor Red }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count -FailureRule 'closed-iteration-edited'
     }
     # W47: the tree-vs-ledger cross-check - source written where the state STOOD, not where it moved.
     # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
     $sourceAuthorizationFailureCount = Test-SourceWithoutImplementAuthorization -ProjectRoot $resolvedProjectPath
     if ($sourceAuthorizationFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount -FailureRule 'source-without-implement-authorization'
     }
     Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
 
@@ -5873,7 +5946,7 @@ try {
         foreach ($errorMessage in $teamValidationErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count -FailureRule 'squad-team'
     }
 
     $classifierCompatibilityErrors = New-Object System.Collections.Generic.List[string]
@@ -5883,7 +5956,7 @@ try {
         foreach ($errorMessage in $classifierCompatibilityErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count -FailureRule 'classifier-compatibility'
     }
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
@@ -5891,14 +5964,14 @@ try {
     Test-PostShipProposalAmendmentGovernance -ProjectRoot $resolvedProjectPath
     $handoffEvidenceFailureCount = Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
     if ($handoffEvidenceFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount -FailureRule 'handoff-evidence'
     }
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
     # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
     Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath
     $approvedStatusFailureCount = Test-ApprovedFeatureStatusVerdictEvidence -ProjectRoot $resolvedProjectPath
     if ($approvedStatusFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount -FailureRule 'approved-status'
     }
     Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
@@ -5908,7 +5981,7 @@ try {
     # active=true post-closeout, etc.).
     $boundaryCanonicalFailureCount = Test-SessionStateBoundaryCanonical -ProjectRoot $resolvedProjectPath
     if ($boundaryCanonicalFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount -FailureRule 'boundary-canonical'
     }
 
     if (-not [string]::IsNullOrWhiteSpace($scopeFallbackVerboseMessage)) {
@@ -5916,7 +5989,7 @@ try {
     }
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 }) -FailureRule 'response-validation'
     }
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
@@ -6098,6 +6171,7 @@ try {
         Write-Host "FAIL $($result.Path)" -ForegroundColor Red
         foreach ($errorMessage in $result.Errors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
+            Add-ValidatorFindingRecord -TargetPath ([string]$result.Path) -ProjectRoot $resolvedProjectPath -Message ([string]$errorMessage)
         }
     }
 
@@ -6143,6 +6217,6 @@ catch {
     }
     catch {
     }
-    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1
+    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1 -FailureRule 'unexpected-validator-error'
 }
 # specrew-self-provenance-ok: DRIFT-198-I009-033,DRIFT-199-I001-122,DRIFT-199-I001-126,F-025,F-028,F-030,F-033,F-040,F-047,F-049,DRIFT-199-I001-134; implementation history is recorded for maintainers and is never emitted as consumer instruction
