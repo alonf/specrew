@@ -54,6 +54,7 @@ $script:guardBefore = Get-GuardSnapshot
 
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
 . (Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1')
+. (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1')
 $reviewCli = Join-Path $repoRoot 'scripts\specrew-review.ps1'
 
 # A writer parameter T004 adds is passed only when the writer has it, so the RED is the behaviour, not a binding error.
@@ -195,12 +196,13 @@ function New-QueuedReplyFixture {
     return [pscustomobject]@{ Root = $root; Transcript = (Join-Path $root 'transcript.jsonl') }
 }
 function Add-ClaudeEntry {
-    # Returns the entry's own uuid, the record Claude keeps the hook's output under.
+    # Returns the entry's own uuid, the record Claude keeps the hook's output under. Feature 203 T013 (B5F-066): a user entry
+    # carries the typed-message fields Claude writes (turnOrigin human, promptSource typed), which the sender check reads.
     param($Fixture, [string]$Role, [string]$Text, [string]$PromptId)
     $uuid = [guid]::NewGuid().ToString()
     $entry = if ($Role -eq 'user') {
         @{ type = 'user'; uuid = $uuid; timestamp = [DateTimeOffset]::UtcNow.ToString('o'); sessionId = 's1'; promptId = $PromptId
-            origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $Text } }
+            origin = @{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = @{ role = 'user'; content = $Text } }
     }
     else { @{ type = 'assistant'; uuid = $uuid; message = @{ role = 'assistant'; content = @(@{ type = 'text'; text = $Text }) } } }
     Add-Content -LiteralPath $Fixture.Transcript -Value ($entry | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
@@ -392,13 +394,15 @@ Assert-True (-not [bool]$r9.Written -and $null -eq (Get-SpecrewAllowanceResetAut
 # an older missed approval A, typed at 10:00, is recovered at 10:20. A must not retire B.
 Write-Host '--- case 10: an older approval recovered late does not retire a newer one ---'
 $f10 = New-QueuedReplyFixture
-$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f10.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+# Feature 203 T013 (B5F-066): B is waiting only if the human typed it - a real-shaped typed turn on this project's ledger.
+$turnB10 = [string](New-SpecrewTypedTurnFixture -ProjectRoot $f10.Root -Text $approval).TurnIdentity
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f10.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turnB10 -NowUtc '2026-11-04T10:10:00.0000000Z'
 $id10 = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
-$entry10 = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = '2026-11-04T10:00:00.000Z'; sessionId = 's1'; promptId = $id10; origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $approval } }
+$entry10 = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = '2026-11-04T10:00:00.000Z'; sessionId = 's1'; promptId = $id10; origin = @{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = @{ role = 'user'; content = $approval } }
 Add-Content -LiteralPath $f10.Transcript -Value ($entry10 | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
 $cite10 = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id10; text = $approval })).Identity
 $null = Write-SpecrewTypedAct -ProjectRoot $f10.Root -HostKind 'claude' -TurnIdentity $cite10 -TranscriptPath $f10.Transcript -SourceEvent 'stop-transcript' -SessionId 's1' -NowUtc '2026-11-04T10:20:00.0000000Z'
-Assert-True ((Get-PendingRoundTurn -Fixture $f10) -ceq 'turn-B' -and (Get-RoundSupersessionCount -Fixture $f10) -eq 0) ("B stays waiting and no fact says A retired it (holds '{0}')" -f (Get-PendingRoundTurn -Fixture $f10))
+Assert-True ((Get-PendingRoundTurn -Fixture $f10) -ceq $turnB10 -and (Get-RoundSupersessionCount -Fixture $f10) -eq 0) ("B stays waiting and no fact says A retired it (holds '{0}')" -f (Get-PendingRoundTurn -Fixture $f10))
 
 # Case 10c: the same for the allowance reset, through the supersession rule the top-up, the deferral and the partial
 # sign-off share: a reset typed at 10:10 and spent, then an older reset typed at 10:00 arriving late.
@@ -482,16 +486,19 @@ finally { $held14.Dispose() }
 Wait-SlotChild $spend14
 Assert-True (-not [string]::IsNullOrWhiteSpace([string](Read-PendingReset -Root $f14.Root).spent_at)) 'once released, the consumption completes'
 $f14b = New-QueuedReplyFixture
-$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-A' -NowUtc '2026-11-04T10:00:00.0000000Z'
+# Feature 203 T013 (B5F-066): A and B are used only if the human typed them - two real-shaped typed turns on this ledger.
+$turnA14b = [string](New-SpecrewTypedTurnFixture -ProjectRoot $f14b.Root -Text 'approved for allowance reset').TurnIdentity
+$turnB14b = [string](New-SpecrewTypedTurnFixture -ProjectRoot $f14b.Root -Text 'approved for allowance reset').TurnIdentity
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turnA14b -NowUtc '2026-11-04T10:00:00.0000000Z'
 $used14b = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root
-$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-B' -NowUtc '2026-11-04T10:10:00.0000000Z'
+$null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turnB14b -NowUtc '2026-11-04T10:10:00.0000000Z'
 Write-EngineFact -Path (Join-Path $f14b.Root ".specrew/review/authority/campaigns/$campaignId/budget-resets/reset-1.json") -Fact ([ordered]@{
         campaign_id = $campaignId; fact_type = 'budget-reset'; reset_id = 'reset-1'; observed_at = '2026-11-04T10:15:00.0000000+00:00'; schema_version = '1.0' })
 $complete14b = @{ ProjectRoot = $f14b.Root; Reference = 'reset-1' }
 Add-IfSupported -Splat $complete14b -Command 'Complete-SpecrewAllowanceResetAuthorization' -Name 'Approval' -Value $used14b
 $null = Complete-SpecrewAllowanceResetAuthorization @complete14b
 $waiting14b = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f14b.Root
-Assert-True ($null -ne $waiting14b -and [string]$waiting14b.turn_identity -ceq 'turn-B') ("the reset applied from A leaves B waiting, unspent (waiting '{0}')" -f $(if ($null -ne $waiting14b) { [string]$waiting14b.turn_identity } else { '' }))
+Assert-True ($null -ne $waiting14b -and [string]$waiting14b.turn_identity -ceq $turnB14b) ("the reset applied from A leaves B waiting, unspent (waiting '{0}')" -f $(if ($null -ne $waiting14b) { [string]$waiting14b.turn_identity } else { '' }))
 $landed14b = if ($null -ne $waiting14b) { Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $f14b.Root -CampaignId $campaignId -CaptureObservedAt $waiting14b.observed_at } else { 'no B' }
 Assert-True ($null -eq $landed14b) 'and the reset A paid for is not taken as the one B paid for'
 

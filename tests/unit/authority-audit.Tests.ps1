@@ -13,6 +13,7 @@ BeforeAll {
         . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
     }
     # Written first: the audit does not exist yet, so its cases fail one by one instead of failing the container.
+    . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
     $script:AuditPath = Join-Path $script:RepoRoot 'scripts/internal/bootstrap/AuthorityAudit.ps1'
     if (Test-Path -LiteralPath $script:AuditPath -PathType Leaf) { . $script:AuditPath }
     $script:CampaignId = Get-ReviewCampaignIdForIteration -FeatureId '001-demo' -IterationNumber '007'
@@ -254,13 +255,16 @@ Describe 'the records name the turn that authorized them (FR-024, FR-041)' {
 
     It 'the typed "stop the review here" names its turn on the capture and on the pause decision it lands' {
         $project = script:New-AuditProject -Name 'halt'
+        # Feature 203 T013 (B5F-066): the halt is used only when the human typed it - a real-shaped typed turn, whose identity
+        # the capture and the landed pause decision must both name.
+        $halt = New-SpecrewTypedTurnFixture -ProjectRoot $project.root -Text 'stop the review here'
         $capture = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $project.root -Response 'stop the review here' -HostKind 'claude' `
-            -SourceEvent 'UserPromptSubmit' -TurnIdentity 'turn-halt'
+            -SourceEvent 'UserPromptSubmit' -TurnIdentity $halt.TurnIdentity
         $capture | Should -Not -BeNullOrEmpty
-        [string]((Get-Content -LiteralPath (Join-Path $project.root '.specrew/review/pause-decision/stop-here.json') -Raw | ConvertFrom-Json).turn_identity) | Should -BeExactly 'turn-halt'
+        [string]((Get-Content -LiteralPath (Join-Path $project.root '.specrew/review/pause-decision/stop-here.json') -Raw | ConvertFrom-Json).turn_identity) | Should -BeExactly $halt.TurnIdentity
         $null = Invoke-ReviewCampaignHaltLanding -ProjectRoot $project.root -StoreRoot $project.store -CampaignId $script:CampaignId
         $decision = @(Get-ChildItem -LiteralPath (Join-Path $project.store "campaigns/$script:CampaignId/runs") -Recurse -Filter 'pause-decision.json')[0]
-        [string]((Get-Content -LiteralPath $decision.FullName -Raw | ConvertFrom-Json).turn_identity) | Should -BeExactly 'turn-halt'
+        [string]((Get-Content -LiteralPath $decision.FullName -Raw | ConvertFrom-Json).turn_identity) | Should -BeExactly $halt.TurnIdentity
     }
 
     It 'the turn end registers an act it recovered from the transcript as a typed turn, so the audit joins it' {
@@ -269,7 +273,7 @@ Describe 'the records name the turn that authorized them (FR-024, FR-041)' {
         $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
         $text = 'approved for allowance reset'
         $entry = @{ type = 'user'; uuid = [guid]::NewGuid().ToString(); timestamp = [DateTimeOffset]::UtcNow.ToString('o'); sessionId = 's1'; promptId = $promptId
-            origin = @{ kind = 'human' }; message = @{ role = 'user'; content = $text } }
+            origin = @{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = @{ role = 'user'; content = $text } }
         [IO.File]::WriteAllText($transcript, (($entry | ConvertTo-Json -Depth 8 -Compress) + "`n"), $script:Utf8)
         $cite = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
         $written = Write-SpecrewTypedAct -ProjectRoot $project.root -HostKind 'claude' -TurnIdentity $cite -TranscriptPath $transcript -SourceEvent 'stop-transcript' -SessionId 's1'

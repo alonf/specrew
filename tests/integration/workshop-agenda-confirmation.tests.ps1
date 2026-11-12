@@ -43,13 +43,23 @@ try {
     Copy-Item -LiteralPath $authoritySource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1') -Force
     Copy-Item -LiteralPath $yamlReaderSource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\intake\helpers\Read-IntakeYaml.ps1') -Force
     . (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1')
+    # Feature 203 T013 (B5F-066): a receipt is used only when the human typed its reply - the receipt names the typed turn,
+    # whose transcript record (the shape Claude writes for a typed message) the turn's ledger row points at. The fixture is
+    # built in its own module scope, so the check it loads does not reach the agenda writer this test runs in this process:
+    # the writer has to load the check itself, as it does when it runs on its own.
+    $typedTurnModule = New-Module -Name 'WorkshopAgendaTypedTurnFixture' -ArgumentList (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1') -ScriptBlock {
+        param($HelperPath)
+        . $HelperPath
+        Export-ModuleMember -Function New-SpecrewTypedTurnFixture
+    }
 
     function Add-TypedReply {
         param([string]$FeatureRef, [ValidateSet('product-domain','agenda','lens')][string]$Phase, [string]$Lens, [string]$Reply, [string]$MessageText = 'Fixture question?')
         $messageHash = Get-SpecrewWorkshopAuthorityHash -Text ('feature|' + $FeatureRef + '||' + $Lens + '|' + $MessageText)
         $question = [ordered]@{ schema='v3'; status='workshop-active'; scope='feature'; feature_ref=$FeatureRef; iteration_number=''; lens=$Lens; phase=$Phase; agenda_status='pending-confirmation'; question='Fixture question?'; message_hash=$messageHash; artifact_path=(Join-Path $scratch "specs\$FeatureRef\lens-applicability.json") }
         $question | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $scratch '.specrew\handover\workshop-question.json') -Encoding UTF8
-        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'test' -SourceEvent 'UserPromptSubmit'
+        $turn = New-SpecrewTypedTurnFixture -ProjectRoot $scratch -Text $Reply
+        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity ([string]$turn.TurnIdentity)
     }
 
     function Add-AgendaReplyThroughShippedProvider {
@@ -85,7 +95,8 @@ try {
         Assert-True (Test-Path -LiteralPath $questionPath -PathType Leaf) 'real conformance provider writes the agenda question handover'
         $question = Get-Content -LiteralPath $questionPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
         Assert-True ([string]$question.phase -eq 'agenda' -and -not [string]::IsNullOrWhiteSpace([string]$question.agenda_digest)) 'real conformance provider binds the rendered agenda content independently of transcript prose hashing'
-        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+        $turn = New-SpecrewTypedTurnFixture -ProjectRoot $scratch -Text $Reply
+        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity ([string]$turn.TurnIdentity)
     }
 
     & $initializer -ProjectRoot $scratch -FeatureRef '001-url-checker'

@@ -27,6 +27,7 @@ $sharedGovernance = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shar
 $humanAuthority = Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1'
 . $sharedGovernance
 . $humanAuthority
+. (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1')
 $scratchRoot = Join-Path $repoRoot '.scratch\prose-alias-sync'
 $projectRoot = Join-Path $scratchRoot 'project'
 
@@ -87,11 +88,15 @@ $syncResult1 = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
     '-AuthCommitHash', 'HEAD'
 )
 if ($syncResult1.ExitCode -ne 0 -and ($syncResult1.Output -join "`n") -match 'no-authoritative-campaign-result') {
+    # Feature 203 T013 (B5F-066): the override is used only when the human typed it - a real-shaped typed turn.
+    $overrideText = 'approved for partial review signoff - alias fixture isolates canonical boundary resolution without provider evidence'
+    $overrideTurn = New-SpecrewTypedTurnFixture -ProjectRoot $projectRoot -Text $overrideText
     $captured = Write-SpecrewReviewSignoffOverrideAuthorization `
         -ProjectRoot $projectRoot `
-        -Response 'approved for partial review signoff - alias fixture isolates canonical boundary resolution without provider evidence' `
-        -HostKind 'fixture' `
-        -SourceEvent 'UserPromptSubmit'
+        -Response $overrideText `
+        -HostKind 'claude' `
+        -SourceEvent 'UserPromptSubmit' `
+        -TurnIdentity $overrideTurn.TurnIdentity
     if ($null -eq $captured) {
         Write-Fail 'Alias fixture could not capture the tree-bound partial review-signoff override.'
         exit 1

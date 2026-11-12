@@ -171,9 +171,19 @@ try {
     Assert-True ($noAuthorityMessage -notmatch '(?i)\bcontroller\b|lens-applicability|governed writer') 'in project language, with no machinery vocabulary'
 
     . $projectAuthority
+    # Feature 203 T013 (B5F-066): the repair is used only when the human typed the approval - the record names the typed
+    # turn, whose transcript record (the shape Claude writes for a typed message) the turn's ledger row points at. The
+    # fixture is built in its own module scope, so the check it loads does not reach the repair script this test runs in
+    # this process: that script has to load the check itself, as it does when it runs on its own.
+    $typedTurnModule = New-Module -Name 'WorkshopRepairTypedTurnFixture' -ArgumentList (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1') -ScriptBlock {
+        param($HelperPath)
+        . $HelperPath
+        Export-ModuleMember -Function New-SpecrewTypedTurnFixture
+    }
     $wrongReply = Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $scratch -Response 'yes, repair it' -HostKind 'test' -SourceEvent 'UserPromptSubmit'
     Assert-True ($null -eq $wrongReply) 'ordinary assent cannot authorize a workshop repair'
-    $authorization = Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $scratch -Response 'approved for workshop repair' -HostKind 'test' -SourceEvent 'UserPromptSubmit'
+    $repairTurn = New-SpecrewTypedTurnFixture -ProjectRoot $scratch -Text 'approved for workshop repair'
+    $authorization = Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $scratch -Response 'approved for workshop repair' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity ([string]$repairTurn.TurnIdentity)
     Assert-True ($null -ne $authorization -and [string]$authorization.proposal_id -eq [string]$proposal.proposal_id) 'exact typed human reply authorizes only the bound repair proposal'
 
     [IO.File]::AppendAllText($statePath, ' ', [Text.UTF8Encoding]::new($false))
@@ -212,6 +222,7 @@ try {
     Assert-True ($oldAuthorityMessage -match 'type: approved for workshop repair') 'and the refusal names the phrase that would authorize the NEW proposal'
 }
 finally {
+    if (Get-Variable -Name typedTurnModule -ErrorAction SilentlyContinue) { Remove-Module -ModuleInfo $typedTurnModule -ErrorAction SilentlyContinue }
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
 }
 

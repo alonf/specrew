@@ -19,7 +19,20 @@ $ErrorActionPreference = 'Stop'
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+    . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
     $script:ReviewCli = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
+
+    # Feature 203 T013 (B5F-066): a capture is used only when the transcript record of its message says the human typed it.
+    # The project's fixture transcript holds Claude's typed record of each message a case captures (promptId = the message
+    # id, the same text), once per message, and the capture is given its path, as the prompt hook and the turn end are.
+    function script:Get-TypedTurnTranscript {
+        param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$MessageId, [Parameter(Mandatory)][string]$Text)
+        $path = Join-Path $Root 'typed-transcript.jsonl'
+        $known = (Test-Path -LiteralPath $path) -and @(Get-Content -LiteralPath $path -Encoding UTF8 | Where-Object { $_.Trim() } |
+                ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [string]$_.promptId -ceq $MessageId }).Count -gt 0
+        if (-not $known) { $null = Add-SpecrewTestTypedTranscriptRecord -Text $Text -MessageId $MessageId -TranscriptPath $path }
+        return $path
+    }
     $script:AgentEnvNames = @(Get-SpecrewAgentSessionSignalNames)
 
     function script:New-CampaignFixture {
@@ -185,7 +198,8 @@ Describe 'W50 rider: the allowance reset is phrase-gated authority' {
     It 'with the captured phrase the reset applies and the capture is stamped spent' {
         $root = New-CampaignFixture
         try {
-            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $turn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text 'approved for allowance reset'
+            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn.TurnIdentity
             $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--remediate', 'allowance-reset', '--ack-reason', '"more rounds needed"')
             $run.Text | Should -Match 'topped up'
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'one phrase, one reset'
@@ -575,7 +589,8 @@ Describe 'W62 round 20: a condition defers every authority, and no pause choice 
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
         try {
             Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' | Should -BeNullOrEmpty
-            $null = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $turn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text 'stop the review here'
+            $null = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn.TurnIdentity
             $fact = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
             $fact | Should -Not -BeNullOrEmpty
             [string]$fact.choice | Should -Be 'stop-here'
@@ -678,7 +693,8 @@ Describe 'W63 round 21: the pause gate must actually run, be bound to its pause,
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
         try {
             # No pause pending: a decision typed now answers nothing and must not be standing authority.
-            $orphan = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $orphanTurn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text 'stop the review here'
+            $orphan = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $orphanTurn.TurnIdentity
             $orphan | Should -Not -BeNullOrEmpty -Because 'the human did type it; the record is honest about what it answers'
             [string]$orphan.run_id | Should -BeNullOrEmpty
             Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -RunId 'run-current' |
@@ -694,7 +710,8 @@ Describe 'W63 round 21: the pause gate must actually run, be bound to its pause,
                     recommendation = 'Look at the major findings.'; observed_at = '2026-08-25T10:00:00.0000000+00:00' } |
                 ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $pauseDir 'pending-pause.json') -Encoding UTF8
 
-            $bound = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $boundTurn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text 'stop the review here'
+            $bound = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $boundTurn.TurnIdentity
             [string]$bound.run_id | Should -Be 'run-current'
             [string]$bound.campaign_id | Should -Be $campaign
             Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -RunId 'run-current' |
@@ -938,8 +955,9 @@ Describe 'W66 round 24: one routing table for typed authority, a durable mint, a
             $tp = Join-Path $Root 'transcript.jsonl'
             # Feature 203 T004 (FR-015): Claude's human entry carries its promptId and origin, as Claude records them. The id is
             # derived from the text, so re-reading the same text is the same message and a different text a new one.
+            # Feature 203 T013 (B5F-066): with the typed-message fields Claude writes (turnOrigin human, promptSource typed).
             $promptId = 'prompt-' + (Get-SpecrewHumanAuthorityHash -Text $HumanText).Substring(0, 12)
-            $line = '{"type":"user","promptId":"' + $promptId + '","origin":{"kind":"human"},"message":{"role":"user","content":[{"type":"text","text":"' + $HumanText + '"}]}}'
+            $line = '{"type":"user","promptId":"' + $promptId + '","origin":{"kind":"human"},"turnOrigin":"human","promptSource":"typed","message":{"role":"user","content":[{"type":"text","text":"' + $HumanText + '"}]}}'
             [IO.File]::WriteAllLines($tp, [string[]]@($line), [Text.UTF8Encoding]::new($false))
             $repo = $script:RepoRoot
             # A CHILD process, so the writers one pass loads cannot leak into the next case.
@@ -1046,7 +1064,8 @@ Describe 'W66 round 24: one routing table for typed authority, a durable mint, a
         # shape that branch exists for - it succeeds, and nothing changed.
         $root = New-StopCaptureRoot
         try {
-            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $turn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text 'approved for allowance reset'
+            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn.TurnIdentity
             function Write-SpecrewFileAtomic { param([string]$Path, [string]$Content) }
             $result = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'reset-2'
             [bool]$result.consumed | Should -BeFalse -Because 'the stamp must be readable back before the approval counts as spent'
@@ -1193,7 +1212,7 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.ToString('o')) `
-                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
+                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-7' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'precondition: the turn minted once, which is its whole entitlement'
 
@@ -1203,7 +1222,7 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
             # SAME turn: same position, same arrival, same text. A later Stop, nothing new from the human.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(5).ToString('o')) `
-                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
+                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-7' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'the human typed once; a turn mints at most once, ever'
         }
@@ -1217,13 +1236,13 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-3' -Text 'approved for allowance reset')
             $path = Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json'
             [IO.File]::Exists($path) | Should -BeTrue -Because 'precondition: there is a capture to spend'
             # Delete the slot entirely - the most extreme "no unspent record to match" state there is.
             [IO.File]::Delete($path)
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-3' -Text 'approved for allowance reset')
             [IO.File]::Exists($path) | Should -BeFalse -Because 'the turn was already exhausted; the state of the slot is not what decides that'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -1235,13 +1254,13 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-3' -Text 'approved for allowance reset')
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
 
             # The human types it again: a LATER turn in the transcript, its own arrival.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-9' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'two typed acts are two authorities; the rule bounds re-offers, not humans'
         }
@@ -1255,12 +1274,12 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $root = New-TurnRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'stop the review here' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z' -MessageId 'msg-4'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z' -MessageId 'msg-4' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-4' -Text 'stop the review here')
             $first = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
             $first | Should -Not -BeNullOrEmpty -Because 'precondition: the pause decision minted once'
             $null = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -AuthorizationRef 'landing-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'stop the review here' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z' -MessageId 'msg-4'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z' -MessageId 'msg-4' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-4' -Text 'stop the review here')
             Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' |
                 Should -BeNullOrEmpty -Because 'a re-minted pause decision is the same forgery in different clothes'
         }
@@ -1296,14 +1315,14 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $handle = $null
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-2' -Text 'approved for allowance reset')
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             [IO.File]::Exists($ledger) | Should -BeTrue -Because 'precondition: a mint records its turn'
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
 
             $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '5' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-5'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '5' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-5' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-5' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'if it cannot tell whether this turn already minted, it must not mint'
         }
@@ -1360,13 +1379,13 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T15:40:45Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11' -TurnOrigin 'typed-user'
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-11' -Text 'approved for allowance reset') -TurnOrigin 'typed-user'
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'precondition: the prompt channel minted the human act'
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
-                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11'
+                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-11' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-11' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'one human message is one act however many channels deliver it'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
@@ -1383,10 +1402,10 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         $root = New-ChannelRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z' -MessageId 'msg-3' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-3' -Text 'approved for allowance reset')
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z' -MessageId 'msg-9' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-9' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'on a prompt-entry-less host the backstop is the only channel, and a retype is a new act'
         }
@@ -1415,7 +1434,7 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
                 Set-Content -LiteralPath $ledger -Encoding UTF8
 
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-4'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T15:40:45Z' -MessageId 'msg-4' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-4' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the backstop exists for turns prompt-entry saw and did not capture'
         }
@@ -1440,7 +1459,7 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
             $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
 
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-2' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'if the one-turn limit cannot be recorded, the mint it is supposed to bound must not happen'
         }
@@ -1456,14 +1475,14 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         $root = New-ChannelRoot
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z' -MessageId 'msg-2' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-2' -Text 'approved for allowance reset')
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             # An interrupted append: the tail of the file is half a record.
             Add-Content -LiteralPath $ledger -Value '{"schema_version":"1.0","fact_type":"typed-turn-exh' -Encoding UTF8
 
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-7'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-7' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-7' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 # W72 asserted -BeNullOrEmpty here. The maintainer reversed it on 2026-08-27, and round
                 # 31 is why: failing closed on "can this PROJECT ever be authorized again" is an
@@ -1550,14 +1569,14 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-prompt-1' -TurnOrigin 'typed-user'
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-prompt-1' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-prompt-1' -Text 'approved for allowance reset') -TurnOrigin 'typed-user'
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
 
             # Hours later the human types it again, and prompt-entry misses that turn.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T14:00:00Z' `
-                -TurnPosition '31' -TurnArrival '2026-08-26T13:59:00Z' -MessageId 'msg-31'
+                -TurnPosition '31' -TurnArrival '2026-08-26T13:59:00Z' -MessageId 'msg-31' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-31' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'the backstop must still work; a phrase the human can never make count is a wedge'
         }
@@ -1574,11 +1593,11 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
-                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4' -TurnOrigin 'typed-user'
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-4' -Text 'approved for allowance reset') -TurnOrigin 'typed-user'
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T10:05:00Z' `
-                -TurnPosition '4' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4'
+                -TurnPosition '4' -TurnArrival '2026-08-26T10:00:00Z' -MessageId 'msg-4' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-4' -Text 'approved for allowance reset')
 
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'the turn end delivered a message the prompt channel already minted'
@@ -1595,10 +1614,10 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         $root = New-W71Root
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-7' -Text 'approved for allowance reset')
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z' -MessageId 'msg-7' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-7' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -BeNullOrEmpty -Because 'one channel, one utterance, one mint - the attack the store actually recorded'
         }
@@ -1635,8 +1654,9 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
             }
 
             # THE PRODUCTION PATH: the writer, exactly as the router calls it - no CampaignId to give.
+            $turn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text 'stop the review here'
             $null = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' `
-                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn.TurnIdentity
             $decision = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
             $decision | Should -Not -BeNullOrEmpty
             [string]$decision.campaign_id | Should -Be 'cmp-199-beta3-stabilization-i001' -Because 'the decision belongs to the feature the human is working on, not to whichever campaign paused most recently'
@@ -1754,7 +1774,7 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         try {
             # A real, complete history: one turn minted and was spent.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-2' -Text 'approved for allowance reset')
             $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'round-1'
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             # Ctrl+C during an append.
@@ -1762,7 +1782,7 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
 
             # A DIFFERENT turn, typed afterwards. It must still be able to mint.
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-27T09:30:00Z' -MessageId 'msg-9'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-27T09:30:00Z' -MessageId 'msg-9' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-9' -Text 'approved for allowance reset')
             Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
                 Should -Not -BeNullOrEmpty -Because 'one interrupted append must not leave a project that can never be authorized again'
         }
@@ -1775,12 +1795,12 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         $root = New-W75Root
         try {
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z' -MessageId 'msg-2' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-2' -Text 'approved for allowance reset')
             $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
             Add-Content -LiteralPath $ledger -Value '{"fact_type":"typed-turn-exh' -Encoding UTF8
             $null = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for allowance reset' `
-                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '11' -TurnArrival '2026-08-27T10:00:00Z' -MessageId 'msg-11'
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '11' -TurnArrival '2026-08-27T10:00:00Z' -MessageId 'msg-11' -TranscriptPath (Get-TypedTurnTranscript -Root $root -MessageId 'msg-11' -Text 'approved for allowance reset')
             (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Match 'authority-ledger-damaged' `
                 -Because 'a ledger that lost a record must say so, or the hole is invisible'
         }

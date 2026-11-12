@@ -10,18 +10,19 @@ BeforeAll {
     foreach ($dependency in @('HumanAuthorityStore', 'ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
         . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
     }
+    . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
     $script:CampaignId = Get-ReviewCampaignIdForIteration -FeatureId '001-fixture' -IterationNumber '001'
     $script:Utf8 = [Text.UTF8Encoding]::new($false)
 
     $script:CaptureRunner = Join-Path $TestDrive 'capture-runner.ps1'
     [IO.File]::WriteAllText($script:CaptureRunner, @'
-param([string]$RepoRoot, [string]$Root, [string]$Text, [string]$HostKind)
+param([string]$RepoRoot, [string]$Root, [string]$Text, [string]$HostKind, [string]$MessageId, [string]$TranscriptPath)
 $ErrorActionPreference = 'Stop'
 foreach ($dependency in @('HumanAuthorityStore', 'ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
     . (Join-Path $RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
 }
 Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind $HostKind -SourceEvent 'UserPromptSubmit' `
-    -MessageId ('msg-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) -SessionId 's1' -TurnOrigin 'typed-user' | Out-Null
+    -MessageId $MessageId -SessionId 's1' -TurnOrigin 'typed-user' -TranscriptPath $TranscriptPath | Out-Null
 '@, $script:Utf8)
 
     # A project on its feature branch with one open stop of $Kind, written by the engine's own fact writer.
@@ -52,8 +53,12 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
         Complete-ReviewAuthorityClaim -StoreRoot $Project.store -CampaignId $script:CampaignId -RunId 'run-answer-partial' -TargetLineage 'lin-001-fixture' -Disposition released -ObservedAt '2026-11-09T08:01:00Z' | Out-Null
     }
 
+    # Feature 203 T013 (B5F-066): the typed line as the host and the prompt hook leave it - Claude's transcript record of the
+    # typed message, and the hook's capture given that message's id and transcript, so the line is used when it lands.
     function script:Invoke-Typed([pscustomobject]$Project, [string]$Text) {
-        $null = & pwsh -NoProfile -NonInteractive -File $script:CaptureRunner -RepoRoot $script:RepoRoot -Root $Project.root -Text $Text -HostKind 'claude' 2>&1
+        $record = Add-SpecrewTestTypedTranscriptRecord -Text $Text -MessageId ('msg-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        $null = & pwsh -NoProfile -NonInteractive -File $script:CaptureRunner -RepoRoot $script:RepoRoot -Root $Project.root -Text $Text -HostKind 'claude' `
+            -MessageId $record.MessageId -TranscriptPath $record.TranscriptPath 2>&1
     }
 
     # What the review command does before a launch: land the typed lines bound to the open stop.

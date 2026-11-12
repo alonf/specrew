@@ -50,6 +50,9 @@ if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE: sources or fixture missi
 
 . $storePath
 . $accessorPath
+# Feature 203 T013 (B5F-066): a receipt is used only when the human typed its reply. The accessor reads the receipts in this
+# process, as it does in the hook that loads the check, so the check is loaded; each receipt names its typed turn.
+. (Join-Path $repoRoot 'tests/support/cited-typed-turn.ps1')
 Assert-True ([bool](Get-Command Get-SpecrewWorkshopLifecycleState -ErrorAction SilentlyContinue)) 'lifecycle accessor is loaded'
 if ($script:Failures -gt 0) { Write-Host 'INCONCLUSIVE: subject not loaded'; exit 1 }
 
@@ -79,6 +82,8 @@ function New-FixtureProject {
 
     $controller = Get-Content -LiteralPath (Join-Path $root "specs/$featureRef/lens-applicability.json") -Raw | ConvertFrom-Json -Depth 20
     New-Item -ItemType Directory -Path (Join-Path $root '.specrew/runtime') -Force | Out-Null
+    $agendaReply = 'Confirm the selected and skipped lenses exactly as shown.'
+    $agendaTurn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text $agendaReply
     $receipts = @(
         ([ordered]@{
             schema_version     = '1'
@@ -88,9 +93,14 @@ function New-FixtureProject {
             confirmation       = 'human-confirmed'
             confirmation_scope = 'lens-selection'
             agenda_digest      = [string]$controller.agenda_digest
+            response_hash      = (Get-SpecrewWorkshopAuthorityHash -Text $agendaReply)
+            host_kind          = 'claude'
+            turn_identity      = [string]$agendaTurn.TurnIdentity
         } | ConvertTo-Json -Depth 6 -Compress)
     )
     if ($WithIntakeReceipt) {
+        $intakeReply = 'Yes, that product framing is correct.'
+        $intakeTurn = New-SpecrewTypedTurnFixture -ProjectRoot $root -Text $intakeReply
         $receipts += ([ordered]@{
             schema_version     = '1'
             feature_ref        = $featureRef
@@ -99,6 +109,9 @@ function New-FixtureProject {
             receipt_id         = ('a' * 64)
             confirmation       = 'human-confirmed'
             confirmation_scope = 'lens-question'
+            response_hash      = (Get-SpecrewWorkshopAuthorityHash -Text $intakeReply)
+            host_kind          = 'claude'
+            turn_identity      = [string]$intakeTurn.TurnIdentity
         } | ConvertTo-Json -Depth 6 -Compress)
     }
     [IO.File]::WriteAllText((Join-Path $root '.specrew/runtime/workshop-authority.jsonl'), (($receipts -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))

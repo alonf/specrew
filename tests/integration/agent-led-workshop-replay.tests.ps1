@@ -24,10 +24,11 @@ $priorProfile = $env:SPECREW_USER_PROFILE_PATH
 $env:SPECREW_MODULE_PATH = $ModuleRoot
 $script:token = ''
 # Feature 203 T004 (FR-022): a human entry carries the host's message id and origin as Claude records them, so the writer can cite and re-read it.
+# Feature 203 T013 (B5F-066): and the typed-message fields Claude writes (turnOrigin human, promptSource typed), which the sender check reads.
 $script:promptId = ''
 function Add-Turn([string]$Role, [string]$Text) {
     $entry = @{ type=$Role; message=@{content=@(@{type='text';text=$Text})} }
-    if ($Role -eq 'user') { $script:promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['promptId'] = $script:promptId; $entry['origin'] = @{ kind = 'human' } }
+    if ($Role -eq 'user') { $script:promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['promptId'] = $script:promptId; $entry['origin'] = @{ kind = 'human' }; $entry['turnOrigin'] = 'human'; $entry['promptSource'] = 'typed' }
     $entry | ConvertTo-Json -Depth 6 -Compress | Add-Content -LiteralPath $transcript
 }
 function Invoke-Conformance([string]$Event) {

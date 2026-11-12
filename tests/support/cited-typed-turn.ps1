@@ -15,8 +15,71 @@ if (-not (Get-Command Resolve-SpecrewCitedTypedAct -ErrorAction SilentlyContinue
     $ErrorActionPreference = $citedTurnPreference
     if (-not $citedTurnStrict) { Set-StrictMode -Off }
 }
+function Register-SpecrewTestTypedTurn {
+    # Feature 203 T013 (B5F-066; maintainer rulings 2026-11-12): the turn's ledger row the prompt hook writes, pointing at the
+    # transcript the host keeps, so an authorization recorded from this turn is found and checked when it is used. No switch
+    # turns the check off: a test that records an approval and expects it to be used gives it this real-shaped turn.
+    # Returns the act identity, the key every writer and the check use.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$Text, [Parameter(Mandatory)][string]$MessageId,
+        [Parameter(Mandatory)][string]$TranscriptPath, [string]$HostKind = 'claude', [string]$SourceEvent = 'UserPromptSubmit')
+    $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $HostKind; message_id = $MessageId; text = $Text })).Identity
+    [System.IO.Directory]::CreateDirectory((Join-Path $ProjectRoot '.specrew/authority')) | Out-Null
+    $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind -SourceEvent $SourceEvent -MintedWriters '' `
+        -ContentHash (Get-SpecrewHumanAuthorityHash -Text $Text.Trim()) -SessionId 'test-typed-turn' -Identity 'typed-act' -TurnOrigin 'typed-user' `
+        -TranscriptPath $TranscriptPath -MessageId $MessageId
+    return $turnId
+}
+
+function Add-SpecrewTestTypedTranscriptRecord {
+    # Feature 203 T013 (B5F-066): ONLY the host's side of a typed turn - the transcript record Claude Code writes for a typed
+    # message (turnOrigin human, promptSource typed, origin.kind human), appended to the given transcript or a new one. For a
+    # test that drives the prompt hook's capture (Invoke-SpecrewTypedAuthorityCapture -MessageId -TranscriptPath), which writes
+    # the turn's ledger row itself. Returns @{ TranscriptPath; MessageId }.
+    param([Parameter(Mandatory)][string]$Text, [string]$TranscriptPath, [string]$MessageId)
+    if ([string]::IsNullOrWhiteSpace($MessageId)) { $MessageId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12) }
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath)) {
+        $dir = Join-Path ([System.IO.Path]::GetTempPath()) 'specrew-cited-turns'
+        [System.IO.Directory]::CreateDirectory($dir) | Out-Null
+        $TranscriptPath = Join-Path $dir ($MessageId + '.jsonl')
+    }
+    $entry = [ordered]@{
+        type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $MessageId; sessionId = 'test-typed-turn'
+        timestamp = [DateTimeOffset]::UtcNow.ToString('o'); origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'
+        message = [ordered]@{ role = 'user'; content = $Text }
+    }
+    [System.IO.File]::AppendAllText($TranscriptPath, (($entry | ConvertTo-Json -Depth 6 -Compress) + "`n"), [System.Text.UTF8Encoding]::new($false))
+    return @{ TranscriptPath = $TranscriptPath; MessageId = $MessageId }
+}
+
+function New-SpecrewTypedTurnFixture {
+    # Feature 203 T013 (B5F-066): a typed turn as the host and the prompt hook leave it - a transcript record in the shape Claude
+    # Code writes for a typed message (turnOrigin human, promptSource typed, origin.kind human), appended to the given
+    # transcript or a new one, and the turn's ledger row pointing at it. Returns @{ TurnIdentity; TranscriptPath; MessageId;
+    # HostKind }: TurnIdentity is what a writer takes as -TurnIdentity.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$Text, [string]$TranscriptPath, [string]$MessageId)
+    $record = Add-SpecrewTestTypedTranscriptRecord -Text $Text -TranscriptPath $TranscriptPath -MessageId $MessageId
+    $TranscriptPath = $record.TranscriptPath; $MessageId = $record.MessageId
+    $turnId = Register-SpecrewTestTypedTurn -ProjectRoot $ProjectRoot -Text $Text -MessageId $MessageId -TranscriptPath $TranscriptPath
+    return @{ TurnIdentity = $turnId; TranscriptPath = $TranscriptPath; MessageId = $MessageId; HostKind = 'claude' }
+}
+
+function Register-SpecrewTestNoTranscriptHostTurn {
+    # Feature 203 T013 (maintainer ruling 2026-11-12): a turn on a host whose hook input carries no transcript path (Copilot).
+    # The prompt hook writes its ledger row with the host and no transcript path; the check then finds the turn and reports it
+    # 'unverified' (the text rules decided at capture), journaled and counted by host. Returns the act identity.
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$Text, [string]$MessageId, [string]$HostKind = 'copilot')
+    if ([string]::IsNullOrWhiteSpace($MessageId)) { $MessageId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12) }
+    $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $HostKind; message_id = $MessageId; text = $Text })).Identity
+    [System.IO.Directory]::CreateDirectory((Join-Path $ProjectRoot '.specrew/authority')) | Out-Null
+    $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind -SourceEvent 'UserPromptSubmit' -MintedWriters '' `
+        -ContentHash (Get-SpecrewHumanAuthorityHash -Text $Text.Trim()) -SessionId 'test-typed-turn' -Identity 'typed-act' -TurnOrigin 'typed-user' -MessageId $MessageId
+    return $turnId
+}
+
 function New-SpecrewCitedVerdictTurn {
-    param([Parameter(Mandatory)][string]$Text)
+    # Feature 203 T013: with -ProjectRoot, the turn is also registered on that project's ledger, as the prompt hook does, so
+    # the verdict the writer records from it is found by the sender check when the boundary gate uses it.
+    param([Parameter(Mandatory)][string]$Text, [string]$ProjectRoot)
     $dir = Join-Path ([System.IO.Path]::GetTempPath()) 'specrew-cited-turns'
     [System.IO.Directory]::CreateDirectory($dir) | Out-Null
     $id = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
@@ -29,6 +92,7 @@ function New-SpecrewCitedVerdictTurn {
     }
     $path = Join-Path $dir ($id + '.jsonl')
     [System.IO.File]::WriteAllText($path, (($entry | ConvertTo-Json -Depth 6 -Compress) + "`n"), [System.Text.UTF8Encoding]::new($false))
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) { $null = Register-SpecrewTestTypedTurn -ProjectRoot $ProjectRoot -Text $Text -MessageId $id -TranscriptPath $path }
     return @{ TurnIdentity = $id; TranscriptPath = $path; HostKind = 'claude' }
 }
 

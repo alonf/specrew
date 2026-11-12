@@ -24,7 +24,8 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
         # Prompt-entry capture runs in a separate hook process in production. Load the same store
         # explicitly here so the fixture can model that second process between gate attempts.
         . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
-    
+        . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
+
 
         # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
         function Invoke-WiringGit { param($Root, [string[]] $GitArgs) Push-Location $Root; try { & git @GitArgs 2>&1 | Out-Null } finally { Pop-Location } }
@@ -231,9 +232,11 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
             $request = Read-SpecrewReviewSignoffOverrideRequest -ProjectRoot $f.repo
             $request.target_tree_id | Should -Match '^[a-f0-9]{40,64}$'
 
+            # Feature 203 T013 (B5F-066): the override is used only when the human typed it - a real-shaped typed turn.
+            $overrideText = 'approved for partial review signoff - review provider is unavailable; defer independent review with explicit ownership'
+            $turn = New-SpecrewTypedTurnFixture -ProjectRoot $f.repo -Text $overrideText
             $captured = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $f.repo `
-                -Response 'approved for partial review signoff - review provider is unavailable; defer independent review with explicit ownership' `
-                -HostKind 'fixture' -SourceEvent 'UserPromptSubmit'
+                -Response $overrideText -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn.TurnIdentity
             $captured.authority_kind | Should -Be 'human'
 
             $out = Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff'

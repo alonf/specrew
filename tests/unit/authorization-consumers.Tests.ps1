@@ -171,6 +171,27 @@ Describe 'workshop repair and workshop replies are used only when the human type
     }
 }
 
+Describe 'a lens that closes on an older wide delegation checks that delegation too' {
+    It 'the delegation a lens closes on, written from a scheduled prompt, is not used' {
+        . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1')
+        $sha = { param([string]$t) ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($t)))).ToLowerInvariant() }
+        $root = script:New-Root
+        $delegation = 'you decide the remaining lenses'
+        $pick = 'use codex as the reviewer'
+        $delegationTurn = script:New-Turn -Root $root -Text $delegation -Shape $script:Scheduled
+        $pickTurn = script:New-Turn -Root $root -Text $pick -Shape $script:Typed
+        $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $root
+        New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+        $older = [ordered]@{ schema_version = '1'; feature_ref = '001-demo'; phase = 'lens'; lens = 'architecture'; receipt_id = ('d' * 64); confirmation = 'human-delegated'; delegation_breadth = 'remaining-lenses'
+            response_hash = (& $sha $delegation); host_kind = 'claude'; turn_identity = $delegationTurn }
+        $newer = [ordered]@{ schema_version = '1'; feature_ref = '001-demo'; phase = 'lens'; lens = 'architecture'; receipt_id = ('e' * 64); confirmation = 'human-confirmed'; answer_kind = 'reviewer-pick'
+            response_hash = (& $sha $pick); host_kind = 'claude'; turn_identity = $pickTurn }
+        [IO.File]::WriteAllText($path, (($older | ConvertTo-Json -Compress) + "`n" + ($newer | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $got = Get-SpecrewWorkshopLensClosingReceipt -ProjectRoot $root -FeatureRef '001-demo' -Phase 'lens' -Lens 'architecture' -Confirmation 'human-delegated' 2>$null
+        if ($null -ne $got) { [string]$got.confirmation | Should -Not -Be 'human-delegated' -Because 'the delegation came from a scheduled prompt' }
+    }
+}
+
 Describe 'the whole path: a scheduled prompt through the prompt hook, before its transcript record exists' {
     It 'is captured when it arrives, and refused when it is used, with the message saying what to do next' {
         $root = script:New-Root

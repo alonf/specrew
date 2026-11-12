@@ -217,7 +217,7 @@ Describe 'the ceiling (FR-002)' {
         $human = 'approved for before-implement'
         Set-Content -LiteralPath $transcript -Encoding UTF8 -Value @(
             ('{"role":"assistant","message":{"content":[{"type":"text","text":' + (("Packet body.`n`n<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->") | ConvertTo-Json) + '}]}}')
-            ('{"role":"user","promptId":"prompt-rbs-1","origin":{"kind":"human"},"message":{"content":[{"type":"text","text":' + ($human | ConvertTo-Json) + '}]}}')
+            ('{"role":"user","promptId":"prompt-rbs-1","origin":{"kind":"human"},"turnOrigin":"human","promptSource":"typed","message":{"content":[{"type":"text","text":' + ($human | ConvertTo-Json) + '}]}}')
         )
         $capture = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $root -TranscriptPath $transcript -LastAuthorizedBoundary 'tasks' -Source 'Stop' -NowUtc '2026-11-08T08:30:00Z' 2>$null
         $capture.authorized | Should -BeFalse

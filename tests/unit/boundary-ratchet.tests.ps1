@@ -15,6 +15,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1')
 $script:failCount = 0
 
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
@@ -28,6 +29,18 @@ function New-RatchetFixture {
     )
     $root = Join-Path ([System.IO.Path]::GetTempPath()) ("ratchet-fixture-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 8))
     New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew') | Out-Null
+    # Feature 203 T013 (B5F-066): a verdict the hook captured from the transcript is used only when the human typed it. Each
+    # such entry gets its own typed turn in this fixture project - a real-shaped transcript record and the turn's ledger row -
+    # and cites it by turn_identity. Entries are copied, because one history list feeds several fixtures.
+    $History = @(foreach ($h in @($History)) {
+            if ($h -is [System.Collections.IDictionary] -and [string]$h['evidence_source'] -ceq 'hook-captured-from-transcript') {
+                $copy = [ordered]@{}
+                foreach ($key in $h.Keys) { $copy[$key] = $h[$key] }
+                $copy['turn_identity'] = [string](New-SpecrewTypedTurnFixture -ProjectRoot $root -Text ([string]$h['verdict_text'])).TurnIdentity
+                $copy
+            }
+            else { $h }
+        })
     $context = [ordered]@{
         schema = 'v2'
         boundary_enforcement = [ordered]@{

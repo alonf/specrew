@@ -68,6 +68,15 @@ try {
     . (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1')
     $controllerPath = Join-Path $scratch "specs\$feature\lens-applicability.json"
     $questionPath = Join-Path $scratch '.specrew\handover\workshop-question.json'
+    # Feature 203 T013 (B5F-066): a receipt is used only when the human typed its reply - the receipt names the typed turn,
+    # whose transcript record (the shape Claude writes for a typed message) the turn's ledger row points at. The fixture is
+    # built in its own module scope, so the check it loads does not reach the agenda writer this test runs in this process:
+    # the writer has to load the check itself, as it does when it runs on its own.
+    $typedTurnModule = New-Module -Name 'WorkshopPacketTypedTurnFixture' -ArgumentList (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1') -ScriptBlock {
+        param($HelperPath)
+        . $HelperPath
+        Export-ModuleMember -Function New-SpecrewTypedTurnFixture
+    }
 
     function Add-TypedReply {
         param(
@@ -88,7 +97,8 @@ try {
             $question['agenda_binding'] = $AgendaBinding
         }
         [IO.File]::WriteAllText($questionPath, ($question | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
-        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'test' -SourceEvent 'UserPromptSubmit'
+        $turn = New-SpecrewTypedTurnFixture -ProjectRoot $scratch -Text $Reply
+        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity ([string]$turn.TurnIdentity)
     }
 
     # Receipt first, records second: the store refuses a product-domain receipt once both records

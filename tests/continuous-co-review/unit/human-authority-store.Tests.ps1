@@ -4,6 +4,7 @@ Describe 'Review-signoff partial override human authority store' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
         $script:TreeA = ('a' * 64)
         $script:TreeB = ('b' * 64)
         $script:Campaign = 'cmp-001-human-authority-i001'
@@ -18,8 +19,11 @@ Describe 'Review-signoff partial override human authority store' {
     }
 
     It 'captures an exact typed prompt-entry verdict and returns it only for its tree and campaign' {
+        # Feature 203 T013 (maintainer ruling 2026-11-12): the Copilot prompt hook registers the typed turn with no transcript
+        # path (its hook input carries none), so the sender check finds the turn and reads it as unverified.
+        $turn = Register-SpecrewTestNoTranscriptHostTurn -ProjectRoot $script:Project -Text $script:Verdict -HostKind 'copilot'
         $written = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $script:Project `
-            -Response $script:Verdict -HostKind 'copilot' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-14T10:01:00Z'
+            -Response $script:Verdict -HostKind 'copilot' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn -NowUtc '2026-08-14T10:01:00Z'
 
         $written.authority_kind | Should -Be 'human'
         $written.verdict_text | Should -BeExactly $script:Verdict

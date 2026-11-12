@@ -98,7 +98,8 @@ try {
     $lines = @(
         ([pscustomobject]@{ type = 'assistant'; message = [pscustomobject]@{ role = 'assistant'; content = @([pscustomobject]@{ type = 'text'; text = $packet }) } } | ConvertTo-Json -Depth 8 -Compress),
         # Feature 203 T004: the human entry in Claude's recorded shape (promptId, origin), so the writer can cite and re-read it.
-        ([pscustomobject]@{ type = 'user'; promptId = 'prompt-t011'; origin = [pscustomobject]@{ kind = 'human' }; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'approved for specify' }) } } | ConvertTo-Json -Depth 8 -Compress)
+        # Feature 203 T013 (B5F-066): with the typed-message fields Claude writes (turnOrigin human, promptSource typed).
+        ([pscustomobject]@{ type = 'user'; promptId = 'prompt-t011'; origin = [pscustomobject]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'approved for specify' }) } } | ConvertTo-Json -Depth 8 -Compress)
     )
     Write-Utf8 $transcript (($lines -join "`n") + "`n")
     $null = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $handover --project-root $root --host-kind claude --source-event UserPromptSubmit --session-id t011 --transcript-path $transcript --last-user-message 'approved for specify' --turn-origin typed-user 2>&1)

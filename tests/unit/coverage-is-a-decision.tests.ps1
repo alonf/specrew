@@ -17,6 +17,7 @@ BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
     . (Join-Path $script:RepoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1')
+    . (Join-Path $script:RepoRoot 'tests\support\cited-typed-turn.ps1')
     # Loaded at SCRIPT scope: a dot-source inside a function dies with the function's scope, and the
     # coverage state then silently skips drift on bundle-less fixtures - measured by this suite's own
     # first red.
@@ -157,7 +158,9 @@ Describe 'W52 the chosen-absence disposition' {
     It 'captures the typed deferral with the coverage state it was chosen against' {
         $f = New-CoveredProject
         try {
-            $fact = Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $f.Root -Response 'continue without coverage until the review phase' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            # Feature 203 T013 (B5F-066): the deferral is used only when the human typed it - a real-shaped typed turn.
+            $turn = New-SpecrewTypedTurnFixture -ProjectRoot $f.Root -Text 'continue without coverage until the review phase'
+            $fact = Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $f.Root -Response 'continue without coverage until the review phase' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn.TurnIdentity
             $fact | Should -Not -BeNullOrEmpty
             [string]$fact.covered_tree_at_deferral | Should -Be $f.Covered -Because 'the deferral binds to the coverage state the human saw'
             (Get-SpecrewCoverageDeferralAuthorization -ProjectRoot $f.Root).verdict_text | Should -Be 'continue without coverage until the review phase'

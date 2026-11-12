@@ -53,10 +53,31 @@ function New-LensFixture {
     [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
     return $root
 }
+# Feature 203 T013 (B5F-066): a receipt is used only when the human typed its reply, read from the host's transcript record
+# of that message. The test reads the store directly, as the lens writer does, so it loads the check the writer loads; and
+# each reply reaches the prompt hook as Claude sends it: with the transcript path, whose record of the message (its
+# promptId and text, in the shape Claude writes for a typed message) the capture registers on the turn's ledger row.
+. (Join-Path $repoRoot 'tests/support/cited-typed-turn.ps1')
+function Add-TypedTranscriptRecord {
+    param([string]$TranscriptPath, [string]$Text, [string]$MessageId)
+    $entry = [ordered]@{
+        type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $MessageId; sessionId = 'wdel-session'
+        timestamp = [DateTimeOffset]::UtcNow.ToString('o'); origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'
+        message = [ordered]@{ role = 'user'; content = $Text }
+    }
+    [IO.File]::AppendAllText($TranscriptPath, (($entry | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+}
 function Invoke-Provider {
-    param([string]$Root, [string]$Reply, [string]$MessageId)
+    param([string]$Root, [string]$Reply, [string]$MessageId, [string]$HostKind = 'claude')
     $extra = @('--turn-origin', 'typed-user', '--session-id', 'wdel-session') + @(if ($MessageId) { '--message-identity', 'declared', '--message-id', $MessageId })
-    return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Reply @extra 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+    # A Claude message always carries its prompt id and transcript path. A message with no id is Copilot's shape, whose hook
+    # input carries no transcript path either; the check reads its turn as unverified (maintainer ruling 2026-11-12).
+    if ($MessageId -and $HostKind -eq 'claude') {
+        $transcript = Join-Path $Root '.specrew/runtime/wdel-transcript.jsonl'
+        Add-TypedTranscriptRecord -TranscriptPath $transcript -Text $Reply -MessageId $MessageId
+        $extra += @('--transcript-path', $transcript)
+    }
+    return ((& pwsh -NoProfile -File $provider --project-root $Root --host-kind $HostKind --source-event UserPromptSubmit --last-user-message $Reply @extra 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
 }
 function Get-Receipts { param([string]$Root) $p = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'; if (-not (Test-Path -LiteralPath $p)) { return @() }; return @(Get-Content -LiteralPath $p | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json }) }
 function Get-DelegatedLenses { param([string]$Root) return @(Get-Receipts $Root | Where-Object { [string]$_.confirmation -eq 'human-delegated' } | ForEach-Object { [string]$_.lens }) }
@@ -153,9 +174,10 @@ try {
         $label = if ($withIds) { 'with message IDs' } else { 'with no message ID (Copilot)' }
         $r9 = New-LensFixture; $roots.Add($r9)
         $id = { param([string]$Name) if ($withIds) { $Name } else { '' } }
-        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-1')
-        $null = Invoke-Provider -Root $r9 -Reply 'you decide' -MessageId (& $id 'msg-decide-2')
-        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3')
+        $host9 = if ($withIds) { 'claude' } else { 'copilot' }
+        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-1') -HostKind $host9
+        $null = Invoke-Provider -Root $r9 -Reply 'you decide' -MessageId (& $id 'msg-decide-2') -HostKind $host9
+        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3') -HostKind $host9
         $open9 = @(Get-Receipts $r9 | Where-Object { [string]$_.lens -eq 'architecture-core' })
         Assert-True ($open9.Count -eq 3 -and [string]$open9[2].confirmation -eq 'human-skipped') ("case 9, {0}: skip, you decide, skip keeps three acts, the skip newest ({1})" -f $label, (($open9 | ForEach-Object { [string]$_.confirmation }) -join ', '))
         Assert-True (@($open9 | ForEach-Object { [string]$_.receipt_id } | Select-Object -Unique).Count -eq $open9.Count) ("case 9, {0}: each act has its own receipt" -f $label)
@@ -164,7 +186,7 @@ try {
         $null = & pwsh -NoProfile -File $lensWriter -ProjectRoot $r9 -FeatureRef $feature -Lens 'architecture-core' -Decision 'Delegated.' -Depth 'light' -Agenda @('An open question?') -Confirmation 'human-delegated' 2>&1
         Assert-True ($LASTEXITCODE -ne 0) ("case 9, {0}: closing as delegated is refused after the latest skip" -f $label)
         # The same reply offered again - a second path, or a second host's hooks - is still one receipt.
-        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3')
+        $null = Invoke-Provider -Root $r9 -Reply 'skip' -MessageId (& $id 'msg-skip-3') -HostKind $host9
         Assert-True (@(Get-Receipts $r9 | Where-Object { [string]$_.lens -eq 'architecture-core' }).Count -eq 3) ("case 9, {0}: the same reply again adds nothing" -f $label)
     }
 

@@ -153,7 +153,8 @@ Assert-True ($providerText -notmatch '\[datetime\]::Parse\(\$recordedRaw\)' -and
 Write-Host '  --- Case 6: the T017 approval checks on ledger rows whose observed_at survived JSON as a [datetime] ---'
 $authorityStore = Join-Path $repoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1'
 . $authorityStore
-$root6 = Join-Path ([IO.Path]::GetTempPath()) ('tsr6-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+. (Join-Path $repoRoot 'tests/support/cited-typed-turn.ps1')
+$root6 =Join-Path ([IO.Path]::GetTempPath()) ('tsr6-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
 try {
     New-Item -ItemType Directory -Path (Join-Path $root6 '.specrew/authority') -Force | Out-Null
     $ledger6 = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $root6
@@ -250,7 +251,9 @@ foreach ($form in @(@{ n = '+00:00'; f = { param($t) $t.ToString('o') } }, @{ n 
     try {
         New-Item -ItemType Directory -Path (Join-Path $root10 '.specrew') -Force | Out-Null
         $typed10 = [DateTimeOffset]::new(2026, 10, 20, 9, 15, 0, 900, [TimeSpan]::Zero)
-        $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root10 -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc (& $form.f $typed10)
+        # Feature 203 T013 (B5F-066): the reset approval is used only when the human typed it - a real-shaped typed turn.
+        $turn10 = New-SpecrewTypedTurnFixture -ProjectRoot $root10 -Text 'approved for allowance reset'
+        $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root10 -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity $turn10.TurnIdentity -NowUtc (& $form.f $typed10)
         $capture10 = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root10
         Assert-True ($null -ne $capture10 -and $capture10.observed_at -is [datetime]) ('{0} capture: the fixture is real, observed_at came back from JSON as a [datetime]' -f $form.n)
 

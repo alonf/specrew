@@ -70,16 +70,22 @@ function New-WorkshopFixture {
     [System.IO.File]::WriteAllText((Join-Path $feature 'lens-applicability.json'), ($controller | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
     return [pscustomobject]@{ Root = $root; Feature = $feature; Controller = (Join-Path $feature 'lens-applicability.json') }
 }
+# Feature 203 T013 (B5F-066): a receipt is used only when the human typed its reply - the receipt names the typed turn,
+# whose transcript record (the shape Claude writes for a typed message) the turn's ledger row points at, and keeps the
+# reply's hash. The case-2b reader runs in this process, as it does in the hook that loads the check, so the check is loaded.
+. (Join-Path $repoRoot 'tests\support\cited-typed-turn.ps1')
 function Write-LensReceipt {
     # The typed-turn receipt the prompt-submit hook mints when the human answers a lens question.
     param([string]$Root, [string]$Lens, [string]$Confirmation = 'human-confirmed', [string]$Scope = 'lens-question', [string]$Phase = 'lens')
     $path = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+    $reply = if ($Confirmation -eq 'human-skipped') { 'skip' } else { 'We keep the existing layering for ' + $Lens + '.' }
+    $turn = New-SpecrewTypedTurnFixture -ProjectRoot $Root -Text $reply
     $record = [ordered]@{
         schema_version = '1'; receipt_id = ('receipt-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
         feature_ref = '001-feat'; iteration_number = ''; phase = $Phase; lens = $Lens
-        question_hash = 'q'; response_hash = 'r'; confirmation = $Confirmation; confirmation_scope = $Scope
-        source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-08-29T00:00:00Z'
+        question_hash = 'q'; response_hash = (Get-SpecrewWorkshopAuthorityHash -Text $reply); confirmation = $Confirmation; confirmation_scope = $Scope
+        source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-08-29T00:00:00Z'; turn_identity = [string]$turn.TurnIdentity
     }
     ($record | ConvertTo-Json -Compress) | Add-Content -LiteralPath $path -Encoding UTF8
     return [string]$record.receipt_id
