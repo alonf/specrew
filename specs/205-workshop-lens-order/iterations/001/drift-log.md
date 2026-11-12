@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 15
-**Resolution rate**: 100% (15/15 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-015 class closure open)
+**Total drift events**: 18
+**Resolution rate**: 100% (18/18 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-018 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -249,14 +249,21 @@
   independent-review block required" error failing. CI passes on it.
 - **Class closure**: NONE — the validator and the review store are feature 203's area. Handed over as H-002.
 
-### DRIFT-013 — the sync needs the pre-review phase lines; the governance check needs the review phase once review.md exists (finding)
+### DRIFT-013 — the sync needs review.md with the pre-review phase lines; the governance check refuses that pair (finding)
 
-- **Observed**: 2026-11-11, at the review-signoff sync. The sync's state-truth gate refuses unless state.md and plan.md
-  show the last authorized boundary (`before-implement` / `executing`). The sync binds to HEAD and needs it on origin
-  (`verdict-commit-durable`). The governance check, which must exit 0 before every push, refuses plan Status
-  `executing` once `review.md` exists. So no commit can hold the review record and also be pushed and synced.
-- **Resolution**: the maintainer approved removing `review.md` by a revert commit (`e2748a53`), syncing on that, and
-  restoring the record after the sync moves the phase lines.
+- **Observed**: 2026-11-11 and 2026-11-12, at the review-signoff sync. The sync needs three things of the commit it binds
+  to: `review.md` present (`[owed-artifact] Boundary 'review-signoff' is missing owed evidence: review.md`), state.md and
+  plan.md still at the last authorized boundary (`before-implement` / `executing`, the state-truth gate), and the
+  commit on origin (`verdict-commit-durable`). The governance check refuses plan Status `executing` once `review.md`
+  exists, locally and in CI. So the commit the sync binds to always fails the check, and every feature gets one red
+  Specrew CI commit at review-signoff.
+- **Correction**: this entry first said the sync needs the phase lines and the check needs the review phase, and the
+  crew removed `review.md` by the revert `e2748a53` to let the sync run. The real sync then refused for the missing
+  `review.md`; the preflight-only run does not check owed artifacts, so it had passed.
+- **Resolution** (maintainer's ruling, 2026-11-12): `review.md` is restored with the phase lines pre-review and pushed
+  with two named local failures ("derived block required", "plan executing with review.md") and Specrew CI red on Lint
+  only for that one push. The sync binds to that commit, and the records push after it must be fully green. Feature 202
+  iteration 003 took the same path in `a7e2b74c`.
 - **Class closure**: NONE — the sync and the validator are feature 203's area. Handed over as H-003.
 
 ### DRIFT-014 — the deployed-file check names 5 of 18 drifted files and offers only specrew update (finding)
@@ -279,6 +286,53 @@
 - **Resolution**: recorded as an external CI failure (runner timing); not rerun. If it fails again on the next push,
   the crew stops and reports.
 - **Class closure**: NONE — the suite and its timing budget belong to the review runtime, outside 205's scope.
+
+### DRIFT-016 — CI on 8c7f3323 stayed queued for two hours without a job, and could not be cancelled (external CI failure)
+
+- **Observed**: 2026-11-11 to 2026-11-12. The push of `8c7f3323` at 22:30 local created Specrew CI `43096458260`,
+  Test `43096458451` and Cross-Platform Validation `43096458281`. About two hours later all three were still `queued`
+  with no job created. Feature 206's three runs from 22:26 local were stuck the same way, and nothing was in progress
+  anywhere in the repository. GitHub's status page showed Actions as operational.
+- **Cancel refused**: with the maintainer's approval the crew tried to cancel all three. The cancel call answered
+  "Cannot cancel a workflow run that is completed", while the same runs still read `queued`. The force-cancel call
+  answered HTTP 409 "Cannot cancel a workflow run that has not been queued yet." Specrew CI has no
+  `workflow_dispatch` trigger, so it cannot be started again by hand on the same commit. Feature 206's crew got the
+  same refusals for cancel and re-run on its stuck runs.
+- **Resolution** (maintainer's ruling, 2026-11-12): Test and Cross-Platform Validation were started by hand on
+  `8c7f3323` (`workflow_dispatch`): Test `43113642311` and Cross-Platform Validation `43113646042`, both at 00:39 local.
+  The sync runs once both are green and the governance check and markdownlint pass locally. **`8c7f3323` has no Specrew
+  CI result of its own**: the stuck run `43096458260` is its only Specrew CI run. Specrew CI gets its run on the next
+  push, which carries the sync records and the restored review record, and that run must be green before the
+  review-signoff packet.
+- **Class closure**: NONE — GitHub Actions' queue is outside the repository.
+
+### DRIFT-017 — a session resume rewrote state.md and created tasks-progress.yml (finding)
+
+- **Observed**: 2026-11-12 00:18:28 local, after a machine restart. The session-start hook ran the bootstrap provider
+  in welcome-back mode. It reached `coordinator-resume.ps1` (line 165, `Get-TaskProgressSummary`), which calls
+  `Sync-IterationTaskProgress` in `scripts/internal/task-progress.ps1`. That wrote a new, untracked
+  `specs/205-workshop-lens-order/iterations/001/tasks-progress.yml`, and `Update-IterationStateFromTaskProgress`
+  rewrote the tracked `state.md`. The rewrite changed Iteration Status from `executing` to `ready-for-review`, rewrote
+  two field values, and added a managed task-progress summary block. Nobody ran a command; opening a session did it.
+  The rewrite also dropped the blank line before `## Notes`, so the rewritten file fails markdownlint (MD032, MD022);
+  `8c7f3323`'s own state.md passes.
+- **Why it matters**: state.md's phase lines are checked by the boundary sync's state-truth gate (DRIFT-011, DRIFT-013).
+  A resume that moves them can make the next sync refuse, or make a commit carry a status nobody chose.
+- **Resolution**: neither file is committed (the maintainer's ruling). The crew runs the sync preflight with them as
+  they are, and restores state.md to HEAD only if the preflight refuses on it.
+- **Class closure**: NONE — the resume path and the task-progress writer are feature 203's area. Handed over as H-005.
+
+### DRIFT-018 — review-runtime tests depend on runner speed (finding, handed over)
+
+- **Observed**: 2026-11-10 to 2026-11-12, five review-runtime test failures on shared runners across features 205 and
+  206, each on a commit that could not have caused it (DRIFT-015 is one of them).
+- **Census**: at the maintainer's request the crew listed every review-runtime test site that depends on runner speed:
+  14 sites in three classes (speed caps, real deadlines that must succeed, kill-then-check), plus two sleep barriers.
+  One of them, the macOS process-group membership wait's 1,000 ms default, is a product defect, not only a test issue.
+  The full table and seven proposals are in H-006.
+- **Resolution**: handed over; no further work by 205.
+- **Class closure**: NONE — the review engine, its tests and the hook dispatcher are feature 203's area. Handed over as
+  H-006.
 <!--
   Every new ### DRIFT-... event includes:
 

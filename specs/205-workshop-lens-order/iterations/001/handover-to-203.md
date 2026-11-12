@@ -72,20 +72,21 @@ where it does not, or commit the evidence the block is derived from, so both run
 
 **Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-012.
 
-## H-003 — the sync needs the pre-review phase lines; the governance check needs the review phase once review.md exists
+## H-003 — the sync needs review.md with the pre-review phase lines; the governance check refuses that pair
 
-**Severity**: medium. A review record cannot be committed, pushed and synced in one tree.
+**Severity**: medium. Every feature gets one red Specrew CI commit at review-signoff.
 
-**Failure scenario**: the review-signoff sync's state-truth gate refuses unless state.md and plan.md show the last
-authorized boundary (`before-implement` / `executing`), and it binds to a HEAD already on origin. The governance
-check, required before every push, refuses plan Status `executing` once `review.md` exists. Writing the record first
-blocks the push; moving the phase by hand trips the state-truth gate.
+**Failure scenario**: the review-signoff sync binds to a commit on origin that must hold `review.md` (owed artifact)
+with state.md and plan.md still at the last authorized boundary (`before-implement` / `executing`, the state-truth
+gate). The governance check refuses plan Status `executing` once `review.md` exists, locally and in CI. So the commit
+the sync needs always fails the check and turns Specrew CI Lint red, skipping the gates behind it.
 
-**Observed**: 2026-11-11, feature 205 iteration 001 (DRIFT-011, DRIFT-013). Worked around by reverting `review.md`
-(`e2748a53`), syncing, and restoring it after the sync.
+**Observed**: 2026-11-11 and 2026-11-12, feature 205 iteration 001 (DRIFT-011, DRIFT-013). Feature 202 iteration 003
+took the same path in `a7e2b74c`. Note also that the sync's preflight-only run does not check owed artifacts, so it
+passes where the real sync refuses.
 
 **Proposed class closure (for 203 to decide)**: let the governance check accept `executing` with a `review.md` while
-the review-signoff crossing is pending, or let the sync accept the review record in the tree it binds to.
+the review-signoff crossing is pending, and make the preflight-only run check owed artifacts too.
 
 **Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-013.
 
@@ -106,3 +107,111 @@ check the same day.
 purpose. Better still, have the deploy scripts write the hash record.
 
 **Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-014.
+
+## H-005 — a session resume rewrote a tracked governance file
+
+**Severity**: medium. Opening a session changed a tracked file that the boundary sync checks, with no command run.
+
+**Failure scenario**: the session-start hook runs the bootstrap provider in welcome-back mode. It calls
+`coordinator-resume.ps1` (`Get-TaskProgressSummary`, line 165), which runs `Sync-IterationTaskProgress` in
+`scripts/internal/task-progress.ps1`. That writes `tasks-progress.yml`, and `Update-IterationStateFromTaskProgress`
+rewrites `state.md`, including its Iteration Status. The boundary sync's state-truth gate then reads a status that
+neither the human nor the crew chose, and a later commit can carry it unnoticed.
+
+**Observed**: 2026-11-12 00:18:28 local, feature 205 iteration 001, after a machine restart. state.md moved from
+`executing` to `ready-for-review` and gained a managed summary block; `tasks-progress.yml` was created untracked.
+
+**Proposed class closure (for 203 to decide)**: make the resume summary read-only, computing the summary without
+writing, and leave state.md and tasks-progress.yml to the commands that own them.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-017.
+
+## H-006 — review-runtime tests depend on runner speed; one production wait is too short
+
+**Severity**: high for the class. Five different review-runtime tests failed in two days on shared runners, each on a
+commit that could not have caused it.
+
+**Observed failures**:
+
+- macOS process-group probe: feature 206, `a9ad8aa0`, Cross-Platform `42994018357`
+  (`macos-process-group-unavailable:macos-process-group-probe-membership-failed`).
+- Windows journal-fault-injection 1,000 ms budget: feature 205, `cf173030`, Cross-Platform `43066363241` (2,650 ms).
+- co-review-service lease handoff: feature 206, `03bc7a48`, Specrew CI `43116326615` (Linux; the stopped supervisor
+  was still listed).
+- macOS stream-drain 250 ms budget: feature 206, `03bc7a48` (reported by the maintainer; not confirmed from the log).
+- empty-result-retry, earlier (reported by the maintainer; its failure output was not read).
+
+### Product defect, separate from the test items
+
+**Item 8 is a product defect.** `Wait-ReviewMacProcessGroupMembership` (`review-macos-runtime-port.ps1:79`) defaults to
+1,000 ms, polling every 25 ms, and each poll runs a live `ps` membership probe. The macOS runtime preflight
+(`Test-ReviewMacProcessGroupAvailability`, about line 116) uses that default, so a loaded machine, a user's laptop as
+much as a shared runner, can report the macOS runtime unavailable. The ready-file handshake before it already allows
+`ReviewPosixContainmentHandshakeTimeoutMilliseconds` (15,000 ms).
+
+### The census
+
+Counted: checks that fail when a runner is slow. Not counted: generous safety deadlines (15 to 180 s) and lower bounds
+("at least 4.5 s elapsed"), which fail only if something is truly wrong. Paths are under `tests/continuous-co-review/`
+unless they start with `tests/`.
+
+**A. Speed caps: a stopwatch measures a fast path and asserts an upper bound.**
+
+| # | File:line | What it asserts | Failed |
+| --- | --- | --- | --- |
+| 1 | `tests/unit/journal-fault-injection.tests.ps1:89-91, 97, 104` | First lock wait 950 to 1,500 ms; later waits under 100 ms; total under 1,600 ms; append after budget under 100 ms; free lock under 100 ms | 205, Windows, `cf173030` |
+| 2 | `unit/review-posix-runtime.Tests.ps1:126` | A drain wait with a 25 ms timeout returns in under 250 ms | 206, macOS, `03bc7a48` |
+| 3 | `integration/timeout-partial-stdout.Tests.ps1:34` | A 3 s timeout run ends in under 20 s | |
+| 4 | `unit/isolated-task-launcher.Tests.ps1:104`, `:173` | Detached start under 8 s; a 3 s timeout ends in under 35 s | |
+| 5 | `unit/review-target-port.Tests.ps1:72` | A 1 s timeout ends in under 8 s | |
+| 6 | `unit/hook-health-receipt.Tests.ps1:297` | A 1 s probe timeout ends in under 8 s | |
+| 7 | `integration/detached-spawn-no-block.Tests.ps1:55` (Windows only) | The host read returns in under 4 s | |
+
+**B. Real deadlines that must succeed: a slow runner turns success into a timeout.**
+
+| # | File:line | What it depends on | Failed |
+| --- | --- | --- | --- |
+| 8 | `integration/review-cross-platform-fault-matrix.Tests.ps1:150` | The macOS runtime preflight's 1,000 ms membership wait (the product defect above) | 206, macOS, `a9ad8aa0` |
+| 9 | `unit/review-posix-runtime.Tests.ps1:169` | Three injected probe calls within 100 ms (lines 174-178 were already loosened for this; 169 was not) | |
+| 10 | `unit/review-posix-runtime.Tests.ps1:103` | Two ready-file reads within 100 ms | |
+| 11 | `tests/unit/hook-output-journal.tests.ps1:203, 266, 300, 326, 351-422` | A 4,000 ms lock hold must outlast the 1,000 ms budget, leaving about 3 s for the dispatcher to reach the lock | |
+| 12 | `unit/empty-result-retry.Tests.ps1` (all four cases) | Each attempt starts a real `pwsh` under a 30 s timeout; the retry needs two cold starts (inferred) | earlier |
+
+**C. Kill, then check at once.**
+
+| # | File:line | What it does | Failed |
+| --- | --- | --- | --- |
+| 13 | `unit/co-review-service.Tests.ps1:127-129` | Production (`co-review-service.ps1:216`) runs `Stop-Process -Force` without waiting; the test calls `Get-Process` immediately | 206, Linux, `03bc7a48` |
+| 14 | `unit/bounded-verification.Tests.ps1:60-63` | A fixed 800 ms sleep, then the grandchild must be gone | |
+
+**Sleeps used as barriers (lower risk)**: `unit/lineage-lease.Tests.ps1:54` (500 ms) and
+`tests/unit/journal-fault-injection.tests.ps1:149` (1,500 ms). A racer whose cold start takes longer misses the
+barrier.
+
+**Already speed-proof, the model to copy**: `unit/isolated-task-containment.Tests.ps1:174-179` and `:259-264` kill, poll
+until the process is gone with a 10 s deadline, then assert.
+
+### Proposals (for 203 to decide)
+
+1. **Inject the clock into budget logic.** The lock-wait budget, the drain wait and both membership waits take a clock
+   and sleep parameter (`Wait-ReviewPosixReadyFile -Sleep` and `-MembershipProbe` half-exist). Tests assert the
+   accounting, not milliseconds: the first wait used up the budget, later waits tried once, the spent-budget counter
+   reads 1,000. Covers 1, 2, 9 and 10.
+2. **Assert outcomes, not durations, for timeouts.** "Timed out, not slept to completion" becomes: `timed_out` is true,
+   the child tree is gone (polled with a deadline), and a marker the child writes after its long sleep does not exist.
+   Covers 3 to 7.
+3. **Wait for exit after a kill, in production and in tests.** `Stop-Process` is followed by a bounded `WaitForExit`,
+   and production reports a survivor. Tests poll until gone, as the containment test does. Covers 13 and 14.
+4. **Handshakes instead of sleeps.** Each racer or writer writes a ready file and the test waits for all of them before
+   releasing the barrier. Covers the two sleep barriers, and item 11 once the dispatcher signals that it is waiting
+   before the holder's clock starts.
+5. **Fix the product defect in item 8.** Give the membership wait the handshake's budget (15 s), or bound it by
+   observation count instead of time.
+6. **Keep one coarse check where wall-clock time is the rule.** DRIFT-023's 1,000 ms lock budget is a product rule:
+   keep a lower bound (first wait at least 950 ms) and an upper bound with real slack (under 10 s), and move the exact
+   accounting to the fake-clock test.
+7. **Class closure.** A static test that fails on any new elapsed-time upper bound (`Should -BeLessThan` on a
+   stopwatch, or `-lt` on `Elapsed…`) in the review-runtime suites, unless the line carries an explicit allow
+   annotation.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-018. Feature 205 does no further work on it.
