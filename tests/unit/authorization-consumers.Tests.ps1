@@ -127,6 +127,50 @@ Describe 'a boundary verdict covers its crossing only when the human typed it (t
     }
 }
 
+Describe 'workshop repair and workshop replies are used only when the human typed them' {
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1')
+        $script:WsHash = { param([string]$t) ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($t)))).ToLowerInvariant() }
+    }
+
+    It 'the writers record the turn identity they are handed' {
+        (Get-Command Write-SpecrewWorkshopRepairAuthorization).Parameters.ContainsKey('TurnIdentity') | Should -BeTrue
+        (Get-Command Write-SpecrewWorkshopAuthorityReceipt).Parameters.ContainsKey('TurnIdentity') | Should -BeTrue
+    }
+
+    It 'workshop repair, <label>' -ForEach @(
+        @{ label = 'typed: used'; shape = 'Typed'; usable = $true }
+        @{ label = 'scheduled: not used'; shape = 'Scheduled'; usable = $false }
+    ) {
+        $root = script:New-Root
+        $text = 'approved for workshop repair'
+        $turn = script:New-Turn -Root $root -Text $text -Shape (Get-Variable -Name $shape -Scope Script -ValueOnly)
+        $proposal = ('b' * 64)
+        $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $root
+        New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+        $record = [ordered]@{ schema_version = '1'; proposal_id = $proposal; authorization = 'human-approved'; response_hash = (& $script:WsHash $text); host_kind = 'claude'; turn_identity = $turn }
+        [IO.File]::WriteAllText($path, (($record | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $got = Get-SpecrewWorkshopRepairAuthorization -ProjectRoot $root -ProposalId $proposal 2>$null
+        ($null -ne $got) | Should -Be $usable
+    }
+
+    It 'a workshop reply receipt, <label>' -ForEach @(
+        @{ label = 'typed: used'; shape = 'Typed'; usable = $true }
+        @{ label = 'scheduled: not used'; shape = 'Scheduled'; usable = $false }
+    ) {
+        $root = script:New-Root
+        $text = 'two kinds of user: admins and guests'
+        $turn = script:New-Turn -Root $root -Text $text -Shape (Get-Variable -Name $shape -Scope Script -ValueOnly)
+        $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $root
+        New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+        $record = [ordered]@{ schema_version = '1'; feature_ref = '001-demo'; phase = 'product-domain'; lens = ''; receipt_id = ('c' * 64); confirmation = 'human-confirmed'
+            response_hash = (& $script:WsHash $text); host_kind = 'claude'; turn_identity = $turn }
+        [IO.File]::WriteAllText($path, (($record | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $got = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $root -FeatureRef '001-demo' -Phase 'product-domain' 2>$null
+        ($null -ne $got) | Should -Be $usable
+    }
+}
+
 Describe 'the whole path: a scheduled prompt through the prompt hook, before its transcript record exists' {
     It 'is captured when it arrives, and refused when it is used, with the message saying what to do next' {
         $root = script:New-Root
