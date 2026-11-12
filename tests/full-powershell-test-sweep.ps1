@@ -4,28 +4,56 @@
 Disk-wide test census. The F-198 registry is intentionally curated; this runner answers the
 different question “which PowerShell test files are on disk, and do they execute?” without
 turning probes, fixtures, or other support scripts into tests merely because they live below
-tests/. A test file is any *.ps1 whose filename ends in test.ps1 or tests.ps1 (case-insensitive).
+tests/. What counts as a test is tests/support/test-census.ps1, the one definition the lane guard
+(tests/unit/every-suite-is-named-by-a-lane.tests.ps1) reads too: every *.ps1 under tests/, whatever
+its file name, except fixtures, support helpers and a listed exclusion with its reason.
 
 Each file runs in a fresh pwsh process with bounded parallelism and a per-file timeout. Pester
-containers are detected from executable Describe syntax and use Run.Exit so discovery/container
-failures cannot hide behind FailedCount=0. Direct assertion scripts run with -File semantics.
+containers (the census's kind) use Run.Exit so discovery/container failures cannot hide behind
+FailedCount=0. Direct assertion scripts run with -File semantics.
+
+-ListOnly prints the files the sweep would run, one "LIST <kind> <path>" line each, and exits 0
+before running any of them.
 #>
 [CmdletBinding()]
 param(
     [ValidateRange(1, 16)][int]$MaxParallel = 4,
     [ValidateRange(1, 3600)][int]$PerFileTimeoutSeconds = 300,
-    [string[]]$ExcludeRelativePath = @()
+    [string[]]$ExcludeRelativePath = @(),
+    [switch]$ListOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$baseline = @(& git -C $repoRoot status --porcelain=v1 --untracked-files=all)
+. (Join-Path $PSScriptRoot 'support/test-census.ps1')
 
-$files = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tests') -Recurse -File -Filter '*.ps1' |
-        Where-Object { $_.Name -match '(?i)tests?\.ps1$' } |
-        Where-Object { $_.FullName.Substring($repoRoot.Length + 1) -notin @($ExcludeRelativePath) } |
+$excludedHere = @($ExcludeRelativePath | ForEach-Object { $_ -replace '\\', '/' })
+$kindByPath = @{}
+$census = @(Get-SpecrewTestCensus -RepoRoot $repoRoot)
+# Held tests are listed, never run: a script nothing ran before the census counted it is read for home
+# writes first (tests/support/test-census.ps1).
+$heldTests = @($census | Where-Object { $_.Included -and $_.Held })
+$files = @($census |
+        Where-Object { $_.Included -and -not $_.Held -and $excludedHere -notcontains $_.Path } |
+        ForEach-Object {
+            $item = Get-Item -LiteralPath (Join-Path $repoRoot $_.Path)
+            $kindByPath[$item.FullName] = $_.Kind
+            $item
+        } |
         Sort-Object FullName)
+
+if ($ListOnly) {
+    foreach ($file in $files) {
+        Write-Output ('LIST {0} {1}' -f $kindByPath[$file.FullName], ($file.FullName.Substring($repoRoot.Length + 1) -replace '\\', '/'))
+    }
+    foreach ($entry in $heldTests) { Write-Output ('HELD {0} {1}' -f $entry.Kind, $entry.Path) }
+    Write-Output ('LIST-TOTAL {0}' -f $files.Count)
+    Write-Output ('HELD-TOTAL {0}' -f $heldTests.Count)
+    exit 0
+}
+
+$baseline = @(& git -C $repoRoot status --porcelain=v1 --untracked-files=all)
 
 # A file-level bound prevents wedges, but the default must not misclassify known, intentionally broad integration
 # matrices. The changed-only suite creates fourteen isolated repositories and runs the full validator in each one;
@@ -84,8 +112,7 @@ foreach ($relativePath in @(
 
 function Start-SweepFile {
     param([Parameter(Mandatory)]$File, [int]$Index)
-    $source = Get-Content -LiteralPath $File.FullName -Raw -Encoding UTF8
-    $kind = if ($source -match '(?m)^\s*Describe\s+[''"]') { 'pester' } else { 'script' }
+    $kind = [string]$kindByPath[$File.FullName]
     $processArguments = if ($kind -ceq 'pester') {
         $quoted = $File.FullName.Replace("'", "''")
         # STRUCTURED FAILURE REPORTING - not a verbosity firehose.
@@ -201,6 +228,9 @@ $scriptCount = @($results | Where-Object kind -ceq 'script').Count
 Write-Host ''
 Write-Host ("Full PowerShell test sweep: files={0}, pester={1}, scripts={2}, failed={3}, caller_contaminated={4}" -f
         $files.Count, $pesterCount, $scriptCount, $failed.Count, $contaminated)
+if ($heldTests.Count -gt 0) {
+    Write-Host ("Held, not run ({0}; tests/support/test-census.ps1): {1}" -f $heldTests.Count, (@($heldTests | ForEach-Object { $_.Path }) -join ', '))
+}
 if ($contaminated) {
     Write-Host 'FAIL: the caller working-tree status changed during the sweep.' -ForegroundColor Red
     # NAME WHAT MOVED. This refusal used to report the class and stop, so the reader was told a file

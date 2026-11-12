@@ -49,34 +49,17 @@ function Assert-Prerequisite {
 # comparison, and removing it makes the comparison pass.
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tests/support/test-census.ps1')
+
 # --- The census: every test under tests/ ---------------------------------------------------------
-# RED: the definition this task replaces - the file name, and the guard's own exemptions. There is no
-# shared census, no held list and no registry yet.
 function Get-CensusTests {
     param([Parameter(Mandatory)][string] $Root)
-    $rootFull = (Resolve-Path -LiteralPath $Root).Path
-    $exclusions = Get-CensusExclusions
-    @(Get-ChildItem -LiteralPath (Join-Path $rootFull 'tests') -Recurse -File -Filter '*.ps1' |
-            Where-Object { $_.Name -match '(?i)tests?\.ps1$' } |
-            ForEach-Object {
-                $relative = $_.FullName.Substring($rootFull.Length + 1) -replace '\\', '/'
-                $kind = if ([string](Get-Content -LiteralPath $_.FullName -Raw) -match '(?m)^\s*Describe\s+[''"]') { 'pester' } else { 'script' }
-                [pscustomobject]@{ Path = $relative; Kind = $kind }
-            } |
-            Where-Object { -not $exclusions.Contains($_.Path) } |
-            Sort-Object Path)
+    @(Get-SpecrewTestCensus -RepoRoot $Root | Where-Object { $_.Included } | ForEach-Object { [pscustomobject]@{ Path = $_.Path; Kind = $_.Kind } })
 }
 
-function Get-CensusExclusions {
-    [ordered]@{
-        'tests/full-powershell-test-sweep.ps1' = 'runner, not a suite'
-        'tests/f198-regression-suite.ps1' = 'runner, not a suite'
-        'tests/f198-iteration006-foundation.ps1' = 'runner, not a suite'
-        'tests/cross-platform-verify.ps1' = 'runner, not a suite'
-    }
-}
-function Get-CensusHeld { [ordered]@{} }
-function Get-CensusRegistries { @('tests/f198-regression-suite.ps1', 'tests/integration/validation-contract-lane.ps1') }
+function Get-CensusExclusions { Get-SpecrewTestCensusExclusions }
+function Get-CensusHeld { Get-SpecrewTestCensusHeld }
+function Get-CensusRegistries { @(Get-SpecrewTestCensusRegistries) }
 
 # A literal test path in a command, a workflow or a registry: tests/<anything>.ps1, either separator.
 $script:TestPathPattern = '(?i)(?<![A-Za-z0-9_.-])tests/[A-Za-z0-9/._-]+?\.ps1(?![A-Za-z0-9])'
@@ -113,7 +96,7 @@ function Get-NamedTests {
     }
     foreach ($command in @($planCommands + $parkedCommands)) {
         foreach ($argument in @($command.arguments)) {
-            foreach ($hit in @([regex]::Matches([string]$argument, '(?i)tests/[A-Za-z0-9/._-]+?\.tests\.ps1') | ForEach-Object { $_.Value })) {
+            foreach ($hit in @(Get-TestPathsIn -Text ([string]$argument))) {
                 [void]$named.Add($hit)
                 [void]$laneNamed.Add($hit)
             }
@@ -131,7 +114,20 @@ function Get-NamedTests {
                 ForEach-Object { $_ -replace '\\', '/' })
     }
     foreach ($entry in $releaseNamed) { [void]$named.Add($entry); [void]$laneNamed.Add($entry) }
-    # RED: no CI step and no registry is read.
+    # A CI step runs what it names (FR-011: "no lane, CI step or release manifest").
+    $workflowRoot = Join-Path $Root '.github/workflows'
+    if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
+        foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
+            foreach ($hit in @(Get-TestPathsIn -Text (Get-UncommentedText -Path $workflow.FullName))) { [void]$ciNamed.Add($hit); [void]$named.Add($hit) }
+        }
+    }
+    # A registry runner that a CI step runs runs every script it lists (tests/support/test-census.ps1).
+    foreach ($registry in @(Get-CensusRegistries)) {
+        $registryPath = Join-Path $Root $registry
+        if (-not $ciNamed.Contains($registry) -or -not (Test-Path -LiteralPath $registryPath -PathType Leaf)) { continue }
+        $registriesRead.Add($registry)
+        foreach ($hit in @(Get-TestPathsIn -Text (Get-UncommentedText -Path $registryPath))) { [void]$named.Add($hit) }
+    }
     return [pscustomobject]@{
         Named = $named; LaneNamed = $laneNamed; PlanCommands = $planCommands.Count; ParkedCommands = $parkedCommands.Count
         ReleaseCount = $releaseNamed.Count; CiNamed = $ciNamed; RegistriesRead = @($registriesRead)
