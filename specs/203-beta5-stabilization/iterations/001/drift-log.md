@@ -2085,3 +2085,23 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   iteration, so most of its time is the same iteration validated thirteen times.
 - **Class closure**: NONE — a lane's limit is a number nothing compares with the lane's time until the limit is hit.
   Proposed for iteration 002, not built: the sweep reports any lane that used more than three quarters of its limit.
+
+### DRIFT-063 — T013 changed HumanAuthorityStore.ps1: a partial sign-off's reason is the phrase's own line (scope added; 2026-11-12)
+
+- **What happened**: T013's mint-path matrix (`5134f447`, 2 red) found that a partial sign-off at the top of a multi-line
+  message on Copilot or Codex, the shape a paste has there, was recorded, with every line after the dash read as the
+  reason. B5F-065.
+- **Ruling** (maintainer, typed, 2026-11-12): the reason is limited to the phrase's own line on every host; a message that
+  continues past it records nothing and the human is told to retype one line; a one-line reason of 10 to 2000 characters
+  is still accepted.
+- **Change**, test first (`839a4530`, 2 more red, Claude and the writer), then the fix:
+  - `Get-SpecrewTypedAuthorityShape`: the partial sign-off shape is one line.
+  - `Resolve-SpecrewApprovalForm`: a partial sign-off with any other typed line beside it is never reduced to its line, on
+    every host, so the one-line rule refuses it by name (Claude included, where pastes are marked).
+  - `Write-SpecrewReviewSignoffOverrideAuthorization`: a message that continues past the phrase's line records nothing,
+    says so, and journals `rationale-not-one-line` with the turn and `turn_identity_source` `refused-message` (T012).
+- **Ownership**: `scripts/internal/bootstrap/HumanAuthorityStore.ps1` is outside T013's files (`tests/unit/**`,
+  `tests/integration/**`). **Scope added by the maintainer's ruling of 2026-11-12**, about 0.25 points; the capacity
+  file is unchanged.
+- **Class closure**: `tests/unit/mint-path-fixtures.Tests.ps1` (lane `f203-i001-suites`) holds every mint path's pasted
+  and typed-on cells, and `tests/continuous-co-review/unit/human-authority-store.Tests.ps1` the writer's.

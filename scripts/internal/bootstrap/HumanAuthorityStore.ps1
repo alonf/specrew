@@ -107,6 +107,24 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b)') { return $null }
     $match = [regex]::Match($trimmed, '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*(?<rationale>.+?)\s*$')
     if (-not $match.Success) { return $null }
+    # Feature 203 T013 (maintainer ruling 2026-11-12; PRED-BETA4-022's class): THE REASON IS THE PHRASE'S OWN LINE, on every
+    # host. DRIFT-199-I002-034 below left bounding it as a contract change; a pasted transcript that starts with the phrase,
+    # on a host that cannot mark pastes, had every line after the dash read as the reason and was recorded. A message that
+    # goes on past the phrase's line records nothing, and the human is told to send the one line again.
+    if (Test-SpecrewAuthorityMessageContinues -Text $trimmed) {
+        [Console]::Error.WriteLine("[specrew-authority] YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but your message goes on past the phrase's line, and the reason must be on that same line. Nothing is wrong with your decision and nothing else has changed. Send the approval again as the WHOLE message, on one line: 'approved for partial review signoff - <why accepting it is safe>'.")
+        try {
+            $dropJournal = Join-Path $ProjectRoot '.specrew/runtime/authority-capture-drops.jsonl'
+            $dropDir = Split-Path -Parent $dropJournal
+            if ($dropDir -and -not (Test-Path -LiteralPath $dropDir)) { New-Item -ItemType Directory -Path $dropDir -Force | Out-Null }
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-matched-but-rejected'; phrase = 'review-signoff-partial-override'; reason = 'rationale-not-one-line'
+                        line_count = (Get-SpecrewAuthorityMessageLineCount -Text $trimmed); recorded_at = $NowUtc
+                        # Feature 203 T012 (FR-041): the refusal names the typed turn it refused.
+                        turn_identity = [string]$TurnIdentity; turn_identity_source = $(if ([string]::IsNullOrWhiteSpace($TurnIdentity)) { '' } else { 'refused-message' }) }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
+        }
+        catch { $null = $_ }
+        return $null
+    }
     # ONCE THE PHRASE HAS MATCHED, A REJECTION MUST SPEAK. (DRIFT-199-I002-034.)
     #
     # This is where a maintainer's valid approval was discarded in silence: the rationale group is read
@@ -409,6 +427,13 @@ function Resolve-SpecrewApprovalForm {
     # sign-off writer unrefused on Codex and Copilot, and that writer reads every line after its dash as the reason.
     $others = @($lines | Where-Object { $null -eq (& $shapeOf $_) })
     $qualified = ($authorityLines.Count -eq 1 -and $others.Count -gt 0 -and (Test-SpecrewAuthorityContextQualifies -Text ($others -join ' ')))
+    # Feature 203 T013 (maintainer ruling 2026-11-12; PRED-BETA4-022's class): a partial sign-off is the human's whole typed text,
+    # on every host. Its reason is the phrase's own line, so any other typed line beside it - text typed on after it, or a
+    # paste Copilot and Codex cannot mark - is never reduced away: the message is refused by name and the human retypes it.
+    if (-not $qualified -and $authorityLines.Count -eq 1 -and $others.Count -gt 0) {
+        $authorityShape = & $shapeOf ([string]$authorityLines[0])
+        if ($null -ne $authorityShape -and [string]$authorityShape.Kind -ceq 'partial-review-signoff') { $qualified = $true }
+    }
     if ($marks) {
         $typedSized = ($lines.Count -le $script:SpecrewTypedTextMaxLines -and $outside.Trim().Length -le $script:SpecrewTypedTextMaxChars)
         if ($typedSized -and $authorityLines.Count -eq 1 -and -not $qualified) { $result.Text = [string]$authorityLines[0] }
@@ -1131,7 +1156,9 @@ function Get-SpecrewTypedAuthorityShape {
         return [pscustomobject]@{ Kind = [string]$row.Kind; Retype = $retype; Choice = $choice }
     }
     # The two writers with no separate recognizer, matched as their writers match them.
-    if ($trimmed -match '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*\S') {
+    # Feature 203 T013 (maintainer ruling 2026-11-12): the reason is the phrase's own line, so the shape is one line. A message
+    # that goes on past it is no partial sign-off; the one-line rule refuses it by name (Get-SpecrewAuthorityMultiLineRefusal).
+    if ($trimmed -match '(?i)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*\S[^\r\n]*$') {
         return [pscustomobject]@{ Kind = 'partial-review-signoff'; Retype = 'approved for partial review signoff - <your reason>'; Choice = '' }
     }
     if ($trimmed -ceq 'approved for workshop repair') {
