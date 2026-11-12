@@ -3718,7 +3718,10 @@ function Test-ReviewArtifact {
         $Errors.Add('review.md must record a valid overall verdict (accepted | needs-rework | blocked)')
     }
     elseif ($RequireAcceptedVerdict -and $overallVerdict -ne 'accepted') {
-        $Errors.Add("Complete iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
+        # FR-010: name the iteration's actual status (retro or complete), not always "Complete".
+        $statusName = ([string]$IterationStatus).Trim()
+        $statusLabel = if ([string]::IsNullOrWhiteSpace($statusName)) { 'Closed' } else { $statusName.Substring(0, 1).ToUpperInvariant() + $statusName.Substring(1) }
+        $Errors.Add("$statusLabel iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
     }
 
     # A REVIEW VERDICT IS CROSS-CHECKED AGAINST ITS ACTIVE CAMPAIGN, NOT ONLY AGAINST ITSELF.
