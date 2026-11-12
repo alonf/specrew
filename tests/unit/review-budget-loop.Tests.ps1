@@ -309,6 +309,76 @@ Describe 'a round is spent only when a complete review was collected (DRIFT-052 
     }
 }
 
+Describe 'no reservation, no invocation; a release before invocation spends nothing (FR-004, FR-043; T013)' {
+    # Feature 203 T013 (FR-043): the two FR-004 rules no fixture held through the command. Measured 2026-11-12 by mutation:
+    # with the refusal of an unacquired reservation removed (review-campaign-orchestrator.ps1, Invoke-ReviewCampaignRun), or
+    # with a run released before invocation counted as a round (Test-ReviewCampaignRunCountsAsRound's pre-invocation
+    # outcomes), every existing fixture passed.
+    BeforeAll {
+        # A harness that counts its invocations and can refuse its own preflight, so a release before invocation is driven
+        # through the command a consumer runs.
+        function script:New-CountingPorts([pscustomobject]$Repo, [bool]$PreflightOk, [string]$CounterPath) {
+            $ports = script:New-LoopPorts -Repo $Repo
+            $inner = $ports.harness.invoke
+            $ports.harness = [pscustomobject]@{
+                id        = 'fixture-loop'
+                preflight = { param($invocation) [pscustomobject]@{ ok = $PreflightOk; reason = $(if ($PreflightOk) { 'fixture-ready' } else { 'fixture-preflight-refused' }) } }.GetNewClosure()
+                invoke    = {
+                    param($invocation, $environment)
+                    [IO.File]::AppendAllText($CounterPath, "invoked`n")
+                    & $inner $invocation $environment
+                }.GetNewClosure()
+            }
+            return $ports
+        }
+        function script:Get-InvokeCount([string]$CounterPath) { if (Test-Path -LiteralPath $CounterPath) { @(Get-Content -LiteralPath $CounterPath).Count } else { 0 } }
+    }
+
+    It 'a reservation released before the reviewer runs spends nothing and counts no round: the budget still buys two complete rounds' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'release')
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
+        $counter = Join-Path $TestDrive 'release-invocations.txt'
+        $refused = Invoke-ReviewCampaignCommand -RepoRoot $repo.root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-loop-release-1' `
+            -AuthorityConfigPath $repo.config -Ports (script:New-CountingPorts -Repo $repo -PreflightOk $false -CounterPath $counter)
+        $refused.invoked | Should -BeFalse -Because ([string]$refused.reason)
+        script:Get-InvokeCount $counter | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $repo.store -CampaignId $script:CampaignId -Kind releases).Count | Should -Be 1
+        script:Get-LoopSpendCount -Repo $repo | Should -Be 0
+        $state = script:Get-LoopCounter -Repo $repo
+        $state.rounds_used | Should -Be 0
+        $state.in_flight | Should -Be 0
+        foreach ($n in 1, 2) {
+            script:Add-LoopFix -Repo $repo -Number $n
+            $run = Invoke-ReviewCampaignCommand -RepoRoot $repo.root -FeatureId '001-demo' -IterationNumber '007' -RunId "run-loop-release-ok-$n" `
+                -AuthorityConfigPath $repo.config -Ports (script:New-CountingPorts -Repo $repo -PreflightOk $true -CounterPath $counter)
+            $run.invoked | Should -BeTrue -Because ("complete round {0} is bought by the budget a release returned: {1}" -f $n, [string]$run.reason)
+        }
+        script:Get-LoopSpendCount -Repo $repo | Should -Be 2
+        (script:Get-LoopCounter -Repo $repo).rounds_used | Should -Be 2
+        script:Add-LoopFix -Repo $repo -Number 3
+        (Invoke-ReviewCampaignCommand -RepoRoot $repo.root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-loop-release-over' `
+                -AuthorityConfigPath $repo.config -Ports (script:New-CountingPorts -Repo $repo -PreflightOk $true -CounterPath $counter)).invoked | Should -BeFalse
+        script:Get-InvokeCount $counter | Should -Be 2
+    }
+
+    It 'no reservation, no invocation: a run whose reservation is refused never reaches the reviewer and spends nothing' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'no-reservation')
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
+        $counter = Join-Path $TestDrive 'no-reservation-invocations.txt'
+        $first = Invoke-ReviewCampaignCommand -RepoRoot $repo.root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-loop-norsv-1' `
+            -AuthorityConfigPath $repo.config -Ports (script:New-CountingPorts -Repo $repo -PreflightOk $true -CounterPath $counter)
+        $first.invoked | Should -BeTrue -Because ([string]$first.reason)
+        script:Add-LoopFix -Repo $repo -Number 1
+        # The same run id again: the store already holds its reservation, so the reservation is refused (run-already-reserved).
+        $again = Invoke-ReviewCampaignCommand -RepoRoot $repo.root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-loop-norsv-1' `
+            -AuthorityConfigPath $repo.config -Ports (script:New-CountingPorts -Repo $repo -PreflightOk $true -CounterPath $counter)
+        $again.invoked | Should -BeFalse
+        [string]$again.reason | Should -Match 'run-already-reserved'
+        script:Get-InvokeCount $counter | Should -Be 1
+        script:Get-LoopSpendCount -Repo $repo | Should -Be 1
+    }
+}
+
 Describe 'the engine chooses the reviewer from the approved host order (FR-009, FR-006(d); DRIFT-052 item 4)' {
     BeforeAll {
         # Three reviewers this project has set up and authorized; the code's writer is claude. The engine's own pick is
