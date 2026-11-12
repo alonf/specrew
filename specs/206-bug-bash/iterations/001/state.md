@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T011
-**Tasks Remaining**: T010, T012-T015, T018 (6 planned)
+**Last Completed Task**: T010
+**Tasks Remaining**: T012-T015, T018 (5 planned)
 **In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T01:42:00Z
+**Updated**: 2026-11-12T02:10:00Z
 
 ## Execution Summary
 
@@ -73,6 +73,12 @@
   iteration's status: a `retro` iteration is told "Retro iterations require ..."; a `complete` one keeps its
   message. Also green: T009 23/23, T008 6/6, T006 16/16, `closed-iterations-are-history` 8/8,
   `non-specrew-session-bypass`, the self-leak lint.
+- T010 (FR-006, FR-008a, SC-003; design condition 1): CI-mode `-FullRun` on `9de20285` exits 0, no failure: 159
+  iterations, 18 frozen and 128 closed skipped, 13 validated, all PASS. Of T005's 36 changed rows: the 12 now open
+  all PASS; 18 frozen and 5 closed (group B, 198/009) skipped; 197/006 closed since T007. Validated explicitly as
+  well, all PASS: 197/002, 197/006-008, 198/005, 198/009-011. The 6 warnings are `handoff-block-missing` on 206's
+  own boundary commits; none names a closed iteration. No new finding. 017/001 and 040/001 have no `plan.md` and
+  are not iterations to the validator (159 against the table's 161; their rows did not change).
 
 ## Notes
 

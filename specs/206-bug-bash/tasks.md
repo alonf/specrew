@@ -167,7 +167,11 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** FR-010.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1` and its `.specify` mirror,
     `tests/unit/**`.
-- [ ] T010 [owner: Implementer] [sp: 0.5] **Local nightly replay (design condition 1, acceptance).**
+- [x] T010 [owner: Implementer] [sp: 0.5] **Local nightly replay (design condition 1, acceptance).**
+  - **Done (2026-11-12), on `9de20285`:** exit 0, no failure; 159 iterations, 18 frozen and 128 closed skipped, 13
+    validated, all PASS. Of the 36 rows T005 changed: the 12 that became open all PASS; 18 frozen and 5 closed (group
+    B, 198/009) are skipped, and 197/006 is closed since T007. The 6 warnings are all `handoff-block-missing` on
+    206's own boundary commits (specify to before-implement); none names a closed iteration. No new finding.
   - **Work:** `$env:CI='true'`, `validate-governance.ps1 -FullRun` on the branch head.
   - **Acceptance:** no failure; no iteration whose answer changed in T005 produces a new finding; every warning for
     a closed iteration names a frozen entry or is gone. **If a changed iteration produces a new finding, the work
