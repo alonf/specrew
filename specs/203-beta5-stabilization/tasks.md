@@ -378,7 +378,7 @@ then T014.
     `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` (the crossing key),
     `scripts/internal/specrew-handover-provider.ps1` and its extension twin (loading the turn-end store), their
     `.specify` copies, `tests/unit/verdict-pairing.Tests.ps1`.
-- [ ] T012 [owner: Implementer] [sp: 1.5] [US2] **Audit and correlation.**
+- [x] T012 [owner: Implementer] [sp: 1.5] [US2] **Audit and correlation.**
   - **Work:** an audit joining every authority record to a typed human turn; reservations cite the grant and the
     latest reset; turn identity on every record and campaign id on review records.
   - **RED:** `tests/unit/authority-audit.Tests.ps1`: a backstop-minted record with no typed turn passes today.

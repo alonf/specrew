@@ -2069,3 +2069,19 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
     capacity file is unchanged.
 - **Class closure**: `tests/unit/authority-audit.Tests.ps1` (lane `f203-i001-suites`) pins each rule. FR-041's deferred
   part, drift entries, has no executable guard until iteration 002 builds one; NONE for it until then.
+
+### DRIFT-062 — The validator-scope lane's limit raised from 1200 s to 1800 s, as a stopgap (finding; 2026-11-12)
+
+- **What happened**: `tests/integration/validate-governance-changed-only.tests.ps1`, the only suite in lane
+  `f203-i001-validator-scope`, took 1284 s alone on `d246051c`, in a clean worktree with the machine awake, against the
+  lane's 1200 s limit. It timed out the sweep of `2d65e5fe` (lane killed at 1200 s), and that sweep was not pushed. Its
+  lane times in the five sweeps before were 577 s to 1039 s. B5F-062.
+- **Change** (maintainer ruling 2026-11-12): `.specrew/verification-plan.json` raises the lane's `timeout_seconds` to
+  1800. A review round runs these lanes first, and a round is not to be spent on a timeout. The suite is unchanged; this
+  is a stopgap, not a fix.
+- **Where the time goes** (measured 2026-11-12 on one fixture built as the suite builds it): copying the fixture and
+  seeding its git history take about 8 s; a validator run that validates the copied feature 013's iteration 001 takes
+  about 64 s; a run with no iteration in scope takes 2 s to 4 s. Thirteen of the suite's fourteen cases touch an
+  iteration, so most of its time is the same iteration validated thirteen times.
+- **Class closure**: NONE — a lane's limit is a number nothing compares with the lane's time until the limit is hit.
+  Proposed for iteration 002, not built: the sweep reports any lane that used more than three quarters of its limit.

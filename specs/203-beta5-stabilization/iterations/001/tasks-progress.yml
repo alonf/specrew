@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-11T01:27:00.7480851Z"
+updated_at: "2026-11-12T16:20:32Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -59,9 +59,9 @@ tasks:
     blocked_reason: ""
   T012:
     title: "Audit and correlation: record-to-turn join, citations, turn identity and campaign id"
-    status: "pending"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-11-12T16:20:32Z"
     blocked_reason: ""
   T013:
     title: "Test evidence suite: mint-path and non-approval phrase fixtures, cross-host replay incl. compaction, economics fixtures"
