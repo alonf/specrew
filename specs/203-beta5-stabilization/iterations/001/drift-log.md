@@ -2005,10 +2005,10 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Fix**: `ecc131b2` (test first, 1 red) asserts that the case does not fire and never calls
   `Start-ContinuousCoReviewServiceRun` (mocked, so a red run spawns nothing). The fix records the tree as fired, as a
   real run would have. Green three times out of three the lane's way.
-- **Noted, not a finding for 203**: in the legacy authority mode (not the shipped mode), a done verdict that the
-  navigator did not fire itself, such as one from a manual run, leaves the last-fired record unset, and the next Stop
-  fires a second review of the same files.
-- **Left alone**: the 22 leftover test folders in `%TEMP%`.
-- **Class closure**: the case's `Should -Invoke Start-ContinuousCoReviewServiceRun -Times 0` guard. There is no
-  repository-wide guard against a unit test reaching the detached spawn; the `%TEMP%` census is the evidence that this
-  case was the only one.
+- **Recorded as a finding**: the legacy-mode gap the fixture's shape exposed (a verdict from a manual run leaves the
+  last-fired record unset, so the next Stop reviews the same files again) is B5F-054 in `docs/beta5-findings.md`.
+- **Left alone** (maintainer, 2026-11-12): the 22 leftover test folders in `%TEMP%`.
+- **Class closure**: now, the case's `Should -Invoke Start-ContinuousCoReviewServiceRun -Times 0` guard; the `%TEMP%`
+  census is the evidence that this case was the only one. **Proposed for iteration 002, not built** (maintainer,
+  2026-11-12): a guard so that no unit test can reach the real detached reviewer spawn. For example, the spawn refuses
+  under the test harness unless the test opts in, and a test proves that refusal.
