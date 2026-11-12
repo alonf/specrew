@@ -106,7 +106,7 @@
                 # Feature 203 T013 (B5F-064; maintainer ruling 2026-11-12): another Claude session's message reaches the prompt
                 # hook as a prompt, wrapped by the host. The hook runs before the host writes the message's transcript record
                 # (turnOrigin peer), so the wrapper is what it can see; the record decides wherever a reader can read it.
-                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?s)^\s*Another Claude session sent a message:\s*<cross-session-message\b' },
+                @{ Origin = 'host-injected'; Rule = 'prompt-pattern'; Pattern = '(?s)^\s*(?:Another Claude session sent a message:\s*)?<cross-session-message\b' },
                 @{ Origin = 'typed-user'; Rule = 'prompt-present' }
             )
         }

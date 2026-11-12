@@ -363,7 +363,7 @@ $script:SpecrewTypedTextMaxLines = 8
 # Feature 203 T013 (B5F-064): the wrapper Claude Code puts around another session's message when it delivers it as a prompt
 # (tests/fixtures/hook-payloads/claude/peer-message). The same text rule is in Claude's host binding and the dispatcher's
 # defaults, so the prompt hook gives such a prompt origin host-injected.
-$script:SpecrewPeerMessagePattern = '(?s)^\s*Another Claude session sent a message:\s*<cross-session-message\b'
+$script:SpecrewPeerMessagePattern = '(?s)^\s*(?:Another Claude session sent a message:\s*)?<cross-session-message\b'
 $script:SpecrewTypedTextMaxChars = 674
 
 function Test-SpecrewHostMarksPastes {
