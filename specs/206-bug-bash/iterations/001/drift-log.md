@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 11
-**Resolution rate**: 82% (9/11 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 12
+**Resolution rate**: 83% (10/12 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
@@ -229,6 +229,25 @@ iteration 002 as a required item: feature 206 does not close without it)
 - **Resolution**: human-decision; landed in `ae9a3c9d` (test path), `ff0e78b9` (fix) and `867d4752`.
 - **Class closure**: NONE — a one-off placement decision; `package-filelist-completeness` already refuses a
   shippable file missing from the FileList, and the T012 suite pins both the path and the branch condition.
+
+### DRIFT-206-I001-012 — T013 changed a test file outside its owned files: the full-sweep-direct-exit fixture
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (T013, reply 1), as DRIFT-206-I001-003.
+- **What**: `tests/unit/full-sweep-direct-exit.tests.ps1` is not in T013's owned files. It copies only
+  `tests/full-powershell-test-sweep.ps1` into a scratch fixture and runs it. After T013 the sweep reads its definition
+  of a test from `tests/support/test-census.ps1`, which the fixture did not have, so the suite failed ("The term
+  '...\tests\support\test-census.ps1' is not recognized"). It runs at release cadence only.
+- **Change**: the fixture also copies `tests/support/test-census.ps1`, plus a comment naming the reason. The suite's
+  point is kept: a direct assertion script that exits 1 is still a failed file.
+- **Same ruling, scope added**: the census holds the 36 tests that no lane, CI step or registry ran before, with the
+  reason "not read yet (T014)". The guard still counts them and fails on this repository until T015; the sweep lists
+  them as held and does not run them. At T015 every held test moves to registered or excluded, and a test then
+  requires the held list to be empty; a script T014 finds writing the home folder is excluded with the reason
+  "writes the real home; not run until feature 203's private test home is merged". T013's points are unchanged.
+- **Approval**: the maintainer, 2026-11-12 ("1: approved").
+- **Resolution**: lands in T013's fix commit `798ded31`; the suite passes after it.
+- **Class closure**: NONE — a one-off fixture follow-up; the lane guard's fixture run of the sweep now copies the
+  census the same way, so a sweep that cannot find its census fails there first.
 
 <!--
   Every new ### DRIFT-... event includes:

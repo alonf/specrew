@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T012
-**Tasks Remaining**: T013-T015, T018 (4 planned)
+**Last Completed Task**: T013
+**Tasks Remaining**: T014, T015, T018 (3 planned)
 **In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-12T10:38:00Z
+**Updated**: 2026-11-12T11:44:00Z
 
 ## Execution Summary
 
@@ -84,6 +84,12 @@
   (open, quiet, comment, close; no path, user or machine name); the notify job alone holds `issues: write`. By
   the maintainer's ruling the notifier is workflow-only (not in the module FileList), and the notify job runs only
   for the default branch: RED 1/15 in `85d275bb`, GREEN 15/15 in `867d4752` (DRIFT-206-I001-011).
+- T013 (FR-011, SC-004): RED 10/26 in `dd57e075`, GREEN 25/26 in `798ded31`. `tests/support/test-census.ps1` is the
+  one definition of a test, read by the lane guard and the release full sweep: every `.ps1` under `tests/` except
+  `fixtures/` and `tests/support/`, 13 listed exclusions with reasons, 36 held tests ("not read yet (T014)"), two
+  CI-run registries. SC-004 is proved both ways on temp fixtures for five file names. The sweep was not run for
+  real: `-ListOnly` (475 to run, 36 held) and a temp-repository run of two trivial scripts test it. The one guard
+  failure is this repository's 36 unregistered tests, green at T015 (DRIFT-206-I001-012).
 
 ## Notes
 

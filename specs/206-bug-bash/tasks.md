@@ -195,7 +195,11 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
 
 ## Phase 3: Test census (US3, item 5)
 
-- [ ] T013 [owner: Implementer] [sp: 2.0] **One shared test census.**
+- [x] T013 [owner: Implementer] [sp: 2.0] **One shared test census.**
+  - **Done (2026-11-12):** RED 10/26 in `dd57e075`, GREEN 25/26 in `798ded31`; the one failure is this repository's
+    36 unregistered tests, which T015 registers or excludes (planned). The sweep was not run for real: `-ListOnly`
+    and a temp-repository fixture test it. By the maintainer's ruling the 36 are held (listed, not run) until T014
+    reads them; at T015 the held list is emptied and a test requires it empty (DRIFT-206-I001-012).
   - **RED:** the lane guard passes today with an unregistered `tests/integration/zz-probe.ps1`.
   - **Work:** `tests/support/test-census.ps1`, used by the lane guard and the release full sweep: every `.ps1`
     under `tests/`, classified by content (`Describe` makes a Pester suite), fixtures and support helpers excluded
