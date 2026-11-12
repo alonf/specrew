@@ -80,7 +80,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$fail = 0; foreach ($s in @('tests/unit/mint-path-fixtures.Tests.ps1','tests/unit/authorization-sender.Tests.ps1','tests/unit/authorization-consumers.Tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 authority-sender suite FAILED: $s\" } }; exit $fail"
+        "$fail = 0; foreach ($s in @('tests/unit/mint-path-fixtures.Tests.ps1','tests/unit/authorization-sender.Tests.ps1','tests/unit/authorization-consumers.Tests.ps1','tests/integration/cross-host-real-hook-replay.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"f203 i001 authority-sender suite FAILED: $s\" } }; exit $fail"
       ],
       "timeout_seconds": 600,
       "env_refs": [
