@@ -208,17 +208,52 @@ function Get-SweepHomeHookFiles {
     return @($paths | Sort-Object -Unique)
 }
 
+function Get-SweepCodexHooksState {
+    # ~/.codex/config.toml is Codex's own settings file, and the Codex app rewrites it at startup (2026-11-12: a new
+    # computer-use pipe name each start, DRIFT-058). Only its [hooks.state] section concerns Specrew's hooks: the trust
+    # entries for ~/.codex/hooks.json. Returns that section (its header and every [hooks.state.*] table, line endings
+    # normalised to LF, trailing spaces and trailing blank lines dropped), or '' when the file or the section is absent.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+    $inSection = $false
+    $kept = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in ([IO.File]::ReadAllText($Path) -split '\r?\n')) {
+        $t = $line.Trim()
+        if ($t.StartsWith('[')) { $inSection = $t.StartsWith('[hooks.state]', [StringComparison]::Ordinal) -or $t.StartsWith('[hooks.state.', [StringComparison]::Ordinal) }
+        if ($inSection) { $kept.Add($line.TrimEnd()) }
+    }
+    while ($kept.Count -gt 0 -and $kept[$kept.Count - 1] -eq '') { $kept.RemoveAt($kept.Count - 1) }
+    if ($kept.Count -eq 0) { return '' }
+    return (($kept -join "`n") + "`n")
+}
+
+function Get-SweepTextHash {
+    param([AllowEmptyString()][string]$Text)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-', '') }
+    finally { $sha.Dispose() }
+}
+
 function Get-SweepHomeSnapshot {
-    # One row per file: File, Hash ('absent' for a fixed file that does not exist), Written.
+    # One row per file: File, Hash ('absent' for a fixed file that does not exist), Written, Basis. Basis is 'file' (the
+    # whole file is hashed) or 'hooks.state' (~/.codex/config.toml: only its [hooks.state] section is hashed).
     param([Parameter(Mandatory)][string]$HomeRoot)
+    $codexConfig = [IO.Path]::GetFullPath((Join-Path $HomeRoot '.codex/config.toml'))
     foreach ($f in @(Get-SweepHomeHookFiles -HomeRoot $HomeRoot)) {
-        if (Test-Path -LiteralPath $f -PathType Leaf) { [pscustomobject]@{ File = $f; Hash = (Get-FileHash -LiteralPath $f).Hash; Written = (Get-Item -LiteralPath $f).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } }
-        else { [pscustomobject]@{ File = $f; Hash = 'absent'; Written = '' } }
+        $basis = if ($f -ceq $codexConfig) { 'hooks.state' } else { 'file' }
+        if (Test-Path -LiteralPath $f -PathType Leaf) {
+            $hash = if ($basis -ceq 'hooks.state') { 'hooks.state:' + (Get-SweepTextHash -Text (Get-SweepCodexHooksState -Path $f)) } else { (Get-FileHash -LiteralPath $f).Hash }
+            [pscustomobject]@{ File = $f; Hash = $hash; Written = (Get-Item -LiteralPath $f).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'); Basis = $basis }
+        }
+        else { [pscustomobject]@{ File = $f; Hash = 'absent'; Written = ''; Basis = $basis } }
     }
 }
 
 function Get-SweepHomeChanges {
-    # Every file whose state differs between two snapshots: changed, added (absent or unlisted before) or removed.
+    # Every file whose state differs between two snapshots: changed, added (absent or unlisted before) or removed. A file
+    # hashed on a different basis in the two snapshots (a snapshot saved before config.toml was compared by section) is
+    # not compared: its hashes measure different things.
     param($From, $To)
     $before = @{}; foreach ($r in @($From)) { if ($null -ne $r) { $before[[string]$r.File] = $r } }
     $after = @{}; foreach ($r in @($To)) { if ($null -ne $r) { $after[[string]$r.File] = $r } }
@@ -226,17 +261,46 @@ function Get-SweepHomeChanges {
         $b = if ($before.ContainsKey($file)) { [string]$before[$file].Hash } else { 'absent' }
         $a = if ($after.ContainsKey($file)) { [string]$after[$file].Hash } else { 'absent' }
         if ($b -ceq $a) { continue }
-        if ($b -ceq 'absent') { '  {0} (added, written {1} local)' -f $file, [string]$after[$file].Written }
-        elseif ($a -ceq 'absent') { '  {0} (removed)' -f $file }
-        else { '  {0} (changed, written {1} local)' -f $file, [string]$after[$file].Written }
+        $bBasis = if ($before.ContainsKey($file) -and $before[$file].PSObject.Properties['Basis']) { [string]$before[$file].Basis } else { 'file' }
+        $aBasis = if ($after.ContainsKey($file) -and $after[$file].PSObject.Properties['Basis']) { [string]$after[$file].Basis } else { 'file' }
+        if ($b -cne 'absent' -and $a -cne 'absent' -and $bBasis -cne $aBasis) { continue }
+        $name = if ($aBasis -ceq 'hooks.state' -or $bBasis -ceq 'hooks.state') { '{0} [hooks.state]' -f $file } else { $file }
+        if ($b -ceq 'absent') { '  {0} (added, written {1} local)' -f $name, [string]$after[$file].Written }
+        elseif ($a -ceq 'absent') { '  {0} (removed)' -f $name }
+        else { '  {0} (changed, written {1} local)' -f $name, [string]$after[$file].Written }
     }
 }
 
 function Save-SweepHomeSnapshot {
     # Copies every existing hook file into Destination, each named by its full path with ':' and '\' replaced by '_'.
+    # ~/.codex/config.toml is copied whole, and its [hooks.state] section is saved beside it (<name>.hooks-state.txt).
     param([Parameter(Mandatory)][string]$HomeRoot, [Parameter(Mandatory)][string]$Destination)
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    $codexConfig = [IO.Path]::GetFullPath((Join-Path $HomeRoot '.codex/config.toml'))
     foreach ($f in @(Get-SweepHomeHookFiles -HomeRoot $HomeRoot)) {
-        if (Test-Path -LiteralPath $f -PathType Leaf) { Copy-Item -LiteralPath $f -Destination (Join-Path $Destination ($f -replace '[:\\/]', '_')) -Force }
+        if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { continue }
+        $target = Join-Path $Destination ($f -replace '[:\\/]', '_')
+        Copy-Item -LiteralPath $f -Destination $target -Force
+        if ($f -ceq $codexConfig) { [IO.File]::WriteAllText($target + '.hooks-state.txt', (Get-SweepCodexHooksState -Path $f), [Text.UTF8Encoding]::new($false)) }
+    }
+}
+
+function Save-SweepCodexHooksState {
+    # The known-good copy of ~/.codex/config.toml's [hooks.state] section, so the next change is compared by content.
+    param([Parameter(Mandatory)][string]$HomeRoot, [Parameter(Mandatory)][string]$Path)
+    [IO.File]::WriteAllText($Path, (Get-SweepCodexHooksState -Path (Join-Path $HomeRoot '.codex/config.toml')), [Text.UTF8Encoding]::new($false))
+}
+
+function Get-SweepCodexHooksStateDiff {
+    # The lines of the [hooks.state] section that differ from the saved copy: '  - <line>' only in the saved copy,
+    # '  + <line>' only now. Nothing when they agree; one line saying so when no copy was saved.
+    param([Parameter(Mandatory)][string]$SavedPath, [Parameter(Mandatory)][string]$HomeRoot)
+    if (-not (Test-Path -LiteralPath $SavedPath -PathType Leaf)) { return @('  (no saved [hooks.state] copy at {0} to compare with)' -f $SavedPath) }
+    $saved = @(([IO.File]::ReadAllText($SavedPath) -split '\n') | Where-Object { $_ -ne '' })
+    $now = @(((Get-SweepCodexHooksState -Path (Join-Path $HomeRoot '.codex/config.toml')) -split '\n') | Where-Object { $_ -ne '' })
+    if ($saved.Count -eq 0) { return @($now | ForEach-Object { '  + ' + $_ }) }
+    if ($now.Count -eq 0) { return @($saved | ForEach-Object { '  - ' + $_ }) }
+    foreach ($d in @(Compare-Object -ReferenceObject $saved -DifferenceObject $now -CaseSensitive)) {
+        if ($d.SideIndicator -eq '<=') { '  - ' + $d.InputObject } else { '  + ' + $d.InputObject }
     }
 }

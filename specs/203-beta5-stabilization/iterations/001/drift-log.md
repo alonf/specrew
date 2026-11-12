@@ -1954,3 +1954,32 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   such a sweep cannot close a task; it runs every lane of the swept revision's plan, with no lane list of its own.
   `tools/maintenance/sweep/sweep-driver.tests.ps1` cases 9 and 10 hold it, including a push workflow that names a test
   file and is not read.
+
+### DRIFT-058 — The sweep reported a change to `~/.codex/config.toml` that the Codex app made to its own settings: a false alarm (finding; 2026-11-12)
+
+- **Observed**: the full sweep of `dde4095e` (00:20 to 01:09 local, after the machine restarted for an update)
+  reported one real-home file changed since the previous sweep: `~/.codex/config.toml`, written 00:20:04. None changed
+  during the sweep. Under the home-file rule the crew stopped, restored nothing, and held the push.
+- **Cause**: the Codex app started at 00:19:45 (a second process at 00:20:02) and rewrote its own settings two seconds
+  later. The sweep keeps a copy of each home file. A diff of the `a56ac787` sweep's copy (2026-11-11 18:45) against
+  the file now differs in one line, `SKY_CUA_NATIVE_PIPE_DIRECTORY`, the computer-use helper's pipe name, which takes
+  a new random id at each start. The file's `[hooks.state]` section, the trust entries for `~/.codex/hooks.json`, is
+  identical (10 lines). `~/.codex/hooks.json` is unchanged by hash and date (written 2026-11-07 05:46). The sweep
+  hashed the whole file, so any rewrite by Codex read as a hook change.
+- **Two lists disagreed**: the crew's own 11-file home check (the pin-advance and restart checks) does not include
+  `config.toml`, and the sweep's list does. So the crew's check after the restart reported nothing changed, and the
+  sweep reported a change in the same file an hour later.
+- **Fix (maintainer ruling 2026-11-12, test first)**:
+  - `0a4cccc7` adds `sweep-driver.tests.ps1` case 11 (8 red), and the fix after it.
+  - The sweep's home check compares `config.toml` by its `[hooks.state]` section only. A change there is still a
+    change (stop and report); a change anywhere else in the file is ignored.
+  - The section is saved beside each snapshot's copy of the file, and as the known-good copy after each sweep
+    (`home-last-after-codex-hooks-state.txt`). When `config.toml` is reported, the sweep prints the section's
+    differing lines against that copy.
+  - A snapshot saved before this change hashed the whole file, so it is not compared with a section hash: the first
+    sweep after the fix compares nothing for this file.
+- **Also done**: the known-good section was saved on 2026-11-12, and the crew's own check now hashes the section too, so
+  the two lists agree on this file.
+- **Class closure**: `tools/maintenance/sweep/sweep-driver.tests.ps1` case 11 (the section is extracted, and a change
+  outside it is not a change while one inside it is). The crew's own home check is a session tool, not in the
+  repository, so it has no executable guard.

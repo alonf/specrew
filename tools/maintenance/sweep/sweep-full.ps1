@@ -14,6 +14,8 @@
 #     in the finally block below, on error and on cancel too. Self-test: sweep-driver.tests.ps1.
 #   - (later the same day, DRIFT-057's fourth defect) the sweep also runs every test file CI runs on a push, read at the
 #     swept revision, names any its list lacks, and runs every lane in the swept revision's plan (no lane list of its own).
+#   - (2026-11-12, DRIFT-058) ~/.codex/config.toml is compared by its [hooks.state] section only; the section is saved as
+#     the known-good copy after each sweep, and a reported change prints its lines against that copy.
 # Usage: pwsh -File tools/maintenance/sweep/sweep-full.ps1 -Rev <commit> [-List <file in this folder or a path>] [-SkipLanes] [-SkipSignoffSuites]
 param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path, [Parameter(Mandatory)][string]$Rev, [string]$List = 't008iii-list.txt', [switch]$SkipLanes,
     [switch]$SkipSignoffSuites, [int]$SuiteTimeoutSeconds = 900, [int]$Throttle = 6, [string]$Tag = '', [double]$StandbyThresholdSeconds = 20,
@@ -86,11 +88,17 @@ try {
     }
     $after = @(Get-SweepHomeSnapshot -HomeRoot $realHome)
     $during = @(Get-SweepHomeChanges -From $before -To $after)
+    # ~/.codex/config.toml is compared by its [hooks.state] section only (DRIFT-058). When it is reported, its lines are
+    # shown against the known-good copy the previous sweep saved; then this sweep's section becomes the known-good copy.
+    $codexStatePath = Join-Path $scratch 'home-last-after-codex-hooks-state.txt'
+    $codexDiff = @(if (@(@($sincePrevious) + @($during) | Where-Object { $_ -match 'config\.toml' }).Count -gt 0) { Get-SweepCodexHooksStateDiff -SavedPath $codexStatePath -HomeRoot $realHome })
     $after | ConvertTo-Json | Set-Content -LiteralPath $lastAfterPath -Encoding UTF8
+    Save-SweepCodexHooksState -HomeRoot $realHome -Path $codexStatePath
     $out += $(if ($hadPrevious) { 'real home hook files changed since the previous sweep, before this one started: {0}' -f $sincePrevious.Count } else { 'real home hook files changed since the previous sweep: no previous sweep recorded' })
     $out += $sincePrevious
     $out += 'real home hook files changed during this sweep: {0}' -f $during.Count
     $out += $during
+    if ($codexDiff.Count -gt 0) { $out += ('~/.codex/config.toml [hooks.state] against the copy saved by the previous sweep ({0}):' -f $codexStatePath); $out += $codexDiff }
     $out += 'files the suites wrote to the redirected home: {0}' -f @(Get-ChildItem -LiteralPath $fakeHome -Recurse -File -ErrorAction SilentlyContinue).Count
     $out += @(Get-ChildItem -LiteralPath $fakeHome -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 12 | ForEach-Object { '  ' + $_.FullName.Substring($fakeHome.Length) })
 
