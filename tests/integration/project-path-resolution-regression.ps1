@@ -91,9 +91,26 @@ $null = New-Item -Path $initFixtureRoot -ItemType Directory -Force
 $fixtureItems = @('.specrew', '.specify', '.squad', '.github', 'specs')
 foreach ($item in $fixtureItems) {
     $source = Join-Path $repoRoot $item
-    if (Test-Path -LiteralPath $source) {
-        Copy-Item -LiteralPath $source -Destination $fixtureRoot -Recurse -Force
+    if (-not (Test-Path -LiteralPath $source)) {
+        continue
     }
+    if ($item -eq '.specrew') {
+        # Only the files git tracks, as a fresh checkout has them: the working folder also holds the developer's
+        # gitignored session state (last-start-prompt.md, start-context.json, the authority, review and runtime
+        # stores), and a stale prompt there made `specrew start` refuse, so the result depended on who ran it
+        # (feature 206, T015).
+        foreach ($trackedPath in @(& git -C $repoRoot -c core.quotepath=off ls-files -- '.specrew')) {
+            $trackedSource = Join-Path $repoRoot $trackedPath
+            if (-not (Test-Path -LiteralPath $trackedSource -PathType Leaf)) {
+                continue
+            }
+            $trackedTarget = Join-Path $fixtureRoot $trackedPath
+            $null = New-Item -Path (Split-Path -Parent $trackedTarget) -ItemType Directory -Force
+            Copy-Item -LiteralPath $trackedSource -Destination $trackedTarget -Force
+        }
+        continue
+    }
+    Copy-Item -LiteralPath $source -Destination $fixtureRoot -Recurse -Force
 }
 
 $requiredFixturePaths = @(
