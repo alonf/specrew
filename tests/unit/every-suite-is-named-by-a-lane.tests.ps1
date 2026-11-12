@@ -389,6 +389,13 @@ Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture co
 # state; with no console it refuses (item 1, T001). The start case chooses recovery A itself, so SC-001 measures
 # path resolution (maintainer, option 1, 2026-11-12).
 Assert-True ($sc001Text -match "(?s)scripts\\specrew-start\.ps1'\s*\r?\n\s*Arguments\s*=\s*'[^']*-RecoveryChoice A\b") "SC-001's start case passes -RecoveryChoice A, so a fresh fixture's missing session files cannot stop it"
+# Supervised run 3: the fixture sat under this repository's .scratch and was not its own git repository, so git
+# inside it resolved to this worktree, recovery A re-anchored to this repository's own feature, and `specrew start`
+# rewrote its real state.md. The fixture is built under the temp folder, given its own `git init`, and the script
+# refuses to run if the fixture's git top level is not the fixture (reviewer ruling 2026-11-12, maintainer's option 1).
+$sc001Isolated = ($sc001Text -match '\$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)') -and
+    ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+init') -and ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+rev-parse\s+--show-toplevel')
+Assert-True $sc001Isolated "SC-001's fixture is built outside this repository, has its own git repository, and the script checks that the fixture's git top level is not this repository"
 
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
