@@ -212,6 +212,69 @@ Describe 'T009: abandoned by recorded ruling is exempt from the plan-status and 
     }
 }
 
+Describe 'T009: the stamp is read with the validator''s own index reader, whatever renderer is loaded' {
+    BeforeAll {
+        # A renderer from an older installed Specrew module dot-sources its own shared-governance.ps1, whose
+        # Get-SpecrewClosedIterationIndex returns entries with no closed_at_source key. The validator runs
+        # under strict mode, where reading a missing key throws.
+        $script:OldRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('oldreader-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:OldRoot '.specrew') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:OldRoot 'scripts\internal') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:OldRoot '.squad') -Force
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $script:OldRoot '.squad\team.md')
+        $oldDir = Join-Path $script:OldRoot 'specs\903-old-reader\iterations\001'
+        $null = New-Item -ItemType Directory -Path $oldDir -Force
+        Set-Content -LiteralPath (Join-Path $script:OldRoot 'specs\903-old-reader\spec.md') -Value '# Feature Specification: 903-old-reader' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $oldDir 'plan.md') -Value "# Plan`n`n**Status**: complete`n" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $oldDir 'state.md') -Value "# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: complete`n" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $script:OldRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 903-old-reader
+    iteration: 001
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+'@
+        @"
+function Get-SpecrewFeatureRecords {
+    param([string]`$ProjectRoot)
+    @([pscustomobject]@{
+        feature_ref = '903-old-reader'; feature_status = 'active'; has_feature_closeout = `$false; closeout_dashboard_path = ''
+        closed_iterations = @([pscustomobject]@{ iteration_ref = '001'; iteration_directory = '$($oldDir -replace "'", "''")' })
+    })
+}
+function Read-SpecrewRoadmapDefinition { param([string]`$ProjectRoot) [pscustomobject]@{ exists = `$false; warnings = @() } }
+function Get-SpecrewRoadmapProgress { param([object]`$RoadmapDefinition, [object[]]`$FeatureRecords) [pscustomobject]@{ warnings = @() } }
+# The older reader: entries carry closed_at only.
+function Get-SpecrewClosedIterationIndex {
+    param([string]`$ProjectRoot)
+    return @{ '903-old-reader/001' = @{ closed_at = '2026-11-01T10:00:00Z' } }
+}
+"@ | Set-Content -LiteralPath (Join-Path $script:OldRoot 'scripts\internal\dashboard-renderer.ps1') -Encoding UTF8
+        $script:OldReaderOutput = (@(& pwsh -NoProfile -File $script:Validator -ProjectPath $script:OldRoot 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+    }
+
+    AfterAll {
+        if ($script:OldRoot -and (Test-Path -LiteralPath $script:OldRoot)) {
+            Remove-Item -LiteralPath $script:OldRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the validator does not fail on an index entry with no closed_at_source key' {
+        $script:OldReaderOutput | Should -Not -Match 'unexpected-validator-error'
+        $script:OldReaderOutput | Should -Not -Match "closed_at_source' cannot be found"
+    }
+
+    It 'the dashboard check still sees the stamp in .specrew/closed-iterations.yml' {
+        $script:OldReaderOutput | Should -Match "missing-dashboard[^`n]*903-old-reader 001"
+    }
+
+    It 'Test-SpecrewClosedCheckApplies under strict mode treats an entry with no stamp key as unstamped' {
+        Set-StrictMode -Version Latest
+        $index = @{ '903-old-reader/001' = @{ closed_at = '2026-11-01T10:00:00Z' } }
+        Test-SpecrewClosedCheckApplies -ClosedIndex $index -Feature '903-old-reader' -Iteration '001' -Since ([datetime]::new(2026, 5, 26)) | Should -BeFalse
+    }
+}
+
 Describe 'T009 acceptance: 198/011 in this repository' {
     It 'the validator on 198/011 reports neither the review-verdict nor the stale-status finding' {
         $iterationDir = Join-Path $script:RepoRoot 'specs\198-beta2-hardening\iterations\011'
