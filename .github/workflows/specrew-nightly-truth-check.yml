@@ -21,6 +21,7 @@ name: Specrew Nightly Truth-Check
 # tracking issue labelled nightly-truth-check: opened on the first red night,
 # commented on only when the failure set changes, closed on the next green
 # night. Only the notify job holds issues: write; the default stays read-only.
+# The notify job runs only for the default branch.
 
 on:
   schedule:
@@ -57,7 +58,9 @@ jobs:
   notify:
     name: Tracking issue
     needs: full-repo-validator
-    if: always()
+    # The tracking issue belongs to the default branch: a manual run on another branch still validates but
+    # never notifies. A scheduled run is always on the default branch, and its event has no repository object.
+    if: always() && (github.event_name == 'schedule' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
