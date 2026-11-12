@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: 57% (4/7 resolved; 001 open until T007 lands; 006 open until T009 lands; 007 deferred to
-iteration 002 as bug list item 12)
+**Total drift events**: 10
+**Resolution rate**: 80% (8/10 resolved; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+iteration 002 as a required item: feature 206 does not close without it)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -48,6 +48,9 @@ iteration 002 as bug list item 12)
 - **Process miss**: the revert was not validated on its own before it was pushed. The local runs validated
   the two commits together (and changed-only against `origin/main`, not against the push base CI uses), so
   the 206/001 failure was not seen. The maintainer had expected 198/011 only.
+- **Resolution (2026-11-12)**: 198/011's failure is gone: `7e3ddd78` marks it abandoned by the maintainer's
+  ruling, and T009's exemption (`54cb8e18`) stops the review-verdict rule for an iteration abandoned by
+  recorded ruling. The 206/001 failure was fixed by `99eb5132`.
 - **Class closure**: NONE — no executable guard is added in this feature; the working rule from here on is to
   validate each pushed head alone, changed-only against the push base CI will use (`SPECREW_SCOPE_BASE_REF`
   set to the previous pushed commit), before every push.
@@ -133,13 +136,15 @@ iteration 002 as bug list item 12)
   is stale"), and a plan at `retro` is held to the review-verdict rule ("Complete iterations require review.md
   overall verdict 'accepted'"). No plan status says "abandoned" and passes.
 - **197/006**: keeps plan.md at `Status: retro` with state.md at `Iteration Status: abandoned`, following
-  174/007 (state.md `abandoned`, plan.md `executing`). It has no `review.md`, so the review-verdict rule does not
-  fire, and it passes. Its Disposition section says why plan.md keeps `retro`.
+  174/007 (state.md `abandoned`, plan.md `executing`). Its `review.md` records `accepted`, so the review-verdict
+  rule does not fire, and it passes. Its Disposition section says why plan.md keeps `retro`. (Corrected
+  2026-11-12: this entry first said 197/006 has no `review.md`; it has one.)
 - **198/011**: has a `review.md` with verdict `needs-rework`; neither form passes. Its abandonment is held back
   from T007's push (maintainer, 2026-11-11, option 1).
 - **Resolution**: T009 adds the rule, test first: an iteration whose state.md says `abandoned` with a recorded
   ruling is not held to the plan-status rule or the review-verdict rule; `abandoned` with no recorded ruling
-  still gets both. 198/011's abandonment lands in T009's push. Open until then.
+  still gets both. 198/011's abandonment lands in T009's push. Resolved 2026-11-12: RED 17/20 in `9815d2f7`,
+  GREEN 20/20 in `54cb8e18`; 198/011 abandoned in `7e3ddd78`, in the same push.
 - **Class closure**: T009's validator rule and its tests: abandonment by recorded ruling becomes a status the
   validator accepts after `retro.md`, and an unrecorded `abandoned` stays refused.
 
@@ -162,6 +167,51 @@ iteration 002 as bug list item 12)
   item 12, a candidate for iteration 002 (no workflow changed now).
 - **Class closure**: NONE — the stuck runs are a GitHub-side state this feature cannot change; the gap that
   left a commit without a re-check is bug list item 12, deferred to iteration 002 by the maintainer.
+
+### DRIFT-206-I001-008 — T009 is 2.0 points against its 1.5: scope added by ruling
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (T009 ruling, condition 1).
+- **What**: T009 is planned at 1.5 points. Its estimate, with the "abandoned is closed only with a recorded
+  ruling" part moved to iteration 002, is 1.0 (`since`, the closure stamp, the dashboard check) + 0.75 (the
+  recorded-ruling reader, the exemption, 198/011 landing) + 0.25 (the two fixtures) = **2.0 points**. The option
+  put to the maintainer said "about 1.5"; that was an addition error, not a different estimate.
+- **Cause**: the extra 0.5 is the exemption added to T009 by the maintainer's T007 ruling of 2026-11-11.
+- **Ruling (maintainer, 2026-11-12)**: proceed at 2.0; the capacity file and T009's points stay unchanged
+  (1.5 in tasks.md and plan.md; iteration 001 stays at 20/20 on paper).
+- **Resolution**: human-decision; T009 done at the real size.
+- **Class closure**: NONE — a one-off estimate error corrected by the maintainer's ruling; the sum is now shown
+  with its parts so the next estimate can be checked.
+
+### DRIFT-206-I001-009 — T009 changed a test file outside its owned files: the non-specrew-session-bypass fixture
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (T009 ruling, condition 5), as DRIFT-206-I001-003.
+- **What**: `tests/integration/non-specrew-session-bypass.tests.ps1` is not in T009's owned files. Its fixture
+  closes `017-sample` iterations 002 and 003 with no closed-index entry, and it expects the two missing-dashboard
+  warnings. After T009 the dashboard check judges only an iteration closeout stamped on or after 2026-05-26, so
+  an unstamped one draws no warning and the suite would fail.
+- **Change**: the fixture writes `.specrew/closed-iterations.yml` with both iterations stamped
+  `closed_at_source: closeout`, `closed_at: 2026-11-01T10:00:00Z`, plus a comment naming the reason. The suite's
+  point is kept: the managed and non-managed diagnoses still fire. T008's own fixture
+  (`tests/unit/legacy-frozen-judged-by-nothing.tests.ps1`, inside T009's `tests/unit/**`) gets the same entries.
+- **Approval**: the maintainer, 2026-11-12 ("approved to add a stamped index entry").
+- **Resolution**: lands in T009's test commit `9815d2f7`; green before and after the fix.
+- **Class closure**: NONE — a one-off fixture follow-up to a rule the maintainer ruled on; no mechanism is needed
+  to stop a test from following a ruled rule.
+
+### DRIFT-206-I001-010 — until iteration 002, an abandoned status with no recorded ruling counts as closed
+
+- **Recorded**: 2026-11-12, at the maintainer's instruction (T009 ruling, condition 2).
+- **What**: since T006, `Test-SpecrewIterationClosed` counts any `Iteration Status: abandoned` as closed, with or
+  without a recorded ruling. T009 as planned would have made "abandoned" closed only with a recorded ruling; the
+  maintainer moved that rule to iteration 002. Until it lands, an iteration can be closed, and skipped by the
+  validator's closed filter, by writing `abandoned` in its state.md with no ruling. **This must not ship.**
+- **Who it affects now**: group B of the T005 table (197/002, 197/007, 197/008, 198/005): abandoned, no recorded
+  ruling, closed since T006. The T005 table stays as accepted.
+- **Resolution**: deferred to iteration 002 as a **required item**: feature 206 does not close without it. It
+  lands together with the maintainer's rulings on the four group B iterations, so the T005 table does not
+  change. The T009 exemption is unaffected: it already applies only to iterations with a recorded ruling.
+- **Class closure**: deferred — iteration 002's rule and its test (an `abandoned` status with no recorded ruling
+  is not closed), with the closed definition's suite covering it.
 
 <!--
   Every new ### DRIFT-... event includes:

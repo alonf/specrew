@@ -3,12 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T008
-**Tasks Remaining**: T009-T015, T018 (8 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run),
-T007 (198/011 lands with T009)
+**Last Completed Task**: T009 (T007 closed with it)
+**Tasks Remaining**: T010-T015, T018 (7 planned)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 not run)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-11T20:45:00Z
+**Updated**: 2026-11-12T01:12:00Z
 
 ## Execution Summary
 
@@ -31,7 +30,9 @@ T007 (198/011 lands with T009)
   W51's fixture gains `Iteration Status: complete` (DRIFT-206-I001-003). The deployed hash file is refreshed:
   T002's entry in `52662ebc`, T006's two in its fix commit (DRIFT-206-I001-004, bug 10). The self-leak firewall
   refused six comments citing the feature id; fixed in `ba2d1d8b` (DRIFT-206-I001-005).
-- T007 (FR-005, FR-006), **in progress**: 197/006 abandoned (ruling 2026-11-10), 198/010 abandoned and
+- T007 (FR-005, FR-006), **done 2026-11-12**: 198/011 abandoned by the 2026-11-10 ruling in `7e3ddd78`, in T009's
+  push; acceptance met: a CI-mode full-repository run (`-FullRun`, `CI=true`) on `3b5dcadf` exits 0 with no
+  failure (frozen filter 18, closed filter 128; 198/011 closed). History: 197/006 abandoned (ruling 2026-11-10), 198/010 abandoned and
   superseded (ruling 2026-11-11: DRIFT-198-I010-004 stays open, handed to 203 as HO-206-4; T082 stays
   `needs-rework`), each with a Disposition section; `Current Phase` unchanged. 197/006 keeps plan.md `Status:
   retro` (it has a `retro.md`), following 174/007 (DRIFT-206-I001-006). `.specrew/legacy-frozen.yml` with 18
@@ -50,6 +51,24 @@ T007 (198/011 lands with T009)
   every closed iteration except abandoned ones). Also green: T006's suite 16/16, W51 8/8,
   `non-specrew-session-bypass`, `validate-governance-changed-only`, the self-leak lint. Not run:
   `feature-017-dashboard-core.ps1` (it runs `scripts/specrew.ps1`, not yet read for home writes).
+- T009 (FR-008; maintainer 2026-11-12, option 1 with conditions; real size 2.0 points by ruling,
+  DRIFT-206-I001-008): RED 17/20 in `9815d2f7`, GREEN 20/20 in `54cb8e18`; then, found before the push by
+  `validate-governance-changed-only` (its fixture loads the installed module's older renderer, whose index reader
+  drops the stamp, and strict mode threw), RED 3/23 in `36dfd605`, GREEN 23/23 in `3b5dcadf`: the validator reads
+  the index before loading the renderer, and a missing stamp key is unstamped. The closed-iteration dashboard check
+  declares `since: 2026-05-26` and `applies_to_status: complete` and judges an iteration only when iteration
+  closeout stamped its index entry (`closed_at_source: closeout`) on or after that date; this replaces its
+  feature-number cut-off (the feature-closeout dashboard check keeps its cut-off). Closeout writes the stamp. An
+  iteration abandoned by recorded ruling (a Disposition section naming the maintainer's ruling with its date) is
+  not held to the plan-status or review-verdict rule; abandoned with no recorded ruling still gets both. Fixtures:
+  T008's suite and `non-specrew-session-bypass` get stamped entries (DRIFT-206-I001-009). "Abandoned is closed only
+  with a recorded ruling" is required in iteration 002 (DRIFT-206-I001-010). Also green: T008 6/6, T006 16/16,
+  `closed-iteration-index`, `capacity-grandfather-closed-iterations`, `closed-iterations-are-history` 8/8,
+  `every-suite-is-named-by-a-lane`, `feature-018-dashboard`, `validate-governance-changed-only` (on `3b5dcadf`), the
+  self-leak lint. Not run, read instead:
+  `closeout-records-on-approval.tests.ps1` (drives `sync-boundary-state.ps1`, home path unread; it counts
+  `- feature:` lines only, so the stamp line does not change it; no lane runs it) and
+  `sealed-iteration-writers.tests.ps1` (runs `scripts/specrew.ps1`).
 
 ## Notes
 

@@ -105,12 +105,13 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` (maintainer, 2026-11-11: a commit that
     touches `.specify/extensions/specrew-speckit/` refreshes it in the same commit). Outside owned files, approved:
     the W51 fixture in `tests/integration/closed-iterations-are-history.tests.ps1` (DRIFT-206-I001-003).
-- [ ] T007 [owner: Implementer] [sp: 1.0] **The triage applied: abandoned and frozen.**
-  - **In progress (maintainer, 2026-11-11, option 1):** 197/006, 198/010 and the frozen list are pushed; 198/011's
-    abandonment is held back. Its `state.md` cannot pass the validator while it has a `retro.md`: plan `Status:
-    abandoned` is refused as stale, and plan `Status: retro` brings back the review-verdict finding. The rule that
-    lets it pass is in T009; 198/011's abandonment lands in T009's push, and T007 closes then. Until then the
-    acceptance below is not met.
+- [x] T007 [owner: Implementer] [sp: 1.0] **The triage applied: abandoned and frozen.**
+  - **Held, then closed (maintainer, 2026-11-11, option 1):** 197/006, 198/010 and the frozen list were pushed
+    first; 198/011's abandonment was held back, because with a `retro.md` its `state.md` could not pass the
+    validator (plan `Status: abandoned` refused as stale; plan `Status: retro` brings back the review-verdict
+    finding). T009's exemption lets it pass; 198/011 lands in `7e3ddd78`, in T009's push.
+  - **Acceptance met (2026-11-12):** a CI-mode full-repository run (`-FullRun`, `CI=true`) on `3b5dcadf` exits 0
+    with no failure: 198/011 is closed (abandoned by ruling), the 18 frozen entries are skipped.
   - **Work:** 198/011 and 197/006 marked `abandoned`, each recording the maintainer's ruling of 2026-11-10;
     198/011's `review.md` unchanged. **198/010 marked `abandoned`, superseded** (maintainer's T005 ruling,
     2026-11-11): its `state.md` says in plain words that DRIFT-198-I010-004 stays open and was handed to feature
@@ -133,9 +134,14 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     `extensions/specrew-speckit/scripts/shared-governance.ps1`, their `.specify` mirrors, `tests/unit/**`; the
     deployed hash file's `validate-governance.ps1` entry (standing ruling 2026-11-11); the suite's line in
     `.specrew/release-gate-suites.txt`, as T006's.
-- [ ] T009 [owner: Implementer] [sp: 1.5] **`since`, the closure stamp, and abandonment by ruling.**
+- [x] T009 [owner: Implementer] [sp: 1.5] **`since`, the closure stamp, and abandonment by ruling.**
+  - **Ruled (maintainer, 2026-11-12, option 1, with conditions):** the real size is 2.0 points (1.0 + 0.75 +
+    0.25); the extra 0.5 is the exemption added by the 2026-11-11 ruling, recorded as scope added by ruling
+    (DRIFT-206-I001-008); the 1.5 here and the capacity file stay unchanged. "An `abandoned` status with no
+    recorded ruling is not closed" moves to iteration 002 as a required item (DRIFT-206-I001-010). The
+    `non-specrew-session-bypass` fixture gets stamped index entries (DRIFT-206-I001-009).
   - **RED:** the dashboard check with and without a `closed_at_source: closeout` stamp, before and after
-    `since: 2026-05-26`; an `abandoned` status with no recorded ruling is not closed.
+    `since: 2026-05-26`. (The "abandoned with no recorded ruling is not closed" case moved to iteration 002.)
   - **Work:** the dashboard check declares `since` and `applies_to_status: complete`, replacing the feature-number
     cut-off; iteration closeout writes `closed_at_source: closeout`; an unstamped entry is not judged by a `since`
     check. The tests pin the rulings for 198/011 and 197/006 (2026-11-10) and 174/007 (2026-06-14).
@@ -143,9 +149,16 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
     whose `state.md` says `abandoned` with a recorded ruling is not held to the plan-status rule or the
     review-verdict rule; `abandoned` with no recorded ruling still gets both. Test first. 198/011's abandonment
     (T007) lands in the same push, and T007 closes then. If this does not fit in 1.5 points: stop with the estimate.
+  - **Done (2026-11-12):** RED 17/20 in `9815d2f7`, GREEN 20/20 in `54cb8e18`
+    (`tests/unit/closed-check-since-and-ruling.tests.ps1`). Before the push, `validate-governance-changed-only`
+    found a strict-mode failure when the renderer comes from an older installed module: RED 3/23 in `36dfd605`,
+    GREEN 23/23 in `3b5dcadf`.
   - **Trace:** FR-008.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`,
-    `extensions/specrew-speckit/scripts/shared-governance.ps1`, their `.specify` mirrors, `tests/unit/**`.
+    `extensions/specrew-speckit/scripts/shared-governance.ps1`, their `.specify` mirrors, `tests/unit/**`; the
+    deployed hash file's two entries (standing ruling 2026-11-11); the suite's line in
+    `.specrew/release-gate-suites.txt`. Outside owned files, approved: the fixture in
+    `tests/integration/non-specrew-session-bypass.tests.ps1` (DRIFT-206-I001-009).
 - [ ] T011 [owner: Implementer] [sp: 0.5] **The review-verdict finding names the real status.**
   - **RED:** the validator's message for a `retro` iteration says "Complete iterations require …".
   - **Acceptance:** a `retro` iteration is named as such; a `complete` iteration keeps its message.
@@ -226,6 +239,12 @@ Deferred from iteration 001 by the maintainer (2026-11-11), not cut: T016 (FR-01
 preset; the f049 assertion onto a fixture; the root `package.json` removed, 1.5 SP). Candidate: T019 (the
 Cross-Platform review-runtime step gets its own `timeout-minutes`; bug list item 7, 0.25 SP; a requirement is added
 when iteration 002 is planned).
+
+**Required in iteration 002 (maintainer, 2026-11-12; feature 206 does not close without it):** an `abandoned`
+status is closed only with a recorded ruling (moved from T009, FR-008a). It lands together with the maintainer's
+rulings on the four group B iterations (197/002, 197/007, 197/008, 198/005), so the T005 table does not change.
+Until it lands, an `abandoned` status with no recorded ruling counts as closed; this must not ship
+(DRIFT-206-I001-010).
 
 ## Traceability
 

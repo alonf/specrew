@@ -108,3 +108,28 @@ FR-005.
   closed by the index, as the validator already treats it; the dashboard check does not judge it (status is not
   `complete`).
 - **Proposed owner**: the maintainer decides; 206 changes nothing.
+
+## HO-206-8 — `co-review-service.Tests.ps1`: a supervisor kept running after a failed lease handoff (Deterministic gate)
+
+- **Bug list**: item 13.
+- **Evidence**: Specrew CI run 43116326615 on `03bc7a48`, job 130846956739 "Deterministic gate", 1 of 131 failed:
+  `tests/continuous-co-review/unit/co-review-service.Tests.ps1:129`, "a FAILED lease owner-handoff STOPS the
+  spawned supervisor, marks the registry failed, and releases the lease" - the `pwsh` supervisor process was
+  still alive when the test checked.
+- **Not caused by 206**: `03bc7a48` is a Markdown-only commit; its parent `ad31b2d5`, with the same code, was
+  green on all three workflows. 206 does not edit `scripts/internal/continuous-co-review/`.
+- **Cause: not found.** Not rerun (maintainer, 2026-11-12). A recurrence on 206's next push stops 206's work and
+  is reported.
+- **Proposed owner**: feature 203 (its area).
+
+## HO-206-9 — `review-posix-runtime.Tests.ps1`: stream-drain budget exceeded on macOS
+
+- **Bug list**: item 14.
+- **Evidence**: Cross-Platform Validation run 43116326613 on `03bc7a48`, job 130845171704 "Deterministic
+  fake-provider review runtime (macos-latest)": `tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1:126`,
+  "observes both stream drains concurrently under one bounded wall-clock budget", 360 ms against a 250 ms limit.
+  Different from HO-206-6 (the process-group probe).
+- **Not caused by 206**: same evidence as HO-206-8; the same job was green on `ad31b2d5` (run 43113590661).
+- **Cause: not found.** Not rerun (maintainer, 2026-11-12). A recurrence on 206's next push stops 206's work and
+  is reported.
+- **Proposed owner**: feature 203 (its area).
