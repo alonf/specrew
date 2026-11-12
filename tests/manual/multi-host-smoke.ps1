@@ -88,6 +88,17 @@ Write-Host '--- Phase 2: Per-host scenarios ---' -ForegroundColor Cyan
 
 $results = @{}
 
+# Feature 203 T013 (DRIFT-045, B5F-032): specrew init and specrew start deploy hook files to the home. In --no-launch mode
+# nothing reads them, so the run takes a private home and gives it back after the scenarios. A full launch (interactive)
+# keeps the real home on purpose: the host CLI it spawns reads its hooks from there.
+$privateHome = $null
+if ($useNoLaunch) {
+    . (Join-Path $PSScriptRoot '..\support\private-test-home.ps1')
+    $privateHome = Enter-SpecrewPrivateTestHome -Label 'multi-host-smoke'
+    Write-Info "Private home for hook files: $($privateHome.Path)"
+}
+
+try {
 foreach ($host in $Hosts) {
     Write-Host ''
     Write-Host "=== Host: $host ===" -ForegroundColor Magenta
@@ -266,6 +277,10 @@ foreach ($host in $Hosts) {
     }
 
     $results[$host] = $scenarioPass
+}
+}
+finally {
+    if ($null -ne $privateHome) { Exit-SpecrewPrivateTestHome -State $privateHome }
 }
 
 # Phase 3: Summary

@@ -2,6 +2,7 @@
 # This test validates the Docker pre-publish harness for FileList integrity
 # and version pin drift detection (Prop 134).
 # Trace: FR-003, FR-012, SC-001
+# specrew-test-home: not-a-writer - it only matches the harness script's text for 'Initialize-Specrew --force' and 'Update-Specrew -All'; it runs neither (feature 203 T013)
 
 [CmdletBinding()]
 param()

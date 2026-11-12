@@ -94,6 +94,11 @@ $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..\')).P
 $testsPath = Join-Path -Path $repoRoot -ChildPath 'tests'
 $testProjectPath = Join-Path -Path $testsPath -ChildPath ".test-dup-$(Get-Random)"
 
+# Feature 203 T013 (DRIFT-045, B5F-032): Initialize-Specrew and Update-Specrew run specrew-init and specrew-update, which
+# deploy hook files to the home; this suite gives itself a private one and restores the caller's in the finally below.
+. (Join-Path $repoRoot 'tests\support\private-test-home.ps1')
+$privateHome = Enter-SpecrewPrivateTestHome -Label 'squad-duplicate-rows'
+
 try {
     # Create clean test project
     New-Item -ItemType Directory -Path $testProjectPath -Force | Out-Null
@@ -327,6 +332,7 @@ try {
     exit 0
     
 } finally {
+    Exit-SpecrewPrivateTestHome -State $privateHome
     # Cleanup test project
     if (Test-Path -LiteralPath $testProjectPath) {
         try {
