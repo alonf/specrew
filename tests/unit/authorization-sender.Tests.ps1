@@ -121,6 +121,46 @@ Describe 'the check when an authorization is used (Resolve-SpecrewAuthorizationS
     }
 }
 
+Describe 'a host whose hook input carries no transcript path (maintainer ruling 2026-11-12)' {
+    It 'a Copilot approval is unverified: the text rules decide, it is journaled by host and shown on the health line; a Claude turn with no path is still refused' {
+        $root = Join-Path $TestDrive 'copilot'
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew/authority') -Force | Out-Null
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'copilot'; message_id = ('0' * 64); text = 'approved for allowance reset' })).Identity
+        $null = Register-SpecrewExhaustedTurn -ProjectRoot $root -TurnId $turnId -HostKind 'copilot' -SourceEvent 'userPromptSubmitted' -MintedWriters '' -ContentHash (Get-SpecrewHumanAuthorityHash -Text 'approved for allowance reset') -SessionId 'c' -Identity 'typed-act' -TurnOrigin 'typed-user'
+        $r = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'allowance reset' -HostKind 'copilot'
+        $r.accepted | Should -BeTrue
+        [string]$r.sender | Should -BeExactly 'unverified'
+        $row = @(Get-Content -LiteralPath (Join-Path $root '.specrew/runtime/authorization-sender-unverified.jsonl') | ForEach-Object { $_ | ConvertFrom-Json })[-1]
+        [string]$row.host_kind | Should -BeExactly 'copilot'
+        [string](Get-SpecrewAuthorizationSenderHealthLine -ProjectRoot $root) | Should -Match 'copilot'
+        $claude = script:New-SenderFixture -Shape ($script:Shapes | Where-Object kind -eq 'typed') -NoLedgerPath
+        (Resolve-SpecrewAuthorizationSender -ProjectRoot $claude.Root -TurnIdentity $claude.TurnIdentity -Purpose 'allowance reset' -HostKind 'claude').accepted | Should -BeFalse
+    }
+}
+
+Describe 'the record is bound to what the cited turn said (maintainer ruling 2026-11-12)' {
+    It 'a record citing a real typed turn about something else is refused; its own turn is used' {
+        $f = script:New-SenderFixture -Text 'thanks, that looks right' -Shape ($script:Shapes | Where-Object kind -eq 'typed')
+        $forged = [pscustomobject]@{ fact_type = 'allowance-reset-approval'; verdict_text = 'approved for allowance reset'; turn_identity = $f.TurnIdentity; host_kind = 'claude' }
+        Test-SpecrewAuthorizationRecordSender -ProjectRoot $f.Root -Record $forged -Purpose 'allowance reset' 2>$null | Should -BeFalse
+        $own = script:New-SenderFixture -Text 'approved for allowance reset' -Shape ($script:Shapes | Where-Object kind -eq 'typed')
+        $real = [pscustomobject]@{ fact_type = 'allowance-reset-approval'; verdict_text = 'approved for allowance reset'; turn_identity = $own.TurnIdentity; host_kind = 'claude' }
+        Test-SpecrewAuthorizationRecordSender -ProjectRoot $own.Root -Record $real -Purpose 'allowance reset' | Should -BeTrue
+    }
+
+    It 'a record whose kind is not the cited turn''s act is refused (a stop line cited for a top-up)' {
+        $f = script:New-SenderFixture -Text 'stop the review here' -Shape ($script:Shapes | Where-Object kind -eq 'typed')
+        $wrongKind = [pscustomobject]@{ fact_type = 'allowance-reset-approval'; verdict_text = 'stop the review here'; turn_identity = $f.TurnIdentity; host_kind = 'claude' }
+        Test-SpecrewAuthorizationRecordSender -ProjectRoot $f.Root -Record $wrongKind -Purpose 'allowance reset' 2>$null | Should -BeFalse
+    }
+
+    It 'a boundary verdict entry citing a typed turn that said something else covers nothing' {
+        $f = script:New-SenderFixture -Text 'can you explain the plan?' -Shape ($script:Shapes | Where-Object kind -eq 'typed')
+        $entry = @{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $f.TurnIdentity }
+        Test-SpecrewAuthorizationRecordSender -ProjectRoot $f.Root -Record $entry -Purpose 'approval for tasks' 2>$null | Should -BeFalse
+    }
+}
+
 Describe 'the check loads where a project runs it: the deployed .specify copy of shared-governance' {
     It 'finds the engine from the deployed copy, through SPECREW_MODULE_PATH or the project above it, and loads it once' {
         # T013 triage, gap 1: from .specify/extensions/specrew-speckit/scripts the store was looked for under .specify\ and
