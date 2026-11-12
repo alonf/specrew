@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "feature": "205-workshop-lens-order",
+  "iteration": "001",
+  "sealed_at": "2026-11-12T17:39:19.0632630+00:00",
+  "sealed_files": [
+    {
+      "path": "dashboard.md",
+      "sha256": "da2daef8f386734239e80084c43822737d0741f05e441e65591b9fdaa074ce62"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "21a3d48210e3462270931be005f5095b8ead11238ee4a13b2c4558be3f38f513"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "42293b320d46b4b048e0fa5a5b8b3d865bd3f3f8bbb2f7ea4bcdf76136f6f6c7"
+    },
+    {
+      "path": "handover-to-203.md",
+      "sha256": "26ef67d9fe186903dd357813fcdabe4181d5e88fa3c97818558f465363f1a57b"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "ea52feca838de429b4644f3767830521be493cd9379f97a0080d9df8cd81a492"
+    },
+    {
+      "path": "problem-gap-list.md",
+      "sha256": "d844010c877c8c77b8ef770e89b36ff12e3ff16caef0f66be41695949c6262f0"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "e16db2db8780da33941df8e90b8aef2bc21f38868fbaea43040c90a8a840fd9e"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "c798f2c619c58e86f6f50e96b957287fe5a75367a7a121091999d745a95f6373"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "aa603a15477be35a1c8ec0465eb6fc236ca1bc0fe92da42aef0d2629366f9e83"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "c15f54198b151d5308d6cf794af123b4baf6a5ec334fd5263faa2a9a86d1146f"
+    },
+    {
+      "path": "review.md",
+      "sha256": "e4027a4b283c863e49248af2cfad7697401125db208c181175f6419719f79fd2"
+    },
+    {
+      "path": "state.md",
+      "sha256": "9e84cf135f0f7a3018e43d1152fa2c4088a68f9e99b8fae100e796b6b5314c1c"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "e837384b2601f1366d92981728504a662c41b2a0c2618802b083ca4a2f2922a3"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}

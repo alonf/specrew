@@ -413,3 +413,6 @@ closed:
   - feature: 202-beta4-1-ux-stabilization
     iteration: 003
     closed_at: 2026-10-24T22:22:00Z
+  - feature: 205-workshop-lens-order
+    iteration: 001
+    closed_at: 2026-11-12T17:39:18Z
