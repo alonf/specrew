@@ -175,6 +175,76 @@ try {
     Assert-True (@($changes8 | Where-Object { $_ -match 'hooks[\\/]bindings[\\/]antigravity-1\.binding' -and $_ -match '\bchanged\b' }).Count -eq 1) 'a changed binding is named as changed'
     Assert-True (@($changes8 | Where-Object { $_ -match '9b2b4eb94cb52621b2041c509642f2fb' -and $_ -match '\badded\b' }).Count -eq 1) 'an added launcher folder file is named as added'
     Assert-True (@($changes8 | Where-Object { $_ -match 'hook-bindings[\\/]antigravity-1\.binding' -and $_ -match '\bremoved\b' }).Count -eq 1) 'a removed binding is named as removed'
+
+    Write-Host 'Case 11: ~/.codex/config.toml is compared by its [hooks.state] section only, and that section is saved for a comparison by content (maintainer, 2026-11-12; DRIFT-058)'
+    # The 2026-11-12 false alarm: the Codex app rewrote its own settings at startup (a new computer-use pipe name) and
+    # the whole-file hash called it a hook change. Stand-in home only, as in case 8.
+    function Test-Case11 { param([string]$Name, [scriptblock]$Check) try { Assert-True ([bool](& $Check)) $Name } catch { Write-Fail ("{0} ({1})" -f $Name, $_.Exception.Message) } }
+    $home11 = Join-Path $scratch 'home11'
+    $config11 = Join-Path $home11 '.codex/config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $config11) | Out-Null
+    $hooksState11 = @("[hooks.state]", "", "[hooks.state.'C:\Users\x\.codex\hooks.json:session_start:0:0']", 'trusted_hash = "sha256:aaa"', "",
+        "[hooks.state.'C:\Users\x\.codex\hooks.json:stop:0:0']", 'trusted_hash = "sha256:bbb"')
+    function Write-Config11 { param([string]$Pipe, [string]$StopHash, [string]$NewLine = "`r`n")
+        $lines = @('model = "gpt-5"', '', "[projects.'c:\dev\specrew']", 'trust_level = "trusted"', '') +
+            @($hooksState11 | ForEach-Object { $_ -replace 'sha256:bbb', $StopHash }) +
+            @('', '[mcp_servers.computer.env]', ("SKY_CUA_NATIVE_PIPE_DIRECTORY = '\\.\pipe\codex-computer-use-{0}'" -f $Pipe), 'SKY_CUA_NATIVE_PIPE = "1"')
+        [IO.File]::WriteAllText($config11, (($lines -join $NewLine) + $NewLine))
+    }
+    Write-Config11 -Pipe 'e63a19d8' -StopHash 'sha256:bbb'
+    Test-Case11 'the [hooks.state] section is extracted: its header and every [hooks.state.*] table, not the tables around it' {
+        $s = [string](Get-SweepCodexHooksState -Path $config11)
+        $s -ceq (($hooksState11 -join "`n").TrimEnd() + "`n")
+    }
+    Test-Case11 'the extraction does not depend on line endings' {
+        $crlf = [string](Get-SweepCodexHooksState -Path $config11)
+        Write-Config11 -Pipe 'e63a19d8' -StopHash 'sha256:bbb' -NewLine "`n"
+        $lf = [string](Get-SweepCodexHooksState -Path $config11)
+        Write-Config11 -Pipe 'e63a19d8' -StopHash 'sha256:bbb'
+        $crlf -ceq $lf
+    }
+    $snap11 = @(Get-SweepHomeSnapshot -HomeRoot $home11)
+    Write-Config11 -Pipe 'dfe0b024' -StopHash 'sha256:bbb'
+    Test-Case11 'a change outside [hooks.state] (the computer-use pipe name) is not a change' {
+        @(Get-SweepHomeChanges -From $snap11 -To @(Get-SweepHomeSnapshot -HomeRoot $home11)).Count -eq 0
+    }
+    Write-Config11 -Pipe 'dfe0b024' -StopHash 'sha256:ccc'
+    Test-Case11 'a change inside [hooks.state] is a change, named with the section' {
+        $c = @(Get-SweepHomeChanges -From $snap11 -To @(Get-SweepHomeSnapshot -HomeRoot $home11))
+        $c.Count -eq 1 -and $c[0] -match 'config\.toml' -and $c[0] -match '\[hooks\.state\]' -and $c[0] -match '\bchanged\b'
+    }
+    Test-Case11 'a removed config.toml is still a change' {
+        $kept = Get-Content -LiteralPath $config11 -Raw
+        Remove-Item -LiteralPath $config11 -Force
+        try { $c = @(Get-SweepHomeChanges -From $snap11 -To @(Get-SweepHomeSnapshot -HomeRoot $home11)); $c.Count -eq 1 -and $c[0] -match 'config\.toml' -and $c[0] -match '\bremoved\b' }
+        finally { [IO.File]::WriteAllText($config11, $kept) }
+    }
+    Test-Case11 'a snapshot that hashed the whole file (before this change) is not compared with a section hash' {
+        $old = @($snap11 | ForEach-Object { if ([string]$_.File -like '*config.toml') { [pscustomobject]@{ File = $_.File; Hash = (Get-FileHash -LiteralPath $config11).Hash; Written = $_.Written } } else { $_ } })
+        @(Get-SweepHomeChanges -From $old -To @(Get-SweepHomeSnapshot -HomeRoot $home11)).Count -eq 0
+    }
+    Write-Config11 -Pipe 'e63a19d8' -StopHash 'sha256:bbb'
+    $saved11 = Join-Path $scratch 'saved11'
+    Test-Case11 'the snapshot copy saves the [hooks.state] section beside the full file' {
+        Save-SweepHomeSnapshot -HomeRoot $home11 -Destination $saved11
+        $f = @(Get-ChildItem -LiteralPath $saved11 -File | Where-Object { $_.Name -like '*codex_config.toml.hooks-state.txt' })
+        $f.Count -eq 1 -and ((Get-Content -LiteralPath $f[0].FullName -Raw) -ceq [string](Get-SweepCodexHooksState -Path $config11))
+    }
+    $known11 = Join-Path $scratch 'known11-hooks-state.txt'
+    Test-Case11 'the section is saved as the known-good copy, and a later change is shown line by line against it' {
+        Save-SweepCodexHooksState -HomeRoot $home11 -Path $known11
+        Write-Config11 -Pipe 'e63a19d8' -StopHash 'sha256:ccc'
+        $d = @(Get-SweepCodexHooksStateDiff -SavedPath $known11 -HomeRoot $home11)
+        $d.Count -eq 2 -and @($d | Where-Object { $_ -match '^\s*- .*sha256:bbb' }).Count -eq 1 -and @($d | Where-Object { $_ -match '^\s*\+ .*sha256:ccc' }).Count -eq 1
+    }
+    Test-Case11 'no difference against the saved section gives no lines' {
+        Write-Config11 -Pipe 'other' -StopHash 'sha256:bbb'
+        @(Get-SweepCodexHooksStateDiff -SavedPath $known11 -HomeRoot $home11).Count -eq 0
+    }
+    $fullText11 = Get-Content -LiteralPath $sweepFull -Raw
+    Test-Case11 'sweep-full saves the section as the known-good copy after each sweep and prints its line differences when config.toml is reported' {
+        $fullText11 -match 'Save-SweepCodexHooksState' -and $fullText11 -match 'Get-SweepCodexHooksStateDiff' -and $fullText11 -match 'home-last-after-codex-hooks-state\.txt'
+    }
 }
 finally {
     $env:SPECREW_SWEEP_KEEPAWAKE_TRACE = $savedTrace
