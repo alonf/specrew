@@ -51,7 +51,9 @@ BeforeAll {
 
 Describe 'the sender of a transcript record, by the per-field rule (one check for every recorded shape)' {
     It '<kind> (Claude <version>, <entrypoint>) is <expected_sender>, accepted <accepted>' -ForEach @((Get-Content -LiteralPath (Join-Path (Resolve-Path "$PSScriptRoot/../..").Path 'tests/fixtures/hook-payloads/claude/transcript-origins/record-shapes.json') -Raw | ConvertFrom-Json).shapes | ForEach-Object { @{ kind = $_.kind; version = $_.version; entrypoint = $_.entrypoint; expected_sender = $_.expected_sender; accepted = $_.accepted; shape = $_ } }) {
-        $s = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string]$shape.turnOrigin) -PromptSource ([string]$shape.promptSource) -IsMeta $shape.isMeta -OriginKind ([string]$shape.origin_kind)
+        $queuedArgs = @{}
+        if ($shape.PSObject.Properties['record']) { $queuedArgs = @{ RecordKind = [string]$shape.record; HumanTurn = $shape.human_turn; CommandMode = [string]$shape.command_mode } }
+        $s = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string]$shape.turnOrigin) -PromptSource ([string]$shape.promptSource) -IsMeta $shape.isMeta -OriginKind ([string]$shape.origin_kind) @queuedArgs
         [string]$s.sender | Should -BeExactly $expected_sender
         [bool]$s.accepted | Should -Be ([bool]$accepted)
     }
@@ -158,6 +160,51 @@ Describe 'the record is bound to what the cited turn said (maintainer ruling 202
         $f = script:New-SenderFixture -Text 'can you explain the plan?' -Shape ($script:Shapes | Where-Object kind -eq 'typed')
         $entry = @{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $f.TurnIdentity }
         Test-SpecrewAuthorizationRecordSender -ProjectRoot $f.Root -Record $entry -Purpose 'approval for tasks' 2>$null | Should -BeFalse
+    }
+}
+
+Describe 'a message typed while the crew is working: a queued_command record (B5F-070; maintainer ruling 2026-11-13)' {
+    BeforeAll {
+        $script:QueuedDir = Join-Path $script:RepoRoot 'tests/fixtures/hook-payloads/claude/queued-mid-turn'
+        # The maintainer's recorded mid-turn message, its hook output, and the ledger row the prompt hook wrote for it; the
+        # engine that recorded the row predates the transcript path on ledger rows, which the current prompt hook adds.
+        function script:New-QueuedProject([string]$OriginKind = '') {
+            $root = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew/authority') -Force | Out-Null
+            $lines = @(Get-Content -LiteralPath (Join-Path $script:QueuedDir 'tui-transcript-queued-mid-turn.jsonl'))
+            if ($OriginKind) {
+                $q = $lines[0] | ConvertFrom-Json -Depth 40
+                $q.attachment.origin.kind = $OriginKind
+                $lines[0] = $q | ConvertTo-Json -Depth 40 -Compress
+            }
+            $transcript = Join-Path $root 'session.jsonl'
+            [IO.File]::WriteAllText($transcript, (($lines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+            $row = Get-Content -LiteralPath (Join-Path $script:QueuedDir 'ledger-row.jsonl') -Raw | ConvertFrom-Json
+            $row | Add-Member -NotePropertyName transcript_path -NotePropertyValue $transcript -Force
+            [IO.File]::WriteAllText((Join-Path $root '.specrew/authority/exhausted-turns.jsonl'), (($row | ConvertTo-Json -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+            $text = [string](($lines[0] | ConvertFrom-Json -Depth 40).attachment.prompt)
+            $hash = ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($text)))).ToLowerInvariant()
+            return [pscustomobject]@{ Root = $root; TurnIdentity = [string]$row.turn_id; Text = $text; Hash = $hash }
+        }
+    }
+
+    It 'the maintainer''s recorded mid-turn message is found and is the human''s' {
+        $p = script:New-QueuedProject
+        $r = Resolve-SpecrewAuthorizationSender -ProjectRoot $p.Root -TurnIdentity $p.TurnIdentity -Purpose 'workshop answer'
+        $r.accepted | Should -BeTrue -Because ([string]$r.message)
+        [string]$r.sender | Should -BeExactly 'human'
+        # The text binding applies: a record of what the message said is used; one of something else is not.
+        $record = [pscustomobject]@{ response_hash = $p.Hash; turn_identity = $p.TurnIdentity; host_kind = 'claude' }
+        Test-SpecrewAuthorizationRecordSender -ProjectRoot $p.Root -Record $record -Purpose 'workshop answer' | Should -BeTrue
+        $other = [pscustomobject]@{ response_hash = ('0' * 64); turn_identity = $p.TurnIdentity; host_kind = 'claude' }
+        Test-SpecrewAuthorizationRecordSender -ProjectRoot $p.Root -Record $other -Purpose 'workshop answer' 2>$null | Should -BeFalse
+    }
+
+    It 'the same queued record with any other origin is refused' {
+        $p = script:New-QueuedProject -OriginKind 'task-notification'
+        $r = Resolve-SpecrewAuthorizationSender -ProjectRoot $p.Root -TurnIdentity $p.TurnIdentity -Purpose 'workshop answer'
+        $r.accepted | Should -BeFalse
+        [string]$r.sender | Should -BeExactly 'task-notification'
     }
 }
 

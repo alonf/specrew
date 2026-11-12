@@ -1,0 +1,24 @@
+{
+  "task": "T013 (feature 203, iteration 001); maintainer ruling 2026-11-13 on B5F-070",
+  "host": "claude",
+  "what": "A message the maintainer typed while the crew was working (mid-turn): \"The state is restored from backup, so I am not retyping the verdict. Step 8 is lifted: resume T013 as ruled.\" Claude Code stores it as a type attachment record with attachment.type queued_command (origin.kind human, humanTurn true, commandMode prompt; no turnOrigin, no promptSource, no promptId, and no type user record follows). The second line is the prompt hook's output attached under it (prompt event a56d5a95135d424d974881010cd915c9).",
+  "method": "Copied verbatim from this repository's implementer session transcript (lines 17154 and 17155, 2026-11-12T23:03:14Z); the ledger row is the one the pinned engine wrote for that prompt event (2026-11-12T23:03:15Z). No agent CLI was run for it.",
+  "fixtures": [
+    {
+      "fixture": "tui-transcript-queued-mid-turn.jsonl",
+      "host_version": "2.1.322",
+      "entrypoint": "cli",
+      "captured_utc": "2026-11-12T23:03:14Z",
+      "line_sha256": [
+        "19e2b43839326a2439bf431d2d56c3d33f7431bae41c95293e99a15f993f50b1",
+        "2e141cadf5d43f76ef05ad07677087430d6b1f792e48fa653ccf66cdbc5af02b"
+      ],
+      "origin": "recorded"
+    },
+    {
+      "fixture": "ledger-row.jsonl",
+      "captured_utc": "2026-11-12T23:03:15Z",
+      "origin": "recorded"
+    }
+  ]
+}

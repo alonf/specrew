@@ -113,6 +113,12 @@ foreach ($p in $paths) {
         $t | Add-Member -NotePropertyName record_prompt_source -NotePropertyValue $(if ($null -eq $shape.promptSource) { '' } else { [string]$shape.promptSource })
         $t | Add-Member -NotePropertyName record_origin_kind -NotePropertyValue $(if ($null -eq $shape.origin_kind) { '' } else { [string]$shape.origin_kind })
         $t | Add-Member -NotePropertyName record_is_meta -NotePropertyValue $shape.isMeta
+        if ($shape.PSObject.Properties['record']) {
+            # B5F-070: a message typed mid-turn is a queued_command record, not a user record.
+            $t | Add-Member -NotePropertyName record_kind -NotePropertyValue ([string]$shape.record)
+            $t | Add-Member -NotePropertyName record_human_turn -NotePropertyValue $shape.human_turn
+            $t | Add-Member -NotePropertyName record_command_mode -NotePropertyValue ([string]$shape.command_mode)
+        }
         $got = Get-Act $t $p.Pending
         # The shape's expected answer (maintainer ruling 2026-11-12). A record with no fields leaves the text rules to decide,
         # and this typed line passes them.
