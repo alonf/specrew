@@ -76,7 +76,8 @@ if ((Get-Location).Path -eq [Environment]::CurrentDirectory) {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
-$scratchRoot = Join-Path $repoRoot '.scratch\project-path-resolution-regression'
+# Outside the repository, so nothing the entry points do in the fixture can reach this repository (feature 206, T015).
+$scratchRoot = Join-Path ([IO.Path]::GetTempPath()) 'specrew-project-path-resolution-regression'
 $dotNetRoot = Join-Path $scratchRoot 'dotnet-root'
 $fixtureRoot = Join-Path $scratchRoot 'fixture-project'
 $initFixtureRoot = Join-Path $scratchRoot 'init-project'
@@ -136,6 +137,18 @@ foreach ($relativePath in $requiredFixturePaths) {
     else {
         New-Item -Path $targetPath -ItemType Directory -Force | Out-Null
     }
+}
+
+# The fixture is its own git repository. Without one, git inside it resolved to the repository that holds it, and
+# `specrew start` re-anchored to that repository's feature and wrote its real state.md (feature 206, T015).
+$null = & git -C $fixtureRoot init --quiet 2>&1
+$null = & git -C $fixtureRoot add -A 2>&1
+$null = & git -C $fixtureRoot -c user.name='SC-001 Fixture' -c user.email='sc001-fixture@example.invalid' -c commit.gpgsign=false commit --quiet -m 'SC-001 fixture' 2>&1
+$fixtureTopLevel = [string](& git -C $fixtureRoot rev-parse --show-toplevel 2>$null)
+$fixtureTopLevelFull = if ([string]::IsNullOrWhiteSpace($fixtureTopLevel)) { '' } else { [IO.Path]::GetFullPath($fixtureTopLevel.Trim()).TrimEnd('\', '/') }
+if (-not [string]::Equals($fixtureTopLevelFull, [IO.Path]::GetFullPath($fixtureRoot).TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
+    Write-Fail ("The fixture's git top level is '{0}', not the fixture '{1}': the run would not be isolated from the repository that holds it." -f $fixtureTopLevel, $fixtureRoot)
+    exit 1
 }
 
 $allChecksPassed = $true
