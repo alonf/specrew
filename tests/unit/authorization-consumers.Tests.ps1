@@ -143,9 +143,11 @@ Describe 'the whole path: a scheduled prompt through the prompt hook, before its
         $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $messageId; sessionId = [string]$payload.session_id; timestamp = '2026-11-12T19:00:00.000Z'
             turnOrigin = 'scheduled'; promptSource = 'system'; isMeta = $true; message = [ordered]@{ role = 'user'; content = 'approved for allowance reset' } }
         [IO.File]::AppendAllText($transcript, (($record | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
-        $err = $null
-        $got = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root 2>&1 | Tee-Object -Variable all | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }
-        $got | Should -BeNullOrEmpty
-        (@($all | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] -or $_ -is [string] }) -join ' ') | Should -Match 'scheduled prompt'
+        Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root 2>$null | Should -BeNullOrEmpty
+        # The refusal names the sender, stored against the turn; its message is Get-SpecrewAuthorizationSenderRefusal's.
+        $row = @(Get-Content -LiteralPath (Join-Path $root '.specrew/authority/turn-senders.jsonl') | ForEach-Object { $_ | ConvertFrom-Json })[-1]
+        [string]$row.sender | Should -BeExactly 'scheduled'
+        $row.accepted | Should -BeFalse
+        (Get-SpecrewAuthorizationSenderRefusal -Sender 'scheduled' -Purpose 'allowance reset') | Should -Match 'scheduled prompt'
     }
 }

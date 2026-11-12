@@ -3695,7 +3695,7 @@ function Test-SpecrewBoundaryAuthorization {
     # would otherwise authorize the current cycle's same-named crossing with zero human
     # involvement. It consumes THE shared cycle-scoped matcher the unreconciled primitive
     # uses - one read, no per-site copy to drift.
-    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $matchFromBoundary -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
+    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -ProjectRoot $ProjectRoot -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $matchFromBoundary -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
 
     if ($null -ne $matchedVerdict) {
         Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
@@ -3754,6 +3754,11 @@ function Find-SpecrewCycleScopedAuthorization {
     #   - A cycle-reset edge (from == 'iteration-closeout' into plan-or-later-before-closeout)
     #     starts the current cycle: the edge itself may match, and everything older stops.
     param(
+        # Feature 203 T013 (B5F-066; maintainer ruling 2026-11-12): mandatory, so every caller runs the sender check on the
+        # verdict it would use; a captured verdict the human did not type covers nothing.
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
         [AllowNull()]
         [object[]]$History,
 
@@ -3788,6 +3793,11 @@ function Find-SpecrewCycleScopedAuthorization {
         $entryMatches = ($to -eq $targetTo) -and
         ($null -eq $targetFrom -or $from -eq $targetFrom) -and
         ((-not $RequireAuthorizingHuman) -or (-not [string]::IsNullOrWhiteSpace($human)))
+        # Feature 203 T013 (B5F-066): a verdict captured from the conversation covers its crossing only when the human typed
+        # it. A declared out-of-band authorization (recorded as a bypass) has no captured turn to check.
+        if ($entryMatches -and ([string]$entryMap['evidence_source']) -match '^hook-captured') {
+            $entryMatches = [bool](Test-SpecrewAuthorizationSenderForUse -ProjectRoot $ProjectRoot -Record $entryMap -Purpose ('approval for ' + $to))
+        }
         if ($to -eq 'iteration-closeout') {
             if (-not $walkedMidCycle -and $entryMatches) { return $entryMap }
             return $null
@@ -3874,7 +3884,7 @@ function Get-SpecrewUnreconciledBoundary {
     # iteration's crossing. The cycle scoping lives in Find-SpecrewCycleScopedAuthorization,
     # THE shared matcher this primitive and the live authorization gate both consume - a
     # per-site copy of the scan is exactly how a live gate can stay cycle-blind.
-    $reconciledEntry = Find-SpecrewCycleScopedAuthorization -History $history -ToBoundary $working -RequireAuthorizingHuman -LastAuthorizedBoundary $lastAuthorized
+    $reconciledEntry = Find-SpecrewCycleScopedAuthorization -ProjectRoot $ProjectRoot -History $history -ToBoundary $working -RequireAuthorizingHuman -LastAuthorizedBoundary $lastAuthorized
     if ($null -ne $reconciledEntry) { return $null }
 
     return [pscustomobject]@{
@@ -8256,6 +8266,37 @@ function Write-SpecrewCoverageDeferralAuthorization {
     return $fact
 }
 
+function Test-SpecrewAuthorizationSenderForUse {
+    # Feature 203 T013 (B5F-066; maintainer rulings 2026-11-12): the store readers in this file run the same check as the
+    # bootstrap store's (Test-SpecrewAuthorizationRecordSender): an authorization is used only when the human typed the
+    # message it came from. This file is loaded by the sync scripts without the bootstrap store, so the check is loaded on
+    # demand from the engine beside this file, or the installed module. A check that cannot be loaded refuses: an
+    # authorization whose sender cannot be confirmed is not used.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Record, [AllowNull()][AllowEmptyString()][string]$Purpose)
+    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
+        $candidates = [System.Collections.Generic.List[string]]::new()
+        $candidates.Add((Join-Path $PSScriptRoot '..\..\..\scripts\internal\bootstrap'))
+        foreach ($module in @(Get-Module -Name Specrew) + @(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending)) {
+            if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts\internal\bootstrap')) }
+        }
+        foreach ($dir in $candidates) {
+            $store = Join-Path $dir 'HumanAuthorityStore.ps1'
+            $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
+            if ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf)) {
+                try { . $accessor; . $store } catch { $null = $_ }
+                if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { break }
+            }
+        }
+    }
+    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
+        $what = if ([string]::IsNullOrWhiteSpace($Purpose)) { 'approval' } else { $Purpose }
+        try { [Console]::Error.WriteLine(("Specrew: this {0} was not used, because Specrew could not load the check that confirms you typed it. Nothing else changed. Run 'specrew update' (or reinstall Specrew), then type the line again in the terminal session." -f $what)) } catch { $null = $_ }
+        return $false
+    }
+    return [bool](Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $Record -Purpose $Purpose)
+}
+
 function Get-SpecrewCoverageDeferralAuthorization {
     # The standing deferral, or $null. A deferral is SUPERSEDED by a review delivered after it - a
     # fresh delivered review resets coverage, so the old choice no longer describes the state.
@@ -8272,6 +8313,8 @@ function Get-SpecrewCoverageDeferralAuthorization {
     if ([string]$fact.fact_type -cne 'coverage-deferral' -or [string]$fact.authority_kind -cne 'human') { return $null }
     if ([string]$fact.response_hash -cne (Get-SpecrewCoverageAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
     if (-not [bool](Test-SpecrewCoverageDeferralPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    # Feature 203 T013 (B5F-066): used only when the human typed it.
+    if (-not (Test-SpecrewAuthorizationSenderForUse -ProjectRoot $ProjectRoot -Record $fact -Purpose 'coverage deferral')) { return $null }
     return $fact
 }
 

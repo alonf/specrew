@@ -274,6 +274,8 @@ function Get-SpecrewReviewSignoffOverrideAuthorization {
     if (-not [DateTimeOffset]::TryParse([string]$fact.observed_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$observedAt)) {
         throw 'review-signoff-override-authorization-time-invalid'
     }
+    # Feature 203 T013 (B5F-066): used only when the human typed it.
+    if (-not (Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $fact -Purpose 'partial sign-off')) { return $null }
     return $fact
 }
 
@@ -2498,6 +2500,24 @@ function Resolve-SpecrewAuthorizationSender {
     return $result
 }
 
+function Test-SpecrewAuthorizationRecordSender {
+    # Feature 203 T013 (B5F-066; maintainer ruling 2026-11-12): the check every store reader runs before it hands an
+    # authorization to the place that uses it, so no place can skip it and a new reader gets it by calling this. $true when
+    # the record's turn was typed by the human (or its record carries none of the sender fields, journaled); $false
+    # otherwise, after telling the human what to do next.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Record, [AllowNull()][AllowEmptyString()][string]$Purpose)
+    if ($null -eq $Record) { return $false }
+    $turnIdentity = if ($Record -is [System.Collections.IDictionary]) { [string]$Record['turn_identity'] } elseif ($Record.PSObject.Properties['turn_identity']) { [string]$Record.turn_identity } else { '' }
+    $hostKind = if ($Record -is [System.Collections.IDictionary]) { [string]$Record['host_kind'] } elseif ($Record.PSObject.Properties['host_kind']) { [string]$Record.host_kind } else { '' }
+    if ([string]::IsNullOrWhiteSpace($hostKind)) { $hostKind = 'claude' }
+    $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $ProjectRoot -TurnIdentity $turnIdentity -Purpose $Purpose -HostKind $hostKind
+    if (-not [bool]$sender.accepted) {
+        try { [Console]::Error.WriteLine([string]$sender.message) } catch { $null = $_ }
+    }
+    return [bool]$sender.accepted
+}
+
 function Register-SpecrewExhaustedTurn {
     # Record that this turn has minted. Append-only: the ledger is history, and history that can be
     # rewritten is not a control.
@@ -2796,6 +2816,8 @@ function Get-SpecrewStopAnswerAuthorizations {
         if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { continue }
         if ([string]$fact.run_id -cne $RunId) { continue }
         if (-not [string]::IsNullOrWhiteSpace([string]$fact.spent_at)) { continue }
+        # Feature 203 T013 (B5F-066): used only when the human typed it.
+        if (-not (Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $fact -Purpose 'stop answer')) { continue }
         $fact | Add-Member -NotePropertyName path -NotePropertyValue $file -Force
         $fact
     }
@@ -2954,6 +2976,8 @@ function Get-SpecrewPauseDecisionAuthorization {
         # Unbound (typed when no pause was pending) or bound elsewhere: not authority for this round.
         if ([string]::IsNullOrWhiteSpace($boundRun) -or $boundRun -cne $RunId) { return $null }
     }
+    # Feature 203 T013 (B5F-066): used only when the human typed it.
+    if (-not (Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $fact -Purpose 'decision to stop the review')) { return $null }
     return $fact
 }
 
@@ -3211,6 +3235,8 @@ function Get-SpecrewAllowanceResetAuthorization {
     if (-not [bool](Test-SpecrewAllowanceResetPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
     $spent = $fact.PSObject.Properties['spent_at']
     if ($spent -and -not [string]::IsNullOrWhiteSpace([string]$spent.Value)) { return $null }
+    # Feature 203 T013 (B5F-066): used only when the human typed it.
+    if (-not (Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $fact -Purpose 'allowance reset')) { return $null }
     return $fact
 }
 
