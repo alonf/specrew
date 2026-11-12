@@ -66,6 +66,19 @@ BeforeAll {
     # 002: abandoned (closed), no dashboard.md. 003: complete (closed), no dashboard.md.
     $null = New-FixtureIteration -Iteration '002' -PlanStatus 'retro' -IterationStatus 'abandoned'
     $null = New-FixtureIteration -Iteration '003' -PlanStatus 'complete' -IterationStatus 'complete'
+    # Both closed by closeout after the dashboard check's since date (T009), so the check reaches them and
+    # only their status decides.
+    Set-Content -LiteralPath (Join-Path $script:Root '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 901-fixture
+    iteration: 002
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+  - feature: 901-fixture
+    iteration: 003
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+'@
 
     Set-Content -LiteralPath (Join-Path $script:Root '.specrew\legacy-frozen.yml') -Encoding UTF8 -Value @'
 schema: v1
