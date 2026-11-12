@@ -144,7 +144,10 @@ $entryPointCases = @(
     @{
         Label = 'specrew start --no-launch (default path)'
         ScriptPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
-        Arguments = '-NoLaunch'
+        # A fresh copy of a governed project has features but no session files, which start reads as stale; with
+        # no console it refuses (item 1). Recovery A re-anchors, so this case measures path resolution (feature
+        # 206, T015, maintainer's option 1).
+        Arguments = '-NoLaunch -RecoveryChoice A'
         WorkingDirectory = $fixtureRoot
         ExpectedExitCode = 0
         OutputPattern = [regex]::Escape($fixtureRoot)
