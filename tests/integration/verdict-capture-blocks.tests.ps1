@@ -489,7 +489,8 @@ No open prompts.
         param([string]$Path, [string]$HumanText, [string]$MessageId = ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)))
         $lines = @(
             ('{"role":"assistant","message":{"content":[{"type":"text","text":' + (("Packet body.`n`n<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->") | ConvertTo-Json) + '}]}}')
-            ('{"role":"user","promptId":' + ($MessageId | ConvertTo-Json) + ',"origin":{"kind":"human"},"message":{"content":[{"type":"text","text":' + ($HumanText | ConvertTo-Json) + '}]}}')
+            # Feature 203 T013: the shape Claude Code writes for a typed message (turnOrigin human, promptSource typed).
+            ('{"role":"user","promptId":' + ($MessageId | ConvertTo-Json) + ',"turnOrigin":"human","promptSource":"typed","origin":{"kind":"human"},"message":{"content":[{"type":"text","text":' + ($HumanText | ConvertTo-Json) + '}]}}')
         )
         Set-Content -LiteralPath $Path -Value $lines -Encoding UTF8
         return $Path
@@ -536,6 +537,12 @@ No open prompts.
     if (-not $stopOnly.authorized) { Fail "ZERO-CAPTURE: with prompt-submit unwired, Stop did not capture (reason=$($stopOnly.reason))" }
     if (@(Get-CaptureLedger -ProjectRoot $p2).Count -ne 1) { Fail "Stop fallback wrote the wrong number of entries" }
     Write-Pass 'T004 part 3 (2): with prompt-submit ABSENT, the Stop fallback still captures'
+    # Feature 203 T013 (B5F-066, triage gap 2): the verdict the Stop fallback recorded is used: its turn is registered on the
+    # ledger with the transcript it was read from, so the sender check can find it.
+    $fallbackEntry = @(Get-CaptureLedger -ProjectRoot $p2)[-1]
+    $covers = Find-SpecrewCycleScopedAuthorization -ProjectRoot $p2 -History @($fallbackEntry) -ToBoundary 'before-implement' -FromBoundary 'tasks' -LastAuthorizedBoundary 'tasks' 2>$null
+    if ($null -eq $covers) { Fail "the verdict the Stop fallback recorded covers nothing: its turn is not on the ledger (turn_identity=$($fallbackEntry.turn_identity))" }
+    Write-Pass 'T013 (gap 2): the verdict the Stop fallback recorded is found and used'
 
     # (3) Both wired: exactly ONE authorization fact exists for one verdict.
     $p3 = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
