@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 18
-**Resolution rate**: 100% (18/18 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-018 class closure open)
+**Total drift events**: 23
+**Resolution rate**: 100% (23/23 resolved for this feature; DRIFT-001, DRIFT-004 to DRIFT-023 class closure open)
 **Specification drift**: None detected
 
 ## Events
@@ -333,6 +333,71 @@
 - **Resolution**: handed over; no further work by 205.
 - **Class closure**: NONE — the review engine, its tests and the hook dispatcher are feature 203's area. Handed over as
   H-006.
+
+### DRIFT-019 — a partial sign-off given before review.md is written is voided by writing it, so this path costs two approvals (finding)
+
+- **Observed**: 2026-11-11 and 2026-11-12. The maintainer's first partial-coverage approval was bound to tree
+  `c515195b` (request `override-0154fc5b01bd0d281913edfa`). The review-signoff sync needs `review.md` in the commit it
+  binds to (DRIFT-013), and writing it moved the tree. The sync bound to `b56aaeda` then refused:
+  `review-signoff refused (latest-result-not-current): The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.`
+  The maintainer approved partial coverage a second time, for tree `b3857cb7` (request
+  `override-8f8d952577533deb363dd645`), and the sync passed.
+- **Why it matters**: the second approval adds no review. It re-approves the same code, because the record the sync
+  itself requires moved the tree. Every partial sign-off on this path costs the human two approvals.
+- **Resolution**: second approval given; sync passed on 2026-11-12 11:37 local.
+- **Class closure**: NONE — the sign-off gate is feature 203's area. Handed over as H-007.
+
+### DRIFT-020 — a refused sync rewrites the tracked file `.specrew/review/signoff-gate/latest.json` (finding)
+
+- **Observed**: 2026-11-12 02:43 local. The refused review-signoff sync (DRIFT-019) rewrote the tracked
+  `.specrew/review/signoff-gate/latest.json`, committed in `eec3745b`, from decision `allow` (reason
+  `human-authorized-partial-override`, tree `c515195b`) to `block` (reason `latest-result-not-current`, tree
+  `b3857cb7`, override null), and opened the new request in it.
+- **Why it matters**: a refusal leaves a tracked file dirty, and the dirty file is part of the tree the new request is
+  bound to. Restoring it to HEAD would move that tree, and committing it would record a refusal as the sign-off state.
+  The crew left it as it was until the passing sync rewrote it to `allow`.
+- **Resolution**: committed in its passing state in the boundary commit `fd2834bf`.
+- **Class closure**: NONE — the sign-off gate is feature 203's area. Handed over as H-008.
+
+### DRIFT-021 — the turn-end declaration was refused: the only token shown had been used by the previous turn (finding)
+
+- **Observed**: 2026-11-12, the turn that ran the review-signoff sync. Its `[specrew-turn]` line repeated token
+  `c2722297…`, which the previous turn had already declared and the Stop hook had consumed. The declaration was refused
+  twice: `Turn-end declaration refused: the token 'c2722297f0ab428ab8883d8f4230e4af' matches no live session in this project (1 live token).`
+  The one live token on disk belonged to a different session (the session resume at 2026-11-12 00:18 local), and the
+  crew did not use it.
+- **Impact**: the review-signoff packet was presented without a declaration record, so the script's packet check did
+  not run (see DRIFT-022). The maintainer was told in the reply. The verdict was captured on the next turn.
+- **Same class as DRIFT-006**: a turn ends up with no live token of its own.
+- **Class closure**: NONE — the turn-token hooks are feature 203's area. Handed over as H-009.
+
+### DRIFT-022 — the review-coverage line from the pending-stop record was left out of the review-signoff packet (crew error)
+
+- **Observed**: 2026-11-12. The sync's pending-stop record carried a review-coverage line, and the crew's packet did not
+  include it. The record was consumed when the verdict was captured, so the crew no longer has its text. The
+  maintainer's reviewer read it before then; its opening, as the reviewer quoted it (truncated there):
+  `Review coverage: last delivered review run-20261111-012900593-ccd284fa covered tree bf289776; 4 source file(s) changed since; 2 of 4 rounds remaining in campaign cmp-205-wor...`
+- **Why it matters**: the launch contract requires the coverage line at every stop where the controller provides one,
+  so that the human sees coverage drift. This packet's verdict was a partial-coverage sign-off, exactly where that
+  line matters most.
+- **Resolution**: recorded; the crew reads the pending-stop record's coverage line into every later packet.
+- **Class closure**: NONE — the packet check that would catch it runs only when the turn-end declaration is accepted
+  (DRIFT-021), and the Stop hook's fallback supplied the approval line and marker but not the coverage line. Handed
+  over as H-010.
+
+### DRIFT-023 — the derived-block item did not fire locally on `b56aaeda`, and fires now (finding)
+
+- **Observed**: 2026-11-12. Before the `b56aaeda` push the local governance check failed on one item only, "plan.md
+  status 'executing' is stale". After the verdict moved plan.md to `reviewing`, the boundary commit's tree fails on
+  one item only: `review.md carries no derived independent-review block, and this record was written after the block existed (its authorship was observed: implementing-session).`
+  `review.md` is unchanged since `b56aaeda`.
+- **The crew's reading**: the item fires only once the iteration is in a review phase. On `cf173030` plan.md was
+  `reviewing` and it fired; on `b56aaeda` plan.md was `executing` and it did not; on `fd2834bf` plan.md is `reviewing`
+  and it fires. This reading comes from the three observations, not from the validator's source.
+- **Resolution** (maintainer's ruling, 2026-11-12): a standing exception for feature 205, for this item only. The
+  record stays without the block (B5F-049: without the block CI only warns, with it CI fails, as on `cf173030`). Any
+  other local governance failure still stops the push.
+- **Class closure**: NONE — the validator is feature 203's area. Added to H-002.
 <!--
   Every new ### DRIFT-... event includes:
 

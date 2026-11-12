@@ -70,7 +70,12 @@ completed run read; CI derived two bullets.
 **Proposed class closure (for 203 to decide)**: derive the block only where the store exists and skip the comparison
 where it does not, or commit the evidence the block is derived from, so both runs derive the same text.
 
-**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-012.
+**Update, 2026-11-12** (DRIFT-023): the "block required" item did not fire locally on `b56aaeda`, where plan.md was
+`executing`, and fires on `fd2834bf`, where it is `reviewing`, with `review.md` unchanged. 205's reading, from those
+observations only: the item applies once the iteration is in a review phase. The maintainer made the item a standing
+exception for 205 (B5F-049: without the block CI only warns).
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-012 and DRIFT-023.
 
 ## H-003 — the sync needs review.md with the pre-review phase lines; the governance check refuses that pair
 
@@ -215,3 +220,68 @@ until the process is gone with a 10 s deadline, then assert.
    annotation.
 
 **Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-018. Feature 205 does no further work on it.
+
+## H-007 — a partial sign-off given before review.md is written is voided by writing it
+
+**Severity**: low. No wrong result; the human approves the same code twice.
+
+**Failure scenario**: fixes land after the last round, so the stop refuses and the human approves partial coverage,
+bound to the current tree. The review-signoff sync then needs `review.md` in the commit it binds to (H-003). Writing it
+moves the tree, and the sync refuses with `latest-result-not-current` until the human approves again.
+
+**Observed**: 2026-11-11 and 2026-11-12, feature 205 iteration 001: first approval for tree `c515195b`
+(`override-0154fc5b01bd0d281913edfa`); second for tree `b3857cb7` (`override-8f8d952577533deb363dd645`).
+
+**Proposed class closure (for 203 to decide)**: bind the partial override to the source tree without the iteration's
+own records, or let the override survive changes confined to the review record and lifecycle records.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-019.
+
+## H-008 — a refused sync rewrites the tracked sign-off record
+
+**Severity**: low. A refusal leaves a tracked file dirty, inside the tree the new request is bound to.
+
+**Failure scenario**: the review-signoff sync refuses at the sign-off gate and writes the refusal into the tracked
+`.specrew/review/signoff-gate/latest.json` (`allow` becomes `block`, the override becomes null, a new request is
+opened). Restoring the file moves the tree the new request is bound to; committing it records a refusal as the sign-off
+state.
+
+**Observed**: 2026-11-12 02:43 local, feature 205, the sync bound to `b56aaeda`.
+
+**Proposed class closure (for 203 to decide)**: write refusals to an untracked runtime record, and write the tracked
+record only on `allow`.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-020.
+
+## H-009 — a turn was handed a token the previous turn had already used
+
+**Severity**: low. The boundary packet went out without a declaration record, so its packet check did not run.
+
+**Failure scenario**: a turn's `[specrew-turn]` line repeated the previous turn's token, already consumed at Stop.
+`declare-turn-end.ps1` refused it ("matches no live session in this project (1 live token)"). The only live token on
+disk belonged to another session; the crew did not use it.
+
+**Observed**: 2026-11-12, feature 205, token `c2722297f0ab428ab8883d8f4230e4af`, the turn that ran the review-signoff
+sync. Same class as 205's DRIFT-006 and 203's DRIFT-054.
+
+**Proposed class closure (for 203 to decide)**: issue a fresh token at every turn start, and have the refusal name
+whether the token was consumed or never issued.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-021.
+
+## H-010 — the Stop hook's fallback names the marker but not the review-coverage line
+
+**Severity**: low. A partial-coverage sign-off packet went out without its coverage line.
+
+**Failure scenario**: when no declaration is recorded for a boundary turn (H-009), the Stop hook supplies the approval
+line and marker from the pending crossing, but not the pending-stop record's review-coverage line. The crew omitted the
+line, and nothing caught it. The record was then consumed at capture, so its text was lost.
+
+**Observed**: 2026-11-12, feature 205 review-signoff packet. The line began (as quoted by the maintainer's reviewer,
+truncated there): `Review coverage: last delivered review run-20261111-012900593-ccd284fa covered tree bf289776; 4
+source file(s) changed since; 2 of 4 rounds remaining in campaign cmp-205-wor...`
+
+**Proposed class closure (for 203 to decide)**: have the Stop hook's fallback require the coverage line as it requires
+the marker, and keep the consumed pending-stop record in the authority store.
+
+**Status**: open; owner feature 203. Recorded in 205's drift log as DRIFT-022.
