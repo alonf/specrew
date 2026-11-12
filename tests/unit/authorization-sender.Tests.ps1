@@ -121,6 +121,26 @@ Describe 'the check when an authorization is used (Resolve-SpecrewAuthorizationS
     }
 }
 
+Describe 'the check loads where a project runs it: the deployed .specify copy of shared-governance' {
+    It 'finds the engine from the deployed copy, through SPECREW_MODULE_PATH or the project above it, and loads it once' {
+        # T013 triage, gap 1: from .specify/extensions/specrew-speckit/scripts the store was looked for under .specify\ and
+        # then in the installed module, which may predate the check, so every captured approval was refused.
+        $f = script:New-SenderFixture -Shape ($script:Shapes | Where-Object kind -eq 'typed')
+        $probe = Join-Path $TestDrive 'load-probe.ps1'
+        @'
+param([string]$Repo, [string]$Project, [string]$Turn)
+$env:SPECREW_MODULE_PATH = $Repo
+. (Join-Path $Repo '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1')
+$record = [pscustomobject]@{ turn_identity = $Turn; host_kind = 'claude' }
+$first = Test-SpecrewAuthorizationSenderForUse -ProjectRoot $Project -Record $record -Purpose 'probe'
+$loaded = [bool](Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)
+'first={0} loaded-after={1}' -f $first, $loaded
+'@ | Set-Content -LiteralPath $probe -Encoding utf8
+        $out = & pwsh -NoProfile -NonInteractive -File $probe -Repo $script:RepoRoot -Project $f.Root -Turn $f.TurnIdentity 2>&1
+        ($out -join ' ') | Should -Match 'first=True loaded-after=True'
+    }
+}
+
 Describe 'the prompt hook keeps where the record will be on the turn''s ledger row' {
     It 'the reservation carries the transcript path and the host''s message id' {
         $root = Join-Path $TestDrive 'prompt-hook'
