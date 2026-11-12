@@ -370,7 +370,7 @@ $rulingExclusions = [ordered]@{
     'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
     'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
     'tests/integration/validator-hardening-iteration2.ps1'           = 'red: '
-    'tests/integration/project-path-resolution-regression.ps1'       = 'awaits the maintainer'
+    'tests/integration/project-path-resolution-regression.ps1'       = 'SC-001 not met in iteration 001: supervised runs 3 and 4 wrote into this repository'
 }
 foreach ($excludedPath in $rulingExclusions.Keys) {
     $declared = if ($exclusions.Contains($excludedPath)) { [string]$exclusions[$excludedPath] } else { '' }
