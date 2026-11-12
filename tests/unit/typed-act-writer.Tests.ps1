@@ -109,11 +109,11 @@ function New-CitedTurnFixture {
         [ordered]@{ type = 'assistant'; uuid = 'a-1'; sessionId = $session; timestamp = '2026-11-02T08:00:00.000Z'
             message = [ordered]@{ role = 'assistant'; content = @([ordered]@{ type = 'text'; text = 'Does this agenda look right?' }) } }
         [ordered]@{ type = 'user'; uuid = 'u-confirm'; promptId = 'prompt-confirm'; sessionId = $session; timestamp = '2026-11-02T08:01:00.000Z'
-            origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; message = [ordered]@{ role = 'user'; content = 'confirm' } }
+            origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = [ordered]@{ role = 'user'; content = 'confirm' } }
         [ordered]@{ type = 'assistant'; uuid = 'a-2'; sessionId = $session; timestamp = '2026-11-02T08:02:00.000Z'
             message = [ordered]@{ role = 'assistant'; content = @([ordered]@{ type = 'text'; text = 'Type approved for before-implement to start.' }) } }
         [ordered]@{ type = 'user'; uuid = 'u-verdict'; promptId = 'prompt-verdict'; sessionId = $session; timestamp = '2026-11-02T08:03:00.000Z'
-            origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; message = [ordered]@{ role = 'user'; content = 'approved for before-implement' } }
+            origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = [ordered]@{ role = 'user'; content = 'approved for before-implement' } }
     )
     $transcript = Join-Path $root 'transcript.jsonl'
     [System.IO.File]::WriteAllLines($transcript, [string[]]@($lines | ForEach-Object { $_ | ConvertTo-Json -Depth 8 -Compress }), [System.Text.UTF8Encoding]::new($false))

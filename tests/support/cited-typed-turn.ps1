@@ -22,7 +22,9 @@ function New-SpecrewCitedVerdictTurn {
     $id = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
     $entry = [ordered]@{
         type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $id; sessionId = 'cited-turn'
-        timestamp = [DateTimeOffset]::UtcNow.ToString('o'); origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'
+        # Feature 203 T013: the shape Claude Code writes for a typed message (tests/fixtures/hook-payloads/claude/transcript-origins):
+        # turnOrigin human with promptSource typed. A record that says human with no promptSource is "!" command output.
+        timestamp = [DateTimeOffset]::UtcNow.ToString('o'); origin = [ordered]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'
         message = [ordered]@{ role = 'user'; content = $Text }
     }
     $path = Join-Path $dir ($id + '.jsonl')
