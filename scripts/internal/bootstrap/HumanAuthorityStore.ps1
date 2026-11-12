@@ -1303,6 +1303,18 @@ function Resolve-SpecrewTypedAct {
     $compact = & $prop $Turn 'is_compact_summary'
     if ($compact -eq $true -or [string]$compact -match '(?i)^\s*true\s*$') { return (& $none 'not-human' $false) }
     $origin = ([string](& $prop $Turn 'origin')).Trim()
+    # Feature 203 T013 (maintainer ruling 2026-11-12; B5F-064, B5F-066): THE TRANSCRIPT RECORD DECIDES WHO TYPED IT, where
+    # there is one. Claude records a typed message as turnOrigin human with promptSource typed or queued; a peer message is
+    # peer, a scheduled prompt scheduled, a task notification task_notification, and "!" command output human with no
+    # promptSource. A scheduled prompt is raw text with no wrapper, so no text rule can see it. A turn whose record carries
+    # these fields is the human's only when they say so; a record without them (an older host) leaves the text rules to
+    # decide, as before.
+    $recordOrigin = ([string](& $prop $Turn 'record_turn_origin')).Trim()
+    if (-not [string]::IsNullOrWhiteSpace($recordOrigin)) {
+        $recordSource = ([string](& $prop $Turn 'record_prompt_source')).Trim()
+        if ($recordOrigin -ceq 'human' -and @('typed', 'queued') -ccontains $recordSource) { $origin = 'typed-user' }
+        else { return (& $none 'not-human' $false) }
+    }
     # Feature 203 T013 (B5F-064): another Claude session's message, in the wrapper the host puts around it, is never the
     # human's turn, whatever origin the prompt hook could give it (the hook runs before the host writes the record).
     if ($text -match $script:SpecrewPeerMessagePattern) { return (& $none 'not-human' $false) }
@@ -1803,6 +1815,13 @@ function Read-SpecrewCitedTypedTurn {
             $observedAt = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } elseif ($null -ne $entryTime) { [string]$entryTime } else { '' }
             $turn = [pscustomobject]@{ host = $entryHost; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text; record_uuid = $uuid; observed_at = $observedAt }
             if (Test-SpecrewConversationMetaFlag -Object $o) { $turn | Add-Member -NotePropertyName is_compact_summary -NotePropertyValue $true }
+            # Feature 203 T013 (maintainer ruling 2026-11-12): the record's own word on who wrote it, for the classifier's
+            # positive rule (turnOrigin human with promptSource typed or queued). Absent on older hosts.
+            $recordTurnOrigin = & $prop $o 'turnOrigin'
+            if ($null -ne $recordTurnOrigin -and -not [string]::IsNullOrWhiteSpace([string]$recordTurnOrigin)) {
+                $turn | Add-Member -NotePropertyName record_turn_origin -NotePropertyValue ([string]$recordTurnOrigin)
+                $turn | Add-Member -NotePropertyName record_prompt_source -NotePropertyValue ([string](& $prop $o 'promptSource'))
+            }
             # The id-and-text key a caller with no host label computed, so its citation still finds the entry; the turn and
             # its identity keep the entry's own host.
             $asCited = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $hostKey; message_id = $messageId; text = [string]$formatted.text })).Identity
