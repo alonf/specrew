@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 6
+**Total drift events**: 7
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -101,6 +101,28 @@
   bare `Iteration Status: executing`, with the commit and next task in the Execution Summary. One records commit, the
   checks rerun, then both commits pushed.
 - **Class closure**: NONE — the scaffold and the verdict capture belong to feature 203. Handed over as H-018.
+
+### DRIFT-007 — the plan filed four problem questions under a solution lens (plan defect; placement ruled by the reviewer)
+
+- **Observed**: 2026-11-13, at T021. The plan's twelve-question table (and spec FR-025's last line) put four questions
+  under observability-resilience's `### Problem questions`. That lens is `space: solution` in index.yml by the
+  maintainer's plan-verdict ruling of 2026-11-10, and has "No problem questions". lens-order-parity (FR-005c) fails a
+  solution lens with problem questions and says the tag goes to the maintainer.
+- **Ruling**: the reviewer session, under the maintainer's workshop delegation, 2026-11-13. Options that retag or move
+  the lens were not open, since they would reverse the 2026-11-10 ruling. Each question goes where its subject lives:
+  operator diagnosis to devops-operations; SLO/alerting and the domain's expected failures to requirements-nfr; what
+  must never be logged to security-compliance; the observability budget is product-domain's budget fact.
+  observability-resilience receives all four as hand-forward lines.
+- **Resolution**: done as ruled. **FR-024's source is widened**: a hand-forward line may come from any earlier lens,
+  not only product-domain, in the same line form, naming its source lens and the answer's key. The section is renamed
+  `## Handed Forward From Earlier Lenses`, and the length test checks that the source runs earlier and defines the key.
+  The recorded length numbers moved with the reviewer's agreement: Light 51/16/21 (was projected 51/16/18), Standard
+  and Deep 66/16/6 (was 63/16/6). Light's must-answer count stays at 51. The plan's table, hand-forward text and length
+  table are updated. No tag, lens order or parity rule changed.
+- **Open**: spec FR-025's last line still names observability-resilience, and FR-024 still names only product-domain
+  as a source. Whether to reword the spec is the maintainer's; reported at the review stop.
+- **Class closure**: NONE — a planning error caught by the existing FR-005c check before anything shipped; that check
+  is the mechanism that made it loud.
 <!--
   Every new ### DRIFT-... event includes:
 

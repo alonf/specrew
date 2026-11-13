@@ -37,6 +37,20 @@ accessibility before planning implementation tasks.
 - How are loading, empty, error, disabled, offline, and conflict states shown?
 - Which UI state belongs on the client, server, URL, cache, or durable store?
 
+## Depth Model
+
+The agenda's depth for this lens decides what it asks. The questions above that carry no suffix, or the suffix
+"Light: ask", are asked at every depth.
+
+- **Light** — those questions are asked as before. Each question with a "Light: recommend" suffix is shown as a
+  **recommendation line** instead: its recommended answer, its reason, and where the answer goes. All of this
+  lens's recommendation lines are shown **once, as one list**, closed by the same typed reply as
+  the questions. "accept" takes every line as shown; changing a line is part of the same reply. Never one prompt
+  per line.
+- **Standard** — every question is asked, the "Light: recommend" ones included, each with its recommended answer
+  shown.
+- **Deep** — as Standard.
+
 ## Workshop Conduct
 
 - **Diagram for this lens**: UI layout / wireframe, screen-navigation flow, state — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.

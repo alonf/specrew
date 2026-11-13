@@ -12,8 +12,8 @@ param(
 #     lines. It fails when Light goes over 51 points or 18 replies, and when any other number differs from the value
 #     recorded below. A changed number is accepted only by updating its recorded value in the same change.
 # (b) Consumers (FR-029, FR-026, SC-008). Every suffix names an existing `## Problem Context` line in the spec template
-#     or a later lens; every hand-forward line names a product-domain area key; every recommendation has a reason; no
-#     question is added without a suffix.
+#     or a later lens; every hand-forward line names an earlier lens and a key that lens defines; every recommendation
+#     has a reason; no question is added without a suffix.
 #
 # Self-tests over scratch fixtures run first, so every check is proven able to fail, and every problem is reported in
 # one run with its fix.
@@ -24,7 +24,9 @@ param(
 # - An item with no suffix, or with the suffix "— Light: ask → ...", is a must-answer point at every depth.
 # - An item with the suffix "— Light: recommend "<answer>" (<reason>) → ..." is a recommendation line at Light and a
 #   must-answer point at Standard and Deep.
-# - A hand-forward line (under `## Handed Forward From Product-Domain`) is a recommendation line at every depth.
+# - A hand-forward line (under `## Handed Forward From Earlier Lenses`) is a recommendation line at every depth. It
+#   names the earlier lens that asked the question and the answer's key, which that lens defines as "(`key`)" on the
+#   item (product-domain's areas 9 to 14; the observability placement ruling of 2026-11-13 for the others).
 # - Typed replies: product-domain 1, the agenda 1, and each technical lens 2 when it has a must-answer point (the
 #   answer and "move on"), 1 when it shows only recommendation lines ("accept"), 0 when it shows nothing. A lens's
 #   recommendation block is closed by the same reply as its answers.
@@ -36,7 +38,7 @@ $script:LensCatalogRelative = 'extensions/specrew-speckit/knowledge/design-lense
 $script:SpecTemplateRelative = 'templates/specify/templates/spec-template.md'
 $script:ProductDomainId = 'product-domain'
 $script:AgendaId = 'agenda'
-$script:HandForwardHeading = 'Handed Forward From Product-Domain'
+$script:HandForwardHeading = 'Handed Forward From Earlier Lenses'
 $script:Depths = @('Light', 'Standard', 'Deep')
 
 # The reference profile: product-domain, the agenda, the always-on lenses (read from applicability-map.json), then these.
@@ -47,9 +49,9 @@ $script:LightCaps = [ordered]@{ Points = 51; Replies = 18 }
 
 # The recorded numbers. Light points and replies are held by the caps; every other number must equal its record.
 $script:Recorded = [ordered]@{
-    Light    = [ordered]@{ Points = 51; Replies = 16; RecLines = 18 }
-    Standard = [ordered]@{ Points = 63; Replies = 16; RecLines = 6 }
-    Deep     = [ordered]@{ Points = 63; Replies = 16; RecLines = 6 }
+    Light    = [ordered]@{ Points = 51; Replies = 16; RecLines = 21 }
+    Standard = [ordered]@{ Points = 66; Replies = 16; RecLines = 6 }
+    Deep     = [ordered]@{ Points = 66; Replies = 16; RecLines = 6 }
 }
 
 # Decision items without a suffix, per lens, at d4c11236 (iteration 001's extractor counts plus product-domain's 8
@@ -63,7 +65,7 @@ $script:UnsuffixedBaseline = [ordered]@{
 # The suffix and hand-forward grammar (plan, "The question suffix"). One physical line, at the end of its item.
 $script:SuffixMarker = ' — Light:'
 $script:SuffixPattern = ' — Light: (?:(?<ask>ask)|recommend "(?<answer>[^"]+)" \((?<reason>[^()]*\S[^()]*)\)) → (?<consumer>\S.*?)\s*$'
-$script:HandForwardPattern = '^\s*[-*]\s+product-domain `(?<key>[^`]+)` — recommend "(?<answer>product-domain: [^"]+)" \((?<reason>[^()]*\S[^()]*)\) → (?<consumer>\S.*?)\s*$'
+$script:HandForwardPattern = '^\s*[-*]\s+(?<source>[a-z][a-z0-9-]*) `(?<key>[^`]+)` — recommend "(?<answer>[^"]+)" \((?<reason>[^()]*\S[^()]*)\) → (?<consumer>\S.*?)\s*$'
 $script:ConsumerSpecPattern = '^spec\.md Problem Context: (?<name>\S.*)$'
 $script:ConsumerLensPattern = '^lens: (?<lens>[a-z][a-z0-9-]*)$'
 $script:AreaKeyPattern = '\(`(?<key>[a-z][a-z0-9_]*)`\)'
@@ -303,13 +305,15 @@ function Test-Consumers {
     $contextNames = Get-ProblemContextNames -Root $Root
     $consumerFix = 'name a line under ## Problem Context in ' + $script:SpecTemplateRelative + ' (add it there), or a later lens as "lens: <id>"'
 
-    # product-domain's area keys, from its decision items: "(`key`)".
-    $areaKeys = [Collections.Generic.List[string]]::new()
-    $pdEntry = @($catalog | Where-Object { $_.id -eq $script:ProductDomainId })
-    if ($pdEntry.Count -gt 0) {
-        foreach ($item in (Get-LensItems -Lines (Get-NormalizedLines -Path (Join-Path $Root "$($script:LensCatalogRelative)/$($pdEntry[0].file)")))) {
-            foreach ($m in [regex]::Matches($item.Lines[0].Text, $script:AreaKeyPattern)) { $areaKeys.Add($m.Groups['key'].Value) }
+    # Each lens's answer keys, from its decision items: "(`key`)".
+    $keysByLens = @{}
+    foreach ($lens in $catalog) {
+        $keys = [Collections.Generic.List[string]]::new()
+        foreach ($item in (Get-LensItems -Lines (Get-NormalizedLines -Path (Join-Path $Root "$($script:LensCatalogRelative)/$($lens.file)")))) {
+            $joined = ($item.Lines | ForEach-Object { $_.Text }) -join ' '
+            foreach ($m in [regex]::Matches($joined, $script:AreaKeyPattern)) { $keys.Add($m.Groups['key'].Value) }
         }
+        $keysByLens[$lens.id] = $keys
     }
 
     foreach ($lens in $catalog) {
@@ -335,11 +339,21 @@ function Test-Consumers {
             $match = [regex]::Match($hf.Text, $script:HandForwardPattern)
             if (-not $match.Success) {
                 $found = if ($hf.Text -match 'recommend "[^"]+"\s*→') { 'a hand-forward with no reason' } else { 'a hand-forward line that does not follow the form' }
-                $problems.Add((New-Problem $relative $hf.Number 'a valid hand-forward line' $found 'use "- product-domain `<key>` — recommend "product-domain: <answer>" (<reason>) → <consumer>"'))
+                $problems.Add((New-Problem $relative $hf.Number 'a valid hand-forward line' $found 'use "- <earlier lens> `<key>` — recommend "<earlier lens>: <answer>" (<reason>) → <consumer>"'))
                 continue
             }
-            if (-not $areaKeys.Contains($match.Groups['key'].Value)) {
-                $problems.Add((New-Problem $relative $hf.Number 'a product-domain area key (FR-024)' "'$($match.Groups['key'].Value)'" "name one of product-domain's keys: $($areaKeys -join ', ')"))
+            $source = $match.Groups['source'].Value
+            $key = $match.Groups['key'].Value
+            $sourceAt = [array]::IndexOf($order, $source)
+            if ($sourceAt -lt 0 -or $sourceAt -ge [array]::IndexOf($order, $lens.id)) {
+                $found = if ($sourceAt -lt 0) { "no lens '$source' in index.yml" } else { "lens '$source' does not come before $($lens.id)" }
+                $problems.Add((New-Problem $relative $hf.Number 'a source lens earlier in index.yml (FR-024)' $found 'hand an answer forward only from a lens that runs earlier'))
+            }
+            elseif (-not $keysByLens[$source].Contains($key)) {
+                $problems.Add((New-Problem $relative $hf.Number "a key that $source defines (FR-024)" "'$key'" "name one of $($source)'s keys: $(@($keysByLens[$source]) -join ', '); or define it as (``$key``) on the question there"))
+            }
+            elseif (-not $match.Groups['answer'].Value.StartsWith("${source}: ")) {
+                $problems.Add((New-Problem $relative $hf.Number "the answer shown as ""${source}: <answer>""" "'$($match.Groups['answer'].Value)'" 'name the source lens in the shown answer'))
             }
             $why = Test-Consumer -Consumer $match.Groups['consumer'].Value -LensId $lens.id -Order $order -ContextNames $contextNames
             if ($why) { $problems.Add((New-Problem $relative $hf.Number 'a consumer that exists (FR-029)' $why $consumerFix)) }
@@ -395,17 +409,17 @@ No solution questions: pre-technical.
 
 - What data exists?
 - How sensitive is it? — Light: recommend "as product-domain's regime implies" (the regime is already answered) → spec.md Problem Context: Data inventory
-- Who reads it later? — Light: recommend "not stated" (nothing to infer it from) → lens: gamma-lens
+- Who reads it later? (``reader``) — Light: recommend "not stated" (nothing to infer it from) → lens: gamma-lens
 
 ### Solution questions
 
 - Which store?
 
-## Handed Forward From Product-Domain
+## Handed Forward From Earlier Lenses
 
 - product-domain ``compliance_regime`` — recommend "product-domain: <its answer, or not stated>" (answered there) → spec.md Problem Context: Regulation and compliance
 "@
-    $gammaValid = "# G`n`n## Design Decision Points`n`n### Problem questions`n`nNo problem questions: solution lens.`n`n### Solution questions`n`n- Which protocol?`n"
+    $gammaValid = "# G`n`n## Design Decision Points`n`n### Problem questions`n`nNo problem questions: solution lens.`n`n### Solution questions`n`n- Which protocol?`n`n## Handed Forward From Earlier Lenses`n`n- beta-lens ``reader`` — recommend `"beta-lens: <its answer, or not stated>`" (answered there) → spec.md Problem Context: Data inventory`n"
 
     $scratch = Join-Path ([IO.Path]::GetTempPath()) ("wlb-selftest-" + [guid]::NewGuid().ToString('N'))
     try {
@@ -417,8 +431,8 @@ No solution questions: pre-technical.
         $measured = Measure-WorkshopLength -Root $valid -ProfileIds $fixtureProfile
         $t = $measured.Totals
         # Light: pd 2 points (users, regime) + 1 rec; beta 2 points (data, store) + 2 rec + 1 hand-forward; gamma 1 point.
-        Assert-True ($t.Light.Points -eq 5 -and $t.Light.RecLines -eq 4 -and $t.Light.Replies -eq 6) "length: Light counts recommendation lines apart from must-answer points (5/6/4, found $($t.Light.Points)/$($t.Light.Replies)/$($t.Light.RecLines))"
-        Assert-True ($t.Standard.Points -eq 8 -and $t.Standard.RecLines -eq 1 -and $t.Standard.Replies -eq 6) "length: Standard asks the recommended items and keeps the hand-forward as a line (8/6/1, found $($t.Standard.Points)/$($t.Standard.Replies)/$($t.Standard.RecLines))"
+        Assert-True ($t.Light.Points -eq 5 -and $t.Light.RecLines -eq 5 -and $t.Light.Replies -eq 6) "length: Light counts recommendation lines apart from must-answer points (5/6/5, found $($t.Light.Points)/$($t.Light.Replies)/$($t.Light.RecLines))"
+        Assert-True ($t.Standard.Points -eq 8 -and $t.Standard.RecLines -eq 2 -and $t.Standard.Replies -eq 6) "length: Standard asks the recommended items and keeps the hand-forwards as lines (8/6/2, found $($t.Standard.Points)/$($t.Standard.Replies)/$($t.Standard.RecLines))"
         Assert-True ($t.Deep.Points -eq $t.Standard.Points -and $t.Deep.RecLines -eq $t.Standard.RecLines) 'length: Deep counts as Standard in this iteration'
 
         # A lens that shows only recommendation lines needs one reply ("accept"); one with nothing needs none.
@@ -470,10 +484,12 @@ No solution questions: pre-technical.
 
 - Which store?
 
-## Handed Forward From Product-Domain
+## Handed Forward From Earlier Lenses
 
 - product-domain ``budget_typo`` — recommend "product-domain: not stated" (answered there) → spec.md Problem Context: Data inventory
 - product-domain ``compliance_regime`` — recommend "product-domain: not stated" → spec.md Problem Context: Data inventory
+- gamma-lens ``reader`` — recommend "gamma-lens: not stated" (answered there) → spec.md Problem Context: Data inventory
+- product-domain ``data_residency`` — recommend "not stated" (answered there) → spec.md Problem Context: Data inventory
 "@
         New-FixtureTree -Root $bad -ProductDomain $pdValid -Beta $betaBad -Gamma $gammaValid -Template $template
         $p = @(Test-Consumers -Root $bad -Baseline $baseline)
@@ -485,9 +501,13 @@ No solution questions: pre-technical.
         Assert-True ($text -match "no lens 'no-such-lens'") 'consumers: a consumer lens that does not exist fails'
         Assert-True ($text -match "'Plan Obligations' is neither") 'consumers: "Plan Obligations" is not a consumer'
         Assert-True ($text -match 'at most 2 questions without a suffix') 'consumers: a question added without a suffix fails'
-        Assert-True ($text -match "'budget_typo'") 'consumers: a hand-forward naming no product-domain area key fails'
+        Assert-True ($text -match "'budget_typo'") 'consumers: a hand-forward naming a key its source lens does not define fails'
         Assert-True ($text -match 'a hand-forward with no reason') 'consumers: a hand-forward with no reason fails'
-        Assert-True ($p.Count -eq 9) "consumers: all 9 problems reported in one run (found $($p.Count))"
+        Assert-True ($text -match "lens 'gamma-lens' does not come before beta-lens") 'consumers: a hand-forward from a later lens fails'
+        Assert-True ($text -match 'the answer shown as "product-domain: <answer>"') 'consumers: a hand-forward whose shown answer does not name its source fails'
+        # The 12th: gamma-lens's otherwise valid hand-forward names beta-lens's key `reader`, which the bad beta-lens drops.
+        Assert-True ($text -match "a key that beta-lens defines .*'reader'") 'consumers: a hand-forward whose key its source no longer defines fails'
+        Assert-True ($p.Count -eq 12) "consumers: all 12 problems reported in one run (found $($p.Count))"
         Assert-True (@($p | Where-Object { -not $_.Fix -or $_.Line -le 0 }).Count -eq 0) 'consumers: every problem names its line and its fix'
     }
     finally {

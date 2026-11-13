@@ -435,7 +435,10 @@ tests over the files.
 | Who operates it, and when | `operators` | recommendation line | "not stated", never a guess | devops-operations, observability-resilience | Who operates it, and when |
 | Budget | `budget` | recommendation line | "not stated" | devops-operations, observability-resilience | Budget |
 
-A receiving lens shows the line as "product-domain: <answer>" or "product-domain: not stated". At Standard and Deep the
+A receiving lens shows the line as "product-domain: <answer>" or "product-domain: not stated" (section
+`## Handed Forward From Earlier Lenses`). The same line form carries the four answers that observability-resilience
+receives from requirements-nfr, security-compliance and devops-operations, each naming its source lens and its key
+(FR-024's source widened by the 2026-11-13 ruling, DRIFT-007). At Standard and Deep the
 product-domain facts are questions, and the receiving lenses still show them as recommendation lines.
 
 ### The twelve lens-specific questions (FR-025, FR-026, FR-029)
@@ -452,10 +455,20 @@ Default recommendations are proposals; the implementer may sharpen the wording, 
 | data-storage | How much is there, and how fast does it grow? | "not stated" | Problem Context: Data inventory |
 | integration-api | Which outside systems exist, and whose contracts must be honoured? | the systems product-domain's carry-over names, else "none stated" | Problem Context: Outside systems and their limits |
 | integration-api | What are their limits, quotas and SLAs? | "not stated" | Problem Context: Outside systems and their limits |
-| observability-resilience | What do operators need to diagnose? | "not stated" | Problem Context: Operating needs |
-| observability-resilience | What SLO and alerting is expected? | "none stated" | Problem Context: Operating needs |
-| observability-resilience | Which failures does the domain expect? | "not stated" | Problem Context: Operating needs |
-| observability-resilience | What is the observability budget, and what must never be logged? | never log secrets or data product-domain marks sensitive; budget "not stated" | Problem Context: Operating needs |
+| devops-operations | What do operators need to diagnose? | "not stated" | Problem Context: Operating needs |
+| requirements-nfr | What SLO and alerting is expected? | "none stated" | Problem Context: Operating needs |
+| requirements-nfr | Which failures does the domain expect? | "not stated" | Problem Context: Operating needs |
+| security-compliance | What must never be logged? | secrets, and any data product-domain's regime marks sensitive (the regime is already answered) | Problem Context: Operating needs |
+| (none: product-domain's udget) | What is the observability budget? | handed forward from product-domain's budget fact | Problem Context: Budget |
+
+**Placement of the last four rows (reviewer ruling under the maintainer's delegation, 2026-11-13; iteration 002
+DRIFT-007).** This table first filed them under observability-resilience, a solution lens with no problem questions
+(the maintainer's plan-verdict ruling of 2026-11-10, above), which FR-005c forbids. Each now sits in the lens its
+subject belongs to: operator diagnosis in devops-operations, SLO/alerting and expected failures in requirements-nfr
+(always on, owner of measurable thresholds), and what must never be logged in security-compliance (owner of sensitive
+data). The budget half is product-domain's budget fact. observability-resilience receives all four answers as
+hand-forward lines, so a feature that selects it without devops-operations still sees them (as "not stated" when the
+source lens did not run). No tag, order or parity rule changes.
 
 ### Depth content for the touched lenses (FR-027)
 
@@ -466,7 +479,7 @@ Default recommendations are proposals; the implementer may sharpen the wording, 
 - **Deep**: as Standard in this iteration. Deep content beyond that is later work.
 
 The touched lenses: product-domain, requirements-nfr, ui-ux, security-compliance, data-storage, integration-api,
-devops-operations (hand-forward lines only) and observability-resilience.
+devops-operations (one question and its hand-forward lines) and observability-resilience (hand-forward lines only).
 
 ### The question suffix (FR-026, FR-027, FR-029)
 
@@ -488,13 +501,14 @@ test records the tested values.
 
 | Depth | Must-answer points (before → after) | Minimum typed replies (before → after) | Recommendation lines (before → after) |
 | --- | --- | --- | --- |
-| Light | 50 → 51 (cap 51) | 16 → 16 (cap 18) | 0 → 18 |
-| Standard | 50 → 63 | 16 → 16 | 0 → 6 |
-| Deep | 50 → 63 | 16 → 16 | 0 → 6 |
+| Light | 50 → 51 (cap 51) | 16 → 16 (cap 18) | 0 → 21 |
+| Standard | 50 → 66 | 16 → 16 | 0 → 6 |
+| Deep | 50 → 66 | 16 → 16 | 0 → 6 |
 
-At Light the 18 lines are product-domain's 5, the 6 hand-forward lines in requirements-nfr (1), security-compliance
-(2), data-storage (2) and integration-api (1), and the 7 added questions of those four lenses. At Standard and Deep the
-13 must-answer additions are product-domain's 6 and those 7.
+At Light the 21 lines are product-domain's 5, the 6 hand-forward lines in requirements-nfr (1), security-compliance
+(2), data-storage (2) and integration-api (1), and the 10 added questions of those four lenses (3, 2, 3 and 2). At
+Standard and Deep the 16 must-answer additions are product-domain's 6 and those 10. The test records these values
+(tested 2026-11-13, after the placement ruling; before it the projection was 18 lines and 63 points).
 
 ### Evidence the file tests cannot give: one recorded Light workshop run (maintainer's note)
 

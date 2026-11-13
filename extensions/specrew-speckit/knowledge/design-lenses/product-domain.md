@@ -159,7 +159,7 @@ depth**.
 - **Record areas 9 to 14 under their area keys** (`compliance_regime`, `data_residency`,
   `carry_over`, `platform_constraints`, `operators`, `budget`) in the record's `areas`, and
   write "not stated" when that is the answer. Later lenses show each one as
-  "product-domain: <answer>" in their `## Handed Forward From Product-Domain` lines, so an
+  "product-domain: <answer>" in their `## Handed Forward From Earlier Lenses` lines, so an
   answer left out of the record is lost to them.
 - **Re-invoke the `specrew-design-workshop` skill** before moving to the first technical lens.
 
