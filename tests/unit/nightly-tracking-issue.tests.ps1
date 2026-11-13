@@ -161,6 +161,70 @@ Describe 'T012: the tracking issue follows the nightly' {
     }
 }
 
+Describe 'A changed categorized failure changes the fingerprint (FR-009; review round 2, finding 4)' {
+    # Add-ValidatorFindingRecord dropped the message of every categorized error, and the notifier hashed only
+    # iteration|rule|severity for it: one canonical-schema failure replaced by another in the same iteration
+    # left the fingerprint unchanged and the tracking issue silent. The record carries a hash of the normalized
+    # message for every error, never the message itself.
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+        $source = Get-Content -LiteralPath $script:Validator -Raw
+        $script:RecordFunction = [regex]::Match($source, '(?s)function Add-ValidatorFindingRecord \{.*?\r?\n\}\r?\n').Value
+
+        function Get-RecordsFor {
+            param([string[]]$Messages, [string]$ProjectRoot = 'C:\work\specrew')
+            . ([scriptblock]::Create($script:RecordFunction))
+            $script:ValidatorFindingRecords = New-Object System.Collections.Generic.List[object]
+            foreach ($m in $Messages) {
+                Add-ValidatorFindingRecord -TargetPath (Join-Path $ProjectRoot 'specs\905-findings\iterations\001') -ProjectRoot $ProjectRoot -Message $m
+            }
+            return @($script:ValidatorFindingRecords.ToArray())
+        }
+
+        $script:MissingFieldA = 'file_path=C:\work\specrew\specs\905-findings\iterations\001\state.md | line_number=(none) | category=canonical-schema | message=state.md is missing the canonical field Current Phase | remediation_hint=add it'
+        $script:MissingFieldB = 'file_path=C:\work\specrew\specs\905-findings\iterations\001\state.md | line_number=(none) | category=canonical-schema | message=state.md is missing the canonical field Iteration Status | remediation_hint=add it'
+    }
+
+    It 'two different failures in one category and iteration are two different records' {
+        $script:RecordFunction | Should -Not -BeNullOrEmpty
+        $records = Get-RecordsFor -Messages @($script:MissingFieldA, $script:MissingFieldB)
+        $records.Count | Should -Be 2
+        $records[0].rule | Should -Be 'canonical-schema'
+        $records[0].message_hash | Should -Match '^[0-9a-f]{16}$'
+        $records[1].message_hash | Should -Match '^[0-9a-f]{16}$'
+        $records[0].message_hash | Should -Not -Be $records[1].message_hash
+        ($records | ConvertTo-Json -Depth 3) | Should -Not -Match 'Current Phase|Iteration Status|work'
+    }
+
+    It 'the same failure gets the same hash whatever folder the repository is in' {
+        $here = Get-RecordsFor -Messages @($script:MissingFieldA)
+        $there = Get-RecordsFor -Messages @(($script:MissingFieldA -replace [regex]::Escape('C:\work\specrew'), '/home/runner/work/specrew/specrew')) -ProjectRoot '/home/runner/work/specrew/specrew'
+        $here[0].message_hash | Should -Be $there[0].message_hash
+    }
+
+    It 'a red night that replaces one categorized failure with another comments on the issue' {
+        $first = New-FindingsFile -Name 'categorized-a.json' -Findings @(Get-RecordsFor -Messages @($script:MissingFieldA))
+        $second = New-FindingsFile -Name 'categorized-b.json' -Findings @(Get-RecordsFor -Messages @($script:MissingFieldB))
+        $open = New-GhRecorder
+        $null = Invoke-Notifier -Recorder $open -Outcome 'failure' -FindingsPath $first
+        $body = Get-ArgValue (@(Get-WriteCalls $open | Where-Object { $_[0] -eq 'issue' -and $_[1] -eq 'create' })[0]) '--body'
+        $rec = New-GhRecorder -OpenIssues @(@{ number = 7; body = $body })
+        $action = Invoke-Notifier -Recorder $rec -Outcome 'failure' -FindingsPath $second -RunId '4245'
+        $action | Should -Be 'commented'
+    }
+
+    It 'a red night that adds a second failure in the same category comments on the issue' {
+        $first = New-FindingsFile -Name 'categorized-one.json' -Findings @(Get-RecordsFor -Messages @($script:MissingFieldA))
+        $second = New-FindingsFile -Name 'categorized-two.json' -Findings @(Get-RecordsFor -Messages @($script:MissingFieldA, $script:MissingFieldB))
+        $open = New-GhRecorder
+        $null = Invoke-Notifier -Recorder $open -Outcome 'failure' -FindingsPath $first
+        $body = Get-ArgValue (@(Get-WriteCalls $open | Where-Object { $_[0] -eq 'issue' -and $_[1] -eq 'create' })[0]) '--body'
+        $rec = New-GhRecorder -OpenIssues @(@{ number = 7; body = $body })
+        $action = Invoke-Notifier -Recorder $rec -Outcome 'failure' -FindingsPath $second -RunId '4246'
+        $action | Should -Be 'commented'
+    }
+}
+
 Describe 'T012 (condition 4): nothing private in the issue' {
     It 'title, body and comments carry no path, no user name and no machine name' {
         $texts = New-Object System.Collections.Generic.List[string]
