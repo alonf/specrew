@@ -146,6 +146,25 @@ Describe 'the typed stop lines reach the fact writers (FR-006, FR-011)' {
         @(Get-ReviewCampaignOpenFindings -StoreRoot $project.store -CampaignId $script:CampaignId).Count | Should -Be 0
     }
 
+    # Iteration review round B finding 4 (run-20261113-172304585-393b6102; FR-006, FR-011): two campaigns in one project,
+    # each with an open stop on the same explicit run ID. The line the human typed for one campaign's stop is that stop's
+    # answer: the other campaign's launch does not land it, and it stays unspent for its own.
+    It 'a line typed for one campaign''s stop does not land on another campaign''s stop with the same run ID' {
+        $project = script:New-AnswerProject -Name 'two-campaigns' -Kind 'd-host-outside-order' -NextHost 'copilot' -Reason 'host-order-exhausted'
+        $other = Get-ReviewCampaignIdForIteration -FeatureId '001-fixture' -IterationNumber '002'
+        $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
+        $older = New-ReviewCampaignPendingPauseFact -CampaignId $other -RunId 'run-answer-stop-1' -TargetDigest ('b' * 40) -Decision $decision `
+            -ObservedAt ([DateTimeOffset]::UtcNow.AddSeconds(-30).ToString('o')) -StopKind 'd-host-outside-order' -StopReason 'host-order-exhausted' -NextHost 'copilot'
+        $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $project.store -Fact $older
+        script:Invoke-Typed -Project $project -Text 'allow reviewer copilot'
+        $wrong = Invoke-ReviewCampaignStopAnswerLanding -ProjectRoot $project.root -StoreRoot $project.store -CampaignId $other
+        @($wrong.landed).Count | Should -Be 0 -Because 'the line was typed for the other campaign''s stop'
+        @(Get-ReviewCampaignAllowedReviewers -StoreRoot $project.store -CampaignId $other) | Should -Not -Contain 'copilot'
+        Get-ReviewCampaignOpenStop -StoreRoot $project.store -CampaignId $other | Should -Not -BeNullOrEmpty -Because 'that campaign''s stop has no answer of its own'
+        @((script:Invoke-Landing -Project $project).landed).Count | Should -Be 1 -Because 'the line is still unspent for the stop it was typed for'
+        @(Get-ReviewCampaignAllowedReviewers -StoreRoot $project.store -CampaignId $script:CampaignId) | Should -Contain 'copilot'
+    }
+
     It 'a line typed with no stop open records nothing' {
         $project = script:New-AnswerProject -Name 'none' -Kind 'd-host-outside-order' -NextHost 'copilot' -Reason 'host-order-exhausted'
         $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $project.store -CampaignId $script:CampaignId -HostName 'codex' -AuthorizationRef 'typed' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
