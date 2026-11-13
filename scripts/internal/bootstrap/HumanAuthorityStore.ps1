@@ -2928,9 +2928,10 @@ function Write-SpecrewStopAnswerAuthorization {
 
 function Get-SpecrewStopAnswerAuthorizations {
     # The unspent typed stop lines bound to one stop, oldest first, each with its path. A record whose text does not hash to
-    # its recorded hash, or that is not the human's, is not authority and is skipped.
+    # its recorded hash, or that is not the human's, is not authority and is skipped. Given -CampaignId (iteration review
+    # round B finding 4), a line bound to another campaign's stop on the same run ID is not returned.
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$RunId)
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$RunId, [AllowEmptyString()][string]$CampaignId = '')
     $directory = Join-Path (Get-SpecrewStopAnswerRoot -ProjectRoot $ProjectRoot) $RunId
     if (-not [IO.Directory]::Exists($directory)) { return @() }
     $answers = foreach ($file in [IO.Directory]::EnumerateFiles($directory, '*.json')) {
@@ -2939,6 +2940,7 @@ function Get-SpecrewStopAnswerAuthorizations {
         if ($null -eq $fact -or [string]$fact.fact_type -cne 'review-stop-answer' -or [string]$fact.authority_kind -cne 'human') { continue }
         if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { continue }
         if ([string]$fact.run_id -cne $RunId) { continue }
+        if (-not [string]::IsNullOrWhiteSpace($CampaignId) -and [string]$fact.campaign_id -cne $CampaignId) { continue }
         if (-not [string]::IsNullOrWhiteSpace([string]$fact.spent_at)) { continue }
         # Feature 203 T013 (B5F-066): used only when the human typed it.
         if (-not (Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $fact -Purpose 'stop answer')) { continue }

@@ -1771,7 +1771,7 @@ function Invoke-ReviewCampaignStopAnswerLanding {
         if (-not (Get-Command -Name 'Get-SpecrewStopAnswerAuthorizations' -ErrorAction SilentlyContinue)) { return [pscustomobject]@{ landed = @(); skipped = @() } }
         # Bound by value: a closure's own scope cannot see a function the caller dot-sourced.
         $reader = (Get-Command -Name 'Get-SpecrewStopAnswerAuthorizations').ScriptBlock
-        $ReadAnswers = { param($runId) & $reader -ProjectRoot $ProjectRoot -RunId $runId }.GetNewClosure()
+        $ReadAnswers = { param($runId) & $reader -ProjectRoot $ProjectRoot -RunId $runId -CampaignId $CampaignId }.GetNewClosure()
     }
     if ($null -eq $CompleteAnswer) { $CompleteAnswer = { param($answer, $ref) Complete-SpecrewStopAnswerAuthorization -Path ([string]$answer.path) -AuthorizationRef $ref } }
     $landed = [Collections.Generic.List[object]]::new(); $skipped = [Collections.Generic.List[object]]::new()
@@ -1786,7 +1786,15 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     $stopRunId = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'run_id')
     $stopKind = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'stop_kind')
     $answerRef = { param($a) 'typed-stop-answer:' + ([string]$a.response_hash).Substring(0, [Math]::Min(32, ([string]$a.response_hash).Length)) }
-    $answers = @(& $ReadAnswers $stopRunId | Where-Object { $null -ne $_ })
+    # Iteration review round B finding 4 (FR-006, FR-011): A LINE ANSWERS THE STOP IT WAS TYPED FOR. Captures are filed by run
+    # ID, and two campaigns can each hold an open stop on the same explicit run ID; a line bound to another campaign's stop,
+    # or to another kind of stop, is not this stop's answer. It is left unspent, for the stop it was typed for.
+    $answers = @(foreach ($a in @(& $ReadAnswers $stopRunId | Where-Object { $null -ne $_ })) {
+            $forCampaign = if ($a.PSObject.Properties['campaign_id']) { [string]$a.campaign_id } else { '' }
+            $forKind = if ($a.PSObject.Properties['stop_kind']) { [string]$a.stop_kind } else { '' }
+            if ($forCampaign -cne $CampaignId -or $forKind -cne $stopKind) { $skipped.Add([pscustomobject]@{ answer = $a; reason = 'typed-for-another-stop' }) | Out-Null; continue }
+            $a
+        })
     # Iteration review round A finding 2 (FR-021): THE NEWEST LINE FOR A FINDING IS THE HUMAN'S INSTRUCTION. The reader hands
     # the unspent lines oldest first; for each finding open now, only the newest `defer`/`drop`/`fix` line naming it is
     # applied. An older line for the same finding is not applied: it is spent as superseded, naming the newer line, so it

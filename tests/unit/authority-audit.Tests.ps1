@@ -242,9 +242,10 @@ Describe 'the records name the turn that authorized them (FR-024, FR-041)' {
         $stop = New-ReviewCampaignPendingPauseFact -CampaignId $script:CampaignId -RunId 'run-answer-stop' -TargetDigest ('a' * 40) -Decision $decision `
             -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -StopKind 'b-dispute-or-defer' -StopReason 'dispute'
         $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $stop
+        # Bound to the open stop, as the capture binds them (campaign, run and stop kind).
         $answers = @(
-            [pscustomobject]@{ answer = 'allow-reviewer'; argument = 'copilot'; finding = ''; response_hash = ('e' * 64); turn_identity = 'turn-allow'; path = '' }
-            [pscustomobject]@{ answer = 'defer'; argument = 'iteration 002'; finding = 'finding-0123456789abcdef'; response_hash = ('f' * 64); turn_identity = 'turn-defer'; path = '' }
+            [pscustomobject]@{ answer = 'allow-reviewer'; argument = 'copilot'; finding = ''; response_hash = ('e' * 64); turn_identity = 'turn-allow'; path = ''; campaign_id = $script:CampaignId; run_id = 'run-answer-stop'; stop_kind = 'b-dispute-or-defer' }
+            [pscustomobject]@{ answer = 'defer'; argument = 'iteration 002'; finding = 'finding-0123456789abcdef'; response_hash = ('f' * 64); turn_identity = 'turn-defer'; path = ''; campaign_id = $script:CampaignId; run_id = 'run-answer-stop'; stop_kind = 'b-dispute-or-defer' }
         )
         $landing = Invoke-ReviewCampaignStopAnswerLanding -ProjectRoot $project.root -StoreRoot $store -CampaignId $script:CampaignId `
             -ReadAnswers { param($runId) $answers }.GetNewClosure() -CompleteAnswer { param($answer, $ref) $true }
