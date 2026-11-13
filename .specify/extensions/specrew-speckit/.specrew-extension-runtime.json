@@ -444,7 +444,7 @@
     },
     {
       "path": "scripts/Test-CopilotInstructionsChangeType.ps1",
-      "sha256": "6602e8db68636d741d6d2165860553c380b69343231a58bd42b1902b51edceb8"
+      "sha256": "75aaf99dc20412bc349ab87e61d4c7f1a3627ca6303d1ae792afcade0ed47d50"
     },
     {
       "path": "scripts/timestamp-read.ps1",

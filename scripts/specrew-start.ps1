@@ -2233,16 +2233,11 @@ function Get-RestartTriggerFiles {
                 $beforeOutput = @(& git -C $ResolvedProjectPath show ("{0}:.github/copilot-instructions.md" -f $BaselineCommitHash) 2>$null)
                 $beforeContent = if ($LASTEXITCODE -eq 0) { $beforeOutput -join [Environment]::NewLine } else { '' }
             }
-            if ([string]::IsNullOrEmpty($beforeContent) -or [string]::IsNullOrEmpty($afterContent)) {
-                # The file is missing (or empty) on one side: added or deleted since the baseline. There are no
-                # markers to match, and the classifier's content parameters refuse an empty string, so it reads
-                # the files itself and compares the absent side as empty, as it did before T003.
-                $classification = Test-CopilotInstructionsChangeType -ProjectPath $ResolvedProjectPath -BaselineCommitHash $BaselineCommitHash -TargetPath '.github/copilot-instructions.md'
-            }
-            else {
-                $comparisonPair = Get-SpecrewInstructionComparisonPair -BeforeContent $beforeContent -AfterContent $afterContent
-                $classification = Test-CopilotInstructionsChangeType -BeforeContent $comparisonPair.BeforeContent -AfterContent $comparisonPair.AfterContent
-            }
+            # A side may be empty: the file added or deleted since the baseline (compared as empty, as before
+            # T003), or a file holding only Specrew's managed block, which strips to empty (review round 2,
+            # finding 1). The classifier accepts an empty side.
+            $comparisonPair = Get-SpecrewInstructionComparisonPair -BeforeContent $beforeContent -AfterContent $afterContent
+            $classification = Test-CopilotInstructionsChangeType -BeforeContent $comparisonPair.BeforeContent -AfterContent $comparisonPair.AfterContent
             if ($classification.RequiresRestart) {
                 $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
             }
