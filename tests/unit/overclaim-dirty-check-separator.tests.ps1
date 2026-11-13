@@ -4,7 +4,7 @@
 #
 # This suite exercises the same fixture as assertions 1 and 2 of tests/integration/validator-hardening-iteration2.ps1
 # through validate-governance.ps1 only: no specrew start, no update, no hooks. Each workspace is a temp-folder copy
-# of the repository's .specrew, .squad and .github and the feature-013 specs; the validator runs against it in a
+# of the files git tracks under the repository's .specrew, .squad and .github, and the feature-013 specs; the validator runs against it in a
 # child pwsh. Nothing outside the temp folder is written.
 
 BeforeAll {
@@ -18,9 +18,14 @@ BeforeAll {
         $root = Join-Path ([System.IO.Path]::GetTempPath()) ('overclaim-sep-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
         $null = New-Item -ItemType Directory -Path $root -Force
         $script:Workspaces.Add($root)
-        foreach ($item in @('.specrew', '.squad', '.github')) {
-            $source = Join-Path $script:RepoRoot $item
-            if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $root -Recurse -Force }
+        # Only the files git tracks: the whole folder brought the git-ignored local review store and session state,
+        # so a review result recorded on this machine changed the validator's answer here and not on CI.
+        foreach ($trackedPath in @(& git -C $script:RepoRoot -c core.quotepath=off ls-files -- '.specrew' '.squad' '.github')) {
+            $trackedSource = Join-Path $script:RepoRoot $trackedPath
+            if (-not (Test-Path -LiteralPath $trackedSource -PathType Leaf)) { continue }
+            $trackedTarget = Join-Path $root $trackedPath
+            $null = New-Item -Path (Split-Path -Parent $trackedTarget) -ItemType Directory -Force
+            Copy-Item -LiteralPath $trackedSource -Destination $trackedTarget -Force
         }
         $specs = Join-Path $root 'specs'
         $null = New-Item -ItemType Directory -Path $specs -Force
