@@ -72,7 +72,8 @@
   - 203's empty-result retry, `c2f2c67d`, Specrew CI `43360279109` (Deterministic gate, the F-198 honesty suite, 1 of 132, on
     2026-11-13): `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1:29`, "retries once and recovers when the second
     attempt produces the result": the retry's stdout was empty on Linux (site 12). The commit changed nothing the review
-    engine runs; the suite passed in both full sweeps and on `00d9cdcc`'s CI.
+    engine runs; the suite passed in both full sweeps and on `00d9cdcc`'s CI. One rerun (reviewer ruling under the maintainer's
+    delegation) passed, 05:59 to 06:16 local. Site 12 has now failed on a push that changed nothing the review engine runs.
 
   **Verified on this branch, by reading, 2026-11-12**: all 14 sites exist at the cited lines. One path correction: site 6 is `tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1:297`, not `tests/unit/`. Paths below are under `tests/continuous-co-review/` unless they start with `tests/unit/`.
   - **(A) Speed caps: a stopwatch on a fast path, with an upper bound.**
