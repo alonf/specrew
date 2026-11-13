@@ -198,6 +198,40 @@ Describe 'the review loop spends the budget grant, and nothing else (FR-003, FR-
     }
 }
 
+Describe 'a stale budget decision cannot spend a round past the budget (iteration review round B finding 1)' {
+    # run-20261113-172304585-393b6102 (FR-004, FR-010): launches A and B both pass the budget check at 1 of 2 rounds used;
+    # B is delayed while A runs the last round to completion; B then mints its own launch grant (the ordinal counts the
+    # grants it can see, so it gets a new one), reserves it, takes the invocation claim A released, and invokes a third
+    # round. The case drives B from the state its stale check left it in: the launch grant, then the run.
+    It 'a launch whose budget check passed before another launch spent the last round is refused once it holds the claim' {
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'stale-budget')
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-stale-1').invoked | Should -BeTrue
+        script:Add-LoopFix -Repo $repo -Number 1
+        # B's budget check passes here: 1 of 2 used.
+        $stale = script:Get-LoopCounter -Repo $repo
+        $stale.continuation_available | Should -BeTrue
+        # A runs the last round to completion while B is delayed.
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-stale-a').invoked | Should -BeTrue
+        script:Get-LoopSpendCount -Repo $repo | Should -Be 2
+        # B resumes on its stale decision: it mints its launch grant and runs.
+        $null = Add-ReviewCampaignLaunchGrant -StoreRoot $repo.store -CampaignId $script:CampaignId -AuthorityRef ([string]$stale.authority_ref) `
+            -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o')) -TurnIdentity ([string]$stale.turn_identity)
+        $ports = script:New-LoopPorts -Repo $repo
+        $runId = 'run-loop-stale-b'
+        $b = Invoke-ReviewCampaignRun -StoreRoot $repo.store -StagingRoot (Join-Path $TestDrive 'stale-staging') -CampaignId $script:CampaignId -RunId $runId `
+            -ReservationId ('res-' + (Get-ReviewCampaignStableToken -Value "$script:CampaignId/$runId/reservation" -Length 20)) -TargetLineage 'lin-001-demo' `
+            -TargetPort $ports.target -HarnessPort $ports.harness -RuntimePort $ports.runtime -VerificationPort $ports.verification -ClockPort $ports.clock `
+            -PromptPath $ports.prompt_path -FeatureId '001-demo' -RepoRoot $repo.root -AuthorityConfigPath $repo.config `
+            -BudgetGrantId ([string]$stale.budget_grant_id) -WindowResetId ([string]$stale.reset_id) -TurnIdentity ([string]$stale.turn_identity)
+        $b.invoked | Should -BeFalse -Because 'the budget was spent before B held the claim'
+        [string]$b.reason | Should -Match 'review-round-budget-exhausted'
+        script:Get-LoopSpendCount -Repo $repo | Should -Be 2 -Because 'no reviewer is invoked past the budget'
+        (script:Get-LoopCounter -Repo $repo).rounds_used | Should -Be 2
+        (script:Get-LoopCounter -Repo $repo).in_flight | Should -Be 0 -Because 'the refused launch released its reservation'
+    }
+}
+
 Describe 'the typed per-round approval is retired: it records nothing and the human is told why (FR-010)' {
     BeforeAll {
         # The hook's own capture router, in its own process as the hooks run it, against a fixture project.
