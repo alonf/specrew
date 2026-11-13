@@ -821,8 +821,8 @@ function Test-SpecrewIterationRulingRecorded {
         if ($line -match '^##\s') {
             if ($inDisposition) { break }
             if ($line -match '^##\s+Disposition\b') {
+                # The heading is not read: its date is when the section was written, not a ruling.
                 $inDisposition = $true
-                $section.Add($line) | Out-Null
             }
             continue
         }
@@ -831,8 +831,18 @@ function Test-SpecrewIterationRulingRecorded {
     if ($section.Count -eq 0) {
         return $false
     }
-    $text = $section -join ' '
-    return (($text -match "(?i)\bmaintainer(?:'s|’s)?\s+(?:ruling|decision)\b") -and ($text -match '\b\d{4}-\d{2}-\d{2}\b'))
+    # Review round 2, finding 3: one sentence must record the abandonment as decided - it names the abandonment,
+    # the maintainer's ruling or decision and its date, and carries no negation, pending or conditional wording.
+    # A dated mention of a pending, refused or unrelated ruling is not a recorded abandonment.
+    $text = ($section -join ' ') -replace '\*', ''
+    foreach ($sentence in @($text -split '[.;!?](?:\s+|$)')) {
+        if ($sentence -notmatch '(?i)\babandon(?:ed|ment)?\b') { continue }
+        if ($sentence -notmatch "(?i)\bmaintainer(?:'s|’s)?\s+(?:ruling|decision)\b") { continue }
+        if ($sentence -notmatch '\b\d{4}-\d{2}-\d{2}\b') { continue }
+        if ($sentence -match '(?i)\b(?:not|never|yet|to be|will be|would be|awaiting|awaits|pending|until|unless|if|cannot|unable|proposed|requested)\b' -or $sentence -match "(?i)n['’]t\b") { continue }
+        return $true
+    }
+    return $false
 }
 
 function Test-SpecrewIterationAbandonedByRuling {
