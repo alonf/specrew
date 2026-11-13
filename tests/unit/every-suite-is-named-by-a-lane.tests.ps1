@@ -205,8 +205,35 @@ function New-CensusFixture {
     $plan = [ordered]@{ schema_version = '1.0'; commands = @([ordered]@{ command_id = 'lane'; executable = 'pwsh'; arguments = @('-NoProfile', '-File', 'tests/unit/lane-named.tests.ps1') }) }
     [IO.File]::WriteAllText((Join-Path $root '.specrew/verification-plan.json'), ($plan | ConvertTo-Json -Depth 5))
     [IO.File]::WriteAllText((Join-Path $root '.specrew/release-gate-suites.txt'), "# release cadence`ntests/unit/release-named.tests.ps1`n")
-    [IO.File]::WriteAllText((Join-Path $root '.github/workflows/ci.yml'), "jobs:`n  t:`n    steps:`n      # tests/integration/only-in-a-comment.ps1`n      - run: pwsh -File ./tests/integration/ci-named.ps1`n")
-    foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1',
+    # Review round 2, finding 6: only what a step's run: block executes counts. An inline comment, a step name
+    # and a trigger paths: filter name a file without running it.
+    [IO.File]::WriteAllText((Join-Path $root '.github/workflows/ci.yml'), (@(
+                'on:'
+                '  push:'
+                '    paths:'
+                '      - tests/integration/only-in-a-paths-filter.ps1'
+                'jobs:'
+                '  t:'
+                '    steps:'
+                '      # tests/integration/only-in-a-comment.ps1'
+                '      - run: pwsh -File ./tests/integration/ci-named.ps1'
+                '      - run: echo ok # tests/integration/only-in-an-inline-comment.ps1'
+                '      - name: Run tests/integration/only-in-a-step-name.ps1'
+                '        run: echo hi'
+                '      - name: A block'
+                '        shell: pwsh'
+                '        run: |'
+                '          $suites = @('
+                "            'tests/integration/ci-block-named.ps1'   # runs it"
+                '          )'
+                '          # tests/integration/only-in-a-block-comment.ps1'
+                '          foreach ($s in $suites) { & pwsh -File $s }'
+                '      - name: After the block'
+                '        env:'
+                '          NOTE: tests/integration/only-in-an-env-value.ps1'
+                '        run: echo done'
+            ) -join "`n") + "`n")
+    foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1', 'tests/integration/ci-block-named.ps1',
             'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
         [IO.File]::WriteAllText((Join-Path $root $file), "exit 0`n")
     }
@@ -222,7 +249,9 @@ try {
     Assert-True ($baseline.Count -eq 0) ("fixture: with every test named, the comparison passes (unnamed: {0})" -f ($baseline -join ', '))
 
     foreach ($probe in @('tests/integration/zz-probe.ps1', 'tests/integration/zz-probe.tests.ps1', 'tests/integration/ZzProbe.Tests.ps1',
-            'tests/integration/deeper/zz_probe.ps1', 'tests/integration/only-in-a-comment.ps1')) {
+            'tests/integration/deeper/zz_probe.ps1', 'tests/integration/only-in-a-comment.ps1', 'tests/integration/only-in-an-inline-comment.ps1',
+            'tests/integration/only-in-a-step-name.ps1', 'tests/integration/only-in-a-block-comment.ps1', 'tests/integration/only-in-a-paths-filter.ps1',
+            'tests/integration/only-in-an-env-value.ps1')) {
         $probePath = Join-Path $fixture $probe
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
         [IO.File]::WriteAllText($probePath, "exit 0`n")
