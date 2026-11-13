@@ -41,9 +41,13 @@ BeforeAll {
     }
 
     # The prompt hook's reservation of a message the human typed (the real ledger writer).
-    function script:Add-TypedTurn([pscustomobject]$Project, [string]$TurnId) {
+    # Round A finding 3: the audit reads who sent the turn from the host's transcript record, so the fixture leaves the
+    # record Claude Code writes for a typed message, and the hook's row points at it.
+    function script:Add-TypedTurn([pscustomobject]$Project, [string]$TurnId, [string]$Text = 'allow reviewer copilot') {
+        $record = Add-SpecrewTestTypedTranscriptRecord -Text $Text
         $null = Register-SpecrewExhaustedTurn -ProjectRoot $Project.root -TurnId $TurnId -HostKind 'claude' -SourceEvent 'UserPromptSubmit' `
-            -MintedWriters 'fixture' -ContentHash ('c' * 64) -SessionId 's1' -Identity 'typed-act' -TurnOrigin 'typed-user' -PromptEvent ('evt-' + $TurnId)
+            -MintedWriters 'fixture' -ContentHash ('c' * 64) -SessionId 's1' -Identity 'typed-act' -TurnOrigin 'typed-user' -PromptEvent ('evt-' + $TurnId) `
+            -TranscriptPath $record.TranscriptPath -MessageId $record.MessageId
     }
 
     # A stop answer the capture wrote (field shape of Write-SpecrewStopAnswerAuthorization), naming $TurnIdentity.
@@ -416,5 +420,84 @@ Describe 'T012 after the maintainer''s ruling of 2026-11-12: a stop''s decision 
         $capture | Should -Not -BeNullOrEmpty
         $stored = Get-Content -LiteralPath (Join-Path $project.root '.specrew/review/allowance-reset/pending-allowance-reset.json') -Raw | ConvertFrom-Json
         [string]$stored.campaign_id | Should -BeExactly $script:CampaignId
+    }
+}
+
+# Iteration review round A finding 3 (run-20261113-102531165-8671e9be; FR-024, B5F-066): THE AUDIT JOINS THE TURN THE HUMAN
+# ACTUALLY SENT. The prompt hook reserves every prompt as typed-user before the host writes the record that says who sent
+# it, so ledger membership is not proof. The audit reads the sender from that record (read only: it stores nothing), fails a
+# record whose turn was not the human's or cannot be found, fails a capture that does not say what its turn said, and lists
+# the turns it could not check (no transcript on the host) apart from the confirmed ones.
+Describe 'the audit reads who actually sent each turn (round A finding 3)' {
+    BeforeAll {
+        $shapes = @((Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests/fixtures/hook-payloads/claude/transcript-origins/record-shapes.json') -Raw | ConvertFrom-Json).shapes)
+        $script:ScheduledShape = $shapes | Where-Object kind -eq 'scheduled'
+        # The hook's reservation (typed-user), pointing at the record the host wrote afterwards in the scheduled shape.
+        function script:Add-ScheduledTurn([pscustomobject]$Project, [string]$Text) {
+            $transcript = Join-Path $Project.root ('session-' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.jsonl')
+            $messageId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+            $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $messageId; sessionId = 's1'; timestamp = '2026-11-13T09:00:00.000Z'; message = [ordered]@{ role = 'user'; content = $Text } }
+            if ($script:ScheduledShape.turnOrigin) { $record.turnOrigin = [string]$script:ScheduledShape.turnOrigin }
+            if ($script:ScheduledShape.promptSource) { $record.promptSource = [string]$script:ScheduledShape.promptSource }
+            if ($script:ScheduledShape.isMeta -eq $true) { $record.isMeta = $true }
+            if ($script:ScheduledShape.origin_kind) { $record.origin = [ordered]@{ kind = [string]$script:ScheduledShape.origin_kind } }
+            [IO.File]::WriteAllText($transcript, (($record | ConvertTo-Json -Depth 6 -Compress) + "`n"), $script:Utf8)
+            return Register-SpecrewTestTypedTurn -ProjectRoot $Project.root -Text $Text -MessageId $messageId -TranscriptPath $transcript
+        }
+        function script:Add-ResetCapture([pscustomobject]$Project, [string]$Turn, [string]$Text = 'approved for allowance reset') {
+            $dir = Join-Path $Project.root '.specrew/review/allowance-reset'
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            $path = Join-Path $dir 'pending-allowance-reset.json'
+            $fact = [ordered]@{ schema_version = '1.0'; fact_type = 'allowance-reset-approval'; authority_kind = 'human'; verdict_text = $Text
+                response_hash = (Get-SpecrewHumanAuthorityHash -Text $Text); host_kind = 'claude'; source_event = 'UserPromptSubmit'; observed_at = '2026-11-13T09:00:01Z'; spent_at = $null; turn_identity = $Turn }
+            [IO.File]::WriteAllText($path, ($fact | ConvertTo-Json -Depth 6), $script:Utf8)
+            return $path
+        }
+    }
+
+    It 'fails a capture whose turn the hook reserved as typed but the transcript says was a scheduled prompt' {
+        $project = script:New-AuditProject -Name 'a3-scheduled'
+        $turn = script:Add-ScheduledTurn -Project $project -Text 'approved for allowance reset'
+        $path = script:Add-ResetCapture -Project $project -Turn $turn
+        $audit = script:Invoke-Audit -Project $project
+        $audit.passed | Should -BeFalse
+        $failure = @($audit.failures | Where-Object { [string]$_.path -eq $path })
+        $failure.Count | Should -Be 1 -Because (script:Get-AuditReasons $audit)
+        [string]$failure[0].reason | Should -BeExactly 'turn-sender-scheduled'
+    }
+
+    It 'passes the same capture when the transcript says the human typed it' {
+        $project = script:New-AuditProject -Name 'a3-typed'
+        $turn = (New-SpecrewTypedTurnFixture -ProjectRoot $project.root -Text 'approved for allowance reset').TurnIdentity
+        $null = script:Add-ResetCapture -Project $project -Turn $turn
+        $audit = script:Invoke-Audit -Project $project
+        $audit.passed | Should -BeTrue -Because (script:Get-AuditReasons $audit)
+    }
+
+    It 'fails a capture that does not say what its typed turn said' {
+        $project = script:New-AuditProject -Name 'a3-binding'
+        $turn = (New-SpecrewTypedTurnFixture -ProjectRoot $project.root -Text 'what does an allowance reset cost?').TurnIdentity
+        $path = script:Add-ResetCapture -Project $project -Turn $turn
+        $audit = script:Invoke-Audit -Project $project
+        $failure = @($audit.failures | Where-Object { [string]$_.path -eq $path })
+        $failure.Count | Should -Be 1 -Because (script:Get-AuditReasons $audit)
+        [string]$failure[0].reason | Should -BeExactly 'record-not-what-turn-said'
+    }
+
+    It 'lists a turn it could not check (a host with no transcript) apart from the confirmed ones, without failing it' {
+        $project = script:New-AuditProject -Name 'a3-unverified'
+        $turn = Register-SpecrewTestNoTranscriptHostTurn -ProjectRoot $project.root -Text 'approved for allowance reset' -HostKind 'copilot'
+        $null = script:Add-ResetCapture -Project $project -Turn $turn
+        $audit = script:Invoke-Audit -Project $project
+        $audit.passed | Should -BeTrue -Because (script:Get-AuditReasons $audit)
+        @($audit.unverified).Count | Should -Be 1
+    }
+
+    It 'stores nothing: the audit is read only' {
+        $project = script:New-AuditProject -Name 'a3-readonly'
+        $turn = script:Add-ScheduledTurn -Project $project -Text 'approved for allowance reset'
+        $null = script:Add-ResetCapture -Project $project -Turn $turn
+        $null = script:Invoke-Audit -Project $project
+        Test-Path -LiteralPath (Join-Path $project.root '.specrew/authority/turn-senders.jsonl') | Should -BeFalse
     }
 }
