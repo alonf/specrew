@@ -4,7 +4,7 @@
 #
 # This suite exercises the same fixture as assertions 1 and 2 of tests/integration/validator-hardening-iteration2.ps1
 # through validate-governance.ps1 only: no specrew start, no update, no hooks. Each workspace is a temp-folder copy
-# of the files git tracks under the repository's .specrew, .squad and .github, and the feature-013 specs; the validator runs against it in a
+# of the files git does not ignore under the repository's .specrew, .squad and .github, and the feature-013 specs; the validator runs against it in a
 # child pwsh. Nothing outside the temp folder is written.
 
 BeforeAll {
@@ -18,9 +18,11 @@ BeforeAll {
         $root = Join-Path ([System.IO.Path]::GetTempPath()) ('overclaim-sep-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
         $null = New-Item -ItemType Directory -Path $root -Force
         $script:Workspaces.Add($root)
-        # Only the files git tracks: the whole folder brought the git-ignored local review store and session state,
-        # so a review result recorded on this machine changed the validator's answer here and not on CI.
-        foreach ($trackedPath in @(& git -C $script:RepoRoot -c core.quotepath=off ls-files -- '.specrew' '.squad' '.github')) {
+        # Every file git does not ignore, tracked or not: the whole folder brought the git-ignored local review store
+        # and session state, so a review result recorded on this machine changed the validator's answer here and not
+        # on CI. Untracked files count, because a review preflight's verification copy restores .specrew and .squad
+        # into its worktree untracked.
+        foreach ($trackedPath in @(& git -C $script:RepoRoot -c core.quotepath=off ls-files --cached --others --exclude-standard -- '.specrew' '.squad' '.github')) {
             $trackedSource = Join-Path $script:RepoRoot $trackedPath
             if (-not (Test-Path -LiteralPath $trackedSource -PathType Leaf)) { continue }
             $trackedTarget = Join-Path $root $trackedPath

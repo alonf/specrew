@@ -456,9 +456,10 @@ foreach ($excludedPath in $rulingExclusions.Keys) {
 # whoever ran it. The copy takes the files git tracks.
 # T002's suite copied the whole .specrew folder into its fixture, so the git-ignored local review store came with it:
 # after a review round recorded a findings result, the fixture's accepted review.md failed the validator on this
-# machine and passed on CI. It copies only the files git tracks.
+# machine and passed on CI. It copies the files git does not ignore: tracked ones, and untracked ones such as the
+# support files a review preflight restores into its verification copy (the suite's own test proves both).
 $t002Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/unit/overclaim-dirty-check-separator.tests.ps1')
-Assert-True (($t002Text -match 'ls-files') -and ($t002Text -notmatch "Copy-Item -LiteralPath \`$source -Destination \`$root -Recurse")) "T002's fixture copies only the files git tracks under .specrew, .squad and .github, so its result does not depend on the local review store"
+Assert-True (($t002Text -match 'ls-files --cached --others --exclude-standard') -and ($t002Text -notmatch "Copy-Item -LiteralPath \`$source -Destination \`$root -Recurse")) "T002's fixture copies the files git does not ignore under .specrew, .squad and .github, so its result depends neither on the local review store nor on whether those files are tracked"
 
 $sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
 Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture copies only the files git tracks under .specrew, so its result does not depend on the developer's session files"
