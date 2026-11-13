@@ -75,6 +75,26 @@
     engine runs; the suite passed in both full sweeps and on `00d9cdcc`'s CI. One rerun (reviewer ruling under the maintainer's
     delegation) passed, 05:59 to 06:16 local. Site 12 has now failed on a push that changed nothing the review engine runs.
 
+  - 206's Linux lease handoff again (site 13), twice on 2026-11-13: Specrew CI `43411715314` on `75ddb2b9` (attempt 1, job
+    `131841569510`) and Specrew CI `43423416387` on `7f346037` (attempt 1, job `131879951424`, 12:19 UTC), each the same case
+    at `co-review-service.Tests.ps1:129` ("Expected $null or empty ... but got System.Diagnostics.Process (pwsh)") on a push
+    that touched none of that code, each skipping the Contract lane; one rerun passed each time.
+
+  **Site 13 is the most frequent failure across the three crews**: three of feature 206's last four Specrew CI runs
+  (`03bc7a48`, `75ddb2b9` attempt 1, `7f346037` attempt 1; 206's bug item 13 and HO-206-8). When it fails, the Contract lane
+  is skipped, so the push has no clean CI result. **Maintainer's decision, 14:28 local on 2026-11-13 ("yes"), relayed by the
+  reviewer session**: until feature 203 merges, the 205 and 206 crews may rerun a failed Specrew CI job once without
+  stopping to ask, for this one test only.
+
+  **Two more failures seen on 205 since 2026-11-12, not in the census below**:
+  - `tests/continuous-co-review/unit/review-windows-runtime.Tests.ps1:151`, `:175` and `:213` (205's H-006 additions) read the
+    child's `child.pid` without waiting for the child to write it;
+  - `tests/unit/pretag-slice3-certify-findings.tests.ps1` reports itself INCONCLUSIVE and fails the gate; 205 hands it over
+    after its plan verdict.
+
+  **Proposed early required item for iteration 002**: fix site 13 first, then the rest of the census. The maintainer
+  decides the order at iteration 002 planning. Nothing built.
+
   **Verified on this branch, by reading, 2026-11-12**: all 14 sites exist at the cited lines. One path correction: site 6 is `tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1:297`, not `tests/unit/`. Paths below are under `tests/continuous-co-review/` unless they start with `tests/unit/`.
   - **(A) Speed caps: a stopwatch on a fast path, with an upper bound.**
     1. `tests/unit/journal-fault-injection.tests.ps1:89-91, 97, 104`: the first wait is 950 to 1,500 ms, later waits and appends are under 100 ms, and the total is under 1,600 ms.
