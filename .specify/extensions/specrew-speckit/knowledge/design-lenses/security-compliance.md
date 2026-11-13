@@ -25,6 +25,8 @@ after implementation.
 
 - What data is sensitive?
 - What actions need audit records?
+- Who are the threat actors? — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Threat actors
+- What must never be logged? (`never_logged`) — Light: recommend "secrets, and any data product-domain's regime marks sensitive" (the regime is already answered) → spec.md Problem Context: Operating needs
 
 ### Solution questions
 
@@ -34,6 +36,32 @@ after implementation.
 - How is sensitive data protected in transit, at rest, logs, telemetry, backups, and exports?
 - What threat surfaces are introduced by scripts, plugins, APIs, file writes,
   shell commands, generated code, or third-party dependencies?
+
+## Handed Forward From Earlier Lenses
+
+Shown at every depth as recommendation lines, in this lens's one recommendation list. Each line names the earlier
+lens that asked it and the answer's key. A product-domain answer comes from the feature's product-domain record
+(`areas.<key>`); another lens's answer comes from that lens's workshop record. The line shows it as
+"<lens>: <answer>", or "<lens>: not stated" when that is the answer or the lens did not run. The human accepts it
+or changes it for this lens.
+
+- product-domain `compliance_regime` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Regulation and compliance
+- product-domain `data_residency` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Data residency
+
+## Depth Model
+
+The agenda's depth for this lens decides what it asks. The questions above that carry no suffix, or the suffix
+"Light: ask", are asked at every depth.
+
+- **Light** — those questions are asked as before. Each question with a "Light: recommend" suffix is shown as a
+  **recommendation line** instead: its recommended answer, its reason, and where the answer goes. All of this
+  lens's recommendation lines, with the handed-forward lines, are shown **once, as one list**, closed by the same typed reply as
+  the questions. "accept" takes every line as shown; changing a line is part of the same reply. Never one prompt
+  per line.
+- **Standard** — every question is asked, the "Light: recommend" ones included, each with its recommended answer
+  shown.
+  The handed-forward lines stay recommendation lines.
+- **Deep** — as Standard.
 
 ## Workshop Conduct
 

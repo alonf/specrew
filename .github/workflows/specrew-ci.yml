@@ -280,6 +280,11 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File ./tests/unit/workshop-question-tool.tests.ps1
 
+      # Feature 205 iteration 002 (FR-028, FR-029): the workshop length budget and the question consumers.
+      - name: Workshop length budget and question consumers (FR-028/FR-029)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-length-budget.tests.ps1
+
       - name: Tier-2 production harness contract dry run (zero provider spend)
         shell: pwsh
         run: pwsh -NoProfile -File ./tests/manual/review-production-harness-dry-run.ps1

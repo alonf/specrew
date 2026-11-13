@@ -113,7 +113,11 @@ before any technical lens or the applicability questionnaire. It is NOT a row in
    current workaround; existing system/context; constraints; outcomes; MVP/non-goals/vision;
    alternatives at Standard/Deep), and **tag every material statement** with its evidence quality
    (`known` / `assumed` / `unknown` / `research-needed`; a `research-needed` carries `load_bearing`).
-   Honest tags prevent confident product fiction.
+   Honest tags prevent confident product fiction. **Ask the compliance or regulatory regime at every depth**
+   (area 9: the named regulation, or "none"; it has no default, so never fill it in yourself). At Light, show
+   areas 10 to 14 (data residency, carry-over, where it runs, who operates it, budget) as **one recommendation
+   block** in the same turn, each line with its default and reason; at Standard and Deep ask them. Record all six
+   under their area keys, "not stated" included: later lenses show them as handed-forward lines.
 5. **No batch confirmation (FR-009).** The phase cannot be satisfied by approving an agenda or a batch
    "confirm all". It needs scoped product-domain confirmation, or an explicit, honestly recorded
    "you decide" / "skip". Record the provenance (`human-confirmed` / `human-delegated` /
@@ -316,6 +320,19 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens.
+
+   **Show a lens's recommendations once, as one block, closed by one reply (FR-026, FR-027).** A lens's
+   recommendation lines are its questions with a "Light: recommend" suffix (at Light only; at Standard and Deep
+   they are asked, with the recommended answer shown) and every line under its `## Handed Forward From Earlier
+   Lenses` (at every depth). Render them **once, as one list**, in the lens's presenting turn, after its
+   questions. Each line states the recommended answer, its reason in a few words, and where the answer goes (the
+   spec.md section or the later lens). Fill each handed-forward line from the earlier lens's record as
+   "<lens>: <answer>", or "<lens>: not stated" when that is the answer or that lens did not run. **Never turn the
+   block into one prompt per line**, and never re-ask a line the human did not change. The same typed reply that
+   answers the lens's questions settles the block: "accept" takes every line as shown, and a changed line is part
+   of that reply. When **every** open item in a lens is a recommendation line, "accept" closes the lens as
+   "move on" does; this is the only reply besides "move on" and "skip" that closes a lens, and only in that case.
+   Record each accepted or changed line in the lens's record with its source.
 
    **When their reply is not the closing phrase, SAY WHAT YOU RECORDED AND WHAT IS STILL NEEDED — in one
    line, before anything else** (FR-028). A human who answers a lens with "yes" has answered; the lens still

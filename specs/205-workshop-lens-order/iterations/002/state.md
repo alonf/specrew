@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T024
-**Tasks Remaining**: T025, T026
+**Last Completed Task**: T025
+**Tasks Remaining**: T026
 **In Progress**: (none)
 **Baseline Ref**: f8691e43affbd508b486dd782fe9e57656497f52
-**Updated**: 2026-11-13T17:48:56Z
+**Updated**: 2026-11-13T17:57:16Z
 
 ## Execution Summary
 
@@ -19,7 +19,8 @@
 - T022 done: `## Depth Model` in requirements-nfr, ui-ux, security-compliance, data-storage, integration-api, devops-operations (Light/Standard/Deep) and observability-resilience (hand-forward lines at every depth); product-domain's in T019.
 - T023 done: skill source - compliance regime asked at every depth, areas 10 to 14 as one block at Light; each lens's recommendations shown once as one list, settled by one reply; "accept" closes a lens whose open items are all recommendations.
 - T024 done: `## Problem Context` with eleven consumer lines in the spec template source; the deployed `.specify` copy left as is (DRIFT-008). Length test green on the tree.
-- Next: T025 (copies, green, regression, CI step).
+- T025 done: copies refreshed (project-only scripts), extractor counts updated (SC-010), CI step added; lens-order-parity and 32 of 32 workshop tests pass; home clean.
+- Next: T026 (the recorded Light workshop run), after the maintainer arranges the typed session.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 
 ## Notes

@@ -47,7 +47,9 @@ Capture these product/problem areas at the selected depth:
    migration; a small context map of surrounding systems, data, channels, and ownership when
    useful.
 4. **Constraints** — budget, schedule, staffing, technology/platform, procurement/licensing,
-   data residency/privacy/security/compliance, deployment/operations, organizational.
+   data residency/privacy/security/compliance, deployment/operations, organizational. Six of
+   these are also their own areas below (9 to 14), each with its own answer, so a later lens
+   can use it.
 5. **Outcomes and success metrics** — user, business/process, operational, and quality
    outcomes in measurable terms where possible; the leading indicator for the MVP.
 6. **MVP, non-goals, and vision** — smallest valuable slice; explicit out-of-scope; later
@@ -59,6 +61,12 @@ Capture these product/problem areas at the selected depth:
    current workaround or an existing enterprise platform, not a market rival.
 8. **Adoption, rollout, and change impact** — pilot/beta/rollout, migration, training/docs,
    backwards compatibility, support handoff, adoption risk and incentives.
+9. **Compliance or regulatory regime** (`compliance_regime`) — the regulation that applies, by name, or "none"; asked at every depth, with no default. Handed forward to requirements-nfr and security-compliance. — Light: ask → spec.md Problem Context: Regulation and compliance
+10. **Data residency** (`data_residency`) — where the data must stay, or that nothing binds it. Handed forward to security-compliance and data-storage. — Light: recommend "not stated" (nothing in the request or the repository shows it) → spec.md Problem Context: Data residency
+11. **Systems and data to carry over** (`carry_over`) — what existing systems, data or formats this must keep working with or bring along. Handed forward to data-storage and integration-api. — Light: recommend "what the repository shows, else not stated" (read from the repository, not guessed) → spec.md Problem Context: Systems and data carried over
+12. **Where it must run** (`platform_constraints`) — platforms, environments or hosts that are fixed before any technical choice. Handed forward to devops-operations. — Light: recommend "what the repository shows, else not stated" (read from the repository, not guessed) → spec.md Problem Context: Where it runs
+13. **Who operates it, and when** (`operators`) — who runs and supports it after release, and in which hours. Handed forward to devops-operations and observability-resilience. — Light: recommend "not stated" (operators are never guessed) → spec.md Problem Context: Who operates it, and when
+14. **Budget** (`budget`) — money, quota or running-cost limits that bind the design. Handed forward to devops-operations and observability-resilience. — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Budget
 
 ### Solution questions
 
@@ -70,15 +78,20 @@ Choose Light / Standard / Deep by **risk and novelty**, and record why.
 
 - **Light** — tiny utilities, spikes, personal tools, narrow bug fixes. Required output:
   user/stakeholder, pain/job, MVP, out-of-scope, key constraints, and **why deeper discovery
-  is not needed**. Light does NOT require competitive/alternative analysis.
+  is not needed**. Light does NOT require competitive/alternative analysis. Light also asks
+  the **compliance or regulatory regime** (area 9: the named regulation, or "none"; no
+  default), and shows areas 10 to 14 as **recommendation lines**, each with its default and
+  reason, in one list closed by the same typed reply. The human accepts the list or changes
+  a line; "not stated" is a valid answer and is handed forward as it is.
 - **Standard** — normal product features. Light plus: current workaround, existing
   system/context, success metrics, assumptions/evidence quality, adoption/rollout notes, and
-  alternatives/competitors.
+  alternatives/competitors. Areas 9 to 14 are **asked as questions**, each with its
+  recommended answer shown.
 - **Deep** — new products, major workflow changes, regulated/high-risk domains, multi-team
   systems, migrations, commercial products, or unclear business strategy. Standard plus:
   stakeholder map, context diagram, competitive landscape, business/value model,
   migration/change-management strategy, validation/research plan, and the evidence gaps that
-  block plan or implementation.
+  block plan or implementation. Areas 9 to 14 are asked as at Standard.
 
 Depth-selection rules:
 
@@ -143,6 +156,11 @@ depth**.
   (`human-confirmed` / `human-delegated` / `human-skipped`) and its matching scope.
 - **Persist both records** (see Artifacts) before the specify boundary syncs, and summarize
   the decisions into `spec.md` without making it the sole source.
+- **Record areas 9 to 14 under their area keys** (`compliance_regime`, `data_residency`,
+  `carry_over`, `platform_constraints`, `operators`, `budget`) in the record's `areas`, and
+  write "not stated" when that is the answer. Later lenses show each one as
+  "product-domain: <answer>" in their `## Handed Forward From Earlier Lenses` lines, so an
+  answer left out of the record is lost to them.
 - **Re-invoke the `specrew-design-workshop` skill** before moving to the first technical lens.
 
 ## Question Bank

@@ -38,14 +38,14 @@ iteration 003 as a trim; see the feature plan's "Sizes and the point over the ca
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T018 | Length and consumer test, red-first | FR-028, FR-029 | US6 | 4 | implementer | — | planned | — | — | — |
-| T019 | product-domain: six facts, compliance at every depth, depth content | FR-023, FR-027 | US6 | 2 | implementer | — | planned | — | — | — |
-| T020 | Hand-forward lines in the receiving lenses | FR-024 | US6 | 2 | implementer | — | planned | — | — | — |
-| T021 | Twelve lens-specific questions with recommendations and consumers | FR-025, FR-026, FR-029 | US6 | 3 | implementer | — | planned | — | — | — |
-| T022 | Depth content for the touched lenses | FR-027 | US6 | 2.5 | implementer | — | planned | — | — | — |
-| T023 | Workshop skill: one block, accept closes | FR-026 | US6 | 1.5 | implementer | — | planned | — | — | — |
-| T024 | Spec template Problem Context and copies | FR-029 | US6 | 1 | implementer | — | planned | — | — | — |
-| T025 | Parity, extractor counts, workshop regression, CI steps, copies | FR-025, FR-028 | US6 | 2 | implementer | — | planned | — | — | — |
+| T018 | Length and consumer test, red-first | FR-028, FR-029 | US6 | 4 | implementer | — | done | — | — | — |
+| T019 | product-domain: six facts, compliance at every depth, depth content | FR-023, FR-027 | US6 | 2 | implementer | — | done | — | — | — |
+| T020 | Hand-forward lines in the receiving lenses | FR-024 | US6 | 2 | implementer | — | done | — | — | — |
+| T021 | Twelve lens-specific questions with recommendations and consumers | FR-025, FR-026, FR-029 | US6 | 3 | implementer | — | done | — | — | — |
+| T022 | Depth content for the touched lenses | FR-027 | US6 | 2.5 | implementer | — | done | — | — | — |
+| T023 | Workshop skill: one block, accept closes | FR-026 | US6 | 1.5 | implementer | — | done | — | — | — |
+| T024 | Spec template Problem Context and copies | FR-029 | US6 | 1 | implementer | — | done | — | — | — |
+| T025 | Parity, extractor counts, workshop regression, CI steps, copies | FR-025, FR-028 | US6 | 2 | implementer | — | done | — | — | — |
 | T026 | Recorded Light workshop run (last) | FR-026, FR-023 | US6 | 2 | implementer | — | planned | — | — | — |
 
 ## Effort Model

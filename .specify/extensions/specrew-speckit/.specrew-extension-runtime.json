@@ -100,11 +100,11 @@
     },
     {
       "path": "knowledge/design-lenses/data-storage.md",
-      "sha256": "8582a2f10ade9b9bd724239227d314f4a1f717e08df73f230843dd5640c9be12"
+      "sha256": "19c75f05b51d24b0c52a6cc3e7d38e4fa9247ffe4d7c447bf2492785f6d39404"
     },
     {
       "path": "knowledge/design-lenses/devops-operations.md",
-      "sha256": "333431d5495ca0df8a2e6f16a0d66cf0b083602e2e7735f89b334173523cf5a1"
+      "sha256": "3976cb13d009b173d5be7f38cb5b1dce5a539c54997a3e85ba0dc458c8927e76"
     },
     {
       "path": "knowledge/design-lenses/diagram-vocabulary.json",
@@ -120,7 +120,7 @@
     },
     {
       "path": "knowledge/design-lenses/integration-api.md",
-      "sha256": "5ea59e57057a8134bf583d5c4aca27c4ed313a09b34002b78c4e4f35f5fe40ad"
+      "sha256": "966d8ae082ec18696db3e9ae03c30f4a83e70dd22229bf738c0285ea1b002776"
     },
     {
       "path": "knowledge/design-lenses/lens-schema.md",
@@ -132,11 +132,11 @@
     },
     {
       "path": "knowledge/design-lenses/observability-resilience.md",
-      "sha256": "b3478be704bd234badd781840723774b5b108002e1d3ac7c6b4df448f1eff2ec"
+      "sha256": "4ab846ac086d5b8adb8449c9ba7a47faace7d320de96cb46ef2452e3f108b3fb"
     },
     {
       "path": "knowledge/design-lenses/product-domain.md",
-      "sha256": "b9059b76847a12de3123c28059d9a4644f58603812bb05d9921e11bf95234ce6"
+      "sha256": "38bda0cd6fe8192ec389efbc8ef086f1f078def6f4718edff4cf80ab3c28f12e"
     },
     {
       "path": "knowledge/design-lenses/product-domain.schema.json",
@@ -148,11 +148,11 @@
     },
     {
       "path": "knowledge/design-lenses/requirements-nfr.md",
-      "sha256": "b67ef1e2a02944459d97d0898a63e7537bcea687f302b9e9ff2db641809ab1f0"
+      "sha256": "6c512a3a9b23eb5c3bf023b8ad97e166337dfcea04863222db01a7fcdc220d02"
     },
     {
       "path": "knowledge/design-lenses/security-compliance.md",
-      "sha256": "1cee06ee37d3e7725504182cf6e239cb2ba141f3931450883187f087edf2b23d"
+      "sha256": "342793f3d1b970e51e4e433f9ae098bf53101979ef8b2ef61a0345975d0f8260"
     },
     {
       "path": "knowledge/design-lenses/sources.md",
@@ -160,7 +160,7 @@
     },
     {
       "path": "knowledge/design-lenses/ui-ux.md",
-      "sha256": "da06bd8bb540e2d46789ba87bb553f803daa772d42c012e9a5867c58344d4918"
+      "sha256": "94aa8018213452e2ecd814efd0f1b64ceb1603091d0b6217f280b5a326166454"
     },
     {
       "path": "knowledge/repository-governance.schema.json",
@@ -552,7 +552,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "d5cb1ee8d7d65a7fc0d3e4ea098588a74a3915afa07e23770128f708c34af541"
+      "sha256": "2637cd14035887a9e93e0387ea9e01cd0f209882a38f6d6c6d1d1cab18e506bf"
     },
     {
       "path": "squad-templates/skills/drift-check.md",

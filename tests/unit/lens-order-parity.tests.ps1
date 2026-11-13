@@ -61,10 +61,12 @@ $script:SkillCopies = @(
     '.cursor/rules/specrew-design-workshop/SKILL.md'
 )
 
-# SC-002: the extractor's decision-point count per lens after this feature.
+# SC-002: the extractor's decision-point count per lens after this feature. Iteration 002 (SC-010) adds exactly its
+# twelve questions' bullets: requirements-nfr +3, ui-ux +1, security-compliance +2, data-storage +3,
+# integration-api +2, devops-operations +1 (product-domain's six numbered areas are not bullets; DRIFT-007 placement).
 $script:ExpectedExtractorCounts = [ordered]@{
-    'product-domain' = 0; 'requirements-nfr' = 6; 'ui-ux' = 6; 'security-compliance' = 6; 'data-storage' = 7
-    'integration-api' = 7; 'devops-operations' = 7; 'architecture-core' = 4; 'component-design' = 5
+    'product-domain' = 0; 'requirements-nfr' = 9; 'ui-ux' = 7; 'security-compliance' = 8; 'data-storage' = 10
+    'integration-api' = 9; 'devops-operations' = 8; 'architecture-core' = 4; 'component-design' = 5
     'observability-resilience' = 6; 'code-implementation' = 7
 }
 

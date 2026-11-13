@@ -29,12 +29,27 @@ accessibility before planning implementation tasks.
 - What are the primary user journeys and interruption/recovery paths?
 - What accessibility, localization, RTL, theming, or regulatory constraints
   apply?
+- Who are the UI's users: their skills, devices and context of use? — Light: recommend "the users product-domain names, on the devices the repository targets" (both are already known) → spec.md Problem Context: Users of the interface
 
 ### Solution questions
 
 - Should data operations be client-side, server-side, streamed, or event-driven?
 - How are loading, empty, error, disabled, offline, and conflict states shown?
 - Which UI state belongs on the client, server, URL, cache, or durable store?
+
+## Depth Model
+
+The agenda's depth for this lens decides what it asks. The questions above that carry no suffix, or the suffix
+"Light: ask", are asked at every depth.
+
+- **Light** — those questions are asked as before. Each question with a "Light: recommend" suffix is shown as a
+  **recommendation line** instead: its recommended answer, its reason, and where the answer goes. All of this
+  lens's recommendation lines are shown **once, as one list**, closed by the same typed reply as
+  the questions. "accept" takes every line as shown; changing a line is part of the same reply. Never one prompt
+  per line.
+- **Standard** — every question is asked, the "Light: recommend" ones included, each with its recommended answer
+  shown.
+- **Deep** — as Standard.
 
 ## Workshop Conduct
 

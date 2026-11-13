@@ -86,7 +86,7 @@ home hook files hashed before and after; nothing on the never-run list is run.
 
 ### Phase 7: Green, regression and evidence
 
-- [ ] T025 [US6] [assigned_to: implementer] [effort: 2] Refresh the deployed copies with the two project-only deploy scripts; bring `workshop-length-budget.tests.ps1` to green with the tested numbers recorded in it and in the plan; run the iteration 001 parity, tagging and agenda tests (the extractor counts change by exactly the added questions, SC-010) and every existing workshop test against the iteration 001 results; add the new test as a named `specrew-ci.yml` step (Trace: FR-025, FR-028, SC-007, SC-010)
+- [x] T025 [US6] [assigned_to: implementer] [effort: 2] Refresh the deployed copies with the two project-only deploy scripts; bring `workshop-length-budget.tests.ps1` to green with the tested numbers recorded in it and in the plan; run the iteration 001 parity, tagging and agenda tests (the extractor counts change by exactly the added questions, SC-010) and every existing workshop test against the iteration 001 results; add the new test as a named `specrew-ci.yml` step (Trace: FR-025, FR-028, SC-007, SC-010)
 - [ ] T026 [US6] [assigned_to: implementer] [effort: 2] Last: one recorded Light workshop run on a small sample feature in a scratch project under the session temp folder (never this worktree; deployed copies only through the two project-only deploy scripts; no `specrew init` or `specrew start`; home hashed before and after). A Light pass through product-domain and two touched lenses, with the maintainer typing the replies. Keep the transcript as evidence in `iterations/002/quality/`. If the setup needs anything on the never-run list, stop and ask (Trace: SC-012)
 
 ### Iteration 002 dependencies

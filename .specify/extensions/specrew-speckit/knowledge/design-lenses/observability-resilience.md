@@ -35,6 +35,29 @@ No problem questions: the problem facts this lens needs come from product-domain
   applies?
 - What is the cost of observability, and what should not be logged?
 
+## Handed Forward From Earlier Lenses
+
+Shown at every depth as recommendation lines, in this lens's one recommendation list. Each line names the earlier
+lens that asked it and the answer's key. A product-domain answer comes from the feature's product-domain record
+(`areas.<key>`); another lens's answer comes from that lens's workshop record. The line shows it as
+"<lens>: <answer>", or "<lens>: not stated" when that is the answer or the lens did not run. The human accepts it
+or changes it for this lens.
+
+- product-domain `operators` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Who operates it, and when
+- product-domain `budget` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Budget
+- requirements-nfr `slo_alerting` — recommend "requirements-nfr: <its answer, or not stated>" (already answered in requirements-nfr; not asked again here) → spec.md Problem Context: Operating needs
+- requirements-nfr `expected_failures` — recommend "requirements-nfr: <its answer, or not stated>" (already answered in requirements-nfr; not asked again here) → spec.md Problem Context: Operating needs
+- security-compliance `never_logged` — recommend "security-compliance: <its answer, or not stated>" (already answered in security-compliance; not asked again here) → spec.md Problem Context: Operating needs
+- devops-operations `operator_diagnosis` — recommend "devops-operations: <its answer, or not stated>" (already answered in devops-operations; not asked again here) → spec.md Problem Context: Operating needs
+
+## Depth Model
+
+The agenda's depth for this lens decides what it asks.
+
+- **Light**, **Standard** and **Deep** — the questions above are asked as before. The handed-forward lines are
+  shown at every depth as **recommendation lines**, once, as one list, closed by the same typed reply as the
+  questions. "accept" takes every line as shown; changing a line is part of the same reply.
+
 ## Workshop Conduct
 
 - **Diagram for this lens**: request trace / failure-mode flow — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
