@@ -178,6 +178,21 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
         Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeTrue
     }
 
+    It 'finds no recorded ruling in a Disposition that does not record the abandonment decision: <Name> (review round 2, finding 3)' -ForEach @(
+        @{ Name = 'awaiting, dated in the heading'; Body = "## Disposition (2026-11-12)`n`nAwaiting the maintainer's ruling; abandonment has not been approved.`n" }
+        @{ Name = 'pending ruling with a date'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 on abandonment is pending.`n" }
+        @{ Name = 'abandonment refused'; Body = "## Disposition`n`nAbandonment was not approved: the maintainer's decision of 2026-11-12 keeps it open.`n" }
+        @{ Name = 'a ruling on something else'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 moved T004 to iteration 002.`n`nThe iteration may be abandoned later.`n" }
+        @{ Name = 'abandonment proposed'; Body = "## Disposition`n`nAbandonment proposed for the maintainer's decision on 2026-11-12.`n" }
+    ) {
+        $dir = Join-Path $script:Root ('ruling-negative-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        $statePath = Join-Path $dir 'state.md'
+        Set-Content -LiteralPath $statePath -Encoding UTF8 -Value ("# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n" + $Body)
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeFalse
+        Test-SpecrewIterationAbandonedByRuling -StatePath $statePath | Should -BeFalse
+    }
+
     It 'finds no recorded ruling for group B iteration <Key>' -ForEach @(
         @{ Key = '197-continuous-co-review/002' }
         @{ Key = '197-continuous-co-review/007' }
