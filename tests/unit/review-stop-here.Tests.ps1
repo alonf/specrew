@@ -55,7 +55,7 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
         [IO.File]::WriteAllText($config, '{"schema_version":"1.0","mode":"campaign"}', $script:Utf8)
         $store = Join-Path $root '.specrew/review/authority'
         $resolution = [pscustomobject]@{ budget_total = 2; host_order = @(); host_order_stated = $false; infra_failure_cap = 2; budget_source = 'plan'; ceiling = 10; plan_path = 'specs/001-fixture/plan.md'; plan_hash = ('a' * 64) }
-        $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot $store -Fact (New-ReviewBudgetGrantFact -CampaignId $script:CampaignId -Resolution $resolution -VerdictEntry 'auth-here' -ObservedAt '2026-11-08T08:00:00.0000000+00:00')
+        $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot $store -Fact (New-ReviewBudgetGrantFact -CampaignId $script:CampaignId -Resolution $resolution -VerdictEntry 'auth-0123456789abcdef' -ObservedAt '2026-11-08T08:00:00.0000000+00:00')
         $partial = [pscustomobject][ordered]@{
             schema_version = '1.0'; campaign_id = $script:CampaignId; run_id = 'run-here-partial'; target_digest = ('a' * 40); harness_id = 'fixture'
             completion = 'partial'; verdict = 'incomplete'; runtime_outcome = 'timed-out'; termination_verified = $true; containment = 'verified'

@@ -68,6 +68,7 @@ BeforeAll {
         $fact = New-ReviewBudgetGrantFact -CampaignId $script:CampaignId -Resolution $resolution -VerdictEntry 'auth-audit-verdict' `
             -ObservedAt '2026-11-08T08:00:00.0000000+00:00' -TurnIdentity $TurnIdentity
         $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot $Project.store -Fact $fact
+        $null = Add-SpecrewTestLedgerVerdict -ProjectRoot $Project.root -AuthorizationId 'auth-audit-verdict'
         return $fact
     }
 

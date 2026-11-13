@@ -13,6 +13,9 @@ BeforeAll {
     . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
     . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
     . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1')
+    # Round A finding 1: a grant is spent only when its cited verdict was typed; the fixture records that verdict.
+    foreach ($dependency in @('ConversationCaptureAccessor', 'HumanAuthorityStore')) { . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1')) }
+    . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
     $script:CampaignId = Get-ReviewCampaignIdForIteration -FeatureId '001-demo' -IterationNumber '007'
     $script:Utf8 = [Text.UTF8Encoding]::new($false)
     $script:Releasing = @('boundary-clean', 'review-current', 'boundary-finalized', 'boundary-human-disposition')
@@ -51,6 +54,7 @@ BeforeAll {
         }
         $fact = New-ReviewBudgetGrantFact -CampaignId $script:CampaignId -Resolution $resolution -VerdictEntry 'auth-stop-verdict' -ObservedAt '2026-11-08T08:00:00.0000000+00:00'
         $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot $Repo.store -Fact $fact
+        $null = Add-SpecrewTestLedgerVerdict -ProjectRoot $Repo.root -AuthorizationId 'auth-stop-verdict'
     }
 
     # Three reviewers set up and authorized; the code's writer is claude, so the engine's own pick is codex, then copilot.

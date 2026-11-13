@@ -1194,10 +1194,67 @@ function New-ReviewCampaignFloorGrantFact {
     return $fact
 }
 
+function Get-ReviewCampaignVerdictHistoryEntry {
+    # Feature 203 iteration review, round A finding 1: the lifecycle ledger's entry for one recorded verdict, by its
+    # authorization id, as a map (the shape the shared verdict matcher hands the sender check), or $null.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot, [AllowEmptyString()][string]$AuthorizationId)
+    if ([string]::IsNullOrWhiteSpace($AuthorizationId)) { return $null }
+    $path = Join-Path $RepoRoot '.specrew/start-context.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $context = $null
+    try { $context = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 32 -ErrorAction Stop } catch { return $null }
+    if ($context -isnot [System.Collections.IDictionary] -or $context['boundary_enforcement'] -isnot [System.Collections.IDictionary]) { return $null }
+    foreach ($entry in @($context['boundary_enforcement']['verdict_history'])) {
+        if ($entry -is [System.Collections.IDictionary] -and [string]$entry['authorization_id'] -ceq $AuthorizationId) { return $entry }
+    }
+    return $null
+}
+
+function Test-ReviewCampaignVerdictSender {
+    # Feature 203 iteration review, round A finding 1 (B5F-066): the before-implement verdict a review budget comes from is
+    # used only when the human typed it. The verdict is captured, and its budget snapshotted, at the prompt hook, before the
+    # host writes the transcript record that names the sender; the launch is where the budget is used, so the launch runs
+    # the same check the boundary matcher runs on that verdict. A declared out-of-band verdict has no captured turn to check.
+    # The check is the engine's own (the bootstrap store beside this folder); one that cannot be loaded refuses.
+    [OutputType([bool])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot, [AllowNull()]$Entry)
+    if ($null -eq $Entry) { return $false }
+    if (([string]$Entry['evidence_source']) -notmatch '^hook-captured') { return $true }
+    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
+        $dir = Join-Path (Split-Path -Parent $PSScriptRoot) 'bootstrap'
+        $store = Join-Path $dir 'HumanAuthorityStore.ps1'
+        $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
+        if ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf)) {
+            try {
+                $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
+                    param($AccessorPath, $StorePath)
+                    . $AccessorPath
+                    . $StorePath
+                    Export-ModuleMember -Function *
+                } | Import-Module -Global -Force -DisableNameChecking -PassThru
+            }
+            catch { $null = $_ }
+        }
+    }
+    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) { return $false }
+    return [bool](Test-SpecrewAuthorizationRecordSender -ProjectRoot $RepoRoot -Record $Entry -Purpose 'before-implement approval this review budget comes from')
+}
+
+function New-ReviewCampaignVerdictNotConfirmedRefusal {
+    param([Parameter(Mandatory)][string]$FeatureId, [Parameter(Mandatory)][string]$IterationNumber, [AllowEmptyString()][string]$AuthorizationId)
+    return [pscustomobject]@{
+        ok = $false; reason = 'review-budget-verdict-not-confirmed'; budget_grant = $null; floor_verdict = $null
+        detail = ('Specrew did not start the review, because it could not confirm that you typed the before-implement approval ({0}) this review budget for {1} iteration {2} comes from: either the message was not typed by you, or the conversation it came from can no longer be found. Nothing was launched, recorded or spent.' -f $(if ([string]::IsNullOrWhiteSpace($AuthorizationId)) { 'not recorded' } else { $AuthorizationId }), $FeatureId, $IterationNumber)
+    }
+}
+
 function Resolve-ReviewCampaignLaunchAuthority {
     # Feature 203 T008 (FR-003, FR-010): what a launch spends. Read only, so a refusal writes nothing. The campaign's
     # budget grant when there is one; otherwise the recorded before-implement verdict the floor grant will cite; with
     # neither, a refusal. Store corruption throws, for the caller to refuse.
+    # Iteration review round A finding 1: either way the verdict is checked for its sender first (Test-ReviewCampaignVerdictSender).
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId,
@@ -1205,9 +1262,20 @@ function Resolve-ReviewCampaignLaunchAuthority {
     )
     $grant = $null
     if ([IO.Directory]::Exists($StoreRoot)) { $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId }
-    if ($null -ne $grant) { return [pscustomobject]@{ ok = $true; reason = 'budget-grant'; detail = ''; budget_grant = $grant; floor_verdict = $null } }
+    if ($null -ne $grant) {
+        $cited = [string](Get-ReviewAuthorityProperty -Object $grant -Name 'verdict_entry')
+        if (-not (Test-ReviewCampaignVerdictSender -RepoRoot $RepoRoot -Entry (Get-ReviewCampaignVerdictHistoryEntry -RepoRoot $RepoRoot -AuthorizationId $cited))) {
+            return New-ReviewCampaignVerdictNotConfirmedRefusal -FeatureId $FeatureId -IterationNumber $IterationNumber -AuthorizationId $cited
+        }
+        return [pscustomobject]@{ ok = $true; reason = 'budget-grant'; detail = ''; budget_grant = $grant; floor_verdict = $null }
+    }
     $verdict = Get-ReviewCampaignBeforeImplementVerdict -RepoRoot $RepoRoot -FeatureId $FeatureId -IterationNumber $IterationNumber
-    if ($null -ne $verdict) { return [pscustomobject]@{ ok = $true; reason = 'budget-floor'; detail = ''; budget_grant = $null; floor_verdict = $verdict } }
+    if ($null -ne $verdict) {
+        if (-not (Test-ReviewCampaignVerdictSender -RepoRoot $RepoRoot -Entry (Get-ReviewCampaignVerdictHistoryEntry -RepoRoot $RepoRoot -AuthorizationId ([string]$verdict.authorization_id)))) {
+            return New-ReviewCampaignVerdictNotConfirmedRefusal -FeatureId $FeatureId -IterationNumber $IterationNumber -AuthorizationId ([string]$verdict.authorization_id)
+        }
+        return [pscustomobject]@{ ok = $true; reason = 'budget-floor'; detail = ''; budget_grant = $null; floor_verdict = $verdict }
+    }
     return [pscustomobject]@{
         ok = $false; reason = 'review-budget-no-verdict'; budget_grant = $null; floor_verdict = $null
         detail = ('Specrew did not start the review, because no before-implement approval is recorded for {0} iteration {1}, and review rounds are approved with the implementation, so there is no review budget to spend. Nothing was launched, recorded or spent. Once this iteration has its before-implement approval (approved for before-implement), run the review again.' -f $FeatureId, $IterationNumber)

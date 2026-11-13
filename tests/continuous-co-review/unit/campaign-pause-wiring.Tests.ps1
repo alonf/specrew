@@ -26,6 +26,9 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+        # Round A finding 1: a grant is spent only when its cited verdict was typed; the fixture records that verdict.
+        foreach ($dependency in @('ConversationCaptureAccessor', 'HumanAuthorityStore')) { . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1')) }
+        . (Join-Path $script:RepoRoot 'tests/support/cited-typed-turn.ps1')
 
         function script:New-PauseRepo {
             param([string]$Root, [int]$Budget = 4)
@@ -50,6 +53,7 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
             }
             $fact = New-ReviewBudgetGrantFact -CampaignId 'cmp-001-demo-i007' -Resolution $resolution -VerdictEntry 'auth-pause-verdict' -ObservedAt '2026-01-01T00:00:00.0000000+00:00'
             $null = Add-ReviewCampaignBudgetGrantFact -StoreRoot (Join-Path $Root '.specrew/review/authority') -Fact $fact
+            $null = Add-SpecrewTestLedgerVerdict -ProjectRoot $Root -AuthorizationId 'auth-pause-verdict'
         }
 
         # A round the counter counts: a published result that collected a complete review (DRIFT-052 item 3).

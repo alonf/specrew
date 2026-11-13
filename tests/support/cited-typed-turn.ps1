@@ -103,3 +103,31 @@ function Get-SpecrewFixtureOutOfBandSplat {
     param([Parameter(Mandatory)][string]$Reason)
     return @{ EvidenceSource = 'fixture-out-of-band'; OutOfBandReason = $Reason }
 }
+
+# Iteration review round A finding 1: a review launch spends a budget grant only when the before-implement verdict it cites
+# was typed by the human. A fixture that writes a grant therefore records that verdict as the boundary sync does: an entry
+# in the lifecycle ledger (.specrew/start-context.json verdict_history), captured from a typed turn this helper also leaves
+# (the host's transcript record and the prompt hook's ledger row). An existing start-context is kept; the entry is added
+# when the ledger does not already hold that authorization id. Returns the entry.
+function Add-SpecrewTestLedgerVerdict {
+    param([Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$AuthorizationId, [string]$FeatureRef = '001-demo',
+        [string]$FromBoundary = 'tasks', [string]$ToBoundary = 'before-implement')
+    $text = 'approved for ' + $ToBoundary
+    $turn = New-SpecrewTypedTurnFixture -ProjectRoot $ProjectRoot -Text $text
+    $path = Join-Path $ProjectRoot '.specrew/start-context.json'
+    [System.IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+    $context = [ordered]@{}
+    if (Test-Path -LiteralPath $path -PathType Leaf) { $context = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 32 }
+    if ($context['boundary_enforcement'] -isnot [System.Collections.IDictionary]) { $context['boundary_enforcement'] = [ordered]@{} }
+    $history = [System.Collections.Generic.List[object]]::new()
+    foreach ($e in @($context['boundary_enforcement']['verdict_history'])) { if ($null -ne $e) { $history.Add($e) } }
+    $existing = @($history | Where-Object { [string]$_['authorization_id'] -ceq $AuthorizationId }) | Select-Object -First 1
+    if ($null -ne $existing) { return $existing }
+    $entry = [ordered]@{ from_boundary = $FromBoundary; to_boundary = $ToBoundary; verdict_text = $text; authorizing_human = 'unattributed'
+        feature_ref = $FeatureRef; recorded_at = '2026-11-01T10:00:00Z'; authorization_id = $AuthorizationId
+        evidence_source = 'hook-captured-user-prompt'; host_kind = 'claude'; turn_identity = [string]$turn.TurnIdentity }
+    $history.Add($entry)
+    $context['boundary_enforcement']['verdict_history'] = @($history)
+    [System.IO.File]::WriteAllText($path, ($context | ConvertTo-Json -Depth 32), [System.Text.UTF8Encoding]::new($false))
+    return $entry
+}
