@@ -129,6 +129,9 @@ FR-005.
 - **Third sighting (2026-11-13):** Specrew CI run 43423416387 attempt 1 on `7f346037`, job 131879951424, the same case
   and error, the only failure. Rerun once under the maintainer's standing exception for this test (14:28 local,
   2026-11-13): attempt 2 green (job 131885538324).
+- **Fourth sighting (2026-11-13):** Specrew CI run 43500243627 attempt 1 on `c91766df`, job 132146041562, the same case
+  and error, the only failure. Rerun once under the same exception: attempt 2 green (Deterministic gate job
+  132151298400). Four sightings in two days, on pushes that never touched `scripts/internal/continuous-co-review/`.
 
 ## HO-206-9 — `review-posix-runtime.Tests.ps1`: stream-drain budget exceeded on macOS
 

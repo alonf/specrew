@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 23
-**Resolution rate**: 83% (19/23 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 24
+**Resolution rate**: 83% (20/24 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage)
 **Specification drift**: None detected (process drift only)
 
@@ -449,6 +449,40 @@ iteration 002 as a required item: feature 206 does not close without it; 022 rep
   with `.specrew`, `.squad` and `.specify` restored untracked, the local review store present and ignored, an empty
   environment plus each lane's `env_refs` and the preflight marker. That step sits next to the time-budget check, and
   the round report states its result.
+
+### DRIFT-206-I001-024 — review rework: round 3's six findings fixed in iteration 001; closure and ruling read by affirmative forms
+
+- **Recorded**: 2026-11-14, at the maintainer's instruction (round 3 decision, option 1).
+- **What**: review round 3 (Codex, run `run-20261113-210415408-06f009c3`, head `c91766df`) returned six findings. The
+  engine demoted four from major to minor; each reproduced with a failing test. All six are fixed in iteration 001,
+  each with a test commit (red count) and then a fix commit:
+
+  | # | Requirement | What was wrong | RED | GREEN |
+  | --- | --- | --- | --- | --- |
+  | 1 | FR-008 | "Abandonment was rejected by the maintainer's decision of 2026-11-12" counted as a recorded abandonment ruling | `760b7f02` 5/42 | `dba4ea9c` |
+  | 2 | FR-008a | "may be closed" and "can be closed" read as closure claims | `d82299be` 2/20 | `e50a2650` |
+  | 3 | FR-008a | `-RebuildClosedIndex` selected new entries with the old state.md text heuristic, and dropped unstamped entries it did not detect | `c23d858c` 2/44 | `90b0543a` |
+  | 4 | FR-009 | A repository-level stop (Squad team, sealed iteration edited, classifier) wrote one category record with no message hash | `d99f6065` 2/21 | `7fc81397` |
+  | 5 | FR-011 | A `run:` key under a step's `with:` or `env:` counted as a CI registration | `9bd570a1` 2/74 | `a50d127a` |
+  | 6 | FR-011 | A PowerShell block comment over several lines of a `run:` block left its suite counted | `924d14bb` 1/76 | `45a8070c` |
+
+- **Ruling**: findings 1 and 2 replace the negative-word lists with affirmative forms (maintainer, 2026-11-14; this
+  replaces the earlier ruling on T006). Before building, the forms ran against the Iteration Status of all 161
+  iterations and the Disposition of every state.md that has one: no iteration's closed, open or ruled result changed
+  (32 statuses claim closure before and after; the same four iterations record a ruling).
+- **Rebuild**: finding 3's fix keeps every existing index entry, so a rebuild never turns a closed iteration open. On
+  a copy of this repository's state files and index, the rebuild adds the seven iterations already closed by status
+  and changes no iteration's closed result.
+- **Growth**: about 1.5 more points of rework (0.25 each), 3 in all beyond the planned 20. The capacity file and the
+  task points stay unchanged (maintainer, 2026-11-14).
+- **Not done**: the four stops that return only a count (`source-without-implement-authorization`,
+  `handoff-evidence`, `approved-status`, `boundary-canonical`) still write their category alone; bug list item 30,
+  for iteration 002.
+- **Resolution**: FIXED; round 4, the last in the budget, reviews the fixes. What it finds that is not a blocker goes
+  to iteration 002 (maintainer, 2026-11-14).
+- **Class closure**: the closure and ruling checks accept only listed forms, so a new wording is open or unruled until
+  someone adds its form and its test, instead of closed until someone notices. Each fix's test is in a review-plan
+  lane (`f206-unit-suites` holds 1 to 4; `f206-census-guard` holds 5 and 6).
 
 <!--
   Every new ### DRIFT-... event includes:

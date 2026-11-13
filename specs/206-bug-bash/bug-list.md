@@ -372,6 +372,10 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   gate"):** the same case and error, the only failure in the run. Rerun once without asking, under the maintainer's
   standing exception for this test (14:28 local, 2026-11-13, relayed by the reviewer session): attempt 2 green
   (job 131885538324). Recorded after review round 2, because round 2 was bound to `7f346037`.
+- **Fourth sighting (2026-11-13, Specrew CI run 43500243627 attempt 1 on `c91766df`, job 132146041562 "Deterministic
+  gate"):** the same case and error, the only failure in the run. Rerun once under the same exception: attempt 2
+  green (Deterministic gate job 132151298400, 131 suites). Recorded after review round 3, because round 3 was bound to
+  `c91766df`.
 
 ## 14. `review-posix-runtime.Tests.ps1` failed once on macOS: two stream drains took 360 ms against a 250 ms budget
 
@@ -622,3 +626,15 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   layout before a round (DRIFT-023).
 - **Not fixed:** `tests/integration/validator-hardening-iteration2.ps1` builds the same fixture the same way (line 132).
   It is excluded as red for SC-002 and is not run; its fix belongs with SC-002 in iteration 002.
+
+## 30. Four repository-level validator stops write only their category to the nightly findings file
+
+- **Observed (2026-11-14, review round 3, finding 4):** a repository-level stop wrote one record with its rule and no
+  message hash, so two different failures in one category had the same nightly fingerprint and the tracking issue
+  was not updated.
+- **Fixed in iteration 001 for three stops** (`7fc81397`): the sealed-iteration, Squad team and classifier stops hold
+  their error messages, and each message is now written as a hash under the stop's rule.
+- **Not fixed:** `source-without-implement-authorization`, `handoff-evidence`, `approved-status` and
+  `boundary-canonical` return only a count; their messages are printed inside the check. A changed failure in one of
+  those categories still leaves the fingerprint unchanged. For iteration 002: each check returns its messages, and
+  the stop passes them with `-FailureMessages`.
