@@ -1785,10 +1785,32 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     }
     $stopRunId = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'run_id')
     $stopKind = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'stop_kind')
-    foreach ($answer in @(& $ReadAnswers $stopRunId)) {
-        if ($null -eq $answer) { continue }
+    $answerRef = { param($a) 'typed-stop-answer:' + ([string]$a.response_hash).Substring(0, [Math]::Min(32, ([string]$a.response_hash).Length)) }
+    $answers = @(& $ReadAnswers $stopRunId | Where-Object { $null -ne $_ })
+    # Iteration review round A finding 2 (FR-021): THE NEWEST LINE FOR A FINDING IS THE HUMAN'S INSTRUCTION. The reader hands
+    # the unspent lines oldest first; for each finding open now, only the newest `defer`/`drop`/`fix` line naming it is
+    # applied. An older line for the same finding is not applied: it is spent as superseded, naming the newer line, so it
+    # cannot land later. (Before, the older line closed the finding and the newer one was skipped as finding-not-open.)
+    $openNow = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    $targetKeyOf = {
+        param($a)
+        if ([string]$a.answer -cnotin @('defer', 'drop', 'fix')) { return '' }
+        $named = [string]$a.finding
+        $hit = @($openNow | Where-Object { [string]$_.finding_id -ceq $named -or [string]$_.finding_key -ceq $named }) | Select-Object -First 1
+        if ($null -eq $hit) { return '' }
+        return [string]$hit.finding_key
+    }
+    $newestFor = @{}
+    foreach ($a in $answers) { $key = & $targetKeyOf $a; if ($key) { $newestFor[$key] = $a } }
+    foreach ($answer in $answers) {
         $kind = [string]$answer.answer
-        $ref = 'typed-stop-answer:' + ([string]$answer.response_hash).Substring(0, [Math]::Min(32, ([string]$answer.response_hash).Length))
+        $ref = & $answerRef $answer
+        $supersededKey = & $targetKeyOf $answer
+        if ($supersededKey -and -not [object]::ReferenceEquals($newestFor[$supersededKey], $answer)) {
+            $null = & $CompleteAnswer $answer ('superseded-by:' + (& $answerRef $newestFor[$supersededKey]))
+            $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'superseded-by-newer-answer' }) | Out-Null
+            continue
+        }
         # Feature 203 T012 (FR-024, FR-041): each landed fact names the answer's typed turn.
         $answerTurn = if ($answer.PSObject.Properties['turn_identity']) { [string]$answer.turn_identity } else { '' }
         $at = [DateTimeOffset]::UtcNow.ToString('o')
