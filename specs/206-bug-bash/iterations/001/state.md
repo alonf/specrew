@@ -115,7 +115,7 @@
   Record: `t018-acceptance.md`.
 - T018 done 2026-11-13: the trigger-path check was accepted on the plan's own reading (implement-stage commits), and
   "fails as worded" is kept in `t018-acceptance.md`. A 206-only verification plan is proposed for the maintainer: five
-  lanes, 455 s on this machine, in `verification-plan-proposal.json`. The tracked `.specrew/verification-plan.json` is unchanged.
+  lanes, 455 s on this machine, approved by the maintainer and in the tracked plan (`54fcfc1c`; ten base lanes parked unchanged); record: `verification-plan-record.md`. `validate-governance-changed-only.tests.ps1` green on `cb9e8eca` (14/14). T002's suite added to the per-push CI step (`6b2fa5e1`).
 
 ## Notes
 
