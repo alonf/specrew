@@ -255,6 +255,12 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
         @{ Name = 'abandonment refused'; Body = "## Disposition`n`nAbandonment was not approved: the maintainer's decision of 2026-11-12 keeps it open.`n" }
         @{ Name = 'a ruling on something else'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 moved T004 to iteration 002.`n`nThe iteration may be abandoned later.`n" }
         @{ Name = 'abandonment proposed'; Body = "## Disposition`n`nAbandonment proposed for the maintainer's decision on 2026-11-12.`n" }
+        # Review round 3, finding 1: words that reverse the decision without a negation word.
+        @{ Name = 'abandonment rejected'; Body = "## Disposition`n`nAbandonment was rejected by the maintainer's decision of 2026-11-12.`n" }
+        @{ Name = 'abandonment declined'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 declined the abandonment.`n" }
+        @{ Name = 'abandonment overturned'; Body = "## Disposition`n`nAbandoned on 2026-11-01, overturned by the maintainer's ruling of 2026-11-12.`n" }
+        @{ Name = 'abandonment reversed'; Body = "## Disposition`n`nThe abandonment was reversed by the maintainer's decision of 2026-11-12.`n" }
+        @{ Name = 'abandonment that may follow'; Body = "## Disposition`n`nAbandoned, by the maintainer's ruling of 2026-11-12, may follow.`n" }
     ) {
         $dir = Join-Path $script:Root ('ruling-negative-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
         $null = New-Item -ItemType Directory -Path $dir -Force
@@ -262,6 +268,20 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
         Set-Content -LiteralPath $statePath -Encoding UTF8 -Value ("# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n" + $Body)
         Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeFalse
         Test-SpecrewIterationAbandonedByRuling -StatePath $statePath | Should -BeFalse
+    }
+
+    It 'finds the recorded ruling in each affirmative form: <Name> (review round 3, finding 1)' -ForEach @(
+        @{ Name = 'abandoned, by ruling'; Body = "## Disposition`n`n**Abandoned, by the maintainer's ruling of 2026-11-12.** Its work moves to iteration 002.`n" }
+        @{ Name = 'abandoned and superseded, with a note'; Body = "## Disposition`n`nAbandoned and superseded, by the maintainer's ruling of 2026-11-12 (at the T005 stop).`n" }
+        @{ Name = 'abandoned, superseded by an iteration, curly apostrophe'; Body = "## Disposition`n`nAbandoned, superseded by iteration 004, by the maintainer$([char]0x2019)s decision on 2026-11-12.`n" }
+        @{ Name = 'closed as abandoned, dated decision in brackets'; Body = "## Disposition`n`n**CLOSED as ABANDONED-superseded (2026-11-12, maintainer decision).**`n" }
+    ) {
+        $dir = Join-Path $script:Root ('ruling-positive-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        $statePath = Join-Path $dir 'state.md'
+        Set-Content -LiteralPath $statePath -Encoding UTF8 -Value ("# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n" + $Body)
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeTrue
+        Test-SpecrewIterationAbandonedByRuling -StatePath $statePath | Should -BeTrue
     }
 
     It 'finds no recorded ruling for group B iteration <Key>' -ForEach @(
