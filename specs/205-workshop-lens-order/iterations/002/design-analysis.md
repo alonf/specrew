@@ -157,6 +157,19 @@ twice. Option C builds what proposal 177 should build, ahead of it.
 
 ## Human Decision
 
-- **Decision verdict**: pending
-- **Chosen option**: pending
-- **Reason**: pending
+- **Decision verdict**: approved for plan with Option A
+- **Chosen option**: Option A
+- **Reason**: everything in the lens files, read by the agent, with a length test and a consumer test. It meets every
+  A1 rule with no new runtime code in the workshop path and keeps each question in one file. Option B writes every
+  question twice, and Option C builds ahead of proposal 177.
+- **Modifications**: none to the design. The maintainer's notes for plan.md (2026-11-13):
+  1. add one recorded Light workshop run on a small sample, as evidence that a lens shows its recommendations as one
+     list and that "accept" closes it, because no code runs in the workshop and the file tests cannot prove that; say
+     what it costs
+  2. the code-implementation lens refresh (FR-030) gets its own short iteration straight after this one and does not
+     wait for feature 203; the two-pass split keeps waiting for 203
+  3. for the one point over the cap, say at the plan boundary what to trim or carry it as a recorded overrun; the
+     capacity file is not changed
+- **Verdict given**: typed by the maintainer on 2026-11-13.
+- **Design-analysis draft commit**: `27b2d647`
+
