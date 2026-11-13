@@ -85,14 +85,15 @@ function Get-NightlyFindings {
 function Get-FindingLine {
     param($Finding)
     $line = '{0}|{1}|{2}' -f $Finding.iteration, $Finding.rule, $Finding.severity
-    if ($Finding.rule -eq 'uncategorized' -and -not [string]::IsNullOrWhiteSpace($Finding.message_hash)) {
+    # Review round 2, finding 4: the message hash counts for every finding that has one, categorized or not.
+    if (-not [string]::IsNullOrWhiteSpace($Finding.message_hash)) {
         $line += '|' + $Finding.message_hash
     }
     return $line
 }
 
 function Get-NightlyFingerprint {
-    # SHA-256 over the sorted iteration|rule|severity lines (plus the message hash for uncategorized).
+    # SHA-256 over the sorted iteration|rule|severity lines (plus each finding's message hash when it has one).
     param([object[]]$Findings)
     $lines = @($Findings | ForEach-Object { Get-FindingLine $_ } | Sort-Object -Unique -CaseSensitive)
     $bytes = [System.Text.Encoding]::UTF8.GetBytes(($lines -join "`n"))
@@ -105,7 +106,7 @@ function Format-FindingTable {
     $rows.Add('| Iteration | Rule | Severity |') | Out-Null
     $rows.Add('| --- | --- | --- |') | Out-Null
     foreach ($f in @($Findings | Sort-Object iteration, rule, severity, message_hash)) {
-        $rule = if ($f.rule -eq 'uncategorized' -and $f.message_hash) { '{0} ({1})' -f $f.rule, $f.message_hash } else { $f.rule }
+        $rule = if ($f.message_hash) { '{0} ({1})' -f $f.rule, $f.message_hash } else { $f.rule }
         $rows.Add(('| {0} | {1} | {2} |' -f $f.iteration, $rule, $f.severity)) | Out-Null
     }
     return ($rows -join "`n")

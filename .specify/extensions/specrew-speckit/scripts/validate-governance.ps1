@@ -13,7 +13,7 @@ param(
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
     [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity,
-    # FR-009: write the run's findings (iteration id, rule, severity; an uncategorized message only as a hash)
+    # FR-009: write the run's findings (iteration id, rule, severity; each message only as a hash)
     # to this JSON file, for the nightly's tracking-issue notifier.
     [string]$FindingsJsonPath
 )
@@ -39,7 +39,7 @@ $script:ValidatorFindingRecords = New-Object System.Collections.Generic.List[obj
 function Add-ValidatorFindingRecord {
     # FR-009: one finding for the findings file. The iteration is "<feature>/<NNN>" for a path under
     # specs/<feature>/iterations/<NNN>, else "(repository)". The rule is the failure's category; a message
-    # with no category is "uncategorized" and contributes only a hash of its normalized text, never the text.
+    # with no category is "uncategorized". Every message contributes only a hash of its normalized text, never the text.
     param(
         [AllowNull()][string]$TargetPath,
         [AllowNull()][string]$ProjectRoot,
@@ -60,13 +60,18 @@ function Add-ValidatorFindingRecord {
     $Rule = (([string]$Rule).ToLowerInvariant() -replace '[^a-z0-9-]+', '-').Trim('-')
     $record = [ordered]@{ iteration = $iteration; rule = $Rule; severity = 'error' }
     if ([string]::IsNullOrWhiteSpace($Rule)) {
+        $record['rule'] = 'uncategorized'
+    }
+    # Review round 2, finding 4: every error with a message carries a hash of its normalized text (project root
+    # removed, separators and whitespace normalized), never the text, so two different failures in one category
+    # and iteration are two different findings.
+    if (-not [string]::IsNullOrWhiteSpace($text) -or [string]::IsNullOrWhiteSpace($Rule)) {
         $normalized = $text
         if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
             $normalized = $normalized.Replace([string]$ProjectRoot, '').Replace((([string]$ProjectRoot) -replace '\\', '/'), '')
         }
         $normalized = (($normalized -replace '\\', '/') -replace '\s+', ' ').Trim()
         $hashBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($normalized))
-        $record['rule'] = 'uncategorized'
         $record['message_hash'] = ([System.BitConverter]::ToString($hashBytes) -replace '-', '').Substring(0, 16).ToLowerInvariant()
     }
     $script:ValidatorFindingRecords.Add([pscustomobject]$record) | Out-Null
