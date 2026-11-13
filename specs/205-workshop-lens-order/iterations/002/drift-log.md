@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 7
+**Total drift events**: 8
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -123,6 +123,16 @@
   as a source. Whether to reword the spec is the maintainer's; reported at the review stop.
 - **Class closure**: NONE — a planning error caught by the existing FR-005c check before anything shipped; that check
   is the mechanism that made it loud.
+
+### DRIFT-008 — the deployed spec template copy is left without `## Problem Context` (as T024 directs)
+
+- **Observed**: 2026-11-13, T024. The source `templates/specify/templates/spec-template.md` gains `## Problem Context`
+  (the eleven consumer lines). Neither project-only deploy script (`deploy-speckit-extension.ps1`,
+  `deploy-squad-runtime.ps1`) writes `.specify/templates/spec-template.md`; the init/update template deploy does, and
+  `specrew update` is on the never-run list in this worktree.
+- **Resolution**: the deployed copy is left as it is, per T024. The consumer test reads the source. Reported at the
+  review stop: a project gets the new section on its next `specrew update`.
+- **Class closure**: NONE — not a defect; the copy is refreshed by the normal update path outside this worktree.
 <!--
   Every new ### DRIFT-... event includes:
 
