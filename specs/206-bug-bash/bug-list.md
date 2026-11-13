@@ -579,3 +579,16 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **Disposition (reviewer ruling 2026-11-12, under the maintainer's delegation):** not rerun. Handed to feature 203 as
   HO-206-10, at higher severity than the timing class. A recurrence on 206's next push stops 206's work and is
   reported.
+
+## 28. T002's suite takes 310 s on the Ubuntu runner, and it now runs on every push
+
+- **Measured (2026-11-13):** Specrew CI run 43411715314 (attempt 2) on `75ddb2b9`, job 131847705487, T015's per-push
+  step: "RESULT tests/unit/overclaim-dirty-check-separator.tests.ps1: 3 passed, 0 failed in 310 s". The step's 23 scripts
+  took 123 s on its first run (`d258e060`).
+- **What it does per test (read, not profiled):** each of its 3 tests copies the repository's whole `.specrew`,
+  `.squad` and `.github` plus `specs/013-validator-hardening` into a temp folder. It then runs `git init`, `add -A` and
+  `commit` over that copy, and runs `validate-governance.ps1` on it in a child pwsh. Which part dominates on the runner
+  is not measured.
+- **Disposition (reviewer, 2026-11-13, under the maintainer's delegation):** it stays per push for now. For iteration
+  002 planning: measure the parts, and decide between a smaller fixture (only the files the check reads) and the
+  release manifest.
