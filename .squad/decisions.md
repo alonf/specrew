@@ -29582,3 +29582,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 262b5ac449fa551a7a81f9a691cc7df088e67ec1
 - **Recorded At**: 2026-11-12T16:56:23Z
+
+## 2026-11-12T23:54:05Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-11-12T23:54:05Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-11-12T23:54:07Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 881bc45bd91513e01a7f3976a794f0ed68cc0c7d
+- **Recorded At**: 2026-11-12T23:54:06Z
