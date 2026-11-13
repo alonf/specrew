@@ -79,7 +79,10 @@
     `131841569510`) and Specrew CI `43423416387` on `7f346037` (attempt 1, job `131879951424`, 12:19 UTC), each the same case
     at `co-review-service.Tests.ps1:129` ("Expected $null or empty ... but got System.Diagnostics.Process (pwsh)") on a push
     that touched none of that code, each skipping the Contract lane; one rerun passed each time.
-
+  - 203's push of round A's fixes, `66bba965` (2026-11-13): Specrew CI `43435277375`, job `131921188473`, 13:45 UTC, the same
+    case at `co-review-service.Tests.ps1:129`, 1 of 132 in the F-198 suite; the Contract lane was skipped. The push changed
+    neither `co-review-service.ps1` nor its suite. Test and Cross-Platform Validation passed. Not rerun: the one-rerun
+    decision below names the 205 and 206 crews; 203's rerun is asked of the maintainer.
   **Site 13 is the most frequent failure across the three crews**: three of feature 206's last four Specrew CI runs
   (`03bc7a48`, `75ddb2b9` attempt 1, `7f346037` attempt 1; 206's bug item 13 and HO-206-8). When it fails, the Contract lane
   is skipped, so the push has no clean CI result. **Maintainer's decision, 14:28 local on 2026-11-13 ("yes"), relayed by the
