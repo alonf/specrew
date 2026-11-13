@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 100% (4/4 resolved for this feature; DRIFT-001 to DRIFT-003 class closure open; DRIFT-004 is a planning decision)
+**Total drift events**: 5
+**Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
 ## Events
@@ -67,6 +67,21 @@
   iteration 001's did.
 - **What it reverses**: the iteration 001 retro's calibration line (2 SP for the review-signoff crossing until H-003 and
   H-007 are fixed), for this iteration only.
+### DRIFT-005 — an INCONCLUSIVE test result failed the Deterministic gate on a records-only commit (external CI failure; handed over)
+
+- **Observed**: 2026-11-13, Specrew CI run 43420704956 on `7d3b55b9`, Deterministic gate job (attempt 1), the F-198
+  honesty regression suite: 1 of 131 files failed, `tests/unit/pretag-slice3-certify-findings.tests.ps1`, exit 2. The
+  test reported itself `INCONCLUSIVE (fixture defect, NOT a pass)`, case f3: "the capped evidence-absent invocation
+  emitted nothing at all — the cap path was never reached". Every other case in the file passed. The Contract lane was
+  skipped.
+- **Cause, as far as 205 can see**: `7d3b55b9` changed only iteration 002's `design-analysis.md`; the same suite passed
+  on `2011e854` just before.
+- **Resolution**: the reviewer session ruled one rerun (routine, under the maintainer's delegation). The rerun of job
+  131871436437 passed (attempt 2: Lint, Self-leak firewall, Deterministic gate and Contract lane all green). The plan
+  sync then ran bound to `7d3b55b9`. Recorded after the plan verdict, so no commit fell between the sync and the
+  verdict.
+- **Class closure**: NONE — the test and the stop-hook cap belong to feature 203. Handed over as H-017. It is a
+  different test from those in H-006, and an inconclusive result that fails a gate is its own shape.
 <!--
   Every new ### DRIFT-... event includes:
 

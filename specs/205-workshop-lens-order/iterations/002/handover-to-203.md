@@ -40,3 +40,23 @@ feature 205 does not touch those files.
 prompt to the files it is given. Proposal 177 is the general fix.
 
 **Status**: open; owner feature 203.
+
+## H-017 — an INCONCLUSIVE fixture result fails the Deterministic gate
+
+**Severity**: low to medium. A gate goes red on a commit that cannot have caused it, and the result says nothing about
+the code.
+
+**Failure scenario**: `tests/unit/pretag-slice3-certify-findings.tests.ps1` case f3 runs the stop hook's capped
+evidence-absent path. Once in CI it "emitted nothing at all — the cap path was never reached", and the test reported
+`INCONCLUSIVE (fixture defect, NOT a pass)` with exit 2. The F-198 suite counts exit 2 as a failure, so the Deterministic
+gate failed and the Contract lane was skipped.
+
+**Observed**: 2026-11-13, feature 205, Specrew CI run 43420704956 on `7d3b55b9` (a commit that changed only iteration
+002's `design-analysis.md`), Deterministic gate job 131871436437 attempt 1; attempt 2 passed. Recorded in 205's
+iteration 002 drift log as DRIFT-005.
+
+**Proposed class closure (for 203 to decide)**: make the fixture deterministic about reaching the cap path (for example
+wait for the hook's journal entry before reading its output), or have the suite report INCONCLUSIVE separately from a
+failure so a fixture defect does not read as a regression.
+
+**Status**: open; owner feature 203.
