@@ -105,6 +105,24 @@ Describe 'the typed stop lines reach the fact writers (FR-006, FR-011)' {
         Get-ReviewCampaignOpenStop -StoreRoot $project.store -CampaignId $script:CampaignId | Should -BeNullOrEmpty
     }
 
+    # Iteration review round A finding 2 (run-20261113-102531165-8671e9be; FR-021): two lines for one finding before the next
+    # launch - the newest is the human's instruction. The older is not applied; it is stamped superseded, naming the newer.
+    It 'the newest line for a finding wins: drop, then fix, lands fix and records the drop as superseded' {
+        $project = script:New-AnswerProject -Name 'supersede' -Kind 'a-budget-spent' -Reason 'budget-spent'
+        script:Add-AnswerOpenFinding -Project $project
+        script:Invoke-Typed -Project $project -Text 'drop finding finding-0123456789abcdef'
+        Start-Sleep -Milliseconds 20
+        script:Invoke-Typed -Project $project -Text 'fix finding finding-0123456789abcdef'
+        $result = script:Invoke-Landing -Project $project
+        $disposition = (Get-ReviewCampaignFindingDispositions -StoreRoot $project.store -CampaignId $script:CampaignId).Values | Select-Object -First 1
+        [string]$disposition.answer | Should -BeExactly 'fix' -Because 'the human typed fix after drop'
+        @($result.landed).Count | Should -Be 1
+        @($result.skipped | Where-Object { [string]$_.reason -ceq 'superseded-by-newer-answer' }).Count | Should -Be 1
+        $drop = Get-ChildItem -LiteralPath (Join-Path $project.root '.specrew/review/stop-answer/run-answer-stop-1') -Filter 'drop-*.json' | Select-Object -First 1 | Get-Content -Raw | ConvertFrom-Json
+        [string]$drop.spent_at | Should -Not -BeNullOrEmpty -Because 'a superseded line is spent, so it cannot land later'
+        [string]$drop.authorization_ref | Should -BeLike 'superseded-by:typed-stop-answer:*'
+    }
+
     It 'a line typed with no stop open records nothing' {
         $project = script:New-AnswerProject -Name 'none' -Kind 'd-host-outside-order' -NextHost 'copilot' -Reason 'host-order-exhausted'
         $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $project.store -CampaignId $script:CampaignId -HostName 'codex' -AuthorizationRef 'typed' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
