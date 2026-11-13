@@ -62,7 +62,7 @@ function Add-ValidatorFindingRecord {
     if ([string]::IsNullOrWhiteSpace($Rule)) {
         $record['rule'] = 'uncategorized'
     }
-    # Review round 2, finding 4: every error with a message carries a hash of its normalized text (project root
+    # Every error with a message carries a hash of its normalized text (project root
     # removed, separators and whitespace normalized), never the text, so two different failures in one category
     # and iteration are two different findings.
     if (-not [string]::IsNullOrWhiteSpace($text) -or [string]::IsNullOrWhiteSpace($Rule)) {
@@ -5777,7 +5777,7 @@ try {
         # Acquire the same file lock Add-SpecrewClosedIterationEntry uses, then
         # write the complete YAML in one atomic operation. No interleaving possible.
         Invoke-WithFileLock -Path $indexPath -ScriptBlock {
-            # Review round 2, finding 5 (FR-008): an entry iteration closeout stamped (closed_at_source: closeout)
+            # FR-008: an entry iteration closeout stamped (closed_at_source: closeout)
             # is the durable record of a real closure. The rebuild keeps it, with its closure time, whether or not
             # the state.md walk detects the iteration; only unstamped entries are regenerated.
             $existingIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath

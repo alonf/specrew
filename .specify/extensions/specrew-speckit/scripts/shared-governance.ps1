@@ -831,7 +831,7 @@ function Test-SpecrewIterationRulingRecorded {
     if ($section.Count -eq 0) {
         return $false
     }
-    # Review round 2, finding 3: one sentence must record the abandonment as decided - it names the abandonment,
+    # One sentence must record the abandonment as decided - it names the abandonment,
     # the maintainer's ruling or decision and its date, and carries no negation, pending or conditional wording.
     # A dated mention of a pending, refused or unrelated ruling is not a recorded abandonment.
     $text = ($section -join ' ') -replace '\*', ''
@@ -955,7 +955,7 @@ function Test-SpecrewClosureClaimStatus {
             continue
         }
         $before = $sentence.Substring(0, $claim.Index)
-        # Review round 2, finding 2: "cannot", any n't contraction (straight or curly apostrophe), "unable" and
+        # "cannot", any n't contraction (straight or curly apostrophe), "unable" and
         # "no longer" negate too.
         if ($before -match '\b(?:not|never|yet|to be|will be|awaiting|pending|until|unless|once|if|cannot|unable|no longer)\b' -or $before -match "n['’]t\b") {
             continue

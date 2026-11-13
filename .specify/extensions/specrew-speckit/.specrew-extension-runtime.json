@@ -408,7 +408,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "d096fef276930f73ed79de1616f523f625edf0bc74c7ec90b69c53e9788c82fb"
+      "sha256": "4f5559d7d9ad5d66d34dc07f6a7e5a8bb2ffe9b05ecf8201fd22a36364af848c"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -444,7 +444,7 @@
     },
     {
       "path": "scripts/Test-CopilotInstructionsChangeType.ps1",
-      "sha256": "75aaf99dc20412bc349ab87e61d4c7f1a3627ca6303d1ae792afcade0ed47d50"
+      "sha256": "6afb3a0c10cc2f0f59e699f9c2839d92ad3c07db636e58e79c967f558d83a187"
     },
     {
       "path": "scripts/timestamp-read.ps1",
@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/validate-governance.ps1",
-      "sha256": "434cca24a8617ac9c429a5b79d5a4f2c4b557b440ea859e4e381eab6770173d8"
+      "sha256": "4e1305f057fd8151751e61be982ffa2dfbe3de0bcbdf0a9ed886f9c86020d7a2"
     },
     {
       "path": "scripts/validate-versions.ps1",
