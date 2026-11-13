@@ -46,7 +46,7 @@ iteration 003 as a trim; see the feature plan's "Sizes and the point over the ca
 | T023 | Workshop skill: one block, accept closes | FR-026 | US6 | 1.5 | implementer | — | planned | — | — | — |
 | T024 | Spec template Problem Context and copies | FR-029 | US6 | 1 | implementer | — | planned | — | — | — |
 | T025 | Parity, extractor counts, workshop regression, CI steps, copies | FR-025, FR-028 | US6 | 2 | implementer | — | planned | — | — | — |
-| T026 | Review-signoff crossing | FR-028 | US6 | 2 | implementer | — | planned | — | — | — |
+| T026 | Recorded Light workshop run (last) | FR-026, FR-023 | US6 | 2 | implementer | — | planned | — | — | — |
 
 ## Effort Model
 
@@ -76,22 +76,26 @@ iteration 003 as a trim; see the feature plan's "Sizes and the point over the ca
 | ----- | ---------------- | ----- |
 | Planning | done | workshop, Amendment A1, design analysis (Option A), this plan |
 | Discovery/Spikes | 0 | the product-domain `areas` schema is free-form; checked at planning |
-| Implementation | 18 | FR-023 to FR-029, parity and regression |
-| Review | 2 | the review-signoff crossing line from the iteration 001 retro |
+| Implementation | 20 | FR-023 to FR-029, parity and regression, and the recorded Light workshop run (T026, last) |
+| Review | 0 | the review-signoff crossing is not planned capacity in this iteration (maintainer, 2026-11-13); the retro reports its actual cost |
 | Rework | 0 | no buffer left at 20/20; rework comes out of the iteration 003 slot if needed |
 
 ## Traceability Summary
 
 - Requirement scope: FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029 (FR-031 proposed for iteration 003).
 - User stories represented in current scope: US6.
-- Success criteria: SC-007 to SC-010 (SC-011 is iteration 003).
+- Success criteria: SC-007 to SC-010 and SC-012 (SC-011 is iteration 003).
 - The task table is filled at the tasks stage; specrew-capacity-planning and specrew-traceability-check run then.
 
 ## Notes
 
-- Planned effort 20 story_points against a 20 cap. The governance check refuses a plan over capacity ("planned effort
-  22 story_points exceeds the allowed 20 ... defer_strategy is 'manual'"), so the 2 SP recorded Light workshop run
-  cannot be carried as an overrun. The crew moved it to iteration 003, which comes straight after this one. The
-  capacity setting is not changed.
-- FR-031 (proposal 220's status line) is proposed for iteration 003 as a trim.
+- Planned effort 20 story_points against a 20 cap. The governance check refuses a plan over capacity, so nothing can
+  be carried as an overrun.
+- The review-signoff crossing (2 SP in the iteration 001 retro's calibration line) is not planned capacity in this
+  iteration. The maintainer chose this at 13:19 local on 2026-11-13 ("2", relayed by the reviewer session with the
+  question it answered). The retro reports the crossing's actual cost, as iteration 001's did. This reverses that
+  calibration line for this iteration only (iteration 002 DRIFT-004).
+- The recorded Light workshop run is back in this iteration as T026, last (SC-012). Iteration 003 keeps the
+  code-implementation lens refresh (FR-030) and the proposal 220 status line (FR-031).
+- No rework buffer at 20/20.
 - Keep Status: planning until the plan is approved.

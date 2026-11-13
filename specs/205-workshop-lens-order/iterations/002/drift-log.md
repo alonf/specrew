@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved for this feature; DRIFT-001 to DRIFT-003 class closure open)
+**Total drift events**: 4
+**Resolution rate**: 100% (4/4 resolved for this feature; DRIFT-001 to DRIFT-003 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
 ## Events
@@ -55,6 +55,18 @@
 - **Resolution**: the maintainer approves A1 at this iteration's plan boundary.
 - **Class closure**: NONE — the sync is feature 203's area. Handed over as H-015.
 
+### DRIFT-004 — the review-signoff crossing is not planned capacity in this iteration (maintainer's decision)
+
+- **Decided**: 2026-11-13, 13:19 local, by the maintainer, relayed by the reviewer session under the wider delegation
+  with the question and the time. The question: the recorded Light workshop run is the only proof that the new
+  workshop behaviour works, and its 2 SP were spent on the review-signoff crossing line, which does no work; option 1
+  keeps the crossing line and moves the run to iteration 003, option 2 drops the crossing line and puts the run back.
+  The maintainer's answer: "2".
+- **Effect**: T026 is the recorded Light workshop run (2 SP, last, SC-012) instead of the crossing line. The plan stays
+  at 20/20. The crossing's cost is not planned capacity in this iteration; the retro reports its actual cost, as
+  iteration 001's did.
+- **What it reverses**: the iteration 001 retro's calibration line (2 SP for the review-signoff crossing until H-003 and
+  H-007 are fixed), for this iteration only.
 <!--
   Every new ### DRIFT-... event includes:
 

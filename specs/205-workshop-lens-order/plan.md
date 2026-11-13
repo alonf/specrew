@@ -510,8 +510,8 @@ No code runs in the workshop, so no file test can prove that a lens shows its re
 **Cost**: 2 SP of crew work, and about 30 to 45 minutes of the maintainer's typing. If the setup turns out to need
 any script on the never-run list, the crew stops and asks.
 
-**Placement**: iteration 003, straight after this one (see the next section). It runs against the shipped iteration
-002 lens files, before iteration 003's own changes.
+**Placement**: iteration 002, last (T026), after the lens files, the skill and the tests are done (maintainer's
+decision, 13:19 local on 2026-11-13). Its success criterion is SC-012.
 
 ### Sizes and the point over the cap
 
@@ -525,20 +525,20 @@ any script on the never-run list, the crew stops and asks.
 | spec template `## Problem Context` and its copies (FR-029) | 1 |
 | one test file: length numbers and consumers, with self-tests (FR-028, FR-029) | 4 |
 | parity, extractor counts, workshop regression, CI steps, copies | 2 |
-| review-signoff crossing (retro calibration line, until H-003 and H-007 are fixed) | 2 |
+| the recorded Light workshop run (T026, last; SC-012) | 2 |
 | **Total** | **20** |
 
-Three trims bring it to the cap of 20:
+The plan is at the cap of 20:
 
 - the length and consumer checks share one test file and its parser (-0.5);
-- FR-031, the proposal 220 status line, moves to iteration 003, where it records that iteration's own existence
-  (-0.5);
-- the recorded Light workshop run (2 SP) moves to iteration 003.
+- FR-031, the proposal 220 status line, moves to iteration 003 with the code-implementation lens refresh (-0.5);
+- the review-signoff crossing is not planned capacity in this iteration, and its 2 SP go to the recorded Light run.
+  The maintainer chose this at 13:19 local on 2026-11-13. The retro reports the crossing's actual cost, as iteration
+  001's did.
 
-The maintainer asked for a trim or a recorded overrun. An overrun cannot pass the governance check, which refuses a
-plan over capacity: "plan.md is over capacity: planned effort 22 story_points exceeds the allowed 20 story_points
-(capacity 20 x threshold 1.0). Configured defer_strategy is 'manual'". The run moves rather than drops, and iteration
-003 comes straight after this one. The capacity file is not changed.
+A recorded overrun was not possible: the governance check refuses a plan over capacity ("plan.md is over capacity:
+planned effort 22 story_points exceeds the allowed 20 story_points (capacity 20 x threshold 1.0). Configured
+defer_strategy is 'manual'"). The capacity file is not changed.
 
 ### Quality and risks
 

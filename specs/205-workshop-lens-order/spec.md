@@ -272,8 +272,10 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   recommended answer, citing product-domain.
 - **SC-010** (iteration 002): The FR-025 questions sit under their lenses' problem headings, the iteration 001 parity
   and tagging tests still pass, and each lens's extractor count changes by exactly its added questions.
-- **SC-011** (iteration 002): Each code-implementation stack rule carries a sources-checked date, no rule text holds a
+- **SC-011** (iteration 003): Each code-implementation stack rule carries a sources-checked date, no rule text holds a
   version number, and a fixture with an old date shows the stale marker.
+- **SC-012** (iteration 002): One recorded Light workshop run on a small sample, in a scratch project, shows a lens
+  presenting its recommendations as one list, "accept" closing it, and product-domain asking the compliance question.
 
 ## Clarifications
 
