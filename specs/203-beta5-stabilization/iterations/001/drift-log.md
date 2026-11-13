@@ -2270,4 +2270,3 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   (about 282 s, 31 percent). Every suite stays named; no limit was raised.
 - **Class closure**: NONE — a lane's time is still compared with its limit only when the limit is hit; DRIFT-062's proposed
   lane-time report for iteration 002 would name a lane past three quarters of its limit.
-
