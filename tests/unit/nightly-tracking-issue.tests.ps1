@@ -260,7 +260,7 @@ Describe 'T012 (condition 4): nothing private in the issue' {
 Describe 'T012: the validator writes the findings file' {
     BeforeAll {
         function New-ValidatorFixture {
-            param([string]$Name, [switch]$NoTeam, [switch]$Failing)
+            param([string]$Name, [switch]$NoTeam, [switch]$Failing, [string]$DropRole)
             $root = Join-Path $script:Work $Name
             $null = New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force
             $null = New-Item -ItemType Directory -Path (Join-Path $root 'scripts\internal') -Force
@@ -270,6 +270,13 @@ Describe 'T012: the validator writes the findings file' {
             if (-not $NoTeam) {
                 $null = New-Item -ItemType Directory -Path (Join-Path $root '.squad') -Force
                 Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $root '.squad\team.md')
+                if ($DropRole) {
+                    # Every row whose first cell is the role is removed: the Members row ("| reviewer | Reviewer | ...")
+                    # and the Specrew Baseline Roles row ("| Reviewer | ... | baseline |").
+                    $teamPath = Join-Path $root '.squad\team.md'
+                    $kept = @(Get-Content -LiteralPath $teamPath -Encoding UTF8 | Where-Object { $_ -notmatch ('^\|\s*{0}\s*\|' -f [regex]::Escape($DropRole)) })
+                    Set-Content -LiteralPath $teamPath -Value $kept -Encoding UTF8
+                }
             }
             $dir = Join-Path $root 'specs\905-findings\iterations\001'
             $null = New-Item -ItemType Directory -Path $dir -Force
@@ -336,6 +343,39 @@ Describe 'T012: the validator writes the findings file' {
         @($doc.findings).Count | Should -BeGreaterThan 0
         @($doc.findings)[0].iteration | Should -Be '(repository)'
         @($doc.findings)[0].rule | Should -Be 'squad-team'
+    }
+
+    It 'a repository-level stop writes each of its errors as a hash, so a different failure is a different finding (review round 3, finding 4)' {
+        # A night missing Reviewer and a later night missing Implementer wrote the same single category record,
+        # so the fingerprint did not change and the notifier stayed silent.
+        $hashes = @{}
+        foreach ($role in 'Reviewer', 'Implementer') {
+            $fixture = New-ValidatorFixture -Name ('v-team-no-' + $role.ToLowerInvariant()) -DropRole $role
+            $path = Join-Path $script:Work ('v-team-no-{0}.json' -f $role.ToLowerInvariant())
+            $run = Invoke-ValidatorWithFindings -Fixture $fixture -FindingsPath $path
+            $run.Exit | Should -Be 1 -Because $run.Output
+            $run.Output | Should -Match ('missing required baseline role\(s\): {0}' -f $role)
+            $raw = Get-Content -LiteralPath $path -Raw
+            $raw | Should -Not -Match 'missing required' -Because 'the findings file carries a hash of the message, never its text'
+            $team = @(($raw | ConvertFrom-Json).findings | Where-Object { $_.rule -eq 'squad-team' })
+            $team.Count | Should -Be 1
+            $team[0].iteration | Should -Be '(repository)'
+            $team[0].PSObject.Properties.Name | Should -Contain 'message_hash'
+            $team[0].message_hash | Should -Match '^[0-9a-f]{16}$'
+            $hashes[$role] = $team[0].message_hash
+        }
+        $hashes['Reviewer'] | Should -Not -Be $hashes['Implementer']
+    }
+
+    It 'every repository-level stop that holds its errors passes them to the findings file (review round 3, finding 4)' {
+        $source = Get-Content -LiteralPath $script:Validator -Raw
+        foreach ($pair in @(
+                @{ Rule = 'closed-iteration-edited'; List = 'closedSealErrors' },
+                @{ Rule = 'squad-team'; List = 'teamValidationErrors' },
+                @{ Rule = 'classifier-compatibility'; List = 'classifierCompatibilityErrors' }
+            )) {
+            $source | Should -Match ("-FailureRule '{0}' -FailureMessages @\(\`${1}\)" -f $pair.Rule, $pair.List) -Because $pair.Rule
+        }
     }
 }
 
