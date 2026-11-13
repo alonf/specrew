@@ -52,6 +52,9 @@ BeforeAll {
     # A real status shape from this repository: the claim is in the first sentence; the later 'pending' is about
     # feature-closeout, not this iteration.
     New-FixtureIteration -Feature '901-fixture' -Iteration '017' -StateBody "**Iteration Status**: Iteration 001 is closed. Feature-closeout remains unopened pending fresh authorization.`n"
+    # Review round 2, finding 2: negations the first list missed.
+    New-FixtureIteration -Feature '901-fixture' -Iteration '018' -StateBody "**Iteration Status**: cannot be closed until review`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '019' -StateBody "**Iteration Status**: isn't closed`n"
 
     Set-Content -LiteralPath (Join-Path $script:Root '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
 closed:
@@ -116,6 +119,38 @@ Describe 'Test-SpecrewIterationClosed: one definition (FR-008a)' {
     It 'is not closed by a negated or future closure word, or by blocked (condition 1)' {
         foreach ($n in '013', '014', '015', '016') {
             Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n | Should -BeFalse -Because "iteration $n"
+        }
+    }
+
+    It 'is not closed by "cannot", a contraction or "unable" before the closure word (review round 2, finding 2)' {
+        # Round 2 found "cannot be closed until review" and "isn't closed" read as claims: the negation list knew
+        # "not" as a whole word only.
+        foreach ($status in @(
+                'cannot be closed until review',
+                'Cannot be closed: review open',
+                "isn't closed",
+                "isn$([char]0x2019)t closed",
+                "can't be closed yet",
+                "won't be closed before the retro",
+                "hasn't closed",
+                "wasn't closed at review",
+                'is unable to be closed',
+                'no longer closed; reopened for rework'
+            )) {
+            Test-SpecrewClosureClaimStatus -IterationStatus $status | Should -BeFalse -Because $status
+        }
+        foreach ($n in '018', '019') {
+            Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n | Should -BeFalse -Because "iteration $n"
+        }
+    }
+
+    It 'still reads a closure claim with negative wording only after it (review round 2, finding 2)' {
+        foreach ($status in @(
+                'closed with no open findings',
+                'Iteration 001 is closed. Nothing cannot wait.',
+                'iteration closed on 2026-05-02; the next one is not started'
+            )) {
+            Test-SpecrewClosureClaimStatus -IterationStatus $status | Should -BeTrue -Because $status
         }
     }
 
