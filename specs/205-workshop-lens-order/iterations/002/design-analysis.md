@@ -53,11 +53,37 @@ The shape and the rules are settled (spec A1). What is open is how to build them
   hand-forward names a product-domain area key the lens text defines. The iteration 001 parity and FR-005 tests run
   unchanged; the suffix sits on the same bullet, so the extractor still returns one point per question.
 
-**Quality features**: no new runtime code in the workshop path; the lens file stays the one place a question lives;
-both tests fail first on today's tree. Deployed copies refresh through the two deploy scripts.
+**Architectural pattern**: the lens file as the single source of each question, read by the agent at run time and
+checked by tests over the files. Detection by test, no new runtime machinery, as in iteration 001.
+
+**Quality features considered**:
+
+- *requirements-nfr*: the length budget (FR-028) and the consumer rule (FR-029) are proven by tests that fail first.
+- *architecture-core*: no new structure; one place per question.
+- *data-storage*: the six facts are new keys in product-domain's free-form `areas`; no schema change.
+- *devops-operations*: deployed copies refresh only through the two project-only deploy scripts; the new test runs as a
+  named `specrew-ci.yml` step.
+- *code-implementation*: no new dependency; PowerShell 7, test-first.
+
+**Effort estimate**: 21 SP for FR-023 to FR-029 and FR-031 (see Sizes); 20 SP in the plan after its trims.
+
+**Reversibility cost**: High reversibility. Lens text, the spec template, the skill text and one test file; a revert
+restores today's lenses.
 
 **Trade-offs**: the hand-forward relies on the agent reading `product-domain.yml`, as it already reads the lens files.
 Nothing enforces at run time that the agent showed the line; the length test proves the files, not the conversation.
+The recorded Light workshop run (T026, SC-012) is the evidence for the conversation.
+
+**Diagram**:
+
+```mermaid
+flowchart LR
+  PD[product-domain.md<br/>six facts, compliance asked] -->|answers in product-domain.yml areas| REC[receiving lenses<br/>recommendation lines]
+  LENS[lens files<br/>question + suffix: depth, recommendation, consumer] --> AG[agent at run time<br/>one block per lens, accept closes]
+  LENS -->|length test| LEN[must-answer / replies / recommendation lines]
+  LENS -->|consumer test| CON[spec template Problem Context<br/>or a later lens]
+  TPL[spec template] --> CON
+```
 
 ### Option B: Reasonable — a sibling question map that the tests and the agent both read
 
@@ -65,21 +91,64 @@ Nothing enforces at run time that the agent showed the line; the length test pro
 recommended answer, reason, consumer and hand-forward source. The lens files keep the question text. Tests check the
 map against the lens files and count from the map.
 
-**Quality features**: structured data for the counts and for a future proposal 177.
+**Architectural pattern**: a structured sidecar file (`question-map.json`) beside the lens files, read by tests and by
+the agent; the lens files keep the prose.
+
+**Quality features considered**:
+
+- *architecture-core*: structured data that a future proposal 177 could consume.
+- *data-storage*: every question exists in two files that must agree, the drift this feature exists to stop.
+- *devops-operations*: one more deployed file and one more parity check.
+
+**Effort estimate**: 23 SP for FR-023 to FR-029 and FR-031.
+
+**Reversibility cost**: Medium. A new deployed file and its consumers.
 
 **Trade-offs**: every question is written in two places, which is the drift this feature exists to stop. It adds a
 second file to every deploy and every parity check, for no behaviour Option A lacks today.
 
-### Option C: Robust — a helper that builds each lens's recommendation block at run time
+**Diagram**:
+
+```mermaid
+flowchart LR
+  LENS[lens files<br/>question text] -. must agree .- MAP[question-map.json<br/>depth, recommendation, consumer, source]
+  MAP --> AG[agent at run time]
+  MAP --> T[tests: counts and consumers]
+  LENS --> T
+```
+
+### Option C: By-the-book — a helper that builds each lens's recommendation block at run time
 
 **Approach**: a new `Get-SpecrewLensRecommendations` reads `product-domain.yml` and the lens markup and returns the
 recommendation block; `confirm-workshop-lens.ps1` accepts "accept" as a close; product-domain's schema gains typed
 fields for the six facts.
 
-**Quality features**: the block is computed, not composed by the agent, and can be tested end to end.
+**Architectural pattern**: computed presentation. A runtime helper builds each lens's block from typed product-domain
+fields and the lens markup, and the lens writer accepts "accept" as a close; the textbook shape for "the system shows
+the recommendation".
+
+**Quality features considered**:
+
+- *requirements-nfr*: the block can be tested end to end, not only the files.
+- *data-storage*: product-domain's schema gains typed fields for the six facts.
+- *architecture-core*: new runtime code in the workshop path; overlaps proposal 177.
+
+**Effort estimate**: 26 SP for FR-023 to FR-029 and FR-031.
+
+**Reversibility cost**: Low to medium. A schema change, a new helper and lens-writer changes.
 
 **Trade-offs**: new runtime code in the workshop path, a schema change, and changes to the lens writer. It overlaps
 proposal 177, which the maintainer placed after this iteration.
+
+**Diagram**:
+
+```mermaid
+flowchart LR
+  PDY[product-domain.yml<br/>typed fields] --> H[Get-SpecrewLensRecommendations]
+  LENS[lens markup] --> H
+  H --> AG[agent shows the computed block]
+  AG --> W[confirm-workshop-lens.ps1<br/>accepts accept]
+```
 
 ## Sizes (story points) and the split
 
