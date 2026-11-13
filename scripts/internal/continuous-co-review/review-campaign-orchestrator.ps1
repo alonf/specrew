@@ -1376,12 +1376,15 @@ function Resolve-ReviewCampaignReviewerHost {
     # that round's launch grant and read back from it for every later round. The current reviewer is the first in the
     # order with fewer than infra_failure_cap consecutive infrastructure failures (invoked runs that brought back no
     # complete review) since the last spent round. With every reviewer in the order past the cap, the cycle stops at (d)
-    # and names the reviewer the engine would try next. With no order and no reviewer set up, nothing is enforced and
-    # the launch goes ahead as it did before (Enforced = $false).
+    # and names the reviewer the engine would try next. With no catalog to pick from, the launch's own reviewer is the
+    # first one (round B finding 3). Only with no order, no reviewer set up and no reviewer named for the launch is
+    # nothing enforced (Enforced = $false).
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId,
-        [AllowEmptyString()][string]$ReviewerConfigPath = '', [AllowEmptyString()][string]$CodeWriterHost = ''
+        [AllowEmptyString()][string]$ReviewerConfigPath = '', [AllowEmptyString()][string]$CodeWriterHost = '',
+        # The reviewer the command would run this launch on: the first reviewer when there is no catalog to pick from.
+        [AllowEmptyString()][string]$LaunchHost = ''
     )
     $grant = Get-ReviewCampaignBudgetGrant -StoreRoot $StoreRoot -CampaignId $CampaignId
     $cap = if ($null -ne $grant) { [int](Get-ReviewAuthorityProperty -Object $grant -Name 'infra_failure_cap') } else { [int]$script:ReviewBudgetDefaultInfraFailureCap }
@@ -1412,6 +1415,10 @@ function Resolve-ReviewCampaignReviewerHost {
                 Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $_ -Name 'reviewer_host')) } |
                 Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'grant.observed_at' }) | Select-Object -First 1
         $first = if ($null -ne $recorded) { ([string](Get-ReviewAuthorityProperty -Object $recorded -Name 'reviewer_host')).ToLowerInvariant() } else { & $pickFrom @() }
+        # Iteration review round B finding 3 (FR-009, FR-006(d)): with no catalog to pick from, the reviewer this launch runs
+        # on (an explicit --host, or the command's own default) is the approved first one, recorded on its launch grant, so
+        # infra_failure_cap counts its failures and the cycle still stops at (d).
+        if ([string]::IsNullOrWhiteSpace($first)) { $first = ([string]$LaunchHost).Trim().ToLowerInvariant() }
         if (-not [string]::IsNullOrWhiteSpace($first)) { $order.Add($first) }
     }
     # SPECREW-AUTHORITY-CONSUMER: allowed-reviewer
@@ -2980,7 +2987,7 @@ function Invoke-ReviewCampaignCommand {
     $hostDecision = $null
     try {
         $hostDecision = Resolve-ReviewCampaignReviewerHost -RepoRoot $root -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
-            -ReviewerConfigPath $ReviewerConfigPath -CodeWriterHost $CodeWriterHost
+            -ReviewerConfigPath $ReviewerConfigPath -CodeWriterHost $CodeWriterHost -LaunchHost $ReviewerHost
     }
     catch {
         return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
