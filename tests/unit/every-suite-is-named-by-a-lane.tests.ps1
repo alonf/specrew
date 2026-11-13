@@ -90,13 +90,34 @@ function Remove-ShellLineComment {
 # Review round 2, finding 6: what a workflow's steps execute - the text of each run: key (one line, or the
 # indented block after "run: |" / "run: >"), with shell comments removed. A step name, a trigger paths: filter,
 # an env: value and any comment name a file without running it, so they name nothing.
+# Review round 3, finding 5: only a step's own run: key counts - a key of a list item under steps:, at that
+# item's key indent. A run: key under with: (an action input) or env: (a variable) is deeper and names nothing.
 function Get-WorkflowRunText {
     param([string] $Path)
     $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
     $run = [Collections.Generic.List[string]]::new()
+    $stepsIndent = -1    # indent of the current "steps:" key; -1 outside a steps list
+    $itemIndent = -1     # indent of that list's "- " items
+    $stepKeyIndent = -1  # indent of the current step's keys
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -notmatch '^(?<indent>\s*)(?<dash>-\s+)?run:\s*(?<rest>.*)$') { continue }
-        $keyIndent = $Matches['indent'].Length + $(if ($Matches['dash']) { $Matches['dash'].Length } else { 0 })
+        $line = $lines[$i]
+        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
+        $indent = $line.Length - $line.TrimStart().Length
+        if ($line -match '^\s*steps:\s*(?:#.*)?$') { $stepsIndent = $indent; $itemIndent = -1; $stepKeyIndent = -1; continue }
+        if ($stepsIndent -lt 0) { continue }
+        $item = [regex]::Match($line, '^\s*-(?:\s+|$)')
+        if ($indent -lt $stepsIndent -or ($indent -eq $stepsIndent -and -not $item.Success)) { $stepsIndent = -1; continue }
+        if ($item.Success -and ($itemIndent -lt 0 -or $indent -eq $itemIndent)) {
+            $itemIndent = $indent
+            $keyText = $line.Substring($item.Length)
+            # "-" alone on its line: the step's keys start on the next line, one level deeper.
+            $stepKeyIndent = if ([string]::IsNullOrWhiteSpace($keyText)) { -2 } else { $item.Length }
+        }
+        elseif ($stepKeyIndent -eq -2 -and $indent -gt $itemIndent) { $stepKeyIndent = $indent; $keyText = $line.TrimStart() }
+        elseif ($indent -eq $stepKeyIndent) { $keyText = $line.TrimStart() }
+        else { continue }
+        if ($keyText -notmatch '^run:\s*(?<rest>.*)$') { continue }
+        $keyIndent = $stepKeyIndent
         $rest = $Matches['rest'].Trim()
         if ($rest -match '^[|>][-+0-9]*\s*(?:#.*)?$') {
             for ($j = $i + 1; $j -lt $lines.Count; $j++) {
