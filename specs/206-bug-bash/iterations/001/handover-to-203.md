@@ -121,6 +121,11 @@ FR-005.
 - **Cause: not found.** Not rerun (maintainer, 2026-11-12). A recurrence on 206's next push stops 206's work and
   is reported.
 - **Proposed owner**: feature 203 (its area).
+- **Second sighting (2026-11-13), higher priority:** Specrew CI run 43411715314 on `75ddb2b9`, job 131841569510, the same
+  case at `:129`, on a push that touched only 206's review plan files, a CI step, the lane guard and records. It
+  stopped every step after it in the Deterministic gate, so a registered per-push step (206's T015 step, including
+  T002's suite) did not run, and the Contract lane was skipped. Raised to a higher priority for feature 203, like
+  HO-206-10. The failed job is rerun once (reviewer ruling under the maintainer's delegation); no workaround in 206.
 
 ## HO-206-9 — `review-posix-runtime.Tests.ps1`: stream-drain budget exceeded on macOS
 

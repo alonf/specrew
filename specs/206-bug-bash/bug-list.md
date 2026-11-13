@@ -361,6 +361,13 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   43113590640, Cross-Platform Validation 43113590661). 206 has never changed `scripts/internal/continuous-co-review/`.
 - **Not rerun** (maintainer, 2026-11-12). Handed to feature 203 as HO-206-8: the code is in 203's protected area.
   A recurrence on 206's next push stops 206's work and is reported.
+- **Second sighting (2026-11-13, Specrew CI run 43411715314 on `75ddb2b9`, job 131841569510 "Deterministic gate"):** the
+  same case at `co-review-service.Tests.ps1:129` ("Expected $null or empty ... but got System.Diagnostics.Process
+  (pwsh)"), 1 of 131 in the F-198 suite. The push touched only the review plan files, the CI step, the lane guard and
+  records; 206 has never changed `scripts/internal/continuous-co-review/`. **It stopped the steps after it**, so a
+  registered per-push step (T015's, including T002's suite) did not run on that head, and the Contract lane was
+  skipped. Reported and stopped; by the reviewer's ruling (2026-11-13, under the maintainer's delegation), the failed
+  job is rerun once. HO-206-8 moves to a higher priority for feature 203.
 
 ## 14. `review-posix-runtime.Tests.ps1` failed once on macOS: two stream drains took 360 ms against a 250 ms budget
 
