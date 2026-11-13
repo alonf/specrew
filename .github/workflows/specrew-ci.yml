@@ -403,8 +403,18 @@ jobs:
             Write-Host ("RESULT {0}: exit {1} in {2:N0} s" -f $suite, $code, $watch.Elapsed.TotalSeconds)
             if ($code -ne 0) { $failed += $suite }
           }
+          # Pester suites whose Unix evidence comes from this runner (F-206 T002, maintainer 2026-11-13).
+          $pesterSuites = @(
+            'tests/unit/overclaim-dirty-check-separator.tests.ps1'
+          )
+          foreach ($suite in $pesterSuites) {
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            $result = Invoke-Pester -Path "./$suite" -PassThru -Output Detailed
+            Write-Host ("RESULT {0}: {1} passed, {2} failed in {3:N0} s" -f $suite, $result.PassedCount, $result.FailedCount, $watch.Elapsed.TotalSeconds)
+            if ($result.FailedCount -gt 0 -or $result.Result -ne 'Passed') { $failed += $suite }
+          }
           if ($failed.Count -gt 0) { Write-Host ("FAILED ({0}): {1}" -f $failed.Count, ($failed -join ', ')); exit 1 }
-          Write-Host ("All {0} script suites green" -f $suites.Count)
+          Write-Host ("All {0} script suites and {1} Pester suites green" -f $suites.Count, $pesterSuites.Count)
 
   contract-lane:
     name: Contract lane
