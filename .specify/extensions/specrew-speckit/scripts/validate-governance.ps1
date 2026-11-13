@@ -116,9 +116,21 @@ function Write-ValidatorSummaryAndExit {
         [int]$HardWarnings = 0,
 
         # FR-009: the rule a stop with no per-iteration finding is written under in the findings file.
-        [string]$FailureRule = ''
+        [string]$FailureRule = '',
+
+        # FR-009: a repository-level stop's own errors. Each is written under -FailureRule as a hash of its
+        # normalized text, never the text, so a different failure in the same category is a different finding.
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$FailureMessages = @()
     )
 
+    if ($ExitCode -ne 0) {
+        foreach ($failureMessage in @($FailureMessages)) {
+            if ([string]::IsNullOrWhiteSpace($failureMessage)) { continue }
+            Add-ValidatorFindingRecord -TargetPath $null -ProjectRoot $ProjectRoot -Message $failureMessage -Rule $FailureRule
+        }
+    }
     Write-ValidatorFindingsFile -ExitCode $ExitCode -FailureRule $FailureRule
 
     $durationMs = if ($null -ne $script:ValidatorStartTime) {
@@ -5970,7 +5982,7 @@ try {
     Test-ClosedIterationSeals -ProjectRoot $resolvedProjectPath -Errors $closedSealErrors
     if ($closedSealErrors.Count -gt 0) {
         foreach ($sealError in $closedSealErrors) { Write-Host ("FAIL [trust-hardening] closed-iteration-edited: {0}" -f $sealError) -ForegroundColor Red }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count -FailureRule 'closed-iteration-edited'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count -FailureRule 'closed-iteration-edited' -FailureMessages @($closedSealErrors)
     }
     # W47: the tree-vs-ledger cross-check - source written where the state STOOD, not where it moved.
     # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
@@ -5985,7 +5997,7 @@ try {
         foreach ($errorMessage in $teamValidationErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count -FailureRule 'squad-team'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count -FailureRule 'squad-team' -FailureMessages @($teamValidationErrors)
     }
 
     $classifierCompatibilityErrors = New-Object System.Collections.Generic.List[string]
@@ -5995,7 +6007,7 @@ try {
         foreach ($errorMessage in $classifierCompatibilityErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count -FailureRule 'classifier-compatibility'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count -FailureRule 'classifier-compatibility' -FailureMessages @($classifierCompatibilityErrors)
     }
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
