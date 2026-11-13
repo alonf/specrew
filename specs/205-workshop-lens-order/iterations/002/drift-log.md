@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 9
+**Total drift events**: 11
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -119,8 +119,8 @@
   The recorded length numbers moved with the reviewer's agreement: Light 51/16/21 (was projected 51/16/18), Standard
   and Deep 66/16/6 (was 63/16/6). Light's must-answer count stays at 51. The plan's table, hand-forward text and length
   table are updated. No tag, lens order or parity rule changed.
-- **Open**: spec FR-025's last line still names observability-resilience, and FR-024 still names only product-domain
-  as a source. Whether to reword the spec is the maintainer's; reported at the review stop.
+- **Open (closed by DRIFT-010)**: spec FR-025's last line still named observability-resilience, and FR-024 still named
+  only product-domain as a source. The maintainer decided to reword both; see DRIFT-010.
 - **Class closure**: NONE — a planning error caught by the existing FR-005c check before anything shipped; that check
   is the mechanism that made it loud.
 
@@ -149,6 +149,38 @@
   every other job green. `0b3fc589` is fully green.
 - **Class closure**: NONE — the dispatcher's journal belongs to feature 203's area. Handed over as H-019 at the higher
   severity feature 206 gave HO-206-10 (the first macOS failure of the same case, with a different symptom).
+
+### DRIFT-010 — spec FR-024 and FR-025 reworded to match the placement ruling (maintainer's decision)
+
+- **Decided**: 2026-11-13, 21:36 local, by the maintainer, relayed by the reviewer session under the wider delegation
+  with their words and the time. Asked whether to reword FR-024 and FR-025 to match what was built, their answer: "2:
+  yes".
+- **Cause**: DRIFT-007. The placement ruling moved observability-resilience's four problem questions to the lenses
+  whose subject they are, and widened FR-024's source; the spec still said what the plan had said before.
+- **Change**: `spec.md` FR-024 now says an answer may be handed forward from any earlier lens that defines it, not only
+  product-domain, and the source lens must run earlier in index.yml; the "not stated" line names its source lens.
+  FR-025 lists the four questions under the lenses that hold them (requirements-nfr twice, security-compliance,
+  devops-operations) and says observability-resilience, a solution lens with no problem questions, receives them
+  handed forward, with the observability budget as product-domain's budget fact. Nothing else in the spec changed.
+- **Class closure**: NONE — a spec wording update decided by the maintainer; FR-005c and the length test's consumer
+  check already make a misplaced question or an undefined hand-forward source loud.
+
+### DRIFT-011 — the recorded Light workshop run (T026) is answered by the reviewer session, each reply confirmed by the maintainer first (maintainer's decision)
+
+- **Decided**: 2026-11-13, 21:36 local, by the maintainer, relayed by the reviewer session under the wider delegation
+  with their words and the time: "1: you answer, but with me, meaning you write here first your answer and the
+  reason - in short. I say - send, or ask to change".
+- **Plan said**: the maintainer types the replies in a host session.
+- **Effect**: for every workshop question the reviewer session writes its proposed reply and a short reason in its own
+  session; the maintainer says "send" or asks for a change; only then does the reviewer send the reply to the workshop
+  session. The maintainer opens the host session, since the reviewer cannot open an interactive one. The T026 evidence
+  records it this way: the replies were sent by the reviewer session, each confirmed by the maintainer beforehand; they
+  are not the maintainer's typed turns in the workshop session. The run proves that a lens shows its recommendations
+  as one list, that "accept" closes it, that the compliance question is asked at Light, and that the maintainer read
+  and agreed each answer. It does not prove a person typing in that session. On this engine the workshop hook records
+  the reviewer's messages as typed replies (feature 203's B5F-064); the evidence file is the truthful record of who
+  answered.
+- **Class closure**: NONE — a decision on how the evidence is gathered, not a defect.
 <!--
   Every new ### DRIFT-... event includes:
 

@@ -185,17 +185,24 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   These replace the six gap questions that repeat product-domain, which are NOT added to security-compliance,
   data-storage or devops-operations.
 - **FR-024**: Each FR-023 answer MUST be handed forward: the later lens it bears on shows it as that lens's recommended
-  answer, naming product-domain as its source. A "not stated" default is handed forward too, shown as "product-domain:
-  not stated", so the gap is visible where it matters. The plan MUST choose the mechanism that adds the least new
+  answer, naming its source lens and the answer's key. An answer MAY be handed forward from any earlier lens that
+  defines it, not only product-domain; the source lens MUST run earlier in index.yml than the lens that receives it. A
+  "not stated" default is handed forward too, shown as "<source lens>: not stated" (for example "product-domain: not
+  stated"), so the gap is visible where it matters. The plan MUST choose the mechanism that adds the least new
   machinery.
 - **FR-025**: The remaining lens-specific gap questions MUST be added under their lenses' `### Problem questions`:
-  - requirements-nfr: which regulatory or compliance obligations become NFRs
+  - requirements-nfr: which regulatory or compliance obligations become NFRs; SLO and alerting expectations; the
+    domain's expected failure modes
   - ui-ux: who the UI's users are (skills, devices, context of use)
-  - security-compliance: who the threat actors are
+  - security-compliance: who the threat actors are; what data must never be logged
   - data-storage: what data exists; how sensitive it is; how much there is and how fast it grows
   - integration-api: which outside systems exist and whose contracts must be honoured; their limits, quotas and SLAs
-  - observability-resilience: what operators need to diagnose; SLO and alerting expectations; the domain's expected
-    failure modes; the observability budget and data that must never be logged
+  - devops-operations: what operators need to diagnose
+
+  observability-resilience is a solution lens and has no problem questions. It receives these four answers handed
+  forward from the lenses that ask them (FR-024): operator diagnosis, SLO and alerting, the expected failure modes, and
+  what must never be logged. The observability budget is product-domain's budget fact (FR-023), handed forward the
+  same way.
 - **FR-026**: Every question this iteration adds or changes MUST ship with a recommended answer and its reason, written
   so that a bare "accept" is unambiguous. A lens's recommendations MUST be shown once, as one list closed by one reply,
   never one prompt per line, and one reply MUST be able to close the lens by accepting all of them. Each line MUST state
