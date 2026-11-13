@@ -901,7 +901,7 @@ function Test-SpecrewIterationClosed {
     # filter, the dashboard check and the dashboard renderer.
     #   closed = in .specrew/closed-iterations.yml (Proposal 085), or state.md Iteration Status
     #            `complete` / `abandoned`, or a status that claims closure (Test-SpecrewClosureClaimStatus:
-    #            the validator's own claim words, with no negation or future wording before them);
+    #            the validator's own claim words, in one of the listed affirmative forms);
     #   an entry of .specrew/legacy-frozen.yml is never closed (frozen: judged by no check, FR-007);
     #   a review verdict never makes an iteration closed, and the old state.md text heuristic decides
     #   nothing here.
@@ -942,30 +942,35 @@ function Test-SpecrewIterationClosed {
 }
 
 function Test-SpecrewClosureClaimStatus {
-    # FR-008a: true when an Iteration Status
-    # claims closure in the words Test-ClosedIterationStatus already reads as a claim ("closed", "closeout
-    # complete", "closure complete") and no negation or future wording stands before the claim in the same
-    # sentence: "not closed", "not yet closed" and "to be closed after review" are not claims. A status
-    # written before the closed index existed ("iteration closed on 2026-05-13 via ...") still reads closed.
+    # FR-008a: true when an Iteration Status claims closure in an affirmative form (maintainer ruling,
+    # 2026-11-14: only the listed forms count, so "not closed", "to be closed", "may be closed" and "closed? no"
+    # are no claims, without a list of the words that make them so). Each clause - the status split at '.' or ';'
+    # followed by a space, or at a spaced dash - is read on its own, and one clause must be, in full:
+    #   <claim>[ via|by|on|at|after|with ...]
+    #   [the ][feature NNN ]iteration[ NNN][ is| was| has been][ formally] <claim>[ via|by|on|at|after|with ...]
+    # where <claim> is "closed", "closeout complete", "iteration-closeout complete" or "closure complete".
+    # A status written before the closed index existed ("iteration closed on 2026-05-13 via ...") still reads
+    # closed; every status in this repository reads as it did before the ruling.
     # Test-ClosedIterationStatus itself is unchanged; its other caller (the closeout-evidence check) keeps
     # reading any claim word, so a "not closed" status is still checked for closeout evidence there.
     param([AllowNull()][string]$IterationStatus)
 
-    if (-not (Test-ClosedIterationStatus -IterationStatus $IterationStatus)) {
+    if ([string]::IsNullOrWhiteSpace($IterationStatus)) {
         return $false
     }
-    foreach ($sentence in @($IterationStatus.ToLowerInvariant() -split '[.;:!?](?:\s+|$)|\s+[-\u2013\u2014]\s+')) {
-        $claim = [regex]::Match($sentence, '\b(?:closed|closeout complete|closure complete)\b')
-        if (-not $claim.Success) {
-            continue
+    $claim = '(?:closed|(?:iteration-)?closeout complete|closure complete)'
+    $tail = '(?:\s+(?:via|by|on|at|after|with)\b.*)?'
+    $forms = @(
+        ('^' + $claim + $tail + '$'),
+        ('^(?:the\s+)?(?:feature\s+\d+\s+)?iteration(?:\s+\d+)?\s+(?:(?:is|was|has been)\s+)?(?:formally\s+)?' + $claim + $tail + '$')
+    )
+    foreach ($clause in @($IterationStatus.ToLowerInvariant() -split '[.;](?:\s+|$)|\s+[-–—]\s+')) {
+        $text = $clause.Trim()
+        foreach ($form in $forms) {
+            if ($text -match $form) {
+                return $true
+            }
         }
-        $before = $sentence.Substring(0, $claim.Index)
-        # "cannot", any n't contraction (straight or curly apostrophe), "unable" and
-        # "no longer" negate too.
-        if ($before -match '\b(?:not|never|yet|to be|will be|awaiting|pending|until|unless|once|if|cannot|unable|no longer)\b' -or $before -match "n['’]t\b") {
-            continue
-        }
-        return $true
     }
     return $false
 }
