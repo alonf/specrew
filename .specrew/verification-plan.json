@@ -214,7 +214,7 @@
         "-File",
         "tests/integration/validate-governance-changed-only.tests.ps1"
       ],
-      "timeout_seconds": 1800,
+      "timeout_seconds": 1200,
       "env_refs": [
         "PATH",
         "PATHEXT",

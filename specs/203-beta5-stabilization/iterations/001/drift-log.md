@@ -2270,3 +2270,25 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   (about 282 s, 31 percent). Every suite stays named; no limit was raised.
 - **Class closure**: NONE — a lane's time is still compared with its limit only when the limit is hit; DRIFT-062's proposed
   lane-time report for iteration 002 would name a lane past three quarters of its limit.
+
+### DRIFT-069 — The changed-only validator suite rebuilt: 177 s instead of about 1200 s; its lane back at 1200 s (scope added; 2026-11-13)
+
+- **Ruling** (maintainer, 2026-11-12, B5F-062): build the fixture once and give each case a fresh copy; use a minimal
+  passing iteration in place of feature 013's; the cases must still prove the same thing; show the time before and after
+  and that each case still fails when its scope rule is broken; then put the lane limit back to 1200 s.
+- **Change** (`tests/integration/validate-governance-changed-only.tests.ps1`, test-only): one seeded repository and bare
+  remote built once (every git step fails loudly), each case a copy of it; a minimal feature 013 whose iteration 001 is
+  `complete` and passes the validator in about 8 s (it must stay `complete`: the deployed-file integrity check runs only
+  inside review validation, which the hand-edit case needs) and whose iteration 002 is `executing` with no state file; the
+  scratch folder moved to a uniquely named temp folder; a guard that the closed-iteration banner's source still lists
+  013/001. The 15 PASS lines and the 53 assertions are textually unchanged.
+- **Timing**: about 1200 s before (the 2d65e5fe sweep timed out at 1200 s; 1284 s alone on d246051c); 177 s and 183 s after.
+- **Each case fails when its rule is broken** (mutations of the scope code in `validate-governance.ps1` and
+  `shared-governance.ps1`, each restored): changed-only selection widened (5 cases red), auto-scope never triggering (4),
+  the origin/main fallback removed (2), -FullRun ignored (1), the conflicting-flags check removed (1), main no longer
+  full-repo (1), the forced-unscoped list emptied (2) or widened (2), an undetectable base kept scoped (3), the
+  closed-iteration filter disabled (7), the deployed-integrity check disabled (1); every one of the 14 cases is red under
+  at least one.
+- **Lane**: `f203-i001-validator-scope` back to 1200 s (DRIFT-062's stopgap of 1800 s removed).
+- **Points**: scope added by the maintainer's ruling of 2026-11-12, about 0.5; the capacity file is unchanged.
+- **Class closure**: the suite's own mutation evidence above; DRIFT-062's lane-time report remains proposed for iteration 002.

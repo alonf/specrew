@@ -116,100 +116,237 @@ function Reset-ScratchRoot {
     }
 }
 
-function New-Workspace {
-    param([Parameter(Mandatory = $true)][string]$WorkspaceName)
 
-    $workspaceRoot = Join-Path $scratchRoot $WorkspaceName
-    if (Test-Path -LiteralPath $workspaceRoot) {
-        Set-Location $repoRoot
-        for ($attempt = 1; $attempt -le 5; $attempt++) {
-            try {
-                Remove-Item -LiteralPath $workspaceRoot -Recurse -Force
-                break
-            }
-            catch {
-                if ($attempt -eq 5) {
-                    throw
-                }
+# B5F-062 (maintainer ruling 2026-11-12): this suite tests the validator's SCOPE rules - which iterations a run
+# validates - not iteration content. It used to copy the repository's real feature 013 into a fresh git repo for
+# every case (about 8 s each) and then validate that feature's full-size closed iteration (about 64 s per run),
+# about 1284 s in all. The fixture is now built ONCE as a seeded git repo with a bare remote, and each case gets a
+# fresh copy of it, so cases stay independent. Feature 013 is replaced by a minimal feature with the same shape the
+# cases rely on:
+#   - iteration 001: touched by the scoped cases, a small but real `complete` iteration that passes the validator's
+#     checks for that status, and listed in .specrew/closed-iterations.yml (the closed-iteration filter's 1 skip);
+#   - iteration 002: open (`executing`), untouched, and invalid because it has no state.md - the
+#     `FAIL ... iterations/002` the unscoped cases must surface. It is committed without state.md (the old fixture
+#     deleted it per case after the seed commit; the diff base never contained the deletion either way).
+# The .specrew, .squad, .github and .specify copies are kept: the .specify mirror and its install record are what
+# the hand-edit case exercises.
+$minimalFeatureFiles = [ordered]@{
+    'iterations\001\plan.md'                   = @'
+# Iteration Plan: 001 - Scope fixture
 
-                Start-Sleep -Milliseconds 200
-            }
-        }
+**Schema**: v1
+**Status**: complete
+**Capacity**: 1/20 story_points
+**Started**: 2026-05-12
+**Completed**: 2026-05-12
+
+## Effort Model
+
+| Setting | Value |
+| --- | --- |
+| Effort Unit | story_points |
+| Capacity per Iteration | 20 |
+| Iteration Bounding | scope |
+| Time Limit (hours) | n/a |
+| Overcommit Threshold | 1.0 |
+| Defer Strategy | manual |
+| Calibration Enabled | true |
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Actual | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| T001 | Fixture task | FR-001 | US1 | 1 | Implementer | done | 1 | pass |
+'@
+    'iterations\001\state.md'                  = @'
+# Iteration State: 001
+
+**Schema**: v1
+**Last Completed Task**: T001 (Fixture task)
+**Tasks Remaining**: none
+**In Progress**: none
+**Baseline Ref**: commit 0000000 (fixture baseline)
+**Updated**: 2026-05-12
+**Current Phase**: complete
+**Iteration Status**: Closeout validation green; iteration 001 closed
+'@
+    'iterations\001\drift-log.md'              = @'
+# Drift Log: Iteration 001
+
+No drift events recorded.
+'@
+    'iterations\001\review.md'                 = @'
+# Review: Iteration 001
+
+**Overall Verdict**: accepted
+
+## Task Verdicts
+
+| Task | Verdict | Notes |
+| --- | --- | --- |
+| T001 | pass | Fixture task accepted. |
+
+## Gap Ledger
+
+No known gaps remain.
+'@
+    'iterations\001\retro.md'                  = @'
+# Retrospective: Iteration 001
+
+## Estimation Accuracy
+
+Planned 1, actual 1.
+
+## Drift Summary
+
+No drift.
+
+## Process Notes
+
+None.
+
+## Improvement Actions
+
+None.
+'@
+    'iterations\001\quality\hardening-gate.md' = @'
+# Hardening Gate: Iteration 001
+
+**Schema**: v1
+**Gate ID**: `pre-implementation-hardening`
+**Iteration Ref**: `specs/013-validator-hardening/iterations/001`
+**Overall Verdict**: ready
+**Reviewed By**: Fixture Reviewer
+**Reviewed At**: 2026-05-12
+**Post-Implementation Verification**: review accepted
+**Verified At**: 2026-05-12
+
+## Concern Review
+
+| Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `security-surface` | `security` | `not-applicable` | `not-applicable` | `not-needed` | None. | `false` | Fixture. | - |
+| `error-handling-expectations` | `error-handling` | `not-applicable` | `not-applicable` | `not-needed` | None. | `false` | Fixture. | - |
+| `retry-idempotency-requirements` | `retry-idempotency` | `not-applicable` | `not-applicable` | `not-needed` | None. | `false` | Fixture. | - |
+| `test-integrity-targets` | `test-integrity` | `not-applicable` | `not-applicable` | `not-needed` | None. | `false` | Fixture. | - |
+| `operational-resilience-concerns` | `operational` | `not-applicable` | `not-applicable` | `not-needed` | None. | `false` | Fixture. | - |
+'@
+    'iterations\002\plan.md'                   = @'
+# Iteration Plan: 002 - Untouched invalid fixture
+
+**Schema**: v1
+**Status**: executing
+**Capacity**: 1/20 story_points
+**Started**: 2026-05-13
+
+## Effort Model
+
+| Setting | Value |
+| --- | --- |
+| Effort Unit | story_points |
+| Capacity per Iteration | 20 |
+| Iteration Bounding | scope |
+| Time Limit (hours) | n/a |
+| Overcommit Threshold | 1.0 |
+| Defer Strategy | manual |
+| Calibration Enabled | true |
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Actual | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| T002 | Fixture task | FR-001 | US1 | 1 | Implementer | in-progress | - | - |
+'@
+}
+
+function Invoke-FixtureGit {
+    param(
+        [Parameter(Mandatory = $true)][string]$Step,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    # Every seed step is checked: a fixture step that fails silently makes every case below measure the wrong thing
+    # (B4F-018's class) - with no seed commit there is no `main`, no `origin/main`, and every scoped case reports
+    # `base-undetectable` for a reason that has nothing to do with scoping (census 34502784677).
+    $output = @(& git @Arguments 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw ("fixture seed: {0} failed: {1}" -f $Step, (($output | Where-Object { "$_" -notmatch 'LF will be replaced' }) -join ' | '))
     }
+}
 
-    $null = New-Item -ItemType Directory -Path $workspaceRoot -Force
+function New-SeedFixture {
+    param([Parameter(Mandatory = $true)][string]$SeedRoot)
+
+    $null = New-Item -ItemType Directory -Path $SeedRoot -Force
 
     foreach ($item in @('.specrew', '.squad', '.github', '.specify')) {
         $source = Join-Path $repoRoot $item
         if (Test-Path -LiteralPath $source) {
-            $destination = Join-Path $workspaceRoot $item
-            Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
+            Copy-Item -LiteralPath $source -Destination (Join-Path $SeedRoot $item) -Recurse -Force
         }
     }
 
     # This fixture exercises diff scoping, not campaign provenance. The source repository's live campaign store
-    # belongs to feature 199 and, when copied into this isolated Feature 013 workspace, correctly makes the legacy
-    # accepted review fail the beta3 feature/iteration evidence cross-check. Omit that unrelated authority state so
-    # the historical accepted artifact follows the validator's explicit no-store grandfathering arm.
-    $copiedAuthorityStore = Join-Path $workspaceRoot '.specrew\review\authority'
-    if (Test-Path -LiteralPath $copiedAuthorityStore) {
-        Remove-Item -LiteralPath $copiedAuthorityStore -Recurse -Force
-    }
+    # belongs to another feature and, copied into this isolated Feature 013 workspace, would make an accepted
+    # review fail the beta3 feature/iteration evidence cross-check. Omit that unrelated authority state so the
+    # accepted fixture review follows the validator's explicit no-store arm.
     # `.specrew/runtime` is ephemeral, gitignored, and NOT part of the tracked tree this fixture mirrors - a clean
-    # checkout never has it. On a developer machine it holds whatever every session left behind, including deep
-    # authority-snapshot trees whose paths exceed Windows' 260 characters once nested under .scratch/<workspace>/,
-    # and `git add -A` in the seed step then fails with "Filename too long" - silently, because every git call
-    # below discarded its output. With no seed commit there is no `main`, no `origin/main`, and every scoped case
-    # reports `base-undetectable` for a reason that has nothing to do with scoping (census 34502784677, and the
-    # same three cases locally). The seed step now proves it produced a commit, too.
-    $copiedRuntime = Join-Path $workspaceRoot '.specrew\runtime'
-    if (Test-Path -LiteralPath $copiedRuntime) {
-        Remove-Item -LiteralPath $copiedRuntime -Recurse -Force
+    # checkout never has it, and on a developer machine its deep authority-snapshot trees can exceed path limits.
+    foreach ($relative in @('.specrew\review\authority', '.specrew\runtime')) {
+        $copied = Join-Path $SeedRoot $relative
+        if (Test-Path -LiteralPath $copied) {
+            Remove-Item -LiteralPath $copied -Recurse -Force
+        }
     }
 
-    # Keep iteration 001 in the copied closed-index so the unscoped cases also prove the newer default closed
-    # filter. Iteration 002 is this suite's deliberately invalid untouched target; remove only that historical
-    # closeout entry so deleting its state.md below makes it an open invalid iteration rather than a skipped one.
-    $closedIndexPath = Join-Path $workspaceRoot '.specrew\closed-iterations.yml'
+    # Keep iteration 001 in the copied closed-index so the unscoped cases also prove the default closed filter.
+    # Iteration 002 is this suite's deliberately invalid untouched target; remove only its closeout entry so it is
+    # an open invalid iteration rather than a skipped one.
+    $closedIndexPath = Join-Path $SeedRoot '.specrew\closed-iterations.yml'
     if (Test-Path -LiteralPath $closedIndexPath) {
         $closedIndex = Get-Content -LiteralPath $closedIndexPath -Raw -Encoding UTF8
         $closedIndex = [regex]::Replace($closedIndex,
             '(?ms)^\s*-\s*feature:\s*013-validator-hardening\s*\r?\n\s*iteration:\s*002\s*\r?\n\s*closed_at:.*?(?:\r?\n|$)', '')
         Set-ContentUtf8 -Path $closedIndexPath -Content $closedIndex
     }
-
-    $featureDestination = Join-Path $workspaceRoot 'specs\013-validator-hardening'
-    $featureParent = Split-Path -Parent $featureDestination
-    if (-not (Test-Path -LiteralPath $featureParent)) {
-        $null = New-Item -ItemType Directory -Path $featureParent -Force
+    $closedIndexText = if (Test-Path -LiteralPath $closedIndexPath) { Get-Content -LiteralPath $closedIndexPath -Raw -Encoding UTF8 } else { '' }
+    if ($closedIndexText -notmatch '(?m)^\s*-\s*feature:\s*013-validator-hardening\s*\r?\n\s*iteration:\s*001\s*$') {
+        throw "fixture seed: $closedIndexPath no longer records 013-validator-hardening iteration 001 as closed; the closed-iteration filter cases depend on it."
     }
-    Copy-Item -LiteralPath $featureSource -Destination $featureParent -Recurse -Force
 
-    return $workspaceRoot
+    $featureRoot = Join-Path $SeedRoot 'specs\013-validator-hardening'
+    foreach ($relativePath in $minimalFeatureFiles.Keys) {
+        Set-ContentUtf8 -Path (Join-Path $featureRoot $relativePath) -Content $minimalFeatureFiles[$relativePath]
+    }
+
+    $remoteRoot = Join-Path $SeedRoot '.git-remote'
+    Invoke-FixtureGit -Step 'git init' -Arguments @('-C', $SeedRoot, 'init', '--quiet')
+    Invoke-FixtureGit -Step 'git config user.email' -Arguments @('-C', $SeedRoot, 'config', 'user.email', 'test@specrew.local')
+    Invoke-FixtureGit -Step 'git config user.name' -Arguments @('-C', $SeedRoot, 'config', 'user.name', 'Test User')
+    Invoke-FixtureGit -Step 'git config core.longpaths' -Arguments @('-C', $SeedRoot, 'config', 'core.longpaths', 'true')
+    Add-Content -LiteralPath (Join-Path $SeedRoot '.git\info\exclude') -Value ([Environment]::NewLine + '.git-remote/' + [Environment]::NewLine)
+    Invoke-FixtureGit -Step 'git add -A' -Arguments @('-C', $SeedRoot, 'add', '-A')
+    Invoke-FixtureGit -Step 'seed commit' -Arguments @('-C', $SeedRoot, 'commit', '-m', 'Seed validator fixture', '--quiet')
+    Invoke-FixtureGit -Step 'git branch -M main' -Arguments @('-C', $SeedRoot, 'branch', '-M', 'main')
+    $null = New-Item -ItemType Directory -Path $remoteRoot -Force
+    Invoke-FixtureGit -Step 'git init --bare' -Arguments @('-C', $remoteRoot, 'init', '--bare', '--quiet')
+    Invoke-FixtureGit -Step 'git remote add origin' -Arguments @('-C', $SeedRoot, 'remote', 'add', 'origin', $remoteRoot)
+    Invoke-FixtureGit -Step 'git push -u origin main' -Arguments @('-C', $SeedRoot, 'push', '--quiet', '-u', 'origin', 'main')
+    Invoke-FixtureGit -Step 'git checkout -b feature-026' -Arguments @('-C', $SeedRoot, 'checkout', '--quiet', '-b', 'feature-026')
+    # One pack instead of a loose object per file keeps the per-case copy small.
+    Invoke-FixtureGit -Step 'git repack' -Arguments @('-C', $SeedRoot, 'repack', '-a', '-d', '-q')
+    Invoke-FixtureGit -Step 'origin/main present' -Arguments @('-C', $SeedRoot, 'rev-parse', '--verify', 'refs/remotes/origin/main')
 }
 
-function Initialize-GitWorkspace {
-    param([Parameter(Mandatory = $true)][string]$WorkspaceRoot)
+function New-Workspace {
+    param([Parameter(Mandatory = $true)][string]$WorkspaceName)
 
-    $remoteRoot = Join-Path $WorkspaceRoot '.git-remote'
-    $null = & git -C $WorkspaceRoot init --quiet 2>&1
-    $null = & git -C $WorkspaceRoot config user.email 'test@specrew.local' 2>&1
-    $null = & git -C $WorkspaceRoot config user.name 'Test User' 2>&1
-    $null = & git -C $WorkspaceRoot config core.longpaths true 2>&1
-    $addOutput = @(& git -C $WorkspaceRoot add -A 2>&1)
-    if ($LASTEXITCODE -ne 0) { throw ("fixture seed: git add -A failed in {0}: {1}" -f $WorkspaceRoot, (($addOutput | Where-Object { $_ -notmatch 'LF will be replaced' }) -join ' | ')) }
-    $commitOutput = @(& git -C $WorkspaceRoot commit -m 'Seed validator fixture' --quiet 2>&1)
-    $null = & git -C $WorkspaceRoot rev-parse --verify HEAD 2>&1
-    # A fixture step that fails silently makes every case below measure the wrong thing (B4F-018's class): the
-    # seed commit is the base every scoped case diffs against, so its absence is a fixture failure, named here.
-    if ($LASTEXITCODE -ne 0) { throw ("fixture seed: no commit was produced in {0}: {1}" -f $WorkspaceRoot, ($commitOutput -join ' | ')) }
-    $null = & git -C $WorkspaceRoot branch -M main 2>&1
-    Add-Content -LiteralPath (Join-Path $WorkspaceRoot '.git\info\exclude') -Value ([Environment]::NewLine + '.git-remote/' + [Environment]::NewLine)
-    $null = New-Item -ItemType Directory -Path $remoteRoot -Force
-    $null = & git -C $remoteRoot init --bare --quiet 2>&1
-    $null = & git -C $WorkspaceRoot remote add origin $remoteRoot 2>&1
-    $null = & git -C $WorkspaceRoot push -u origin main 2>&1
-    $null = & git -C $WorkspaceRoot checkout -b feature-026 2>&1
+    # A fresh, independent copy of the seeded repository (working tree, .git and its own bare remote), on branch
+    # feature-026 with main pushed to origin - the state every case used to build from scratch.
+    $workspaceRoot = Join-Path $scratchRoot $WorkspaceName
+    Copy-Item -LiteralPath $seedRoot -Destination $workspaceRoot -Recurse -Force
+    Invoke-FixtureGit -Step "point $WorkspaceName at its own remote" -Arguments @('-C', $workspaceRoot, 'remote', 'set-url', 'origin', (Join-Path $workspaceRoot '.git-remote'))
+    return $workspaceRoot
 }
 
 function Commit-Workspace {
@@ -241,15 +378,6 @@ function Touch-RelativeFileForDiff {
     $content = Get-Content -LiteralPath $targetPath -Raw -Encoding UTF8
     Set-ContentUtf8 -Path $targetPath -Content ($content.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + '<!-- changed-only fixture touch -->' + [Environment]::NewLine)
     Commit-Workspace -WorkspaceRoot $WorkspaceRoot -Message "Touch $RelativePath"
-}
-
-function Remove-UntouchedStateArtifact {
-    param([Parameter(Mandatory = $true)][string]$WorkspaceRoot)
-
-    $statePath = Join-Path $WorkspaceRoot 'specs\013-validator-hardening\iterations\002\state.md'
-    if (Test-Path -LiteralPath $statePath) {
-        Remove-Item -LiteralPath $statePath -Force
-    }
 }
 
 function Remove-OriginRemote {
@@ -331,26 +459,25 @@ function Invoke-Validator {
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $validatorScriptPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
-$featureSource = Join-Path $repoRoot 'specs\013-validator-hardening'
-$scratchRoot = Join-Path $repoRoot '.scratch\validate-governance-changed-only'
+$closedIndexSource = Join-Path $repoRoot '.specrew\closed-iterations.yml'
+# A unique temp root: short paths (no Windows 260-character trouble under .scratch/<workspace>/), and two runs of
+# this suite cannot share or delete each other's workspaces.
+$scratchRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-vg-changed-only-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
+$seedRoot = Join-Path $scratchRoot 'seed'
 
-foreach ($requiredPath in @($validatorScriptPath, $featureSource)) {
+foreach ($requiredPath in @($validatorScriptPath, $closedIndexSource)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         Write-Fail "Missing changed-only validator dependency: $requiredPath"
         exit 1
     }
 }
 
-if (Test-Path -LiteralPath $scratchRoot) {
-    Reset-ScratchRoot -Path $scratchRoot
-}
+New-SeedFixture -SeedRoot $seedRoot
 
 $allChecksPassed = $true
 
 $explicitChangedOnlyWorkspace = New-Workspace -WorkspaceName 'explicit-changed-only'
-Initialize-GitWorkspace -WorkspaceRoot $explicitChangedOnlyWorkspace
 Touch-IterationForDiff -WorkspaceRoot $explicitChangedOnlyWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $explicitChangedOnlyWorkspace
 $explicitChangedOnlyResult = Invoke-Validator -ProjectPath $explicitChangedOnlyWorkspace -ChangedOnly -BaseBranch 'main'
 $explicitChangedOnlyChecksPassed = $true
 if (-not (Assert-True -Condition ($explicitChangedOnlyResult.ExitCode -eq 0) -FailureMessage 'Explicit -ChangedOnly validation should pass when only the touched iteration remains in scope.')) { $allChecksPassed = $false; $explicitChangedOnlyChecksPassed = $false }
@@ -369,9 +496,7 @@ if ($explicitChangedOnlyChecksPassed) {
 }
 
 $autoScopedWorkspace = New-Workspace -WorkspaceName 'auto-scoped-feature-branch'
-Initialize-GitWorkspace -WorkspaceRoot $autoScopedWorkspace
 Touch-IterationForDiff -WorkspaceRoot $autoScopedWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $autoScopedWorkspace
 $autoScopedResult = Invoke-Validator -ProjectPath $autoScopedWorkspace
 $autoScopedChecksPassed = $true
 if (-not (Assert-True -Condition ($autoScopedResult.ExitCode -eq 0) -FailureMessage 'Feature-branch validation with no flags should auto-scope and pass when only the touched iteration remains in scope.')) { $allChecksPassed = $false; $autoScopedChecksPassed = $false }
@@ -383,9 +508,7 @@ if ($autoScopedChecksPassed) {
 }
 
 $originHeadFallbackWorkspace = New-Workspace -WorkspaceName 'missing-origin-head'
-Initialize-GitWorkspace -WorkspaceRoot $originHeadFallbackWorkspace
 Touch-IterationForDiff -WorkspaceRoot $originHeadFallbackWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $originHeadFallbackWorkspace
 Remove-OriginHeadTrackingRef -WorkspaceRoot $originHeadFallbackWorkspace
 $originHeadFallbackResult = Invoke-Validator -ProjectPath $originHeadFallbackWorkspace
 $originHeadFallbackChecksPassed = $true
@@ -400,9 +523,7 @@ if ($originHeadFallbackChecksPassed) {
 # tools/maintenance/refresh-specify-mirror-record.ps1, only from an exact copy of extensions/. This case proves the
 # refresh did not weaken W43: a hand edit to a deployed file, with its source unchanged, still fails the validator.
 $handEditWorkspace = New-Workspace -WorkspaceName 'deployed-hand-edit'
-Initialize-GitWorkspace -WorkspaceRoot $handEditWorkspace
 Touch-IterationForDiff -WorkspaceRoot $handEditWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $handEditWorkspace
 Add-Content -LiteralPath (Join-Path $handEditWorkspace '.specify\extensions\specrew-speckit\scripts\validate-governance.ps1') -Value '# hand-patched to clear a blocker; extensions/ unchanged' -Encoding UTF8
 $handEditResult = Invoke-Validator -ProjectPath $handEditWorkspace -ChangedOnly -BaseBranch 'main'
 $handEditChecksPassed = $true
@@ -413,9 +534,7 @@ if ($handEditChecksPassed) {
 }
 
 $fullRunWorkspace = New-Workspace -WorkspaceName 'full-run-override'
-Initialize-GitWorkspace -WorkspaceRoot $fullRunWorkspace
 Touch-IterationForDiff -WorkspaceRoot $fullRunWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $fullRunWorkspace
 $fullRunResult = Invoke-Validator -ProjectPath $fullRunWorkspace -FullRun
 $fullRunChecksPassed = $true
 if (-not (Assert-True -Condition ($fullRunResult.ExitCode -ne 0) -FailureMessage '-FullRun should bypass auto-scope and continue to validate untouched invalid iterations.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
@@ -428,7 +547,6 @@ if ($fullRunChecksPassed) {
 }
 
 $conflictingFlagsWorkspace = New-Workspace -WorkspaceName 'conflicting-flags'
-Initialize-GitWorkspace -WorkspaceRoot $conflictingFlagsWorkspace
 $conflictingFlagsResult = Invoke-Validator -ProjectPath $conflictingFlagsWorkspace -ChangedOnly -FullRun
 $conflictingFlagsChecksPassed = $true
 if (-not (Assert-True -Condition ($conflictingFlagsResult.ExitCode -ne 0) -FailureMessage 'Passing both -ChangedOnly and -FullRun should fail fast.')) { $allChecksPassed = $false; $conflictingFlagsChecksPassed = $false }
@@ -438,9 +556,7 @@ if ($conflictingFlagsChecksPassed) {
 }
 
 $mainWorkspace = New-Workspace -WorkspaceName 'main-default-full-repo'
-Initialize-GitWorkspace -WorkspaceRoot $mainWorkspace
 Checkout-MainBranch -WorkspaceRoot $mainWorkspace
-Remove-UntouchedStateArtifact -WorkspaceRoot $mainWorkspace
 $mainResult = Invoke-Validator -ProjectPath $mainWorkspace
 $mainChecksPassed = $true
 if (-not (Assert-True -Condition ($mainResult.ExitCode -ne 0) -FailureMessage 'Main-branch validation with no flags should stay full-repo and surface untouched iteration failures.')) { $allChecksPassed = $false; $mainChecksPassed = $false }
@@ -452,13 +568,11 @@ if ($mainChecksPassed) {
 }
 
 $sessionStateWorkspace = New-Workspace -WorkspaceName 'session-state-only'
-Initialize-GitWorkspace -WorkspaceRoot $sessionStateWorkspace
 $sessionPromptPath = Join-Path $sessionStateWorkspace '.specrew\last-start-prompt.md'
 if (-not (Test-Path -LiteralPath $sessionPromptPath -PathType Leaf)) {
     Set-ContentUtf8 -Path $sessionPromptPath -Content "# Session prompt fixture`n"
 }
 Touch-RelativeFileForDiff -WorkspaceRoot $sessionStateWorkspace -RelativePath '.specrew\last-start-prompt.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $sessionStateWorkspace
 $sessionStateResult = Invoke-Validator -ProjectPath $sessionStateWorkspace -ChangedOnly -BaseBranch 'main'
 $sessionStateChecksPassed = $true
 if (-not (Assert-True -Condition ($sessionStateResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should stay scoped when only .specrew\last-start-prompt.md changes.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
@@ -469,9 +583,7 @@ if ($sessionStateChecksPassed) {
 }
 
 $identityNowWorkspace = New-Workspace -WorkspaceName 'identity-now-only'
-Initialize-GitWorkspace -WorkspaceRoot $identityNowWorkspace
 Touch-RelativeFileForDiff -WorkspaceRoot $identityNowWorkspace -RelativePath '.squad\identity\now.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $identityNowWorkspace
 $identityNowResult = Invoke-Validator -ProjectPath $identityNowWorkspace -ChangedOnly -BaseBranch 'main'
 $identityNowChecksPassed = $true
 if (-not (Assert-True -Condition ($identityNowResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should stay scoped when only .squad\identity\now.md changes.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
@@ -482,9 +594,7 @@ if ($identityNowChecksPassed) {
 }
 
 $configWorkspace = New-Workspace -WorkspaceName 'config-global-state'
-Initialize-GitWorkspace -WorkspaceRoot $configWorkspace
 Touch-RelativeFileForDiff -WorkspaceRoot $configWorkspace -RelativePath '.specrew\config.yml'
-Remove-UntouchedStateArtifact -WorkspaceRoot $configWorkspace
 $configResult = Invoke-Validator -ProjectPath $configWorkspace -ChangedOnly -BaseBranch 'main'
 $configChecksPassed = $true
 if (-not (Assert-True -Condition ($configResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .specrew\config.yml changes.')) { $allChecksPassed = $false; $configChecksPassed = $false }
@@ -496,9 +606,7 @@ if ($configChecksPassed) {
 }
 
 $wisdomWorkspace = New-Workspace -WorkspaceName 'wisdom-global-state'
-Initialize-GitWorkspace -WorkspaceRoot $wisdomWorkspace
 Touch-RelativeFileForDiff -WorkspaceRoot $wisdomWorkspace -RelativePath '.squad\identity\wisdom.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $wisdomWorkspace
 $wisdomResult = Invoke-Validator -ProjectPath $wisdomWorkspace -ChangedOnly -BaseBranch 'main'
 $wisdomChecksPassed = $true
 if (-not (Assert-True -Condition ($wisdomResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .squad\identity\wisdom.md changes.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
@@ -510,9 +618,7 @@ if ($wisdomChecksPassed) {
 }
 
 $noRemoteWorkspace = New-Workspace -WorkspaceName 'no-remote-default-full-repo'
-Initialize-GitWorkspace -WorkspaceRoot $noRemoteWorkspace
 Touch-IterationForDiff -WorkspaceRoot $noRemoteWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $noRemoteWorkspace
 Remove-OriginRemote -WorkspaceRoot $noRemoteWorkspace
 $noRemoteResult = Invoke-Validator -ProjectPath $noRemoteWorkspace
 $noRemoteChecksPassed = $true
@@ -526,9 +632,7 @@ if ($noRemoteChecksPassed) {
 }
 
 $detachedWorkspace = New-Workspace -WorkspaceName 'detached-head-default-full-repo'
-Initialize-GitWorkspace -WorkspaceRoot $detachedWorkspace
 Touch-IterationForDiff -WorkspaceRoot $detachedWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $detachedWorkspace
 Remove-OriginRemote -WorkspaceRoot $detachedWorkspace
 Checkout-DetachedHead -WorkspaceRoot $detachedWorkspace
 $detachedResult = Invoke-Validator -ProjectPath $detachedWorkspace
@@ -541,9 +645,7 @@ if ($detachedChecksPassed) {
 }
 
 $fallbackWorkspace = New-Workspace -WorkspaceName 'fallback-unscoped'
-Initialize-GitWorkspace -WorkspaceRoot $fallbackWorkspace
 Touch-IterationForDiff -WorkspaceRoot $fallbackWorkspace -RelativeIterationFile 'specs\013-validator-hardening\iterations\001\plan.md'
-Remove-UntouchedStateArtifact -WorkspaceRoot $fallbackWorkspace
 Remove-OriginRemote -WorkspaceRoot $fallbackWorkspace
 $fallbackResult = Invoke-Validator -ProjectPath $fallbackWorkspace -ChangedOnly
 $fallbackChecksPassed = $true
@@ -559,8 +661,11 @@ if ($fallbackChecksPassed) {
 }
 
 if (-not $allChecksPassed) {
+    # Kept for diagnosis; it is a uniquely named temp folder this run created.
+    Write-Host ("Fixture workspaces kept for inspection: {0}" -f $scratchRoot)
     exit 1
 }
 
+Reset-ScratchRoot -Path $scratchRoot
 Write-Pass 'Changed-only governance validation covers scoped iterations, global-state fallback, and full-validation fallback.'
 exit 0
