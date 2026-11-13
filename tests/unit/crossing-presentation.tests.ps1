@@ -337,6 +337,25 @@ try {
     foreach ($attempt in 'Yes, approved for before-implement', "  approved for before-implement.`nAlso run the lint.", 'approved for before-implement - is the plan committed?') {
         Assert-True (Test-SpecrewReplyCarriesApprovalPhrase -Reply $attempt -ApprovalPhrase 'approved for before-implement') ("an approval attempt still counts: '{0}'" -f ($attempt -replace "`n", ' / '))
     }
+
+    # -----------------------------------------------------------------------------------------------
+    # Feature 203 iteration review round C (finding 3; T011, FR-046): the record fails closed whatever the turn
+    # declares. A crossing this session already presented must not suppress the block once its pending record
+    # has gone missing or become unreadable - the fresh-session fixtures never reached that transition.
+    Write-Host 'Case 8: a presented crossing whose pending record then disappears or breaks still blocks and names the record'
+    foreach ($break in 'missing', 'unreadable') {
+        $h = New-PendingFixture; $fixtures.Add($h)
+        $sh = "sess-h-$break"
+        $h1 = Invoke-SessionTurn -Fixture $h -Session $sh -UserText 'Continue.' -Kind 'boundary' -Reply (Get-Packet -Fixture $h -Note 'Presented.')
+        $h2 = Invoke-SessionTurn -Fixture $h -Session $sh -UserText 'Where are we?' -Kind 'conversational' -Reply "At the tasks boundary.`n`n$mention"
+        Assert-True ((-not $h1.Blocked) -and (-not $h2.Blocked)) ("{0}: presented once, then suppressed while the record is intact" -f $break)
+        $stopRecord = Join-Path $h.Root '.specrew/runtime/pending-verdict-stop.md'
+        if ($break -eq 'missing') { Remove-Item -LiteralPath $stopRecord -Force }
+        else { [System.IO.File]::WriteAllBytes($stopRecord, [byte[]](0xFF, 0xFE, 0x00, 0xD8, 0xC3, 0x28, 0xA0, 0xA1)) }
+        $h3 = Invoke-SessionTurn -Fixture $h -Session $sh -UserText 'And now?' -Kind 'conversational' -Reply "Still at the tasks boundary.`n`n$mention"
+        Assert-True ($h3.Blocked) ("{0}: a conversational turn after the presented crossing's record broke is blocked" -f $break)
+        Assert-True ($h3.Output -match 'pending-verdict-stop\.md') ("{0}: the block names the broken pending-verdict record" -f $break)
+    }
 }
 finally {
     foreach ($fx in $fixtures) { try { Remove-Item -LiteralPath $fx.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
