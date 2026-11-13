@@ -127,7 +127,7 @@ A human running a design workshop is asked the problem facts that later lenses n
 
 **Why this priority**: Amendment A1. A good workshop is the foundation for the later stages, and the gaps found in iteration 001 leave decisions to be made late. The workshop must not get longer for what the human has to decide.
 
-**Independent Test**: The length test reports the reference profile's numbers at each depth; at Light it stays within 50 must-answer decision points and 18 typed replies.
+**Independent Test**: The length test reports the reference profile's numbers at each depth; at Light it stays within 51 must-answer decision points and 18 typed replies.
 
 **Acceptance Scenarios**:
 
@@ -179,15 +179,20 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
 
 - **FR-023**: product-domain MUST cover the six cross-cutting facts that the gap list found missing from later lenses:
   the named compliance or regulatory regime, data residency, the existing systems and data that must be carried over,
-  platform constraints (where it must run), who operates it and when, and the budget. At Light they MUST be shown as
-  recommendation lines, each with a default the system states without asking (what the repository and earlier answers
-  show, or "none stated" where nothing shows), accepted in one reply or changed line by line; product-domain's
-  must-answer count at Light stays at today's eight. At Standard and Deep they MUST be asked as questions. These replace
-  the six gap questions that repeat product-domain, which are NOT added to security-compliance, data-storage or
-  devops-operations.
+  platform constraints (where it must run), who operates it and when, and the budget.
+  - The compliance regime has no default. It MUST be asked as a question at every depth, including Light, and answered
+    with the named regulation or "none".
+  - At Light the other five MUST be shown as recommendation lines, each with a default the system states without
+    asking: what the repository and earlier answers show, or "not stated" where nothing shows. Who operates it defaults
+    to "not stated", never a guess. They are accepted in one reply or changed line by line. product-domain's
+    must-answer count at Light becomes nine: today's eight plus the compliance regime.
+  - At Standard and Deep all six MUST be asked as questions.
+
+  These replace the six gap questions that repeat product-domain, which are NOT added to security-compliance,
+  data-storage or devops-operations.
 - **FR-024**: Each FR-023 answer MUST be handed forward: the later lens it bears on shows it as that lens's recommended
-  answer, naming product-domain as its source. A "none stated" default is handed forward too, shown as "product-domain:
-  none stated", so the gap is visible where it matters. The plan MUST choose the mechanism that adds the least new
+  answer, naming product-domain as its source. A "not stated" default is handed forward too, shown as "product-domain:
+  not stated", so the gap is visible where it matters. The plan MUST choose the mechanism that adds the least new
   machinery.
 - **FR-025**: The remaining lens-specific gap questions MUST be added under their lenses' `### Problem questions`:
   - requirements-nfr: which regulatory or compliance obligations become NFRs
@@ -206,8 +211,8 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
   content for lenses this iteration does not touch is out of scope.
 - **FR-028**: A length test MUST compute, for the reference profile (product-domain, the agenda, the three always-on
   lenses, code-implementation, security-compliance, data-storage and integration-api) at Light, Standard and Deep:
-  must-answer decision points, typed replies, and recommendation lines. It MUST fail when Light exceeds 50 must-answer
-  decision points or 18 typed replies, and MUST fail when any other number changes without its recorded value being
+  must-answer decision points, typed replies, and recommendation lines. It MUST fail when Light exceeds 51 must-answer
+  decision points (today's 50 plus the compliance regime question of FR-023) or 18 typed replies, and MUST fail when any other number changes without its recorded value being
   updated in the same change. Each item is counted where it is shown: as a recommendation line at Light, as a
   must-answer point at Standard and Deep. A fact folded into an existing area still counts as its own line. A self-test
   MUST prove both failures.
@@ -261,13 +266,14 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
 - **SC-005**: The named CI steps pass on the feature branch's push, and Specrew CI, Test and Cross-Platform Validation all conclude green with no skipped gate job.
 - **SC-006**: The problem-side gap list covers all 11 lenses.
 - **SC-007** (iteration 002): The length test reports all three numbers for Light, Standard and Deep, before and after
-  the change. At Light the reference profile stays within 50 must-answer decision points and 18 typed replies. The plan
+  the change. At Light the reference profile stays within 51 must-answer decision points and 18 typed replies. The plan
   records the numbers.
 - **SC-008** (iteration 002): Every question added or changed carries a recommended answer, a reason and a named
   consumer that exists, and a test proves it.
-- **SC-009** (iteration 002): A fixture proves that at Light product-domain shows the six FR-023 facts as
-  recommendation lines with their defaults, accepted in one reply, with its must-answer count still eight; that at
-  Standard it asks them as questions; and that each answer, including "none stated", appears in its later lens as the
+- **SC-009** (iteration 002): A fixture proves that at Light product-domain asks the compliance regime as a
+  question (the named regulation or "none") and shows the other five FR-023 facts as recommendation lines with their
+  defaults, "not stated" where nothing shows, accepted in one reply, with its must-answer count nine; that at Standard
+  it asks all six as questions; and that each answer, including "not stated", appears in its later lens as the
   recommended answer, citing product-domain.
 - **SC-010** (iteration 002): The FR-025 questions sit under their lenses' problem headings, the iteration 001 parity
   and tagging tests still pass, and each lens's extractor count changes by exactly its added questions.

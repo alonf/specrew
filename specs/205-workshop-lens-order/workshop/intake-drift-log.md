@@ -48,3 +48,21 @@ crew session.
 **Disposition**: the answers are recorded in `workshop/iteration-002-problem-space.md` as the reviewer's, given under
 the maintainer's delegation. This record and the drift log are where that provenance lives. Iteration 002 has no
 `plan.md` yet, so its records are kept in the feature-level `workshop/` folder rather than an iteration folder.
+
+## DRIFT-205-INTAKE-005 — after a closed iteration, the clarify sync opens no approval point (finding for feature 203)
+
+**Observed**: 2026-11-13. With iteration 001 closed (last authorized boundary `iteration-closeout`), the clarify sync
+for Amendment A1 (`sync-boundary-state.ps1 -BoundaryType clarify -IterationNumber 002 -AuthCommitHash 881bc45b`) exited
+0 and wrote its boundary records (decisions, lifecycle event, identity), but opened no crossing:
+`pending_verdict_has_pending: false`, and `start-context.json` still names `iteration-closeout` as the last authorized
+boundary.
+
+**Impact**: a spec amendment for a later iteration reaches planning with no approval of its own.
+
+**Disposition (maintainer, 2026-11-13)**: Amendment A1 is approved at the plan boundary; the plan packet carries A1,
+the sizes, the split if needed, and the three length numbers. The clarify records are committed as bookkeeping. Nothing
+is built before the plan verdict. Recorded for feature 203 as a finding; it goes into iteration 002's hand-over to 203
+when that iteration's folder is created with its plan.
+
+**Also for the 203 hand-over (records only)**: the reviewer's prompt calls the workshop records binding
+(`worktree-reviewer.ps1:1139`), but `workshop/` is not among the files it is given (`review-design-context.ps1:104-133`).

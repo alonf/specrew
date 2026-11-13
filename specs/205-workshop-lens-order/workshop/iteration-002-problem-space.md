@@ -107,6 +107,18 @@ because product-domain is the first lens and nothing can be handed forward into 
 
 A default that would be wrong or misleading for one of the six goes to the maintainer at the clarify packet.
 
+### The maintainer's rulings on two defaults (typed in the crew session, 2026-11-13)
+
+The crew named two of the proposed defaults as possibly misleading, and the reviewer had left such cases to the
+maintainer. The maintainer ruled:
+
+- **Who operates it**: the default is "not stated", never a guess. It is handed forward like the others.
+- **Compliance regime**: no default. It is a question the human must answer at every depth, including Light: the named
+  regulation, or "none". The Light cap for must-answer decision points becomes 51.
+
+FR-023, FR-028, SC-007 and SC-009 say so. The maintainer also ruled that Amendment A1 is approved at the plan boundary,
+not at clarify (DRIFT-205-INTAKE-005).
+
 ## Scope of iteration 002 (reviewer, under delegation)
 
 - The lens-specific gap questions under those rules, the product-domain deepening and the hand-forward.
