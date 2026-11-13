@@ -305,9 +305,17 @@ function New-CensusFixture {
                 '        env:'
                 '          run: tests/integration/only-in-an-env-run.ps1'
                 '        run: pwsh -File tests/integration/ci-after-env-run.ps1'
+                # Review round 3, finding 6: a PowerShell block comment over several lines; the suite after it runs.
+                '      - name: A multi-line block comment'
+                '        shell: pwsh'
+                '        run: |'
+                '          <#'
+                '          tests/integration/only-in-a-multiline-block-comment.ps1'
+                '          #>'
+                '          & pwsh -File tests/integration/ci-after-block-comment.ps1'
             ) -join "`n") + "`n")
     foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1', 'tests/integration/ci-block-named.ps1',
-            'tests/integration/ci-after-env-run.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
+            'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
         [IO.File]::WriteAllText((Join-Path $root $file), "exit 0`n")
     }
     return $root
@@ -324,7 +332,8 @@ try {
     foreach ($probe in @('tests/integration/zz-probe.ps1', 'tests/integration/zz-probe.tests.ps1', 'tests/integration/ZzProbe.Tests.ps1',
             'tests/integration/deeper/zz_probe.ps1', 'tests/integration/only-in-a-comment.ps1', 'tests/integration/only-in-an-inline-comment.ps1',
             'tests/integration/only-in-a-step-name.ps1', 'tests/integration/only-in-a-block-comment.ps1', 'tests/integration/only-in-a-paths-filter.ps1',
-            'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1')) {
+            'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1',
+            'tests/integration/only-in-a-multiline-block-comment.ps1')) {
         $probePath = Join-Path $fixture $probe
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
         [IO.File]::WriteAllText($probePath, "exit 0`n")
