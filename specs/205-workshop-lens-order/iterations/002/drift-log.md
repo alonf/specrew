@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 8
+**Total drift events**: 9
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -133,6 +133,22 @@
 - **Resolution**: the deployed copy is left as it is, per T024. The consumer test reads the source. Reported at the
   review stop: a project gets the new section on its next `specrew update`.
 - **Class closure**: NONE — not a defect; the copy is refreshed by the normal update path outside this worktree.
+
+### DRIFT-009 — macOS hook-output journal wrote two appends twice (external CI failure; handed over at higher severity)
+
+- **Observed**: 2026-11-13, Cross-Platform Validation run 43478045076 on `0b3fc589`, attempt 1, job 132066984294
+  "Deterministic fake-provider review runtime (macos-latest)", step "Hook-output journal concurrent append (case e)
+  and outage buffer" (`tests/unit/journal-fault-injection.tests.ps1`): "FAIL: (e) the journal holds exactly one line
+  per append (4002/4000)" and "FAIL: (e) no degraded health transition" (the health record went degraded, then
+  recovered). The same job was green on Windows and Ubuntu; every other job of the run was green.
+- **Cause, as far as 205 can see**: not 205's change. The push touched lens files, the workshop skill, the spec
+  template, two tests and one CI step; nothing in the hook dispatcher or its journal. Two appends written twice reads
+  as the journal's retry writing a line that had already landed: product behaviour in the dispatcher, not a slow test.
+- **Resolution**: reported to the maintainer; one rerun ruled by the reviewer session under the maintainer's
+  delegation (not covered by the standing co-review-service exception). Attempt 2 passed: macOS job 132081743155 and
+  every other job green. `0b3fc589` is fully green.
+- **Class closure**: NONE — the dispatcher's journal belongs to feature 203's area. Handed over as H-019 at the higher
+  severity feature 206 gave HO-206-10 (the first macOS failure of the same case, with a different symptom).
 <!--
   Every new ### DRIFT-... event includes:
 

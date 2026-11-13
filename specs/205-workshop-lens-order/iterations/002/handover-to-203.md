@@ -78,3 +78,31 @@ verdict capture set them when it moves plan.md, so the file the validator requir
 it required.
 
 **Status**: open; owner feature 203.
+
+## H-019 — the hook-output journal writes concurrent appends twice on macOS (higher severity)
+
+**Severity**: higher, as feature 206 rated HO-206-10. This is not a timing assertion. The journal's retry wrote a line
+that had already landed, so a hook output record can appear twice. The health record also went degraded under a load
+the test expects it to absorb.
+
+**Failure scenario**: `tests/unit/journal-fault-injection.tests.ps1` case (e) part 1 runs 4 writers with 1,000 appends
+each against the hook-output journal. On macOS the journal held 4,002 lines for 4,000 appends ("FAIL: [macos] (e) the
+journal holds exactly one line per append (4002/4000)"), and "FAIL: [macos] (e) no degraded health transition" (health
+records: degraded, then recovered three times).
+
+**Observed**: 2026-11-13, feature 205, Cross-Platform Validation run 43478045076 on `0b3fc589`, job 132066984294
+(macos-latest), attempt 1. Attempt 2 (job 132081743155) passed, after one rerun the reviewer ruled under the
+maintainer's delegation. Windows and Ubuntu were green on attempt 1. 205 changed nothing in the dispatcher or the test.
+Recorded in 205's iteration 002 drift log as DRIFT-009.
+
+**Second failure of the same case on macOS in two days, with a different symptom**: feature 206's HO-206-10 (run
+43315180135 on `103a5e3b`, job 131521200957) saw case (e) part 2 fail: dispatcher pairs 2 to 5 exited non-zero and 8 of
+10 stop reasons were missing from the journal, while part 1 passed. Here part 1 failed instead: lines written twice.
+Lost records there, duplicated records here, both under concurrent appends on macOS.
+
+**Proposed class closure (for 203 to decide)**: make the journal append idempotent across a retry, for example by
+checking whether the record's id already landed before retrying, or by appending under an exclusive lock that the
+retry also holds. Have the test print each writer's retries and the duplicated lines, so the next failure shows which
+append was repeated.
+
+**Status**: open; owner feature 203.
