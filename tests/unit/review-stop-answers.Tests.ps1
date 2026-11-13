@@ -123,6 +123,29 @@ Describe 'the typed stop lines reach the fact writers (FR-006, FR-011)' {
         [string]$drop.authorization_ref | Should -BeLike 'superseded-by:typed-stop-answer:*'
     }
 
+    # Iteration review round A finding 2, second defect: the capture returned the earlier record for the same text whatever
+    # it was, so a line first sent by a scheduled prompt (refused when used) could never be typed again by the human.
+    It 'a line refused because a scheduled prompt sent it is recorded again when the human types it, and lands' {
+        $project = script:New-AnswerProject -Name 'retype' -Kind 'a-budget-spent' -Reason 'budget-spent'
+        script:Add-AnswerOpenFinding -Project $project
+        $text = 'drop finding finding-0123456789abcdef'
+        $shapes = @((Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests/fixtures/hook-payloads/claude/transcript-origins/record-shapes.json') -Raw | ConvertFrom-Json).shapes)
+        $scheduled = $shapes | Where-Object kind -eq 'scheduled'
+        $transcript = Join-Path $TestDrive ('scheduled-' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.jsonl')
+        $messageId = 'msg-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+        $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $messageId; sessionId = 's1'; timestamp = '2026-11-13T09:00:00.000Z'; message = [ordered]@{ role = 'user'; content = $text } }
+        if ($scheduled.turnOrigin) { $record.turnOrigin = [string]$scheduled.turnOrigin }
+        if ($scheduled.promptSource) { $record.promptSource = [string]$scheduled.promptSource }
+        if ($scheduled.isMeta -eq $true) { $record.isMeta = $true }
+        if ($scheduled.origin_kind) { $record.origin = [ordered]@{ kind = [string]$scheduled.origin_kind } }
+        [IO.File]::WriteAllText($transcript, (($record | ConvertTo-Json -Depth 6 -Compress) + "`n"), $script:Utf8)
+        $null = & pwsh -NoProfile -NonInteractive -File $script:CaptureRunner -RepoRoot $script:RepoRoot -Root $project.root -Text $text -HostKind 'claude' -MessageId $messageId -TranscriptPath $transcript 2>&1
+        @((script:Invoke-Landing -Project $project).landed).Count | Should -Be 0 -Because 'the scheduled prompt''s line is refused when used'
+        script:Invoke-Typed -Project $project -Text $text
+        @((script:Invoke-Landing -Project $project).landed).Count | Should -Be 1 -Because 'the human typed the same line, from a new turn'
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $project.store -CampaignId $script:CampaignId).Count | Should -Be 0
+    }
+
     It 'a line typed with no stop open records nothing' {
         $project = script:New-AnswerProject -Name 'none' -Kind 'd-host-outside-order' -NextHost 'copilot' -Reason 'host-order-exhausted'
         $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $project.store -CampaignId $script:CampaignId -HostName 'codex' -AuthorizationRef 'typed' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
