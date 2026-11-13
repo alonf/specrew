@@ -85,7 +85,7 @@ iteration 003 as a trim; see the feature plan's "Sizes and the point over the ca
 - Requirement scope: FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029 (FR-031 proposed for iteration 003).
 - User stories represented in current scope: US6.
 - Success criteria: SC-007 to SC-010 and SC-012 (SC-011 is iteration 003).
-- The task table is filled at the tasks stage; specrew-capacity-planning and specrew-traceability-check run then.
+- Tasks T018 to T026 are detailed in `tasks.md` ("Iteration 002 tasks"), with dependencies; every task traces to FR-023 to FR-029 or SC-012.
 
 ## Notes
 
