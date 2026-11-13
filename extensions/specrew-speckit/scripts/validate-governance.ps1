@@ -5741,9 +5741,13 @@ try {
     }
 
     # Proposal 085: -RebuildClosedIndex is a special early-exit mode. Walks every
-    # specs/<feature>/iterations/<iter>/state.md, detects closed iterations, and
-    # regenerates .specrew/closed-iterations.yml from scratch. Use after the index
-    # is deleted or appears stale.
+    # specs/<feature>/iterations/<iter>/state.md and adds to .specrew/closed-iterations.yml each iteration
+    # the canonical definition reads as closed by its state.md (FR-008a: Iteration Status complete or
+    # abandoned, or a status that claims closure in an affirmative form; never a frozen entry, never the old
+    # state.md text heuristic). Use after the index is deleted or appears incomplete.
+    # The index is append-only (review round 3, finding 3): every existing entry is kept as it is, with its
+    # closed_at and any closeout stamp, so a rebuild never turns a closed iteration open. New entries carry no
+    # stamp: closed_at is the rebuild time, not a closure time.
     #
     # Per Copilot review on PR #661: the rebuild must hold the same file lock that
     # Add-SpecrewClosedIterationEntry uses, otherwise a concurrent iteration-closeout
@@ -5762,62 +5766,67 @@ try {
         else { @() }
 
         # Build entries in memory (read-only state.md walk; no lock needed for reads).
+        $frozenKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
+        $rebuildClosedAt = Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'
         $entries = New-Object System.Collections.Generic.List[hashtable]
         foreach ($sf in $stateFiles) {
-            $entry = Get-SpecrewClosedIterationFromStateFile -StatePath $sf.FullName
-            if ($null -ne $entry) {
-                $null = $entries.Add(@{
-                    feature   = $entry.feature
-                    iteration = $entry.iteration
-                    closed_at = $entry.closed_at
-                })
-            }
+            $normalizedStatePath = $sf.FullName -replace '\\', '/'
+            if ($normalizedStatePath -notmatch 'specs/([^/]+)/iterations/([^/]+)/state\.md$') { continue }
+            $entryFeature = $Matches[1]
+            $entryIteration = Normalize-SpecrewIterationNumber -IterationNumber $Matches[2]
+            if ($frozenKeys -contains ('{0}/{1}' -f $entryFeature, $entryIteration)) { continue }
+            $entryStatus = Get-SpecrewIterationStatusValue -StatePath $sf.FullName
+            if (($entryStatus -notin @('complete', 'abandoned')) -and -not (Test-SpecrewClosureClaimStatus -IterationStatus $entryStatus)) { continue }
+            $null = $entries.Add(@{
+                feature   = $entryFeature
+                iteration = $entryIteration
+                closed_at = $rebuildClosedAt
+            })
         }
 
         # Acquire the same file lock Add-SpecrewClosedIterationEntry uses, then
         # write the complete YAML in one atomic operation. No interleaving possible.
         Invoke-WithFileLock -Path $indexPath -ScriptBlock {
-            # FR-008: an entry iteration closeout stamped (closed_at_source: closeout)
-            # is the durable record of a real closure. The rebuild keeps it, with its closure time, whether or not
-            # the state.md walk detects the iteration; only unstamped entries are regenerated.
+            # Every existing entry is kept first, unchanged (FR-008: a closeout stamp is the durable record of a
+            # real closure; an unstamped entry is still what makes its iteration closed today). Then each
+            # iteration the walk selected that the index does not hold yet.
             $existingIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
             $written = @{}
+            $indexedCount = 0
             $lines = @(
                 '# Specrew closed-iteration index (Proposal 085).',
                 '# Append-only. Append at iteration-closeout boundary via Add-SpecrewClosedIterationEntry.',
                 '# Regenerate from state.md walk via: validate-governance.ps1 -RebuildClosedIndex',
                 'closed:'
             )
+            foreach ($key in @($existingIndex.Keys | Sort-Object)) {
+                $kept = $existingIndex[$key]
+                $slash = $key.LastIndexOf('/')
+                $written[$key] = $true
+                $indexedCount++
+                $lines += "  - feature: $($key.Substring(0, $slash))"
+                $lines += "    iteration: $($key.Substring($slash + 1))"
+                $keptClosedAt = if ($kept -is [System.Collections.IDictionary] -and $kept.Contains('closed_at')) { [string]$kept['closed_at'] } else { '' }
+                $lines += "    closed_at: $(if ([string]::IsNullOrWhiteSpace($keptClosedAt)) { $rebuildClosedAt } else { $keptClosedAt })"
+                if ($kept -is [System.Collections.IDictionary] -and $kept.Contains('closed_at_source') -and [string]$kept['closed_at_source'] -eq 'closeout' -and -not [string]::IsNullOrWhiteSpace($keptClosedAt)) {
+                    $lines += '    closed_at_source: closeout'
+                }
+            }
             foreach ($e in $entries) {
                 $key = '{0}/{1}' -f $e.feature, $e.iteration
                 if ($written.ContainsKey($key)) { continue }
                 $written[$key] = $true
-                $kept = if ($existingIndex.ContainsKey($key)) { $existingIndex[$key] } else { $null }
+                $indexedCount++
                 $lines += "  - feature: $($e.feature)"
                 $lines += "    iteration: $($e.iteration)"
-                if ($null -ne $kept -and $kept['closed_at_source'] -eq 'closeout' -and -not [string]::IsNullOrWhiteSpace([string]$kept['closed_at'])) {
-                    $lines += "    closed_at: $($kept['closed_at'])"
-                    $lines += '    closed_at_source: closeout'
-                }
-                else {
-                    $lines += "    closed_at: $($e.closed_at)"
-                }
-            }
-            foreach ($key in @($existingIndex.Keys | Sort-Object)) {
-                $kept = $existingIndex[$key]
-                if ($written.ContainsKey($key) -or $kept['closed_at_source'] -ne 'closeout' -or [string]::IsNullOrWhiteSpace([string]$kept['closed_at'])) { continue }
-                $slash = $key.LastIndexOf('/')
-                $lines += "  - feature: $($key.Substring(0, $slash))"
-                $lines += "    iteration: $($key.Substring($slash + 1))"
-                $lines += "    closed_at: $($kept['closed_at'])"
-                $lines += '    closed_at_source: closeout'
-                $entries.Add(@{ feature = $key.Substring(0, $slash); iteration = $key.Substring($slash + 1); closed_at = $kept['closed_at'] }) | Out-Null
+                $lines += "    closed_at: $($e.closed_at)"
             }
             $combined = $lines -join [Environment]::NewLine
             Set-Content -LiteralPath $indexPath -Value $combined -Encoding UTF8
+            $script:RebuildIndexedCount = $indexedCount
         }
 
-        Write-Host ("[closed-iteration-index] rebuilt: {0} closed iterations indexed at {1}" -f $entries.Count, $indexPath)
+        Write-Host ("[closed-iteration-index] rebuilt: {0} closed iterations indexed at {1}" -f $script:RebuildIndexedCount, $indexPath)
         exit 0
     }
 
