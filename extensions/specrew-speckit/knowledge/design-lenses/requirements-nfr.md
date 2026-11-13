@@ -30,6 +30,7 @@ availability, maintainability, or compliance should shape the architecture.
 - Which requirements are unknown enough to require clarification?
 - Which acceptance criteria prove the quality, not only the happy path?
 - What is deliberately out of scope for this iteration?
+- Which regulatory or compliance obligations become NFRs? — Light: recommend "those that follow from product-domain's regime, or none when the regime is none" (the regime is already answered) → spec.md Problem Context: Regulation and compliance
 
 ### Solution questions
 

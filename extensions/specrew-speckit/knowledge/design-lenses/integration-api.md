@@ -22,6 +22,8 @@ message semantics explicit before implementation couples systems accidentally.
 ### Problem questions
 
 - What owns the contract?
+- Which outside systems exist, and whose contracts must be honoured? — Light: recommend "the systems product-domain's carry-over names, else none stated" (carry-over is already answered) → spec.md Problem Context: Outside systems and their limits
+- What are their limits, quotas and SLAs? — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Outside systems and their limits
 
 ### Solution questions
 

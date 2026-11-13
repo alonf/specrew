@@ -25,6 +25,9 @@ before the plan assumes a database or silently avoids one.
 - Is persistent storage required, or is derived/transient state enough?
 - What owns each data type?
 - How is retention handled?
+- What data exists? — Light: recommend "the data the spec's entities name" (already in the spec) → spec.md Problem Context: Data inventory
+- How sensitive is it? — Light: recommend "as product-domain's regime implies; no sensitive data stated when the regime is none" (the regime is already answered) → spec.md Problem Context: Data inventory
+- How much is there, and how fast does it grow? — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Data inventory
 
 ### Solution questions
 

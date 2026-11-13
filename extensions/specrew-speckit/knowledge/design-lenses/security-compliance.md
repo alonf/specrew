@@ -25,6 +25,7 @@ after implementation.
 
 - What data is sensitive?
 - What actions need audit records?
+- Who are the threat actors? — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Threat actors
 
 ### Solution questions
 

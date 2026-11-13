@@ -29,6 +29,7 @@ accessibility before planning implementation tasks.
 - What are the primary user journeys and interruption/recovery paths?
 - What accessibility, localization, RTL, theming, or regulatory constraints
   apply?
+- Who are the UI's users: their skills, devices and context of use? — Light: recommend "the users product-domain names, on the devices the repository targets" (both are already known) → spec.md Problem Context: Users of the interface
 
 ### Solution questions
 
