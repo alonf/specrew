@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 5
+**Total drift events**: 6
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -85,6 +85,22 @@
   verdict.
 - **Class closure**: NONE — the test and the stop-hook cap belong to feature 203. Handed over as H-017. It is a
   different test from those in H-006, and an inconclusive result that fails a gate is its own shape.
+
+### DRIFT-006 — the scaffolded state.md lacked two canonical fields once the plan moved to executing (local check; fixed)
+
+- **Observed**: 2026-11-13, local `validate-governance.ps1 -ProjectPath . -ChangedOnly` before pushing the
+  before-implement boundary commit `22337b64`: iteration 002 `state.md` "is missing canonical field 'Current Phase'"
+  and "... 'Iteration Status'". The same state.md passed CI on `f23f8941`; the verdict capture had moved the
+  iteration plan's Status from planning to executing in between.
+- **Cause, as far as 205 can see**: the iteration scaffold creates state.md without the two fields. The file passed
+  while the plan said planning, and failed once the verdict capture moved the plan to executing. The capture moves
+  plan.md but leaves state.md without the fields the validator then requires.
+- **Resolution**: stopped before the push and reported. The maintainer answered "yes" to adding the two lines. The
+  reviewer session then ruled the values (routine, under the maintainer's delegation): the same lines iteration 001
+  carried during its build, `Current Phase: before-implement` (the last authorized boundary, not the activity) and a
+  bare `Iteration Status: executing`, with the commit and next task in the Execution Summary. One records commit, the
+  checks rerun, then both commits pushed.
+- **Class closure**: NONE — the scaffold and the verdict capture belong to feature 203. Handed over as H-018.
 <!--
   Every new ### DRIFT-... event includes:
 

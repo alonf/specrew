@@ -60,3 +60,21 @@ wait for the hook's journal entry before reading its output), or have the suite 
 failure so a fixture defect does not read as a regression.
 
 **Status**: open; owner feature 203.
+
+## H-018 — the verdict capture moves plan.md to executing but leaves state.md without the fields the validator then requires
+
+**Severity**: low. The push of a boundary commit fails the local check on a file the boundary did not touch.
+
+**Failure scenario**: the iteration scaffold writes `state.md` without `**Current Phase**` and `**Iteration Status**`.
+While the plan says planning, the validator accepts it. The before-implement verdict capture moves the iteration
+`plan.md` Status to executing; from then on `validate-governance.ps1 -ChangedOnly` fails: "state.md is missing
+canonical field 'Current Phase'" and "... 'Iteration Status'".
+
+**Observed**: 2026-11-13, feature 205, iteration 002, local check before pushing the before-implement boundary commit
+`22337b64` (CI had passed the same state.md on `f23f8941`). Recorded in 205's iteration 002 drift log as DRIFT-006.
+
+**Proposed class closure (for 203 to decide)**: have the scaffold write the two fields from the start, or have the
+verdict capture set them when it moves plan.md, so the file the validator requires is written by the step that makes
+it required.
+
+**Status**: open; owner feature 203.

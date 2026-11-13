@@ -1,6 +1,8 @@
 # Iteration State: 002
 
 **Schema**: v2
+**Current Phase**: before-implement
+**Iteration Status**: executing
 **Last Completed Task**: (none)
 **Tasks Remaining**: (populate from plan.md)
 **In Progress**: (none)
@@ -9,7 +11,8 @@
 
 ## Execution Summary
 
-- Execution has not started yet.
+- Before-implement approved by the maintainer; boundary commit `22337b64`.
+- Next: T018 (the length test, red first).
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 
 ## Notes
