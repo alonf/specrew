@@ -45,8 +45,11 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Acceptance:** both cases green; with console input and a valid answer, behaviour unchanged; no fourth prompt.
   - **Trace:** FR-001; SC-001 (refusal half).
   - **Owns:** `scripts/internal/session-recovery.ps1`, `scripts/specrew-start.ps1`, `tests/unit/**`.
-- [ ] T002 [owner: Implementer] [sp: 0.5] **Over-claim dirty check: one path separator.**
-  - **Windows met; Unix evidence owed (2026-11-13), for the maintainer:** on Windows the unit suite is 3/3 and
+- [x] T002 [owner: Implementer] [sp: 0.5] **Over-claim dirty check: one path separator.**
+  - **Done (2026-11-13):** Unix evidence from the runner: Specrew CI run 43411715314 (attempt 2) on `75ddb2b9`, job
+    131847705487, the per-push step: "RESULT tests/unit/overclaim-dirty-check-separator.tests.ps1: 3 passed, 0 failed"
+    (maintainer's option (a), `6b2fa5e1`).
+  - **Before (2026-11-13):** on Windows the unit suite is 3/3 and
     `validator-hardening-iteration2.ps1`'s assertions 1 and 2 passed in its T015 run. No CI run has executed either on
     Ubuntu or macOS: the unit suite is release-cadence only, and the script is excluded (red at assertion 3).
   - **RED:** `tests/integration/validator-hardening-iteration2.ps1` assertions 1 and 2 (failing today).

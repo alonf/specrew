@@ -38,4 +38,6 @@ and `3b5dcadf`, T011 `85f62dc4`, T012 `ff0e78b9`. This suite covers the validato
 ## T002's Unix Evidence
 
 By the maintainer's option (a), `tests/unit/overclaim-dirty-check-separator.tests.ps1` runs in Specrew CI's per-push
-step on Ubuntu, through Pester (`6b2fa5e1`). T002 is marked done when that step is green on the runner.
+step on Ubuntu, through Pester (`6b2fa5e1`). Green on the runner: Specrew CI run 43411715314 (attempt 2) on `75ddb2b9`,
+job 131847705487, "3 passed, 0 failed in 310 s". T002 is done. The 310 s on the runner adds to the step's per-push time
+(the 23 scripts took 123 s on the first T015 run).

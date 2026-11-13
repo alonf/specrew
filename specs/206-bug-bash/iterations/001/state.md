@@ -4,10 +4,10 @@
 **Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T018
-**Tasks Remaining**: none planned (T002 Unix evidence owed; T003 remainder carried to iteration 002)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (remainder carried into iteration 002 as SC-002)
+**Tasks Remaining**: none planned (T003 remainder carried to iteration 002)
+**In Progress**: T003 (remainder carried into iteration 002 as SC-002)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-13T02:00:00Z
+**Updated**: 2026-11-13T12:30:00Z
 
 ## Execution Summary
 
@@ -116,6 +116,9 @@
 - T018 done 2026-11-13: the trigger-path check was accepted on the plan's own reading (implement-stage commits), and
   "fails as worded" is kept in `t018-acceptance.md`. A 206-only verification plan is proposed for the maintainer: five
   lanes, 455 s on this machine, approved by the maintainer and in the tracked plan (`54fcfc1c`; ten base lanes parked unchanged); record: `verification-plan-record.md`. `validate-governance-changed-only.tests.ps1` green on `cb9e8eca` (14/14). T002's suite added to the per-push CI step (`6b2fa5e1`).
+- T002 done 2026-11-13: its suite ran on Ubuntu in the per-push step, "3 passed, 0 failed" (Specrew CI run 43411715314,
+  attempt 2, on `75ddb2b9`, job 131847705487). The first attempt was stopped by item 13 (HO-206-8, second sighting); one
+  rerun, by the reviewer's ruling under the maintainer's delegation.
 
 ## Notes
 
