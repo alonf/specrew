@@ -166,6 +166,77 @@ closed:
     }
 }
 
+Describe '-RebuildClosedIndex keeps the closeout stamps (FR-008; review round 2, finding 5)' {
+    # The rebuild regenerated every entry from the state.md heuristic and wrote only feature, iteration and a
+    # new closed_at: an iteration closed by closeout after the since date lost its stamp and its closure time,
+    # and the dashboard check stopped judging it.
+    BeforeAll {
+        $script:RebuildRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('rebuild-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:RebuildRoot '.specrew') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:RebuildRoot '.squad') -Force
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $script:RebuildRoot '.squad\team.md')
+        foreach ($n in '001', '002', '003') {
+            $dir = Join-Path $script:RebuildRoot ('specs\910-rebuild\iterations\{0}' -f $n)
+            $null = New-Item -ItemType Directory -Path $dir -Force
+            $status = if ($n -eq '003') { 'abandoned' } else { 'complete' }
+            Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value ("# Iteration State: $n`n`n**Schema**: v2`n**Iteration Status**: $status`n")
+        }
+        Set-Content -LiteralPath (Join-Path $script:RebuildRoot 'specs\910-rebuild\spec.md') -Value '# Feature Specification: 910-rebuild' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $script:RebuildRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 910-rebuild
+    iteration: 001
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+  - feature: 910-rebuild
+    iteration: 002
+    closed_at: 2026-08-06T14:49:04Z
+  - feature: 910-rebuild
+    iteration: 003
+    closed_at: 2026-11-05T09:30:00Z
+    closed_at_source: closeout
+'@
+        $script:Since = [datetime]::new(2026, 5, 26)
+        $script:BeforeRebuild = Get-SpecrewClosedIterationIndex -ProjectRoot $script:RebuildRoot
+        $script:RebuildOutput = (@(& pwsh -NoProfile -File $script:Validator -ProjectPath $script:RebuildRoot -RebuildClosedIndex 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+        $script:RebuildExit = $LASTEXITCODE
+        $script:AfterRebuild = Get-SpecrewClosedIterationIndex -ProjectRoot $script:RebuildRoot
+    }
+
+    AfterAll {
+        if ($script:RebuildRoot -and (Test-Path -LiteralPath $script:RebuildRoot)) {
+            Remove-Item -LiteralPath $script:RebuildRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the rebuild runs' {
+        $script:RebuildExit | Should -Be 0 -Because $script:RebuildOutput
+    }
+
+    It 'keeps a closeout-stamped entry''s closure time and stamp' {
+        $script:AfterRebuild['910-rebuild/001'].closed_at | Should -Be '2026-11-01T10:00:00Z'
+        $script:AfterRebuild['910-rebuild/001'].closed_at_source | Should -Be 'closeout'
+    }
+
+    It 'keeps a closeout-stamped entry the state.md walk does not detect' {
+        $script:AfterRebuild.ContainsKey('910-rebuild/003') | Should -BeTrue
+        $script:AfterRebuild['910-rebuild/003'].closed_at | Should -Be '2026-11-05T09:30:00Z'
+        $script:AfterRebuild['910-rebuild/003'].closed_at_source | Should -Be 'closeout'
+    }
+
+    It 'leaves an unstamped entry unstamped' {
+        $script:AfterRebuild['910-rebuild/002'].closed_at_source | Should -BeNullOrEmpty
+    }
+
+    It 'the dashboard check''s applicability is the same before and after the rebuild' {
+        foreach ($n in '001', '002', '003') {
+            $before = Test-SpecrewClosedCheckApplies -ClosedIndex $script:BeforeRebuild -Feature '910-rebuild' -Iteration $n -Since $script:Since
+            $after = Test-SpecrewClosedCheckApplies -ClosedIndex $script:AfterRebuild -Feature '910-rebuild' -Iteration $n -Since $script:Since
+            $after | Should -Be $before -Because "iteration $n"
+        }
+    }
+}
+
 Describe 'T009: a recorded ruling is read from the Disposition section of state.md' {
     It 'finds the recorded ruling of <Key>' -ForEach @(
         @{ Key = '174-hook-driven-session-bootstrap/007' }
