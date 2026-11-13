@@ -454,6 +454,12 @@ foreach ($excludedPath in $rulingExclusions.Keys) {
 # working folder took the developer's gitignored session state with it (last-start-prompt.md, start-context.json,
 # and the authority, review and runtime stores), so `specrew start` met a stale prompt and the result depended on
 # whoever ran it. The copy takes the files git tracks.
+# T002's suite copied the whole .specrew folder into its fixture, so the git-ignored local review store came with it:
+# after a review round recorded a findings result, the fixture's accepted review.md failed the validator on this
+# machine and passed on CI. It copies only the files git tracks.
+$t002Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/unit/overclaim-dirty-check-separator.tests.ps1')
+Assert-True (($t002Text -match 'ls-files') -and ($t002Text -notmatch "Copy-Item -LiteralPath \`$source -Destination \`$root -Recurse")) "T002's fixture copies only the files git tracks under .specrew, .squad and .github, so its result does not depend on the local review store"
+
 $sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
 Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture copies only the files git tracks under .specrew, so its result does not depend on the developer's session files"
 # A fresh copy of a governed project has features but no session files, which `specrew start` reads as stale
