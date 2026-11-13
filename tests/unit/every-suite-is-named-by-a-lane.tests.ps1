@@ -452,6 +452,22 @@ $mfcVerdicts = & {
 Assert-True (-not [string]::IsNullOrWhiteSpace($mfcHelper) -and $mfcVerdicts.Mismatch -eq $false -and $mfcVerdicts.Valid -eq $true) ("mechanical-findings-contract.ps1 reports a schema mismatch as invalid when Test-Json returns false without throwing (mismatch: {0}; valid: {1})" -f
     $mfcVerdicts.Mismatch, $mfcVerdicts.Valid)
 
+# --- 206's review plan (maintainer, 2026-11-13, option 1) -----------------------------------------------------------
+# The review round reads only .specrew/verification-plan.json. For 206's round it names 206's five lanes, and the ten
+# lanes it named before (features 199 and 202) are parked, unchanged, in verification-plan.signoff-lanes.json, which
+# this guard reads too, so their suites stay named and they can be restored as they were.
+$f206Lanes = @('f206-unit-suites', 'f206-changed-integration', 'f206-census-guard', 'f206-governance-206', 'f206-deployed-hash-record')
+$planNow = Get-Content -LiteralPath (Join-Path $repoRoot '.specrew/verification-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$planIds = @($planNow.commands | ForEach-Object { [string]$_.command_id })
+Assert-True (($planIds -join ',') -eq ($f206Lanes -join ',')) ("the verification plan names exactly 206's five lanes, in order (found: {0})" -f ($planIds -join ', '))
+$parkedPath = Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json'
+$parkedJson = if (Test-Path -LiteralPath $parkedPath -PathType Leaf) { (Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress } else { '' }
+$baseJson = ((& git -C $repoRoot show 'd3e33550:.specrew/verification-plan.json' 2>$null) -join "`n" | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress
+Assert-True (-not [string]::IsNullOrWhiteSpace($baseJson) -and $parkedJson -ceq $baseJson) "the ten lanes the plan named at the branch base (d3e33550) are parked unchanged in verification-plan.signoff-lanes.json"
+
+# T002's Unix evidence (maintainer, 2026-11-13, option (a)): its suite runs in the per-push CI step on Ubuntu.
+Assert-True ($names.CiNamed.Contains('tests/unit/overclaim-dirty-check-separator.tests.ps1')) 'T002''s suite (overclaim-dirty-check-separator) is run by a per-push CI step, so its Unix evidence comes from the runner'
+
 Write-Host ''
 if ($script:Failures.Count -gt 0) {
     Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
