@@ -596,3 +596,18 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **Disposition (reviewer, 2026-11-13, under the maintainer's delegation):** it stays per push for now. For iteration
   002 planning: measure the parts, and decide between a smaller fixture (only the files the check reads) and the
   release manifest.
+
+## 29. T002's suite copied the local review store into its fixture, so its result depended on the machine
+
+- **Observed (2026-11-13):** the review plan's `f206-unit-suites` lane, run locally on `d11b02f5` before round 3,
+  failed: `tests/unit/overclaim-dirty-check-separator.tests.ps1` 1 passed, 2 failed. Its fixture's `review.md` says
+  accepted, and the validator judged it against round 2's findings result ("the active review campaign has no
+  completed, valid campaign result"). The same suite is green on CI.
+- **Cause:** the fixture copied the whole `.specrew`, `.squad` and `.github` folders, git-ignored files included, so
+  the local review store (`.specrew/review/authority/`, round 2's campaign) reached the fixture. CI has no local store.
+  The same class as SC-001's first fixture bug (DRIFT-015). Round 3's preflight runs this lane locally, so it would
+  have failed there too.
+- **Fixed in iteration 001:** the fixture copies only the files git tracks under those folders. The lane guard checks
+  it (RED 1/70 in `db1e0fda`).
+- **Not fixed:** `tests/integration/validator-hardening-iteration2.ps1` builds the same fixture the same way (line 132).
+  It is excluded as red for SC-002 and is not run; its fix belongs with SC-002 in iteration 002.
