@@ -73,6 +73,48 @@ function Get-UncommentedText {
     (@(Get-Content -LiteralPath $Path -Encoding UTF8) | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
 }
 
+# Review round 2, finding 6: a line with its shell comment removed. A '#' starts a comment at the line start or
+# after whitespace, outside quotes (PowerShell and bash agree on that much).
+function Remove-ShellLineComment {
+    param([string] $Line)
+    $quote = [char]0
+    for ($i = 0; $i -lt $Line.Length; $i++) {
+        $c = $Line[$i]
+        if ($quote -ne [char]0) { if ($c -eq $quote) { $quote = [char]0 }; continue }
+        if ($c -eq "'" -or $c -eq '"') { $quote = $c; continue }
+        if ($c -eq '#' -and ($i -eq 0 -or [char]::IsWhiteSpace($Line[$i - 1]))) { return $Line.Substring(0, $i) }
+    }
+    return $Line
+}
+
+# Review round 2, finding 6: what a workflow's steps execute - the text of each run: key (one line, or the
+# indented block after "run: |" / "run: >"), with shell comments removed. A step name, a trigger paths: filter,
+# an env: value and any comment name a file without running it, so they name nothing.
+function Get-WorkflowRunText {
+    param([string] $Path)
+    $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
+    $run = [Collections.Generic.List[string]]::new()
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -notmatch '^(?<indent>\s*)(?<dash>-\s+)?run:\s*(?<rest>.*)$') { continue }
+        $keyIndent = $Matches['indent'].Length + $(if ($Matches['dash']) { $Matches['dash'].Length } else { 0 })
+        $rest = $Matches['rest'].Trim()
+        if ($rest -match '^[|>][-+0-9]*\s*(?:#.*)?$') {
+            for ($j = $i + 1; $j -lt $lines.Count; $j++) {
+                $body = $lines[$j]
+                if (-not [string]::IsNullOrWhiteSpace($body) -and ($body.Length - $body.TrimStart().Length) -le $keyIndent) { break }
+                $run.Add((Remove-ShellLineComment -Line $body))
+            }
+            $i = $j - 1
+            continue
+        }
+        if ($rest.Length -ge 2 -and (($rest[0] -eq '"' -and $rest[-1] -eq '"') -or ($rest[0] -eq "'" -and $rest[-1] -eq "'"))) {
+            $rest = $rest.Substring(1, $rest.Length - 2)
+        }
+        $run.Add((Remove-ShellLineComment -Line $rest))
+    }
+    return (($run -join "`n") -replace '(?s)<#.*?#>', '')
+}
+
 # --- What the lanes, the release manifest and CI name ---------------------------------------------
 function Get-NamedTests {
     param([Parameter(Mandatory)][string] $Root)
@@ -118,7 +160,7 @@ function Get-NamedTests {
     $workflowRoot = Join-Path $Root '.github/workflows'
     if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
         foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
-            foreach ($hit in @(Get-TestPathsIn -Text (Get-UncommentedText -Path $workflow.FullName))) { [void]$ciNamed.Add($hit); [void]$named.Add($hit) }
+            foreach ($hit in @(Get-TestPathsIn -Text (Get-WorkflowRunText -Path $workflow.FullName))) { [void]$ciNamed.Add($hit); [void]$named.Add($hit) }
         }
     }
     # A registry runner that a CI step runs runs every script it lists (tests/support/test-census.ps1).
