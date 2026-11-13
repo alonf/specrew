@@ -87,3 +87,46 @@ Describe 'Over-claim dirty-tree check on a closed iteration (FR-002)' {
         $result.ExitCode | Should -Be 0 -Because $result.Text
     }
 }
+
+Describe 'The fixture takes every file git does not ignore under .specrew, .squad and .github (FR-002; bug list item 29)' {
+    # A review round's preflight runs this suite in a verification copy: a git worktree of the frozen tree, which
+    # leaves .specrew and .squad out, with those files restored into it UNTRACKED. A tracked-only copy therefore
+    # built a fixture with no .squad and no .specrew there, and the round's preflight failed. The fixture takes
+    # tracked and untracked files alike, and leaves out only what git ignores (the local review store).
+    BeforeAll {
+        $script:SnapshotLike = Join-Path ([System.IO.Path]::GetTempPath()) ('overclaim-snapshot-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $script:Workspaces.Add($script:SnapshotLike)
+        foreach ($dir in @('.github', '.squad', '.specrew\review\authority')) { $null = New-Item -ItemType Directory -Path (Join-Path $script:SnapshotLike $dir) -Force }
+        Set-Content -LiteralPath (Join-Path $script:SnapshotLike '.gitignore') -Value '.specrew/review/authority/' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $script:SnapshotLike '.github\tracked.md') -Value 'tracked' -Encoding UTF8
+        $null = & git -C $script:SnapshotLike init --quiet 2>&1
+        $null = & git -C $script:SnapshotLike add -A 2>&1
+        $null = & git -C $script:SnapshotLike -c user.name='Snapshot Fixture' -c user.email='snapshot-fixture@example.invalid' commit --quiet -m 'frozen tree without .specrew and .squad' 2>&1
+        # Restored after the commit, as the preflight restores its support files: present, untracked, not ignored.
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $script:SnapshotLike '.squad\team.md')
+        Set-Content -LiteralPath (Join-Path $script:SnapshotLike '.specrew\legacy-frozen.yml') -Value "schema: v1`nentries: []" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $script:SnapshotLike '.specrew\review\authority\local-result.json') -Value '{}' -Encoding UTF8
+
+        $realRoot = $script:RepoRoot
+        try {
+            $script:RepoRoot = $script:SnapshotLike
+            $script:SnapshotWorkspace = New-OverclaimWorkspace
+        }
+        finally {
+            $script:RepoRoot = $realRoot
+        }
+    }
+
+    It 'copies a tracked file' {
+        Test-Path -LiteralPath (Join-Path $script:SnapshotWorkspace '.github\tracked.md') | Should -BeTrue
+    }
+
+    It 'copies untracked files that git does not ignore, as the preflight''s restored support files are' {
+        Test-Path -LiteralPath (Join-Path $script:SnapshotWorkspace '.squad\team.md') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $script:SnapshotWorkspace '.specrew\legacy-frozen.yml') | Should -BeTrue
+    }
+
+    It 'leaves out what git ignores: the local review store' {
+        Test-Path -LiteralPath (Join-Path $script:SnapshotWorkspace '.specrew\review\authority\local-result.json') | Should -BeFalse
+    }
+}
