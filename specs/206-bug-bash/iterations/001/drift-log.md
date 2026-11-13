@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 22
-**Resolution rate**: 82% (18/22 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 23
+**Resolution rate**: 83% (19/23 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage)
 **Specification drift**: None detected (process drift only)
 
@@ -434,6 +434,21 @@ iteration 002 as a required item: feature 206 does not close without it; 022 rep
 - **Resolution**: reported for feature 203's triage; no change in 206.
 - **Class closure**: NONE — the fault is in code 206 must not touch; until 203 fixes it, a round launch checks the
   campaign's spend ledger, not the pending approval file.
+
+### DRIFT-206-I001-023 — round 3's preflight failed on my own fixture fix; lanes now run in the preflight's layout
+
+- **Recorded**: 2026-11-13, at the reviewer's ruling under the maintainer's delegation.
+- **What**: round 3 (approval captured 21:25:54 local, minted `cmp-206-bug-bash-i001-round-3`) stopped in its
+  preflight: `verification-command-failed:f206-unit-suites` after 554 s (run `run-20261113-192634642-269e543e`; the
+  engine says no round was used). The cause was bug list item 29's first fix: T002's fixture copied tracked files
+  only, and the preflight's verification copy holds `.specrew` and `.squad` as untracked files. My pre-round check
+  ran the lanes in this worktree with the full environment, so it could not see that.
+- **Resolution**: the fixture copies every file git does not ignore (item 29). Bug item 24 records the same rule for
+  the SC-001 script, for iteration 002.
+- **Class closure**: before a round, all five lanes run once in the preflight's layout: a copy of the reviewed tree
+  with `.specrew`, `.squad` and `.specify` restored untracked, the local review store present and ignored, an empty
+  environment plus each lane's `env_refs` and the preflight marker. That step sits next to the time-budget check, and
+  the round report states its result.
 
 <!--
   Every new ### DRIFT-... event includes:

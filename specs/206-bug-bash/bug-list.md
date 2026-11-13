@@ -530,6 +530,10 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   `git init` and one commit; the script exits 1 if the fixture's git top level is not the fixture. RED 1/52 in
   `e29b179f`, GREEN 52/52 in `e416edc6`; DRIFT-206-I001-018. Necessary, not sufficient: run 4 still wrote into this
   repository through item 23's route.
+- **For iteration 002 (reviewer, 2026-11-13, under the maintainer's delegation):** the script's `.specrew` copy takes
+  tracked files only (`7c8b5cf7`). A fixture must copy every file git does not ignore, tracked or untracked: a review
+  preflight runs in a verification copy that restores `.specrew` and `.squad` as untracked files, and a tracked-only
+  copy finds nothing there (item 29, round 3's preflight). The script refuses to run and is not changed now.
 
 ## 25. `specrew init` runs its Squad probe in the install root, even with `-DryRun`, and its cleanup fails silently
 
@@ -607,7 +611,14 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   the local review store (`.specrew/review/authority/`, round 2's campaign) reached the fixture. CI has no local store.
   The same class as SC-001's first fixture bug (DRIFT-015). Round 3's preflight runs this lane locally, so it would
   have failed there too.
-- **Fixed in iteration 001:** the fixture copies only the files git tracks under those folders. The lane guard checks
-  it (RED 1/70 in `db1e0fda`).
+- **First fix, wrong for the preflight:** the fixture copied only the files git tracks under those folders (RED 1/70
+  in `db1e0fda`, fix `df8575b0`, green here and on CI). Round 3's preflight (run `run-20261113-192634642-269e543e`,
+  no round used) then failed `f206-unit-suites`: the preflight runs in a verification copy, a git worktree of the
+  frozen tree, which leaves `.specrew` and `.squad` out and restores them **untracked**. The tracked-only copy found
+  neither there. The lane passed in the preflight's environment without that layout, which isolated the cause.
+- **Fixed in iteration 001:** the fixture copies every file git does not ignore, tracked or untracked; the local review
+  store stays out because git ignores it. The suite's own test builds the preflight's layout (RED 1 of 3 in
+  `5517cb3f`, fix `0d491189`), and the lane guard checks the command. All five lanes now run in the preflight's
+  layout before a round (DRIFT-023).
 - **Not fixed:** `tests/integration/validator-hardening-iteration2.ps1` builds the same fixture the same way (line 132).
   It is excluded as red for SC-002 and is not run; its fix belongs with SC-002 in iteration 002.
