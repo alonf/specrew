@@ -22,13 +22,38 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved for this feature; DRIFT-001 to DRIFT-003 class closure open)
 **Specification drift**: None detected
 
 ## Events
 
-No specification drift detected during Iteration 002 execution to date.
+### DRIFT-001 — the quality-profile resolver read the stack as Node plus a browser SPA again (observation, recurrence)
+
+- **Observed**: 2026-11-13, before-plan for iteration 002. `resolve-quality-profile.ps1` returned
+  `quality-profile.custom-composition.v1` with stack signals `node-rest-with-postgres` and `react-spa-public`, and the
+  plan scaffold called the scope "frontend-oriented".
+- **Real stack**: PowerShell 7 scripts, lens markdown, the spec template and tests.
+- **Resolution**: the plan states the real stack; the profile's required dimensions (code quality, design quality,
+  verification confidence, maintainability) still apply.
+- **Class closure**: NONE — the resolver is outside 205's scope. Recurrence of iteration 001's DRIFT-001 and feature
+  203's plan-verdict finding.
+
+### DRIFT-002 — the iteration plan scaffold rejects every requirement of this spec when given a scope (finding)
+
+- **Observed**: 2026-11-13. `scaffold-iteration-plan.ps1 -RequirementScope FR-022,FR-024` refused with
+  `Requirement(s) not found in spec: FR-022,FR-024`, although both are in `spec.md`'s Functional Requirements. The same
+  script with no scope listed them. The plan was scaffolded without a scope and its scope written by hand, as in
+  iteration 001.
+- **Class closure**: NONE — the scaffold is part of the deployed extension. Candidate for feature 203's hand-over.
+
+### DRIFT-003 — after a closed iteration, the clarify sync opens no approval point (finding, handed over)
+
+- **Observed**: 2026-11-13. Recorded first as DRIFT-205-INTAKE-005 (feature-level intake drift log), before this
+  iteration's folder existed. The clarify sync for Amendment A1 recorded its boundary but opened no crossing, so the
+  amendment reaches planning with no approval of its own.
+- **Resolution**: the maintainer approves A1 at this iteration's plan boundary.
+- **Class closure**: NONE — the sync is feature 203's area. Handed over as H-015.
 
 <!--
   Every new ### DRIFT-... event includes:

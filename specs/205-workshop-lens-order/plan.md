@@ -397,3 +397,156 @@ deployed copies under .specify/, .claude/, .agents/, .github/skills/, .cursor/  
 
 No constitution violations. The only new code is one refusal branch and one test file. The sweep is the most
 intricate part, and its definition is fixed above so it can be reviewed before it is written.
+
+## Iteration 002 plan (Amendment A1, Option A)
+
+**Input**: spec Amendment A1 (FR-023 to FR-029, FR-031; FR-030 is iteration 003), the iteration 002 workshop record
+`workshop/iteration-002-problem-space.md`, and the design analysis `iterations/002/design-analysis.md` (Option A,
+approved for plan by the maintainer on 2026-11-13). Amendment A1 is approved at this plan boundary (maintainer ruling,
+2026-11-13; DRIFT-205-INTAKE-005).
+
+**Iterations after this one** (the maintainer's ruling at the design decision): iteration 003 is the
+code-implementation lens refresh (FR-030), straight after 002, not waiting for feature 203. Iteration 004, after 203
+merges, holds the two-pass split, the back-check, amendments, sweeps, and the items iteration 001 carried forward.
+
+### What changes, Option A
+
+Everything lives in the lens files and is read by the agent. No new code runs in the workshop path. Two new checks are
+tests over the files.
+
+| Area | Change |
+| --- | --- |
+| `product-domain.md` | Six facts added to its decision areas, with depth content: the compliance regime is asked at every depth; the other five are recommendation lines at Light and questions at Standard and Deep. |
+| `product-domain.yml` (per feature) | Six new keys in the free-form `areas`; no schema change. |
+| Receiving lenses | Each hand-forward is one recommendation line naming the product-domain area key it comes from. |
+| Six lenses | The twelve FR-025 questions, under `### Problem questions`, each with the fixed suffix. |
+| Workshop skill | One recommendation block per lens, shown once, closed by one reply; "accept" closes a lens whose open items are all recommendations; product-domain asks the compliance regime at every depth. |
+| Spec template | A new `## Problem Context` section with one named line per fact (the FR-029 consumer). |
+| Tests | One new test file with two checks: the FR-028 length numbers and the FR-029 consumers. |
+
+### The six product-domain facts (FR-023, FR-024)
+
+| Fact | Area key | Light | Default when nothing shows | Handed forward to | Consumer in spec.md Problem Context |
+| --- | --- | --- | --- | --- | --- |
+| Compliance or regulatory regime | `compliance_regime` | must answer: the named regulation or "none" | no default | requirements-nfr, security-compliance | Regulation and compliance |
+| Data residency | `data_residency` | recommendation line | "not stated" | security-compliance, data-storage | Data residency |
+| Systems and data to carry over | `carry_over` | recommendation line | what the repository shows, else "not stated" | data-storage, integration-api | Systems and data carried over |
+| Where it must run | `platform_constraints` | recommendation line | what the repository shows, else "not stated" | devops-operations | Where it runs |
+| Who operates it, and when | `operators` | recommendation line | "not stated", never a guess | devops-operations, observability-resilience | Who operates it, and when |
+| Budget | `budget` | recommendation line | "not stated" | devops-operations, observability-resilience | Budget |
+
+A receiving lens shows the line as "product-domain: <answer>" or "product-domain: not stated". At Standard and Deep the
+product-domain facts are questions, and the receiving lenses still show them as recommendation lines.
+
+### The twelve lens-specific questions (FR-025, FR-026, FR-029)
+
+Default recommendations are proposals; the implementer may sharpen the wording, not the meaning.
+
+| Lens | Question | Light recommendation (reason) | Consumer |
+| --- | --- | --- | --- |
+| requirements-nfr | Which regulatory or compliance obligations become NFRs? | those that follow from product-domain's regime, or none when it is "none" (the regime is already answered) | Problem Context: Regulation and compliance |
+| ui-ux | Who are the UI's users: skills, devices, context of use? | the users product-domain names, on the devices the repository targets (both already known) | Problem Context: Users of the interface |
+| security-compliance | Who are the threat actors? | "not stated" (nothing to infer it from) | Problem Context: Threat actors |
+| data-storage | What data exists? | the data the spec's entities name (already in the spec) | Problem Context: Data inventory |
+| data-storage | How sensitive is it? | as product-domain's regime implies; "no sensitive data stated" when "none" | Problem Context: Data inventory |
+| data-storage | How much is there, and how fast does it grow? | "not stated" | Problem Context: Data inventory |
+| integration-api | Which outside systems exist, and whose contracts must be honoured? | the systems product-domain's carry-over names, else "none stated" | Problem Context: Outside systems and their limits |
+| integration-api | What are their limits, quotas and SLAs? | "not stated" | Problem Context: Outside systems and their limits |
+| observability-resilience | What do operators need to diagnose? | "not stated" | Problem Context: Operating needs |
+| observability-resilience | What SLO and alerting is expected? | "none stated" | Problem Context: Operating needs |
+| observability-resilience | Which failures does the domain expect? | "not stated" | Problem Context: Operating needs |
+| observability-resilience | What is the observability budget, and what must never be logged? | never log secrets or data product-domain marks sensitive; budget "not stated" | Problem Context: Operating needs |
+
+### Depth content for the touched lenses (FR-027)
+
+- **Light**: every existing question is asked as today; the added questions and the hand-forward lines are
+  recommendation lines; product-domain asks the compliance regime.
+- **Standard**: the added questions and product-domain's six facts are asked as questions; hand-forward lines stay
+  recommendation lines.
+- **Deep**: as Standard in this iteration. Deep content beyond that is later work.
+
+The touched lenses: product-domain, requirements-nfr, ui-ux, security-compliance, data-storage, integration-api,
+devops-operations (hand-forward lines only) and observability-resilience.
+
+### The question suffix (FR-026, FR-027, FR-029)
+
+One fixed form on the question's own bullet, so the iteration 001 extractor still returns one point per question:
+
+```text
+- How sensitive is it? — Light: recommend "as product-domain's regime implies" (the regime is already answered) → spec.md Problem Context: Data inventory
+- Who are the threat actors? — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Threat actors
+- What is the compliance or regulatory regime? — Light: ask → spec.md Problem Context: Regulation and compliance
+```
+
+Not valid: a recommendation with no reason, a consumer that is not a template section or a lens, a suffix split onto a
+second line, or a recommendation line written as a separate prompt.
+
+### Length numbers for the reference profile (FR-028)
+
+Before: counted from the lens files at `d4c11236`. After: the Option A projection from the tables above; the length
+test records the tested values.
+
+| Depth | Must-answer points (before → after) | Minimum typed replies (before → after) | Recommendation lines (before → after) |
+| --- | --- | --- | --- |
+| Light | 50 → 51 (cap 51) | 16 → 16 (cap 18) | 0 → 18 |
+| Standard | 50 → 63 | 16 → 16 | 0 → 6 |
+| Deep | 50 → 63 | 16 → 16 | 0 → 6 |
+
+At Light the 18 lines are product-domain's 5, the 6 hand-forward lines in requirements-nfr (1), security-compliance
+(2), data-storage (2) and integration-api (1), and the 7 added questions of those four lenses. At Standard and Deep the
+13 must-answer additions are product-domain's 6 and those 7.
+
+### Evidence the file tests cannot give: one recorded Light workshop run (maintainer's note)
+
+No code runs in the workshop, so no file test can prove that a lens shows its recommendations as one list or that
+"accept" closes it. One recorded Light run supplies that evidence:
+
+- a small sample feature in a scratch project under this session's temp folder, never in this worktree;
+- the deployed extension copied in by the two project-only deploy scripts; no `specrew init`, `specrew start` or
+  anything on the never-run list, and the home hook files hashed before and after;
+- a Light pass through product-domain and two touched lenses, with the transcript kept as evidence;
+- the human replies are typed by the maintainer in that host session, because the workshop takes only typed replies.
+
+**Cost**: 2 SP of crew work, and about 30 to 45 minutes of the maintainer's typing. If the setup turns out to need
+any script on the never-run list, the crew stops and asks.
+
+**Placement**: iteration 003, straight after this one (see the next section). It runs against the shipped iteration
+002 lens files, before iteration 003's own changes.
+
+### Sizes and the point over the cap
+
+| Work | SP |
+| --- | --- |
+| product-domain: six facts, compliance asked at every depth, depth content (FR-023) | 2 |
+| hand-forward lines in the receiving lenses (FR-024) | 2 |
+| twelve lens-specific questions with recommendations and consumers (FR-025, FR-026) | 3 |
+| depth content for the touched lenses (FR-027) | 2.5 |
+| workshop skill conduct: one block, "accept" closes (FR-026) | 1.5 |
+| spec template `## Problem Context` and its copies (FR-029) | 1 |
+| one test file: length numbers and consumers, with self-tests (FR-028, FR-029) | 4 |
+| parity, extractor counts, workshop regression, CI steps, copies | 2 |
+| review-signoff crossing (retro calibration line, until H-003 and H-007 are fixed) | 2 |
+| **Total** | **20** |
+
+Three trims bring it to the cap of 20:
+
+- the length and consumer checks share one test file and its parser (-0.5);
+- FR-031, the proposal 220 status line, moves to iteration 003, where it records that iteration's own existence
+  (-0.5);
+- the recorded Light workshop run (2 SP) moves to iteration 003.
+
+The maintainer asked for a trim or a recorded overrun. An overrun cannot pass the governance check, which refuses a
+plan over capacity: "plan.md is over capacity: planned effort 22 story_points exceeds the allowed 20 story_points
+(capacity 20 x threshold 1.0). Configured defer_strategy is 'manual'". The run moves rather than drops, and iteration
+003 comes straight after this one. The capacity file is not changed.
+
+### Quality and risks
+
+- The quality resolver read the stack as Node plus a browser SPA again, as in iteration 001 (iteration 002 DRIFT-001).
+  The real stack is PowerShell 7 scripts, lens markdown and tests.
+- Each new check is written failing first: the length test against recorded numbers, and the consumer test on the
+  first added question without a consumer.
+- The iteration 001 parity, tagging and agenda tests run unchanged; the extractor counts change by exactly the added
+  questions (SC-010).
+- Risk: an added Light line could make the lens read as a wall. The skill's one-block rule and the recorded run are the
+  guard.

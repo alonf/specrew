@@ -171,13 +171,7 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - **FR-020**: The tagging pass MUST record a per-lens list of problem-side gaps as iteration 2's input, and MUST NOT add or reword questions, apart from the split rule and the FR-004 move.
 - **FR-021**: Every existing workshop test MUST be run locally and its result reported. Named `specrew-ci.yml` steps MUST cover the new parity test, the extended agenda-confirmation test, and every existing workshop test that covers a file this feature touches and passes. An already-red workshop test MUST be reported as a finding.
 - **FR-022**: Proposal 220 MUST move to `status: active` with `shipped-as: feature-205`. Its status history MUST gain a line recording the three iterations (1: order, tagging, parity, migration; 2: problem-space completeness; 3: two-pass split, back-check, amendments and sweeps after 203), the fifth order surface found at intake (the before-specify command list), and the choice of order option A. `proposals/INDEX.md` MUST follow in both its table row and its summary line.
-
-### Iteration 002 requirements (Amendment A1, 2026-11-13)
-
-Source: the iteration 002 workshop, answered by the reviewer session under the maintainer's delegation
-(`workshop/iteration-002-problem-space.md`). Input: `iterations/001/problem-gap-list.md`.
-
-- **FR-023**: product-domain MUST cover the six cross-cutting facts that the gap list found missing from later lenses:
+- **FR-023**: (Amendment A1, iteration 002; source `workshop/iteration-002-problem-space.md`) product-domain MUST cover the six cross-cutting facts that the gap list found missing from later lenses:
   the named compliance or regulatory regime, data residency, the existing systems and data that must be carried over,
   platform constraints (where it must run), who operates it and when, and the budget.
   - The compliance regime has no default. It MUST be asked as a question at every depth, including Light, and answered
@@ -224,8 +218,9 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
   show one "last checked" line per stack when it runs, marked stale after 90 days. Version numbers MUST appear only in
   that dated line and in the lens's Source Notes, each source with its URL and date. Facts that could not be confirmed
   MUST be left out.
-- **FR-031**: Proposal 220's status history MUST record the order agreed for after iteration 002: proposal 177 as its
-  own feature (implementer side first, reviewer side after feature 203 merges), then the testing lens (proposals 178 and
+- **FR-031**: Proposal 220's status history MUST record the iteration change (iteration 003 is the code-implementation
+  lens refresh; the two-pass split moves to iteration 004, after 203) and the order agreed for after iteration 002:
+  proposal 177 as its own feature (implementer side first, reviewer side after feature 203 merges), then the testing lens (proposals 178 and
   195 merged), and no new solution-side lens before 177.
 
 ### Traceability & Governance Requirements *(mandatory)*
@@ -239,7 +234,7 @@ Source: the iteration 002 workshop, answered by the reviewer session under the m
   - FR-004, FR-021 and FR-022 cut across the stories.
   - US6 (iteration 002): FR-023 to FR-029; FR-030 and FR-031 cut across.
 - **TG-002**: The implementer owns all FRs, the reviewer (codex co-review) owns review evidence, and the spec steward owns drift.
-- **TG-003**: FR-001 to FR-022 are in iteration 001. FR-023 to FR-031 (Amendment A1, problem-space completeness) are in iteration 002; if the plan shows they are too much for one iteration, the gap questions and the rules (FR-023 to FR-029) come first and the rest moves to a further iteration, stated at the plan boundary with the sizes. Iteration 003, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014).
+- **TG-003**: FR-001 to FR-022 are in iteration 001. FR-023 to FR-029 and FR-031 (Amendment A1, problem-space completeness) are in iteration 002. FR-030, the code-implementation lens refresh, is its own short iteration 003, straight after 002; it does not wait for feature 203 (the maintainer's ruling at the iteration 002 design decision, 2026-11-13). Iteration 004, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014), and the short-name lists and the review-signoff comment carried from iteration 001's gap list.
 - **TG-004**: Any spec or implementation conflict is recorded in the iteration drift log and routed through clarify, never edited silently into this spec.
 
 ### Key Entities

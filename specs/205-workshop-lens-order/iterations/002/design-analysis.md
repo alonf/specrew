@@ -172,4 +172,3 @@ twice. Option C builds what proposal 177 should build, ahead of it.
      capacity file is not changed
 - **Verdict given**: typed by the maintainer on 2026-11-13.
 - **Design-analysis draft commit**: `27b2d647`
-
