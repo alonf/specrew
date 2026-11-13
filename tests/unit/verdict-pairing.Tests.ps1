@@ -74,7 +74,7 @@ function New-Line {
     # One transcript entry as Claude writes it: a human entry carries its prompt id, origin and timestamp.
     param([string]$Role, [string]$Text, [string]$At)
     $entry = [ordered]@{ type = $Role; timestamp = $At; message = @{ role = $Role; content = @(@{ type = 'text'; text = $Text }) } }
-    if ($Role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' } }
+    if ($Role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' }; $entry['turnOrigin'] = 'human'; $entry['promptSource'] = 'typed' }
     return ($entry | ConvertTo-Json -Depth 8 -Compress)
 }
 function New-Packet { param([string]$From, [string]$To, [string]$At) return (New-Line -Role assistant -At $At -Text "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: $From -> $To --> What's your verdict?") }

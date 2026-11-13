@@ -145,7 +145,7 @@ function Complete-SessionTurn {
     $null = Invoke-Pwsh -Root $Fixture.Root -Script $declare -Arguments $declareArgs
     $transcript = Join-Path $Fixture.Root (".specrew/runtime/transcript-{0}.jsonl" -f $script:Turn)
     $lines = @(
-        ([pscustomobject]@{ type = 'user'; promptId = ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)); origin = [pscustomobject]@{ kind = 'human' }; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = $UserText }) } } | ConvertTo-Json -Depth 8 -Compress),
+        ([pscustomobject]@{ type = 'user'; promptId = ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)); origin = [pscustomobject]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = $UserText }) } } | ConvertTo-Json -Depth 8 -Compress),
         ([pscustomobject]@{ type = 'assistant'; message = [pscustomobject]@{ role = 'assistant'; content = @([pscustomobject]@{ type = 'text'; text = $Reply }) } } | ConvertTo-Json -Depth 8 -Compress)
     )
     [System.IO.File]::WriteAllLines($transcript, [string[]]$lines, [System.Text.UTF8Encoding]::new($false))
@@ -263,7 +263,7 @@ try {
     $captureTranscript = Join-Path $f.Root '.specrew/runtime/transcript-capture.jsonl'
     $captureLines = @(
         ([pscustomobject]@{ type = 'assistant'; message = [pscustomobject]@{ role = 'assistant'; content = @([pscustomobject]@{ type = 'text'; text = (Get-Packet -Fixture $f -Note 'Your approval did not register, so here is the decision again.') }) } } | ConvertTo-Json -Depth 8 -Compress),
-        ([pscustomobject]@{ type = 'user'; promptId = 'prompt-capture'; origin = [pscustomobject]@{ kind = 'human' }; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'approved for before-implement' }) } } | ConvertTo-Json -Depth 8 -Compress)
+        ([pscustomobject]@{ type = 'user'; promptId = 'prompt-capture'; origin = [pscustomobject]@{ kind = 'human' }; turnOrigin = 'human'; promptSource = 'typed'; message = [pscustomobject]@{ role = 'user'; content = @([pscustomobject]@{ type = 'text'; text = 'approved for before-implement' }) } } | ConvertTo-Json -Depth 8 -Compress)
     )
     [System.IO.File]::WriteAllLines($captureTranscript, [string[]]$captureLines, [System.Text.UTF8Encoding]::new($false))
     $null = Invoke-Pwsh -Root $f.Root -Script $handover -Arguments @('--host-kind', 'claude', '--source-event', 'UserPromptSubmit', '--session-id', $s, '--transcript-path', $captureTranscript, '--last-user-message', 'approved for before-implement', '--turn-origin', 'typed-user')

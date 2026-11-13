@@ -41,7 +41,7 @@ function New-CaptureProject {
     # Feature 203 T004 (FR-022): a human entry carries the host's message id and origin as Claude records them, so the writer can cite and re-read it.
     $lines = foreach ($t in $Turns) {
         $entry = @{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } }
-        if ($t.role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' } }
+        if ($t.role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' }; $entry['turnOrigin'] = 'human'; $entry['promptSource'] = 'typed' }
         ($entry | ConvertTo-Json -Depth 8 -Compress)
     }
     [System.IO.File]::WriteAllText($tx, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))

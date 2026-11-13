@@ -156,7 +156,7 @@ function Write-Transcript { param([string]$Root, [string]$Marker, [string]$Reply
     # Feature 203 T004: the human entry in Claude's recorded shape (promptId, origin), so the writer can cite and re-read it.
     $lines = foreach ($t in $turns) {
         $entry = @{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } }
-        if ($t.role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' } }
+        if ($t.role -eq 'user') { $entry['promptId'] = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $entry['origin'] = @{ kind = 'human' }; $entry['turnOrigin'] = 'human'; $entry['promptSource'] = 'typed' }
         ($entry | ConvertTo-Json -Depth 8 -Compress)
     }
     [System.IO.File]::WriteAllText($tx, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
