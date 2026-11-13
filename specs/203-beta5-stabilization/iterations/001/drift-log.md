@@ -2254,3 +2254,20 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   maintainer's ruling of 2026-11-13**, about 0.5 points with the replay; the capacity file is unchanged.
 - **Class closure**: `tests/unit/authorization-sender.Tests.ps1` (the recorded mid-turn message and a queued record of any
   other origin) and the record cells of `tests/unit/mint-path-fixtures.Tests.ps1`, in lane `f203-i001-authority-sender`.
+
+### DRIFT-068 — Lane f203-i001-suites split in three, each well under its limit (finding; 2026-11-13)
+
+- **What happened**: lane `f203-i001-suites` ran 870 s, 889 s and 883 s against its 900 s limit on the last three full
+  sweeps, after the authority suites left it (DRIFT-065). A review round runs these lanes first, so a timeout there would
+  cost the maintainer a round.
+- **Ruling** (reviewer session under the maintainer's delegation, 2026-11-13): split the lane so each part runs under about
+  60 percent of its limit, keeping every suite named; do not raise the limit.
+- **Measured** (each suite alone on a clean checkout of `a31fef1b`, with other work running, so slower than in a sweep):
+  18 suites, 1010 s in all; `review-budget-loop` 220 s and `verdict-pairing` 217 s are the two largest.
+- **Change** (`.specrew/verification-plan.json`): `f203-i001-suites` keeps 12 suites (about 390 s, 43 percent of 900);
+  `f203-i001-verdict-review` takes verdict-pairing, self-repo-review-integrity, review-signoff-after-clean-round and
+  pinned-review-launch (about 338 s, 38 percent); `f203-i001-budget` takes review-budget-loop and review-budget-snapshot
+  (about 282 s, 31 percent). Every suite stays named; no limit was raised.
+- **Class closure**: NONE — a lane's time is still compared with its limit only when the limit is hit; DRIFT-062's proposed
+  lane-time report for iteration 002 would name a lane past three quarters of its limit.
+
