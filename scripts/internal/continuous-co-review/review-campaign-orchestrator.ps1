@@ -1612,6 +1612,7 @@ function Get-ReviewCampaignLoopState {
             Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' }) | Select-Object -Last 1
     $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
     $violated = ($null -ne $lastSpent -and (Test-ReviewResultContainmentViolated -Result $lastSpent))
+    $lastComplete = ($null -ne $lastSpent -and [string](Get-ReviewAuthorityProperty -Object $lastSpent -Name 'completion') -ceq 'complete')
     # A judgment the human gave on that round's own stop lets the crew run it again on the same files.
     $judged = $false
     if ($null -ne $lastSpent) {
@@ -1637,7 +1638,12 @@ function Get-ReviewCampaignLoopState {
         open_findings = $openFindings
         containment_violated = $violated
         rerun_judged = $judged
-        ended_clean = ($null -ne $lastSpent -and -not $violated -and $openFindings.Count -eq 0)
+        # Iteration review round B finding 2 (FR-004, FR-005): SPENT IS NOT COVERED. A round is spent when a complete review
+        # was collected, but the controller can still degrade it (a review that examined no source on a source tree, a
+        # complete review from a run that then failed) to a result that cannot approve the files. Such a round ends
+        # nothing: only a complete result is clean coverage.
+        last_spent_complete = $lastComplete
+        ended_clean = ($lastComplete -and -not $violated -and $openFindings.Count -eq 0)
     }
 }
 
@@ -2925,7 +2931,11 @@ function Invoke-ReviewCampaignCommand {
             diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
         }
     }
-    if (-not [string]::IsNullOrWhiteSpace([string]$loopState.last_spent_digest) -and -not [bool]$loopState.rerun_judged) {
+    # Round B finding 2: the same files are refused only when the last round established something to wait on - clean
+    # coverage, or findings that need a change to the code. A degraded round with nothing open covered nothing, so the
+    # same files can be reviewed again while the budget lasts.
+    if (-not [string]::IsNullOrWhiteSpace([string]$loopState.last_spent_digest) -and -not [bool]$loopState.rerun_judged -and
+        ([bool]$loopState.ended_clean -or @($loopState.open_findings).Count -gt 0)) {
         # Fail-open on an unreadable digest: the snapshot that follows refuses on its own, and the budget still bounds it.
         $currentState = $null
         try { $currentState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root } catch { $currentState = $null }
