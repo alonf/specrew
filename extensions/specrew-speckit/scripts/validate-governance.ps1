@@ -5757,7 +5757,7 @@ try {
     # the canonical definition reads as closed by its state.md (FR-008a: Iteration Status complete or
     # abandoned, or a status that claims closure in an affirmative form; never a frozen entry, never the old
     # state.md text heuristic). Use after the index is deleted or appears incomplete.
-    # The index is append-only (review round 3, finding 3): every existing entry is kept as it is, with its
+    # The index is append-only: every existing entry is kept as it is, with its
     # closed_at and any closeout stamp, so a rebuild never turns a closed iteration open. New entries carry no
     # stamp: closed_at is the rebuild time, not a closure time.
     #
