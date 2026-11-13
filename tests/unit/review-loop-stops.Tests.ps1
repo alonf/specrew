@@ -76,7 +76,9 @@ BeforeAll {
     # that changed the frozen copy). Every invocation's review scope is kept in $script:StopScopes.
     $script:StopScopes = [System.Collections.Generic.List[string]]::new()
     function script:New-StopPorts([pscustomobject]$Repo, [string]$Kind, [string]$HostName = '') {
-        $findingCount = if ($Kind -cin @('clean', 'violated', 'resolved', 'still-open')) { 0 } else { 1 }
+        $findingCount = if ($Kind -cin @('clean', 'violated', 'resolved', 'still-open', 'docs-only')) { 0 } else { 1 }
+        # 'docs-only': a complete clean review that declares it examined only README.md (round B finding 2).
+        $examined = if ($Kind -ceq 'docs-only') { @('README.md') } else { @('src/app.ps1') }
         $title = if ($Kind -ceq 'reworded') { 'Store lookup throws when empty' } else { 'Empty store {0}' }
         $line = if ($Kind -ceq 'reworded') { 'src/app.ps1:3' } else { 'src/app.ps1:1' }
         $findings = @(for ($i = 1; $i -le $findingCount; $i++) {
@@ -86,7 +88,7 @@ BeforeAll {
         $scopes = $script:StopScopes
         $completion = if ($Kind -ceq 'partial') { 'partial' } else { 'complete' }
         $verdict = if ($Kind -ceq 'partial') { 'incomplete' } elseif ($findingCount -gt 0) { 'findings' } else { 'pass' }
-        $candidate = [pscustomobject][ordered]@{ schema_version = '1.0'; run_id = 'x'; target_digest = 'x'; completion = $completion; verdict = $verdict; summary = 'stop fixture'; findings = $findings; examined_paths = @('src/app.ps1') }
+        $candidate = [pscustomobject][ordered]@{ schema_version = '1.0'; run_id = 'x'; target_digest = 'x'; completion = $completion; verdict = $verdict; summary = 'stop fixture'; findings = $findings; examined_paths = @($examined) }
         $mismatch = ($Kind -ceq 'mismatch')
         $prompt = Join-Path $Repo.root 'prompt.txt'
         if (-not (Test-Path -LiteralPath $prompt)) { [IO.File]::WriteAllText($prompt, 'review the target', $script:Utf8) }
@@ -194,6 +196,28 @@ Describe 'the loop runs without a human between rounds (FR-005, FR-006; DRIFT-05
         [string]$again.reason | Should -BeExactly 'review-tree-unchanged'
         [string]$again.reason_detail | Should -Match 'ended clean'
         @($script:Releasing) | Should -Contain ([string](script:Get-StopSignoff -Repo $repo).route)
+    }
+}
+
+Describe 'a round the controller degraded does not end the review (iteration review round B finding 2)' {
+    # run-20261113-172304585-393b6102 (FR-004, FR-005): a complete clean candidate that examined only README.md, on a target
+    # holding source, is degraded at ingress to partial/incomplete and cannot approve the files. Its round is spent (a
+    # review was collected), but it establishes no clean coverage, so the same files must stay reviewable while budget
+    # remains: before, the unchanged-tree guard read it as ended clean and refused every retry, while sign-off refused it.
+    It 'a degraded round spends its round, is not clean, and the same files can be reviewed again' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'degraded')
+        [IO.File]::WriteAllText((Join-Path $repo.root 'README.md'), "# Demo`n", $script:Utf8)
+        script:Invoke-StopGit $repo.root @('add', '-A')
+        script:Invoke-StopGit $repo.root @('commit', '-qm', 'readme')
+        script:Set-StopBudgetGrant -Repo $repo -Total 3
+        $first = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-dg-1' -Kind docs-only
+        $first.invoked | Should -BeTrue -Because ([string]$first.reason)
+        [string]$first.result.completion | Should -BeExactly 'partial' -Because 'a review of no source on a source tree is degraded'
+        (script:Get-StopCounter -Repo $repo).rounds_used | Should -Be 1
+        (Get-ReviewCampaignLoopState -StoreRoot $repo.store -CampaignId $script:CampaignId).ended_clean | Should -BeFalse
+        $again = script:Invoke-StopRound -Repo $repo -RunId 'run-stop-dg-2' -Kind clean
+        $again.invoked | Should -BeTrue -Because ('the degraded round covered nothing, so the same files are reviewed again: ' + [string]$again.reason)
+        (Get-ReviewCampaignLoopState -StoreRoot $repo.store -CampaignId $script:CampaignId).ended_clean | Should -BeTrue
     }
 }
 
