@@ -82,7 +82,10 @@
   - 203's push of round A's fixes, `66bba965` (2026-11-13): Specrew CI `43435277375`, job `131921188473`, 13:45 UTC, the same
     case at `co-review-service.Tests.ps1:129`, 1 of 132 in the F-198 suite; the Contract lane was skipped. The push changed
     neither `co-review-service.ps1` nor its suite. Test and Cross-Platform Validation passed. Not rerun: the one-rerun
-    decision below names the 205 and 206 crews; 203's rerun is asked of the maintainer.
+    decision below names the 205 and 206 crews. It is the fourth sighting of this one case since 2026-11-12, across two
+    branches (three on 206, this one on 203), and the first on this branch, where the code and the test live. One rerun by
+    the reviewer's routine ruling under the maintainer's delegation (attempt 2 of the same run) passed, all four Specrew CI
+    jobs green, the Contract lane included, at 16:18 local.
   **Site 13 is the most frequent failure across the three crews**: three of feature 206's last four Specrew CI runs
   (`03bc7a48`, `75ddb2b9` attempt 1, `7f346037` attempt 1; 206's bug item 13 and HO-206-8). When it fails, the Contract lane
   is skipped, so the push has no clean CI result. **Maintainer's decision, 14:28 local on 2026-11-13 ("yes"), relayed by the
