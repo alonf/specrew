@@ -36,6 +36,16 @@ and operations choices as architecture, not afterthoughts.
   forge — a `.gitlab-ci.yml` on GitLab, a GitHub Actions workflow on GitHub, an Azure Pipelines file on
   Azure DevOps, and so on. Never default a non-GitHub project to GitHub Actions.
 
+## Handed Forward From Product-Domain
+
+Shown at every depth as recommendation lines, in this lens's one recommendation list. Each line reads the answer
+from the feature's product-domain record (`areas.<key>`) and shows it as "product-domain: <answer>", or
+"product-domain: not stated" when that is the answer. The human accepts it or changes it for this lens.
+
+- product-domain `platform_constraints` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Where it runs
+- product-domain `operators` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Who operates it, and when
+- product-domain `budget` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Budget
+
 ## Workshop Conduct
 
 - **Forge-aware CI lane (FR-024)**: when CI is in scope, propose the lane for the project's *own* forge

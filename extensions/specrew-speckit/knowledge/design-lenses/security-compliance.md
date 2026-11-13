@@ -35,6 +35,15 @@ after implementation.
 - What threat surfaces are introduced by scripts, plugins, APIs, file writes,
   shell commands, generated code, or third-party dependencies?
 
+## Handed Forward From Product-Domain
+
+Shown at every depth as recommendation lines, in this lens's one recommendation list. Each line reads the answer
+from the feature's product-domain record (`areas.<key>`) and shows it as "product-domain: <answer>", or
+"product-domain: not stated" when that is the answer. The human accepts it or changes it for this lens.
+
+- product-domain `compliance_regime` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Regulation and compliance
+- product-domain `data_residency` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Data residency
+
 ## Workshop Conduct
 
 - **Diagram for this lens**: trust boundaries + attack surface — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
