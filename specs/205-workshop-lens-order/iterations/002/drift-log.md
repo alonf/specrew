@@ -67,6 +67,8 @@
   iteration 001's did.
 - **What it reverses**: the iteration 001 retro's calibration line (2 SP for the review-signoff crossing until H-003 and
   H-007 are fixed), for this iteration only.
+- **Class closure**: NONE — a planning decision by the maintainer, not a defect. The underlying cost belongs to H-003
+  and H-007 (feature 203); the retro reports it.
 
 ### DRIFT-005 — an INCONCLUSIVE test result failed the Deterministic gate on a records-only commit (external CI failure; handed over)
 
