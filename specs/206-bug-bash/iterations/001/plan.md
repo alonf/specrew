@@ -60,7 +60,7 @@ tasks T003, T005, T008, T010 and T012, and acceptance check T018.
 | T013 | Shared test census for the lane guard and the full sweep, content-classified, one exclusion list (failing guard first) | FR-011 | US3 | 2.0 | Implementer | tests/support/test-census.ps1, tests/unit/every-suite-is-named-by-a-lane.tests.ps1, tests/full-powershell-test-sweep.ps1 | done | | | |
 | T014 | The 35 scripts: read for home writes or hook deployment (any call to specrew-update.ps1 or the hook deployment = not run, listed for the maintainer), run the safe ones with home hashes, durations; STOP with exclusions, red scripts and per-push total for the maintainer | FR-012 | US3 | 2.0 | Implementer | specs/206-bug-bash/iterations/001/** | done | | | |
 | T015 | Register the 35 per the maintainer's ruling; both B5F-036 suites green and registered | FR-012 | US3 | 1.0 | Implementer | .github/workflows/specrew-ci.yml, .specrew/release-gate-suites.txt, .specrew/verification-plan.json, tests/support/test-census.ps1 | done | | | |
-| T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run; no commit touches a full-validation trigger path | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | in-progress | | | |
+| T018 | Acceptance: no 203-protected path in the branch diff; .squad/active-features.yml not in it; home hashes unchanged across every run; no commit touches a full-validation trigger path | SC-007 | US1 | 0.5 | Implementer | specs/206-bug-bash/iterations/001/** | done | | | |
 
 ## FR to test mapping
 

@@ -1,0 +1,171 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "f206.i001.review.v1",
+  "commands": [
+    {
+      "command_id": "f206-unit-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$r = Invoke-Pester -Path 'tests/unit/recovery-choice-no-console.tests.ps1','tests/unit/overclaim-dirty-check-separator.tests.ps1','tests/unit/instruction-classifier-managed-blocks.tests.ps1','tests/unit/iteration-closed-definition.tests.ps1','tests/unit/legacy-frozen-judged-by-nothing.tests.ps1','tests/unit/closed-check-since-and-ruling.tests.ps1','tests/unit/review-verdict-names-status.tests.ps1','tests/unit/nightly-tracking-issue.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
+      ],
+      "timeout_seconds": 1200,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 iteration 001: the eight Pester suites its tasks wrote (T001, T002, T003, T006, T008, T009, T011, T012). Each was read for home writes before it ran; none starts specrew, deploys hooks or runs specrew-update. Measured alone 408 s against 1200 s (2026-11-13, home hook files and the repository unchanged)."
+    },
+    {
+      "command_id": "f206-changed-integration",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; $r = Invoke-Pester -Path 'tests/integration/closed-iterations-are-history.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { $fail = 1 }; foreach ($s in @('tests/integration/non-specrew-session-bypass.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 iteration 001: the two integration suites whose fixtures 206 changed for T008 and T009 (DRIFT-206-I001-003 and -009). Measured alone 23 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
+    },
+    {
+      "command_id": "f206-census-guard",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/every-suite-is-named-by-a-lane.tests.ps1','tests/unit/full-sweep-direct-exit.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 iteration 001: the lane guard on the shared test census (T013, T015; it lists the release sweep with -ListOnly and runs a fixture sweep in a temp repository) and the sweep's direct-exit check. Measured alone 9 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
+    },
+    {
+      "command_id": "f206-governance-206",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "& ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/206-bug-bash/iterations/001; exit $LASTEXITCODE"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 iteration 001: the governance validator on this iteration only. Measured alone 14 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
+    },
+    {
+      "command_id": "f206-deployed-hash-record",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        ". ./extensions/specrew-speckit/scripts/shared-governance.ps1; $r = Test-SpecrewDeployedExtensionIntegrity -ProjectRoot .; if (-not $r.checked) { Write-Host 'FAILED: no readable hash record (.specrew-extension-runtime.json), so nothing was checked'; exit 1 }; foreach ($p in @($r.drifted)) { Write-Host ('DRIFTED: {0}' -f $p) }; foreach ($p in @($r.missing)) { Write-Host ('MISSING: {0}' -f $p) }; if (@($r.drifted).Count + @($r.missing).Count -gt 0) { exit 1 }; Write-Host 'deployed copies match their hash record'; exit 0"
+      ],
+      "timeout_seconds": 60,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 (bug list item 10): every file under .specify/extensions/specrew-speckit/ matches its entry in .specrew-extension-runtime.json. Stricter than the validator, which skips the check when the record is absent. Measured alone 1 s against 60 s (2026-11-13, home hook files and the repository unchanged)."
+    }
+  ]
+}

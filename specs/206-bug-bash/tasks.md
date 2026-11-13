@@ -46,6 +46,9 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** FR-001; SC-001 (refusal half).
   - **Owns:** `scripts/internal/session-recovery.ps1`, `scripts/specrew-start.ps1`, `tests/unit/**`.
 - [ ] T002 [owner: Implementer] [sp: 0.5] **Over-claim dirty check: one path separator.**
+  - **Windows met; Unix evidence owed (2026-11-13), for the maintainer:** on Windows the unit suite is 3/3 and
+    `validator-hardening-iteration2.ps1`'s assertions 1 and 2 passed in its T015 run. No CI run has executed either on
+    Ubuntu or macOS: the unit suite is release-cadence only, and the script is excluded (red at assertion 3).
   - **RED:** `tests/integration/validator-hardening-iteration2.ps1` assertions 1 and 2 (failing today).
   - **Work:** the git-path normalization and the canonical artifact list use one separator; the finding names
     paths with it, and the test asserts it.
@@ -54,6 +57,9 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1` and its `.specify` mirror,
     `tests/integration/validator-hardening-iteration2.ps1`.
 - [ ] T003 [owner: Implementer] [sp: 1.5] **Change classifier ignores Specrew's matched marker blocks only.**
+  - **Carried into iteration 002 (2026-11-13):** the unit suite is green (10/10, including the regression fixed at T015,
+    DRIFT-206-I001-014); the remainder is assertion 3 of `validator-hardening-iteration2.ps1`, which is SC-002, moved to
+    iteration 002 by the maintainer (bug list item 21).
   - **RED:** assertion 3 of `validator-hardening-iteration2.ps1`, plus a classifier unit suite.
   - **Work:** before comparing, strip every `specrew-managed` block from both sides **only when its opening and
     closing markers form a matched pair**; any missing or unbalanced marker compares the whole file as today.
@@ -250,8 +256,9 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
 
 ## Phase 4: Acceptance
 
-- [ ] T018 [owner: Implementer] [sp: 0.5] **Acceptance checks.**
-  - **Run (2026-11-13), stopped for the maintainer:** four checks pass, and the 203 hand-over is closed (ten items).
+- [x] T018 [owner: Implementer] [sp: 0.5] **Acceptance checks.**
+  - **Done (2026-11-13; trigger-path check accepted on the plan's own reading, reviewer ruling under the maintainer's
+    delegation):** four checks pass, and the 203 hand-over is closed (ten items).
     "No commit touches a trigger path" fails as worded: two plan-stage commits (OVERRIDE 5 and its revert,
     DRIFT-206-I001-001), net zero. Record: `iterations/001/t018-acceptance.md`.
   - The branch diff against `main` touches nothing under `scripts/internal/continuous-co-review/**` or

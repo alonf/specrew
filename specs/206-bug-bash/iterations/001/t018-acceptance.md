@@ -12,12 +12,19 @@ the merge base with `origin/main` (the local `main` is stale and was not used).
 | The home hook-file hashes match before and after every run (SC-007) | **pass** | `~/.specrew/hooks/**`, `hook-bindings/**`, the launcher, the Codex, Cursor and Copilot hook files: unchanged against the baseline at every check of this iteration, before and after each run (257 recorded hash sets), and again now |
 | The 203 hand-over record is closed | **done** | `handover-to-203.md`: closed with ten items, HO-206-1 to HO-206-10 |
 
-**For the maintainer:** the trigger-path check needs a ruling: accept the two plan-stage commits as recorded in
-DRIFT-206-I001-001, or hold T018 open.
-
 **SC-007 and the repository, for the record:** SC-007 is about the home hook files, and it held. Two supervised runs of
 `project-path-resolution-regression.ps1` (T015, runs 3 and 4) did write into this repository: `state.md` both times,
 and an init probe folder in run 4. Both were restored at the maintainer's word, the evidence is kept, and the script
 now refuses to run (bug list items 23 to 25, DRIFT-206-I001-018 and -019).
 
 **Iteration 001 does not meet, by ruling:** SC-001 and SC-002. Both are required in iteration 002.
+
+## Ruling (reviewer, 2026-11-13, under the maintainer's delegation): the trigger-path check, accepted
+
+The check fails as worded: two commits on this branch touched a full-validation trigger path. It passes on the reading
+the plan itself gives: "No task in this iteration touches a trigger path". That reading covers implement-stage commits,
+and none of them touches one.
+
+The two commits are plan-stage. `435332da` (OVERRIDE 5, capacity 22) and its revert `a3778f1a` were made and undone at
+the maintainer's own "changes needed: a". Together they net to a zero diff against `d3e33550`, and they are recorded in
+DRIFT-206-I001-001. The wording of the check is left as it was, so the difference stays visible. T018 is done.

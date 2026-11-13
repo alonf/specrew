@@ -3,11 +3,11 @@
 **Schema**: v2
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T015
-**Tasks Remaining**: T018 (1 planned)
-**In Progress**: T002 (Windows green; Unix evidence owed), T003 (unit green; integration assertion 3 red, SC-002 required in iteration 002 by ruling 2026-11-12), T018 (stopped for the maintainer: one check fails as worded, `t018-acceptance.md`)
+**Last Completed Task**: T018
+**Tasks Remaining**: none planned (T002 Unix evidence owed; T003 remainder carried to iteration 002)
+**In Progress**: T002 (Windows green; Unix evidence owed), T003 (remainder carried into iteration 002 as SC-002)
 **Baseline Ref**: 52c9651cab6e84c6bcb362c11ebd20c882863255
-**Updated**: 2026-11-13T01:10:00Z
+**Updated**: 2026-11-13T02:00:00Z
 
 ## Execution Summary
 
@@ -113,6 +113,9 @@
   `active-features.yml` in no commit, the home hook files unchanged at every check, and the 203 hand-over closed with
   ten items. "No commit touches a trigger path" fails as worded: two plan-stage commits, net zero, DRIFT-206-I001-001.
   Record: `t018-acceptance.md`.
+- T018 done 2026-11-13: the trigger-path check was accepted on the plan's own reading (implement-stage commits), and
+  "fails as worded" is kept in `t018-acceptance.md`. A 206-only verification plan is proposed for the maintainer: five
+  lanes, 455 s on this machine, in `verification-plan-proposal.json`. The tracked `.specrew/verification-plan.json` is unchanged.
 
 ## Notes
 
