@@ -132,6 +132,61 @@ Describe 'A copilot-instructions.md missing on one side does not stop specrew st
     }
 }
 
+Describe 'A copilot-instructions.md holding only Specrew''s managed block does not stop specrew start (FR-003; review round 2, finding 1)' {
+    # The T015 fix checked the RAW sides for empty, then stripped the managed blocks and passed the result to the
+    # classifier's mandatory content parameters, which refuse an empty string. A file holding only the coordinator
+    # block (the shape Merge-SpecrewManagedInstructionSection writes into an empty file) strips to empty, so a
+    # committed heal of that block still stopped specrew start with the binding error.
+    BeforeAll {
+        $source = Get-Content -LiteralPath $script:StartScript -Raw
+        $script:ManagedOnlyFunction = [regex]::Match($source, '(?s)function Get-RestartTriggerFiles \{.*?\r?\n\}\r?\n').Value
+        $script:ManagedOnlyRepo = Join-Path ([IO.Path]::GetTempPath()) ('classifier-managed-only-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:ManagedOnlyRepo '.github') -Force
+        $script:ManagedOnlyPath = Join-Path $script:ManagedOnlyRepo '.github\copilot-instructions.md'
+        [IO.File]::WriteAllText($script:ManagedOnlyPath, (Merge-SpecrewManagedInstructionSection -ExistingContent '' -ManagedContent $script:Fragment))
+        & git -C $script:ManagedOnlyRepo init --quiet
+        & git -C $script:ManagedOnlyRepo add -A
+        & git -C $script:ManagedOnlyRepo -c user.name='Classifier Fixture' -c user.email='classifier-fixture@example.invalid' commit --quiet -m 'managed-only baseline'
+        $script:ManagedOnlyBaseline = (& git -C $script:ManagedOnlyRepo rev-parse HEAD).Trim()
+    }
+    AfterAll {
+        Remove-Item -LiteralPath $script:ManagedOnlyRepo -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'classifies a heal of the managed block as bookkeeping instead of throwing' {
+        $script:ManagedOnlyFunction | Should -Not -BeNullOrEmpty
+        . ([scriptblock]::Create($script:ManagedOnlyFunction))
+        $healed = Merge-SpecrewManagedInstructionSection -ExistingContent '' -ManagedContent ($script:Fragment + "`n`nA refreshed coordinator line.")
+        [IO.File]::WriteAllText($script:ManagedOnlyPath, $healed)
+        try {
+            $result = @(Get-RestartTriggerFiles -ResolvedProjectPath $script:ManagedOnlyRepo -BaselineCommitHash $script:ManagedOnlyBaseline -ChangedFiles @('.github/copilot-instructions.md'))
+            $result | Should -Not -Contain '.github\copilot-instructions.md'
+        }
+        finally {
+            & git -C $script:ManagedOnlyRepo checkout --quiet -- .github/copilot-instructions.md
+        }
+    }
+
+    It 'classifies user instructions added beside a managed-only baseline as behavior' {
+        . ([scriptblock]::Create($script:ManagedOnlyFunction))
+        $withUser = Merge-SpecrewManagedInstructionSection -ExistingContent "# Project rules`n`n## Coding`n`nUse tabs.`n" -ManagedContent $script:Fragment
+        [IO.File]::WriteAllText($script:ManagedOnlyPath, $withUser)
+        try {
+            $result = @(Get-RestartTriggerFiles -ResolvedProjectPath $script:ManagedOnlyRepo -BaselineCommitHash $script:ManagedOnlyBaseline -ChangedFiles @('.github/copilot-instructions.md'))
+            $result | Should -Contain '.github\copilot-instructions.md'
+        }
+        finally {
+            & git -C $script:ManagedOnlyRepo checkout --quiet -- .github/copilot-instructions.md
+        }
+    }
+
+    It 'classifies a managed-only pair on content without throwing' {
+        $healed = Merge-SpecrewManagedInstructionSection -ExistingContent '' -ManagedContent ($script:Fragment + "`n`nA refreshed coordinator line.")
+        $before = Merge-SpecrewManagedInstructionSection -ExistingContent '' -ManagedContent $script:Fragment
+        (Get-Classification -BeforeContent $before -AfterContent $healed).Classification | Should -Be 'bookkeeping'
+    }
+}
+
 Describe 'specrew start classifies the compared pair (FR-003)' {
     It 'passes the stripped pair to the classifier in Get-RestartTriggerFiles' {
         $source = Get-Content -LiteralPath $script:StartScript -Raw
