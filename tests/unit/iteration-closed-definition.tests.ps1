@@ -55,6 +55,9 @@ BeforeAll {
     # Review round 2, finding 2: negations the first list missed.
     New-FixtureIteration -Feature '901-fixture' -Iteration '018' -StateBody "**Iteration Status**: cannot be closed until review`n"
     New-FixtureIteration -Feature '901-fixture' -Iteration '019' -StateBody "**Iteration Status**: isn't closed`n"
+    # Review round 3, finding 2: modal wording describes a closure that has not happened.
+    New-FixtureIteration -Feature '901-fixture' -Iteration '020' -StateBody "**Iteration Status**: may be closed after review`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '021' -StateBody "**Iteration Status**: can be closed after review`n"
 
     Set-Content -LiteralPath (Join-Path $script:Root '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
 closed:
@@ -149,6 +152,55 @@ Describe 'Test-SpecrewIterationClosed: one definition (FR-008a)' {
                 'closed with no open findings',
                 'Iteration 001 is closed. Nothing cannot wait.',
                 'iteration closed on 2026-05-02; the next one is not started'
+            )) {
+            Test-SpecrewClosureClaimStatus -IterationStatus $status | Should -BeTrue -Because $status
+        }
+    }
+
+    It 'is not closed by modal, conditional or questioned wording (review round 3, finding 2)' {
+        # Maintainer ruling 2026-11-14: only the affirmative forms count; anything else before or after the
+        # closure word is no claim, without a list of the words that make it so.
+        foreach ($status in @(
+                'may be closed after review',
+                'can be closed after review',
+                'should be closed',
+                'might be closed',
+                'could be closed once the retro is in',
+                'must be closed before the next iteration',
+                'likely closed',
+                'closed? no',
+                'closed: not yet'
+            )) {
+            Test-SpecrewClosureClaimStatus -IterationStatus $status | Should -BeFalse -Because $status
+        }
+        foreach ($n in '020', '021') {
+            Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n | Should -BeFalse -Because "iteration $n"
+        }
+    }
+
+    It 'reads every affirmative closure form (review round 3, finding 2)' {
+        # The accepted forms, each clause read on its own (split at '.', ';' or a spaced dash):
+        #   <claim> [via|by|on|at|after|with ...]
+        #   [the] [feature NNN] iteration [NNN] [is|was|has been] [formally] <claim> [via|by|on|at|after|with ...]
+        # with <claim> one of: closed, closeout complete, iteration-closeout complete, closure complete.
+        foreach ($status in @(
+                'closed',
+                'Closed — iteration 002 delivered the authorized scope',
+                'closed via iteration-closeout boundary commit 17; feature-closeout remains pending explicit authorization',
+                'closed by alon fliess on 2026-05-12; next action requires separate feature-closeout authorization',
+                'closed after successful implementation, accepted review and complete retrospective',
+                'Iteration 001 is closed. Feature-closeout remains unopened pending fresh authorization.',
+                'iteration closed on 2026-05-13 via iteration-closeout boundary commit 16bbbac',
+                'iteration 001 formally closed via closeout.md reconciliation bookkeeping on 2026-05-17',
+                'feature 018 iteration 001 is closed at iteration-closeout. feature-closeout remains unopened',
+                'closeout validation green; iteration 002 closed',
+                'post-implementation verification recorded; iteration 002 closed with fr-016 delivered',
+                'retrospective complete - iteration closed',
+                'iteration-closeout complete on 2026-05-18; feature-closeout remains unopened',
+                'Closure complete',
+                'closeout complete',
+                'the iteration was closed',
+                'iteration 001 has been closed'
             )) {
             Test-SpecrewClosureClaimStatus -IterationStatus $status | Should -BeTrue -Because $status
         }
