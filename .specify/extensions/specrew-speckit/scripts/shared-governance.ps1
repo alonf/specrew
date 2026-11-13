@@ -806,7 +806,7 @@ function Get-SpecrewIterationStatusValue {
 
 function Test-SpecrewIterationRulingRecorded {
     # FR-008 (T009): true when state.md records a maintainer ruling on the iteration: a `## Disposition`
-    # section whose text names the maintainer's ruling or decision and carries its date (YYYY-MM-DD).
+    # section with a sentence that records the abandonment, by the maintainer's dated ruling, in an affirmative form.
     # 174/007, 197/006, 198/010 and 198/011 record one; an abandonment reason with no Disposition does not.
     param(
         [Parameter(Mandatory = $true)]
@@ -831,16 +831,21 @@ function Test-SpecrewIterationRulingRecorded {
     if ($section.Count -eq 0) {
         return $false
     }
-    # One sentence must record the abandonment as decided - it names the abandonment,
-    # the maintainer's ruling or decision and its date, and carries no negation, pending or conditional wording.
-    # A dated mention of a pending, refused or unrelated ruling is not a recorded abandonment.
-    $text = ($section -join ' ') -replace '\*', ''
+    # One sentence must record the abandonment in an affirmative form (maintainer ruling, 2026-11-14: only the
+    # listed forms count; a sentence in any other shape - rejected, declined, pending, proposed - is no ruling):
+    #   abandoned[ and superseded | , superseded by iteration NNN,][,] by the maintainer's ruling|decision of|on YYYY-MM-DD[ (note)]
+    #   [closed as ]abandoned[-superseded] (YYYY-MM-DD, maintainer's ruling|decision)
+    # The sentence starts with the abandonment and ends with the ruling's date (or one bracketed note after it).
+    $apostrophe = "['’]"
+    $date = '\d{4}-\d{2}-\d{2}'
+    $byRuling = "by the maintainer(?:$apostrophe" + 's)?\s+(?:ruling|decision)\s+(?:of|on)\s+' + $date
+    $bracketed = '\(' + $date + ",\s+maintainer(?:$apostrophe" + 's)?\s+(?:ruling|decision)\)'
+    $affirmative = '^(?:closed as\s+)?abandoned(?:-superseded)?(?:,?\s+(?:and\s+)?superseded(?:\s+by\s+iteration\s+\d+)?)?,?\s+(?:' + $byRuling + '|' + $bracketed + ')(?:\s*\([^)]*\))?$'
+    $text = (($section -join ' ') -replace '\*', '').ToLowerInvariant()
     foreach ($sentence in @($text -split '[.;!?](?:\s+|$)')) {
-        if ($sentence -notmatch '(?i)\babandon(?:ed|ment)?\b') { continue }
-        if ($sentence -notmatch "(?i)\bmaintainer(?:'s|’s)?\s+(?:ruling|decision)\b") { continue }
-        if ($sentence -notmatch '\b\d{4}-\d{2}-\d{2}\b') { continue }
-        if ($sentence -match '(?i)\b(?:not|never|yet|to be|will be|would be|awaiting|awaits|pending|until|unless|if|cannot|unable|proposed|requested)\b' -or $sentence -match "(?i)n['’]t\b") { continue }
-        return $true
+        if ($sentence.Trim() -match $affirmative) {
+            return $true
+        }
     }
     return $false
 }
