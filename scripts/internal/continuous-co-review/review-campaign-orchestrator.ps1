@@ -3331,6 +3331,26 @@ function Invoke-ReviewCampaignRun {
             # the status literal - could not see this line.
             return [pscustomobject]@{ status = 'not-started'; reason = ('claim-not-acquired:' + $claim.reason); invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path; slot_restored = [bool](Get-ReviewAuthorityProperty -Object $failed -Name 'slot_restored'); slot_restored_note = [string](Get-ReviewAuthorityProperty -Object $failed -Name 'slot_restored_note') }
         }
+        # Iteration review round B finding 1 (FR-004, FR-010): THE BUDGET IS DECIDED UNDER THE CLAIM. The command's budget check
+        # runs before this launch holds anything, so two launches can both pass it; a launch delayed while the other spends
+        # the last round then mints a launch grant of its own and reaches this point. The invocation claim is the one thing
+        # launches of a campaign cannot hold together, and a round's result is published before its claim is released, so
+        # the rounds counted here, holding the claim, are every round that will be spent before this one. A launch whose
+        # round is no longer in the budget is released here, before any reviewer runs: nothing is spent.
+        if (-not [string]::IsNullOrWhiteSpace($BudgetGrantId)) {
+            $budgetAtClaim = $null; $budgetReadFailure = ''
+            try { $budgetAtClaim = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $CampaignId -ExcludeRunId $RunId } catch { $budgetReadFailure = $_.Exception.Message }
+            if ($null -eq $budgetAtClaim -or [int]$budgetAtClaim.rounds_used -ge [int]$budgetAtClaim.budget_total) {
+                $reason = if ($null -eq $budgetAtClaim) { 'review-round-budget-unreadable-at-claim:' + $budgetReadFailure } else { 'review-round-budget-exhausted-at-claim' }
+                $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
+                $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed -Containment unknown
+                Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt $endedAt | Out-Null
+                Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
+                $detail = if ($null -eq $budgetAtClaim) { 'Specrew did not start the review, because it could not read how much of the review budget is left. Nothing was launched or spent.' }
+                else { ('Specrew did not start the review, because another review used the last round of the budget ({0} of {1}) while this one was starting. Nothing was launched or spent.' -f [int]$budgetAtClaim.rounds_used, [int]$budgetAtClaim.budget_total) }
+                return [pscustomobject]@{ status = 'not-started'; reason = $reason; reason_detail = $detail; invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path; slot_restored = [bool](Get-ReviewAuthorityProperty -Object $failed -Name 'slot_restored'); slot_restored_note = [string](Get-ReviewAuthorityProperty -Object $failed -Name 'slot_restored_note') }
+            }
+        }
         Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage claimed -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State claimed) | Out-Null
         Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'preflighted' -Message 'target, verification, store, contract, containment, harness, and runtime preflight passed' -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
 
