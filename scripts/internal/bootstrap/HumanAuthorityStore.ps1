@@ -2474,7 +2474,9 @@ function Resolve-SpecrewAuthorizationSender {
         [AllowNull()][AllowEmptyString()][string]$TurnIdentity,
         [AllowNull()][AllowEmptyString()][string]$Purpose,
         [AllowNull()][AllowEmptyString()][string]$HostKind = 'claude',
-        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o')),
+        # Iteration review round A finding 3: the authority audit reads the sender and stores nothing (it is read only).
+        [switch]$NoRecord
     )
     $result = [pscustomobject][ordered]@{ accepted = $false; sender = 'not-found'; peer_name = ''; peer_address = ''; reason = 'turn-not-found'; message = ''; record_uuid = '' }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
@@ -2527,6 +2529,7 @@ function Resolve-SpecrewAuthorizationSender {
         $result.reason = if ($s.accepted) { $(if ($s.fields_present) { 'typed-by-human' } else { 'fields-absent-text-rules' }) } else { 'not-typed-by-human' }
         if (-not $s.accepted) { $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender $result.sender -Purpose $Purpose -PeerName $result.peer_name }
     }
+    if ($NoRecord) { return $result }
     try {
         $dir = Join-Path $root '.specrew/authority'
         [IO.Directory]::CreateDirectory($dir) | Out-Null

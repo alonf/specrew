@@ -17,6 +17,13 @@
 #   - stops (pending pause facts) are not grants: a stop takes authority away and its answer is what the human types, so a
 #     stop is not joined; its answer is.
 # Read only: the audit writes nothing.
+#
+# Iteration review round A finding 3 (FR-024, B5F-066): the ledger's typed-user row is the prompt hook's reservation, written
+# before the host records who sent the message, so it is not proof on its own. For each joined turn the audit reads the sender
+# from the transcript record the row points at (Resolve-SpecrewAuthorizationSender -NoRecord, storing nothing): a turn not sent
+# by the human, or one that cannot be found, fails (turn-sender-<sender>); a capture or verdict that does not say what its turn
+# said fails (record-not-what-turn-said); a turn on a host with no transcript to read is passed and listed under 'unverified',
+# apart from the confirmed ones. Without the check loaded, every joined record fails (sender-check-unavailable).
 
 function Invoke-SpecrewAuthorityAudit {
     [CmdletBinding()]
@@ -28,6 +35,10 @@ function Invoke-SpecrewAuthorityAudit {
     $state = [pscustomobject]@{ checked = 0 }
     $typedTurns = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $knownTurns = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $turnHosts = @{}
+    $senders = @{}
+    $unverified = [Collections.Generic.List[object]]::new()
+    $canResolve = [bool](Get-Command -Name 'Resolve-SpecrewAuthorizationSender' -ErrorAction SilentlyContinue) -and [bool](Get-Command -Name 'Test-SpecrewAuthorizationRecordMatchesTurn' -ErrorAction SilentlyContinue)
 
     $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
     if (Test-Path -LiteralPath $ledger -PathType Leaf) {
@@ -39,6 +50,7 @@ function Invoke-SpecrewAuthorityAudit {
             $turnId = [string]$row.turn_id
             if ([string]::IsNullOrWhiteSpace($turnId)) { continue }
             $null = $knownTurns.Add($turnId)
+            if ($row.PSObject.Properties['host_kind'] -and -not [string]::IsNullOrWhiteSpace([string]$row.host_kind) -and -not $turnHosts.ContainsKey($turnId)) { $turnHosts[$turnId] = ([string]$row.host_kind).Trim().ToLowerInvariant() }
             if ($row.PSObject.Properties['turn_origin'] -and [string]$row.turn_origin -ceq 'typed-user') { $null = $typedTurns.Add($turnId) }
         }
     }
@@ -55,13 +67,29 @@ function Invoke-SpecrewAuthorityAudit {
         $failures.Add([pscustomobject][ordered]@{ kind = $Kind; id = $Id; path = $Path; reason = $Reason; turn_identity = $Turn }) | Out-Null
     }
     # One record that must name its own typed turn. Returns $true when it joins one.
+    # $Record, when given, is a capture or verdict that carries the turn's text: it must say what the turn said.
     $joinTurn = {
-        param([string]$Kind, [string]$Id, [string]$Path, [string]$Turn)
+        param([string]$Kind, [string]$Id, [string]$Path, [string]$Turn, $Record)
         $state.checked++
         $reason = if ([string]::IsNullOrWhiteSpace($Turn)) { 'no-turn-identity' }
         elseif ($typedTurns.Contains($Turn)) { '' }
         elseif ($knownTurns.Contains($Turn)) { 'turn-not-typed' }
         else { 'turn-not-in-ledger' }
+        if ($reason -eq '') {
+            if (-not $canResolve) { $reason = 'sender-check-unavailable' }
+            else {
+                if (-not $senders.ContainsKey($Turn)) {
+                    $turnHost = if ($turnHosts.ContainsKey($Turn)) { [string]$turnHosts[$Turn] } else { 'claude' }
+                    $senders[$Turn] = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $Turn -Purpose 'authority audit' -HostKind $turnHost -NoRecord
+                }
+                $sender = $senders[$Turn]
+                if (-not [bool]$sender.accepted) { $reason = 'turn-sender-' + [string]$sender.sender }
+                elseif ($null -ne $Record -and $null -ne $sender.turn -and -not (Test-SpecrewAuthorizationRecordMatchesTurn -Record $Record -Turn $sender.turn)) { $reason = 'record-not-what-turn-said' }
+                elseif ([string]$sender.sender -ceq 'unverified') {
+                    $unverified.Add([pscustomobject][ordered]@{ kind = $Kind; id = $Id; path = $Path; turn_identity = $Turn; host_kind = [string]$sender.host_kind; reason = [string]$sender.reason }) | Out-Null
+                }
+            }
+        }
         if ($reason -ne '') { & $fail $Kind $Id $Path $reason $Turn; return $false }
         return $true
     }
@@ -83,28 +111,33 @@ function Invoke-SpecrewAuthorityAudit {
         $history = if ($null -ne $enforcement -and $enforcement.PSObject.Properties['verdict_history']) { @($enforcement.verdict_history) } else { @() }
         foreach ($entry in $history) {
             if ($null -eq $entry) { continue }
-            $null = & $joinTurn 'boundary-verdict' (& $property $entry 'authorization_id') $contextPath (& $property $entry 'turn_identity')
+            $null = & $joinTurn 'boundary-verdict' (& $property $entry 'authorization_id') $contextPath (& $property $entry 'turn_identity') $entry
         }
     }
 
     # Captures of the human's typed lines.
     $review = Join-Path $root '.specrew/review'
     foreach ($file in (& $jsonFiles (Join-Path $review 'stop-answer') -Recurse)) {
-        $null = & $joinTurn 'stop-answer' $file.BaseName $file.FullName (& $property (& $readJson $file.FullName) 'turn_identity')
+        $capture = & $readJson $file.FullName
+        $null = & $joinTurn 'stop-answer' $file.BaseName $file.FullName (& $property $capture 'turn_identity') $capture
     }
     foreach ($file in (& $jsonFiles (Join-Path $review 'pause-decision'))) {
-        $null = & $joinTurn 'pause-decision-capture' $file.BaseName $file.FullName (& $property (& $readJson $file.FullName) 'turn_identity')
+        $capture = & $readJson $file.FullName
+        $null = & $joinTurn 'pause-decision-capture' $file.BaseName $file.FullName (& $property $capture 'turn_identity') $capture
     }
     $allowance = Join-Path $review 'allowance-reset/pending-allowance-reset.json'
     if (Test-Path -LiteralPath $allowance -PathType Leaf) {
-        $null = & $joinTurn 'allowance-reset-capture' 'pending-allowance-reset' $allowance (& $property (& $readJson $allowance) 'turn_identity')
+        $capture = & $readJson $allowance
+        $null = & $joinTurn 'allowance-reset-capture' 'pending-allowance-reset' $allowance (& $property $capture 'turn_identity') $capture
     }
     foreach ($file in (& $jsonFiles (Join-Path $review 'signoff-gate/override-authorizations'))) {
-        $null = & $joinTurn 'partial-signoff' $file.BaseName $file.FullName (& $property (& $readJson $file.FullName) 'turn_identity')
+        $capture = & $readJson $file.FullName
+        $null = & $joinTurn 'partial-signoff' $file.BaseName $file.FullName (& $property $capture 'turn_identity') $capture
     }
     $coverage = Join-Path $review 'coverage-disposition/coverage-deferral.json'
     if (Test-Path -LiteralPath $coverage -PathType Leaf) {
-        $null = & $joinTurn 'coverage-deferral' 'coverage-deferral' $coverage (& $property (& $readJson $coverage) 'turn_identity')
+        $capture = & $readJson $coverage
+        $null = & $joinTurn 'coverage-deferral' 'coverage-deferral' $coverage (& $property $capture 'turn_identity') $capture
     }
 
     # The review authority store, one campaign at a time.
@@ -191,5 +224,6 @@ function Invoke-SpecrewAuthorityAudit {
         passed          = ($failures.Count -eq 0)
         records_checked = [int]$state.checked
         failures        = @($failures)
+        unverified      = @($unverified)
     }
 }
