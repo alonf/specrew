@@ -2904,8 +2904,20 @@ function Write-SpecrewStopAnswerAuthorization {
     $directory = Join-Path (Get-SpecrewStopAnswerRoot -ProjectRoot $ProjectRoot) ([string]$pending.run_id)
     [IO.Directory]::CreateDirectory($directory) | Out-Null
     $path = Join-Path $directory ('{0}-{1}.json' -f $answer, $hash.Substring(0, 16))
+    # Iteration review round A finding 2 (second defect): the record already stored for this text is returned only when it is
+    # this same turn's, unspent (a retried capture of one message). Another turn's record - one refused because a scheduled
+    # prompt sent it, one already spent, or another message - is not this line: this turn's line is recorded beside it.
+    $readExisting = { param($p) try { Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $null } }
+    $isThisTurns = { param($e) $null -ne $e -and [string]$e.turn_identity -ceq [string]$TurnIdentity -and [string]::IsNullOrWhiteSpace([string]$e.spent_at) }
     if ([IO.File]::Exists($path)) {
-        try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop) } catch { $null = $_ }
+        $existing = & $readExisting $path
+        if (& $isThisTurns $existing) { return $existing }
+        $turnTag = (Get-SpecrewHumanAuthorityHash -Text $(if ([string]::IsNullOrWhiteSpace($TurnIdentity)) { $NowUtc } else { [string]$TurnIdentity })).Substring(0, 12)
+        $path = Join-Path $directory ('{0}-{1}-{2}.json' -f $answer, $hash.Substring(0, 16), $turnTag)
+        if ([IO.File]::Exists($path)) {
+            $existing = & $readExisting $path
+            if (& $isThisTurns $existing) { return $existing }
+        }
     }
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
