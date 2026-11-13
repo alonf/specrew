@@ -945,7 +945,9 @@ function Test-SpecrewClosureClaimStatus {
             continue
         }
         $before = $sentence.Substring(0, $claim.Index)
-        if ($before -match '\b(?:not|never|yet|to be|will be|awaiting|pending|until|unless|once|if)\b') {
+        # Review round 2, finding 2: "cannot", any n't contraction (straight or curly apostrophe), "unable" and
+        # "no longer" negate too.
+        if ($before -match '\b(?:not|never|yet|to be|will be|awaiting|pending|until|unless|once|if|cannot|unable|no longer)\b' -or $before -match "n['’]t\b") {
             continue
         }
         return $true
