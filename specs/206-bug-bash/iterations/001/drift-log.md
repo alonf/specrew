@@ -432,8 +432,8 @@ iteration 002 as a required item: feature 206 does not close without it; 022 rep
 - **Owner**: the review engine is the installed module (0.40.0) and the capture stores belong to feature 203. 206
   changes neither.
 - **Resolution**: reported for feature 203's triage; no change in 206.
-- **Class closure**: NONE. The fault is in code 206 must not touch; the memory note on round approvals (check the
-  campaign's spend ledger, not the pending file) stands until 203 fixes it.
+- **Class closure**: NONE — the fault is in code 206 must not touch; until 203 fixes it, a round launch checks the
+  campaign's spend ledger, not the pending approval file.
 
 <!--
   Every new ### DRIFT-... event includes:
