@@ -2292,3 +2292,35 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Lane**: `f203-i001-validator-scope` back to 1200 s (DRIFT-062's stopgap of 1800 s removed).
 - **Points**: scope added by the maintainer's ruling of 2026-11-12, about 0.5; the capacity file is unchanged.
 - **Class closure**: the suite's own mutation evidence above; DRIFT-062's lane-time report remains proposed for iteration 002.
+
+### DRIFT-070 — Iteration review round A: three major findings, four defects, all fixed test first (review outcome, maintainer ruling)
+
+- **Ruling** (maintainer, 2026-11-13): four unnarrowed rounds on Codex, one focus file per round through
+  `--design-context-ref` (A authority and capture, B review engine, C extension scripts with the dispatcher and hosts, D
+  the whole tree with the tests); the focus files in `docs/review-scope/`, uncommitted, in place before the first round;
+  after each round, fix the actionable findings test first, full sweep and push, and bring the maintainer only the
+  findings not fixed; hash the home hook files before and after each round; each round's approval typed separately.
+- **Round A**: run `run-20261113-102531165-8671e9be` (`cmp-203-beta5-stabilization-i001-round-1`), reviewer Codex, on
+  `32d2af39` plus the untracked focus files, launched from the pin's `specrew-review.ps1 --live --approve-round --host codex
+  --design-context-ref docs/review-scope/203-i001-round-A.md` at 12:25 local (UTC+2) on the maintainer's typed approval
+  captured at 12:24; lanes 2,278 s, reviewer 429 s, terminal at 13:10 (2,713 s). Completion complete, currentness
+  current. Round budget 1 of 4 used. Home hook files: 12 hashed before and after, 0 changed.
+- **Findings** (all major, all real, all fixed; finding 2 held two defects):
+  1. A review launch spent a budget grant, or granted the floor, without checking who sent the before-implement verdict
+     it cites; the verdict is captured, and the budget snapshotted, before the transcript record exists. Fixed in
+     `Resolve-ReviewCampaignLaunchAuthority` (`6c4fb785` red 4 of 7, `5ba452b2`); five suites' fixtures now record the
+     verdict their grant cites (`Add-SpecrewTestLedgerVerdict`).
+  2. The stop-answer landing applied the oldest line for a finding first, so `drop` then `fix` closed the finding and
+     skipped the fix (FR-021). Fixed: the newest line per finding lands, older ones are spent as superseded
+     (`f33b1b68` red 1 of 6, `3098414e`). Second defect: the capture returned the stored record for the same text
+     whatever it was, so a line refused as a scheduled prompt's could not be retyped (`34bb0d78` red 1 of 7, `0b19a230`).
+  3. The authority audit took the prompt hook's typed-user row as proof of a typed turn. Fixed: it reads the sender from
+     the transcript record (read only), checks each capture and verdict says what its turn said, and lists unverifiable
+     turns apart (`3e32f0b1` red 3 of 25, `3f7925b2`).
+- **Consequence for T014** (evidence, no decision taken): with findings 1 and 3 fixed, a verdict whose turn cannot be
+  found no longer grants a review budget and fails the audit. This repository's before-implement verdict of 2026-10-31
+  is one of the six authorizations counted under B5F-066 item 8 as turn-not-found, so after the pin advance a review
+  launch here would be refused until that count is decided. Rounds B to D run on the pinned engine and are not affected.
+- **Points**: review fixes inside the iteration review; no capacity change.
+- **Class closure**: findings 1 and 3 extend B5F-066's use-time check to the two places that still trusted the capture;
+  finding 2's both defects are covered by their cases in `review-stop-answers.Tests.ps1`.
