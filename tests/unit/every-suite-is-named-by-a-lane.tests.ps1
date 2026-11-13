@@ -73,18 +73,42 @@ function Get-UncommentedText {
     (@(Get-Content -LiteralPath $Path -Encoding UTF8) | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
 }
 
-# Review round 2, finding 6: a line with its shell comment removed. A '#' starts a comment at the line start or
-# after whitespace, outside quotes (PowerShell and bash agree on that much).
-function Remove-ShellLineComment {
-    param([string] $Line)
-    $quote = [char]0
-    for ($i = 0; $i -lt $Line.Length; $i++) {
-        $c = $Line[$i]
-        if ($quote -ne [char]0) { if ($c -eq $quote) { $quote = [char]0 }; continue }
-        if ($c -eq "'" -or $c -eq '"') { $quote = $c; continue }
-        if ($c -eq '#' -and ($i -eq 0 -or [char]::IsWhiteSpace($Line[$i - 1]))) { return $Line.Substring(0, $i) }
+# Review round 2, finding 6: the lines of one run: value with their shell comments removed. A '#' starts a line
+# comment at the line start or after whitespace, outside quotes (PowerShell and bash agree on that much).
+# Review round 3, finding 6: one left-to-right pass over the lines, so a PowerShell block comment is recognised
+# before line comments are: "<#" outside quotes opens it, and it ends at the next "#>", on that line or a later
+# one. Quotes do not carry over a line end; a string spanning lines is read as code, which can only leave a
+# suite unnamed, never count one that is commented out.
+function Remove-ShellComment {
+    param([string[]] $Lines)
+    $out = [Collections.Generic.List[string]]::new()
+    $inBlock = $false
+    foreach ($line in @($Lines)) {
+        $text = [Text.StringBuilder]::new()
+        $quote = [char]0
+        $i = 0
+        while ($i -lt $line.Length) {
+            $c = $line[$i]
+            $next = if ($i + 1 -lt $line.Length) { $line[$i + 1] } else { [char]0 }
+            if ($inBlock) {
+                if ($c -eq '#' -and $next -eq '>') { $inBlock = $false; $i += 2 } else { $i++ }
+                continue
+            }
+            if ($quote -ne [char]0) {
+                [void]$text.Append($c)
+                if ($c -eq $quote) { $quote = [char]0 }
+                $i++
+                continue
+            }
+            if ($c -eq "'" -or $c -eq '"') { $quote = $c; [void]$text.Append($c); $i++; continue }
+            if ($c -eq '<' -and $next -eq '#') { $inBlock = $true; $i += 2; continue }
+            if ($c -eq '#' -and ($i -eq 0 -or [char]::IsWhiteSpace($line[$i - 1]))) { break }
+            [void]$text.Append($c)
+            $i++
+        }
+        $out.Add($text.ToString())
     }
-    return $Line
+    return @($out)
 }
 
 # Review round 2, finding 6: what a workflow's steps execute - the text of each run: key (one line, or the
@@ -120,20 +144,21 @@ function Get-WorkflowRunText {
         $keyIndent = $stepKeyIndent
         $rest = $Matches['rest'].Trim()
         if ($rest -match '^[|>][-+0-9]*\s*(?:#.*)?$') {
+            $body = [Collections.Generic.List[string]]::new()
             for ($j = $i + 1; $j -lt $lines.Count; $j++) {
-                $body = $lines[$j]
-                if (-not [string]::IsNullOrWhiteSpace($body) -and ($body.Length - $body.TrimStart().Length) -le $keyIndent) { break }
-                $run.Add((Remove-ShellLineComment -Line $body))
+                if (-not [string]::IsNullOrWhiteSpace($lines[$j]) -and ($lines[$j].Length - $lines[$j].TrimStart().Length) -le $keyIndent) { break }
+                $body.Add($lines[$j])
             }
+            foreach ($kept in @(Remove-ShellComment -Lines @($body))) { $run.Add($kept) }
             $i = $j - 1
             continue
         }
         if ($rest.Length -ge 2 -and (($rest[0] -eq '"' -and $rest[-1] -eq '"') -or ($rest[0] -eq "'" -and $rest[-1] -eq "'"))) {
             $rest = $rest.Substring(1, $rest.Length - 2)
         }
-        $run.Add((Remove-ShellLineComment -Line $rest))
+        foreach ($kept in @(Remove-ShellComment -Lines @($rest))) { $run.Add($kept) }
     }
-    return (($run -join "`n") -replace '(?s)<#.*?#>', '')
+    return ($run -join "`n")
 }
 
 # --- What the lanes, the release manifest and CI name ---------------------------------------------
