@@ -290,6 +290,31 @@ Describe 'stop (d) and infra_failure_cap: a free run still counts, and an exhaus
         @(script:Get-StopPauseFacts -Repo $repo | Where-Object { [string]$_.stop_kind -ceq 'd-host-outside-order' }).Count | Should -Be 1
     }
 
+    # Iteration review round B finding 3 (run-20261113-172304585-393b6102; FR-009, FR-006(d)): no reviewer catalog and a
+    # budget with no host order, and the human runs `specrew review --host codex`. The engine resolved no first reviewer, so
+    # nothing was enforced: every timed-out attempt was free and invoked Codex again, past infra_failure_cap, never at (d).
+    It 'with no reviewer catalog, an explicit --host is the approved first reviewer, and infra_failure_cap still ends at (d)' {
+        $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'no-catalog')
+        script:Set-StopBudgetGrant -Repo $repo -Total 2
+        Test-Path -LiteralPath (Join-Path $repo.root '.specrew/reviewer-hosts.json') | Should -BeFalse
+        $invoked = [System.Collections.Generic.List[string]]::new()
+        $factory = script:New-StopPortsFactory -Repo $repo -Behaviour @{ codex = 'partial' } -Invoked $invoked
+        # The explicit host must be installed for the command to accept it; a stand-in on PATH for this case only.
+        $hadCodex = $null -ne (Get-Command -Name codex -ErrorAction SilentlyContinue)
+        if (-not $hadCodex) { function global:codex { } }
+        try {
+            $results = @(foreach ($n in 1..3) {
+                    Invoke-ReviewCampaignCommand -RepoRoot $repo.root -FeatureId '001-demo' -IterationNumber '007' -RunId "run-stop-nc-$n" `
+                        -AuthorityConfigPath $repo.config -CodeWriterHost 'claude' -ReviewerHost 'codex' -ReviewerHostExplicit -PortsFactory $factory
+                })
+        }
+        finally { if (-not $hadCodex) { Remove-Item -LiteralPath Function:\codex -ErrorAction SilentlyContinue } }
+        @($invoked) | Should -Be @('codex', 'codex') -Because 'infra_failure_cap is 2; the third attempt must not invoke Codex'
+        [string]$results[2].reason | Should -BeExactly 'review-stop-open:d-host-outside-order'
+        $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $repo.store -CampaignId $script:CampaignId -Kind grants | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'reviewer_host') })
+        [string](Get-ReviewAuthorityProperty -Object $grants[0] -Name 'reviewer_host') | Should -BeExactly 'codex' -Because 'the first reviewer is recorded on the launch grant'
+    }
+
     It 'allow reviewer closes stop (d), and the round continues on that reviewer' {
         $repo = script:New-StopRepo -Root (Join-Path $TestDrive 'allow-d')
         script:Set-StopReviewers -Repo $repo
