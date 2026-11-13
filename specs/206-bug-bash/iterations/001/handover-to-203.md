@@ -126,6 +126,9 @@ FR-005.
   stopped every step after it in the Deterministic gate, so a registered per-push step (206's T015 step, including
   T002's suite) did not run, and the Contract lane was skipped. Raised to a higher priority for feature 203, like
   HO-206-10. The failed job is rerun once (reviewer ruling under the maintainer's delegation); no workaround in 206.
+- **Third sighting (2026-11-13):** Specrew CI run 43423416387 attempt 1 on `7f346037`, job 131879951424, the same case
+  and error, the only failure. Rerun once under the maintainer's standing exception for this test (14:28 local,
+  2026-11-13): attempt 2 green (job 131885538324).
 
 ## HO-206-9 — `review-posix-runtime.Tests.ps1`: stream-drain budget exceeded on macOS
 

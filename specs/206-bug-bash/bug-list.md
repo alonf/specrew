@@ -368,6 +368,10 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   registered per-push step (T015's, including T002's suite) did not run on that head, and the Contract lane was
   skipped. Reported and stopped; by the reviewer's ruling (2026-11-13, under the maintainer's delegation), the failed
   job is rerun once. HO-206-8 moves to a higher priority for feature 203.
+- **Third sighting (2026-11-13, Specrew CI run 43423416387 attempt 1 on `7f346037`, job 131879951424 "Deterministic
+  gate"):** the same case and error, the only failure in the run. Rerun once without asking, under the maintainer's
+  standing exception for this test (14:28 local, 2026-11-13, relayed by the reviewer session): attempt 2 green
+  (job 131885538324). Recorded after review round 2, because round 2 was bound to `7f346037`.
 
 ## 14. `review-posix-runtime.Tests.ps1` failed once on macOS: two stream drains took 360 ms against a 250 ms budget
 

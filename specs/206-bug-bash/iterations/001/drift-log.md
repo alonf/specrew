@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 20
-**Resolution rate**: 85% (17/20 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
-iteration 002 as a required item: feature 206 does not close without it)
+**Total drift events**: 22
+**Resolution rate**: 82% (18/22 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -392,6 +392,48 @@ iteration 002 as a required item: feature 206 does not close without it)
 - **Class closure**: the lane guard runs the lifted helper against a `Test-Json` that returns `$false`, so this script
   cannot again depend on whether `Test-Json` throws. A search of `tests/` found no other helper that discards a result
   with `$null =` and counts only an exception as failure; nothing enforces that for new scripts.
+
+### DRIFT-206-I001-021 — review rework: round 2's six findings fixed in iteration 001
+
+- **Recorded**: 2026-11-13, at the maintainer's instruction (round 2 decision, option 1).
+- **What**: review round 2 (Codex, run `run-20261113-133711531-d5ed060a`, head `7f346037`) returned six findings in
+  206's own code. The engine demoted five from major to minor as "no concrete failure scenario"; each one reproduced
+  with a failing test. All six are fixed in iteration 001, each with a test commit (red count) and then a fix commit:
+
+  | # | Requirement | What was wrong | RED | GREEN |
+  | --- | --- | --- | --- | --- |
+  | 1 | FR-003 | A copilot-instructions.md holding only the managed block strips to empty, and the classifier refused an empty side: `specrew start` still stopped with the binding error | `f1cdd95e` 3/13 | `0c3968ee` |
+  | 2 | FR-008a | "cannot be closed" and "isn't closed" read as closure claims | `e2e89489` 2/18 | `e1f5fbbe` |
+  | 3 | FR-008 | A dated mention of a pending, refused or unrelated maintainer ruling counted as a recorded abandonment | `3230963e` 5/28 | `ce4f723a` |
+  | 4 | FR-009 | A categorized failure replaced or added in the same category left the nightly fingerprint unchanged; the record now carries a hash of the message, never the text | `d5738276` 4/19 | `d3839db1` |
+  | 5 | FR-008 | `-RebuildClosedIndex` overwrote closeout closure times and dropped their stamps | `cd19f6e3` 3/33 | `95dca9e5` |
+  | 6 | FR-011 | The lane guard counted a test path in a workflow's inline comment, step name, `paths:` filter or `env:` value as a registration | `a0a9b938` 4/69 | `9cf0c4f6` |
+
+- **Growth**: about 1.5 points of rework (0.25 each) beyond the planned 20. The capacity file and the task points
+  stay unchanged (maintainer, 2026-11-13).
+- **Side effect**: finding 4 changes every nightly fingerprint once, so the first nightly after the merge comments on
+  an open tracking issue even if the failures are the same.
+- **Not done**: finding 5 keeps the stamps that exist; it does not recover a stamp for an entry that never had one.
+- **Resolution**: FIXED; round 3 reviews the fixes.
+- **Class closure**: each fix has its test in a review-plan lane (`f206-unit-suites` holds 1 to 5; `f206-census-guard`
+  holds 6), so a regression fails the next round's preflight.
+
+### DRIFT-206-I001-022 — the round 2 launch: three typed approvals did not reach the round, and the demotion wording was wrong
+
+- **Recorded**: 2026-11-13, after review round 2 (recording earlier would have moved its head).
+- **What**: launching round 2 took four typed `approved for review round` replies.
+  - The approval typed at 12:57 local was captured for round 1. When round 1 ended partial (preflight 514.7 of 600 s),
+    the pending approval file still read as not spent, but the campaign charged it to round 1 ("already paid").
+  - An approval re-typed while one was still unspent was dropped.
+  - An approval typed while a turn was running was not captured.
+  - The approval captured at 13:35:20 local launched round 2.
+- **Also**: the engine demoted five findings with the note "no concrete failure scenario, so it cannot gate". Each
+  finding described its scenario, and each reproduced with a failing test (DRIFT-021).
+- **Owner**: the review engine is the installed module (0.40.0) and the capture stores belong to feature 203. 206
+  changes neither.
+- **Resolution**: reported for feature 203's triage; no change in 206.
+- **Class closure**: NONE. The fault is in code 206 must not touch; the memory note on round approvals (check the
+  campaign's spend ledger, not the pending file) stands until 203 fixes it.
 
 <!--
   Every new ### DRIFT-... event includes:
