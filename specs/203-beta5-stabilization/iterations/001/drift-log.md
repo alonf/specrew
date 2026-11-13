@@ -2324,3 +2324,32 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Points**: review fixes inside the iteration review; no capacity change.
 - **Class closure**: findings 1 and 3 extend B5F-066's use-time check to the two places that still trusted the capture;
   finding 2's both defects are covered by their cases in `review-stop-answers.Tests.ps1`.
+
+### DRIFT-071 — Iteration review round B: four major findings, all fixed test first (review outcome, maintainer ruling)
+
+- **Ruling**: DRIFT-070's (four rounds on Codex, one focus file each; fix the actionable findings test first, full sweep
+  and push; bring the maintainer only the findings not fixed; hash the home hook files before and after each round).
+- **Round B**: run `run-20261113-172304585-393b6102` (`cmp-203-beta5-stabilization-i001-round-2`), reviewer Codex, on
+  `0631ee60` plus the untracked focus files, launched from the pin's `specrew-review.ps1 --live --approve-round --host codex
+  --design-context-ref docs/review-scope/203-i001-round-B.md` at 19:23 local (UTC+2) on the maintainer's typed approval
+  captured at 19:22; lanes 2,707 s, reviewer about 448 s, terminal at 3,156 s. Completion complete, currentness current.
+  Round budget 2 of 4 used. Home hook files: 12 hashed before and after, 0 changed.
+- **Findings** (all major, all real, all fixed, all in `review-campaign-orchestrator.ps1`):
+  1. Two launches could both pass the budget check; one delayed while the other spent the last round then minted a
+     launch grant of its own and invoked a round past the budget (FR-004, FR-010). Fixed: `Invoke-ReviewCampaignRun`
+     reads the budget again once it holds the invocation claim, before any reviewer runs, and releases a launch whose
+     round is gone (`c230aaaf` red 1 of 23, `76a2fee1`).
+  2. A round the controller degraded at ingress (a review that examined no source on a source tree) spent its round and
+     read as ended clean, so the unchanged-tree guard refused every retry while sign-off refused the degraded result
+     (FR-004, FR-005). Fixed: only a complete result is clean, and the guard refuses the same files only after clean
+     coverage or with findings open (`134a21af` red 1 of 21, `34daf933`).
+  3. With no reviewer catalog and no host order, an explicit `--host` enforced nothing, so timed-out attempts invoked
+     the same reviewer past `infra_failure_cap` without stopping at (d) (FR-009, FR-006(d)). Fixed: the launch's own
+     reviewer is the approved first one, recorded on its launch grant (`c64c7b3a` red 1 of 20, `4aabf1f6`).
+  4. A typed stop line was matched to the open stop by run ID only, so a line typed for one campaign's stop could land
+     on another campaign's stop with the same explicit run ID (FR-006, FR-011). Fixed: the landing lands only lines
+     whose captured campaign and stop kind are the open stop's, and the reader takes the campaign
+     (`873cbfb4` red 1 of 8, `4c657f3a`).
+- **Points**: review fixes inside the iteration review; no capacity change.
+- **Class closure**: each finding is covered by its case (`review-budget-loop`, `review-loop-stops` twice,
+  `review-stop-answers`); the 30 suites that drive the review command ran green over the fixes.
