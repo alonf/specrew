@@ -181,6 +181,15 @@ Describe '-RebuildClosedIndex keeps the closeout stamps (FR-008; review round 2,
             $status = if ($n -eq '003') { 'abandoned' } else { 'complete' }
             Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value ("# Iteration State: $n`n`n**Schema**: v2`n**Iteration Status**: $status`n")
         }
+        # Review round 3, finding 3: 004 has the shape the state.md text heuristic reads as closed and the canonical
+        # definition reads as open (phase iteration-closeout and closure words in the body, status reviewing, no
+        # index entry). 005 is open by its status but already in the index without a stamp.
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\004'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 004`n`n**Schema**: v2`n**Current Phase**: iteration-closeout`n**Iteration Status**: reviewing`n`nRETRO COMPLETE; iteration closed.`n"
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\005'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 005`n`n**Schema**: v2`n**Iteration Status**: executing`n"
         Set-Content -LiteralPath (Join-Path $script:RebuildRoot 'specs\910-rebuild\spec.md') -Value '# Feature Specification: 910-rebuild' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $script:RebuildRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
 closed:
@@ -195,6 +204,9 @@ closed:
     iteration: 003
     closed_at: 2026-11-05T09:30:00Z
     closed_at_source: closeout
+  - feature: 910-rebuild
+    iteration: 005
+    closed_at: 2026-08-06T14:49:04Z
 '@
         $script:Since = [datetime]::new(2026, 5, 26)
         $script:BeforeRebuild = Get-SpecrewClosedIterationIndex -ProjectRoot $script:RebuildRoot
@@ -226,6 +238,19 @@ closed:
 
     It 'leaves an unstamped entry unstamped' {
         $script:AfterRebuild['910-rebuild/002'].closed_at_source | Should -BeNullOrEmpty
+    }
+
+    It 'does not index an iteration the canonical definition reads as open (review round 3, finding 3)' {
+        $script:AfterRebuild.ContainsKey('910-rebuild/004') | Should -BeFalse
+        Test-SpecrewIterationClosed -ProjectRoot $script:RebuildRoot -Feature '910-rebuild' -Iteration '004' | Should -BeFalse
+    }
+
+    It 'never removes an entry: the index is append-only, so every iteration closed before the rebuild is closed after it (review round 3, finding 3)' {
+        foreach ($key in @($script:BeforeRebuild.Keys)) {
+            $script:AfterRebuild.ContainsKey($key) | Should -BeTrue -Because $key
+        }
+        $script:AfterRebuild['910-rebuild/005'].closed_at | Should -Be '2026-08-06T14:49:04Z'
+        $script:AfterRebuild['910-rebuild/005'].closed_at_source | Should -BeNullOrEmpty
     }
 
     It 'the dashboard check''s applicability is the same before and after the rebuild' {
