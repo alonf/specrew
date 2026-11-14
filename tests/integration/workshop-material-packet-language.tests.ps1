@@ -51,6 +51,9 @@ try {
     }
     Set-Content -LiteralPath (Join-Path $scratch '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
     Copy-Item -LiteralPath $authoritySource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1') -Force
+    # Iteration review round C, finding 1: the store loads its sender check through the pin-aware loader beside it, which a
+    # deployment always ships (live-engine-resolution.ps1); without it the store refuses rather than guess an engine.
+    Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $authoritySource) 'live-engine-resolution.ps1') -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\live-engine-resolution.ps1') -Force
     Copy-Item -LiteralPath $yamlReaderSource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\intake\helpers\Read-IntakeYaml.ps1') -Force
     Copy-Item -LiteralPath $catalogSource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\knowledge\design-lenses\index.yml') -Force
     Copy-Item -LiteralPath $accessorSource -Destination (Join-Path $scratch 'scripts\internal\bootstrap\ProjectMetadataAccessor.ps1') -Force

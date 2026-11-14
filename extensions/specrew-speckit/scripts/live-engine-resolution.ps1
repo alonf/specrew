@@ -151,6 +151,57 @@ function Resolve-SpecrewLiveEngineInternalRoot {
     return [pscustomobject]@{ Refused = $false; Root = (Join-Path ([string]$pin.Root) 'scripts/internal'); Pin = $pin }
 }
 
+function Import-SpecrewAuthorizationSenderCheck {
+    # Feature 203 T013 (B5F-066) and iteration review round C, finding 1: loads the check that confirms the human typed the
+    # message an authorization came from (Test-SpecrewAuthorizationRecordSender, from the bootstrap store), for the readers
+    # that run without the bootstrap store (shared-governance, workshop-authority-store, record-design-decision). Returns
+    # $true when the check is available.
+    # A configured live-engine pin is the only engine the check may come from: the rules for what counts as a typed approval
+    # are engine code, so a development tree named by SPECREW_MODULE_PATH must not decide them before the pin advances. A
+    # configured pin that cannot be used (or whose record cannot be resolved) resolves no check, and the caller refuses.
+    # With no pin configured, the order is today's: SPECREW_MODULE_PATH; the project this file sits in, walking up (the
+    # working tree in the self-host repo; extensions/ or the deployed .specify/ copy, at different depths); the installed
+    # module. The first store that holds the check is loaded once, into a global module, so later calls reuse it.
+    [OutputType([bool])]
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { return $true }
+    $engine = $null
+    try { $engine = Resolve-SpecrewLiveEngineInternalRoot -ProjectRoot $ProjectRoot } catch { return $false }
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if ([bool]$engine.Pin.Configured) {
+        if ([bool]$engine.Refused) { return $false }
+        $candidates.Add((Join-Path ([string]$engine.Root) 'bootstrap'))
+    }
+    else {
+        if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts\internal\bootstrap')) }
+        $walk = $PSScriptRoot
+        for ($depth = 0; $depth -lt 8 -and -not [string]::IsNullOrWhiteSpace($walk); $depth++) {
+            $candidates.Add((Join-Path $walk 'scripts\internal\bootstrap'))
+            $walk = Split-Path -Parent $walk
+        }
+        foreach ($module in @(Get-Module -Name Specrew) + @(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending)) {
+            if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts\internal\bootstrap')) }
+        }
+    }
+    foreach ($dir in $candidates) {
+        $store = Join-Path $dir 'HumanAuthorityStore.ps1'
+        $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
+        if (-not ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf))) { continue }
+        if (-not (Select-String -LiteralPath $store -Pattern 'function Test-SpecrewAuthorizationRecordSender\b' -Quiet)) { continue }
+        try {
+            $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
+                param($AccessorPath, $StorePath)
+                . $AccessorPath
+                . $StorePath
+                Export-ModuleMember -Function *
+            } | Import-Module -Global -Force -DisableNameChecking -PassThru
+        }
+        catch { $null = $_ }
+        if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { return $true }
+    }
+    return $false
+}
+
 function Resolve-SpecrewLiveEngineExtensionScript {
     # A script from the deployed extension tree that the hooks load as code (not data): the pin's copy when a pin is
     # configured and usable, the project's .specify copy when none is configured (today's resolution), and $null when

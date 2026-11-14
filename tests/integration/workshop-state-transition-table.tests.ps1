@@ -140,6 +140,9 @@ try {
     Set-Content -LiteralPath (Join-Path $scratch '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $featureRoot 'spec.md') -Value '# Repair fixture' -Encoding UTF8
     Copy-Item -LiteralPath $authoritySource -Destination $projectAuthority -Force
+    # Iteration review round C, finding 1: the store loads its sender check through the pin-aware loader beside it, which a
+    # deployment always ships (live-engine-resolution.ps1); without it the store refuses rather than guess an engine.
+    Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $authoritySource) 'live-engine-resolution.ps1') -Destination (Split-Path -Parent $projectAuthority) -Force
     $productMarkdownPath = Join-Path $featureRoot 'workshop\product-domain.md'
     $productStructuredPath = Join-Path $featureRoot 'workshop\product-domain.yml'
     [IO.File]::WriteAllText($productMarkdownPath, "# Product domain`n", [Text.UTF8Encoding]::new($false))

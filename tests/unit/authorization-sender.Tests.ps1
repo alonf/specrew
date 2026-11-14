@@ -289,6 +289,9 @@ $cmd = Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyCo
         $out = (& pwsh -NoProfile -NonInteractive -File $script:PinProbe -Repo $script:RepoRoot -Project $f.Project -Dev $f.Dev -Loader $loader 2>&1) -join "`n"
         $out | Should -Not -Match 'checker='
         $out | Should -Match 'used=False loaded-from=none'
+        # The refusal names the pin and its recovery, not 'specrew update' (which would not change the pinned engine).
+        $out | Should -Match 'pinned'
+        $out | Should -Not -Match 'specrew update'
     }
 }
 

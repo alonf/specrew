@@ -220,39 +220,23 @@ function Test-SpecrewWorkshopRecordSender {
     param([Parameter(Mandatory)][string]$ProjectRoot, [AllowNull()]$Record, [AllowNull()][string]$Purpose)
     if ($null -eq $Record) { return $false }
     if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
-        # T013 (the workshop scripts that load only this store: confirm-workshop-agenda.ps1, repair-workshop-controller-state.ps1):
-        # the check is loaded here, from the same places shared-governance looks - the module the launcher named
-        # (SPECREW_MODULE_PATH), the project this file sits in (walking up: extensions/ and the deployed .specify copy), then the
-        # installed module - once, into a global module, taking only a store that has the check.
-        $candidates = [System.Collections.Generic.List[string]]::new()
-        if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts\internal\bootstrap')) }
-        $walk = $PSScriptRoot
-        for ($depth = 0; $depth -lt 8 -and -not [string]::IsNullOrWhiteSpace($walk); $depth++) {
-            $candidates.Add((Join-Path $walk 'scripts\internal\bootstrap'))
-            $walk = Split-Path -Parent $walk
+        # T013 (the workshop scripts that load only this store: confirm-workshop-agenda.ps1, repair-workshop-controller-state.ps1)
+        # and iteration review round C, finding 1: the check is loaded through the same pin-aware loader shared-governance uses
+        # (Import-SpecrewAuthorizationSenderCheck, beside this file): a configured live-engine pin is its only source, and an
+        # unusable pin, or a loader that cannot be found, resolves none.
+        $liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+        try {
+            if (-not (Get-Command Import-SpecrewAuthorizationSenderCheck -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $liveEnginePath -PathType Leaf)) { . $liveEnginePath }
+            if (Get-Command Import-SpecrewAuthorizationSenderCheck -ErrorAction SilentlyContinue) { $null = Import-SpecrewAuthorizationSenderCheck -ProjectRoot $ProjectRoot }
         }
-        foreach ($module in @(Get-Module -Name Specrew) + @(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending)) {
-            if ($null -ne $module) { $candidates.Add((Join-Path $module.ModuleBase 'scripts\internal\bootstrap')) }
-        }
-        foreach ($dir in $candidates) {
-            $store = Join-Path $dir 'HumanAuthorityStore.ps1'
-            $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
-            if (-not ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf))) { continue }
-            if (-not (Select-String -LiteralPath $store -Pattern 'function Test-SpecrewAuthorizationRecordSender\b' -Quiet)) { continue }
-            try {
-                $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
-                    param($AccessorPath, $StorePath)
-                    . $AccessorPath
-                    . $StorePath
-                    Export-ModuleMember -Function *
-                } | Import-Module -Global -Force -DisableNameChecking -PassThru
-            }
-            catch { $null = $_ }
-            if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { break }
-        }
+        catch { $null = $_ }
     }
     if (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue) { return [bool](Test-SpecrewAuthorizationRecordSender -ProjectRoot $ProjectRoot -Record $Record -Purpose $Purpose) }
-    try { [Console]::Error.WriteLine(("Specrew: this {0} was not used, because Specrew could not load the check that confirms you typed it. Nothing else changed. Run 'specrew update', then type the line again in the terminal session." -f $(if ($Purpose) { $Purpose } else { 'workshop answer' }))) } catch { $null = $_ }
+    $what = if ($Purpose) { $Purpose } else { 'workshop answer' }
+    $pinned = Test-Path -LiteralPath (Join-Path $ProjectRoot '.specrew/runtime/live-engine.json') -PathType Leaf
+    $text = if ($pinned) { "Specrew: this {0} was not used, because the reviewed engine this project is pinned to cannot confirm that you typed it (the pinned copy has no such check, or cannot be used). Nothing else changed. The crew can move the pin to a reviewed commit that has the check (scripts/internal/live-engine-pin.ps1); ask it to, then type the line again in the terminal session." }
+    else { "Specrew: this {0} was not used, because Specrew could not load the check that confirms you typed it. Nothing else changed. Run 'specrew update', then type the line again in the terminal session." }
+    try { [Console]::Error.WriteLine(($text -f $what)) } catch { $null = $_ }
     return $false
 }
 
