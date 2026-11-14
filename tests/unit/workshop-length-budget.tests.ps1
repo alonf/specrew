@@ -14,6 +14,10 @@ param(
 # (b) Consumers (FR-029, FR-026, SC-008). Every suffix names an existing `## Problem Context` line in the spec template
 #     or a later lens; every hand-forward line names an earlier lens and a key that lens defines; every recommendation
 #     has a reason; no question is added without a suffix.
+# (c) The product-domain facts (SC-009, FR-023, FR-024). Each of the six facts, by its key: a question or a
+#     recommendation line at Light as the contract says, a question at Standard and Deep, operators defaulting to
+#     "not stated", and each later lens that must receive it showing it as a hand-forward line citing product-domain,
+#     "not stated" included. product-domain asks nine questions at Light.
 #
 # Self-tests over scratch fixtures run first, so every check is proven able to fail, and every problem is reported in
 # one run with its fix.
@@ -230,6 +234,13 @@ function Get-ProblemContextNames {
 
 #region (a) Length
 
+function Get-ItemDepthKind {
+    # How an item is shown at a depth: 'recommendation' (a recommendation line) or 'question' (a must-answer point).
+    param($Suffix, [string]$Depth)
+    if ($Suffix.Kind -eq 'recommend' -and $Depth -eq 'Light') { return 'recommendation' }
+    return 'question'
+}
+
 function Measure-WorkshopLength {
     # Per depth, per lens in the profile: must-answer points, typed replies, recommendation lines.
     param([string]$Root, [string[]]$ProfileIds)
@@ -250,7 +261,7 @@ function Measure-WorkshopLength {
         foreach ($item in $items) {
             $suffix = Get-ItemSuffix -Item $item
             foreach ($depth in $script:Depths) {
-                if ($suffix.Kind -eq 'recommend' -and $depth -eq 'Light') { $counts[$depth].RecLines++ } else { $counts[$depth].Points++ }
+                if ((Get-ItemDepthKind -Suffix $suffix -Depth $depth) -eq 'recommendation') { $counts[$depth].RecLines++ } else { $counts[$depth].Points++ }
             }
         }
         foreach ($depth in $script:Depths) {
@@ -382,10 +393,68 @@ function Test-Consumers {
 #region (c) The product-domain facts (SC-009)
 
 function Test-ProductDomainFacts {
-    # Not yet implemented: today the test checks only totals and generic suffix validity, not each fact (round 1
-    # finding 1). The self-tests below prove the gap before the fix.
+    # Each fact, by its key: shown at Light as the contract says, a question at Standard and Deep, its default when one
+    # is fixed, and received by each of its later lenses as a hand-forward line that carries "not stated" too. Also
+    # product-domain's must-answer count at Light. Uses the same depth rule as the length count.
     param([string]$Root, [System.Collections.IDictionary]$Facts, [int]$LightPoints)
-    return @()
+    $problems = [Collections.Generic.List[object]]::new()
+    $catalog = Read-Catalog -Root $Root
+    $pdRelative = "$($script:LensCatalogRelative)/$(@($catalog | Where-Object { $_.id -eq $script:ProductDomainId })[0].file)"
+    $items = Get-LensItems -Lines (Get-NormalizedLines -Path (Join-Path $Root $pdRelative))
+    $byKey = @{}
+    $lightQuestions = 0
+    foreach ($item in $items) {
+        $joined = ($item.Lines | ForEach-Object { $_.Text }) -join ' '
+        foreach ($m in [regex]::Matches($joined, $script:AreaKeyPattern)) { $byKey[$m.Groups['key'].Value] = $item }
+        if ((Get-ItemDepthKind -Suffix (Get-ItemSuffix -Item $item) -Depth 'Light') -eq 'question') { $lightQuestions++ }
+    }
+    $firstLine = if ($items.Count -gt 0) { $items[0].Lines[0].Number } else { 1 }
+    if ($lightQuestions -ne $LightPoints) {
+        $problems.Add((New-Problem $pdRelative $firstLine "$LightPoints questions must-answer at Light in product-domain (FR-023)" "$lightQuestions" 'only the compliance regime is added as a Light question; the other facts are recommendation lines'))
+    }
+    foreach ($key in $Facts.Keys) {
+        $fact = $Facts[$key]
+        if (-not $byKey.ContainsKey($key)) {
+            $problems.Add((New-Problem $pdRelative $firstLine "a product-domain area defining (``$key``) (FR-023)" 'none' "add the area with its key and suffix"))
+            continue
+        }
+        $suffix = Get-ItemSuffix -Item $byKey[$key]
+        $wanted = if ($fact.Light -eq 'ask') { 'question' } else { 'recommendation' }
+        $light = Get-ItemDepthKind -Suffix $suffix -Depth 'Light'
+        if ($suffix.Kind -in @('malformed', 'none') -or $light -ne $wanted) {
+            $expected = if ($wanted -eq 'question') { "$key as a question at Light (— Light: ask; FR-023)" } else { "$key as a recommendation line at Light (— Light: recommend ...; FR-023)" }
+            $found = if ($suffix.Kind -eq 'none') { 'no suffix' } elseif ($light -eq 'question') { 'a question at Light' } else { 'a recommendation line at Light' }
+            $problems.Add((New-Problem $pdRelative $suffix.Line $expected $found 'restore the suffix the contract gives this fact'))
+        }
+        foreach ($depth in @('Standard', 'Deep')) {
+            if ((Get-ItemDepthKind -Suffix $suffix -Depth $depth) -ne 'question') {
+                $problems.Add((New-Problem $pdRelative $suffix.Line "$key as a question at $depth (FR-023)" 'a recommendation line' 'at Standard and Deep every fact is asked'))
+            }
+        }
+        if ($fact.Contains('Default') -and $suffix.Kind -eq 'recommend' -and $suffix.Answer -cne $fact.Default) {
+            $problems.Add((New-Problem $pdRelative $suffix.Line "$key recommended as ""$($fact.Default)"" (FR-023: never a guess)" "'$($suffix.Answer)'" "recommend ""$($fact.Default)"""))
+        }
+        foreach ($receiver in $fact.Receivers) {
+            $entry = @($catalog | Where-Object { $_.id -eq $receiver })
+            if ($entry.Count -eq 0) { $problems.Add((New-Problem $pdRelative $suffix.Line "a lens '$receiver' to receive $key" 'none in index.yml' 'fix the receiver in this test or add the lens')); continue }
+            $relative = "$($script:LensCatalogRelative)/$($entry[0].file)"
+            $lines = Get-NormalizedLines -Path (Join-Path $Root $relative)
+            $line = $null
+            foreach ($hf in (Get-HandForwardLines -Lines $lines)) {
+                $m = [regex]::Match($hf.Text, $script:HandForwardPattern)
+                if ($m.Success -and $m.Groups['source'].Value -eq $script:ProductDomainId -and $m.Groups['key'].Value -eq $key) { $line = [pscustomobject]@{ Number = $hf.Number; Answer = $m.Groups['answer'].Value } }
+            }
+            if ($null -eq $line) {
+                $range = Get-SectionRange -Lines $lines -Heading $script:HandForwardHeading
+                $at = if ($range) { $range.Start + 1 } else { 1 }
+                $problems.Add((New-Problem $relative $at "a hand-forward line of product-domain ``$key`` (FR-024, SC-009)" 'none' "add '- product-domain ``$key`` — recommend ""product-domain: <its answer, or not stated>"" (<reason>) → <consumer>' under ## $($script:HandForwardHeading)"))
+            }
+            elseif (-not ($line.Answer.StartsWith("$($script:ProductDomainId): ") -and $line.Answer.Contains('not stated'))) {
+                $problems.Add((New-Problem $relative $line.Number "the answer shown as ""product-domain: <its answer, or not stated>"", so ""not stated"" is carried too (SC-009)" "'$($line.Answer)'" 'show the answer, or "not stated", citing product-domain'))
+            }
+        }
+    }
+    return $problems.ToArray()
 }
 
 #endregion
@@ -643,7 +712,9 @@ foreach ($depth in $script:Depths) {
 }
 Write-Host ('Light caps: {0} points, {1} replies' -f $script:LightCaps.Points, $script:LightCaps.Replies)
 
-$problems = @(Test-LengthBudget -Totals $measured.Totals -Caps $script:LightCaps -Recorded $script:Recorded -TestPath $testRelative) + @(Test-Consumers -Root $RepoRoot -Baseline $script:UnsuffixedBaseline)
+$problems = @(Test-LengthBudget -Totals $measured.Totals -Caps $script:LightCaps -Recorded $script:Recorded -TestPath $testRelative) +
+    @(Test-Consumers -Root $RepoRoot -Baseline $script:UnsuffixedBaseline) +
+    @(Test-ProductDomainFacts -Root $RepoRoot -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints)
 if ($problems.Count -gt 0) {
     Write-Host ('workshop-length-budget: {0} problem(s):' -f $problems.Count) -ForegroundColor Red
     foreach ($problem in $problems) { Write-Host ('  ' + (Format-Problem $problem)) -ForegroundColor Red }
