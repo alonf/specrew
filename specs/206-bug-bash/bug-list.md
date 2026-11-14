@@ -644,3 +644,73 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   `boundary-canonical` return only a count; their messages are printed inside the check. A changed failure in one of
   those categories still leaves the fingerprint unchanged. For iteration 002: each check returns its messages, and
   the stop passes them with `-FailureMessages`.
+
+## 31. The census guard reads `steps:` inside a YAML block scalar as real steps
+
+- **Found (2026-11-14, review round 4, `finding-175c2ab8a756a10e`, FR-011):** `Get-WorkflowRunText`
+  (`tests/unit/every-suite-is-named-by-a-lane.tests.ps1`) enters any line matching `steps:`, so an `env:` value written
+  as a `|` block holding `steps:` and `- run: tests/integration/orphan.ps1` registers a suite nothing runs.
+- **For iteration 002:** track block-scalar boundaries and the real job and step structure, behind a failing fixture.
+
+## 32. The census guard keeps a comment that follows `;`
+
+- **Found (2026-11-14, review round 4, `finding-2f7f4713967f972f`, FR-011):** `Remove-ShellComment` starts a line
+  comment only at the line start or after whitespace, so `Write-Host done;# tests/integration/orphan.ps1` counts as a
+  registration.
+- **For iteration 002:** treat a statement delimiter as a comment boundary, behind a failing fixture.
+
+## 33. A malformed managed-block opener is treated as balanced
+
+- **Found (2026-11-14, review round 4, `finding-5cfaa2b2f67ea55b`, FR-003):** the marker pattern in
+  `scripts/internal/instruction-file-merge.ps1` accepts either trailing arrows, so `<!-- >>> specrew-managed
+  coordinator <<< -->` with a normal closer is stripped, while the healer keeps it as user content. A real change in
+  that section can then read as bookkeeping.
+- **For iteration 002:** the trailing arrows must match the marker's direction; a mismatched pair is unbalanced
+  (design condition 3), behind a failing test.
+
+## 34. An unexpected validator exception shares one nightly fingerprint
+
+- **Found (2026-11-14, review round 4, `finding-42d18d3781d59c95`, FR-009):** the validator's outer catch calls
+  `Write-ValidatorSummaryAndExit` with only `unexpected-validator-error`, so two different exceptions write the same
+  category record. A fifth stop beside item 30's four.
+- **For iteration 002:** pass the exception detail through `-FailureMessages`, so only its hash is written.
+
+## 35. Overlapping nightly runs can open two tracking issues
+
+- **Found (2026-11-14, review round 4, `finding-d249cc05e6ee6910`, FR-009):** the nightly workflow allows scheduled and
+  manual runs with no `concurrency:` group, and the notifier lists open issues once before creating one. Two failed
+  runs at once can each create an issue, and a green run closes only the lowest-numbered one.
+- **For iteration 002:** serialize the notify job across runs (a `concurrency:` group), behind a test of the workflow.
+
+## 36. Round 1's three partial notes, never raised again
+
+- **Found (2026-11-13, review round 1, partial, cut by its deadline):**
+  - `finding-075e938b2db1e279`: plan.md's note "Abandoned only by a recorded maintainer ruling (T009)" and its FR-008
+    mapping row say unruled `abandoned` is not closed; the code closes every `abandoned` status, and the T009 row moved
+    that rule to iteration 002 (DRIFT-206-I001-010).
+  - `finding-ac49cb6709990d38`: the T003 and T015 rows claim more than the census shows (T003's suite runs; T015's
+    title says both B5F-036 suites are green and registered, while both are excluded).
+  - The notifier adopts any open issue carrying the `nightly-truth-check` label, whoever opened it.
+- **Disposition (maintainer, 2026-11-14):** iteration 002, with round 4's findings.
+
+## 37. A task the plan defers has no review verdict that says so
+
+- **Found (2026-11-14, at review sign-off):** the governance check allows a task verdict of `pass`, `needs-work` or
+  `blocked` only, a deferred task must still have a row, and an `accepted` review cannot hold a non-passing task. So
+  the only way to keep an accepted review is to write `pass` on a part-finished task, as T003's row now does with its
+  note (DRIFT-206-I001-027).
+- **For iteration 002:** a verdict value for a task the plan defers (for example `deferred`, with its decision id),
+  accepted beside an `accepted` review.
+
+## Iteration 002 Intake
+
+Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
+`f206-i001-gap-ledger-deferrals` and the per-requirement entries):
+
+- **SC-002 (T003's remainder):** `tests/integration/validator-hardening-iteration2.ps1` green with all three B5F-036
+  assertions (item 21; its fixture also needs item 29's fix).
+- **SC-001:** `tests/integration/project-path-resolution-regression.ps1` green and registered (items 23 to 25).
+- **T016 (FR-013) and T017 (FR-014)**, as the approved plan sets.
+- **DRIFT-206-I001-010:** abandoned is closed only with a recorded ruling; feature 206 does not close without it.
+- **Items 12 and 15 to 30**, as the review's gap ledger lists them (each item says what remains), and **items 31 to
+  37**, with item 36 including plan.md's stale note.
