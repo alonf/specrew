@@ -58,12 +58,107 @@ $script:Recorded = [ordered]@{
     Deep     = [ordered]@{ Points = 66; Replies = 16; RecLines = 6 }
 }
 
-# Decision items without a suffix, per lens, at d4c11236 (iteration 001's extractor counts plus product-domain's 8
-# numbered areas). An item beyond these must carry a suffix that names its consumer (FR-029).
+# The exempt questions: decision items that may stay without a suffix, per lens, by identity (Get-ItemIdentity: the
+# first 12 hex digits of the SHA-256 of the item's normalized text) with a readable label. Any other question without
+# a suffix fails (FR-026, FR-029), and so does an exempt question once its wording changes.
+# Where they come from: every decision item without a suffix in the lens files at d4c11236. 68 of the 69 are identical
+# to d4c11236 by normalized text; re-derive them with Get-UnsuffixedIdentities over those files. One is recorded at
+# its current text, with its reason in the comment beside it.
 $script:UnsuffixedBaseline = [ordered]@{
-    'product-domain' = 8; 'requirements-nfr' = 6; 'ui-ux' = 6; 'security-compliance' = 6; 'data-storage' = 7
-    'integration-api' = 7; 'devops-operations' = 7; 'architecture-core' = 4; 'component-design' = 5
-    'observability-resilience' = 6; 'code-implementation' = 7
+    'product-domain' = [ordered]@{
+        '86255ab5db9c' = 'Users, customers, and stakeholders'
+        'cb23b637b918' = 'Pain, jobs, and current workaround'
+        'fb2513812516' = 'Existing system and context'
+        # Recorded at its iteration 002 text: T019 appended one pointer sentence ("Six of these are also their own
+        # areas below (9 to 14) ..."); the question asked is unchanged (verified against d4c11236; reviewer ruling
+        # 2026-11-14, DRIFT-018).
+        '3b9715ad3cb2' = 'Constraints'
+        '8c702c3fde3b' = 'Outcomes and success metrics'
+        '17a88ee16f35' = 'MVP, non-goals, and vision'
+        'd44193f711e6' = 'Alternatives, competitors, and differentiation'
+        'f08ff1ec509a' = 'Adoption, rollout, and change impact'
+    }
+    'requirements-nfr' = [ordered]@{
+        '0f19da55646e' = 'Which NFRs are design drivers for this slice?'
+        '20e7d9e0ce8a' = 'Which constraints are mandatory rather than preferences?'
+        '463d5bee233c' = 'Which requirements need a measurable threshold?'
+        'c8eff28ef5d1' = 'Which requirements are unknown enough to require clarification?'
+        '1b52d51dd1d6' = 'Which acceptance criteria prove the quality, not only the happy path?'
+        '772c666923f0' = 'What is deliberately out of scope for this iteration?'
+    }
+    'ui-ux' = [ordered]@{
+        'fe1f8737f882' = 'What source of UX truth exists: Figma, screenshots, design system, exi...'
+        '38aa5e76aef3' = 'What are the primary user journeys and interruption/recovery paths?'
+        '53ec904faed3' = 'What accessibility, localization, RTL, theming, or regulatory constrai...'
+        '34dfc7a2a238' = 'Should data operations be client-side, server-side, streamed, or event...'
+        'ea738503739e' = 'How are loading, empty, error, disabled, offline, and conflict states...'
+        '811d2ac7a3a3' = 'Which UI state belongs on the client, server, URL, cache, or durable s...'
+    }
+    'security-compliance' = [ordered]@{
+        'd36cdffc5d9d' = 'What data is sensitive?'
+        'a53f403a998d' = 'What actions need audit records?'
+        '6e478f7b6fc0' = 'Who authenticates, and where is identity established?'
+        'ab02cbbba145' = 'What authorization model applies: roles, claims, scopes, ownership,'
+        '075f748549b5' = 'How is sensitive data protected in transit, at rest, logs, telemetry,...'
+        '088ddf553d0c' = 'What threat surfaces are introduced by scripts, plugins, APIs, file wr...'
+    }
+    'data-storage' = [ordered]@{
+        '7909a7079255' = 'Is persistent storage required, or is derived/transient state enough?'
+        '446b61aa80af' = 'What owns each data type?'
+        '44075b543bc7' = 'How is retention handled?'
+        '14bdcff05e62' = 'Which storage model fits: file, relational database, document store, k...'
+        'dad58157ddd3' = 'What consistency model is required: strong, eventual, transactional, o...'
+        '5abbb5511d27' = 'How are schema changes, migrations, backup, and restore handled?'
+        'bc5ebbeac336' = 'How does the design avoid services talking directly to another service...'
+    }
+    'integration-api' = [ordered]@{
+        'a89d1e7bb589' = 'What owns the contract?'
+        'effe177f2be6' = 'What is the integration style: REST, GraphQL, gRPC, OData, RPC, events...'
+        '22da6be1a307' = 'How is the contract versioned?'
+        'fa7748ef5a33' = 'Are operations synchronous, asynchronous, streaming, or eventually con...'
+        '4eab8b963586' = 'Which requests are safe, idempotent, cacheable, or replayable?'
+        'c3d2da6bf17c' = 'How are authentication, authorization, throttling, and API management...'
+        'a740cc51995a' = 'How are compatibility and schema evolution tested?'
+    }
+    'devops-operations' = [ordered]@{
+        'd364e50bc879' = 'Which environments must be equivalent, and where may they differ?'
+        '27305d5ac393' = 'What users, roles, service identities, and permissions are needed?'
+        '9220cfc54596' = 'What is the hosting model: local tool, web server, VM, container,'
+        'd6e52435723e' = 'What infrastructure is code-owned, manually configured, or external?'
+        '4ef6598e2b1c' = 'How are secrets, configuration hierarchy, and dynamic configuration ha...'
+        '78d7119f94d0' = 'What CI/CD stages, gates, rollout strategy, and rollback path are requ...'
+        'fec831c79da9' = 'Which CI lane belongs to THIS project''s forge?'
+    }
+    'architecture-core' = [ordered]@{
+        '781e73e1ed89' = 'Which **design method / decomposition style** governs the structure (f...'
+        '851db0761f3d' = 'What are the major building blocks and their responsibilities?'
+        '5fa08e2da0ae' = 'Which areas are volatile and should be isolated behind data, interface...'
+        '2b980367b78a' = 'Which option best balances simplicity, reversibility, and future cost?'
+    }
+    'component-design' = [ordered]@{
+        '8c6bf5a46673' = 'What responsibilities belong together, and what should stay separate?'
+        'f7a33c7219ba' = 'Which dependencies point inward vs outward?'
+        'a0f686e3b153' = 'Is the right abstraction a function, helper, module, service, plugin,...'
+        'daeceeb99fbc' = 'Where should schemas be decoupled from internal models?'
+        'a4fbc112d098' = 'What extension mechanism fits: inheritance, composition, configuration...'
+    }
+    'observability-resilience' = [ordered]@{
+        'a588635737d4' = 'What must be logged, measured, traced, or reported to understand behav...'
+        'fddf39ebc17e' = 'What correlation/context should flow through logs or events?'
+        '6f4550751d16' = 'What health checks, readiness checks, or validation commands are neede...'
+        '3d0225a7ecbe' = 'What errors are expected, and which are exceptional?'
+        '5c6f82ecfd9d' = 'What retry, timeout, idempotency, circuit, compensation, or recovery p...'
+        'fdbcff9f3dda' = 'What is the cost of observability, and what should not be logged?'
+    }
+    'code-implementation' = [ordered]@{
+        '0d99e2b29b34' = 'Source of code-rules truth'
+        '46d6a1ca8e0b' = 'Resolved stack'
+        '73431c177520' = 'Baseline craft posture'
+        '168f0da7efed' = 'Consequential forks'
+        'ba37e938e85d' = 'Applicability-filtered rules'
+        'ea94da033565' = 'Tooling / dependency selection (FR-013)'
+        '96e403b67729' = 'Continuous co-review harness/model/effort'
+    }
 }
 
 # SC-009: the six product-domain facts (FR-023, FR-024), key by key. Light is how each is shown at Light ('ask': a
@@ -191,6 +286,39 @@ function Get-ItemSuffix {
     }
     $kind = if ($match.Groups['ask'].Success) { 'ask' } else { 'recommend' }
     return [pscustomobject]@{ Kind = $kind; Line = $suffixLine.Number; Answer = $match.Groups['answer'].Value; Reason = $match.Groups['reason'].Value; Consumer = $match.Groups['consumer'].Value }
+}
+
+function Get-ItemIdentity {
+    # An item's identity: the first 12 hex digits of the SHA-256 of its normalized text (its lines trimmed, joined by
+    # one space, runs of whitespace collapsed). Any change of wording gives a new identity.
+    param($Item)
+    $text = (($Item.Lines | ForEach-Object { $_.Text.Trim() }) -join ' ') -replace '\s+', ' '
+    $hash = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($text))
+    return ([Convert]::ToHexString($hash).Substring(0, 12).ToLowerInvariant())
+}
+
+function Get-ItemLabel {
+    # A readable name for an item: its bold title when it starts with one, else its first words.
+    param($Item)
+    $first = ($Item.Lines[0].Text.Trim() -replace '^([-*]|\d+\.)\s+', '')
+    if ($first -match '^\*\*(?<title>[^*]+)\*\*') { return $Matches['title'].Trim() }
+    if ($first.Length -gt 70) { return $first.Substring(0, 70).TrimEnd() + '...' }
+    return $first
+}
+
+function Get-UnsuffixedIdentities {
+    # Every decision item without a suffix in a tree, per lens, as identity -> label (used to build fixture baselines,
+    # and to re-derive the baseline below from the lens files at d4c11236).
+    param([string]$Root)
+    $result = [ordered]@{}
+    foreach ($lens in (Read-Catalog -Root $Root)) {
+        $set = [ordered]@{}
+        foreach ($item in (Get-LensItems -Lines (Get-NormalizedLines -Path (Join-Path $Root "$($script:LensCatalogRelative)/$($lens.file)")))) {
+            if ((Get-ItemSuffix -Item $item).Kind -eq 'none') { $set[(Get-ItemIdentity -Item $item)] = Get-ItemLabel -Item $item }
+        }
+        $result[$lens.id] = $set
+    }
+    return $result
 }
 
 function Read-Catalog {
@@ -363,12 +491,20 @@ function Test-Consumers {
     foreach ($lens in $catalog) {
         $relative = "$($script:LensCatalogRelative)/$($lens.file)"
         $lines = Get-NormalizedLines -Path (Join-Path $Root $relative)
-        $unsuffixed = 0
-        $lastUnsuffixedLine = 0
-        foreach ($item in (Get-LensItems -Lines $lines)) {
+        $exempt = if ($Baseline.Contains($lens.id)) { $Baseline[$lens.id] } else { [ordered]@{} }
+        $lensItems = Get-LensItems -Lines $lines
+        $present = @(foreach ($i in $lensItems) { Get-ItemIdentity -Item $i })
+        $gone = @($exempt.Keys | Where-Object { $present -notcontains $_ } | ForEach-Object { "'$($exempt[$_])'" })
+        foreach ($item in $lensItems) {
             $suffix = Get-ItemSuffix -Item $item
             switch ($suffix.Kind) {
-                'none' { $unsuffixed++; $lastUnsuffixedLine = $suffix.Line }
+                'none' {
+                    if (-not $exempt.Contains((Get-ItemIdentity -Item $item))) {
+                        $found = "'$(Get-ItemLabel -Item $item)' is not one of $($lens.id)'s exempt questions (by its text)"
+                        if ($gone.Count -gt 0) { $found += "; exempt and no longer in the file as written: $($gone -join ', ')" }
+                        $problems.Add((New-Problem $relative $suffix.Line 'a question without a suffix only when it is an exempt question, unchanged' $found 'give it a suffix with its recommendation, reason and consumer (FR-026, FR-029); or, if only its wording changed, update its entry in $script:UnsuffixedBaseline in this test, with a comment saying why'))
+                    }
+                }
                 'malformed' { $problems.Add((New-Problem $relative $suffix.Line 'a valid question suffix' $suffix.Problem $suffix.Fix)) }
                 default {
                     $keyMatch = [regex]::Match((($item.Lines | ForEach-Object { $_.Text }) -join ' '), $script:AreaKeyPattern)
@@ -377,9 +513,6 @@ function Test-Consumers {
                     if ($why) { $problems.Add((New-Problem $relative $suffix.Line 'a consumer that exists (FR-029)' $why $consumerFix)) }
                 }
             }
-        }
-        if ($Baseline.Contains($lens.id) -and $unsuffixed -gt $Baseline[$lens.id]) {
-            $problems.Add((New-Problem $relative $lastUnsuffixedLine "at most $($Baseline[$lens.id]) questions without a suffix (the d4c11236 baseline)" "$unsuffixed" 'give each added question its suffix: recommendation, reason and consumer (FR-026, FR-029)'))
         }
         foreach ($hf in (Get-HandForwardLines -Lines $lines)) {
             $match = [regex]::Match($hf.Text, $script:HandForwardPattern)
@@ -518,7 +651,6 @@ function Invoke-SelfTests {
     $savedExtra = $script:ProfileExtraLenses
     $script:ProfileExtraLenses = @()
     $fixtureProfile = @('product-domain', 'agenda', 'beta-lens', 'gamma-lens')
-    $baseline = [ordered]@{ 'product-domain' = 1; 'beta-lens' = 2; 'gamma-lens' = 1 }
     $template = "# Spec`n`n## Problem Context`n`n- **Regulation and compliance**: the regime.`n- **Data inventory**: the data.`n`n## Requirements`n"
     $pdValid = @"
 # PD
@@ -561,6 +693,10 @@ No solution questions: pre-technical.
         # The valid forms are accepted, and the counting model gives the expected numbers.
         $valid = Join-Path $scratch 'valid'
         New-FixtureTree -Root $valid -ProductDomain $pdValid -Beta $betaValid -Gamma $gammaValid -Template $template
+        # The fixture's exempt questions: the valid fixture's unsuffixed items, by identity (product-domain 1,
+        # beta-lens 2, gamma-lens 1).
+        $baseline = Get-UnsuffixedIdentities -Root $valid
+        Assert-True ($baseline['product-domain'].Count -eq 1 -and $baseline['beta-lens'].Count -eq 2 -and $baseline['gamma-lens'].Count -eq 1) 'consumers: the fixture baseline holds the valid fixture''s unsuffixed questions by identity (1/2/1)'
         $consumerProblems = @(Test-Consumers -Root $valid -Baseline $baseline)
         Assert-True ($consumerProblems.Count -eq 0) "consumers: the valid suffix forms (ask; recommend → spec line; recommend → later lens; hand-forward) are accepted [found: $(($consumerProblems | ForEach-Object { Format-Problem $_ }) -join ' | ')]"
         $measured = Measure-WorkshopLength -Root $valid -ProfileIds $fixtureProfile
