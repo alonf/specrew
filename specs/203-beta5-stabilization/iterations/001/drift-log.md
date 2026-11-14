@@ -2398,3 +2398,51 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Class closure**: each finding is covered by its case (`authorization-sender`, `design-decision-cited-turn`,
   `crossing-presentation`); neighbour runs 17 of 17 (finding 3), 33 of 33 (finding 1, two workshop fixtures now copy the
   resolver a deployment ships beside the store), 4 of 4 (finding 2).
+
+### DRIFT-073 — Every turn pays about 19 s in hooks; two sweep suites crossed 900 s under load (finding, evidence only)
+
+- **Trigger**: the full sweep on `5cb83329` failed only on `message-identity.tests.ps1` and `review-loop-stops.Tests.ps1`,
+  both at the 900 s limit (`review-budget-loop.Tests.ps1` at 857 s). Their sweep times had risen on each recent commit
+  (`message-identity` 655, 636, 663, 737, 819, over 900 s). The reviewer session (`specrewreviewer-84`, under the
+  maintainer's delegation) asked that the limit not be raised and the suites not be split until the cause was known,
+  that test growth be separated from product cost with numbers, and that the hooks be timed directly.
+- **Not round C**: both suites, side by side on scratch worktrees under the same load, no limit, all cases passing:
+  `message-identity` 763 s on `5cb83329` and 763 s on `a2b1b824`, 742 s and 742 s on `5cb83329` and `9c5029f1` (its
+  file is unchanged since `9c5029f1`); `review-loop-stops` 665 s and 667 s, then 642 s and 541 s against `9c5029f1`: two
+  new round B cases (64 s) and 37 s (7%) over the 19 shared cases.
+- **Sweep load**: the same commit `dde4095e` took 706 s and 370 s for `message-identity` in two sweeps, so the sweep's
+  load can double a suite's time. Each case of these suites runs four or five hook invocations, so the suites carry
+  the hooks' own cost.
+- **What a turn costs** (scratch copies of this repo at `5cb83329`, the deployed launcher `.claude/specrew-hook-launch.ps1`
+  as the host runs it, the same payload, a typed prompt appended to a copy of a real 53 MB session transcript; ten
+  turns per engine, alternating; median and worst):
+
+  | Transcript | Engine | Prompt hook | Stop hook |
+  | --- | --- | --- | --- |
+  | 53 MB | pin `a56ac787` | 4.6 s, 5.1 s | 16.6 s, 17.7 s |
+  | 53 MB | tip `5cb83329` | 4.8 s, 5.0 s | 14.1 s, 15.3 s |
+  | 300 KB | pin `a56ac787` | 4.2 s, 4.6 s | 14.8 s, 16.0 s |
+  | 300 KB | tip `5cb83329` | 4.3 s, 4.7 s | 12.5 s, 13.6 s |
+
+  First turn of a session (it builds the orientation), one run each: pin 7.9 s and 21.4 s, tip 8.6 s and 15.0 s. Not a
+  regression: the tip's Stop hook is about 2.5 s faster than the pin's. Transcript size accounts for about 1.5 s of the
+  Stop hook and 0.5 s of the prompt hook.
+- **Where one Stop run goes** (tip, 13.4 s inside the launcher; line breakpoints in the dispatcher's
+  `Invoke-ProviderProcess` and in-process replays of each provider, no product code changed): dispatcher before its
+  first provider 0.45 s; then three providers in turn, each its own `pwsh` process (a bare start is 0.24 s):
+  handover 5.35 s, conformance 2.37 s, co-review navigator 4.52 s. Script loading before each provider's first piece of
+  work: 0.75 s, 1.07 s, 1.75 s. Git: 24 processes per Stop run (12, 4, 8), each 0.17 to 0.21 s on this machine
+  (`rev-parse` alone 0.17 s), about 4.3 s; `rev-parse --is-inside-work-tree` and `--show-prefix` run three times, HEAD
+  is read three times, and the tree is scanned by four `git status` calls.
+- **Transcript reads**: five per Stop run, all from the end, none from the start: three through
+  `Get-SpecrewTranscriptTailLines` in the handover provider (a 2 MB window each, keeping 500, 500 and 4,000 lines) and
+  two `Get-Content -Tail` in the conformance provider (40 and 200 lines; `specrew-conformance-provider.ps1:1147`,
+  `:351`). No reader keeps an offset between runs; the parse memo is per process, so it does not carry across providers.
+- **Severity**: major (the 2026-08-28 UX priority ruling): about 19 s of hooks per steady turn, about 24 s on a
+  session's first, paid by every crew on every turn.
+- **Proposal** (not built; the maintainer decides iteration 002 or sooner): one git snapshot per hook run, read by the
+  dispatcher and handed to the providers; the providers in one process, or the stores loaded once; one transcript tail
+  read per hook run handed to the providers, or a per-session offset. An estimate, not a measurement: the Stop hook
+  from about 14 s to about 5 s.
+- **Sweep**: with the cause known, the sweep on the committed records runs with a 1,500 s suite limit for that sweep
+  only; the default stays 900 s. Home hook files: 0 changed across the timing runs.
