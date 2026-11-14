@@ -2447,8 +2447,10 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Sweep**: with the cause known, the sweep on the committed records runs with a 1,500 s suite limit for that sweep
   only; the default stays 900 s. Home hook files: 0 changed across the timing runs.
 - **Sweep results**: `b122a30f`, 279 suites, 0 failed beyond the two known red (B5F-036); `message-identity` 908 s,
-  `review-loop-stops` 934 s, `review-budget-loop` 841 s. `f6478946` (this entry's two-line closure added, nothing
-  else), one failure: `tests/integration/start-command-non-interactive-first-run.tests.ps1` hit its own 300 s limit
+  `review-loop-stops` 934 s, `review-budget-loop` 841 s; but the governance lane `iteration-001-governance-203` was red
+  (exit 1, 24 s): this entry had no Class closure line, the same failure the local check showed and `f6478946` fixed.
+  That red lane was missed when `b122a30f`'s sweep was reported as green (see DRIFT-074). `f6478946` (this entry's
+  two-line closure added, nothing else): all ten lanes green, governance 24 s; one suite failure: `tests/integration/start-command-non-interactive-first-run.tests.ps1` hit its own 300 s limit
   at 301 s and reported a start hang. Its sweep times since `dde4095e`: 163 s, rising to 295 s on `5cb83329` and 271 s
   on `b122a30f`, with its code unchanged; run alone on `f6478946` in a scratch worktree it passed in 202 s. The same
   class: a first start runs the same hooks, under the sweep's load. Its limit is not raised (the maintainer, 15:23
@@ -2470,5 +2472,14 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   still requires the full sweep. Before using the rule, the changed files between the two commits are printed and each
   is confirmed to be a Markdown record.
 - **Applied**: `git diff --name-only b122a30f f6478946` listed only
-  `specs/203-beta5-stabilization/iterations/001/drift-log.md`; markdownlint 0 issues; pushed at 15:25 local.
-- **Class closure**: NONE — a process decision; no code changed.
+  `specs/203-beta5-stabilization/iterations/001/drift-log.md`; markdownlint 0 issues; pushed at 15:25 local; CI green
+  (Specrew CI, Test, Cross-Platform Validation). The records commit `94201a24` was pushed the same way at 15:48 local
+  after markdownlint, the governance check and the governance lane (exit 0, 20 s).
+- **Correction (found while preparing the round D readiness report)**: the question put to the maintainer said
+  `b122a30f` had a fully green full sweep. It did not: its suites were green, but its governance lane was red on
+  DRIFT-073's missing Class closure line, which `f6478946` added. Coverage of the pushed code is unchanged: the code
+  in `b122a30f`, `f6478946` and `94201a24` is identical; `f6478946`'s own sweep ran every lane green and every suite
+  green except the start-command load timeout, which passed in `b122a30f`'s sweep (271 s) and alone (202 s). The rule
+  is not used again until the maintainer has seen this correction; this commit is held unpushed until the next swept push.
+- **Class closure**: NONE — a process decision; no code changed. The report check that missed the red lane: a sweep
+  is reported from its lane lines and its suite summary together, never from the suite summary alone.
