@@ -2552,6 +2552,11 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
      only when every lane and every suite passes, with one named allowance: the start-command test timing out under
      sweep load counts as green when it passes run alone and passes in CI, recorded each time it is used. Nothing
      else red counts.
+- **The rule's wording, an example** (the reviewer session's ruling, routine): the records commit before round E
+  (`7db15e34`) differs from the swept `671b2dfc` by 12 files, all records, two of them not Markdown
+  (`iterations/001/tasks-progress.yml`, `docs/review-scope/changed-files.txt`). Both are records by the gate's own
+  records-only predicate, but the rule says Markdown records, so it was not used: the records commit gets its own full
+  sweep. Whether the rule should read "records as the gate defines them" is put to the maintainer.
 - **Class closure**: NONE — process decisions; the rule's definition is kept in the crew's standing rules.
 
 ### DRIFT-078 — A human-accepted stop never covers a records commit made after it (finding, placement pending)
