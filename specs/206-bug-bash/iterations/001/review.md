@@ -76,7 +76,7 @@ affirmative forms. Before building, the forms ran against all 161 iterations: no
 | ---- | ----------- | ------- | ----- |
 | T001 | FR-001 | pass | No-console refusal and three-try cap; RED 5/7 `56f452f3`, GREEN 7/7 `837b4f09`. |
 | T002 | FR-002 | pass | One path separator; green on Windows and in the per-push Ubuntu step. |
-| T003 | FR-003 | deferred | The classifier fix and round 2's finding 1 are in; the remainder is SC-002, iteration 002. |
+| T003 | FR-003 | pass | Pass for this iteration's part: the classifier change and round 2's finding 1, suite green; remainder carried to iteration 002 as SC-002 (maintainer, 2026-11-14, DRIFT-206-I001-027). |
 | T004 | FR-004 | pass | `handover-to-203.md`, closed at T018. |
 | T005 | FR-008a | pass | `closed-open-table.md`, 161 iterations, rulings recorded. |
 | T006 | FR-008a | pass | One definition of closed; affirmative forms since round 3. |
@@ -93,22 +93,19 @@ affirmative forms. Before building, the forms ran against all 161 iterations: no
 
 ## Gap Ledger
 
-Every entry is deferred to iteration 002, by the maintainer's ruling for round 4 (2026-11-14) and by the task table for
-the rest. Its classification is the maintainer's at the closeout.
+Every entry below is deferred to iteration 002; classified by the maintainer's typed `fix the record as proposed - round 1's three notes go to iteration 002 with round 4's` (2026-11-14). The deferrals are registered with their approving human in `.squad\decisions.md` under decision id `f206-i001-gap-ledger-deferrals`.
 
-- **Round 4, finding 1** (`finding-175c2ab8a756a10e`, FR-011): `steps:` inside a YAML block scalar is read as steps.
-- **Round 4, finding 2** (`finding-2f7f4713967f972f`, FR-011): a comment right after `;` still counts as a registration.
-- **Round 4, finding 3** (`finding-5cfaa2b2f67ea55b`, FR-003): a malformed `>>> ... <<<` opener is treated as a
-  balanced managed block.
-- **Round 4, finding 4** (`finding-42d18d3781d59c95`, FR-009): an unexpected validator exception writes no message
-  hash; beside bug list item 30's four stops.
-- **Round 4, finding 5** (`finding-d249cc05e6ee6910`, FR-009): overlapping notifier runs can open two tracking issues;
-  the workflow has no `concurrency:` group.
-- **Round 1, three partial findings not raised again**: plan.md's note that unruled `abandoned` is not closed
-  contradicts the code (`finding-075e938b2db1e279`); the T003 and T015 rows claim more than the census shows
-  (`finding-ac49cb6709990d38`); the notifier adopts any open issue with its label.
-- **SC-001, SC-002, T003's remainder, T016, T017**, bug list items 12 and 15 to 30, and DRIFT-206-I001-010
-  (required before feature 206 closes).
+- **Round 4, finding 1** (`finding-175c2ab8a756a10e`, FR-011): deferred - iteration 002; `steps:` inside a YAML block scalar is read as steps.
+- **Round 4, finding 2** (`finding-2f7f4713967f972f`, FR-011): deferred - iteration 002; a comment right after `;` still counts as a registration.
+- **Round 4, finding 3** (`finding-5cfaa2b2f67ea55b`, FR-003): deferred - iteration 002; a malformed `>>> ... <<<` opener is treated as a balanced managed block.
+- **Round 4, finding 4** (`finding-42d18d3781d59c95`, FR-009): deferred - iteration 002; an unexpected validator exception writes no message hash, beside bug list item 30's four stops.
+- **Round 4, finding 5** (`finding-d249cc05e6ee6910`, FR-009): deferred - iteration 002; overlapping notifier runs can open two tracking issues, as the workflow has no `concurrency:` group.
+- **Round 1, plan.md note** (`finding-075e938b2db1e279`): deferred - iteration 002; plan.md's note that unruled `abandoned` is not closed contradicts the code.
+- **Round 1, T003 and T015 rows** (`finding-ac49cb6709990d38`): deferred - iteration 002; the rows claim more than the census shows.
+- **Round 1, notifier label**: deferred - iteration 002; the notifier adopts any open issue carrying its label.
+- **SC-001, SC-002 and T003's remainder**: deferred - iteration 002, by the maintainer's option 1 rulings.
+- **T016 (FR-013) and T017 (FR-014)**: deferred - iteration 002, as the approved plan sets.
+- **Bug list items 12 and 15 to 30, and DRIFT-206-I001-010**: deferred - iteration 002; DRIFT-010 is required before feature 206 closes.
 
 ## Independence
 

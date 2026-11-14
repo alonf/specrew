@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 26
-**Resolution rate**: 81% (21/26 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 27
+**Resolution rate**: 81% (22/27 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage; 025
 deferred to iteration 002 by the maintainer's ruling)
 **Specification drift**: None detected (process drift only)
@@ -524,6 +524,25 @@ deferred to iteration 002 by the maintainer's ruling)
   the preflight layout; the rerun exception still covers only `co-review-service.Tests.ps1:129`.
 - **Resolution**: adopted as a standing rule; CI is still followed after every push.
 - **Class closure**: NONE — a working rule for the crew, not a defect; the printed file list is its check.
+
+### DRIFT-206-I001-027 — the review record's format at review sign-off; T003 recorded as pass for this iteration's part
+
+- **Recorded**: 2026-11-14, after the review-signoff verdict.
+- **What**: once the boundary commit moved plan.md to `reviewing`, the governance check judged review.md and refused
+  it: T003's verdict `deferred` is not a verdict value, the Gap Ledger entries were not classified one per line, and
+  the deferrals had no canonical entry in `.squad/decisions.md`. With T003 as `needs-work` (the maintainer's
+  `fix the record as proposed`), the check refused an `accepted` review holding a non-passing task; with no T003 row,
+  it refused the missing row.
+- **Approval**: the maintainer's decision at 21:24 local, relayed by the reviewer session (`specrewreviewer-98`):
+  "206: understand, so we pass now but fix it in the next iteration?" — the first option, T003 `pass` with the note
+  "pass for this iteration's part: the classifier change and round 2's finding 1, suite green; remainder carried to
+  iteration 002 as SC-002". The overall verdict stays accepted. Round 1's three notes go to iteration 002 with round
+  4's (maintainer, typed, 2026-11-14).
+- **Resolution**: review.md fixed; defer entries `f206-i001-gap-ledger-deferrals` and one per requirement (FR-003,
+  FR-009, FR-011, FR-013); tasks-progress.yml rewritten to the task table (maintainer, typed); bug list items 31 to 37
+  and an Iteration 002 Intake section naming SC-002.
+- **Class closure**: bug list item 37 — iteration 002 adds a verdict value for a task the plan defers, so a
+  part-finished task is no longer written as `pass`. Until then, the note on the row carries the truth.
 
 <!--
   Every new ### DRIFT-... event includes:

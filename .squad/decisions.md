@@ -1,5 +1,75 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-14 — Verdict: 206 iteration 001 gap ledger - every open item deferred to iteration 002
+
+- **Decision ID**: f206-i001-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-003, FR-009, FR-011, FR-012, FR-013, FR-014, SC-001, SC-002
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Fix each item in iteration 002, behind a failing test where it is a defect.
+- **Disposition**: The open items in iteration 001's review.md Gap Ledger, classified at the maintainer's typed
+  `fix the record as proposed - round 1's three notes go to iteration 002 with round 4's` (2026-11-14), on the
+  crew's proposal of the same day.
+  (1) Round 4's five minor findings: iteration 002, by the maintainer's ruling before round 4 ("Round 4 is the last:
+  whatever it finds that is not a blocker goes to iteration 002", 2026-11-14); finding 5 waits with the others.
+  (2) Round 1's three partial notes not raised again (plan.md's stale note on unruled `abandoned`, the T003 and T015
+  rows, the notifier adopting any open issue with its label): iteration 002, by the same reply.
+  (3) SC-001, SC-002 and T003's remainder (maintainer, option 1, 2026-11-12 and 2026-11-13), T016 (FR-013) and T017
+  (FR-014) (the approved plan), bug list items 12 and 15 to 30, and DRIFT-206-I001-010, which feature 206 does not
+  close without.
+  The requirement-scoped items are also registered one requirement per entry below.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-003 gap deferred to iteration 002 (round 4, finding 3)
+
+- **Decision ID**: f206-i001-defer-fr003-malformed-marker
+- **Type**: defer
+- **Affected Requirement**: FR-003
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 fixes it behind a failing test.
+- **Disposition**: A malformed `>>> ... <<<` managed-block opener is treated as balanced (`finding-5cfaa2b2f67ea55b`).
+  Deferred by the maintainer's round 4 ruling (2026-11-14); see `f206-i001-gap-ledger-deferrals`.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-009 gaps deferred to iteration 002 (round 4, findings 4 and 5)
+
+- **Decision ID**: f206-i001-defer-fr009-notifier-gaps
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 fixes both behind failing tests.
+- **Disposition**: An unexpected validator exception writes no message hash (`finding-42d18d3781d59c95`), and
+  overlapping notifier runs can open two tracking issues (`finding-d249cc05e6ee6910`). Deferred by the maintainer's
+  round 4 ruling (2026-11-14); see `f206-i001-gap-ledger-deferrals`.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-011 gaps deferred to iteration 002 (round 4, findings 1 and 2)
+
+- **Decision ID**: f206-i001-defer-fr011-census-scanner
+- **Type**: defer
+- **Affected Requirement**: FR-011
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 fixes both behind failing tests.
+- **Disposition**: `steps:` inside a YAML block scalar is read as steps (`finding-175c2ab8a756a10e`), and a comment
+  right after `;` still counts as a registration (`finding-2f7f4713967f972f`). Deferred by the maintainer's round 4
+  ruling (2026-11-14); see `f206-i001-gap-ledger-deferrals`.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-013 and FR-014 deferred to iteration 002 (T016, T017)
+
+- **Decision ID**: f206-i001-defer-fr013-fr014-planned
+- **Type**: defer
+- **Affected Requirement**: FR-013
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 delivers T016 (FR-013) and T017 (FR-014).
+- **Disposition**: The approved plan places FR-013 and FR-014 in iteration 002; see `f206-i001-gap-ledger-deferrals`.
+
 ### 2026-10-25 — Verdict: corrected defer entry for feature 001 iteration 011 (FR-054)
 
 - **Decision ID**: defer-fr054-immutability-guardrail
