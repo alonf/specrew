@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "plan_id": "f205.i001.v1",
+  "plan_id": "f205.i002.v1",
   "commands": [
     {
-      "command_id": "iteration-001-governance-205",
+      "command_id": "iteration-002-governance-205",
       "executable": "pwsh",
       "arguments": [
         "-NoProfile",
@@ -12,7 +12,7 @@
         "-ProjectPath",
         ".",
         "-IterationPath",
-        "specs/205-workshop-lens-order/iterations/001",
+        "specs/205-workshop-lens-order/iterations/002",
         "-NoCacheRead",
         "-NoParallel"
       ],
@@ -38,7 +38,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Explicit governance validation of the ACTIVE iteration: feature 205 iteration 001. RE-POINTED FOR FEATURE 205 ON 2026-11-11 (205 iteration 001 DRIFT-008), deliberately, by maintainer decision. Before this, the plan (plan_id f199.i003.slice.v1, last re-pointed 2026-10-21 in ede19399) still named the 10 lanes of features 202 and 199 (102 suites). A 205 review launch ran them for 29 minutes before the reviewer started and failed preflight on a governance check of 202 iteration 003. Two of those suites (deployed-extension-marker-on-update, receipt-outcomes-retired) run scripts/specrew-update.ps1 without a home override and rewrote the maintainer's real home hook files. That is handed to feature 203 as 205 H-001 (specs/205-workshop-lens-order/iterations/001/handover-to-203.md). When 203 merges, keep or replace this plan on purpose; do not restore the 202/199 lanes by merge default."
+      "label": "Explicit governance validation of the ACTIVE iteration: feature 205 iteration 002. RE-POINTED TO ITERATION 002 ON 2026-11-14 (205 iteration 002 DRIFT-017), by the reviewer session's routine ruling under the maintainer's delegation: the iteration 001 governance command failed on the standing derived-block exception (iteration 001 review.md), so a round launched on it would fail preflight; and iteration 002 added tests/unit/workshop-length-budget.tests.ps1. First re-pointed for feature 205 on 2026-11-11 (205 iteration 001 DRIFT-008), by maintainer decision, from the 202/199 lanes (plan_id f199.i003.slice.v1), two of whose suites (deployed-extension-marker-on-update, receipt-outcomes-retired) run scripts/specrew-update.ps1 without a home override and rewrote the maintainer's real home hook files (205 H-001). When 203 merges, keep or replace this plan on purpose; do not restore the 202/199 lanes by merge default."
     },
     {
       "command_id": "f205-lens-order-suites",
@@ -46,7 +46,7 @@
       "arguments": [
         "-NoProfile",
         "-Command",
-        "$fail = 0; $results = @('tests/unit/lens-order-parity.tests.ps1','tests/integration/workshop-agenda-confirmation.tests.ps1','tests/unit/lens-applicability-selector.tests.ps1','tests/integration/agent-led-workshop-replay.tests.ps1','tests/integration/workshop-agenda-vocabulary.tests.ps1','tests/integration/workshop-intake-completion-survives-agenda.tests.ps1','tests/integration/workshop-material-packet-language.tests.ps1','tests/unit/code-implementation-lens.tests.ps1','tests/unit/product-domain-lens.tests.ps1','tests/unit/workshop-delegation.tests.ps1','tests/unit/workshop-question-tool.tests.ps1') | ForEach-Object -Parallel { $s = $_; & pwsh -NoProfile -NonInteractive -File $s *> $null; [pscustomobject]@{ Suite = $s; ExitCode = $LASTEXITCODE } } -ThrottleLimit 4; foreach ($r in @($results)) { if ($r.ExitCode -ne 0) { $fail = 1; Write-Host \"f205 suite FAILED: $($r.Suite)\" } }; if (@($results).Count -ne 11) { $fail = 1; Write-Host \"f205 suite FAILED: parallel run returned $(@($results).Count) results, expected 11\" }; exit $fail"
+        "$fail = 0; $results = @('tests/unit/lens-order-parity.tests.ps1','tests/integration/workshop-agenda-confirmation.tests.ps1','tests/unit/lens-applicability-selector.tests.ps1','tests/integration/agent-led-workshop-replay.tests.ps1','tests/integration/workshop-agenda-vocabulary.tests.ps1','tests/integration/workshop-intake-completion-survives-agenda.tests.ps1','tests/integration/workshop-material-packet-language.tests.ps1','tests/unit/code-implementation-lens.tests.ps1','tests/unit/product-domain-lens.tests.ps1','tests/unit/workshop-delegation.tests.ps1','tests/unit/workshop-question-tool.tests.ps1','tests/unit/workshop-length-budget.tests.ps1') | ForEach-Object -Parallel { $s = $_; & pwsh -NoProfile -NonInteractive -File $s *> $null; [pscustomobject]@{ Suite = $s; ExitCode = $LASTEXITCODE } } -ThrottleLimit 4; foreach ($r in @($results)) { if ($r.ExitCode -ne 0) { $fail = 1; Write-Host \"f205 suite FAILED: $($r.Suite)\" } }; if (@($results).Count -ne 12) { $fail = 1; Write-Host \"f205 suite FAILED: parallel run returned $(@($results).Count) results, expected 12\" }; exit $fail"
       ],
       "timeout_seconds": 600,
       "env_refs": [
@@ -70,7 +70,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 205 iteration 001: the lens-order parity test plus the 10 workshop suites that cover files 205 touches (the 9 workshop suites named as CI steps in T014, plus workshop-agenda-confirmation, which T004 and T011 changed). Each runs in its own pwsh, 4 at a time, with the result count pinned to 11 so a swallowed suite cannot read as a pass. Every suite was read before it was added: each writes only under a fresh system-temp folder, and none deploys hooks, runs specrew-update.ps1 or writes the home folder. The 600 s timeout has not been measured yet. RE-POINTED FOR FEATURE 205 ON 2026-11-11 (205 iteration 001 DRIFT-008), deliberately, by maintainer decision. Before this, the plan (plan_id f199.i003.slice.v1, last re-pointed 2026-10-21 in ede19399) still named the 10 lanes of features 202 and 199 (102 suites). A 205 review launch ran them for 29 minutes before the reviewer started and failed preflight on a governance check of 202 iteration 003. Two of those suites (deployed-extension-marker-on-update, receipt-outcomes-retired) run scripts/specrew-update.ps1 without a home override and rewrote the maintainer's real home hook files. That is handed to feature 203 as 205 H-001 (specs/205-workshop-lens-order/iterations/001/handover-to-203.md). When 203 merges, keep or replace this plan on purpose; do not restore the 202/199 lanes by merge default."
+      "label": "Feature 205: the lens-order parity test, the 10 workshop suites that cover files 205 touches, and iteration 002's length-budget test (FR-028, FR-029). Each runs in its own pwsh, 4 at a time, with the result count pinned to 12 so a swallowed suite cannot read as a pass. Every suite was read before it was added: each writes only under a fresh system-temp folder, and none deploys hooks, runs specrew-update.ps1 or writes the home folder. RE-POINTED TO ITERATION 002 ON 2026-11-14 (205 iteration 002 DRIFT-017), by the reviewer session's routine ruling under the maintainer's delegation: the iteration 001 governance command failed on the standing derived-block exception (iteration 001 review.md), so a round launched on it would fail preflight; and iteration 002 added tests/unit/workshop-length-budget.tests.ps1. First re-pointed for feature 205 on 2026-11-11 (205 iteration 001 DRIFT-008), by maintainer decision, from the 202/199 lanes (plan_id f199.i003.slice.v1), two of whose suites (deployed-extension-marker-on-update, receipt-outcomes-retired) run scripts/specrew-update.ps1 without a home override and rewrote the maintainer's real home hook files (205 H-001). When 203 merges, keep or replace this plan on purpose; do not restore the 202/199 lanes by merge default."
     }
   ]
 }

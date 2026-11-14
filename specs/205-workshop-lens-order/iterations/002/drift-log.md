@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 16
+**Total drift events**: 17
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -261,6 +261,22 @@
   no live session in this project (0 live tokens)". Every other turn of the run got its own token. The session
   recorded it as D-001 in the scratch feature's drift log and reported it plainly; no workshop answer was affected.
 - **Class closure**: NONE — the turn-token hooks belong to feature 203's area. Handed over as H-021.
+
+### DRIFT-017 — the review round's verification plan still pointed at iteration 001 (re-pointed by ruling)
+
+- **Observed**: 2026-11-14, preparing the review stop. `.specrew/verification-plan.json` (plan_id `f205.i001.v1`),
+  which the round's preflight runs, still ran the governance check on iteration 001, which fails today on the standing
+  derived-block exception. A round launched on it would fail preflight before the reviewer starts, as iteration 001's
+  first launch did on feature 202's plan (iteration 001 DRIFT-008). It also lacked iteration 002's new test.
+- **Ruling**: the reviewer session, routine and in plan, under the maintainer's delegation, 2026-11-14: re-point it to
+  iteration 002, in one commit before the review-round ask, with the full checks because the file is JSON. Keeping the
+  iteration 001 command, or leaving the plan, was refused for the same preflight failure.
+- **Change**: plan_id `f205.i002.v1`. The governance command is now `iteration-002-governance-205` on iterations/002.
+  `tests/unit/workshop-length-budget.tests.ps1` joins the suite list, with 12 suites and the count pinned to 12.
+  The labels keep iteration 001's note not to restore the 202/199 lanes when 203 merges. The round's scope file
+  `review-scope-round-1.md` is committed in the same commit, so it is in the reviewed tree.
+- **Class closure**: NONE — the plan is project configuration that each iteration re-points by hand; making a stale
+  plan loud at launch is feature 203's area.
 
 <!--
   Every new ### DRIFT-... event includes:
