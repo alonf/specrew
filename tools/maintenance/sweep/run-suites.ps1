@@ -49,9 +49,17 @@ $results = $Suites | ForEach-Object -ThrottleLimit $Throttle -Parallel {
     $isPester = (Get-Content -LiteralPath $path -Raw) -match '(?m)^\s*Describe\s'
     if ($isPester) {
         $cmd = "`$c = New-PesterConfiguration; `$c.Run.Path = '$path'; `$c.Run.PassThru = `$true; `$c.Output.Verbosity = 'None'; `$r = Invoke-Pester -Configuration `$c; " +
-            "'{0} passed, {1} failed, {2} skipped' -f `$r.PassedCount, `$r.FailedCount, `$r.SkippedCount; foreach (`$t in `$r.Failed) { '  FAILED: ' + `$t.ExpandedPath; `$m = ((`$t.ErrorRecord | Select-Object -First 1) -replace '\s+', ' '); '    ' + `$m.Substring(0, [Math]::Min(500, `$m.Length)) }"
+            "'{0} passed, {1} failed, {2} skipped' -f `$r.PassedCount, `$r.FailedCount, `$r.SkippedCount; foreach (`$t in `$r.Failed) { '  FAILED: ' + `$t.ExpandedPath; `$m = ((`$t.ErrorRecord | Select-Object -First 1) -replace '\s+', ' '); '    ' + `$m.Substring(0, [Math]::Min(500, `$m.Length)) }; " +
+            "foreach (`$k in @(`$r.Containers | Where-Object { `$_.Result -ne 'Passed' })) { '  CONTAINER ' + `$k.Result + ': ' + `$k.Item + `$(if (`$k.ErrorRecord) { ' - ' + (([string](`$k.ErrorRecord | Select-Object -First 1)) -replace '\s+', ' ') } else { '' }) }; " +
+            "'pester-result: {0} total={1} failed={2} failed-containers={3}' -f `$r.Result, `$r.TotalCount, `$r.FailedCount, `$r.FailedContainersCount"
         $run = Invoke-Suite -Arguments @('-NoProfile', '-Command', $cmd) -WorkingDirectory $using:Repo -TimeoutSeconds $limit
-        $failed = (-not $run.Finished) -or (($run.Lines -join "`n") -notmatch '\b0 failed')
+        # Iteration review round D finding 3: A SUITE PASSES ONLY WHEN PESTER SAYS SO, AND RAN SOMETHING. The verdict used to be
+        # the substring '0 failed' in the output, and a suite whose discovery threw (a missing dot-sourced dependency) reports
+        # FailedCount 0 with no tests, so it counted as a pass. Now the run must finish, exit 0, report Result Passed, at
+        # least one test, no failed test and no failed container (as tests/full-powershell-test-sweep.ps1 checks).
+        $verdict = [regex]::Match(($run.Lines -join "`n"), 'pester-result: (?<result>\S+) total=(?<total>\d+) failed=(?<failed>\d+) failed-containers=(?<containers>\d+)')
+        $failed = (-not $run.Finished) -or $run.ExitCode -ne 0 -or -not $verdict.Success -or $verdict.Groups['result'].Value -cne 'Passed' -or
+            [int]$verdict.Groups['total'].Value -lt 1 -or [int]$verdict.Groups['failed'].Value -ne 0 -or [int]$verdict.Groups['containers'].Value -ne 0
         $kind = if ($run.Finished) { 'Pester' } else { "Pester TIMED OUT after ${limit}s" }
         $wall = ((Get-Date) - $started).TotalSeconds; $awake = (Get-SweepAwakeSeconds) - $awakeStart
         [pscustomobject]@{ Suite = $_; Kind = $kind; Failed = $failed; Wall = [int]$wall; Awake = [int]$awake; Standby = (Get-SweepStandbyVerdict -WallSeconds $wall -AwakeSeconds $awake -ThresholdSeconds $using:StandbyThresholdSeconds); Lines = @($run.Lines | Select-Object -Last 40); Known = $known }
