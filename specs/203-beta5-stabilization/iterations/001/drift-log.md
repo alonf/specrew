@@ -2353,3 +2353,48 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Points**: review fixes inside the iteration review; no capacity change.
 - **Class closure**: each finding is covered by its case (`review-budget-loop`, `review-loop-stops` twice,
   `review-stop-answers`); the 30 suites that drive the review command ran green over the fixes.
+
+### DRIFT-072 — Iteration review round C: three major findings, all fixed test first; the pin's sender-check consequence (review outcome, maintainer ruling)
+
+- **Ruling**: DRIFT-070's, as for DRIFT-071. The reviewer session (`specrewreviewer-84`, under the maintainer's
+  delegation) asked, before fix 1 was committed, for the steps between now and the pin advance and what the sender
+  check resolves to at each; the trace and a dry run were accepted and fix 1 was committed after them.
+- **Round C**: run `run-20261113-230313149-5c350d9c` (`cmp-203-beta5-stabilization-i001`, round 3), reviewer Codex, on
+  `a2b1b824` plus the untracked focus files, launched from the pin's `specrew-review.ps1 --live --approve-round --host
+  codex --design-context-ref docs/review-scope/203-i001-round-C.md` at 01:03 local (UTC+2) on the maintainer's typed
+  approval captured at 01:02; terminal at 2,995 s. Completion complete, currentness current. Round budget 3 of 4 used.
+  Home hook files: 12 hashed before and after, 0 changed.
+- **Findings** (all major, all real, all fixed):
+  1. The sender-check loaders (`Test-SpecrewAuthorizationSenderForUse`, `Test-SpecrewWorkshopRecordSender`) searched
+     `SPECREW_MODULE_PATH` first and never resolved the project's live-engine pin, so a development tree decided what
+     counts as a typed approval before the pin advanced, and an unusable pin fell back to it (DA-8, T013). Fixed: one
+     pin-aware loader, `Import-SpecrewAuthorizationSenderCheck` in `live-engine-resolution.ps1`; a configured pin is the
+     only source and an unusable one resolves none; the pinned refusal names the pin, not `specrew update`
+     (`be86636e` red 4 of 37, `dc6b0e58`).
+  2. `record-design-decision.ps1` trusted the prompt reservation's origin, which the dispatcher sets to typed-user for an
+     unwrapped scheduled prompt, and never read the transcript record naming the sender (FR-014, FR-022, T013). Fixed:
+     the writer runs `Resolve-SpecrewAuthorizationSender` on the cited turn through the same loader
+     (`49da0931` red 2 of 43, `4a552f8b`).
+  3. Presented-crossing memory suppressed the boundary block even when `pending-verdict-stop.md` had become missing or
+     unreadable, so a conversational turn ended without naming the broken record (T011, FR-046). Fixed: no suppression
+     while the record has a problem (`393c310a` red 4 of 60, `8c4830b3`).
+- **The pin's consequence (evidence for the maintainer, no change made)**: the pinned engine (`a56ac787`) has no sender
+  check and its prompt hook writes no `transcript_path` on ledger rows (the last 10 rows: none). A dry run on a scratch
+  copy of this repo's `.specrew` against the pin, with and without fix 1: the ratchet for review-signoff returns early
+  (`shared-governance.ps1:3872`), and the check refuses the recorded before-implement verdict either way. Consequences
+  until the pin advances: a partial review sign-off is refused as "could not find the message it came from"
+  (`signoff-gate-wiring.ps1:171-192` loads the development store; `HumanAuthorityStore.ps1:278`), with or without fix 1;
+  and advancing the pin before sign-off would stop every further round launch for this iteration, because round A
+  finding 1 checks the sender of the 2026-10-31 before-implement verdict at each launch
+  (`review-campaign-orchestrator.ps1:1267`, `:1274`). The stop (`--pause-choice stop-here`) and the allowance reset run
+  in the pin and are unaffected.
+- **A suite that writes the project it runs in**: `tests/unit/hook-command-length.tests.ps1:90` runs the antigravity
+  launcher through cmd.exe with no working directory, so run from this checkout it started this project's hook
+  dispatcher (session start at 02:23:38 local), which rewrote `iterations/001/state.md` and `tasks-progress.yml` and
+  runtime files. Home hook files 0 changed. Harmless in the sweep (each suite runs in a temp worktree); not run locally
+  again; the two files are left as written and kept out of every commit. Open: give the call its own working directory
+  (its exit-0 expectation depends on reaching a real dispatcher).
+- **Points**: review fixes inside the iteration review; no capacity change.
+- **Class closure**: each finding is covered by its case (`authorization-sender`, `design-decision-cited-turn`,
+  `crossing-presentation`); neighbour runs 17 of 17 (finding 3), 33 of 33 (finding 1, two workshop fixtures now copy the
+  resolver a deployment ships beside the store), 4 of 4 (finding 2).
