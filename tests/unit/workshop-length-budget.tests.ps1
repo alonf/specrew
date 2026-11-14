@@ -593,6 +593,8 @@ No solution questions: pre-technical.
 - Earlier lens? — Light: ask → lens: product-domain
 - Missing lens? — Light: ask → lens: no-such-lens
 - Not a consumer? — Light: ask → Plan Obligations
+- Lens consumer with no answer key? — Light: ask → lens: gamma-lens
+- Never received? (``orphan``) — Light: recommend "x" (a reason) → lens: gamma-lens
 - Added without a suffix?
 
 ### Solution questions
@@ -605,6 +607,7 @@ No solution questions: pre-technical.
 - product-domain ``compliance_regime`` — recommend "product-domain: not stated" → spec.md Problem Context: Data inventory
 - gamma-lens ``reader`` — recommend "gamma-lens: not stated" (answered there) → spec.md Problem Context: Data inventory
 - product-domain ``data_residency`` — recommend "not stated" (answered there) → spec.md Problem Context: Data inventory
+- product-domain ``compliance_regime`` — recommend "product-domain: not stated" (answered there) → lens: gamma-lens
 "@
         New-FixtureTree -Root $bad -ProductDomain $pdValid -Beta $betaBad -Gamma $gammaValid -Template $template
         $p = @(Test-Consumers -Root $bad -Baseline $baseline)
@@ -622,7 +625,12 @@ No solution questions: pre-technical.
         Assert-True ($text -match 'the answer shown as "product-domain: <answer>"') 'consumers: a hand-forward whose shown answer does not name its source fails'
         # The 12th: gamma-lens's otherwise valid hand-forward names beta-lens's key `reader`, which the bad beta-lens drops.
         Assert-True ($text -match "a key that beta-lens defines .*'reader'") 'consumers: a hand-forward whose key its source no longer defines fails'
-        Assert-True ($p.Count -eq 12) "consumers: all 12 problems reported in one run (found $($p.Count))"
+        # A later lens is a consumer only when it shows the answer as its recommended answer (FR-029): it needs a
+        # hand-forward line for that source and key.
+        Assert-True ($text -match 'an answer key .*lens: gamma-lens') 'consumers: a lens consumer on a question with no answer key fails'
+        Assert-True ($text -match "gamma-lens has no hand-forward of beta-lens ``orphan``") 'consumers: a lens consumer that does not receive the answer fails'
+        Assert-True ($text -match "gamma-lens has no hand-forward of product-domain ``compliance_regime``") 'consumers: a hand-forward passed on to a lens that does not receive it fails'
+        Assert-True ($p.Count -eq 15) "consumers: all 15 problems reported in one run (found $($p.Count))"
         Assert-True (@($p | Where-Object { -not $_.Fix -or $_.Line -le 0 }).Count -eq 0) 'consumers: every problem names its line and its fix'
 
         # SC-009, key by key, on a copy of the real catalog: the facts as shipped pass; each mutation fails.
