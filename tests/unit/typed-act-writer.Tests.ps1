@@ -389,6 +389,34 @@ try {
 }
 finally { (Get-Item -LiteralPath $ledger9).IsReadOnly = $false }
 Assert-True (-not [bool]$r9.Written -and $null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f9.Root)) ("no approval is written when its turn cannot be reserved (written={0})" -f [bool]$r9.Written)
+# Case 9b (iteration review round D finding 2; FR-026): A TURN THE LEDGER CANNOT RECORD IS SAID, on both paths. The refusal
+# to mint stays; what changes is that the human is told, at their next message, that the approval was not saved. The
+# report channel (.specrew/runtime) stays writable while the ledger is read-only.
+Write-Host '--- case 9b: a turn the ledger cannot record is reported, on the recovery path and on the prompt path ---'
+$drops9 = @(Get-Content -LiteralPath (Join-Path $f9.Root '.specrew/runtime/authority-capture-drops.jsonl') -ErrorAction SilentlyContinue | ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } | Where-Object { $null -ne $_ -and [string]$_.event -ceq 'authority-phrase-not-recorded' })
+Assert-True ($drops9.Count -eq 1 -and [string]$drops9[0].reason -ceq 'not-saved') ("the recovery path reports the turn it could not reserve as not saved (got {0} report(s))" -f $drops9.Count)
+$said9 = [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $f9.Root -HostKind 'claude' -SessionId 's1')
+Assert-True ($said9 -match 'could not be saved' -and $said9 -match 'approved for allowance reset') ("and the next message says so (got '{0}')" -f $said9)
+
+. (Join-Path $repoRoot 'scripts\internal\bootstrap\ConversationCaptureAccessor.ps1')
+. (Join-Path $repoRoot 'scripts\internal\bootstrap\HandoverStore.ps1')
+$f9c = New-QueuedReplyFixture
+$id9c = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$ledger9c = Join-Path $f9c.Root '.specrew/authority/exhausted-turns.jsonl'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ledger9c) | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $f9c.Root '.specrew/runtime') | Out-Null
+Set-Content -LiteralPath $ledger9c -Value '{"schema_version":"1.0","fact_type":"typed-turn-exhausted","turn_id":"unrelated"}' -Encoding UTF8
+(Get-Item -LiteralPath $ledger9c).IsReadOnly = $true
+try {
+    $null = Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $f9c.Root -Response $approval -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.ToString('o')) `
+        -TurnPosition 'prompt-entry' -TurnArrival ([DateTimeOffset]::UtcNow.ToString('o')) -MessageId $id9c -SessionId 's1' -TurnOrigin 'typed-user' -TranscriptPath $f9c.Transcript 2>$null
+}
+finally { (Get-Item -LiteralPath $ledger9c).IsReadOnly = $false }
+Assert-True ($null -eq (Get-SpecrewAllowanceResetAuthorization -ProjectRoot $f9c.Root 2>$null)) 'the prompt path mints nothing when its turn cannot be reserved'
+$drops9c = @(Get-Content -LiteralPath (Join-Path $f9c.Root '.specrew/runtime/authority-capture-drops.jsonl') -ErrorAction SilentlyContinue | ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } | Where-Object { $null -ne $_ -and [string]$_.event -ceq 'authority-phrase-not-recorded' })
+Assert-True ($drops9c.Count -eq 1 -and [string]$drops9c[0].reason -ceq 'not-saved') ("the prompt path reports the turn it could not reserve as not saved (got {0} report(s))" -f $drops9c.Count)
+$said9c = [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $f9c.Root -HostKind 'claude' -SessionId 's1')
+Assert-True ($said9c -match 'could not be saved') ("and the next message says so (got '{0}')" -f $said9c)
 
 # Case 10 (co-review round 8, finding 3): A RECOVERED ACT IS DATED BY WHEN IT WAS TYPED. Approval B was captured at 10:10;
 # an older missed approval A, typed at 10:00, is recovered at 10:20. A must not retire B.
