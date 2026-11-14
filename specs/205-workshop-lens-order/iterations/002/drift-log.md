@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 13
+**Total drift events**: 14
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -214,6 +214,24 @@
   derived-block exception is unchanged.
 - **Effect here**: the held records commits (`176882ff` and this one) may go out under it at the next push.
 - **Class closure**: NONE — a process decision by the maintainer, not a defect.
+
+### DRIFT-014 — the agenda shows one flat list, so the problem and solution parts are not visible (observation from the T026 run; candidate for iteration 003)
+
+- **Observed**: 2026-11-14, during the recorded Light workshop run (T026), by the maintainer. The agenda rendered the
+  selected lenses in index.yml order as one flat "Selected lenses" list; nothing on screen showed which lenses are
+  problem-space and which are solution-space. Their words, at 19:44 local: "So in the agenda we do not show that there
+  is a product part and a solution part? Is it good or bad? Also it would be nice to use colors if possible for the
+  names of each lens".
+- **Decided**: the reviewer session recommended three groups from index.yml's `space` tag (problem / both / solution),
+  each with a text label and one coloured marker per group (not per lens), the marker repeated in each lens's opening
+  heading; the text label stays because colour alone must not carry the meaning. The maintainer's answer, at 19:48
+  local, relayed by the reviewer session under the wider delegation: "Agree with your recomandation of 3 parts, color
+  per part." Skipped lenses stay in their own list.
+- **Placement**: proposed for iteration 003 (labels only, not waiting on feature 203), on the reviewer's reading; the
+  maintainer agreed with the recommendation without naming the iteration. It is put to them when iteration 003's plan
+  is brought.
+- **Effect in iteration 002**: none. Nothing changes for it in this iteration.
+- **Class closure**: NONE — a presentation improvement found by the run, not a defect in what iteration 002 built.
 
 <!--
   Every new ### DRIFT-... event includes:
