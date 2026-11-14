@@ -2446,3 +2446,5 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   from about 14 s to about 5 s.
 - **Sweep**: with the cause known, the sweep on the committed records runs with a 1,500 s suite limit for that sweep
   only; the default stays 900 s. Home hook files: 0 changed across the timing runs.
+- **Class closure**: NONE — evidence only, nothing was changed; the recurrence guard (a wall-time budget case for the
+  prompt and Stop hooks through the deployed launcher) belongs to the proposal, once the maintainer places it.
