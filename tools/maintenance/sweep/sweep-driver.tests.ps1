@@ -245,6 +245,25 @@ try {
     Test-Case11 'sweep-full saves the section as the known-good copy after each sweep and prints its line differences when config.toml is reported' {
         $fullText11 -match 'Save-SweepCodexHooksState' -and $fullText11 -match 'Get-SweepCodexHooksStateDiff' -and $fullText11 -match 'home-last-after-codex-hooks-state\.txt'
     }
+
+    Write-Host 'Case 12: a Pester suite counts as passed only when Pester says it passed and ran at least one test (iteration review round D finding 3)'
+    $repo12 = Join-Path $scratch 'repo12'
+    New-Item -ItemType Directory -Force -Path (Join-Path $repo12 'tests') | Out-Null
+    # Discovery fails before any test registers: a dot-sourced dependency that is missing.
+    Set-Content -LiteralPath (Join-Path $repo12 'tests/discovery.Tests.ps1') -Value @"
+BeforeDiscovery { . (Join-Path `$PSScriptRoot 'missing-dependency.ps1') }
+Describe 'a suite whose dependency is missing' { It 'never registers' { `$true | Should -BeTrue } }
+"@ -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $repo12 'tests/empty.Tests.ps1') -Value "Describe 'a suite with no tests' { }" -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $repo12 'tests/good.Tests.ps1') -Value "Describe 'a suite that passes' { It 'passes' { 1 | Should -Be 1 } }" -Encoding UTF8
+    $list12 = Join-Path $scratch 'list12.txt'
+    Set-Content -LiteralPath $list12 -Value @('tests/discovery.Tests.ps1', 'tests/empty.Tests.ps1', 'tests/good.Tests.ps1') -Encoding UTF8
+    $out12 = @(& pwsh -NoProfile -File $runSuites -ListFile $list12 -Repo $repo12 -Throttle 3 -SuiteTimeoutSeconds 120 2>&1 | ForEach-Object { [string]$_ })
+    $line12 = { param([string]$Name) @($out12 | Where-Object { $_ -like ('=== tests/' + $Name + ' *') }) }
+    Assert-True (@(& $line12 'discovery.Tests.ps1').Count -eq 1 -and @(& $line12 'discovery.Tests.ps1')[0] -match ' FAILED$') ("a suite whose discovery failed is a failure ({0})" -f (@(& $line12 'discovery.Tests.ps1') -join ''))
+    Assert-True (@(& $line12 'empty.Tests.ps1').Count -eq 1 -and @(& $line12 'empty.Tests.ps1')[0] -match ' FAILED$') ("a suite that ran no tests is a failure ({0})" -f (@(& $line12 'empty.Tests.ps1') -join ''))
+    Assert-True (@(& $line12 'good.Tests.ps1').Count -eq 1 -and @(& $line12 'good.Tests.ps1')[0] -notmatch 'FAILED') ("a suite that ran and passed is not ({0})" -f (@(& $line12 'good.Tests.ps1') -join ''))
+    Assert-True (@($out12 | Where-Object { $_ -match '^--- 3 suite\(s\), 2 failed,' }).Count -eq 1) ("the summary counts both ({0})" -f (($out12 | Where-Object { $_ -like '--- *' }) -join ' | '))
 }
 finally {
     $env:SPECREW_SWEEP_KEEPAWAKE_TRACE = $savedTrace
