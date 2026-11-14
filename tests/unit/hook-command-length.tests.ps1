@@ -56,12 +56,15 @@ function Get-CommandStrings {
 
 function Invoke-ThroughCmd {
     # The command exactly as a host that uses cmd.exe would start it.
-    param([string]$Command, [hashtable]$Environment)
+    # WorkingDirectory: the scratch project the command belongs to. Without it the command runs in this checkout and its
+    # launcher finds this project's own dispatcher (DRIFT-072).
+    param([string]$Command, [hashtable]$Environment, [string]$WorkingDirectory)
     $saved = @{}
     foreach ($key in $Environment.Keys) { $saved[$key] = [Environment]::GetEnvironmentVariable($key); [Environment]::SetEnvironmentVariable($key, $Environment[$key]) }
     try {
         $psi = [Diagnostics.ProcessStartInfo]::new('cmd.exe')
         $psi.Arguments = '/d /s /c "' + $Command + '"'
+        if (-not [string]::IsNullOrWhiteSpace($WorkingDirectory)) { $psi.WorkingDirectory = $WorkingDirectory }
         $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.RedirectStandardInput = $true
         $p = [Diagnostics.Process]::Start($psi)
         $p.StandardInput.Close()
@@ -80,7 +83,7 @@ try {
         } | ForEach-Object { $_.Name })
     Assert-True ($hosts.Count -ge 5) ("every host with hook bindings is measured ({0})" -f ($hosts -join ', '))
 
-    $claudeStop = $null; $encodedLauncher = $null
+    $claudeStop = $null; $encodedLauncher = $null; $claudeProject = $null; $antigravityProject = $null
     foreach ($hostKind in $hosts) {
         # Each host deploys into its own project and home, so every command found is that host's.
         $project = Join-Path $work ($hostKind + '-project'); $fakeHome = Join-Path $work ($hostKind + '-home')
@@ -97,15 +100,15 @@ try {
         $longest = ($own | ForEach-Object { $_.Command.Length } | Measure-Object -Maximum).Maximum
         Assert-True ($longest -le $limit) ("{0}: longest hook command is {1} characters, within {2} (half of cmd.exe's {3})" -f $hostKind, $longest, $limit, $cmdExeLimit)
         if ($hostKind -eq 'claude') { $claudeProject = $project; $claudeStop = (Get-Content -LiteralPath (Join-Path $project '.claude/settings.local.json') -Raw | ConvertFrom-Json).hooks.Stop[0].hooks[0].command }
-        if ($hostKind -eq 'antigravity') { $antigravityHome = $fakeHome; $encodedLauncher = @($own | Where-Object { $_.Command -match 'EncodedCommand' } | Select-Object -First 1)[0].Command }
+        if ($hostKind -eq 'antigravity') { $antigravityProject = $project; $antigravityHome = $fakeHome; $encodedLauncher = @($own | Where-Object { $_.Command -match 'EncodedCommand' } | Select-Object -First 1)[0].Command }
     }
 
     # The real path: through cmd.exe, Claude's Stop command decodes and runs its generated launcher. This scratch
     # project has no dispatcher, so the launcher's own "not found" refusal is the proof that pwsh ran it.
-    $r = Invoke-ThroughCmd -Command $claudeStop -Environment @{ CLAUDE_PROJECT_DIR = $claudeProject; SPECREW_MODULE_PATH = $null }
+    $r = Invoke-ThroughCmd -Command $claudeStop -Environment @{ CLAUDE_PROJECT_DIR = $claudeProject; SPECREW_MODULE_PATH = $null } -WorkingDirectory $claudeProject
     Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Text -match 'could not find its hook dispatcher') ("claude: the Stop command runs through cmd.exe and reaches its launcher (exit {0})" -f $r.Exit)
     Assert-True ($r.RanIn.StartsWith([IO.Path]::GetFullPath($work), [StringComparison]::OrdinalIgnoreCase)) ("claude: the Stop command ran in its scratch project, not in this checkout ({0})" -f $r.RanIn)
-    $r = Invoke-ThroughCmd -Command $encodedLauncher -Environment @{ USERPROFILE = $antigravityHome; HOME = $antigravityHome; SPECREW_MODULE_PATH = $null }
+    $r = Invoke-ThroughCmd -Command $encodedLauncher -Environment @{ USERPROFILE = $antigravityHome; HOME = $antigravityHome; SPECREW_MODULE_PATH = $null } -WorkingDirectory $antigravityProject
     Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Exit -eq 0) ("antigravity: the encoded launcher command runs through cmd.exe (exit {0})" -f $r.Exit)
     Assert-True ($r.RanIn.StartsWith([IO.Path]::GetFullPath($work), [StringComparison]::OrdinalIgnoreCase)) ("antigravity: the encoded launcher command ran in its scratch project, not in this checkout ({0})" -f $r.RanIn)
 
