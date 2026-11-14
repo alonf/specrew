@@ -2483,3 +2483,118 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   is not used again until the maintainer has seen this correction; this commit is held unpushed until the next swept push.
 - **Class closure**: NONE — a process decision; no code changed. The report check that missed the red lane: a sweep
   is reported from its lane lines and its suite summary together, never from the suite summary alone.
+
+### DRIFT-075 — The pin's stop records a July standing grant as its authority, not the typed stop answer (finding, pin only)
+
+- **Trigger**: the path 2(a) dry run (scratch copy of round C's tree, the pin's hooks, a redirected home). The pin's
+  hook captured the typed "stop the review here" (`pause-decision/stop-here.json`, bound to round C's run and
+  digest `875cdb0d`), and the stop landed. Its disposition (`accept-current`) names
+  `standing-human-grant-t029-progress-20260722-slot-9`, the standing grant of 2026-07-22, as its
+  `authorization_ref`, not the answer the hook had just captured.
+- **Cause (pin `a56ac787`)**: `scripts/specrew-review.ps1:1720` uses the campaign grant reference when one is set,
+  and only otherwise `pause-stop-here:<run>`; without `--approve-round` the reference is read from the configured
+  reviewer record (`:1303`), which still holds the July grant.
+- **The tip**: fixed already. `scripts/specrew-review.ps1:1344` always cites `pause-stop-here:<run>` and passes the
+  captured turn (`-TurnIdentity`), since `2bfa0ca4` (T008, DRIFT-052 step i). Only the pin behaves this way.
+- **Severity (proposed)**: major on the pin. The stop still required the typed answer (it is spent on landing), so
+  nothing was authorized without the human; but the authority record points at the wrong evidence, in the iteration
+  whose subject is which evidence an authority record cites. Closed by the pin advance (T014); until then a stop run
+  from the pin carries this reference.
+- **Proposal**: no change to the pin; T014's capture check includes a stop on the advanced pin and reads the
+  disposition's `authorization_ref`.
+- **Class closure**: NONE — evidence only until T014; the recurrence guard is the T014 check above.
+
+### DRIFT-076 — Iteration review round D: three major findings, all fixed test first, with the hook-command-length leak (review outcome, maintainer's decision)
+
+- **Round D**: run `run-20261114-172156973-8e5f3fa1` (`cmp-203-beta5-stabilization-i001`, round 4), reviewer Codex, on
+  `1377289a` plus the untracked focus files, launched from the pin's `specrew-review.ps1 --live --approve-round --host
+  codex --design-context-ref docs/review-scope/203-i001-round-D.md` at 19:22 local on the maintainer's typed approval
+  captured at 19:21; preflight 3,143 s (slowed by the path 2(a) dry run's lanes on the same machine), terminal at
+  3,656 s, 20:23 local. Completion complete, currentness current. Round budget 4 of 4 used. Home hook files: 12 hashed
+  before and after, 0 changed.
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "Yes fix all (203)", 20:30
+  local on 2026-11-14): fix findings 1 to 3, each test first. Conditions shown to the maintainer before they answered:
+  (1) a fifth round is the last round of this iteration's review; whatever it finds that does not block sign-off goes
+  to iteration 002; (2) before fixing finding 3, list every Pester suite in the last two sweeps' stored output that
+  reported 0 passed and 0 failed or no counts; (3) one more fix rides in the batch and no others: the
+  `hook-command-length.tests.ps1:90` working directory; the hook cost (DRIFT-073), the lease-handoff flake and every
+  other open item stay for iteration 002; (4) the review-end records go into the tree before the fifth round, in the
+  form the variant dry run proves.
+- **Findings** (all major, all fixed):
+  1. `Read-SpecrewCitedTypedTurn` kept the tail reader's 2 MiB byte window although `Resolve-SpecrewAuthorizationSender`
+     asked for 1,000,000 lines, so an approval with more than 2 MiB of later conversation was refused as not found, at
+     the boundary matcher and at the round launch. Fixed: the tail first, then the whole transcript once on a miss;
+     assistant records are not parsed (`a9a13583` red 3 of 34, `99223e7d`). Cost on a copy of this project's 53.7 MB
+     transcript: the tail lookup 0.9 s before, 0.2 to 0.6 s now; the whole read, on a miss only, 5.4 s warm (8.4 s
+     first), up to two reads per check. The prompt hook never reaches it; the Stop hook reaches it only through a
+     recorded coverage deferral on a material stop (`specrew-conformance-provider.ps1:1731`).
+  2. `Invoke-SpecrewTypedAuthorityCapture` and `Write-SpecrewTypedAct` returned in silence when the turn could not be
+     reserved (FR-026). Fixed: the refusal stays and the turn is reported as not saved, said at the next message
+     (`328f2cf5` red 4 of 48, `ef58deae`).
+  3. `run-suites.ps1` judged a Pester suite by the substring "0 failed", so a discovery failure or a suite with no tests
+     passed. Fixed: a structured result line; pass only on Result Passed, at least one test, no failed test or
+     container (`9f2e9f3b` red 3 of 55, `2626f722`). The zero-test check of the stored output of the last two full
+     sweeps (`f6478946`, `b122a30f`; 142 Pester suites each): none reported 0 passed and 0 failed, none lacked counts.
+- **The batch's fourth fix** (DRIFT-072 open item): `hook-command-length.tests.ps1` ran its cmd.exe commands in the
+  checkout; they now run in their scratch projects, and the suite checks the checkout is unchanged (`a4c3222c` red 2 of
+  22, `671b2dfc`; run in a scratch worktree only).
+- **Class closure**: each finding is covered by its case (`authorization-consumers`, `review-launch-verdict-sender`,
+  `typed-act-writer` case 9b, `sweep-driver` case 12, `hook-command-length`'s working-directory and checkout checks).
+
+### DRIFT-077 — The sweep's suite limit and the records-only push rule for the rest of iteration 001 (maintainer's decision)
+
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "203: bothe yes", 20:49
+  local on 2026-11-14), answering two questions as the reviewer put them:
+  1. "Allow the 1,500 s suite limit for the remaining full sweeps of iteration 001?" Yes: 1,500 s per suite for every
+     remaining full sweep of iteration 001, including the one before the pin advance; each suite's time is recorded as
+     before; the start-command test's own 300 s limit is not raised.
+  2. "May the crew use the records-only push rule again, with the tightened definition?" Yes: a sweep counts as green
+     only when every lane and every suite passes, with one named allowance: the start-command test timing out under
+     sweep load counts as green when it passes run alone and passes in CI, recorded each time it is used. Nothing
+     else red counts.
+- **Class closure**: NONE — process decisions; the rule's definition is kept in the crew's standing rules.
+
+### DRIFT-078 — A human-accepted stop never covers a records commit made after it (finding, placement pending)
+
+- **Trigger**: two dry runs of the review end on scratch copies of round C's exact tree, the pin's hooks, a
+  redirected home (home hook files 0 changed in both). First: the stop landed, and the sign-off sync then refused at
+  its preflight (uncommitted focus files, `state.md` disagreeing with the task table, no `review.md`); with those
+  records committed after the stop, both the pin's and the tip's gate refused "records-only-delta-over-non-authorizing-
+  result". Second: with real-shaped records committed after the round and before the stop, the stop's verification
+  passed and its gate refused "latest-result-not-current ... Your answer has NOT been used up".
+- **Cause (the tip, `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1`)**: the sign-off sync runs
+  the development tree's gate (`sync-boundary-state.ps1` resolves no pin, `:53-83`). In its records-only branch a
+  findings result authorizes a records difference only when no blocking or major finding is open (`:935-944`); a human
+  `accept-current` disposition is not consulted there (only `require-correction` is, `:939-942`). The only way a
+  stop's acceptance authorizes is a recorded allow for the exact current digest (`:880-889`), which any later commit
+  breaks. The records-only predicate itself (`:531-599`) counts `review.md`, `state.md`, `tasks-progress.yml`, the
+  drift log and `docs/review-scope/*` as records; `plan.md`, `spec.md` and `tasks.md` always make a review stale.
+- **Consequence here**: the review-end records had to be committed before a fifth round, and that round reviews them
+  (DRIFT-076, DRIFT-079). A project whose last round leaves a major finding accepted at the stop cannot write its review
+  record after the stop.
+- **Severity (proposed)**: major. A correct human decision (accept the remaining findings and stop) costs an extra round,
+  or a partial sign-off, every time the last round has a major finding.
+- **Proposal** (not built): in the records-only branch, an `accept-current` disposition recorded for the reviewed digest
+  authorizes a records-only difference on top of it, as a recorded allow does. **Placement**: the maintainer's
+  decision, pending; the reviewer session has recommended iteration 002.
+- **Class closure**: NONE — evidence only until the maintainer places it.
+
+### DRIFT-079 — T014 is blocked until the review sign-off; the review ends with a fifth round on a tree that holds its records (maintainer's decision)
+
+- **Trigger**: the second dry run (DRIFT-078) showed the review cannot end without a fifth round, and the validator
+  refuses `plan.md` at `reviewing`, which `review.md` requires, while a task is not in a terminal state ("Reviewing
+  iterations require all tasks to be in terminal states", `validate-governance.ps1:5133`), and refuses an `accepted`
+  review while T014 is not passing (`:3775`).
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "OK, blocked it is.", 22:44
+  local on 2026-11-14): T014 is blocked until sign-off and stays in iteration 001; `plan.md` goes to `reviewing` with T014
+  blocked; `review.md`'s T014 row and its overall verdict read blocked, each with its reason on the same line. The
+  reviewer accepted the path: the records committed and pushed first, then a fifth round (round E) on that tree, the
+  stop, the sign-off sync; fallback if the sync refuses after the stop: advance the pin, then a partial sign-off.
+- **Conditions** (the reviewer's): `review.md` says in its first lines that it covers rounds A to D and was committed
+  before round E because of DRIFT-078, that round E runs on this exact tree and where its result is recorded; T014's
+  case is handed over to feature 206's bug list item 37 (a task the plan defers has no verdict value); after the
+  sign-off sync, one records commit adds round E's result before anything else; round E's focus file covers the four
+  fixes since round D and says the review records are present by design; a blocking finding, or a major one showing a
+  fix is wrong, stops for the reviewer before the maintainer is asked for the stop; machine load is confirmed quiet
+  before the round approval and before the stop.
+- **Class closure**: NONE — a process decision; the validator's gap is feature 206's item 37.

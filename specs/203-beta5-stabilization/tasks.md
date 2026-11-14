@@ -577,6 +577,9 @@ then T014.
     the hooks only when the hooks are redeployed, and that rewrites the real home's per-machine launcher and hook files:
     the maintainer is asked before that redeploy. Check: one typed `drop finding F1` with no review stop waiting shows
     the not-recorded line under the prompt.
+    **Added (iteration review, DRIFT-075):** the check on the advanced pin includes one `stop the review here`, and
+    reads the disposition it writes: its `authorization_ref` cites the typed stop answer, not a standing grant.
+    **Status (maintainer, 2026-11-14; DRIFT-079):** blocked until the review sign-off, which the plan puts first.
   - **Acceptance:** `iterations/001/capture-check.md` records the verdict once in its own turn and nothing for the
     other two. T005's out-of-tail path counts as verified only when the real run records `hook-captured-user-prompt`.
   - **Trace:** FR-045.
