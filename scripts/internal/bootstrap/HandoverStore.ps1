@@ -1613,7 +1613,28 @@ function Invoke-SpecrewTypedAuthorityCapture {
                     -SessionId $SessionId -Identity $identityKind -TurnOrigin $TurnOrigin -PromptEvent $PromptEvent -TranscriptPath $TranscriptPath -MessageId $MessageId -NowUtc $NowUtc)
         }
         catch { $reserved = $false }
-        if (-not $reserved) { return }
+        if (-not $reserved) {
+            # Iteration review round D finding 2 (FR-026): NO RESERVATION, NO MINT - AND THE HUMAN IS TOLD. The refusal stays;
+            # an authority phrase whose turn could not be recorded is reported as not saved, through the same journal the
+            # other not-recorded reasons use, and said at the next message. A withdrawal is not reported as 'approved
+            # nothing'; it has its own path below, which a failed reservation never reaches.
+            if (-not $formEmpty -and (Get-Command Get-SpecrewTypedAuthorityShape -ErrorAction SilentlyContinue) -and
+                (Get-Command Write-SpecrewAuthorityNotRecordedReport -ErrorAction SilentlyContinue)) {
+                try {
+                    $unreservedShape = Get-SpecrewTypedAuthorityShape -Text $Response
+                    if ($null -eq $unreservedShape -and (Get-Command Get-SpecrewStopAnswerShape -ErrorAction SilentlyContinue) -and
+                        $null -ne (Get-SpecrewStopAnswerShape -Text $Response)) {
+                        $unreservedShape = [pscustomobject]@{ Kind = 'stop-answer'; Retype = ((([string]$Response).Trim()) -split '\r?\n')[0].Trim() }
+                    }
+                    if ($null -ne $unreservedShape -and [string]$unreservedShape.Kind -cne 'approval-withdrawal') {
+                        $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $unreservedShape -EntryKey $turnId -HostKind $HostKind `
+                            -SessionId $SessionId -Reason 'not-saved' -NowUtc $NowUtc
+                    }
+                }
+                catch { $null = $_ }
+            }
+            return
+        }
     }
     # A message with nothing typed outside its pastes is reserved and records nothing, the withdrawal included.
     if ($formEmpty) { return }

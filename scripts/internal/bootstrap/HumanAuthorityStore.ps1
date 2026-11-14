@@ -2045,7 +2045,18 @@ function Write-SpecrewTypedAct {
                         -MintedWriters '' -ContentHash $contentHash -SessionId $SessionId -Identity 'typed-act' -TurnOrigin 'typed-user' -TranscriptPath $TranscriptPath -NowUtc $NowUtc)
             }
             catch { $reserved = $false }
-            if (-not $reserved) { $act.Kind = 'none'; $act.Reason = 'not-reserved'; $act.Report = $true; return $result }
+            if (-not $reserved) {
+                # Iteration review round D finding 2 (FR-026): no reservation, no mint, and said at the next message as not saved,
+                # as the catch below says a writer that threw. The caller reads only Written, so the report is made here.
+                try {
+                    $unreservedShape = Get-SpecrewTypedAuthorityShape -Text ([string]$act.Text)
+                    if ($null -ne $unreservedShape -and [string]$unreservedShape.Kind -cne 'approval-withdrawal') {
+                        $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $unreservedShape -EntryKey ([string]$act.TurnIdentity) -HostKind $HostKind -SessionId $SessionId -Reason 'not-saved' -NowUtc $NowUtc
+                    }
+                }
+                catch { $null = $_ }
+                $act.Kind = 'none'; $act.Reason = 'not-reserved'; $act.Report = $true; return $result
+            }
             # Co-review round 8: the act is dated by when the human typed it, as the host recorded it, so supersession
             # orders recovered acts by that and not by when this recovery ran.
             $actAt = $NowUtc
