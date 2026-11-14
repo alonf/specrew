@@ -1745,7 +1745,9 @@ function Read-SpecrewCitedTypedTurn {
         # The prompt as the host handed it to the hook, checked against the hook's own reservation of that message.
         [AllowNull()][AllowEmptyString()][string]$PromptText,
         [AllowNull()][AllowEmptyString()][string]$MessageIdentity,
-        [int]$MaxLines = 4000
+        [int]$MaxLines = 4000,
+        # The backward window read from the transcript, in bytes (the tail reader's own default when not given).
+        [int]$MaxBytes = 2097152
     )
     $hostKey = ([string]$HostKind).Trim().ToLowerInvariant()
     $cited = ([string]$TurnIdentity).Trim()
@@ -1768,8 +1770,12 @@ function Read-SpecrewCitedTypedTurn {
         $records = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $hookEvents = [System.Collections.Generic.List[object]]::new()
         $codexTurnId = ''
-        foreach ($line in @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines)) {
+        foreach ($line in @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines -MaxBytes $MaxBytes)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            # Round D finding 1: an assistant record is never a cited turn and nothing below reads it, so it is not parsed (the
+            # substring is the record's own top-level type; inside a JSON string it would be escaped). On this project's 53 MB
+            # transcript that is a third of the bytes.
+            if ($line.Contains('"type":"assistant","uuid":"')) { continue }
             $o = $null
             try { $o = $line | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { continue }
             if ($null -eq $o) { continue }
@@ -2496,12 +2502,21 @@ function Resolve-SpecrewAuthorizationSender {
             }
         }
         if ($null -ne $row -and [IO.File]::Exists([string]$row.transcript_path)) {
+            # Iteration review round D finding 1: AN APPROVAL DOES NOT EXPIRE AS THE CONVERSATION GROWS. The hot-path tail
+            # (2 MiB) is tried first; when the cited message is not in it and the transcript is longer, the whole transcript
+            # is read once more. Only a lookup that misses the tail pays for the full read.
+            $transcriptLength = [long](Get-Item -LiteralPath ([string]$row.transcript_path)).Length
+            $windows = @([int]2097152)
+            if ($transcriptLength -gt 2097152) { $windows += [int][Math]::Min([long][int]::MaxValue, $transcriptLength) }
             try {
-                $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity $TurnIdentity.Trim() -TranscriptPath ([string]$row.transcript_path) -MaxLines 1000000
-                if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
-                if ($null -eq $turn -and $row.PSObject.Properties['message_id'] -and -not [string]::IsNullOrWhiteSpace([string]$row.message_id)) {
-                    $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity ([string]$row.message_id) -TranscriptPath ([string]$row.transcript_path) -MaxLines 1000000
+                foreach ($window in $windows) {
+                    $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity $TurnIdentity.Trim() -TranscriptPath ([string]$row.transcript_path) -MaxLines 100000000 -MaxBytes $window
                     if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
+                    if ($null -eq $turn -and $row.PSObject.Properties['message_id'] -and -not [string]::IsNullOrWhiteSpace([string]$row.message_id)) {
+                        $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity ([string]$row.message_id) -TranscriptPath ([string]$row.transcript_path) -MaxLines 100000000 -MaxBytes $window
+                        if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
+                    }
+                    if ($null -ne $turn) { break }
                 }
             }
             catch { $turn = $null }
