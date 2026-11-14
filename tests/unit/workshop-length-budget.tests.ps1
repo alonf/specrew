@@ -62,6 +62,21 @@ $script:UnsuffixedBaseline = [ordered]@{
     'observability-resilience' = 6; 'code-implementation' = 7
 }
 
+# SC-009: the six product-domain facts (FR-023, FR-024), key by key. Light is how each is shown at Light ('ask': a
+# must-answer question; 'recommend': a recommendation line); at Standard and Deep every one is a question. Receivers are
+# the later lenses that must show the answer as a hand-forward line citing product-domain, "not stated" included.
+# Default, when set, is the only recommendation allowed (operators are never guessed).
+$script:ProductDomainFacts = [ordered]@{
+    'compliance_regime'    = @{ Light = 'ask'; Receivers = @('requirements-nfr', 'security-compliance') }
+    'data_residency'       = @{ Light = 'recommend'; Receivers = @('security-compliance', 'data-storage') }
+    'carry_over'           = @{ Light = 'recommend'; Receivers = @('data-storage', 'integration-api') }
+    'platform_constraints' = @{ Light = 'recommend'; Receivers = @('devops-operations') }
+    'operators'            = @{ Light = 'recommend'; Receivers = @('devops-operations', 'observability-resilience'); Default = 'not stated' }
+    'budget'               = @{ Light = 'recommend'; Receivers = @('devops-operations', 'observability-resilience') }
+}
+# product-domain's must-answer count at Light (FR-023): the eight original areas plus the compliance regime.
+$script:ProductDomainLightPoints = 9
+
 # The suffix and hand-forward grammar (plan, "The question suffix"). One physical line, at the end of its item.
 $script:SuffixMarker = ' — Light:'
 $script:SuffixPattern = ' — Light: (?:(?<ask>ask)|recommend "(?<answer>[^"]+)" \((?<reason>[^()]*\S[^()]*)\)) → (?<consumer>\S.*?)\s*$'
@@ -364,7 +379,38 @@ function Test-Consumers {
 
 #endregion
 
+#region (c) The product-domain facts (SC-009)
+
+function Test-ProductDomainFacts {
+    # Not yet implemented: today the test checks only totals and generic suffix validity, not each fact (round 1
+    # finding 1). The self-tests below prove the gap before the fix.
+    param([string]$Root, [System.Collections.IDictionary]$Facts, [int]$LightPoints)
+    return @()
+}
+
+#endregion
+
 #region Self-tests
+
+function Copy-RepoCatalog {
+    # A scratch copy of the real lens catalog and spec template, to mutate in a self-test.
+    param([string]$From, [string]$To)
+    $catalog = Join-Path $To $script:LensCatalogRelative
+    New-Item -ItemType Directory -Force -Path $catalog, (Join-Path $To (Split-Path $script:SpecTemplateRelative)) | Out-Null
+    Get-ChildItem -LiteralPath (Join-Path $From $script:LensCatalogRelative) -File | Where-Object { $_.Extension -in '.md', '.yml', '.json' } |
+        ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $catalog }
+    Copy-Item -LiteralPath (Join-Path $From $script:SpecTemplateRelative) -Destination (Join-Path $To $script:SpecTemplateRelative)
+}
+
+function Edit-CatalogFile {
+    # Applies a text change to one lens file of a scratch copy; throws when the change does not apply.
+    param([string]$Root, [string]$File, [scriptblock]$Change)
+    $path = Join-Path (Join-Path $Root $script:LensCatalogRelative) $File
+    $before = [IO.File]::ReadAllText($path)
+    $after = & $Change $before
+    if ($after -ceq $before) { throw "self-test mutation did not apply to $File" }
+    [IO.File]::WriteAllText($path, $after)
+}
 
 function New-FixtureTree {
     # A three-lens catalog: product-domain (problem), beta-lens (both), gamma-lens (solution); profile = all three.
@@ -509,6 +555,62 @@ No solution questions: pre-technical.
         Assert-True ($text -match "a key that beta-lens defines .*'reader'") 'consumers: a hand-forward whose key its source no longer defines fails'
         Assert-True ($p.Count -eq 12) "consumers: all 12 problems reported in one run (found $($p.Count))"
         Assert-True (@($p | Where-Object { -not $_.Fix -or $_.Line -le 0 }).Count -eq 0) 'consumers: every problem names its line and its fix'
+
+        # SC-009, key by key, on a copy of the real catalog: the facts as shipped pass; each mutation fails.
+        $pdFile = 'product-domain.md'
+        $real = Join-Path $scratch 'facts-real'
+        Copy-RepoCatalog -From $RepoRoot -To $real
+        $p = @(Test-ProductDomainFacts -Root $real -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints)
+        Assert-True ($p.Count -eq 0) "facts: the shipped product-domain facts and their hand-forwards pass [found: $(($p | ForEach-Object { Format-Problem $_ }) -join ' | ')]"
+
+        # The reviewer's case: exchange the compliance_regime and data_residency suffixes. Every total stays the same.
+        $swap = Join-Path $scratch 'facts-swap'
+        Copy-RepoCatalog -From $RepoRoot -To $swap
+        Edit-CatalogFile -Root $swap -File $pdFile -Change {
+            param($t)
+            $lines = $t -split "`n"
+            $a = [array]::FindIndex($lines, [Predicate[string]] { param($l) $l.Contains('(`compliance_regime`)') })
+            $b = [array]::FindIndex($lines, [Predicate[string]] { param($l) $l.Contains('(`data_residency`)') })
+            $sa = $lines[$a].Substring($lines[$a].LastIndexOf($script:SuffixMarker)); $sb = $lines[$b].Substring($lines[$b].LastIndexOf($script:SuffixMarker))
+            $lines[$a] = $lines[$a].Substring(0, $lines[$a].LastIndexOf($script:SuffixMarker)) + $sb
+            $lines[$b] = $lines[$b].Substring(0, $lines[$b].LastIndexOf($script:SuffixMarker)) + $sa
+            $lines -join "`n"
+        }
+        $realTotals = (Measure-WorkshopLength -Root $real -ProfileIds (Get-ReferenceProfile -Root $real)).Totals
+        $swapTotals = (Measure-WorkshopLength -Root $swap -ProfileIds (Get-ReferenceProfile -Root $swap)).Totals
+        $sameTotals = @($script:Depths | Where-Object { ($realTotals[$_] | ConvertTo-Json -Compress) -ne ($swapTotals[$_] | ConvertTo-Json -Compress) }).Count -eq 0
+        Assert-True $sameTotals 'facts: the swap leaves every length total unchanged (so only a per-fact check can catch it)'
+        $text = (@(Test-ProductDomainFacts -Root $swap -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match 'compliance_regime' -and $text -match 'a question at Light') 'facts: the compliance regime shown as a Light recommendation fails'
+        Assert-True ($text -match 'data_residency' -and $text -match 'a recommendation line at Light') 'facts: data residency asked as a Light question fails'
+
+        # A receiving lens without the hand-forward line fails.
+        $noHf = Join-Path $scratch 'facts-nohf'
+        Copy-RepoCatalog -From $RepoRoot -To $noHf
+        Edit-CatalogFile -Root $noHf -File 'data-storage.md' -Change { param($t) ($t -split "`n" | Where-Object { $_ -notmatch '^- product-domain `data_residency`' }) -join "`n" }
+        $text = (@(Test-ProductDomainFacts -Root $noHf -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match 'data-storage' -and $text -match 'data_residency' -and $text -match 'hand-forward') 'facts: a receiving lens without the answer''s hand-forward line fails'
+
+        # A hand-forward that would not carry "not stated" fails.
+        $noNs = Join-Path $scratch 'facts-nons'
+        Copy-RepoCatalog -From $RepoRoot -To $noNs
+        Edit-CatalogFile -Root $noNs -File 'observability-resilience.md' -Change { param($t) $t.Replace('- product-domain `operators` — recommend "product-domain: <its answer, or not stated>"', '- product-domain `operators` — recommend "product-domain: <its answer>"') }
+        $text = (@(Test-ProductDomainFacts -Root $noNs -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match 'observability-resilience' -and $text -match 'not stated') 'facts: a hand-forward that drops "not stated" fails'
+
+        # Operators are never guessed: a default other than "not stated" fails.
+        $guess = Join-Path $scratch 'facts-guess'
+        Copy-RepoCatalog -From $RepoRoot -To $guess
+        Edit-CatalogFile -Root $guess -File $pdFile -Change { param($t) $t.Replace('— Light: recommend "not stated" (operators are never guessed)', '— Light: recommend "the IT team" (a likely guess)') }
+        $text = (@(Test-ProductDomainFacts -Root $guess -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match 'operators' -and $text -match 'not stated') 'facts: an operators default other than "not stated" fails'
+
+        # product-domain's Light must-answer count is nine; a tenth question fails.
+        $ten = Join-Path $scratch 'facts-ten'
+        Copy-RepoCatalog -From $RepoRoot -To $ten
+        Edit-CatalogFile -Root $ten -File $pdFile -Change { param($t) $t.Replace('— Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Budget', '— Light: ask → spec.md Problem Context: Budget') }
+        $text = (@(Test-ProductDomainFacts -Root $ten -Facts $script:ProductDomainFacts -LightPoints $script:ProductDomainLightPoints) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match 'must-answer at Light' -and $text -match '10') 'facts: product-domain with ten must-answer points at Light fails'
     }
     finally {
         $script:ProfileExtraLenses = $savedExtra
