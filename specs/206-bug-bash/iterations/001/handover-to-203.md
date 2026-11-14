@@ -17,6 +17,15 @@ FR-005.
   - Run 42743719583, attempt 1, ubuntu-latest, commit `cf01f599` (feature 205, records-only): case "does NOT
     retry a non-empty result" failed at line 87, `Expected 1 ... but got 2` (the first attempt's output read as
     empty); `03bc4c5b` passed about 40 minutes earlier.
+  - Run 43360279109 on feature 203's branch, commit `c2f2c67d` (2026-11-13): case "retries once and recovers"
+    failed once at line 29 (site 12 in 203's B5F-051; relayed by the reviewer session).
+  - Run 43527717688, attempt 1, ubuntu-latest, commit `995851d2` (206, 2026-11-14), job 132239118551: case "retries
+    once and recovers" failed at line 29, `Expected regular expression '"run_id":"t108"' to match <empty>`, the only
+    failure (1 of 131); the Contract lane was skipped. Rerun once by the reviewer's ruling under the maintainer's
+    delegation: attempt 2 green (Deterministic gate job 132243798920). 206 has never changed
+    `scripts/internal/continuous-co-review/`.
+  - Four sightings across two branches. The reviewer is asking the maintainer whether the standing rerun exception
+    for HO-206-8's test should cover this case too; until then a recurrence stops 206's work.
 - **Cause: not found.** Not reproduced: 200 of 200 passes on Linux (WSL Ubuntu 24.04, 2 cores, idle and under CPU
   load), and 300 standalone replays of the capture pattern on Windows lost no output.
 - **One candidate, unproven**: `Invoke-ContinuousCoReviewAgentInWorktree`

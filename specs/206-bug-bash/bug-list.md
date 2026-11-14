@@ -38,7 +38,7 @@ Two independent causes.
   compares the baseline commit with the working-tree file, which now carries the healed section. Specrew's
   own write is classified as a behavior change by the user.
 
-## 3. `empty-result-retry.Tests.ps1` fails intermittently in the Deterministic gate (two cases, two sightings)
+## 3. `empty-result-retry.Tests.ps1` fails intermittently in the Deterministic gate (two cases, four sightings)
 
 - **Observed (run 42715079692, attempt 1, ubuntu):** the retry's stdout was empty
   (`Expected '"run_id":"t108"' to match <empty>`), case "retries once and recovers".
@@ -65,6 +65,12 @@ Two independent causes.
 | ------ | ------- | ---------- | ------ | ------ | ------- |
 | 42715079692 | 1 | 2026-11-09 | `700e6127` | ubuntu-latest | failed ("retries once and recovers"); passed on rerun (attempt 2) |
 | 42743719583 | 1 | 2026-11-10 | `cf01f599` (205, records-only) | ubuntu-latest | failed ("does NOT retry a non-empty result", got 2 spawns); `03bc4c5b` passed ~40 min earlier |
+| 43360279109 | 1 | 2026-11-13 | `c2f2c67d` (203's branch) | ubuntu-latest | failed ("retries once and recovers", line 29); site 12 in 203's B5F-051, relayed by the reviewer session |
+| 43527717688 | 1 | 2026-11-14 | `995851d2` (206) | ubuntu-latest | failed ("retries once and recovers", line 29, the only failure; job 132239118551); rerun once by the reviewer's ruling under the maintainer's delegation, attempt 2 green (job 132243798920) |
+
+- **Four sightings across two branches (2026-11-14).** The standing rerun exception covers item 13 only, so this
+  recurrence stopped 206's work until the reviewer ruled a single rerun. The reviewer is asking the maintainer
+  whether the exception should cover this case too.
 
 ## 4. The Nightly Truth-Check on main has been red since 2026-08-08
 
