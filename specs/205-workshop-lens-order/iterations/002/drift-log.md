@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 19
+**Total drift events**: 21
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -364,6 +364,40 @@
      code lens, is already described as "the rule set the coding agent and the reviewer read". Proposal 177's notes
      should start from what that file covers.
 - **Class closure**: NONE — observations from an exploratory run; each is placed above with its owner or iteration.
+
+### DRIFT-020 — `empty-result-retry` read a non-empty first attempt as empty on a records-only commit (external CI failure; handed over as a sighting)
+
+- **Observed**: 2026-11-14, Specrew CI run 43635706006, attempt 1, job 132572686582, ubuntu-latest, on `b15c5dd1`
+  (drift log only). Deterministic gate, step "F-198 honesty regression suite (NFR-007)": 1 of 131 failed, the only
+  failure, `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`, case "does NOT retry a non-empty result
+  (single spawn, no retry telemetry)", line 86: `Expected regular expression '"run_id":"t108"' to match <empty>, but it
+  did not match.` The first attempt's stdout came back empty. The Contract lane was skipped.
+- **Resolution**: reported to the maintainer; one rerun ruled by the reviewer session, routine, under the maintainer's
+  first delegation (not under the standing co-review-service exception). Attempt 2 passed (Deterministic gate job
+  132576425761, Contract lane job 132582698037). `8ee7b109`'s Specrew CI passed on its first attempt. Recorded after
+  review round 2, by the reviewer's ruling, so the sighting did not cost another CI cycle before the round.
+- **Count**: the fifth sighting in the records. Feature 206's bug list item 3 lists four: `700e6127` and `cf01f599` on
+  205's branch, `c2f2c67d` on 203's, `995851d2` on 206's.
+- **Class closure**: NONE — the test and the code under it belong to feature 203; the test is on 205's do-not-edit
+  list. Handed over as H-022.
+
+### DRIFT-021 — the sign-off push takes iteration 001's knowingly-red path again (decision, this push only)
+
+- **Observed**: 2026-11-15, after round 2. The local governance check fails iteration 002 on one item: "plan.md status
+  'executing' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete". The sync needs
+  `review.md` on origin with state.md and plan.md still at `before-implement` / `executing` (DRIFT-013 of iteration
+  001), so the commit it binds to fails that check again.
+- **Decision**: the maintainer, relayed by the reviewer session under the wider delegation. The reviewer put two
+  options: "205: allow" (this push only) or "allow, standing" (a standing exception for review-record and retro
+  pushes). The maintainer's reply, at 01:19 local on 2026-11-15, quoted both back without choosing: "\"205: allow\" or
+  \"allow, standing\"". Both allow this push, so the reviewer relayed the narrower reading and asked which was meant.
+- **Resolution**: for this push only, `review.md` is pushed with that one named local failure; Specrew CI may be red on
+  Lint for this push and on nothing else; the review-signoff sync binds to this commit; a fully green records push
+  follows. A standing exception is not decided: the retro push of iteration 002 needs its own answer. H-022 waits for
+  the push after the sign-off verdict, because only `review.md`, `drift-log.md` and `state.md` change between the last
+  round and the sync.
+- **Class closure**: NONE — the same gap as iteration 001's DRIFT-013 and H-007; the sign-off gate and the
+  governance check are feature 203's area.
 
 <!--
   Every new ### DRIFT-... event includes:
