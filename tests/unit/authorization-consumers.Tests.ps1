@@ -35,6 +35,21 @@ BeforeAll {
         return $turnId
     }
     function script:New-Root { $r = Join-Path $TestDrive ([guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Path $r -Force | Out-Null; return $r }
+    # Iteration review round D finding 1: more than 2 MiB of later conversation after the cited message, as a long session
+    # has it (assistant records, as Claude writes them).
+    function script:Add-LaterConversation([string]$Root, [int]$Bytes = 2621440) {
+        $transcript = @(Get-ChildItem -LiteralPath $Root -Filter 'session-*.jsonl' -File)[0].FullName
+        $body = 'x' * 8000
+        $sb = [Text.StringBuilder]::new()
+        $n = 0
+        while ($sb.Length -lt $Bytes) {
+            $n++
+            $rec = [ordered]@{ type = 'assistant'; uuid = [guid]::NewGuid().ToString(); sessionId = 's'; timestamp = '2026-11-14T19:00:00.000Z'; message = [ordered]@{ role = 'assistant'; content = @([ordered]@{ type = 'text'; text = ("reply {0} {1}" -f $n, $body) }) } }
+            [void]$sb.Append(($rec | ConvertTo-Json -Depth 6 -Compress)).Append("`n")
+        }
+        [IO.File]::AppendAllText($transcript, $sb.ToString(), [Text.UTF8Encoding]::new($false))
+        (Get-Item -LiteralPath $transcript).Length | Should -BeGreaterThan ($Bytes + 100)
+    }
 }
 
 Describe 'the allowance reset (top-up) is used only when the human typed it' {
@@ -214,5 +229,33 @@ Describe 'the whole path: a scheduled prompt through the prompt hook, before its
         [string]$row.sender | Should -BeExactly 'scheduled'
         $row.accepted | Should -BeFalse
         (Get-SpecrewAuthorizationSenderRefusal -Sender 'scheduled' -Purpose 'allowance reset') | Should -Match 'scheduled prompt'
+    }
+}
+
+Describe 'an approval followed by more than 2 MiB of conversation is still found (iteration review round D finding 1)' {
+    It 'the sender check finds the typed turn behind 2.5 MiB of later records' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Typed
+        script:Add-LaterConversation -Root $root
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turn -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeTrue -Because ([string]$sender.reason)
+    }
+
+    It 'the shared matcher (the gate and the sync ratchet) still covers plan -> tasks' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Typed
+        script:Add-LaterConversation -Root $root
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -Not -BeNullOrEmpty
+    }
+
+    It 'a scheduled prompt behind the same later conversation is still refused' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Scheduled
+        script:Add-LaterConversation -Root $root
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -BeNullOrEmpty
     }
 }

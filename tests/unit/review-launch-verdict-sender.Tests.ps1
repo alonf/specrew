@@ -64,6 +64,21 @@ BeforeAll {
     function script:Resolve-Launch([string]$Root) {
         Resolve-ReviewCampaignLaunchAuthority -RepoRoot $Root -StoreRoot (Join-Path $Root '.specrew/review/authority') -CampaignId $script:CampaignId -FeatureId '001-demo' -IterationNumber '001' 2>$null
     }
+    # Iteration review round D finding 1: more than 2 MiB of later conversation after the cited message, as a long session
+    # has it (assistant records, as Claude writes them).
+    function script:Add-LaterConversation([string]$Root, [int]$Bytes = 2621440) {
+        $transcript = @(Get-ChildItem -LiteralPath $Root -Filter 'session-*.jsonl' -File)[0].FullName
+        $body = 'x' * 8000
+        $sb = [Text.StringBuilder]::new()
+        $n = 0
+        while ($sb.Length -lt $Bytes) {
+            $n++
+            $rec = [ordered]@{ type = 'assistant'; uuid = [guid]::NewGuid().ToString(); sessionId = 's'; timestamp = '2026-11-14T19:00:00.000Z'; message = [ordered]@{ role = 'assistant'; content = @([ordered]@{ type = 'text'; text = ("reply {0} {1}" -f $n, $body) }) } }
+            [void]$sb.Append(($rec | ConvertTo-Json -Depth 6 -Compress)).Append("`n")
+        }
+        [IO.File]::AppendAllText($transcript, $sb.ToString(), [Text.UTF8Encoding]::new($false))
+        (Get-Item -LiteralPath $transcript).Length | Should -BeGreaterThan ($Bytes + 100)
+    }
 }
 
 Describe 'a stored budget grant is spent only when the human typed the verdict it cites' {
@@ -113,5 +128,29 @@ Describe 'the floor grant is recorded only when the human typed the verdict it w
         $got = script:Resolve-Launch -Root $root
         [bool]$got.ok | Should -Be $ok
         if ($ok) { [string]$got.reason | Should -BeExactly 'budget-floor' } else { [string]$got.reason | Should -BeExactly 'review-budget-verdict-not-confirmed' }
+    }
+}
+
+Describe 'a verdict followed by more than 2 MiB of conversation still grants its budget (iteration review round D finding 1)' {
+    It 'the stored grant is spent when the typed verdict sits behind 2.5 MiB of later records' {
+        $root = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        $turn = script:New-VerdictTurn -Root $root -Shape $script:Typed
+        script:Add-LaterConversation -Root $root
+        $null = script:New-LaunchProject -Root $root -TurnIdentity $turn
+        script:Add-Grant -Root $root
+        $got = script:Resolve-Launch -Root $root
+        [string]$got.reason | Should -BeExactly 'budget-grant'
+        [bool]$got.ok | Should -BeTrue
+    }
+
+    It 'a scheduled verdict behind the same later conversation is still refused' {
+        $root = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        $turn = script:New-VerdictTurn -Root $root -Shape $script:Scheduled
+        script:Add-LaterConversation -Root $root
+        $null = script:New-LaunchProject -Root $root -TurnIdentity $turn
+        script:Add-Grant -Root $root
+        $got = script:Resolve-Launch -Root $root
+        [bool]$got.ok | Should -BeFalse
+        [string]$got.reason | Should -BeExactly 'review-budget-verdict-not-confirmed'
     }
 }
