@@ -106,3 +106,25 @@ retry also holds. Have the test print each writer's retries and the duplicated l
 append was repeated.
 
 **Status**: open; owner feature 203.
+
+## H-020 — second sighting of B5F-067: the Windows review-runtime step hangs to the job limit with no log
+
+**Severity**: as feature 203 rated B5F-067. This is not a new item. A hang leaves no log, so the hung suite cannot be
+named, and the job's limit is the only stop.
+
+**Failure scenario**: Cross-Platform Validation, job "Deterministic fake-provider review runtime (windows-latest)",
+step "Run bounded deterministic review fault and conformance suites". The step runs its suites in one process under
+the job's 25-minute limit. When one suite hangs, the job is cancelled and GitHub keeps no log.
+
+**Observed**: 2026-11-13, feature 205, run 43494561579 on `70c8cea9` (a commit that changed only `spec.md` and the
+drift log), attempt 1, job 132124152471: the step started at 21:44 local and the job was cancelled at 22:11 local. The
+log request returns "BlobNotFound". The same job took 5 to 6 minutes on the branch's seven earlier runs. Attempt 2
+(job 132456949975, 2026-11-14) passed in 5 min 22 s, after one rerun the reviewer ruled under the maintainer's
+delegation. Recorded in 205's iteration 002 drift log as DRIFT-012.
+
+**First sighting**: feature 203's B5F-067, run 43270394765 on 203's branch, 2026-11-12.
+
+**Proposed class closure**: B5F-067's own proposal: run each suite under its own limit and print its name as it starts,
+so a hang names its suite and ends before the job limit.
+
+**Status**: open; owner feature 203 (B5F-067).

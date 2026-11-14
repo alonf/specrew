@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 11
+**Total drift events**: 12
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -181,6 +181,24 @@
   the reviewer's messages as typed replies (feature 203's B5F-064); the evidence file is the truthful record of who
   answered.
 - **Class closure**: NONE — a decision on how the evidence is gathered, not a defect.
+
+### DRIFT-012 — the Windows review-runtime job hung and was cancelled at its limit, with no log kept (external CI failure; handed over as a second sighting)
+
+- **Observed**: 2026-11-13, Cross-Platform Validation run 43494561579 on `70c8cea9`, attempt 1, job 132124152471
+  "Deterministic fake-provider review runtime (windows-latest)". The step "Run bounded deterministic review fault and
+  conformance suites" started at 21:44 local and never finished; the job was cancelled at 22:11 local, past its
+  25-minute limit. GitHub kept no log for the cancelled job (the log request returns "BlobNotFound"), so which suite
+  hung cannot be read. Every other job of the run was green, and the same suites passed on macOS and Ubuntu. On the
+  seven runs of this branch before it, the same Windows job took 5 to 6 minutes.
+- **Cause, as far as 205 can see**: not 205's change. `70c8cea9` and `2cba60de` changed only `spec.md` and this drift
+  log.
+- **Resolution**: reported to the maintainer; one rerun ruled by the reviewer session under the maintainer's
+  delegation (not covered by the standing co-review-service exception). Attempt 2 passed on 2026-11-14 (Windows job
+  132456949975, 5 min 22 s; every job green). `70c8cea9` is fully green.
+- **Class closure**: NONE — the suites and the step belong to feature 203's area. Feature 203 already holds the same
+  failure as B5F-067 (run 43270394765, 2026-11-12), with a proposal to run each suite under its own limit and print
+  its name as it starts. Handed over as H-020, a second sighting of B5F-067, not a new item.
+
 <!--
   Every new ### DRIFT-... event includes:
 
