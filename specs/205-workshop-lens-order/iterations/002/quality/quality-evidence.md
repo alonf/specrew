@@ -133,3 +133,11 @@ Deep     must-answer points 66 (recorded 66), typed replies 16 (recorded 16), re
 Light caps: 51 points, 18 replies
 workshop-length-budget: all checks passed
 ```
+
+## T026 recorded Light workshop run (SC-012)
+
+The run, who answered, the SC-012 results, the counts against the budget and what the run found are in
+[t026-recorded-run.md](t026-recorded-run.md); the visible transcript is [t026-transcript.md](t026-transcript.md), and
+the scratch feature's records are in [t026-records/](t026-records/). The four replies were sent by the reviewer session,
+each confirmed by the maintainer first (DRIFT-011). This pass: 17 must-answer questions shown (budget 21), 4 typed
+replies (budget 6), 13 recommendation lines (budget 13). The home hook files matched the known-good set before and after.

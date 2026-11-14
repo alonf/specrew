@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 14
+**Total drift events**: 16
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -232,6 +232,35 @@
   is brought.
 - **Effect in iteration 002**: none. Nothing changes for it in this iteration.
 - **Class closure**: NONE — a presentation improvement found by the run, not a defect in what iteration 002 built.
+
+### DRIFT-015 — what the T026 run found in the workshop's records (observations; for later iterations)
+
+- **Observed**: 2026-11-14, the recorded Light workshop run (T026), from its transcript and records
+  (`quality/t026-recorded-run.md`); the first two by the reviewer session, reading the records against the replies.
+- **A stale open point**: the scratch feature's `product-domain.md` still ends with "How the external accountant
+  reaches the shared folder ... is not yet stated", though security-compliance decision 2 answered it. The session
+  updated product-domain's first-version list with the 30-day removal on its own initiative, but not that line. The
+  skill asks for no write-back to an earlier lens's record today; the partial update was the session's own, not
+  specified behaviour. The end-of-lens back-check, held for after feature 203, is what closes this gap.
+- **An unlabelled inference**: `security-compliance.md` ends with "Controls that follow from the named threat actors
+  (for plan)", derived by the session from the two threat actors the human named. Every decision row carries a Source;
+  that section carries none, so a reader cannot tell it is the session's inference.
+- **A hand-forward line outside the lens file**: data-storage opened with "Handed forward, security-compliance: files
+  are removed 30 days after they are written". data-storage's lens file does not define that line and the source lens
+  defines no key for it, so the length test does not count it. The two lines the file defines were shown as written.
+- **Placement**: not decided here. All three are candidates for the iteration that holds the back-check; the second
+  may fit iteration 003. They are put to the maintainer with iteration 003's plan. Nothing changes in iteration 002.
+- **Class closure**: NONE — the run is the detector; the mechanism that would make these loud is the back-check, which
+  is later work.
+
+### DRIFT-016 — a typed turn got no turn token, so its turn-end declaration was refused (finding in the T026 run; handed over)
+
+- **Observed**: 2026-11-14 19:38 local, in the T026 host session. The maintainer's correction of the reviewer's name
+  arrived 19 seconds after the previous turn ended. No fresh `[specrew-turn]` token came with it; the session reused the
+  previous turn's token, which Stop had consumed, and `declare-turn-end.ps1` refused: "the token '67d32311...' matches
+  no live session in this project (0 live tokens)". Every other turn of the run got its own token. The session
+  recorded it as D-001 in the scratch feature's drift log and reported it plainly; no workshop answer was affected.
+- **Class closure**: NONE — the turn-token hooks belong to feature 203's area. Handed over as H-021.
 
 <!--
   Every new ### DRIFT-... event includes:

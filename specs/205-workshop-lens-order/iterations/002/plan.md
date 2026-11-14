@@ -46,7 +46,7 @@ iteration 003 as a trim; see the feature plan's "Sizes and the point over the ca
 | T023 | Workshop skill: one block, accept closes | FR-026 | US6 | 1.5 | implementer | — | done | — | — | — |
 | T024 | Spec template Problem Context and copies | FR-029 | US6 | 1 | implementer | — | done | — | — | — |
 | T025 | Parity, extractor counts, workshop regression, CI steps, copies | FR-025, FR-028 | US6 | 2 | implementer | — | done | — | — | — |
-| T026 | Recorded Light workshop run (last) | FR-026, FR-023 | US6 | 2 | implementer | — | planned | — | — | — |
+| T026 | Recorded Light workshop run (last) | FR-026, FR-023 | US6 | 2 | implementer | — | done | — | — | — |
 
 ## Effort Model
 

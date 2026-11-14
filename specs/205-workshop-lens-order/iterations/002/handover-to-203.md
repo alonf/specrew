@@ -128,3 +128,23 @@ delegation. Recorded in 205's iteration 002 drift log as DRIFT-012.
 so a hang names its suite and ends before the job limit.
 
 **Status**: open; owner feature 203 (B5F-067).
+
+## H-021 — a prompt that arrives just after a turn ends gets no turn token
+
+**Severity**: low to medium. The turn's end cannot be recorded, so the turn is missing from the turn log, and the
+refusal tells the agent to use a token it was never given.
+
+**Failure scenario**: a turn ends (Stop consumes its token), and the human's next prompt arrives seconds later. That
+prompt gets no `[specrew-turn]` line, so the only token in view is the consumed one, and `declare-turn-end.ps1`
+refuses it with "matches no live session in this project (0 live tokens)".
+
+**Observed**: 2026-11-14 19:38 local, feature 205's recorded Light workshop run (T026), Claude Code, Specrew
+0.40.0-beta41, a scratch project built from 205's branch. The prompt arrived 19 seconds after the previous turn's reply.
+Every other turn of the session got its own token. Recorded in 205's iteration 002 drift log as DRIFT-016; the session
+logged it as D-001 in the scratch feature.
+
+**Proposed class closure (for 203 to decide)**: mint the token for every UserPromptSubmit, whatever the state of the
+previous turn's Stop, or have the refusal say that no token was issued for this turn instead of pointing at the last
+one.
+
+**Status**: open; owner feature 203.
