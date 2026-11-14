@@ -264,6 +264,28 @@ Describe 'a suite whose dependency is missing' { It 'never registers' { `$true |
     Assert-True (@(& $line12 'empty.Tests.ps1').Count -eq 1 -and @(& $line12 'empty.Tests.ps1')[0] -match ' FAILED$') ("a suite that ran no tests is a failure ({0})" -f (@(& $line12 'empty.Tests.ps1') -join ''))
     Assert-True (@(& $line12 'good.Tests.ps1').Count -eq 1 -and @(& $line12 'good.Tests.ps1')[0] -notmatch 'FAILED') ("a suite that ran and passed is not ({0})" -f (@(& $line12 'good.Tests.ps1') -join ''))
     Assert-True (@($out12 | Where-Object { $_ -match '^--- 3 suite\(s\), 2 failed,' }).Count -eq 1) ("the summary counts both ({0})" -f (($out12 | Where-Object { $_ -like '--- *' }) -join ' | '))
+
+    # Case 13 (the 671b2dfc sweep reported this self-test FAILED, 0 passed and 0 failed): run-suites reads a suite as Pester
+    # when any line starts with Describe, and case 12's fixture had one, so this script ran under Invoke-Pester with no
+    # tests. The self-test is a script: run-suites must classify it so and see it pass, and run as a script it reports
+    # every assertion. The inner runs skip this case.
+    if (-not $env:SPECREW_SWEEP_SELFTEST_INNER) {
+        Write-Host 'Case 13: run-suites classifies this self-test as a script, and it passes with all its assertions'
+        $env:SPECREW_SWEEP_SELFTEST_INNER = '1'
+        try {
+            $selfRel = 'tools/maintenance/sweep/sweep-driver.tests.ps1'
+            $list13 = Join-Path $scratch 'list13.txt'
+            Set-Content -LiteralPath $list13 -Value $selfRel -Encoding UTF8
+            $out13 = @(& pwsh -NoProfile -File $runSuites -ListFile $list13 -Repo $repo -Throttle 1 -SuiteTimeoutSeconds 600 2>&1 | ForEach-Object { [string]$_ })
+            $line13 = @($out13 | Where-Object { $_ -like ('=== ' + $selfRel + ' *') })
+            Assert-True ($line13.Count -eq 1 -and $line13[0] -match '\(script exit 0,' -and $line13[0] -notmatch 'FAILED') ("run-suites runs this self-test as a script and it passes ({0})" -f ($line13 -join ''))
+            $inner13 = @(& pwsh -NoProfile -File (Join-Path $repo $selfRel) 2>&1 | ForEach-Object { [string]$_ })
+            $passed13 = @($inner13 | Where-Object { $_ -match '^PASS:' }).Count
+            $failed13 = @($inner13 | Where-Object { $_ -match '^FAIL:' }).Count
+            Assert-True ($passed13 -ge 55 -and $failed13 -eq 0) ("run as a script it reports its assertions ({0} passed, {1} failed)" -f $passed13, $failed13)
+        }
+        finally { Remove-Item Env:SPECREW_SWEEP_SELFTEST_INNER -ErrorAction SilentlyContinue }
+    }
 }
 finally {
     $env:SPECREW_SWEEP_KEEPAWAKE_TRACE = $savedTrace
