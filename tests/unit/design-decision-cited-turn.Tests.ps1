@@ -31,11 +31,20 @@ function New-DecisionProject {
 }
 
 function Send-TypedMessage {
-    # The prompt hook, as the dispatcher runs it for a Claude prompt.
-    param([string]$Root, [string]$Text, [string]$Origin = 'typed-user')
+    # The prompt hook, as the dispatcher runs it for a Claude prompt, and the transcript record the host writes for that
+    # message (iteration review round C, finding 2: who sent it is read from that record when the decision is recorded).
+    # -Sender scheduled is the recorded scheduled-prompt shape: unwrapped text the dispatcher labels typed-user.
+    param([string]$Root, [string]$Text, [string]$Origin = 'typed-user', [ValidateSet('typed', 'scheduled')][string]$Sender = 'typed')
     $env:SPECREW_MODULE_PATH = $repoRoot
+    $messageId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+    $transcript = Join-Path $Root ('transcript-{0}.jsonl' -f $messageId)
+    $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $messageId; sessionId = 's1'; timestamp = [DateTimeOffset]::UtcNow.ToString('o'); message = [ordered]@{ role = 'user'; content = $Text } }
+    if ($Sender -eq 'typed') { $record.turnOrigin = 'human'; $record.promptSource = 'typed'; $record.origin = [ordered]@{ kind = 'human' } }
+    else { $record.turnOrigin = 'scheduled'; $record.promptSource = 'system'; $record.isMeta = $true }
+    $record.entrypoint = 'cli'; $record.version = '2.1.322'
+    [IO.File]::WriteAllText($transcript, (($record | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
     & pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Text `
-        --turn-origin $Origin --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) --session-id s1 *> $null
+        --turn-origin $Origin --message-identity declared --message-id $messageId --session-id s1 --transcript-path $transcript *> $null
 }
 
 function Invoke-RecordDecision {
@@ -147,6 +156,15 @@ try {
     $o8 = Invoke-RecordDecision -Root $r8 -HumanTurn $decision
     Assert-True (-not $o8.Recorded -and $null -eq (Get-Decision -Root $r8)) "8 after a paste-only message, the earlier decision is not recorded ($($o8.Message))"
     Assert-True ($o8.Message -match '(?i)newest message') "8 and the refusal says which message it read"
+
+    # 9 (iteration review round C, finding 2): a scheduled prompt whose whole text is the decision. The dispatcher labels the
+    # unwrapped text typed-user and the prompt path reserves it, so the reservation alone vouches for it; the transcript
+    # record names the sender as scheduled. The same sender check the authorization consumers run refuses it.
+    $r9 = New-DecisionProject; $roots.Add($r9)
+    Send-TypedMessage -Root $r9 -Text $decision -Sender scheduled
+    $o9 = Invoke-RecordDecision -Root $r9 -HumanTurn $decision
+    Assert-True (-not $o9.Recorded -and $null -eq (Get-Decision -Root $r9)) "9 a decision a scheduled prompt carried is not recorded ($($o9.Message))"
+    Assert-True ($o9.Message -match '(?i)not typed by the human') "9 and the refusal says the message was not typed by the human"
 }
 finally {
     foreach ($root in $roots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
