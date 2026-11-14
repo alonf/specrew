@@ -1478,6 +1478,12 @@ try {
                     -ApprovalPhrase ([string]$turnEndRecord.approval_phrase) -Marker ([string]$turnEndRecord.marker) -Message $lastAssistantRaw
                 $presentedReason = if ($presentedWritten) { 'presented' } else { 'presented-unrecorded' }
             }
+            elseif (-not [string]::IsNullOrWhiteSpace($verdictRecordProblem)) {
+                # Feature 203 iteration review round C (finding 3; T011, FR-046): the record fails closed whatever the
+                # turn declares. An earlier presentation is no reason to stay quiet once the record it was presented
+                # from is missing, unreadable, incomplete or names another crossing.
+                $presentedReason = 'verdict-record-problem'
+            }
             else {
                 $presentedDecision = Get-SpecrewPresentedCrossingDecision -TurnEndRoot ([string]$turnEndPaths.TurnEndRoot) -CrossingId $presentedCrossingId
                 $presentedSuppressed = [bool]$presentedDecision.suppress
