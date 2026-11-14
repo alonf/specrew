@@ -141,3 +141,15 @@ The run, who answered, the SC-012 results, the counts against the budget and wha
 the scratch feature's records are in [t026-records/](t026-records/). The four replies were sent by the reviewer session,
 each confirmed by the maintainer first (DRIFT-011). This pass: 17 must-answer questions shown (budget 21), 4 typed
 replies (budget 6), 13 recommendation lines (budget 13). The home hook files matched the known-good set before and after.
+
+## Review round 1 findings fixed (DRIFT-018)
+
+The three round 1 findings in `tests/unit/workshop-length-budget.tests.ps1` were each fixed failing test first:
+
+| Finding | Red commit | Self-tests failing | Fix commit |
+| --- | --- | --- | --- |
+| 1. SC-009 checked fact by fact (the reviewer's swap leaves every total unchanged) | `8347d9d5` | 6 | `598d0836` |
+| 3. A `lens:` consumer must receive the answer | `3a13eaa4` | 4 | `22c0a583` |
+| 2. Exempt questions by identity, not count | `335de732` | 3 | `398e9520` |
+
+After the fixes, every self-test passes and the shipped lens files pass unchanged.

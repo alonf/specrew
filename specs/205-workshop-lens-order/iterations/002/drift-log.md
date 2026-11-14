@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 17
+**Total drift events**: 18
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -277,6 +277,33 @@
   `review-scope-round-1.md` is committed in the same commit, so it is in the reviewed tree.
 - **Class closure**: NONE — the plan is project configuration that each iteration re-points by hand; making a stale
   plan loud at launch is feature 203's area.
+
+### DRIFT-018 — review round 1's three findings fixed, failing test first (maintainer's decision; capacity over plan)
+
+- **Round 1**: 2026-11-14, campaign `cmp-205-workshop-lens-order-i002`, run `run-20261114-192351085-49d20b6b`, codex
+  on `3ddcd185`, 14 minutes, 1 of 4 rounds. Three findings, all minor, all in `tests/unit/workshop-length-budget.tests.ps1`,
+  each confirmed against the code:
+  1. SC-009 was not checked fact by fact. Exchanging the `compliance_regime` and `data_residency` suffixes left every
+     total unchanged and passed. Reported as major; the engine demoted it for lack of a concrete failure scenario,
+     though the finding states one.
+  2. Exempt questions without a suffix were exempted by count, so replacing or rewording one passed.
+  3. A `lens: <id>` consumer was accepted on catalog order alone, without the target receiving the answer.
+- **Decided**: by the maintainer, at 21:44 local, relayed by the reviewer session under the wider delegation with their
+  words and the time: "205: fix all". Fix all three now, each failing test first, then a second round. The pause
+  question of round 1 stays open and is the maintainer's.
+- **Capacity**: about 2 SP over the iteration's planned 20.
+- **Ruling (finding 2)**: the identity check flagged product-domain area 4 ("Constraints"), to which T019 appended one
+  pointer sentence. The reviewer session ruled, under the maintainer's delegation: keep it at its current text, with a
+  comment saying why; no lens or template change. The exempt list holds 69 questions: 68 identical to `d4c11236` by
+  normalized text, and area 4 at its current text. (The reviewer was first told "66 of 67"; that was a miscount,
+  corrected here.)
+- **Done**, one finding per fix commit, each after its red test commit:
+  - finding 1: red `8347d9d5` (6 self-tests failing), fix `598d0836`;
+  - finding 3: red `3a13eaa4` (4 failing), fix `22c0a583`;
+  - finding 2: red `335de732` (3 failing), fix `398e9520`.
+  No lens file changed. The shipped files pass the stronger checks unchanged.
+- **Class closure**: the test itself is the mechanism. Each of the three shapes now fails loudly, and the self-tests
+  prove it, including the reviewer's swap on a copy of the real catalog.
 
 <!--
   Every new ### DRIFT-... event includes:
