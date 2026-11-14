@@ -702,6 +702,25 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **For iteration 002:** a verdict value for a task the plan defers (for example `deferred`, with its decision id),
   accepted beside an `accepted` review.
 
+## 38. The governance lane cannot be trusted in the preflight layout once plan.md is at `reviewing`
+
+- **Observed (2026-11-14, on `029dafa5`):** `f206-governance-206` (`validate-governance.ps1 -IterationPath
+  specs/206-bug-bash/iterations/001`) failed in the preflight-layout run with `[review-evidence-integrity]
+  Form-vs-meaning gap detected: iteration artifacts declare 15 completed task(s) but git diff
+  52c9651cab6e84c6bcb362c11ebd20c882863255...HEAD is empty (0 files changed)`. The baseline ref is state.md's
+  **Baseline Ref**. The same command in the real worktree fails only on the derived-block item (an approved exception).
+- **Cause:** the layout copy commits the frozen tree as a parentless root commit and fetches the history beside it.
+  `<baseline>...HEAD` then has no merge base and reads as empty. The integrity check applies once plan.md is at
+  `reviewing`, which is why it did not fire before rounds 1 to 4 (plan.md at `executing`). Not established: whether
+  the engine's own verification copy has the same parentless HEAD. This was seen only in my emulation of it.
+- **Exposure:** iteration 002's review preflight runs with plan.md at `executing`, so it is not exposed. A lane run
+  after the review-signoff boundary, or a review campaign started with plan.md at `reviewing`, is.
+- **For iteration 002:** give the layout copy's commit the reviewed commit as its parent, or skip the diff check when
+  the baseline is not an ancestor and say so. Then prove it with the lane run at `reviewing`.
+- **Disposition (reviewer, 2026-11-14, under the maintainer's delegation):** the push of `029dafa5` with this lane red
+  was accepted on that evidence, as a records-only change. It is not a general licence: a lane red for a reason not
+  reproduced and explained still stops a push.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
@@ -713,4 +732,4 @@ Carried from iteration 001 by name, with the decision that carried each (`.squad
 - **T016 (FR-013) and T017 (FR-014)**, as the approved plan sets.
 - **DRIFT-206-I001-010:** abandoned is closed only with a recorded ruling; feature 206 does not close without it.
 - **Items 12 and 15 to 30**, as the review's gap ledger lists them (each item says what remains), and **items 31 to
-  37**, with item 36 including plan.md's stale note.
+  38**, with item 36 including plan.md's stale note.

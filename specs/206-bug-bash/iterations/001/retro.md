@@ -131,7 +131,7 @@ closure and ruling rules (3 and 5).
 ## Signals for the Next Iteration
 
 - **Iteration 002's intake is the bug list's Iteration 002 Intake section.** SC-002 is first by name, then SC-001, T016,
-  T017, DRIFT-010 and items 12, 15 to 30 and 31 to 37.
+  T017, DRIFT-010 and items 12, 15 to 30 and 31 to 38.
 - **DRIFT-010 blocks feature 206's closeout.** Abandoned is closed only with a recorded ruling.
 - **Item 37: a deferred task has no verdict value.** Until it is fixed, a part-finished task is written as `pass` with
   a note, as T003 is.
