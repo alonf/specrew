@@ -638,7 +638,7 @@ No solution questions: pre-technical.
         Assert-True ($text -match "lens 'product-domain' does not come after beta-lens") 'consumers: a consumer lens that is not later fails'
         Assert-True ($text -match "no lens 'no-such-lens'") 'consumers: a consumer lens that does not exist fails'
         Assert-True ($text -match "'Plan Obligations' is neither") 'consumers: "Plan Obligations" is not a consumer'
-        Assert-True ($text -match 'at most 2 questions without a suffix') 'consumers: a question added without a suffix fails'
+        Assert-True ($text -match 'without a suffix') 'consumers: a question added without a suffix fails'
         Assert-True ($text -match "'budget_typo'") 'consumers: a hand-forward naming a key its source lens does not define fails'
         Assert-True ($text -match 'a hand-forward with no reason') 'consumers: a hand-forward with no reason fails'
         Assert-True ($text -match "lens 'gamma-lens' does not come before beta-lens") 'consumers: a hand-forward from a later lens fails'
@@ -652,6 +652,18 @@ No solution questions: pre-technical.
         Assert-True ($text -match "gamma-lens has no hand-forward of product-domain ``compliance_regime``") 'consumers: a hand-forward passed on to a lens that does not receive it fails'
         Assert-True ($p.Count -eq 15) "consumers: all 15 problems reported in one run (found $($p.Count))"
         Assert-True (@($p | Where-Object { -not $_.Fix -or $_.Line -le 0 }).Count -eq 0) 'consumers: every problem names its line and its fix'
+
+        # The exempt questions without a suffix are exempt by identity, not by count (round 1 finding 2): replacing one
+        # with a new unsuffixed question, or rewording one, keeps the count and must still fail.
+        $replaced = Join-Path $scratch 'replaced'
+        New-FixtureTree -Root $replaced -ProductDomain $pdValid -Beta $betaValid.Replace('- What data exists?', '- What data is new?') -Gamma $gammaValid -Template $template
+        $text = (@(Test-Consumers -Root $replaced -Baseline $baseline) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match "'What data is new\?'" -and $text -match 'not one of beta-lens') 'consumers: an exempt question replaced by a new unsuffixed question fails, naming it'
+        Assert-True ($text -match 'give it a suffix' -and $text -match 'update its entry') 'consumers: the failure names both ways out (a suffix, or an updated baseline entry with its reason)'
+        $reworded = Join-Path $scratch 'reworded'
+        New-FixtureTree -Root $reworded -ProductDomain $pdValid -Beta $betaValid.Replace('- Which store?', '- Which data store?') -Gamma $gammaValid -Template $template
+        $text = (@(Test-Consumers -Root $reworded -Baseline $baseline) | ForEach-Object { Format-Problem $_ }) -join "`n"
+        Assert-True ($text -match "'Which data store\?'" -and $text -match "'Which store\?'") 'consumers: a reworded exempt question fails, naming the new wording and the exempt one it no longer matches'
 
         # SC-009, key by key, on a copy of the real catalog: the facts as shipped pass; each mutation fails.
         $pdFile = 'product-domain.md'
