@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-10-24T15:04:41Z",
+  "recorded_at": "2026-11-14T18:38:14Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-d2b2575be53ed6dbbbaeeb08",
-      "target_tree_id": "b88152e7543d072ccbc9c4ea42ce3e2035689d68",
-      "campaign_id": "cmp-202-beta4-1-ux-stabilization-i003",
-      "run_id": "run-20261022-211453497-9ebe9c9c",
+      "request_id": "override-3bec3de853c36be6ea24df85",
+      "target_tree_id": "22667b3a05e097b229aaff8f134d7eb667f26ef9",
+      "campaign_id": "cmp-206-bug-bash-i001",
+      "run_id": "run-20261114-132511846-d1b4bd05",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - since round 4 on f00da0f2 no product source changed; only records, runtime copies identical to the reviewed sources, and the walk's eight test fixtures, whose suites pass",
-      "rationale": "since round 4 on f00da0f2 no product source changed; only records, runtime copies identical to the reviewed sources, and the walk's eight test fixtures, whose suites pass",
-      "response_hash": "c0bd99072f86a25eabf401536ff11e03774e389a5abd1ce2b4b90b2939ef9229",
+      "verdict_text": "approved for partial review signoff - since round 4 on bb0cc72e only review.md, the drift log and state.md changed, records only, no script, test or configuration file.",
+      "rationale": "since round 4 on bb0cc72e only review.md, the drift log and state.md changed, records only, no script, test or configuration file.",
+      "response_hash": "ae858c3dc9604334e0287e3d3239c983e946606cf04ad4a4e266f6fac5a26148",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-10-24T15:04:14.2942668Z"
+      "observed_at": "2026-11-14T18:37:40.861001Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
