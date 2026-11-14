@@ -250,10 +250,13 @@ try {
     $repo12 = Join-Path $scratch 'repo12'
     New-Item -ItemType Directory -Force -Path (Join-Path $repo12 'tests') | Out-Null
     # Discovery fails before any test registers: a dot-sourced dependency that is missing.
-    Set-Content -LiteralPath (Join-Path $repo12 'tests/discovery.Tests.ps1') -Value @"
-BeforeDiscovery { . (Join-Path `$PSScriptRoot 'missing-dependency.ps1') }
-Describe 'a suite whose dependency is missing' { It 'never registers' { `$true | Should -BeTrue } }
-"@ -Encoding UTF8
+    # Built from lines so that no line of this self-test starts with Describe: run-suites classifies a suite as Pester by
+    # that (case 13), and a fixture line at column 0 made this script read as an empty Pester suite.
+    $discovery12 = @(
+        "BeforeDiscovery { . (Join-Path `$PSScriptRoot 'missing-dependency.ps1') }"
+        ('Describe' + " 'a suite whose dependency is missing' { It 'never registers' { `$true | Should -BeTrue } }")
+    )
+    Set-Content -LiteralPath (Join-Path $repo12 'tests/discovery.Tests.ps1') -Value $discovery12 -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $repo12 'tests/empty.Tests.ps1') -Value "Describe 'a suite with no tests' { }" -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $repo12 'tests/good.Tests.ps1') -Value "Describe 'a suite that passes' { It 'passes' { 1 | Should -Be 1 } }" -Encoding UTF8
     $list12 = Join-Path $scratch 'list12.txt'
