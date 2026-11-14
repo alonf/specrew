@@ -22,9 +22,10 @@
 
 ## Summary
 
-**Total drift events**: 24
-**Resolution rate**: 83% (20/24 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
-iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage)
+**Total drift events**: 26
+**Resolution rate**: 81% (21/26 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage; 025
+deferred to iteration 002 by the maintainer's ruling)
 **Specification drift**: None detected (process drift only)
 
 ## Events
@@ -483,6 +484,46 @@ iteration 002 as a required item: feature 206 does not close without it; 022 rep
 - **Class closure**: the closure and ruling checks accept only listed forms, so a new wording is open or unruled until
   someone adds its form and its test, instead of closed until someone notices. Each fix's test is in a review-plan
   lane (`f206-unit-suites` holds 1 to 4; `f206-census-guard` holds 5 and 6).
+
+### DRIFT-206-I001-025 — review round 4: five minor findings carried to iteration 002; the review stopped
+
+- **Recorded**: 2026-11-14, after the review stop (recording earlier would have moved the reviewed tree).
+- **What**: round 4 (Codex, run `run-20261114-132511846-d1b4bd05`, head `bb0cc72e`), the last in the budget,
+  returned five minor findings, none blocking:
+
+  | # | Requirement | Finding |
+  | --- | --- | --- |
+  | 1 | FR-011 | `steps:` inside a YAML block scalar is read as real steps by the census guard |
+  | 2 | FR-011 | A comment right after `;` (`Write-Host done;# tests/...`) still counts as a registration |
+  | 3 | FR-003 | A malformed opener `<!-- >>> ... <<< -->` is treated as balanced and stripped |
+  | 4 | FR-009 | An unexpected validator exception writes no message hash (a fifth stop beside bug list item 30) |
+  | 5 | FR-009 | Overlapping notifier runs can open two tracking issues; the workflow has no `concurrency:` group |
+
+- **Before the round**: the five lanes passed in the preflight layout (571 s of 1800 s) and all three workflows were
+  green on `bb0cc72e`. The home hook files hashed the same before and after the round and after the stop.
+- **Approval**: the maintainer, before the round: "Round 4 is the last: whatever it finds that is not a blocker goes
+  to iteration 002." Finding 5 waits with the others (maintainer, 2026-11-14). The maintainer typed `stop the review
+  here`; sign-off completed with disposition `disposition-d51b40f30aa70338571e`.
+- **Also**: the pause prompt's own command (`specrew review --live --pause-choice 2`) refused without `--feature`, as
+  feature 202 logged in B4F-152.
+- **Resolution**: deferred to iteration 002, with round 1's three partial findings not raised again (review.md's gap
+  ledger).
+- **Class closure**: NONE — the five are deferred by the maintainer's ruling; iteration 002 fixes each behind a
+  failing test, and its tests join the `f206-census-guard` and `f206-unit-suites` lanes.
+
+### DRIFT-206-I001-026 — the maintainer's standing rule for a push that adds only Markdown records
+
+- **Recorded**: 2026-11-14, the maintainer's decision of 15:23 local, relayed by the reviewer session.
+- **What**: the maintainer's answer to feature 203's crew, "203: yes", sets a rule for every crew. When the only
+  difference between the last commit with full pre-push checks and CI green and the commit to push is Markdown
+  records under `specs/` or `docs/`, run markdownlint and the governance check and push; the longer suites and the
+  preflight-layout lanes need not be repeated for that difference. Anything else in the difference gets the full
+  checks. Before using the rule, the changed files between the two commits are printed and each confirmed a Markdown
+  record.
+- **Limits for 206**: a review round's head still needs green CI on all three workflows and the five lanes green in
+  the preflight layout; the rerun exception still covers only `co-review-service.Tests.ps1:129`.
+- **Resolution**: adopted as a standing rule; CI is still followed after every push.
+- **Class closure**: NONE — a working rule for the crew, not a defect; the printed file list is its check.
 
 <!--
   Every new ### DRIFT-... event includes:
