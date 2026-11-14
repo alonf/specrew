@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 29
-**Resolution rate**: 79% (23/29 resolved; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 30
+**Resolution rate**: 80% (24/30 resolved; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage; 025
 deferred to iteration 002 by the maintainer's ruling)
 **Specification drift**: None detected (process drift only)
@@ -569,6 +569,24 @@ deferred to iteration 002 by the maintainer's ruling)
 - **Resolution**: the push goes ahead under that exception; bug list item 39 records the ordering for iteration 002.
 - **Class closure**: bug list item 39. The validator would accept a record beside its pre-verdict phase while the
   crossing is pending. Until then, every review sign-off and every retro needs this exception.
+
+### DRIFT-206-I001-030 — the retro's two discussion prompts answered; one correction to the approved retro
+
+- **Recorded**: 2026-11-14, after the retro verdict.
+- **What**: the reviewer session (`specrewreviewer-98`) answered the retro packet's two prompts under the maintainer's
+  delegation. It showed the answers to the maintainer at 22:53 local, and the maintainer typed `approved for retro`
+  afterwards without objecting. They are the reviewer's rulings, not the maintainer's words.
+  1. The two reviewer-brief promotions come in with iteration 002's plan, as a planned task with its own check, worded
+     exactly as retro.md has them. A change to the reviewer's instructions is a methodology change and is planned and
+     reviewed like one.
+  2. The calibration is accepted as proposed: 0.25 SP per expected review finding on tasks that build a rule over free
+     text or a reader of YAML or shell, and a 1 SP line for the review-signoff crossing until the ordering is fixed.
+     It is applied when iteration 002 is estimated.
+- **Correction**: retro.md's Signals say the review-signoff crossing repeats its red Lint push "until 203 fixes the
+  phase-line order". By the maintainer's decision at 22:39 (DRIFT-029), that ordering is bug list item 39, 206's
+  candidate for iteration 002, not a hand-over to 203. The approved retro is left as it is.
+- **Resolution**: recorded for iteration 002's plan.
+- **Class closure**: NONE — rulings and a correction to a record, not a defect.
 
 <!--
   Every new ### DRIFT-... event includes:
