@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 27
-**Resolution rate**: 81% (22/27 resolved; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 28
+**Resolution rate**: 79% (22/28 resolved; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage; 025
 deferred to iteration 002 by the maintainer's ruling)
 **Specification drift**: None detected (process drift only)
@@ -543,6 +543,17 @@ deferred to iteration 002 by the maintainer's ruling)
   and an Iteration 002 Intake section naming SC-002.
 - **Class closure**: bug list item 37 — iteration 002 adds a verdict value for a task the plan defers, so a
   part-finished task is no longer written as `pass`. Until then, the note on the row carries the truth.
+
+### DRIFT-206-I001-028 — the retro scaffold refused review.md's verdict line; retro.md written without it
+
+- **Recorded**: 2026-11-14, at the retro.
+- **What**: `scaffold-retro-artifact.ps1 -DryRun` threw "review.md contains an invalid overall verdict: 'accepted:
+  four rounds (round 1 partial). ...'". It reads the whole verdict line as the value, while the governance check
+  accepts `accepted` followed by its explanation. Feature 205 hit the same refusal (its DRIFT-024).
+- **Resolution**: retro.md written by hand in the template's sections, following feature 205's retro; review.md
+  unchanged, as approved.
+- **Class closure**: NONE — the scaffold is the installed module's; reported for feature 203's triage with 205's
+  instance, two features now.
 
 <!--
   Every new ### DRIFT-... event includes:
