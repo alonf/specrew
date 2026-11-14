@@ -2446,5 +2446,29 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   from about 14 s to about 5 s.
 - **Sweep**: with the cause known, the sweep on the committed records runs with a 1,500 s suite limit for that sweep
   only; the default stays 900 s. Home hook files: 0 changed across the timing runs.
+- **Sweep results**: `b122a30f`, 279 suites, 0 failed beyond the two known red (B5F-036); `message-identity` 908 s,
+  `review-loop-stops` 934 s, `review-budget-loop` 841 s. `f6478946` (this entry's two-line closure added, nothing
+  else), one failure: `tests/integration/start-command-non-interactive-first-run.tests.ps1` hit its own 300 s limit
+  at 301 s and reported a start hang. Its sweep times since `dde4095e`: 163 s, rising to 295 s on `5cb83329` and 271 s
+  on `b122a30f`, with its code unchanged; run alone on `f6478946` in a scratch worktree it passed in 202 s. The same
+  class: a first start runs the same hooks, under the sweep's load. Its limit is not raised (the maintainer, 15:23
+  local on 2026-11-14). Home hook files: 0 changed in both sweeps and in the lone run.
 - **Class closure**: NONE — evidence only, nothing was changed; the recurrence guard (a wall-time budget case for the
   prompt and Stop hooks through the deployed launcher) belongs to the proposal, once the maintainer places it.
+
+### DRIFT-074 — A push whose difference is Markdown records only needs no new full sweep (maintainer's decision)
+
+- **Trigger**: the sweep on `f6478946` failed only on the start-command load timeout (DRIFT-073), while `b122a30f`, one
+  commit earlier, had a green full sweep and the difference was a two-line drift-log entry. Asked whether to push on
+  `b122a30f`'s sweep (08:25 local, 2026-11-14), with a standing rule so it need not be asked again.
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "203: yes", 15:23 local on
+  2026-11-14): push `f6478946` on `b122a30f`'s green sweep and follow CI; do not raise the start-command test's limit.
+  From now until the maintainer changes it: when the only difference between the last green-swept commit and the commit
+  to be pushed is Markdown records under `specs/` or `docs/`, run markdownlint, the governance check
+  (`validate-governance.ps1 -ChangedOnly`) and the governance lane (`iteration-001-governance-203`), then push without a
+  new full sweep. Anything else in the difference (any script, test, configuration file, deployed copy or hash record)
+  still requires the full sweep. Before using the rule, the changed files between the two commits are printed and each
+  is confirmed to be a Markdown record.
+- **Applied**: `git diff --name-only b122a30f f6478946` listed only
+  `specs/203-beta5-stabilization/iterations/001/drift-log.md`; markdownlint 0 issues; pushed at 15:25 local.
+- **Class closure**: NONE — a process decision; no code changed.
