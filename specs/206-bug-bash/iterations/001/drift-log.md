@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 28
-**Resolution rate**: 79% (22/28 resolved; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 29
+**Resolution rate**: 79% (23/29 resolved; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage; 025
 deferred to iteration 002 by the maintainer's ruling)
 **Specification drift**: None detected (process drift only)
@@ -554,6 +554,21 @@ deferred to iteration 002 by the maintainer's ruling)
   unchanged, as approved.
 - **Class closure**: NONE — the scaffold is the installed module's; reported for feature 203's triage with 205's
   instance, two features now.
+
+### DRIFT-206-I001-029 — the retro push is red on Lint by the boundary order; one exception, and bug list item 39
+
+- **Recorded**: 2026-11-14, before the retro push.
+- **What**: the retro sync refused until the retro commit is on origin (`verdict-commit-durable`), and that commit is
+  red on Lint ("plan.md status 'reviewing' is stale: retro.md exists") until the retro boundary moves the line. The
+  sync also refused on task-state: state.md's Tasks Remaining said "none planned" beside T003 `deferred`; fixed in
+  `7233fc35`.
+- **Approval**: the maintainer's decision at 22:39 local, relayed by the reviewer session (`specrewreviewer-98`): "OK,
+  so for now allow it as before, and instruct 206 to add it". One red Specrew CI run on Lint only, for this push of
+  `c439c012`, `e053b91a` and `7233fc35`: the plan-status item and the standing derived-block item, nothing else. It is
+  not a standing exception.
+- **Resolution**: the push goes ahead under that exception; bug list item 39 records the ordering for iteration 002.
+- **Class closure**: bug list item 39. The validator would accept a record beside its pre-verdict phase while the
+  crossing is pending. Until then, every review sign-off and every retro needs this exception.
 
 <!--
   Every new ### DRIFT-... event includes:

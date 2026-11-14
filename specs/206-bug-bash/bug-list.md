@@ -721,6 +721,35 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   was accepted on that evidence, as a records-only change. It is not a general licence: a lane red for a reason not
   reproduced and explained still stops a push.
 
+## 39. Every review sign-off and every retro costs one red Specrew CI Lint push
+
+- **Observed (2026-11-14):** at review sign-off (`b8d3b8f2`, Lint red on the plan-status item only) and at the retro
+  (the push of `c439c012`, `e053b91a` and `7233fc35`). Feature 205 paid the same at both boundaries, and feature 202
+  at review sign-off (`a7e2b74c`).
+- **The ordering:**
+  - The validator calls plan.md's status stale as soon as the next record exists (`validate-governance.ps1` lines
+    5195 to 5201: review.md beside `planning` or `executing`, retro.md beside anything but `retro` or `complete`).
+  - The phase line moves only at the boundary sync, after the human's verdict.
+  - The sync requires the verdict's commit on origin first (`verdict-commit-durable`, `scripts/internal/gate-preflight.ps1`
+    line 153), so the record is pushed while the line is still behind.
+- **Direction (suggested by the reviewer to the maintainer):** the validator treats "record written, boundary approval
+  still pending" as a normal state, not an error. For example, review.md beside `executing` is accepted while
+  `start-context.json` shows the review-signoff crossing pending or not yet reached, and likewise retro.md beside
+  `reviewing`. Once the verdict is recorded and the line has not moved, the check fires as today.
+- **Files a fix would touch:** `extensions/specrew-speckit/scripts/validate-governance.ps1` (the two checks; read the
+  pending crossing through the existing start-context reader), its deployed copy
+  `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specrew-extension-runtime.json` (the
+  hash), and a unit suite with the four cases (record before verdict, at verdict, after the line moves, verdict
+  recorded with the line behind).
+- **Size:** about 1 SP (0.5 for the check and its reader, 0.5 for the tests and the deployed copy).
+- **Merge risk with feature 203:** none of these files is on 203's protected list (`scripts/internal/continuous-co-review/`,
+  the capture stores under `scripts/internal/bootstrap/`). On `origin/203-beta5-stabilization` since the merge base
+  `df1141a8`, 203 has changed neither copy of `validate-governance.ps1` nor `gate-preflight.ps1`. It has changed
+  `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` (24 lines added, 20 removed), so the hash
+  record is the one likely conflict, resolved by recomputing the hashes.
+- **Disposition (maintainer, 2026-11-14, 22:39 local, relayed by the reviewer):** recorded for iteration 002; whether it
+  goes in is the maintainer's decision at that iteration's plan. Not started.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
@@ -732,4 +761,5 @@ Carried from iteration 001 by name, with the decision that carried each (`.squad
 - **T016 (FR-013) and T017 (FR-014)**, as the approved plan sets.
 - **DRIFT-206-I001-010:** abandoned is closed only with a recorded ruling; feature 206 does not close without it.
 - **Items 12 and 15 to 30**, as the review's gap ledger lists them (each item says what remains), and **items 31 to
-  38**, with item 36 including plan.md's stale note.
+  38**, with item 36 including plan.md's stale note. Item 39 is a candidate; it goes in only by the maintainer's word at
+  iteration 002's plan.
