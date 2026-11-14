@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 18
+**Total drift events**: 19
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -304,6 +304,66 @@
   No lens file changed. The shipped files pass the stronger checks unchanged.
 - **Class closure**: the test itself is the mechanism. Each of the three shapes now fails loudly, and the self-tests
   prove it, including the reviewer's swap on a copy of the real catalog.
+
+### DRIFT-019 — the scratch workshop run to the spec: supplementary observations (outside T026 and SC-012)
+
+- **Run**: 2026-11-14, 19:35 to 21:56 local, session `specrew-205-t026-4a`, Light, eight lenses selected, ui-ux and
+  integration-api skipped. The maintainer continued past T026's pass, with the reviewer session relaying each reply
+  after the maintainer's go-ahead. The spec is committed in the scratch project (`55de1c4`), and the session stopped
+  at the specify packet. The observations are the reviewer session's, from the transcript and the records.
+- **Counts**:
+  - 10 relayed replies answered workshop steps (prompts 3 to 12, verified from the transcript): product-domain, the
+    agenda, and one per lens. Every lens closed on one reply.
+  - 4 further relayed prompts (13 to 16) dealt with the post-close correction and the pre-spec check. The reviewer
+    counts five such replies.
+  - Must-answer questions shown, per the reviewer: product 5, requirements 6, security 6, data 6, operations 7,
+    architecture 5, components 4, failures 5, code 6.
+  - Recommendation lines shown: product 5, requirements 4, security 4, data 6, operations 4, failures 6.
+- **What held**: iteration 002's deliverable. All eleven Problem Context lines in the spec are filled, with "not stated"
+  and "not applicable" written out, and the compliance regime and residency reached the lenses that use them by name.
+- **Observations** (candidates for later iterations; nothing changes in 002):
+  1. **The pre-spec lint check stopped four times on the scratch project.** MD013 fired on the workshop's records,
+     then MD013/MD033 and MD041 on `.specrew/last-start-prompt.md` and `.specrew/handover/session-handover.md`. It
+     passed only after the session wrote a `.markdownlint.json` and a `.markdownlintignore`. Before that, the session
+     reflowed ten records to 80 columns, which made tables and diagrams worse to read. **This is an artefact of how
+     the T026 scratch project was built, not a defect a new user meets.**
+     - `specrew init` runs `extensions/specrew-speckit/scripts/scaffold-governance.ps1` (called from
+       `scripts/specrew-init.ps1:388`). Lines 313 to 344 write a project-root `.markdownlint.json` with MD013, MD033
+       and MD041 off.
+     - Init also adds the per-session patterns to `.gitignore` (`scripts/specrew-init.ps1:888-896`, patterns in
+       `scripts/internal/file-classification.ps1:23-34`): `.specrew/last-*`, `.specrew/handover/`,
+       `.specrew/runtime/` and the rest.
+     - The gate lints only changed files that git does not ignore (`Get-ChangedMarkdownFiles`, `shared-governance.ps1`,
+       `git ls-files -m -o --exclude-standard`).
+     - The scratch project, built without init, had neither file, so the two `.specrew/` files were untracked and
+       linted, and MD013 applied.
+     - Two residual points are real, though not 205's: nothing tells the human why a lint stop happened; and the
+       session's response, reflowing tables, was worse than asking. They are for the lint gate's owner to weigh.
+     - The T026 build script is corrected for the future: a scratch project must also get init's `.markdownlint.json`
+       and `.gitignore` patterns.
+  2. **A correction after a lens closed.** The maintainer changed code-implementation's answer 2 (.NET 10 to .NET 11)
+     after every lens had closed. The hook said the reply was not used, because the lens was closed. The session
+     amended the readable record and `implementation-rules.yml` by hand, left `lens-applicability.json` alone, and
+     logged it. On approval, the closing step accepted a re-record, but the entry still points to the first answer's
+     receipt. This is the amendment flow iteration 004 holds.
+  3. **Write-back happened in every later lens**, on the session's initiative:
+     - one row per treatment written back into requirements-nfr;
+     - the 30-day removal, the check command and the failure notice into product-domain's first-version list;
+     - operating hours and alerting into product-domain and requirements-nfr.
+     The component map was left as pending for design analysis, which is the better behaviour. product-domain's stale
+     "open point" stayed stale. This is the DRIFT-015 gap; the back-check (iteration 004) closes it.
+  4. **Labelling of the session's own inferences is inconsistent.** security-compliance has the unlabelled "Controls
+     ... (for plan)" section (DRIFT-015), while devops-operations and observability-resilience label their notes "not
+     as decisions". The spec labels them properly: an Assumptions section with nine readings and two NEEDS
+     CLARIFICATION marks. One inference is missing there: its FR-021 has the tool remove run-record lines older than
+     90 days, where the human said only "kept for 90 days".
+  5. **For iteration 003's code-lens refresh (FR-030)**: the session looked versions up at run time and cited sources,
+     but first called .NET 11 a short-support release, then corrected itself. The lens should require the lookup,
+     its sources and the date, and should carry no version facts of its own.
+  6. **For proposal 177** (workshop decisions reaching the coding agent): `implementation-rules.yml`, written by the
+     code lens, is already described as "the rule set the coding agent and the reviewer read". Proposal 177's notes
+     should start from what that file covers.
+- **Class closure**: NONE — observations from an exploratory run; each is placed above with its owner or iteration.
 
 <!--
   Every new ### DRIFT-... event includes:
