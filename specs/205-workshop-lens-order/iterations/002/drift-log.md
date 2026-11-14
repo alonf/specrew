@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 12
+**Total drift events**: 13
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -198,6 +198,22 @@
 - **Class closure**: NONE — the suites and the step belong to feature 203's area. Feature 203 already holds the same
   failure as B5F-067 (run 43270394765, 2026-11-12), with a proposal to run each suite under its own limit and print
   its name as it starts. Handed over as H-020, a second sighting of B5F-067, not a new item.
+
+### DRIFT-013 — a push of Markdown records only needs markdownlint and the governance check (maintainer's standing rule)
+
+- **Decided**: 2026-11-14, 15:23 local, by the maintainer, relayed by the reviewer session under the wider delegation
+  with their words and the time: "203: yes", given to a question from the feature 203 crew; the reviewer told them it
+  also sets a standing rule for the crews.
+- **Rule**: when the only difference between the last commit on which the full pre-push checks were green and the
+  commit to be pushed is Markdown records under `specs/` or `docs/`, markdownlint and the governance check are run and
+  the push goes out; the workshop regression set need not be repeated for that difference alone. The changed-file list
+  between the two commits is printed first, and every file must be a Markdown record. Anything else in the
+  difference (a lens file, skill, template, script, test, deployed copy or hash record) gets the full checks as before.
+  CI is still followed to its conclusion after every push.
+- **Not changed**: the standing rerun exception still covers only `co-review-service.Tests.ps1:129`; the standing
+  derived-block exception is unchanged.
+- **Effect here**: the held records commits (`176882ff` and this one) may go out under it at the next push.
+- **Class closure**: NONE — a process decision by the maintainer, not a defect.
 
 <!--
   Every new ### DRIFT-... event includes:
