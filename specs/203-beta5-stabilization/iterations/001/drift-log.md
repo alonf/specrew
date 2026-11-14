@@ -2603,3 +2603,26 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   fix is wrong, stops for the reviewer before the maintainer is asked for the stop; machine load is confirmed quiet
   before the round approval and before the stop.
 - **Class closure**: NONE — a process decision; the validator's gap is feature 206's item 37.
+
+### DRIFT-080 — The sweep of the round D batch found two defects in the batch's own test code (finding, fixed test first)
+
+- **Trigger**: the full sweep of `671b2dfc` (1,500 s suite limit, 6,461 s, 279 suites; home hook files 0 changed) was
+  red on two things besides the start-command load timeout (301 s against its 300 s limit, DRIFT-073's allowance).
+- **Causes and fixes** (the reviewer session's ruling: each as a guard case committed red first, then the fix):
+  1. Lane `f203-i001-suites` exit 1 on `tests/unit/hook-command-length.tests.ps1`: every assertion passed, then the new
+     checkout-unchanged check threw "Cannot bind argument to parameter 'ReferenceObject' because it is null"; in a
+     clean checkout the snapshot is empty and PowerShell hands the empty output back as null. The earlier green runs
+     were in a worktree where the suite file itself was modified. Fixed: the snapshots are compared as lists, an empty
+     one included, each change still named by file (`135b0b54` red 1 of 24, `07e1845f`; run in a scratch worktree with
+     the lane's cleared environment, and on a clean one).
+  2. `tools/maintenance/sweep/sweep-driver.tests.ps1` reported FAILED with 0 passed and 0 failed: run-suites classifies a
+     suite as Pester when any line starts with Describe, and case 12's fixture (`9f2e9f3b`) had such a line, so the
+     script ran under Invoke-Pester with no tests. Round D finding 3's fix (`2626f722`) made that loud; before it, the
+     same misreading counted as a pass. Fixed: the fixture is built from lines (`8681c21c` red 1 of 57, `bfbbf649`).
+- **Follow-up for iteration 002** (the reviewer session's ruling): the classifier itself is the weak part; a
+  here-string can still flip a script suite to Pester. It now fails loudly instead of passing in silence, so it waits.
+- **Suite times on `671b2dfc`**: `message-identity` 1,199 s, `review-loop-stops` 1,148 s, `review-budget-loop` 1,017 s
+  (130 to 250 s slower than on `f6478946`); lane `f203-i001-t008-suites` 767 s of its 900 s limit (704 to 723 s before).
+  Other crews ran a review round and lanes during this sweep. The next sweep runs alone; whether the slowdown is round
+  D finding 1's whole-transcript read or load is decided from it.
+- **Class closure**: each defect has its guard case (`hook-command-length`'s clean-checkout case, `sweep-driver` case 13).

@@ -27,7 +27,10 @@ after every round: 0 changed.
 
 That is 13 major findings, 14 defects, each checked against the code and fixed behind a test committed red first. The
 maintainer's batch after round D also fixed `hook-command-length.tests.ps1`, which could start the dispatcher of the
-checkout it ran in (DRIFT-072, DRIFT-076). The four-round allowance is spent; round E is the fifth and last round
+checkout it ran in (DRIFT-072, DRIFT-076). The full sweep of that batch (`671b2dfc`) then found two defects in the
+batch's own test code, both fixed behind a guard case committed red first: `hook-command-length`'s checkout check failed
+on a clean checkout, and case 12's fixture made run-suites read the sweep-driver self-test as an empty Pester suite
+(DRIFT-080). The four-round allowance is spent; round E is the fifth and last round
 (DRIFT-076), and whatever it finds that does not block sign-off goes to iteration 002.
 
 ## Round E
@@ -37,7 +40,7 @@ Not yet run. Its run, findings and outcome are added here after the review sign-
 ## What This Sign-off Claims, and What It Does Not
 
 - **It claims** every finding of rounds A to D is fixed, each behind a test that failed first, and that the full sweep
-  of the fixes (`671b2dfc`, 1,500 s suite limit, DRIFT-077) is green.
+  of the commit round E reads (1,500 s suite limit, DRIFT-077) is green (DRIFT-077's start-command allowance, if used, is recorded in the drift log).
 - **It does not claim** the live hooks run the reviewed code. They still run the pinned engine `a56ac787`, which has
   no sender check (DRIFT-072) and whose stop cites a standing grant instead of the typed answer (DRIFT-075). Both
   change at T014.

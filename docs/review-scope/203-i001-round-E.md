@@ -6,7 +6,8 @@ This round's focus is the area below. The whole tree is frozen and in scope; spe
 
 - **What changed**: feature 203 iteration 001, from `fca9067e` (the before-implement baseline). The full list of changed
   files with their line counts is in `docs/review-scope/changed-files.txt` (to `1377289a`, the tree round D reviewed).
-  Since round D: eight commits of fixes, `a9a13583` to `671b2dfc`, and the review records commit after them.
+  Since round D: eight commits of fixes, `a9a13583` to `671b2dfc`, the review records commits, then four commits fixing
+  two defects in that batch's test code (`135b0b54` to `bfbbf649`, DRIFT-080) and a records commit.
 - **The iteration's contract**: `specs/203-beta5-stabilization/spec.md` and
   `specs/203-beta5-stabilization/iterations/001/plan.md`. The engine resolves both automatically.
 - **The review records are present by design.** `review.md`, `plan.md` at `reviewing` with T014 `blocked`, `state.md`,
@@ -49,6 +50,10 @@ fail.
    a reservation failure that still says nothing; a report that tells the human an approval was lost when it was not.
 3. **The sweep's Pester verdict** (`2626f722`, test `9f2e9f3b`): `tools/maintenance/sweep/run-suites.ps1`. Attack: a
    failed or empty Pester run that still counts as passed; a passing one now counted as failed.
-4. **`tests/unit/hook-command-length.tests.ps1`** (`671b2dfc`, test `a4c3222c`): its cmd.exe commands run in their
-   scratch projects and it checks its checkout is unchanged. Attack: a command it still runs in the checkout; a change
-   to the checkout the check cannot see.
+4. **`tests/unit/hook-command-length.tests.ps1`** (`671b2dfc`, test `a4c3222c`; then `07e1845f`, guard `135b0b54`): its
+   cmd.exe commands run in their scratch projects, and it checks its checkout is unchanged, a clean checkout included.
+   Attack: a command it still runs in the checkout; a change to the checkout the check cannot see.
+
+The sweep-driver self-test's case 12 fixture is built from lines (`bfbbf649`, guard `8681c21c`) so run-suites runs the
+self-test as a script; run-suites still classifies a suite as Pester by any line starting with Describe, a known
+follow-up for iteration 002 (DRIFT-080).
