@@ -87,6 +87,27 @@ if (-not $turn.Found -or -not [string]::IsNullOrWhiteSpace([string]$turn.Reason)
     }
     throw ("This design decision was not recorded: {0}. Nothing else has changed. Record it in the same turn as the human's reply, with -HumanTurn exactly as they typed it, or ask them to type the decision again ('design decision: option <n>')." -f $why)
 }
+# Iteration review round C, finding 2: the reservation carries the dispatcher's label for the prompt, and a scheduled prompt
+# whose whole text is the decision arrives unwrapped and is labelled typed-user. Who sent it is read from the host's own
+# transcript record of that message, by the same check the authorization consumers run (Resolve-SpecrewAuthorizationSender),
+# loaded through the pin-aware loader; a check that cannot be loaded refuses.
+$senderCheckLoaded = $false
+$liveEnginePath = Join-Path $PSScriptRoot 'live-engine-resolution.ps1'
+try {
+    if (Test-Path -LiteralPath $liveEnginePath -PathType Leaf) { . $liveEnginePath; $senderCheckLoaded = [bool](Import-SpecrewAuthorizationSenderCheck -ProjectRoot $root) }
+}
+catch { $senderCheckLoaded = $false }
+if (-not $senderCheckLoaded -or -not (Get-Command Resolve-SpecrewAuthorizationSender -ErrorAction SilentlyContinue)) {
+    throw "This design decision was not recorded: Specrew could not load the check that confirms the human typed it. Nothing else has changed. Ask the human to type the decision again once the check is available ('design decision: option <n>')."
+}
+$turnHost = if ([string]::IsNullOrWhiteSpace([string]$turn.HostKind)) { 'claude' } else { [string]$turn.HostKind }
+$sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity ([string]$turn.TurnIdentity) -Purpose 'design decision' -HostKind $turnHost
+if (-not [bool]$sender.accepted) {
+    $when = if ($null -ne $turn.ObservedAt) { ([DateTimeOffset]$turn.ObservedAt).ToLocalTime().ToString('HH:mm') } else { '' }
+    $why = if ([string]$sender.sender -ceq 'not-found') { "the newest message (at {0}) could not be found in the conversation, so it cannot be confirmed that the human typed it" -f $when }
+    else { "the newest message (at {0}) was not typed by the human (its sender: {1}), so it is not their decision" -f $when, [string]$sender.sender }
+    throw ("This design decision was not recorded: {0}. Nothing else has changed. Ask the human to type the decision themselves in the terminal session ('design decision: option <n>')." -f $why)
+}
 if ($Key -cnotmatch '^[a-z][a-z0-9-]{1,63}$') {
     throw "The decision key must be a short lowercase slug (letters, digits and hyphens), for example 'decomposition-style'. Got '$Key'."
 }

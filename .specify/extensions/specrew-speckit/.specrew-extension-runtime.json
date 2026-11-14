@@ -356,7 +356,7 @@
     },
     {
       "path": "scripts/record-design-decision.ps1",
-      "sha256": "3bad2df9976c77c21aefcf9ef44485a4a09d6a481652aaf0606bffc2c1f5ff3f"
+      "sha256": "150a933c7bf4521b3351ddc5d61a97c1380e77906a3d392426f51f1a4d8230a3"
     },
     {
       "path": "scripts/refocus.ps1",

@@ -16,10 +16,16 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
 function Send-TypedMessage {
+    # The prompt hook, and the transcript record the host writes for a typed message (iteration review round C, finding 2:
+    # the decision writer reads who sent it from that record).
     param([string]$Root, [string]$Text)
     $env:SPECREW_MODULE_PATH = $repoRoot
+    $messageId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+    $transcript = Join-Path $Root ('transcript-{0}.jsonl' -f $messageId)
+    $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $messageId; sessionId = 's1'; timestamp = [DateTimeOffset]::UtcNow.ToString('o'); message = [ordered]@{ role = 'user'; content = $Text }; turnOrigin = 'human'; promptSource = 'typed'; origin = [ordered]@{ kind = 'human' }; entrypoint = 'cli'; version = '2.1.322' }
+    [IO.File]::WriteAllText($transcript, (($record | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
     & pwsh -NoProfile -File $provider --project-root $Root --host-kind claude --source-event UserPromptSubmit --last-user-message $Text `
-        --turn-origin typed-user --message-identity declared --message-id ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) --session-id s1 *> $null
+        --turn-origin typed-user --message-identity declared --message-id $messageId --session-id s1 --transcript-path $transcript *> $null
 }
 
 function Invoke-Record {
