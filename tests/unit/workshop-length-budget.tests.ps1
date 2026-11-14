@@ -306,7 +306,10 @@ function Test-LengthBudget {
 #region (b) Consumers
 
 function Test-Consumer {
-    param([string]$Consumer, [string]$LensId, [string[]]$Order, [string[]]$ContextNames)
+    # $SourceLens and $Key name the answer being consumed: the item's own lens and key, or a hand-forward's source and
+    # key. $Received maps each lens to the "<source>/<key>" answers its hand-forward lines show. A later lens is a
+    # consumer only when it shows the answer as its recommended answer (FR-029).
+    param([string]$Consumer, [string]$LensId, [string[]]$Order, [string[]]$ContextNames, [string]$SourceLens, [string]$Key, [hashtable]$Received)
     $spec = [regex]::Match($Consumer, $script:ConsumerSpecPattern)
     if ($spec.Success) {
         if ($ContextNames -contains $spec.Groups['name'].Value.Trim()) { return $null }
@@ -318,6 +321,10 @@ function Test-Consumer {
         $at = [array]::IndexOf($Order, $target)
         if ($at -lt 0) { return "no lens '$target' in index.yml" }
         if ($at -le [array]::IndexOf($Order, $LensId)) { return "lens '$target' does not come after $LensId" }
+        if ([string]::IsNullOrEmpty($Key)) { return "an answer key (``key``) on the question, so 'lens: $target' can receive it" }
+        if (-not ($Received.ContainsKey($target) -and $Received[$target].Contains("$SourceLens/$Key"))) {
+            return "$target has no hand-forward of $SourceLens ``$Key``, so it does not receive the answer"
+        }
         return $null
     }
     return "'$Consumer' is neither 'spec.md Problem Context: <line>' nor 'lens: <later lens>'"
@@ -342,6 +349,17 @@ function Test-Consumers {
         $keysByLens[$lens.id] = $keys
     }
 
+    # The answers each lens receives: "<source>/<key>" for each of its well-formed hand-forward lines.
+    $received = @{}
+    foreach ($lens in $catalog) {
+        $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($hf in (Get-HandForwardLines -Lines (Get-NormalizedLines -Path (Join-Path $Root "$($script:LensCatalogRelative)/$($lens.file)")))) {
+            $m = [regex]::Match($hf.Text, $script:HandForwardPattern)
+            if ($m.Success) { $null = $set.Add("$($m.Groups['source'].Value)/$($m.Groups['key'].Value)") }
+        }
+        $received[$lens.id] = $set
+    }
+
     foreach ($lens in $catalog) {
         $relative = "$($script:LensCatalogRelative)/$($lens.file)"
         $lines = Get-NormalizedLines -Path (Join-Path $Root $relative)
@@ -353,7 +371,9 @@ function Test-Consumers {
                 'none' { $unsuffixed++; $lastUnsuffixedLine = $suffix.Line }
                 'malformed' { $problems.Add((New-Problem $relative $suffix.Line 'a valid question suffix' $suffix.Problem $suffix.Fix)) }
                 default {
-                    $why = Test-Consumer -Consumer $suffix.Consumer -LensId $lens.id -Order $order -ContextNames $contextNames
+                    $keyMatch = [regex]::Match((($item.Lines | ForEach-Object { $_.Text }) -join ' '), $script:AreaKeyPattern)
+                    $itemKey = if ($keyMatch.Success) { $keyMatch.Groups['key'].Value } else { '' }
+                    $why = Test-Consumer -Consumer $suffix.Consumer -LensId $lens.id -Order $order -ContextNames $contextNames -SourceLens $lens.id -Key $itemKey -Received $received
                     if ($why) { $problems.Add((New-Problem $relative $suffix.Line 'a consumer that exists (FR-029)' $why $consumerFix)) }
                 }
             }
@@ -381,7 +401,7 @@ function Test-Consumers {
             elseif (-not $match.Groups['answer'].Value.StartsWith("${source}: ")) {
                 $problems.Add((New-Problem $relative $hf.Number "the answer shown as ""${source}: <answer>""" "'$($match.Groups['answer'].Value)'" 'name the source lens in the shown answer'))
             }
-            $why = Test-Consumer -Consumer $match.Groups['consumer'].Value -LensId $lens.id -Order $order -ContextNames $contextNames
+            $why = Test-Consumer -Consumer $match.Groups['consumer'].Value -LensId $lens.id -Order $order -ContextNames $contextNames -SourceLens $source -Key $key -Received $received
             if ($why) { $problems.Add((New-Problem $relative $hf.Number 'a consumer that exists (FR-029)' $why $consumerFix)) }
         }
     }
