@@ -228,6 +228,70 @@ $loaded = [bool](Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction 
     }
 }
 
+Describe 'the check loads from the project''s live-engine pin when one is configured (iteration review round C, finding 1)' {
+    # A configured reviewed pin is the only engine the sender check may come from: SPECREW_MODULE_PATH naming the active
+    # development tree must not decide what counts as a typed approval before the pin advances, and a configured pin that
+    # cannot be used resolves no checker at all (refused), never a fallback.
+    BeforeAll {
+        function script:New-FakeEngine {
+            param([string]$Root, [string]$Name)
+            $bootstrap = Join-Path $Root 'scripts/internal/bootstrap'
+            New-Item -ItemType Directory -Path $bootstrap -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $bootstrap 'ConversationCaptureAccessor.ps1') -Value '# fake accessor' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $bootstrap 'HumanAuthorityStore.ps1') -Encoding utf8 -Value ("function Test-SpecrewAuthorizationRecordSender {{ param(`$ProjectRoot, `$Record, `$Purpose) [Console]::Out.WriteLine('checker={0}'); return `$true }}" -f $Name)
+        }
+        function script:New-PinnedProject {
+            param([switch]$PinMissing)
+            $base = Join-Path $TestDrive ('pin-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            $dev = Join-Path $base 'dev'; script:New-FakeEngine -Root $dev -Name 'dev'
+            $pin = Join-Path $base 'pin'; script:New-FakeEngine -Root $pin -Name 'pin'
+            foreach ($rel in 'scripts/internal/bootstrap/HandoverStore.ps1', 'scripts/internal/continuous-co-review/worktree-navigator.ps1', 'extensions/specrew-speckit/scripts/shared-governance.ps1', '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1') {
+                $p = Join-Path $pin $rel; New-Item -ItemType Directory -Path (Split-Path -Parent $p) -Force | Out-Null; Set-Content -LiteralPath $p -Value '# pinned' -Encoding utf8
+            }
+            $commit = 'a' * 40
+            $gitDir = Join-Path $base 'pin-gitdir'; New-Item -ItemType Directory -Path $gitDir -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $gitDir 'HEAD') -Value $commit -Encoding ascii
+            Set-Content -LiteralPath (Join-Path $pin '.git') -Value ("gitdir: {0}" -f $gitDir) -Encoding ascii
+            $project = Join-Path $base 'project'; New-Item -ItemType Directory -Path (Join-Path $project '.specrew/runtime') -Force | Out-Null
+            $pinPath = if ($PinMissing) { Join-Path $base 'no-such-pin' } else { $pin }
+            ([ordered]@{ schema_version = '1'; path = $pinPath; commit = $commit; recorded_at = '2026-11-14T00:00:00Z' } | ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $project '.specrew/runtime/live-engine.json') -Encoding utf8
+            return [pscustomobject]@{ Project = $project; Dev = $dev; Pin = $pin }
+        }
+        $script:PinProbe = Join-Path $TestDrive 'pin-probe.ps1'
+        @'
+param([string]$Repo, [string]$Project, [string]$Dev, [string]$Loader)
+$env:SPECREW_MODULE_PATH = $Dev
+$record = [pscustomobject]@{ fact_type = 'allowance-reset-approval'; verdict_text = 'approved for allowance reset'; turn_identity = 't1'; host_kind = 'claude' }
+if ($Loader -eq 'shared-governance') {
+    . (Join-Path $Repo 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+    $used = Test-SpecrewAuthorizationSenderForUse -ProjectRoot $Project -Record $record -Purpose 'probe'
+}
+else {
+    . (Join-Path $Repo 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1')
+    $used = Test-SpecrewWorkshopRecordSender -ProjectRoot $Project -Record $record -Purpose 'probe'
+}
+$cmd = Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue
+'used={0} loaded-from={1}' -f $used, $(if ($null -ne $cmd) { [string]$cmd.ScriptBlock.File } else { 'none' })
+'@ | Set-Content -LiteralPath $script:PinProbe -Encoding utf8
+    }
+
+    It '<loader>: a usable pin is the only source, whatever SPECREW_MODULE_PATH names' -ForEach @(@{ loader = 'shared-governance' }, @{ loader = 'workshop-authority-store' }) {
+        $f = script:New-PinnedProject
+        $out = (& pwsh -NoProfile -NonInteractive -File $script:PinProbe -Repo $script:RepoRoot -Project $f.Project -Dev $f.Dev -Loader $loader 2>&1) -join "`n"
+        $out | Should -Match 'checker=pin'
+        $out | Should -Not -Match 'checker=dev'
+        $from = [regex]::Match($out, 'loaded-from=(.+)').Groups[1].Value.Trim()
+        [IO.Path]::GetFullPath($from) | Should -Be ([IO.Path]::GetFullPath((Join-Path $f.Pin 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')))
+    }
+
+    It '<loader>: a configured pin that cannot be used resolves no checker, and the authorization is not used' -ForEach @(@{ loader = 'shared-governance' }, @{ loader = 'workshop-authority-store' }) {
+        $f = script:New-PinnedProject -PinMissing
+        $out = (& pwsh -NoProfile -NonInteractive -File $script:PinProbe -Repo $script:RepoRoot -Project $f.Project -Dev $f.Dev -Loader $loader 2>&1) -join "`n"
+        $out | Should -Not -Match 'checker='
+        $out | Should -Match 'used=False loaded-from=none'
+    }
+}
+
 Describe 'the prompt hook keeps where the record will be on the turn''s ledger row' {
     It 'the reservation carries the transcript path and the host''s message id' {
         $root = Join-Path $TestDrive 'prompt-hook'
