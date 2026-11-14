@@ -39,7 +39,32 @@ function Get-CheckoutState {
             '{0} {1}' -f ([string]$_), $hash
         } | Sort-Object)
 }
+function Get-CheckoutChanges {
+    param($Before, $After)
+    return @(Compare-Object -ReferenceObject $Before -DifferenceObject $After | ForEach-Object { '{0} {1}' -f $_.SideIndicator, $_.InputObject })
+}
 $checkoutBefore = Get-CheckoutState -Root $repoRoot
+
+# Guard (sweep of 671b2dfc, lane f203-i001-suites red): the check runs on a clean checkout, where the snapshot is empty.
+$cleanCheckout = Join-Path ([IO.Path]::GetTempPath()) ('hook-length-clean-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $cleanCheckout -Force | Out-Null
+    & git -C $cleanCheckout init -q 2>$null
+    Set-Content -LiteralPath (Join-Path $cleanCheckout 'a.txt') -Value 'a' -Encoding UTF8
+    & git -C $cleanCheckout -c user.email=t@t -c user.name=t add -A 2>$null
+    & git -C $cleanCheckout -c user.email=t@t -c user.name=t commit -q -m clean 2>$null
+    $cleanChanges = @(); $cleanError = ''
+    try { $cleanChanges = @(Get-CheckoutChanges -Before (Get-CheckoutState -Root $cleanCheckout) -After (Get-CheckoutState -Root $cleanCheckout)) }
+    catch { $cleanError = [string]$_.Exception.Message }
+    Assert-True ($cleanError -eq '' -and $cleanChanges.Count -eq 0) ("the checkout check runs on a clean checkout and finds no change ({0})" -f $(if ($cleanError) { $cleanError } else { $cleanChanges.Count }))
+    $cleanState = @()
+    Set-Content -LiteralPath (Join-Path $cleanCheckout 'a.txt') -Value 'b' -Encoding UTF8
+    $dirtyChanges = @(); $dirtyError = ''
+    try { $dirtyChanges = @(Get-CheckoutChanges -Before $cleanState -After (Get-CheckoutState -Root $cleanCheckout)) }
+    catch { $dirtyError = [string]$_.Exception.Message }
+    Assert-True ($dirtyError -eq '' -and $dirtyChanges.Count -eq 1 -and $dirtyChanges[0] -match 'a\.txt') ("and reports a file changed after a clean start, by name ({0})" -f $(if ($dirtyError) { $dirtyError } else { $dirtyChanges -join '; ' }))
+}
+finally { Remove-Item -LiteralPath $cleanCheckout -Recurse -Force -ErrorAction SilentlyContinue }
 
 function Get-CommandStrings {
     # Every command a host would run, from any hook settings shape: { command }, { bash, powershell }, nested groups.
@@ -123,7 +148,7 @@ try {
 finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }
-$checkoutChanges = @(Compare-Object -ReferenceObject $checkoutBefore -DifferenceObject @(Get-CheckoutState -Root $repoRoot) | ForEach-Object { '{0} {1}' -f $_.SideIndicator, $_.InputObject })
+$checkoutChanges = @(Get-CheckoutChanges -Before $checkoutBefore -After (Get-CheckoutState -Root $repoRoot))
 Assert-True ($checkoutChanges.Count -eq 0) ("nothing changed in the checkout this suite ran in ({0})" -f ($checkoutChanges -join '; '))
 
 if ($script:failCount -gt 0) { Write-Host "$script:failCount failure(s)" -ForegroundColor Red; exit 1 }
