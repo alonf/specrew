@@ -25,6 +25,22 @@ $limit = [int][math]::Floor($cmdExeLimit / 2)
 
 $work = Join-Path ([IO.Path]::GetTempPath()) ('hook-length-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 
+# Iteration review round D, maintainer's batch (DRIFT-072 open item): THIS SUITE CHANGES NOTHING IN THE CHECKOUT IT RUNS IN.
+# Run from this checkout with no working directory, the antigravity launcher started this project's own hook dispatcher
+# (session start, 02:23:38 local on 2026-11-14), which rewrote iterations/001/state.md and tasks-progress.yml. Every command
+# runs in its scratch project, and the checkout's changed and untracked files are the same, byte for byte, at the end.
+function Get-CheckoutState {
+    param([string]$Root)
+    $lines = @(& git -C $Root status --porcelain --untracked-files=all 2>$null)
+    return @($lines | ForEach-Object {
+            $rel = ([string]$_).Substring(3).Trim('"')
+            $full = Join-Path $Root $rel
+            $hash = if (Test-Path -LiteralPath $full -PathType Leaf) { (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash } else { '-' }
+            '{0} {1}' -f ([string]$_), $hash
+        } | Sort-Object)
+}
+$checkoutBefore = Get-CheckoutState -Root $repoRoot
+
 function Get-CommandStrings {
     # Every command a host would run, from any hook settings shape: { command }, { bash, powershell }, nested groups.
     param($Node)
@@ -51,7 +67,8 @@ function Invoke-ThroughCmd {
         $p.StandardInput.Close()
         $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
         if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'cmd.exe run timed out' }
-        return [pscustomobject]@{ Exit = $p.ExitCode; Text = ($out.Result + "`n" + $err.Result) }
+        $ranIn = if ([string]::IsNullOrWhiteSpace($psi.WorkingDirectory)) { (Get-Location).ProviderPath } else { $psi.WorkingDirectory }
+        return [pscustomobject]@{ Exit = $p.ExitCode; Text = ($out.Result + "`n" + $err.Result); RanIn = [IO.Path]::GetFullPath($ranIn) }
     }
     finally { foreach ($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) } }
 }
@@ -87,8 +104,10 @@ try {
     # project has no dispatcher, so the launcher's own "not found" refusal is the proof that pwsh ran it.
     $r = Invoke-ThroughCmd -Command $claudeStop -Environment @{ CLAUDE_PROJECT_DIR = $claudeProject; SPECREW_MODULE_PATH = $null }
     Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Text -match 'could not find its hook dispatcher') ("claude: the Stop command runs through cmd.exe and reaches its launcher (exit {0})" -f $r.Exit)
+    Assert-True ($r.RanIn.StartsWith([IO.Path]::GetFullPath($work), [StringComparison]::OrdinalIgnoreCase)) ("claude: the Stop command ran in its scratch project, not in this checkout ({0})" -f $r.RanIn)
     $r = Invoke-ThroughCmd -Command $encodedLauncher -Environment @{ USERPROFILE = $antigravityHome; HOME = $antigravityHome; SPECREW_MODULE_PATH = $null }
     Assert-True ($r.Text -notmatch 'not properly encoded' -and $r.Exit -eq 0) ("antigravity: the encoded launcher command runs through cmd.exe (exit {0})" -f $r.Exit)
+    Assert-True ($r.RanIn.StartsWith([IO.Path]::GetFullPath($work), [StringComparison]::OrdinalIgnoreCase)) ("antigravity: the encoded launcher command ran in its scratch project, not in this checkout ({0})" -f $r.RanIn)
 
     # Control: an encoded command over the limit fails through cmd.exe, as the live hooks did. The padding is ordinary
     # text: a long run of one repeated character is refused at process start on some machines, before cmd.exe runs.
@@ -101,6 +120,8 @@ try {
 finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }
+$checkoutChanges = @(Compare-Object -ReferenceObject $checkoutBefore -DifferenceObject @(Get-CheckoutState -Root $repoRoot) | ForEach-Object { '{0} {1}' -f $_.SideIndicator, $_.InputObject })
+Assert-True ($checkoutChanges.Count -eq 0) ("nothing changed in the checkout this suite ran in ({0})" -f ($checkoutChanges -join '; '))
 
 if ($script:failCount -gt 0) { Write-Host "$script:failCount failure(s)" -ForegroundColor Red; exit 1 }
 Write-Host 'All hook command length checks passed.' -ForegroundColor Green
