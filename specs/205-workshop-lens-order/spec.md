@@ -144,7 +144,7 @@ A human running a design workshop is asked the problem facts that later lenses n
 
 ## Requirements *(mandatory)*
 
-Requirement ids keep proposal 220's numbers where the maintainer named them. FR-015 and later are new in this feature. The proposal's FR-002, FR-003, FR-006 to FR-012 and FR-014 belong to iteration 3 (see TG-003).
+Requirement ids keep proposal 220's numbers where the maintainer named them. FR-015 and later are new in this feature. The proposal's FR-002, FR-003, FR-006 to FR-012 and FR-014 belong to iteration 004 (see TG-003).
 
 ### Functional Requirements
 
@@ -229,6 +229,14 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   lens refresh; the two-pass split moves to iteration 004, after 203) and the order agreed for after iteration 002:
   proposal 177 as its own feature (implementer side first, reviewer side after feature 203 merges), then the testing lens (proposals 178 and
   195 merged), and no new solution-side lens before 177.
+- **FR-032**: (Amendment A2, iteration 003; source iteration 002's DRIFT-014) The agenda the workshop renders for
+  confirmation MUST show its selected lenses under three headings taken from each lens's `space` tag in index.yml:
+  problem space, both spaces, solution space, in that order, keeping index.yml order inside each heading. A heading with
+  no selected lens is left out. Each heading MUST carry its text label and one coloured marker for its group (one per
+  group, not per lens), and the heading that opens each lens MUST repeat its group's marker. Colour MUST NOT carry the
+  meaning alone: the text label stays. Skipped lenses MUST stay in their own list. The block MUST keep its
+  `Selected lenses:` line, which the conformance provider detects, and the renderer MUST write UTF-8. A test MUST prove
+  the grouping on the real catalog and on a fixture where a lens's tag changes.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -239,9 +247,9 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   - US4: FR-013, FR-018
   - US5: FR-020
   - FR-004, FR-021 and FR-022 cut across the stories.
-  - US6 (iteration 002): FR-023 to FR-029; FR-030 and FR-031 cut across.
+  - US6 (iteration 002): FR-023 to FR-029; FR-030, FR-031 and FR-032 cut across.
 - **TG-002**: The implementer owns all FRs, the reviewer (codex co-review) owns review evidence, and the spec steward owns drift.
-- **TG-003**: FR-001 to FR-022 are in iteration 001. FR-023 to FR-029 and FR-031 (Amendment A1, problem-space completeness) are in iteration 002. FR-030, the code-implementation lens refresh, is its own short iteration 003, straight after 002; it does not wait for feature 203 (the maintainer's ruling at the iteration 002 design decision, 2026-11-13). Iteration 004, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014), and the short-name lists and the review-signoff comment carried from iteration 001's gap list.
+- **TG-003**: FR-001 to FR-022 are in iteration 001. FR-023 to FR-029 (Amendment A1, problem-space completeness) are in iteration 002. FR-030, the code-implementation lens refresh, FR-031, proposal 220's status history, and FR-032, the grouped agenda (Amendment A2), are iteration 003, straight after 002; it does not wait for feature 203 (the maintainer's ruling at the iteration 002 design decision, 2026-11-13; FR-031 moved by the approved iteration 002 plan; FR-032 added on 2026-11-15). Iteration 004, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014), and the short-name lists and the review-signoff comment carried from iteration 001's gap list.
 - **TG-004**: Any spec or implementation conflict is recorded in the iteration drift log and routed through clarify, never edited silently into this spec.
 
 ### Key Entities
@@ -306,6 +314,16 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   points, typed replies and recommendation lines separately (FR-028), and no question without a consumer (FR-029).
 - Placement of proposals 162, 164, 175, 177, 178, 179, 195, 210 and 214: none is built in iteration 002 (FR-031 records
   the order after it).
+
+### Session 2026-11-15 (Amendment A2, iteration 003)
+
+- The agenda grouping found by the recorded Light run (iteration 002's DRIFT-014) joins iteration 003 as FR-032. The
+  maintainer's words, relayed by the reviewer session, at 11:18 local: "205: yes, lets do it, the 3 part agenda". The
+  design is the one they agreed at DRIFT-014: three parts, colour per part, the text label kept.
+- TG-003 now lists FR-031 in iteration 003, where the approved iteration 002 plan moved it, and the two-pass split in
+  iteration 004.
+- Provenance: DRIFT-205-INTAKE-006 in `workshop/intake-drift-log.md`. As with Amendment A1, the amendment is approved
+  at the plan boundary.
 
 ## Assumptions
 

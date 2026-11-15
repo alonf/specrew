@@ -66,3 +66,41 @@ when that iteration's folder is created with its plan.
 
 **Also for the 203 hand-over (records only)**: the reviewer's prompt calls the workshop records binding
 (`worktree-reviewer.ps1:1139`), but `workshop/` is not among the files it is given (`review-design-context.ps1:104-133`).
+
+## DRIFT-205-INTAKE-006 — the agenda grouping (iteration 002's DRIFT-014) joins iteration 003 as FR-032 (Amendment A2)
+
+**Decided**: 2026-11-15, by the maintainer, relayed by the reviewer session under the wider delegation. The question
+was whether the clarify amendment for iteration 003 adds DRIFT-014's agenda grouping as a new requirement or leaves
+iteration 003 at FR-030 and FR-031. Their words, to the reviewer, at 11:18 local: "205: yes, lets do it, the 3 part
+agenda". The reviewer held the relay until feature 203's stop had finished.
+
+**Design**: the one agreed at DRIFT-014 (the maintainer, 19:48 local on 2026-11-14: "Agree with your recomandation of
+3 parts, color per part."): the selected lenses under three headings from index.yml's `space` tag (problem, both,
+solution), each heading with its text label and one coloured marker, the lens-open heading repeating its group's
+marker, skipped lenses in their own list, and colour never carrying the meaning alone.
+
+**Effect**: spec.md gains FR-032 and its Clarifications session; TG-001 and TG-003 list it in iteration 003. TG-003 is
+also corrected to show FR-031 in iteration 003 (the approved iteration 002 plan moved it there), and the line under
+Requirements now points the two-pass split at iteration 004. As with Amendment A1 (DRIFT-205-INTAKE-005), the
+amendment is approved at the plan boundary; nothing is built before the plan verdict.
+
+**Sizing and risks carried into the plan**: about 2 SP. The marker is a non-ASCII character, so the renderer must write
+UTF-8. The change reaches the deployed copies of the skill and the agenda script, and the extension's hash record. The
+conformance provider detects the agenda by its `Selected lenses:` line (`specrew-conformance-provider.ps1`, which
+205 does not edit), so FR-032 keeps that line; if `conformance-detection.tests.ps1` still pins the old format, that
+becomes a hand-over to 203.
+
+## DRIFT-205-INTAKE-007 — the standing rerun exception also covers empty-result-retry.Tests.ps1, until feature 203 merges
+
+**Decided**: 2026-11-15, by the maintainer, relayed by the reviewer session under the wider delegation. The reviewer put
+it to them as: the standing rerun exception also covers `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`,
+on the same terms as `co-review-service.Tests.ps1:129`, until feature 203 merges, and recommended yes. Their words, at
+11:31 local, to that recommendation and the one for feature 206's scope together: "OK, agree, do it".
+
+**Rule**: when Specrew CI fails only in that test, on a push that could not have caused it, the failed job is rerun
+once without asking. Each use is recorded as a sighting with the run and job and added to the hand-over to 203. A
+second failure stops the work. It does not cover HookRenderDedupe, the Windows Pester install or anything else; those
+still go to the reviewer session.
+
+**Background**: the test's failure on `b15c5dd1` (iteration 002, DRIFT-020) was one of three different CI failures
+outside 205's pushes in one night; it needed a ruled rerun then.
