@@ -333,7 +333,12 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Depends:** T020.
   - **Owns:** `tests/integration/validator-hardening-iteration2.ps1`, `.specrew/release-gate-suites.txt`,
     `tests/support/test-census.ps1`.
-- [ ] T022 [owner: Implementer] [sp: 1.25] [US1] **No session files means a first start (D6-a, item 22).**
+- [x] T022 [owner: Implementer] [sp: 1.25] [US1] **No session files means a first start (D6-a, item 22).**
+  - **Done (2026-11-15):** RED 5/8 in `74b2034c`, GREEN 8/8 in `151ba706`, registered in `bf2b6e77`; the suite and the
+    five lanes green in the review layout. The combination case passes: a fresh clone with the committed healed
+    `squad.agent.md` and charters neither refuses nor pauses at its first no-console start and writes nothing into the
+    origin; a later charter edit pauses, naming it. The fixture's identity file names no feature path; the absolute
+    path a real identity file carries is T023's.
   - **RED:** start with neither session file and no console exits non-zero today. The combination test: a fresh
     clone whose committed files include a healed `squad.agent.md` and the five charters neither refuses nor pauses at
     its first start.
