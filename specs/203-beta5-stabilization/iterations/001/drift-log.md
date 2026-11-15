@@ -2584,7 +2584,8 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   batch, with the hook cost (DRIFT-073), and not before the pin advance. The maintainer's words to the reviewer session,
   relayed, 01:19 local on 2026-11-15: "203: yes". Recorded here after the sign-off, so the tree round E read did not
   move. The design has to account for B5F-071: no run of this campaign marked a finding resolved, so the sign-off gate
-  still lists every fixed finding of rounds A to D as open (DRIFT-086).
+  still lists every fixed finding of rounds A to D as open (DRIFT-086). DRIFT-091 joins this entry and B5F-071 into one
+  design input, with the maintainer's requirement for the ordinary review end.
 - **Class closure**: NONE — evidence only until iteration 002 builds the fix.
 
 ### DRIFT-079 — T014 is blocked until the review sign-off; the review ends with a fifth round on a tree that holds its records (maintainer's decision)
@@ -2914,3 +2915,58 @@ records or the home folder changed. Outputs are in the crew's scratchpad.
 - **B5F-078**, proposed for iteration 002 with the hook cost (the reviewer session's placement guess, the maintainer's
   decision).
 - **Class closure**: NONE — not reproduced; the guard is a waiting-turn case with rounds exhausted and stale coverage.
+
+### DRIFT-090 — The records-only push rule covers records in general, not only Markdown (maintainer's decision)
+
+- **Trigger**: the round E records commit `7380a6e0` changed only Markdown records. Its difference from the last
+  swept commit `da78b600` also held the boundary commit's sync writes: the sign-off gate's JSON record and listing,
+  four `.squad` files and `state.md`. Under the rule's wording (DRIFT-074, DRIFT-077) that needed a full sweep. The push
+  was held. The reviewer session would not stretch the wording and put a change to the rule itself to the maintainer.
+- **The question**, as the reviewer session put it: should the records-only push rule cover records in general and
+  not only Markdown? That means the files the engine's own boundary syncs write and the iteration's record files, such
+  as `tasks-progress.yml` and the review scope files, with code, tests, configuration, hook files and deployed copies
+  still getting the full sweep. Reply "203: records, yes" or "203: Markdown only".
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation; their words at 19:02 local
+  on 2026-11-15, answering three questions listed together: "Yes for all").
+- **The rule now reads, for all three crews**: when the only difference from the last commit with a green full sweep is
+  records, run markdownlint and the governance check, push, and follow CI to its end. Records are:
+  1. Markdown under `specs/` or `docs/`;
+  2. the files a boundary sync writes: the sign-off gate's JSON record and listing, the `.squad` records, `state.md`,
+     the closed-iterations index and the seal;
+  3. the iteration's own record files: `tasks-progress.yml`, the review scope files and their file list.
+
+  Anything else in the difference (any script, test, configuration file, hook file, deployed copy or hash record)
+  still gets the full sweep. Before using the rule, the changed files are printed and each is confirmed to be a record
+  of those kinds; one that is not clearly so is not.
+- **Applied**: `git diff --name-only da78b600 7380a6e0` listed
+  - `.specrew/review/signoff-gate/latest.json`;
+  - `.squad/active-features.yml`, `.squad/decisions.md`, `.squad/events/lifecycle-events.jsonl` and
+    `.squad/identity/now.md`;
+  - `docs/beta5-findings.md`;
+  - the iteration's `drift-log.md`, `review-signoff-listing.json`, `review.md` and `state.md`.
+
+  Each is a record of the kinds above. markdownlint showed 0 issues, the governance check passed and the governance
+  lane exited 0 in 24 s. Pushed at 19:02 local.
+- **Class closure**: NONE — a process decision; no code changed. The rule's wording is kept in the crew's standing
+  rules.
+
+### DRIFT-091 — The ordinary review end takes one approval: a requirement for the sign-off gate's redesign (maintainer's requirement; design input for iteration 002)
+
+- **The maintainer's words** (to the reviewer session, at about 17:35 local on 2026-11-15, when it gave them the partial
+  sign-off line): "Partial review is the more standard state, so approve it in this way looks a bit ood. What do you
+  think?" The reviewer session agreed and offered to have it recorded as a requirement. The maintainer's "Yes for all"
+  (19:02 local, DRIFT-090) covers that offer.
+- **The reviewer session's elaboration** (its words, accepted by the maintainer with the offer, not the maintainer's
+  own):
+  - The ordinary path is review, fix, sign off, so the tree has always moved since the last round. Today the engine
+    asks for an override with a written justification for that everyday case.
+  - The ordinary review end takes one approval, not two.
+  - The sign-off packet states the coverage: which findings were fixed and behind which failing-first test; which are
+    open and accepted, and where they go; and what changed since the last round, records and code apart.
+  - A separate typed override with a reason is kept for product code that no reviewer has read and no test covers.
+- **One design input for iteration 002's first batch**, with DRIFT-078 (a human-accepted stop never covers a records
+  commit made after it) and B5F-071 (no finding is ever marked resolved, so fixed findings stay listed as open). Today
+  all three end in the same place: the review of 203 iteration 001 needed both `approved for partial review signoff`
+  and `approved for review-signoff` (DRIFT-085).
+- **Not designed here.**
+- **Class closure**: NONE — a requirement for iteration 002; nothing built.
