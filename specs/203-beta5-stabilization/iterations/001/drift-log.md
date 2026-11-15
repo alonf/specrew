@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 28 (DRIFT-001 to DRIFT-028)
-**Resolution rate**: 28 of 28 handled locally; DRIFT-001 to DRIFT-003, DRIFT-006, DRIFT-008 to DRIFT-023, DRIFT-025 and DRIFT-028 carry an open product class
+**Total drift events**: 93 (DRIFT-001 to DRIFT-093)
+**Resolution rate**: 93 of 93 handled locally; each entry's Class closure line states whether its product class is open. This line said 28 events until the retro's records commit, which corrected it (found while drafting the retro).
 **Specification drift**: 1 (DRIFT-026: FR-018 clarified to name four further acts)
 
 ## Events
@@ -2732,6 +2732,18 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Fix, iteration 002 first batch** (the reviewer session's list): try the exact identity across every window, the
   whole transcript included, before the message-ID fallback in any window; extend the large-transcript regression with
   a later message sharing the ID.
+- **Its real shape** (T014's rehearsal on scratch copies, DRIFT-092): in this session's transcript no typed message
+  reuses a prompt ID; every record that shares one is a Stop-feedback record or a compaction summary. With 2.35 MiB after
+  approval A and the real compaction pair under A's prompt ID in the tail, the message-ID fallback returned the
+  compaction summary, `Resolve-SpecrewAuthorizationSender` accepted it as `fields-absent-text-rules`, and the text did
+  not match. The human sees: "Specrew: this boundary verdict was not used: the message it cites does not say it.
+  Nothing else changed. To approve, type the line yourself in the terminal session." Without the later record, the
+  whole-transcript read found A and it passed. So the fix also needs: a compaction summary is never taken as the cited
+  turn (the reviewer session's ruling).
+- **The real ledger** (read-only check, shortly before 20:57 local on 2026-11-15, the reviewer session's precaution): the partial sign-off (`fca251e3`, transcript line
+  27246) has its compaction summary under the same prompt ID (line 27300), so it was exposed while the 2 MiB tail's edge
+  lay between the two. Both are now outside the tail; the partial's row and the review-signoff verdict's row both pass
+  the sender check (typed-by-human, text matching), with the ledger unchanged.
 - **Class closure**: NONE — open; the guard is the extended large-transcript case, written red first in iteration 002.
 
 ### DRIFT-084 — Round E finding 2: a review-stop answer lost on the recovery path gets no report (review outcome, open, iteration 002)
@@ -2970,3 +2982,70 @@ records or the home folder changed. Outputs are in the crew's scratchpad.
   and `approved for review-signoff` (DRIFT-085).
 - **Not designed here.**
 - **Class closure**: NONE — a requirement for iteration 002; nothing built.
+
+### DRIFT-092 — T014's capture check: a built rehearsal, then the live check at the retro boundary; two departures from T014's text (maintainer's decisions)
+
+- **T014's text** (tasks.md, the T014 entry; FR-045; plan W13): "the maintainer's check (a verdict after a compaction, a
+  quoted phrase, a pasted phrase), recorded". FR-045 says "manual with records". It also asks for:
+  - one real run with the packet more than 500 transcript lines back;
+  - one typed `drop finding F1` with no review stop waiting;
+  - one `stop the review here` on the advanced pin, reading the disposition it writes;
+  - the pin advanced to the signed-off commit;
+  - the `.specify` mirror synced from it in one commit.
+- **The rehearsal**: run on scratch copies with the advanced pin and a redirected home (home 12/12 unchanged; real tree
+  clean before and after). It drove built transcript records cloned from this session's real ones (only the text and
+  IDs changed), with a `review-signoff -> retro` crossing pending and the packet shown.
+  - Quoted phrase: not recorded. `Get-SpecrewVerdictCaptureDisclosure` (`HandoverStore.ps1`) said the reply "reads as
+    'none' because '<the text before the phrase>' comes before the phrase".
+  - Pasted phrase: not recorded. The same function said "The approval is inside text you pasted, so it is not your own
+    line".
+  - The real phrase after the packet: captured once, through the marker path (`hook-captured-from-transcript`).
+  - Typed before any packet was shown: refused ("this session has no record of showing you that decision's packet").
+  - More than 2 MiB after an approval: accepted without a later record under its prompt ID, and refused with the
+    compaction pair there (DRIFT-083).
+  - `drop finding F1`: B5F-079.
+  - Stop case: not run, because the stop's landing runs the full verification plan, which includes a suite on the
+    never-run list.
+  - Each scratch Stop logged "provider 'co-review-navigator' timed out; skipped", recorded for the hook-cost work.
+  - A rehearsal does not stand in for the manual check (the reviewer session's ruling); it told the maintainer what each
+    live line should show.
+- **The decision** (the maintainer, relayed by the reviewer session under the wider delegation; their words at 20:57
+  local on 2026-11-15, to three points put as one answer: "Yes to all three"):
+  1. **The manual check runs at the retro boundary** with four lines:
+     - `drop finding F1`, with no review stop waiting;
+     - the approval phrase quoted mid-sentence, with the retro packet up;
+     - the same phrase inside pasted content, with the packet up;
+     - their real `approved for retro`, once the packet is more than 550 transcript lines back, reached by read-only work
+       only.
+
+     The verdict after a compaction was met live at 18:44 (DRIFT-085).
+  2. **Two departures from T014's text are accepted.** The pin stays at `da78b600`, because the signed-off commit
+     differs from it in records only and a second advance would cost a full sweep for no change in what runs. The live
+     `stop the review here` check is owed at iteration 002's first review stop, because no stop waits before then.
+  3. **One red Specrew CI run on Lint only, and the matching local governance failure, are allowed** for the retro's
+     records commit, for the item "plan.md status 'reviewing' is stale: retro.md exists" and nothing else (B5F-059).
+     The retro sync's dry run on a scratch copy showed this shape: the sync passes with plan.md at `reviewing`, and the
+     governance check fails on that one item.
+- **The mirror**: met already. At HEAD, `extensions/specrew-speckit` and `.specify/extensions/specrew-speckit` are
+  blob-identical apart from the mirror's own `.specrew-extension-runtime.json`; the mirror has been synced in every
+  commit since DRIFT-007.
+- **Line 1, typed at 20:58 local**: not recorded. The prompt hook's added context said: "Specrew: your 'drop finding
+  F1' was received but not recorded - it reads as an answer to a review stop, and no review stop is waiting for one now,
+  so it changed nothing. Nothing you wrote is lost. Send it again when Specrew asks for it."
+  - The turn ledger gained the prompt's own row (304 to 305, `minted` empty), and `authority-capture-drops.jsonl` logged
+    `authority-phrase-not-recorded-disclosed`.
+  - Verdicts stayed at 6, the cursor at `review-signoff`, and `turn-senders.jsonl` at 1 row.
+  - The results of the other lines go into `capture-check.md` after the retro verdict.
+- **Class closure**: NONE — T014's check is in progress; `capture-check.md` records its results.
+
+### DRIFT-093 — A scratch draft was linted inside the iteration folder (finding, crew discipline)
+
+- **What happened**: on the evening of 2026-11-15, during its four-minute run, the agent drafting `retro.md` in the scratchpad
+  copied the draft into the iteration folder as `retro.lintcheck.md`, to lint it under the repo's config, and deleted it
+  straight after. The instruction it had been given was that nothing in the real tree is written.
+- **Effect**: none lasting. `git status` was clean at `dc1a6301` afterwards and nothing was committed. Neither of the two
+  other scratch agents running then saw the file: both took the real tree's status clean before and after. The crew
+  reported it to the reviewer session unprompted, and the reviewer session accepted the report.
+- **Rule adopted**: a scratch draft is linted against a copy of the repo's lint config in the scratchpad
+  (`.markdownlint.json`, `.markdownlintignore`), never inside the tree.
+- **Class closure**: the rule above; it was used for the retro draft's later lint runs.
