@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 26
+**Total drift events**: 27
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -478,6 +478,31 @@
   was not changed.
 - **Class closure**: NONE — the scaffold is part of the deployed Specrew extension, which 205 does not change for this;
   it is the second sighting of iteration 001's DRIFT-024.
+
+### DRIFT-027 — the closed iteration's records corrected after the closeout verdict, then resealed (maintainer's decision)
+
+- **Observed**: 2026-11-15, after the closeout boundary commit `4c6108fa`, before any push.
+  1. The dashboard was drawn by the closeout sync before the verdict, so it read "phase RETRO". It did show iteration
+     002 as closed, with 20 SP.
+  2. With plan.md at `complete`, the governance check failed iteration 002 on "Complete iterations must record a
+     Completed date in plan.md" and "hardening-gate.md still requires runtime evidence or explicit closure
+     follow-through for concern(s): error-handling-expectations, test-integrity-targets". This is the same pair as
+     iteration 001's closeout.
+- **Decided**: the maintainer, relayed by the reviewer session under the wider delegation, for features 205 and 206. The
+  reviewer's question was: "add the Completed date, close the hardening rows with evidence, redraw the dashboard if
+  needed, reseal and push". The maintainer's words, at 04:55 local on 2026-11-15, quoting that wording back:
+  "\"closeout fixes: yes\"."
+- **Resolution**:
+  - plan.md Completed is 2026-11-15.
+  - The two hardening rows are closed with runtime evidence from `quality/quality-evidence.md` and CI.
+  - The dashboard was redrawn with `scripts/specrew-where.ps1 -CaptureKind iteration-closeout`, the command feature
+    206 used. It was tried first on a scratch worktree at `4c6108fa`, which was removed by its exact path. It now
+    reads "phase ITERATION-CLOSEOUT".
+  - `specrew reseal --feature 205-workshop-lens-order --iteration 002` resealed the folder. It reported plan.md,
+    dashboard.md and quality/hardening-gate.md as drifted, then touched nothing else.
+  - Iteration 001's folder was not touched. The home hook files were unchanged.
+- **Class closure**: NONE — the closeout sync draws the dashboard before the verdict and does not fill the Completed
+  date or the hardening rows; that is the lifecycle engine's area (feature 206 met the same three items).
 
 <!--
   Every new ### DRIFT-... event includes:
