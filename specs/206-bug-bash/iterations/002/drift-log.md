@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 100% (5/5 resolved)
+**Total drift events**: 6
+**Resolution rate**: 100% (6/6 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -116,3 +116,17 @@ The following resolution strategies remain available if drift is detected later 
   and any supervised run stay inside temp folders the crew creates; home hashed before and after every run.
 - **Resolution**: recorded; applied at the Phase 5 review request.
 - **Class closure**: NONE — a ruling, not a defect.
+
+### DRIFT-206-I002-006 — T021 changed the census guard's pin, a file outside its owned list
+
+- **What**: 2026-11-15. With T021's fixture fix committed, the f206-census-guard lane failed in the review layout (1 of
+  76): `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` still pinned iteration 001's ruling that
+  `validator-hardening-iteration2.ps1` is excluded with a `red:` reason. That ruling (maintainer, 2026-11-12) named its
+  own next step, green and then the release manifest, which T021 did; T021's owned files did not list the guard.
+- **Resolution**: the pin moved to the guard's release-only list, and a new assertion holds the script to fixtures in a
+  temp folder that copy only what git does not ignore (false on the pre-T021 script, true now); 76 of 76.
+- **Also found by the layout, in T020's own test**: one case escaped a null `USERNAME` (unset in the preflight's
+  emptied environment) into an empty pattern, which matches everything (`9acf6cec`); and the new suite was named by
+  no lane (`c9db9184`). Each layout red came from this crew's change, none from the product.
+- **Class closure**: NONE — the review-request conditions (DRIFT-206-I002-005) already run the lanes in the layout
+  before every push of code.

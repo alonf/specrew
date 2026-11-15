@@ -871,6 +871,55 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **Direction:** check both before the closeout packet is shown (at the retro -> iteration-closeout arrival), and name
   what is open in the packet.
 
+## 45. The review-freshness rule cannot pass from a fresh clone once the cited review record is in the clone
+
+- **Established here:** the validator's freshness rule fails from a fresh clone whenever the cited run's `result.json`
+  is in the clone (the reading below). Captured at the maintainer's word, 2026-11-15, 20:04 local: "Yes capture it, we
+  must get rid of all these anoying bugs" (relayed by the reviewer).
+- **Unconfirmed second-hand sighting.** A crew in another of the maintainer's projects, on the installed engine,
+  reported after its round 34 that CI refuses because it cannot find the round's reviewed copy, a tree object only that
+  PC has, while the same check on the PC passes. The reviewer checked that project's repository on GitHub: nothing under
+  `.specrew/review/authority` is committed there (only the contracts folder), it has no workflow named Specrew CI, and
+  every failing run in its last forty has a cause outside Specrew. By the reading below the rule returns early in that
+  project's CI, so the report's CI symptom is not reproduced there. A run and a step have been asked of that crew.
+- **The check (read on this branch, which carries the installed engine's rule):** the validator's W38 freshness rule,
+  `Test-ReviewCitedRunEvidence` in `extensions/specrew-speckit/scripts/validate-governance.ps1` (about lines 1215-1347),
+  run by Specrew CI's Lint job through `validate-governance`.
+  - It reads the cited run's `result.json` under `.specrew/review/authority/campaigns/*/runs/<run>/`, takes its
+    `target_digest` (the tree the round froze), and computes the current tree with
+    `Get-ContinuousCoReviewReviewedStateDigest` (`scripts/internal/continuous-co-review/reviewed-state-digest.ps1`).
+  - When the two differ, `Get-SpecrewReviewedTreeSourceDrift` (`extensions/specrew-speckit/scripts/shared-governance.ps1`,
+    about line 8849) runs `git diff --name-only <cited tree> <current tree>`. The cited tree is a dangling object the
+    digest wrote and no commit points to, so it is never pushed. In a fresh clone the diff fails, the drift is "not
+    comparable", and the rule adds an error: "that reviewed tree is no longer in this repository's object store - so
+    whether any source changed since cannot be established". The comment says this is deliberate: "Not a licence to
+    pass".
+  - **From a fresh clone it can pass only if the current digest equals the cited one exactly,** which the round's own
+    records commit already breaks (DRIFT-007: recording a review moves the digest). So in CI it fails after every
+    round whenever the cited `result.json` is in the clone, and is skipped whenever it is not.
+  - **Why this repository does not see it:** `.specrew/review/authority/` is ignored here (`.gitignore`), so CI has no
+    `campaigns` folder and the rule returns before it checks anything. `specrew init` writes the same entry into a
+    governed project's `.gitignore` (`scripts/internal/file-classification.ps1:32`) and untracks per-session files it
+    finds tracked. So the refusal needs the cited `result.json` in the clone: a store committed before that entry, a
+    project without it, or the run's record committed by another route.
+- **One cause with the derived-block item, two places.** Feature 205's DRIFT-012 (the standing derived-block
+  exception): the derived independent-review block is recomputed from the review store at validation, and the store is
+  local, so the local check and CI compute different blocks. Here the review snapshot is local, so the local check and
+  CI reach different answers. The class: a CI check reads machine-local review evidence (the store, or a tree object
+  only that machine has) as if it were in the repository.
+- **Honest behaviour for CI (proposed):** where the cited reviewed tree is not in the object store, the rule cannot
+  check the citation, and says so in a warning naming what is missing and where it lives (the machine that ran the
+  review), not an error; the same as D2-a does for a missing `start-context.json` (FR-016). The local check, which has
+  the tree, and the sign-off gate still enforce staleness. The other way, making the evidence something committed, is
+  not designed here.
+- **Files and owner.** The fix is in `validate-governance.ps1` (the W38 branch that adds the "not comparable" error),
+  with its `.specify` mirror and the hash record; `Get-SpecrewReviewedTreeSourceDrift` in `shared-governance.ps1`
+  already returns the reason `reviewed-tree-not-in-object-store`. Neither is feature 203's protected code. The digest
+  helper that writes the dangling tree is under `scripts/internal/continuous-co-review/` (feature 203's) and does not
+  need to change for the warning. The derived-block side (DRIFT-012) reads the same store and stays with 203: after 203
+  merges, a hand-over, or the protection lifted, by the maintainer's choice.
+- **Disposition:** whether it goes into an iteration is the maintainer's decision.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
