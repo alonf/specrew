@@ -2677,3 +2677,38 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   entries with a dangling link and an unreadable entry; and its environment case: an absent variable stays absent).
   The class itself, a suite green in a full checkout and red in the review target's layout, is closed by the adopted
   rule: all ten lanes are run in that layout before the round is relaunched.
+
+### DRIFT-082 — The review-signoff sync refused after the stop; the pin advanced before the sign-off (finding; maintainer's decisions)
+
+- **Trigger**: the maintainer's typed `stop the review here` (11:17 local on 2026-11-15) ran from the pin and ended at
+  12:09:51 with the sign-off gate's allow (`complete-current-findings-human-accepted`, run
+  `run-20261115-042146354-0a33bd36`, tree `59abeef8`); home hook files 0 changed. The review-signoff sync then refused,
+  before any write, at `[iteration-state-truth-gate]`: plan.md said `reviewing` while the last authorized boundary was
+  still `before-implement`, which reads `executing`. Feature 205 met the same gate at its DRIFT-011 (2026-11-11). plan.md
+  had gone to `reviewing` in the records commit before round E, because the validator requires it once review.md exists
+  (DRIFT-079; the deadlock is B5F-050).
+- **Why it was not seen before the stop**: the trace that said this path lands followed the verdict capture and the
+  sign-off evidence gate only. The truth gate runs earlier in the sync (`sync-boundary-state.ps1:1822`, before the
+  co-review gate at `:1854`); neither the crew nor the reviewer session exercised the sync with plan.md at `reviewing`.
+- **Dry runs** (scratch copies with the real state; nothing in the real tree, its records or the home folder changed):
+  the verdict typed first is refused (no crossing is pending; only the sync records one); the before-implement sync
+  re-run is refused at the same gate; plan.md put back to `executing` passes the gate but moves the tree, so the sign-off
+  needs a partial sign-off, which the pin at `a56ac787` captures without a transcript path and the sync then discards
+  ("could not find the message it came from"; DRIFT-072 still holds). With the pin advanced to `da78b600` the whole
+  path landed: the partial is captured with its transcript path, the sync allows it, the crossing is recorded and the
+  sign-off verdict is captured. The full findings of these runs are recorded after the sign-off.
+- **The maintainer's decisions**, relayed by the reviewer session; their words at 13:27 local on 2026-11-15, to
+  "203: pin first, allow the red push": "OK for both".
+  1. T014, the pin advance, is done before the review sign-off. This supersedes "T014 blocked until sign-off" (their
+     decision at 22:44 local on 2026-11-14) and the order in DRIFT-079.
+  2. One red Specrew CI run on Lint only is allowed for this commit, for plan.md's status beside review.md and nothing
+     else.
+- **The advance**: the full sweep of `da78b600` at the 1,500 s limit was green apart from the start-command allowance
+  (301 s in the sweep, 238 s alone). On the maintainer's typed `advance the pin` (17:11 local) the pin moved from
+  `a56ac787` to `da78b600`, the code round E reviewed; home hook files 0 changed. The project's hook launcher was not
+  redeployed (the reviewer session's ruling): the sign-off does not need it, and the deployer may write hook bindings in
+  the home folder, which is the maintainer's own decision, to be asked after the sign-off.
+- **This commit**: plan.md back to `executing`, so the sign-off sync can record the crossing; the verdict capture moves
+  it to `reviewing` again. review.md's T014 row and overall verdict ("blocked until sign-off") are corrected after the
+  sign-off.
+- **Class closure**: NONE — the deadlock between the sync's truth gate and the validator is B5F-050, still open.
