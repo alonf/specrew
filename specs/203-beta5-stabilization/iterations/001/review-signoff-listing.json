@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0",
+  "feature_id": "203-beta5-stabilization",
+  "iteration": "001",
+  "campaign_id": "cmp-203-beta5-stabilization-i001",
+  "run_id": "",
+  "decision": "human-authorized-partial-override",
+  "recorded_at": "2026-11-15T15:31:31+00:00",
+  "items": [
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-92d636c25cdf83ab",
+      "title": "Validate the verdict sender before spending its review budget",
+      "location": "scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1208",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-b7b07e66ca150eca",
+      "title": "Supersede older pending answers before applying finding dispositions",
+      "location": "scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1733",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-fd0cf93f1b16d397",
+      "title": "Audit actual turn provenance instead of the provisional hook label",
+      "location": "scripts/internal/bootstrap/AuthorityAudit.ps1:42",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-ba2b0523f773fe6c",
+      "title": "Reserve the remaining budget atomically with launch-grant creation",
+      "location": "scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1302",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-f66997c749f3a07f",
+      "title": "Keep a controller-degraded review eligible for a retry on unchanged files",
+      "location": "scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1633",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-de62fce7d2cad5de",
+      "title": "Enforce the infrastructure cap when the project has no reviewer catalog",
+      "location": "scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1421",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-eba637987cd13ab4",
+      "title": "Match stop answers by campaign as well as run ID before landing them",
+      "location": "scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1789",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-1a77b13a0dc56d17",
+      "title": "Sender-check loaders bypass the configured live-engine pin",
+      "location": "extensions/specrew-speckit/scripts/shared-governance.ps1:8285",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-556353e04d60f238",
+      "title": "Design-decision capture trusts prompt origin without checking the transcript sender",
+      "location": "extensions/specrew-speckit/scripts/design-decision-store.ps1:104",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-56441c97175da7fe",
+      "title": "Presentation memory overrides a missing pending-verdict record",
+      "location": "extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1:1483",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-421330a967236c1a",
+      "title": "Valid approvals become unusable outside the 2 MiB transcript tail",
+      "location": "scripts/internal/bootstrap/HumanAuthorityStore.ps1:2500",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-da5795f88f58a95d",
+      "title": "Report authority-ledger reservation failures instead of returning silently",
+      "location": "scripts/internal/bootstrap/HandoverStore.ps1:1616",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-02f45da0301dd511",
+      "title": "Treat failed Pester discovery as a sweep failure",
+      "location": "tools/maintenance/sweep/run-suites.ps1:54",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-cf1fe81e0398f883",
+      "title": "Search the full transcript before falling back to a reused message ID",
+      "location": "scripts/internal/bootstrap/HumanAuthorityStore.ps1:2526",
+      "severity": "major",
+      "demoted_from": ""
+    },
+    {
+      "kind": "not-covered",
+      "finding_id": "finding-a537d3f72672e5f5",
+      "title": "Report failed reservations for recovered review-stop answers",
+      "location": "scripts/internal/bootstrap/HumanAuthorityStore.ps1:2052",
+      "severity": "major",
+      "demoted_from": ""
+    }
+  ]
+}
