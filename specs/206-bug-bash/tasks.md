@@ -321,8 +321,11 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Trace:** FR-003; SC-002.
   - **Owns:** `scripts/specrew-start.ps1`, `scripts/internal/instruction-file-merge.ps1`, `.gitignore`,
     `tests/unit/**`.
-- [ ] T021 [owner: Implementer] [sp: 0.5] [US1] **`validator-hardening-iteration2.ps1` green and registered (item 29's
+- [x] T021 [owner: Implementer] [sp: 0.5] [US1] **`validator-hardening-iteration2.ps1` green and registered (item 29's
   remainder).**
+  - **Done (2026-11-15), SC-002 met:** `5bfb685f`; in the review preflight's layout, all 17 checks pass, assertion 3
+    included (668 s; home hook files and the repository unchanged). Registered in the release manifest; its census
+    exclusion removed. Closes T003's remainder.
   - **Work:** its fixture copies every file git does not ignore, and nothing git ignores; tested in the preflight
     layout; run green; registered in the release manifest. Closes T003 and SC-002.
   - **Acceptance:** green on Windows with home unchanged; the census guard green.
