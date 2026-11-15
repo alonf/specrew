@@ -149,7 +149,10 @@ function Invoke-ThroughCmd {
     # launcher finds this project's own dispatcher (DRIFT-072).
     param([string]$Command, [hashtable]$Environment, [string]$WorkingDirectory)
     $saved = @{}
-    foreach ($key in $Environment.Keys) { $saved[$key] = [Environment]::GetEnvironmentVariable($key); [Environment]::SetEnvironmentVariable($key, $Environment[$key]) }
+    # PowerShell hands $null to a .NET string parameter as '', which leaves a variable set to an empty value: a null here
+    # removes the variable, and one that was absent before is removed again after (an empty HOME hid git's global ignore).
+    $setOrRemove = { param($Name, $Value) if ($null -eq $Value) { Remove-Item -LiteralPath "Env:$Name" -ErrorAction SilentlyContinue } else { [Environment]::SetEnvironmentVariable($Name, [string]$Value) } }
+    foreach ($key in $Environment.Keys) { $saved[$key] = [Environment]::GetEnvironmentVariable($key); & $setOrRemove $key $Environment[$key] }
     try {
         $psi = [Diagnostics.ProcessStartInfo]::new('cmd.exe')
         $psi.Arguments = '/d /s /c "' + $Command + '"'
@@ -162,7 +165,7 @@ function Invoke-ThroughCmd {
         $ranIn = if ([string]::IsNullOrWhiteSpace($psi.WorkingDirectory)) { (Get-Location).ProviderPath } else { $psi.WorkingDirectory }
         return [pscustomobject]@{ Exit = $p.ExitCode; Text = ($out.Result + "`n" + $err.Result); RanIn = [IO.Path]::GetFullPath($ranIn) }
     }
-    finally { foreach ($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) } }
+    finally { foreach ($key in $saved.Keys) { & $setOrRemove $key $saved[$key] } }
 }
 
 # Guard (round E relaunch check, run with no HOME as a review launched from a shell without one): a variable a command
