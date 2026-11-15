@@ -101,7 +101,12 @@ Describe 'The record of files start wrote (D5-a)' {
 
         $raw = Get-Content -LiteralPath (Get-SpecrewStartWrittenFilesRecordPath -ProjectPath $root) -Raw
         $raw | Should -Not -Match ([regex]::Escape($root))
-        $raw | Should -Not -Match ([regex]::Escape($env:USERNAME))
+        # The review preflight runs lanes with an emptied environment, so USERNAME may be unset there; an empty
+        # pattern matches everything, so only a real user name is checked.
+        $userName = [Environment]::UserName
+        if (-not [string]::IsNullOrWhiteSpace($userName)) {
+            $raw | Should -Not -Match ([regex]::Escape($userName))
+        }
     }
 
     It 'reads a missing or unreadable record as empty' {
