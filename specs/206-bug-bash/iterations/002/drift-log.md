@@ -167,6 +167,11 @@ The following resolution strategies remain available if drift is detected later 
   2026-11-15). All three join it when the plan moves to iteration 002 for the first review round, so the review's
   preflight and the pre-push run both carry them. The push of this entry went out with the governance check red, because
   the command did not stop on that failure; the next push gates on it.
+- **In the lane (2026-11-15, its first run in the review layout):** path identity and authority-control consumers. The
+  consumer-language suite failed there on one case: it counts the design-workshop instruction surfaces with
+  `git ls-files`, and the review preflight restores `.specify` untracked, so the project mirror is not counted (green in
+  CI, where it is tracked). It is feature 203's test, so it stays in CI's Deterministic gate only, and the layout limit
+  goes into iteration 002's hand-over to 203.
 
 ### DRIFT-206-I002-009 — a records commit pushed while the governance check was failing (crew error)
 

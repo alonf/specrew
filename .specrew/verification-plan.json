@@ -108,7 +108,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$r = Invoke-Pester -Path 'tests/continuous-co-review/unit/path-identity.Tests.ps1','tests/continuous-co-review/unit/consumer-language.Tests.ps1','tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
+        "$r = Invoke-Pester -Path 'tests/continuous-co-review/unit/path-identity.Tests.ps1','tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
       ],
       "timeout_seconds": 120,
       "env_refs": [
@@ -132,7 +132,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 206 iteration 002 (DRIFT-206-I002-008, reviewer ruling 2026-11-15): the three repository-wide structural guards Specrew CI's Deterministic gate runs and 206's other lanes did not: path identity (no case rule from the OS family), consumer language (decision messages), and authority-control consumers. Read for home writes: none starts specrew, runs a child shell or touches the home folder. 69 assertions in 14 s alone (2026-11-15)."
+      "label": "Feature 206 iteration 002 (DRIFT-206-I002-008, reviewer ruling 2026-11-15): two of the three repository-wide structural guards Specrew CI's Deterministic gate runs and 206's other lanes did not: path identity (no case rule from the OS family) and authority-control consumers. The third, consumer-language.Tests.ps1, stays in CI only: it counts the design-workshop surfaces with git ls-files, and in the review preflight's layout the .specify mirror is restored untracked, so its surface count cannot pass there (feature 203's test; hand-over). Read for home writes: neither starts specrew, runs a child shell or touches the home folder."
     },
     {
       "command_id": "f206-governance-206",
