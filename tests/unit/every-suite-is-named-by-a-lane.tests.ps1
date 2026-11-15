@@ -576,10 +576,11 @@ Assert-True (-not [string]::IsNullOrWhiteSpace($mfcHelper) -and $mfcVerdicts.Mis
 # The review round reads only .specrew/verification-plan.json. For 206's round it names 206's five lanes, and the ten
 # lanes it named before (features 199 and 202) are parked, unchanged, in verification-plan.signoff-lanes.json, which
 # this guard reads too, so their suites stay named and they can be restored as they were.
-$f206Lanes = @('f206-unit-suites', 'f206-changed-integration', 'f206-census-guard', 'f206-governance-206', 'f206-deployed-hash-record')
+# Feature 206 iteration 002 (DRIFT-206-I002-008): a sixth lane carries the repository-wide structural guards.
+$f206Lanes = @('f206-unit-suites', 'f206-changed-integration', 'f206-census-guard', 'f206-structural-guards', 'f206-governance-206', 'f206-deployed-hash-record')
 $planNow = Get-Content -LiteralPath (Join-Path $repoRoot '.specrew/verification-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $planIds = @($planNow.commands | ForEach-Object { [string]$_.command_id })
-Assert-True (($planIds -join ',') -eq ($f206Lanes -join ',')) ("the verification plan names exactly 206's five lanes, in order (found: {0})" -f ($planIds -join ', '))
+Assert-True (($planIds -join ',') -eq ($f206Lanes -join ',')) ("the verification plan names exactly 206's six lanes, in order (found: {0})" -f ($planIds -join ', '))
 $parkedPath = Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json'
 $parkedJson = if (Test-Path -LiteralPath $parkedPath -PathType Leaf) { (Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress } else { '' }
 $baseJson = ((& git -C $repoRoot show 'd3e33550:.specrew/verification-plan.json' 2>$null) -join "`n" | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress

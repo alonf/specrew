@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "plan_id": "f206.i001.review.v1",
+  "plan_id": "f206.i002.review.v1",
   "commands": [
     {
       "command_id": "f206-unit-suites",
@@ -9,7 +9,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$r = Invoke-Pester -Path 'tests/unit/recovery-choice-no-console.tests.ps1','tests/unit/overclaim-dirty-check-separator.tests.ps1','tests/unit/instruction-classifier-managed-blocks.tests.ps1','tests/unit/iteration-closed-definition.tests.ps1','tests/unit/legacy-frozen-judged-by-nothing.tests.ps1','tests/unit/closed-check-since-and-ruling.tests.ps1','tests/unit/review-verdict-names-status.tests.ps1','tests/unit/nightly-tracking-issue.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
+        "$r = Invoke-Pester -Path 'tests/unit/recovery-choice-no-console.tests.ps1','tests/unit/overclaim-dirty-check-separator.tests.ps1','tests/unit/instruction-classifier-managed-blocks.tests.ps1','tests/unit/iteration-closed-definition.tests.ps1','tests/unit/legacy-frozen-judged-by-nothing.tests.ps1','tests/unit/closed-check-since-and-ruling.tests.ps1','tests/unit/review-verdict-names-status.tests.ps1','tests/unit/nightly-tracking-issue.tests.ps1','tests/unit/start-written-files-record.tests.ps1','tests/unit/fresh-clone-first-start.tests.ps1','tests/unit/resume-path-inside-project.tests.ps1','tests/unit/squad-probe-temp-folder.tests.ps1','tests/unit/init-dry-run-names-project.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
       ],
       "timeout_seconds": 1200,
       "env_refs": [
@@ -33,7 +33,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 206 iteration 001: the eight Pester suites its tasks wrote (T001, T002, T003, T006, T008, T009, T011, T012). Each was read for home writes before it ran; none starts specrew, deploys hooks or runs specrew-update. Measured alone 408 s against 1200 s (2026-11-13, home hook files and the repository unchanged)."
+      "label": "Feature 206: the eight Pester suites iteration 001's tasks wrote (T001, T002, T003, T006, T008, T009, T011, T012) and the five iteration 002's Phase 5 wrote (T020, T022, T023, T025, T024). Each was read for home writes before it ran; none deploys hooks or runs specrew-update, and those that run specrew start or init do it in temp folders they create with the user profile pointed at a temp file. The eight measured 285 s in the review layout (2026-11-15); the five add about 145 s; against 1200 s."
     },
     {
       "command_id": "f206-changed-integration",
@@ -102,13 +102,13 @@
       "label": "Feature 206 iteration 001: the lane guard on the shared test census (T013, T015; it lists the release sweep with -ListOnly and runs a fixture sweep in a temp repository) and the sweep's direct-exit check. Measured alone 9 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
     },
     {
-      "command_id": "f206-governance-206",
+      "command_id": "f206-structural-guards",
       "executable": "pwsh",
       "arguments": [
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "& ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/206-bug-bash/iterations/001; exit $LASTEXITCODE"
+        "$r = Invoke-Pester -Path 'tests/continuous-co-review/unit/path-identity.Tests.ps1','tests/continuous-co-review/unit/consumer-language.Tests.ps1','tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
       ],
       "timeout_seconds": 120,
       "env_refs": [
@@ -132,7 +132,40 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 206 iteration 001: the governance validator on this iteration only. Measured alone 14 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
+      "label": "Feature 206 iteration 002 (DRIFT-206-I002-008, reviewer ruling 2026-11-15): the three repository-wide structural guards Specrew CI's Deterministic gate runs and 206's other lanes did not: path identity (no case rule from the OS family), consumer language (decision messages), and authority-control consumers. Read for home writes: none starts specrew, runs a child shell or touches the home folder. 69 assertions in 14 s alone (2026-11-15)."
+    },
+    {
+      "command_id": "f206-governance-206",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "& ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/206-bug-bash/iterations/002; exit $LASTEXITCODE"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206: the governance validator on the iteration under review only (iteration 002). Measured 38 s in the review layout against 120 s (2026-11-15, home hook files and the repository unchanged)."
     },
     {
       "command_id": "f206-deployed-hash-record",
