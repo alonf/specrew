@@ -29674,3 +29674,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 825b186f88196f90a536374f2420ab21cebf93cf
 - **Recorded At**: 2026-11-14T21:24:00Z
+
+## 2026-11-15T10:54:00Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-11-15T10:54:00Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-11-15T10:54:02Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: e827a9af101034b05f2f910d7bbefa65861f43dc
+- **Recorded At**: 2026-11-15T10:54:00Z

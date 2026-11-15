@@ -49,3 +49,23 @@
 - **Terms**: when Specrew CI fails only in that test, on a push that could not have caused it, the failed job may be
   rerun once without asking. Each use is recorded as a sighting with the run and the job, and added to the hand-over
   to 203. A second failure stops the work. It covers nothing else.
+
+## DRIFT-206-004 — after a closed iteration, the clarify sync for Amendment A1 opened no approval point (second sighting, for feature 203)
+
+- **Observed**: 2026-11-15, 12:54 local (10:54Z). With iteration 001 closed, `sync-boundary-state.ps1 -BoundaryType
+  clarify -FeatureRef 206-bug-bash -IterationNumber 002 -AuthCommitHash e827a9af` (run after CI was green on
+  `e827a9af` in all three workflows, every job run) exited 0 and wrote its bookkeeping (`.squad/decisions.md`, a
+  lifecycle event, `.squad/identity/now.md`), but opened no crossing: there is no
+  `.specrew/runtime/pending-verdict-stop.md`, and `start-context.json` still names `iteration-closeout` as the last
+  authorized boundary with nothing pending.
+- **Also written**: a decisions entry "Boundary sync warning: clarify — Expected next boundary 'feature-closeout' but
+  received 'clarify'". After an iteration closeout the sync knows only the feature closeout as next; a later
+  iteration's amendment has no route of its own.
+- **Same as**: feature 205's DRIFT-205-INTAKE-005 (2026-11-13), where the maintainer ruled that Amendment A1 is
+  approved at the plan boundary and the clarify records are committed as bookkeeping.
+- **Impact**: a spec amendment for a later iteration reaches planning with no approval of its own.
+- **Owner**: feature 203's follow-up; it goes into iteration 002's hand-over to 203.
+- **Here (reviewer, 2026-11-15, routine ruling under the maintainer's delegation, on feature 205's precedent)**: the
+  clarify bookkeeping (`.squad/decisions.md`, `.squad/events/lifecycle-events.jsonl`, `.squad/identity/now.md`) is
+  committed as a `boundary(clarify)` bookkeeping commit with this entry; `.squad/active-features.yml` stays out.
+  Amendment A1 is approved by the maintainer at iteration 002's plan boundary, and the plan packet says so.
