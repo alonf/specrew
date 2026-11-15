@@ -29677,3 +29677,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 005601ae4dfa14f2082d1b6afefc71d75e0dcda1
 - **Recorded At**: 2026-11-15T15:36:42Z
+
+## 2026-11-15T19:25:37Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 2875445c426efcccfab39ee2ad41d42502b5396b
+- **Recorded At**: 2026-11-15T19:25:25Z
