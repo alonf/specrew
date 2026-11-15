@@ -382,6 +382,11 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   gate"):** the same case and error, the only failure in the run. Rerun once under the same exception: attempt 2
   green (Deterministic gate job 132151298400, 131 suites). Recorded after review round 3, because round 3 was bound to
   `c91766df`.
+- **Fifth sighting (2026-11-15, Specrew CI run 43709472794 attempt 1 on `ce604236`, job 132798404429 "Deterministic
+  gate"):** the same case and error, 1 of 131 in the F-198 suite, the only failure in the run. The push held iteration
+  002's plan records only. Rerun once under the standing exception: attempt 2 green, with every job run (Deterministic
+  gate job 132801047167, Contract lane 132807717644). For iteration 002's hand-over to 203 (iteration 001's hand-over is
+  sealed); DRIFT-206-I002-001.
 
 ## 14. `review-posix-runtime.Tests.ps1` failed once on macOS: two stream drains took 360 ms against a 250 ms budget
 
