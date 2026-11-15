@@ -882,3 +882,7 @@ Carried from iteration 001 by name, with the decision that carried each (`.squad
 - **Items 40 to 44**, recorded after the iteration-closeout. Items 40 and 43 are in, or next to, feature 203's area and
   carry the same choice: after 203 merges, a hand-over to 203, or the protection lifted. Item 42 is a hand-over to 203.
   Whether any of them is planned for iteration 002 is the maintainer's decision at that iteration's plan.
+- **Scope decided (maintainer, 2026-11-15, 11:31 local, relayed; DRIFT-206-002):** the carried work above except items
+  36 and 38, plus items 37, 39, 41 and 44, which Amendment A1 adds to the spec as FR-015 to FR-018. Items 40, 42 and 43
+  stay with feature 203 (hand-overs, or after its merge); items 36 and 38 come later. The plan sizes everything and
+  shows any cut; the cut is the maintainer's at the plan approval.
