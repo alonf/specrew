@@ -165,6 +165,22 @@ function Invoke-ThroughCmd {
     finally { foreach ($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) } }
 }
 
+# Guard (round E relaunch check, run with no HOME as a review launched from a shell without one): a variable a command
+# sets is put back as it was, and one that was absent is absent again. An absent HOME came back as an empty HOME, git then
+# found no global ignore file, and the checkout check reported an ignored file as new.
+$probeName = 'SPECREW_HCL_ENV_PROBE_' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$presentName = $probeName + '_SET'
+[Environment]::SetEnvironmentVariable($presentName, 'before')
+try {
+    $null = Invoke-ThroughCmd -Command 'exit 0' -Environment @{ $probeName = 'during'; $presentName = 'during' } -WorkingDirectory ([IO.Path]::GetTempPath())
+    $left = Get-Item -LiteralPath "Env:$probeName" -ErrorAction SilentlyContinue
+    Assert-True ($null -eq $left) ("a variable absent before a command is absent after it ({0})" -f $(if ($null -eq $left) { 'absent' } else { "left set to '" + $left.Value + "'" }))
+    Assert-True ([Environment]::GetEnvironmentVariable($presentName) -ceq 'before') ("a variable set before a command has its value back after it ({0})" -f [Environment]::GetEnvironmentVariable($presentName))
+    $cleared = Invoke-ThroughCmd -Command ('if defined {0} (exit 3) else (exit 0)' -f $presentName) -Environment @{ $presentName = $null } -WorkingDirectory ([IO.Path]::GetTempPath())
+    Assert-True ($cleared.Exit -eq 0 -and [Environment]::GetEnvironmentVariable($presentName) -ceq 'before') ("a variable a command clears is absent for the command and back after it (exit {0}, after '{1}')" -f $cleared.Exit, [Environment]::GetEnvironmentVariable($presentName))
+}
+finally { foreach ($n in @($probeName, $presentName)) { Remove-Item -LiteralPath "Env:$n" -ErrorAction SilentlyContinue } }
+
 try {
     $hosts = @(Get-ChildItem -Path (Join-Path $repoRoot 'hosts') -Directory | Where-Object {
             $manifestPath = Join-Path $_.FullName 'host.psd1'
