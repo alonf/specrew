@@ -307,7 +307,11 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
 
 ### Phase 5: Start and checks (US1, SC-001 and SC-002)
 
-- [ ] T020 [owner: Implementer] [sp: 3.0] [US1] **Start records the whole files it wrote (D5-a, item 21).**
+- [x] T020 [owner: Implementer] [sp: 3.0] [US1] **Start records the whole files it wrote (D5-a, item 21).**
+  - **Done (2026-11-15):** RED 8/10 in `d87f27c5` (end to end, the second start paused on the healed
+    `squad.agent.md` and the created charters), GREEN 10/10 in `9930b869`; in the review layout the suite and the five
+    lanes are green after two test-side fixes (USERNAME unset, `9acf6cec`; registration, `c9db9184`). Assertion 3 of
+    `validator-hardening-iteration2.ps1` runs at T021.
   - **RED:** `validator-hardening-iteration2.ps1` assertion 3, plus a start unit suite: a healed `squad.agent.md` and
     a created charter are bookkeeping at the next start.
   - **Work:** `specrew start` writes the hash of each whole file it creates or repairs to a git-ignored record; at
