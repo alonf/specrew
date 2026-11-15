@@ -1,4 +1,4 @@
-# Tasks: 206-bug-bash (iteration 001; iteration 002 listed)
+# Tasks: 206-bug-bash (iterations 001 and 002)
 
 **Feature**: 206-bug-bash
 **Plan**: file:///C:/Dev/specrew-206-bug-bash/specs/206-bug-bash/plan.md
@@ -274,39 +274,246 @@ T001, T002, T003, T004, T005 (stop), T006, T007, T008, T009, T011, T010, T012, T
   - **Trace:** SC-007.
   - **Owns:** `specs/206-bug-bash/iterations/001/**`.
 
-## Iteration 002 (listed, not planned)
+## Iteration 002: the carried work and items 37, 39, 41 and 44
 
-Deferred from iteration 001 by the maintainer (2026-11-11), not cut: T016 (FR-013, delete the empty
-`tests/integration/_ctl-spec.ps1`, 0.25 SP), T017 (FR-014 and SC-006, the resolver suggests no Node or React
-preset; the f049 assertion onto a fixture; the root `package.json` removed, 1.5 SP). Candidate: T019 (the
-Cross-Platform review-runtime step gets its own `timeout-minutes`; bug list item 7, 0.25 SP; a requirement is added
-when iteration 002 is planned).
+**Planned:** 2026-11-15; plan approved by the maintainer (`8a8ed810`), which also approves spec Amendment A1 (FR-015
+to FR-018, SC-008 to SC-011). Iteration plan:
+file:///C:/Dev/specrew-206-bug-bash/specs/206-bug-bash/iterations/002/plan.md. Design: Option B, D1-a to D6-a
+(file:///C:/Dev/specrew-206-bug-bash/specs/206-bug-bash/iterations/002/design-analysis.md). **20 of 20 SP, no
+slack:** a task that grows so the total would pass 20 stops the work for the maintainer. Moved to iteration 003 by the
+maintainer's cut: items 15, 16, 19, 20, 28 and 35 (5.25 SP). Out: items 36, 38, 40, 42, 43; item 7's candidate T019.
 
-**Required in iteration 002 (maintainer, 2026-11-12; feature 206 does not close without it):** an `abandoned`
-status is closed only with a recorded ruling (moved from T009, FR-008a). It lands together with the maintainer's
-rulings on the four group B iterations (197/002, 197/007, 197/008, 198/005), so the T005 table does not change.
-Until it lands, an `abandoned` status with no recorded ruling counts as closed; this must not ship
-(DRIFT-206-I001-010).
+The iteration-001 rules above carry over: **a failing test first, then the fix, two commits, one bug per commit**;
+mirror parity; the CI markdownlint command and `validate-governance -ChangedOnly` before every push; the home hook
+files hashed before and after every test run, any change stops the work; `scripts/specrew-update.ps1` is never run;
+a commit touching `.specify/extensions/specrew-speckit/` refreshes `.specrew-extension-runtime.json` in the same
+commit; `.squad/active-features.yml` is in no commit. **Not touched:** `scripts/internal/continuous-co-review/**`,
+the capture stores under `scripts/internal/bootstrap/` and `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`;
+a fix that needs one of them stops and goes to the maintainer.
+
+### Execution order (iteration 002)
+
+T020, T021 (SC-002 first); T022, T023, T024, T025 (SC-001); T016, T017; T026; T032, T031; T030; T027, T028, T029;
+T034, T033; T035, T036; T037 before the first review round; T038 last.
+
+- Serial: `validate-governance.ps1` (T026, T030, T033, T034), `shared-governance.ps1` (T026, T035, T036) and
+  `specrew-start.ps1` / `session-recovery.ps1` (T020, T022, T023) are each changed by several tasks.
+- T022's combination test needs T020's record, so T020 lands first.
+- T034 lands before T033 and before sign-off, so the sign-off push (T038) is one green push.
+- T028 ends in a stop if the release script cannot be shown unable to publish: the suite stays excluded until the
+  maintainer rules.
+- Test runs follow the reviewer's word on feature 203's sweeps; when the reviewer asks for quiet, the command in hand
+  finishes and the work holds.
+
+### Phase 5: Start and checks (US1, SC-001 and SC-002)
+
+- [ ] T020 [owner: Implementer] [sp: 3.0] [US1] **Start records the whole files it wrote (D5-a, item 21).**
+  - **RED:** `validator-hardening-iteration2.ps1` assertion 3, plus a start unit suite: a healed `squad.agent.md` and
+    a created charter are bookkeeping at the next start.
+  - **Work:** `specrew start` writes the hash of each whole file it creates or repairs to a git-ignored record; at
+    the next start, a file whose content matches its recorded hash is Specrew's, and an edited one is the user's.
+  - **Acceptance:** an edited healed file pauses; a file with no record pauses once an earlier snapshot exists; the
+    marker-block behaviour of T003 is unchanged.
+  - **Trace:** FR-003; SC-002.
+  - **Owns:** `scripts/specrew-start.ps1`, `scripts/internal/instruction-file-merge.ps1`, `.gitignore`,
+    `tests/unit/**`.
+- [ ] T021 [owner: Implementer] [sp: 0.5] [US1] **`validator-hardening-iteration2.ps1` green and registered (item 29's
+  remainder).**
+  - **Work:** its fixture copies every file git does not ignore, and nothing git ignores; tested in the preflight
+    layout; run green; registered in the release manifest. Closes T003 and SC-002.
+  - **Acceptance:** green on Windows with home unchanged; the census guard green.
+  - **Trace:** SC-002; FR-012.
+  - **Depends:** T020.
+  - **Owns:** `tests/integration/validator-hardening-iteration2.ps1`, `.specrew/release-gate-suites.txt`,
+    `tests/support/test-census.ps1`.
+- [ ] T022 [owner: Implementer] [sp: 1.25] [US1] **No session files means a first start (D6-a, item 22).**
+  - **RED:** start with neither session file and no console exits non-zero today. The combination test: a fresh
+    clone whose committed files include a healed `squad.agent.md` and the five charters neither refuses nor pauses at
+    its first start.
+  - **Work:** a governed project with no session files starts as a first start; a session file that exists and
+    cannot be read still refuses.
+  - **Acceptance:** first start, exit 0; an unreadable `last-start-prompt.md` still refuses; a user edit to one of
+    the committed files after that start pauses (the reviewer's condition, 2026-11-15).
+  - **Trace:** FR-001; SC-001.
+  - **Depends:** T020.
+  - **Owns:** `scripts/internal/session-recovery.ps1`, `scripts/specrew-start.ps1`, `tests/unit/**`.
+- [ ] T023 [owner: Implementer] [sp: 1.0] [US1] **A resume path outside `-ProjectPath` is refused (item 23).**
+  - **RED:** a rooted resume path outside the fixture is followed today, and start writes into it.
+  - **Work:** refuse a resume path outside `-ProjectPath`; the identity file stops carrying an absolute feature path.
+  - **Acceptance:** a path inside the project resumes; no write lands outside the fixture.
+  - **Trace:** FR-001; SC-001.
+  - **Owns:** `scripts/internal/session-recovery.ps1`, `scripts/specrew-start.ps1`,
+    `scripts/internal/sync-boundary-state.ps1`, `.squad/identity/now.md`, `tests/unit/**`.
+- [ ] T024 [owner: Implementer] [sp: 0.5] [US1] **`project-path-resolution-regression.ps1` green and registered (item
+  24).**
+  - **Work:** its fixture is built in a temp folder and copies every file git does not ignore; the refusal added at
+    DRIFT-206-I001-019 is removed once T022, T023 and T025 are in; a supervised run with home hashed; registered.
+  - **Acceptance:** green, nothing written into this repository, home unchanged; the census guard green.
+  - **Trace:** SC-001; FR-012.
+  - **Depends:** T022, T023, T025.
+  - **Owns:** `tests/integration/project-path-resolution-regression.ps1`, `.github/workflows/specrew-ci.yml`,
+    `.specrew/release-gate-suites.txt`, `tests/support/test-census.ps1`.
+- [ ] T025 [owner: Implementer] [sp: 1.0] [US1] **`specrew init`'s Squad probe runs in a temp folder (item 25).**
+  - **RED:** `specrew init -DryRun` leaves a probe folder in the install root today.
+  - **Work:** the probe runs in a temp folder; a failed cleanup is reported; the cause of the init case found and
+    recorded (discovery, within the 1.0).
+  - **Acceptance:** no probe folder in the install root; a probe cleanup that fails is reported.
+  - **Trace:** SC-001; SC-007.
+  - **Owns:** `scripts/specrew-init.ps1`, `scripts/init/squad-deploy.ps1`, `tests/unit/**`.
+
+### Phase 6: Deferred from iteration 001 (US3, US4)
+
+- [ ] T016 [owner: Implementer] [sp: 0.25] [US3] **Delete the empty `tests/integration/_ctl-spec.ps1`.**
+  - **Acceptance:** the census guard green without it.
+  - **Trace:** FR-013.
+  - **Owns:** `tests/integration/_ctl-spec.ps1`, `tests/support/test-census.ps1`.
+- [ ] T017 [owner: Implementer] [sp: 1.5] [US4] **No Node or React preset for this repository (item 6a).**
+  - **RED:** the resolver, run on this repository with feature 201's spec, selects a Node or React preset.
+  - **Work:** remove the stray root `package.json`; move the f049 stack-detection assertion onto a fixture with its
+    own `package.json`.
+  - **Acceptance:** no Node or React preset here; the fixture still detects `nodejs`.
+  - **Trace:** FR-014; SC-006.
+  - **Owns:** `package.json`, `tests/integration/f049-i003-intake-engine-tests.ps1`, `tests/integration/fixtures/**`.
+
+### Phase 7: Validator and nightly (US2, US3)
+
+- [ ] T026 [owner: Implementer] [sp: 1.0] [US2] **Abandoned is closed only with a recorded ruling
+  (DRIFT-206-I001-010).**
+  - **RED:** the closed-definition suite: `abandoned` with no recorded ruling is closed today.
+  - **Work:** `Test-SpecrewIterationClosed` counts `abandoned` as closed only with a recorded ruling; lands with the
+    maintainer's rulings on group B (197/002, 197/007, 197/008, 198/005), so the T005 table does not change. If any
+    of the four has no ruling, the work stops for the maintainer.
+  - **Acceptance:** `abandoned` with a ruling is closed; a CI-mode full-repository run gives no new finding. Feature
+    206 does not close without this task.
+  - **Trace:** FR-008; FR-008a.
+  - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`,
+    `extensions/specrew-speckit/scripts/validate-governance.ps1`, their `.specify` mirrors, the deployed hash file,
+    `tests/unit/**`.
+- [ ] T032 [owner: Implementer] [sp: 0.75] [US1] **A malformed managed-block opener is unbalanced (item 33).**
+  - **RED:** an opener with `<<<` where `>>>` belongs is treated as a matched pair today.
+  - **Acceptance:** a matched pair still strips; a mismatched pair compares the whole file.
+  - **Trace:** FR-003.
+  - **Owns:** `scripts/internal/instruction-file-merge.ps1`, `tests/unit/**`.
+- [ ] T031 [owner: Implementer] [sp: 1.5] [US3] **The census guard reads YAML and shell by structure (items 31, 32).**
+  - **RED:** one fixture per construct: `steps:` inside a block scalar, a key of the same name at another level, a
+    comment after `;`.
+  - **Work:** the guard tracks block scalars and job and step structure, and treats `;` as a comment boundary.
+  - **Acceptance:** each fixture is read correctly; a real step still registers.
+  - **Trace:** FR-011; SC-004.
+  - **Owns:** `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, `tests/support/test-census.ps1`,
+    `tests/unit/fixtures/**`.
+- [ ] T030 [owner: Implementer] [sp: 1.25] [US2] **Every repository-level stop writes its message hash (items 30,
+  34).**
+  - **RED:** two different messages in one stop category give one fingerprint today.
+  - **Work:** the four repository-level stops and the outer catch pass their messages with `-FailureMessages`.
+  - **Acceptance:** two messages give two fingerprints; the same message gives one.
+  - **Trace:** FR-009.
+  - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` mirror, the deployed hash
+    file, `tests/unit/**`.
+
+### Phase 8: Scripts and CI (US3)
+
+- [ ] T027 [owner: Implementer] [sp: 0.25] [US3] **Specrew CI gets a manual trigger (item 12).**
+  - **Work:** `workflow_dispatch:` on Specrew CI, as the other two workflows have.
+  - **Acceptance:** the workflow file parses and the next push's run is green.
+  - **Trace:** FR-012.
+  - **Owns:** `.github/workflows/specrew-ci.yml`.
+- [ ] T028 [owner: Implementer] [sp: 0.75] [US3] **`distribution-module-publish.ps1` cannot publish (item 17, high).**
+  - **Read first:** the suite and the release script it calls, for any path that publishes or writes home.
+  - **RED:** with `PSGALLERY_API_KEY` set, the publish case reaches a publish call today.
+  - **Work:** the suite clears and restores `PSGALLERY_API_KEY` itself; the release script refuses a publish nobody
+    asked for.
+  - **Acceptance:** no publish call with the key set; the case still fails with no key. Run, or kept excluded, by the
+    maintainer's ruling (**stop**).
+  - **Trace:** FR-012; SC-007.
+  - **Owns:** `tests/integration/distribution-module-publish.ps1`, `scripts/release/**`.
+- [ ] T029 [owner: Implementer] [sp: 0.25] [US3] **`multi-host-smoke.ps1` stops assigning to `$Host` (item 18).**
+  - **Work:** rename the loop variable. Read, not run: the script deploys hooks.
+  - **Acceptance:** the diff renames only that variable; the script parses.
+  - **Trace:** FR-012.
+  - **Owns:** `tests/manual/multi-host-smoke.ps1`.
+
+### Phase 9: Review and closeout records (US2, items 37, 39, 41, 44)
+
+- [ ] T034 [owner: Implementer] [sp: 1.0] [US2] **A record written before its approval is not stale (D2-a, item 39).**
+  - **RED:** review.md beside `executing`, with the review-signoff crossing pending, fails Lint today.
+  - **Work:** the staleness checks accept a record whose boundary approval is still pending (review.md beside
+    `executing`, retro.md beside `reviewing`), read through the existing start-context reader; where
+    `start-context.json` is absent (CI, a fresh clone), the record is accepted with a warning naming the file.
+  - **Acceptance (five cases):** record before the verdict passes; at the verdict passes; after the line moves
+    passes; the verdict recorded with the line behind fails as today; no `start-context.json` gives the warning and no
+    error.
+  - **Trace:** FR-016; SC-009.
+  - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` mirror, the deployed hash
+    file, `tests/unit/**`.
+- [ ] T033 [owner: Implementer] [sp: 1.0] [US2] **A `deferred` task verdict with its decision id (D1-a, item 37).**
+  - **RED:** `accepted` with a `deferred` row naming an existing decision fails today.
+  - **Work:** review.md accepts `deferred` beside `accepted` when the row names a decision id present in
+    `.squad/decisions.md`.
+  - **Acceptance:** no decision id fails; a decision id that does not exist fails; `needs-work` beside `accepted`
+    still fails. Feature 203's T014 is not covered here; it goes to proposal 206.
+  - **Trace:** FR-015; SC-008.
+  - **Depends:** T034.
+  - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` mirror, the deployed hash
+    file, `tests/unit/**`.
+- [ ] T035 [owner: Implementer] [sp: 1.25] [US2] **The closeout dashboard is drawn after the verdict (D3-a, item 41).**
+  - **RED:** a fixture closeout seals a dashboard drawn before the verdict.
+  - **Work:** the capture's closeout tail redraws the dashboard after `Sync-SpecrewCrossingMirrors` and before
+    `Invoke-SpecrewCloseoutSeal`.
+  - **Acceptance:** the sealed dashboard shows the delivered points, `iteration-closeout` and the iteration under
+    Recent Shipped; a redraw that throws still seals, with a warning.
+  - **Trace:** FR-017; SC-010.
+  - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`, its `.specify` mirror, the deployed hash
+    file, `tests/unit/**`.
+- [ ] T036 [owner: Implementer] [sp: 1.5] [US2] **The Completed date and the open hardening rows (D4-a, item 44).**
+  - **RED:** a fixture closeout leaves plan.md `complete` with no Completed date, and the arrival names no open
+    hardening row.
+  - **Work:** the mirror write that moves plan.md to `complete` writes the Completed date; the closeout arrival lists
+    open hardening rows in the pending-verdict artifact.
+  - **Acceptance:** a second capture leaves the date unchanged; all rows recorded gives no owed line.
+  - **Trace:** FR-018; SC-011.
+  - **Depends:** T035.
+  - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`, its `.specify` mirror,
+    `scripts/internal/sync-boundary-state.ps1`, the deployed hash file, `tests/unit/**`.
+- [ ] T037 [owner: Implementer] [sp: 0.25] [US3] **The two reviewer-brief promotions from iteration 001's retro.**
+  - **Work:** this iteration's review brief asks the reviewer, for any text-matching rule, to try a phrasing that
+    matches the pattern but denies or conditions it; and, for any test that reads workflow or script files, to try
+    each YAML and shell construct that can hide or fake a line.
+  - **Acceptance:** both in the brief before the first review round.
+  - **Trace:** FR-003; FR-011.
+  - **Owns:** `specs/206-bug-bash/iterations/002/**`.
+- [ ] T038 [owner: Implementer] [sp: 0.25] [US2] **Review sign-off records.**
+  - **Work:** the review records, pushed before their verdict.
+  - **Acceptance:** Lint stays green on that push (SC-009 in use).
+  - **Trace:** SC-009.
+  - **Depends:** T034.
+  - **Owns:** `specs/206-bug-bash/iterations/002/**`.
+
+Sum of iteration-002 effort: 20.0 SP.
 
 ## Traceability
 
 | Requirement | Tasks | | Success criterion | Tasks |
 | --- | --- | --- | --- | --- |
-| FR-001 | T001 | | SC-001 | T001, T014, T015 |
-| FR-002 | T002 | | SC-002 | T002, T003, T015 |
-| FR-003 | T003 | | SC-003 | T010 |
-| FR-004 | T004 | | SC-004 | T013 |
+| FR-001 | T001; T022, T023 | | SC-001 | T001, T014, T015; T022 to T025 |
+| FR-002 | T002 | | SC-002 | T002, T003, T015; T020, T021 |
+| FR-003 | T003; T020, T032, T037 | | SC-003 | T010 |
+| FR-004 | T004 | | SC-004 | T013; T031 |
 | FR-005 | T004, T007 | | SC-005 | T008 |
-| FR-006 | T007, T010 | | SC-006 | T017 (iteration 002) |
-| FR-007 | T008 | | SC-007 | T014, T018 |
-| FR-008 | T009 | | | |
-| FR-008a | T005, T006, T010 | | | |
-| FR-009 | T012 | | | |
-| FR-010 | T011 | | | |
-| FR-011 | T013 | | | |
-| FR-012 | T014, T015 | | | |
-| FR-013 | T016 (iteration 002) | | | |
-| FR-014 | T017 (iteration 002) | | | |
+| FR-006 | T007, T010 | | SC-006 | T017 |
+| FR-007 | T008 | | SC-007 | T014, T018; T025, T028 |
+| FR-008 | T009; T026 | | SC-008 | T033 |
+| FR-008a | T005, T006, T010; T026 | | SC-009 | T034, T038 |
+| FR-009 | T012; T030 | | SC-010 | T035 |
+| FR-010 | T011 | | SC-011 | T036 |
+| FR-011 | T013; T031, T037 | | | |
+| FR-012 | T014, T015; T021, T024, T027, T028, T029 | | | |
+| FR-013 | T016 | | | |
+| FR-014 | T017 | | | |
+| FR-015 | T033 | | | |
+| FR-016 | T034 | | | |
+| FR-017 | T035 | | | |
+| FR-018 | T036 | | | |
 
-Every iteration-001 task traces to an FR or SC; every FR and SC has a task, in iteration 001 or listed for 002.
-Sum of iteration-001 effort: 20.0 SP.
+Iteration-002 tasks follow the semicolon. Every task traces to an FR or SC, and every FR and SC has a task.
+Sum of iteration-001 effort: 20.0 SP; of iteration-002 effort: 20.0 SP.
