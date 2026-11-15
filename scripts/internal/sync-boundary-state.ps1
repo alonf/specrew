@@ -153,6 +153,50 @@ function New-SpecrewMarkdownContent {
     return ($lines -join [Environment]::NewLine)
 }
 
+function Test-SpecrewPathInsideProject {
+    # F-206 T023 (FR-001, bug list item 23): whether a path is the project root or below it. Both sides are made full
+    # and compared whole-segment, so a sibling whose name starts the same ('proj' and 'proj-sibling') is outside.
+    # Case is ignored where the usual file system ignores it (Windows, macOS) and kept elsewhere.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    try {
+        $rootFull = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\', '/')
+        $pathFull = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $rootFull $Path })).TrimEnd('\', '/')
+    }
+    catch {
+        return $false
+    }
+
+    $comparison = if ($IsWindows -or $IsMacOS) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    if ([string]::Equals($pathFull, $rootFull, $comparison)) { return $true }
+    foreach ($separator in @([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)) {
+        if ($pathFull.StartsWith($rootFull + $separator, $comparison)) { return $true }
+    }
+    return $false
+}
+
+function ConvertTo-SpecrewIdentityFeaturePath {
+    # F-206 T023 (bug list item 23): the tracked identity file (.squad/identity/now.md) carries the feature path
+    # relative to the project, with forward slashes, so a clone elsewhere, or another machine, reads its own
+    # checkout and never another one. A path outside the project, or none, is recorded as '(none)'.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$FeaturePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FeaturePath) -or $FeaturePath -eq '(none)') { return '(none)' }
+    if (-not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $FeaturePath)) { return '(none)' }
+    $rootFull = [System.IO.Path]::GetFullPath($ProjectRoot)
+    $pathFull = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($FeaturePath)) { $FeaturePath } else { Join-Path $rootFull $FeaturePath }))
+    $relative = [System.IO.Path]::GetRelativePath($rootFull, $pathFull) -replace '\\', '/'
+    if ([string]::IsNullOrWhiteSpace($relative) -or $relative -eq '.') { return '(none)' }
+    return $relative
+}
+
 function Get-SpecrewSessionStateFromFrontmatter {
     param(
         [Parameter(Mandatory = $true)]
@@ -1989,7 +2033,10 @@ function Invoke-SpecrewBoundaryStateSync {
             ArtifactStateId   = $null
         }
     }
-    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
+    # F-206 T023 (bug list item 23): the tracked identity file records the feature path relative to the project.
+    $identitySessionState = $sessionState.PSObject.Copy()
+    $identitySessionState.feature_path = ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $paths.ProjectRoot -FeaturePath ([string]$sessionState.feature_path)
+    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $identitySessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 

@@ -640,6 +640,16 @@ function Resolve-FeatureDirectory {
         [string]$ResumeFeature
     )
 
+    # F-206 T023 (FR-001, bug list item 23): start resumes only a feature inside the project it was given. A rooted
+    # path to another checkout was accepted, and start then wrote into that checkout.
+    $assertInsideProject = {
+        param([string]$Candidate)
+        if (-not (Test-SpecrewPathInsideProject -ProjectRoot $Root -Path $Candidate)) {
+            throw ("specrew start could not continue: the feature folder '{0}' is outside the project '{1}', and start resumes only a feature inside the project it was given. Nothing was written. Run it again with a feature folder inside the project, for example: specrew start --resume-feature specs/<feature>" -f $Candidate, $Root)
+        }
+        return $Candidate
+    }
+
     if ($ResumeFeature) {
         if ($ResumeFeature -eq 'auto') {
             $featureJsonPath = Join-Path $Root '.specify\feature.json'
@@ -664,7 +674,7 @@ function Resolve-FeatureDirectory {
                 $candidate = Join-Path $Root $candidate
             }
 
-            return [System.IO.Path]::GetFullPath($candidate)
+            return (& $assertInsideProject ([System.IO.Path]::GetFullPath($candidate)))
         }
 
         $candidatePath = $ResumeFeature
@@ -672,7 +682,7 @@ function Resolve-FeatureDirectory {
             $candidatePath = Join-Path $Root $candidatePath
         }
 
-        return [System.IO.Path]::GetFullPath($candidatePath)
+        return (& $assertInsideProject ([System.IO.Path]::GetFullPath($candidatePath)))
     }
 
     $featureJsonPath = Join-Path $Root '.specify\feature.json'
@@ -3347,7 +3357,10 @@ else {
 }
 
 if ($null -eq $resolvedFeaturePath -and $null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_path)) {
-    if (Test-Path -LiteralPath ([string]$validatedSessionState.feature_path) -PathType Container) {
+    # F-206 T023 (bug list item 23): never adopt a saved feature path outside the project, such as an absolute path
+    # an older identity file carries from another checkout.
+    if ((Test-Path -LiteralPath ([string]$validatedSessionState.feature_path) -PathType Container) -and
+        (Test-SpecrewPathInsideProject -ProjectRoot $resolvedProjectPath -Path ([string]$validatedSessionState.feature_path))) {
         $resolvedFeaturePath = [string]$validatedSessionState.feature_path
     }
 }

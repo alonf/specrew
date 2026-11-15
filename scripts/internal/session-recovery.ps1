@@ -53,7 +53,13 @@ function Get-SpecrewIdentitySessionState {
     }
 
     $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.IdentityPath -Raw -Encoding UTF8)
-    return Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
+    $state = Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
+    # F-206 T023 (bug list item 23): the tracked identity file records the feature path relative to the project;
+    # it is resolved against this project's root. An absolute path written before that is returned as written.
+    if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.feature_path) -and -not [System.IO.Path]::IsPathRooted([string]$state.feature_path)) {
+        $state.feature_path = [System.IO.Path]::GetFullPath((Join-Path (Resolve-ProjectPath -Path $ProjectRoot) ([string]$state.feature_path)))
+    }
+    return $state
 }
 
 function Get-SpecrewStartContextSessionState {
