@@ -250,6 +250,13 @@ arithmetic and needs a spec change. Option C turns the calendar into red builds 
 
 ## Human Decision
 
-- **Decision verdict**: pending
-- **Chosen option**: pending
-- **Reason**: pending
+- **Decision verdict**: approved for plan with Option A
+- **Chosen option**: Option A
+- **Reason**: a `sources_checked` date on each of the six per-stack rules and one pure, read-only line function that
+  takes today as a parameter. It meets SC-011 as written, with the stale marker proven on a fixture date, and keeps
+  the version facts out of the lens prose. Option B leaves the date arithmetic to the agent, untested, and needs a
+  spec change. Option C turns the calendar into red builds on every open branch.
+- **Modifications**: none to the design. FR-032 stays as agreed at 13:27 (markers 🟦 problem, 🟪 both, 🟧 solution;
+  UTF-8 output; the `Selected lenses:` line kept).
+- **Verdict given**: typed by the maintainer on 2026-11-15.
+- **Design-analysis draft commit**: `7bd52f2b` (the draft `fcc5465e` plus what the human sees when a date is stale)
