@@ -422,7 +422,7 @@
      wrong lines in plain words.
 - **Resolution**: the maintainer typed `approved for review-signoff`; boundary commit `9c9a132f`. H-022 is back, and the
   three `review.md` lines are corrected in the records commit after it.
-- **Class closure**: NONE. A record written before the sync must guess whether the gate will want an override; the
+- **Class closure**: NONE — a record written before the sync must guess whether the gate will want an override; the
   gate's decision is known only after the record is pushed. That belongs to the sign-off gate, which is feature 203's
   area (iteration 001's H-007 is the same seam).
 
@@ -436,7 +436,7 @@
   Ubuntu.
 - **Resolution**: reported first. One rerun of the failed job was ruled by the reviewer session (routine; infrastructure
   outside the push). Attempt 2 was green in all eight jobs (Windows job 132627411329).
-- **Class closure**: NONE. The cause is the package gallery or the runner, not 205's change, and it differs from the
+- **Class closure**: NONE — the cause is the package gallery or the runner, not 205's change, and it differs from the
   `empty-result-retry` sighting (DRIFT-020). The workflow is not 205's to change.
 
 <!--

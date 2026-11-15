@@ -71,7 +71,9 @@ No lens file, skill or template changed in the fixes. The red and green runs are
 
 ## Gap Ledger
 
-- None from the review: round 1's three findings are fixed and round 2 found nothing.
+- **finding-738b1c957e7e1dce**: fixed-now in `598d0836` (red `8347d9d5`); round 2 read the fix.
+- **finding-af58489dbcbd1f64**: fixed-now in `22c0a583` (red `3a13eaa4`); round 2 read the fix.
+- **finding-edc22c04f8dcbb60**: fixed-now in `398e9520` (red `335de732`); round 2 read the fix.
 
 ## Open Outside This Review
 
