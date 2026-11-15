@@ -361,6 +361,11 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
     `scripts/internal/sync-boundary-state.ps1`, `.squad/identity/now.md`, `tests/unit/**`.
 - [ ] T024 [owner: Implementer] [sp: 0.5] [US1] **`project-path-resolution-regression.ps1` green and registered (item
   24).**
+  - **Green (2026-11-15), SC-001 met; registration awaits the maintainer:** the refusal removed and the fixture
+    copies what git does not ignore, on the feature's branch (`300ec6de`); a dry run's summary names its folder (RED
+    1/2 `9c2195d3`, GREEN 2/2 `acb20fac`). Supervised run 5: all six checks pass in 82 s, start with no recovery
+    choice; home hook files and the repository unchanged; no probe folder. Registered once the maintainer has seen it
+    (iteration 001 ruling).
   - **Work:** its fixture is built in a temp folder and copies every file git does not ignore; the refusal added at
     DRIFT-206-I001-019 is removed once T022, T023 and T025 are in; a supervised run with home hashed; registered.
   - **Acceptance:** green, nothing written into this repository, home unchanged; the census guard green.
