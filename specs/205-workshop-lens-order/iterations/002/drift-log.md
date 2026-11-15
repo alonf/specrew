@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 23
+**Total drift events**: 26
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -438,6 +438,46 @@
   outside the push). Attempt 2 was green in all eight jobs (Windows job 132627411329).
 - **Class closure**: NONE — the cause is the package gallery or the runner, not 205's change, and it differs from the
   `empty-result-retry` sighting (DRIFT-020). The workflow is not 205's to change.
+
+### DRIFT-024 — the derived-block item now also fails iteration 002 locally; covered by the standing exception (reviewer's reading)
+
+- **Observed**: 2026-11-15, the full checks on `38aebf0e`. Once plan.md was at `reviewing`, the local governance check
+  failed iteration 002 on the item iteration 001 already fails: "review.md carries no derived independent-review
+  block, and this record was written after the block existed (its authorship was observed: implementing-session)".
+- **Ruling**: the reviewer session, routine, 2026-11-15 02:58 local. The item is covered. It is the same item with the
+  same cause as iteration 001's: the block is computed from a review store that exists only on the machine that ran
+  the review (iteration 001 DRIFT-012). The maintainer's exception is a standing one for that item, not for one
+  iteration. This is the reviewer's reading of the standing exception. Anything else red, locally or in CI, still
+  stops the work.
+- **Resolution**: the block is not added. `review.md`'s Independence section says what the record's independence rests
+  on.
+- **Class closure**: NONE — the derived block's store is local to the reviewing machine; that is the review engine's
+  area (feature 203), as in iteration 001.
+
+### DRIFT-025 — the retro push is red on Lint by the maintainer's allowance, this push only (decision)
+
+- **Decided**: the maintainer, relayed by the reviewer session under the wider delegation. The reviewer summarized the
+  drafted retro and said it waits on "allow" (this push only) or "standing". The maintainer's words, at 03:52 local on
+  2026-11-15: "OK for the retro, but it raises a question." The question that followed was about what happens to
+  retro findings afterwards, not about the push. The reviewer relayed it as "allow" for this push; the maintainer did
+  not say "standing".
+- **Effect**: `retro.md` and DRIFT-024 to DRIFT-026 are pushed with one red Specrew CI run, on Lint only, for "plan.md
+  status 'reviewing' is stale: retro.md exists" plus the standing derived-block item. Anything else red stops the
+  work. Then the retro sync and the retro packet.
+- **Class closure**: NONE — the record order at the retro boundary is a bug list item on feature 206 (maintainer,
+  2026-11-14 22:39) and a candidate for 206's iteration 002; H-003 is the hand-over.
+
+### DRIFT-026 — the retro scaffold again refuses a review verdict that wraps onto a second line (recurrence)
+
+- **Observed**: 2026-11-15, at the start of the retro. `scaffold-retro-artifact.ps1 -IterationDirectory
+  .\specs\205-workshop-lens-order\iterations\002` stopped with `review.md contains an invalid overall verdict:
+  'accepted: two rounds; round 1's three minor findings fixed failing-test first; round 2 passed with'.` It read only
+  the first line of the wrapped `**Overall Verdict**`. The governance check accepts the same `review.md`. This is
+  iteration 001's DRIFT-024 again.
+- **Resolution**: `retro.md` was written by hand to the ceremony's output contract, as in iteration 001. `review.md`
+  was not changed.
+- **Class closure**: NONE — the scaffold is part of the deployed Specrew extension, which 205 does not change for this;
+  it is the second sighting of iteration 001's DRIFT-024.
 
 <!--
   Every new ### DRIFT-... event includes:
