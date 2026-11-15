@@ -68,6 +68,58 @@ try {
 }
 finally { Remove-Item -LiteralPath $cleanCheckout -Recurse -Force -ErrorAction SilentlyContinue }
 
+# Guard (iteration review round E, run-20261115-011232703-6c6475f7: its preflight's lane f203-i001-suites red). The
+# review's frozen copy has the support folders deleted in the index and restored in the working tree only, so the status
+# lists about 1,500 entries, among them a tracked symbolic link whose target is on another machine. The snapshot threw on
+# that link. The check must complete over such a status, record a link by its target without following it, and record an
+# entry it cannot read as unreadable instead of throwing.
+$layoutCheckout = Join-Path ([IO.Path]::GetTempPath()) ('hook-length-layout-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path (Join-Path $layoutCheckout 'support') -Force | Out-Null
+    & git -C $layoutCheckout init -q 2>$null
+    foreach ($i in 1..1100) { [IO.File]::WriteAllText((Join-Path $layoutCheckout ('support/f{0:d4}.txt' -f $i)), "entry $i") }
+    & git -C $layoutCheckout -c user.email=t@t -c user.name=t add -A 2>$null
+    & git -C $layoutCheckout -c user.email=t@t -c user.name=t commit -q -m layout 2>$null
+    # The preflight's layout: deleted in the index, present in the working tree.
+    & git -C $layoutCheckout rm -r -q --cached -- support 2>$null
+    $missingTarget = Join-Path $layoutCheckout 'elsewhere/not-on-this-machine.json'
+    $linkPath = Join-Path $layoutCheckout 'dangling.json'
+    $linkMade = $true
+    try { New-Item -ItemType SymbolicLink -Path $linkPath -Target $missingTarget -ErrorAction Stop | Out-Null }
+    catch { $linkMade = $false; Write-Fail ("a symbolic link can be created for this case ({0})" -f $_.Exception.Message) }
+    $listed = @(& git -C $layoutCheckout status --porcelain --untracked-files=all 2>$null).Count
+    $layoutState = @(); $layoutError = ''
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    try { $layoutState = @(Get-CheckoutState -Root $layoutCheckout) }
+    catch { $layoutError = [string]$_.Exception.Message }
+    $watch.Stop()
+    Assert-True ($layoutError -eq '' -and $listed -gt 1000 -and $layoutState.Count -eq $listed -and $watch.Elapsed.TotalSeconds -lt 60) ("the checkout check completes over a status of {0} entries with a dangling link, in {1:n1} s ({2})" -f $listed, $watch.Elapsed.TotalSeconds, $(if ($layoutError) { $layoutError } else { "$($layoutState.Count) recorded" }))
+    if ($linkMade) {
+        $linkEntry = @($layoutState | Where-Object { $_ -match 'dangling\.json' })
+        Assert-True ($linkEntry.Count -eq 1 -and $linkEntry[0] -match 'link:' -and $linkEntry[0] -match 'not-on-this-machine\.json') ("a link is recorded by its target, not followed ({0})" -f ($linkEntry -join ''))
+        $relinkError = ''; $relinkChanges = @()
+        try {
+            Remove-Item -LiteralPath $linkPath -Force
+            New-Item -ItemType SymbolicLink -Path $linkPath -Target (Join-Path $layoutCheckout 'elsewhere/another.json') -ErrorAction Stop | Out-Null
+            $relinkChanges = @(Get-CheckoutChanges -Before $layoutState -After @(Get-CheckoutState -Root $layoutCheckout))
+        }
+        catch { $relinkError = [string]$_.Exception.Message }
+        Assert-True ($relinkError -eq '' -and $relinkChanges.Count -eq 2 -and @($relinkChanges | Where-Object { $_ -match 'dangling\.json' }).Count -eq 2) ("a link pointed elsewhere is reported, by name ({0})" -f $(if ($relinkError) { $relinkError } else { $relinkChanges -join '; ' }))
+    }
+    if ($IsWindows) {
+        # A listed file another process holds open with no sharing cannot be read: recorded as unreadable, not thrown on.
+        $held = Join-Path $layoutCheckout 'support/f0001.txt'
+        $lock = [IO.File]::Open($held, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        $heldState = @(); $heldError = ''
+        try { $heldState = @(Get-CheckoutState -Root $layoutCheckout) }
+        catch { $heldError = [string]$_.Exception.Message }
+        finally { $lock.Dispose() }
+        $heldEntry = @($heldState | Where-Object { $_ -match '^\?\? support/f0001\.txt ' })
+        Assert-True ($heldError -eq '' -and $heldEntry.Count -eq 1 -and $heldEntry[0] -match 'unreadable:') ("a listed entry that cannot be read is recorded as unreadable ({0})" -f $(if ($heldError) { $heldError } else { $heldEntry -join '' }))
+    }
+}
+finally { Remove-Item -LiteralPath $layoutCheckout -Recurse -Force -ErrorAction SilentlyContinue }
+
 function Get-CommandStrings {
     # Every command a host would run, from any hook settings shape: { command }, { bash, powershell }, nested groups.
     param($Node)
