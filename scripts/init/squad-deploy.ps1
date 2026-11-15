@@ -21,9 +21,12 @@
 Set-StrictMode -Version Latest
 
 function Test-SquadInitSupportsNonInteractive {
+    # F-206 T025 (bug list item 25): the probe runs a real `squad init`, which writes files. Its folder is made under the
+    # temp folder unless a caller names another root, never in the Specrew install root (in a dev checkout that is the
+    # Specrew repository, where SC-001's supervised run 4 left one behind).
+    [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$ProbeRoot,
+        [string]$ProbeRoot = [System.IO.Path]::GetTempPath(),
 
         [ValidateRange(1, 7200)]
         [int]$TimeoutSeconds = 30,
@@ -31,6 +34,8 @@ function Test-SquadInitSupportsNonInteractive {
         [string]$SquadCommand = 'squad'
     )
 
+    if ([string]::IsNullOrWhiteSpace($ProbeRoot)) { $ProbeRoot = [System.IO.Path]::GetTempPath() }
+    $ProbeRoot = [System.IO.Path]::GetFullPath($ProbeRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
     $probeDirectory = Join-Path $ProbeRoot ('.specrew-squad-probe-{0}' -f [guid]::NewGuid().ToString('N'))
 
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
@@ -57,18 +62,28 @@ function Test-SquadInitSupportsNonInteractive {
     }
     finally {
         if (Test-Path -LiteralPath $probeDirectory) {
-            Remove-Item -LiteralPath $probeDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            $cleanupError = $null
+            try { Remove-Item -LiteralPath $probeDirectory -Recurse -Force -ErrorAction Stop }
+            catch { $cleanupError = $_.Exception.Message }
+            # F-206 T025: a folder the cleanup could not remove used to stay without a word.
+            if (Test-Path -LiteralPath $probeDirectory) {
+                $detail = if ([string]::IsNullOrWhiteSpace($cleanupError)) { '' } else { ': ' + $cleanupError }
+                Write-Warning ("The Squad capability probe could not remove its folder '{0}'{1}. It holds only what a test 'squad init' wrote; delete it by that exact path." -f $probeDirectory, $detail)
+            }
         }
     }
 }
 
 function Get-SquadInitPlan {
+    [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$ProbeRoot
+        # F-206 T025: optional; the probe makes its folder under the temp folder by default.
+        [string]$ProbeRoot = [System.IO.Path]::GetTempPath(),
+
+        [string]$SquadCommand = 'squad'
     )
 
-    $supportsNonInteractive = Test-SquadInitSupportsNonInteractive -ProbeRoot $ProbeRoot
+    $supportsNonInteractive = Test-SquadInitSupportsNonInteractive -ProbeRoot $ProbeRoot -SquadCommand $SquadCommand
 
     $arguments = @('init')
     if ($supportsNonInteractive) {
