@@ -100,3 +100,39 @@ home hook files hashed before and after; nothing on the never-run list is run.
 
 9 tasks, 20 SP against the 20 SP cap. The review-signoff crossing is not planned capacity (maintainer, 2026-11-13;
 iteration 002 DRIFT-004). FR-030 and FR-031 are iteration 003.
+
+## Iteration 003 tasks (FR-030, FR-031, FR-032; Option A)
+
+Plan: the "Iteration 003 plan" section of `plan.md` (approved 2026-11-15). Format and binding rules as above. Every
+test run is out of process, on a committed tree, with the home hook files hashed before and after; nothing on the
+never-run list is run.
+
+### Phase 8: Proof first (red before green)
+
+- [ ] T027 [US6] [assigned_to: implementer] [effort: 1] Write `tests/unit/code-lens-freshness.tests.ps1` (script-style) over `extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml`, per rule: each of the six per-stack rules has a `sources_checked` date and a `current` field; no rule's `title` or `default` holds a version number; the line function shows no stale marker 90 days after `sources_checked` and shows it 91 days after; Source Notes in `code-implementation.md` name each stack with a URL and a date. Self-tests over scratch fixtures swap a date, remove one, and put a version back into rule text, and each failure names the rule. In the same commit, re-point `.specrew/verification-plan.json` to iteration 003's tests (iteration 002 retro action 2). Commit it red with the count recorded in `iterations/003/quality/quality-evidence.md` (Trace: FR-030, SC-011)
+- [ ] T028 [US6] [assigned_to: implementer] [effort: 0.75] Write `tests/unit/workshop-agenda-grouping.tests.ps1` (script-style): render the agenda with `confirm-workshop-agenda.ps1 -RenderOnly` in a scratch project; on the real `index.yml` the selected lenses sit under the three headings in order, index.yml order inside each, empty headings left out; on a fixture `index.yml` where one lens's `space` changes, that lens moves group; the `Selected lenses:` and `Skipped lenses:` lines and the closing question are kept; the block read back from a child process with a non-UTF-8 console encoding equals the stored `canonical_text`. Failures name the lens. Commit it red with the count (Trace: FR-032)
+
+### Phase 9: The changes
+
+- [ ] T029 [US6] [assigned_to: implementer] [effort: 1.5] Refresh the six per-stack rules in `code-rules.yml` from official release notes fetched now: add `sources_checked` (today) and `current` (the confirmed versions and support status), move version numbers out of `title` and `default`, and list each source with URL and date under `code-implementation.md`'s Source Notes. Leave out any fact that cannot be confirmed (Trace: FR-030, SC-011)
+- [ ] T030 [US6] [assigned_to: implementer] [effort: 0.5] Add the pure line function to `scripts/internal/code-implementation-lens.ps1` (today as a parameter; stale after 90 days, with the agreed text). The lens's Workshop Conduct shows the lines when the stack is resolved, and the skill source `extensions/specrew-speckit/squad-templates/skills/design-workshop.md` gains the exception for this read-only call in its "not invoked mid-workshop" sentence (Trace: FR-030)
+- [ ] T031 [US6] [assigned_to: implementer] [effort: 0.75] `extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1`: group the selected lenses in `Get-CanonicalWorkshopAgendaText` under `🟦 Problem space`, `🟪 Both spaces` and `🟧 Solution space`, from the `space` tags of the `index.yml` it reads, and write the output as UTF-8. The skill's agenda template shows the headings, and its lens opening repeats the group's marker (Trace: FR-032)
+- [ ] T032 [US6] [assigned_to: implementer] [effort: 0.5] FR-031: one `## Status history` entry in `proposals/220-workshop-lens-order-and-cross-lens-consistency.md` and the matching line in its `proposals/INDEX.md` row, per the plan (Trace: FR-031)
+
+### Phase 10: Green, regression and evidence
+
+- [ ] T033 [US6] [assigned_to: implementer] [effort: 1] Refresh the deployed copies with the two project-only deploy scripts and update `.specrew-extension-runtime.json` in the same commit; bring T027 and T028 green; run the parity, length, agenda and every existing workshop test against the iteration 002 results; add both new tests as named `specrew-ci.yml` steps (Trace: FR-030, FR-032, SC-011)
+- [ ] T034 [US6] [assigned_to: implementer] [effort: 0.5] Last: a recorded render check in a scratch project under the session temp folder (deployed copies only through the two project-only deploy scripts; no `specrew init` or `specrew start`; home hashed before and after). Render a sample agenda, keep the bytes and the terminal view as evidence in `iterations/003/quality/`, and confirm the pasted block matches `canonical_text`. If the binding refuses, it is a hand-over to 203 (Trace: FR-032)
+
+### Iteration 003 dependencies
+
+- T027 and T028 first, each committed red on today's tree before any change it covers.
+- T027 before T029 and T030; T029 before T030 (the function reads the refreshed fields).
+- T028 before T031.
+- T032 is independent.
+- T029 to T032 before T033; T033 before T034 (the check uses the shipped copies).
+
+### Iteration 003 effort
+
+8 tasks, 6.5 SP (the iteration plan's Capacity line), plus the 2 SP rework buffer in its Phase Baseline: 8.5 of the 20 SP cap. The review-signoff crossing is not planned
+capacity (iteration 002 retro, calibration).

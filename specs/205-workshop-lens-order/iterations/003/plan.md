@@ -1,9 +1,9 @@
-# Iteration Plan: 003 (Stub)
+# Iteration Plan: 003
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 6.5/20 story_points
 **Started**: 2026-11-15
 **Completed**:
 
@@ -31,6 +31,14 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T027 | Code-lens freshness test, red-first; verification plan re-pointed | FR-030 | US6 | 1 | implementer | — | planned | — | — | — |
+| T028 | Agenda grouping test, red-first | FR-032 | US6 | 0.75 | implementer | — | planned | — | — | — |
+| T029 | Six per-stack rules refreshed from release notes; Source Notes | FR-030 | US6 | 1.5 | implementer | — | planned | — | — | — |
+| T030 | Line function, lens conduct, skill exception | FR-030 | US6 | 0.5 | implementer | — | planned | — | — | — |
+| T031 | Grouped agenda renderer, UTF-8 output, skill template and marker | FR-032 | US6 | 0.75 | implementer | — | planned | — | — | — |
+| T032 | Proposal 220 status history and INDEX row | FR-031 | US6 | 0.5 | implementer | — | planned | — | — | — |
+| T033 | Copies, hash record, green, regression, CI steps | FR-030, FR-032 | US6 | 1 | implementer | — | planned | — | — | — |
+| T034 | Recorded render check in a scratch project (last) | FR-032 | US6 | 0.5 | implementer | — | planned | — | — | — |
 
 ## Effort Model
 
@@ -48,33 +56,35 @@
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - Technology and scope signals: PowerShell 7 scripts, lens markdown, the code-rules YAML catalog and tests (the scaffold read "frontend", the resolver misread; DRIFT-003).
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
+- Task dependency graph: T027 and T028 first, committed red; T027 before T029 and T030, T029 before T030; T028 before T031; T032 independent; T029 to T032 before T033; T034 last.
 - Workstream separability: Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.
 - Shared-surface conflict risk: elevated due to shared-state / cross-cutting cues in scope text.
 - Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- Recommendation: serial, single implementer; the tasks share the lens catalog, the skill and the agenda script, so parallel same-specialty work would conflict.
 
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | done | Amendment A2, design analysis (Option A), this plan |
+| Discovery/Spikes | 0 | the release-notes lookups are inside T029 |
+| Implementation | 6.5 | T027 to T034 |
+| Review | 0 | the review-signoff crossing is not planned capacity (iteration 002 retro, calibration); the retro reports its actual cost |
+| Rework | 2 | rework buffer (iteration 002 retro calibration) |
 
 ## Traceability Summary
 
-- Requirement scope for this stub: FR-030, FR-031, FR-032 (written by hand; DRIFT-002). Success criteria: SC-011 and FR-032's test clause.
+- Requirement scope: FR-030, FR-031, FR-032.
 - User stories represented in current scope: US6 (FR-030 to FR-032 cut across).
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- Success criteria: SC-011 (FR-030) and FR-032's test clause.
+- Tasks T027 to T034 are detailed in `tasks.md` ("Iteration 003 tasks"), with dependencies. FR-030: T027, T029, T030,
+  T033. FR-031: T032. FR-032: T028, T031, T033, T034. SC-011: T027, T029, T033.
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony. The design
-  analysis (`design-analysis.md`) waits for the maintainer's decision; tasks are added after it.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+- Planned effort 8.5 story_points against a 20 cap: 6.5 in tasks (the Capacity line, which the governance check sums
+  from the task table) and the 2 SP rework buffer from the iteration 002 retro's calibration, held in the Phase
+  Baseline rather than as a task row.
+- The scope above was written by hand; the scaffold left it empty (DRIFT-002, H-024).
+- The review-signoff crossing is not planned capacity; the retro reports its actual cost.
+- Keep Status: planning until the tasks are approved.

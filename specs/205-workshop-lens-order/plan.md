@@ -564,3 +564,83 @@ defer_strategy is 'manual'"). The capacity file is not changed.
   questions (SC-010).
 - Risk: an added Light line could make the lens read as a wall. The skill's one-block rule and the recorded run are the
   guard.
+
+## Iteration 003 plan (FR-030, FR-031, Amendment A2's FR-032; Option A)
+
+**Input**: spec FR-030, FR-031 and FR-032 (Amendment A2, accepted on 2026-11-15, DRIFT-205-INTAKE-006), SC-011, and
+the design analysis `iterations/003/design-analysis.md` (Option A, the maintainer's design decision on 2026-11-15;
+plan approved the same day). Amendment A2 is approved at this plan boundary, as A1 was (DRIFT-205-INTAKE-005).
+
+### What changes, Option A (FR-030)
+
+| Area | Change |
+| --- | --- |
+| `code-rules.yml` | Each of the six per-stack rules (C#/.NET, C/C++, TypeScript/JavaScript, Python, Go, Java) gains `sources_checked` (a date) and `current` (the version facts confirmed from official release notes). Version numbers leave `title` and `default`. |
+| `code-implementation-lens.ps1` | One pure, read-only function returns one line per stack from the catalog, with today's date as a parameter. |
+| `code-implementation.md` | The conduct shows those lines when the stack is resolved. Source Notes list each stack's sources with URL and the date checked; a fact that could not be confirmed is left out. |
+| Workshop skill | The sentence that the lens helper "is not invoked mid-workshop" gains one exception: this read-only call. |
+| Tests | One new test file for SC-011, per rule, with self-tests. |
+
+The line, with `<current>` taken from the rule:
+
+```text
+C#/.NET — sources last checked 2026-11-15: <current>
+C#/.NET — sources last checked 2026-08-01: <current> — stale: check the release notes before relying on it
+```
+
+Stale means more than 90 days: on a fixture date 90 days after `sources_checked` the line has no marker, and 91 days
+after it has. The agent reaches the function the same way `confirm-workshop-lens.ps1` reaches the lens helper (the
+installed module, `SPECREW_MODULE_PATH`, or the project's `scripts/internal`); no new deployed script.
+
+### What changes (FR-032, as agreed)
+
+- `Get-CanonicalWorkshopAgendaText` in `confirm-workshop-agenda.ps1` groups the selected lenses under three headings,
+  from each lens's `space` tag in the `index.yml` it already reads: `🟦 Problem space`, `🟪 Both spaces`,
+  `🟧 Solution space`, in that order, index.yml order inside each, a heading with no lens left out. The
+  `Selected lenses:` and `Skipped lenses:` lines, the closing question and the digest are unchanged.
+- The script writes its output as UTF-8 whatever the console's encoding, so the pasted block matches the stored
+  `canonical_text` and the agenda confirmation binds.
+- The skill's agenda template shows the headings, and its lens opening repeats the group's marker, for example
+  "🟦 requirements-nfr".
+- Markers: U+1F7E6, U+1F7EA, U+1F7E7. In a Claude Code terminal they are colour emoji two cells wide. On a host that
+  cannot draw them the text label still carries the meaning; no switch is added.
+- A recorded render check in a scratch project confirms what the human sees on this machine, before review.
+
+### FR-031
+
+Proposal 220's `## Status history` gains one entry: iteration 003 is the code-implementation lens refresh with the
+grouped agenda; the two-pass split moves to iteration 004, after 203; the order after this feature is proposal 177 as
+its own feature (implementer side first, reviewer side after 203 merges), then the testing lens (proposals 178 and 195
+merged), and no new solution-side lens before 177. The `proposals/INDEX.md` row for 220 says the same in one line.
+
+### Sizes
+
+| Work | SP |
+| --- | --- |
+| FR-030 test, red-first, per-rule self-tests (SC-011) | 1 |
+| FR-030 refresh: release notes for six stacks, the two fields, Source Notes | 1.5 |
+| FR-030 line function, conduct and the skill's exception | 0.5 |
+| FR-032 test, red-first: real catalog, a changed-tag fixture, the kept lines, UTF-8 round trip | 0.75 |
+| FR-032 renderer, UTF-8 output, skill agenda template and lens-open marker | 0.75 |
+| FR-031 proposal 220 status history and `proposals/INDEX.md` | 0.5 |
+| copies, hash record, parity, workshop regression, CI steps | 1 |
+| FR-032 recorded render check in a scratch project (last) | 0.5 |
+| rework buffer (iteration 002 retro calibration) | 2 |
+| **Total** | **8.5** |
+
+8.5 of 20. The review-signoff crossing stays unplanned while it stays small (iteration 002 retro, calibration).
+
+### Quality and risks
+
+- The quality resolver read the stack as "frontend" again (iteration 003 DRIFT-003, H-025). The real stack is
+  PowerShell 7 scripts, lens markdown, one YAML catalog and tests.
+- Each new test is written failing first and committed red with its count, then the fix (two commits).
+- Per item, not totals (iteration 002 retro action 1): the SC-011 test names the rule that fails; the FR-032 test names
+  the lens in the wrong group.
+- Risk: a release-notes fact that cannot be confirmed. It is left out, and the line says only what was confirmed.
+- Risk: the UTF-8 output. The FR-032 test reads the block back from a child process with a non-UTF-8 console
+  encoding and compares it with `canonical_text`.
+- Risk: the conformance provider (203's file, not edited here) detects the agenda by `Selected lenses:`, which is kept.
+  If the render check shows the binding refusing anyway, it is a hand-over to 203, not an edit.
+- The verification plan (`.specrew/verification-plan.json`) is re-pointed to iteration 003's tests in the first commit
+  after before-implement (iteration 002 retro action 2).
