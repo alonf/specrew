@@ -349,7 +349,10 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Trace:** FR-001; SC-001.
   - **Depends:** T020.
   - **Owns:** `scripts/internal/session-recovery.ps1`, `scripts/specrew-start.ps1`, `tests/unit/**`.
-- [ ] T023 [owner: Implementer] [sp: 1.0] [US1] **A resume path outside `-ProjectPath` is refused (item 23).**
+- [x] T023 [owner: Implementer] [sp: 1.0] [US1] **A resume path outside `-ProjectPath` is refused (item 23).**
+  - **Done (2026-11-15):** RED 6/8 in `ed2a27e8`, GREEN 8/8 in `824e9604`, registered in `7f265f9b`; the suite and the
+    five lanes green in the review layout. The release-cadence `closeout-identity-schema-parity.tests.ps1` now pins
+    the relative path (DRIFT-206-I002-007). This repository's own identity file is rewritten relative at its next sync.
   - **RED:** a rooted resume path outside the fixture is followed today, and start writes into it.
   - **Work:** refuse a resume path outside `-ProjectPath`; the identity file stops carrying an absolute feature path.
   - **Acceptance:** a path inside the project resumes; no write lands outside the fixture.

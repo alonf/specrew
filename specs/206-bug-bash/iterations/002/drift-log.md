@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 100% (6/6 resolved)
+**Total drift events**: 7
+**Resolution rate**: 100% (7/7 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -130,3 +130,15 @@ The following resolution strategies remain available if drift is detected later 
   no lane (`c9db9184`). Each layout red came from this crew's change, none from the product.
 - **Class closure**: NONE — the review-request conditions (DRIFT-206-I002-005) already run the lanes in the layout
   before every push of code.
+
+### DRIFT-206-I002-007 — T023 changed a release-cadence integration test outside its owned files
+
+- **What**: 2026-11-15. `tests/integration/closeout-identity-schema-parity.tests.ps1` pinned the identity file's
+  `session_state_feature_path` as an absolute, quoted path ending in `specs\022-hotfix-schema-tests`: the very value
+  bug list item 23 removes from a tracked file. T023 owns `tests/unit/**` only.
+- **Resolution**: the pin now expects the relative path, `specs/022-hotfix-schema-tests`, which the frontmatter writer
+  leaves unquoted. The test was read, not run: it runs `specrew start` without pointing the user profile at a temp file
+  and builds its fixture under this repository's `.scratch/`; it is release cadence, so CI does not run it per push.
+  The conversion and the reader are proven by `tests/unit/resume-path-inside-project.tests.ps1`.
+- **Class closure**: NONE — the release-cadence suites that run `specrew start` without the profile redirect are
+  bug list item 8's and feature 203's private-test-home class.
