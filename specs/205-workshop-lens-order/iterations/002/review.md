@@ -3,7 +3,8 @@
 **Schema**: v1
 **Reviewed**: 2026-11-14
 **Overall Verdict**: accepted: two rounds; round 1's three minor findings fixed failing-test first; round 2 passed with
-no findings on `b15c5dd1`; the records written after round 2 are covered by the maintainer's partial-coverage approval
+no findings on `b15c5dd1`; the sign-off gate found the change after round 2 records-only, so round 2 covers the
+sign-off without a partial-coverage approval
 
 ## Independent review
 
@@ -34,8 +35,10 @@ No lens file, skill or template changed in the fixes. The red and green runs are
 
 - Round 2 found nothing and covered the files exactly as they were (`b15c5dd1`). A clean round completes without a
   pause question.
-- This record, and the drift and hand-over records written with it, landed after round 2. The sign-off therefore
-  rests on the maintainer's partial-coverage approval for that change, as in iteration 001.
+- This record and the drift entries written with it landed after round 2. The sign-off gate classed that change as
+  records only ("records-only-delta-does-not-stale", matched to round 2's run), so no partial-coverage approval was
+  needed, unlike iteration 001. An earlier version of this record said the sign-off rested on such an approval; that
+  was corrected after the verdict (DRIFT-022).
 - This record is pushed with plan.md still at `executing`, which the governance check refuses beside `review.md`. The
   maintainer allowed that for this push only (DRIFT-021); the push after the sign-off verdict is fully green.
 
@@ -48,7 +51,7 @@ No lens file, skill or template changed in the fixes. The red and green runs are
 - **It claims** SC-012 only as far as `quality/t026-recorded-run.md` states: the workshop replies were sent by the
   reviewer session, each confirmed by the maintainer first; "accept" closing a list was shown only together with
   answers to must-answer questions.
-- **It does not claim** a round read the records written after round 2; the partial-coverage approval covers them.
+- **It does not claim** a round read the records written after round 2; the gate accepted them as records only.
 - **It does not claim** FR-030 or FR-031 (iteration 003) or the two-pass split, back-check and amendments (iteration
   004).
 
@@ -90,6 +93,6 @@ review store that exists only on the machine that ran the review, so the local c
 plain words, this record's independence rests on:
 
 - **The two Codex rounds, for the trees they read.** Round 1 read `3ddcd185` and round 2 read `b15c5dd1`.
-- **The maintainer's partial-coverage approval, for the records after round 2.** No campaign run read them.
+- **The sign-off gate's records-only finding, for the records after round 2.** No campaign run read them.
 - **Not on the record itself.** This record was written by the implementing session (Claude, the code writer), not by
   the reviewer, so it adds no independence of its own.

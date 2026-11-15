@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 21
+**Total drift events**: 23
 **Resolution rate**: 100% (5/5 resolved for this feature; DRIFT-001 to DRIFT-003 and DRIFT-005 class closure open; DRIFT-004 is a planning decision)
 **Specification drift**: None detected
 
@@ -398,6 +398,46 @@
   round and the sync.
 - **Class closure**: NONE — the same gap as iteration 001's DRIFT-013 and H-007; the sign-off gate and the
   governance check are feature 203's area.
+
+### DRIFT-022 — the review-signoff sync: a held hand-over, a gate that needed no override, and a corrected record (decision)
+
+- **Observed**: 2026-11-15, after `fa65488d` was pushed.
+  1. The first review-signoff sync refused, and nothing was changed: "Boundary gate preflight failed before
+     packet/state mutation: - [working-tree] The boundary tree has 1 uncommitted product/methodology path(s); commit or
+     dispose them before rendering a packet." The path was `handover-to-203.md` (H-022). It was held back because only
+     `review.md`, the drift log and `state.md` change between the last round and the sync.
+  2. The second sync passed. The gate's decision was "allow", reason "records-only-delta-does-not-stale", matched to
+     round 2's run `run-20261114-205542888-e1efcdea`, with no override. No partial review signoff line was asked for.
+  3. `review.md` as pushed in `fa65488d` said in three places that the records after round 2 rest on the maintainer's
+     partial-coverage approval. The gate needed none, so those lines were wrong.
+- **Rulings** (the reviewer session, routine, under the maintainer's delegation; rulings 2 and 3 were shown to the
+  maintainer first):
+  1. H-022 is held by exact path, not committed before the sync. The reviewer withdrew their earlier line that H-022
+     goes in "with these records", because the standing file-limit rule wins. The copy was checked, and only that
+     one file was restored to HEAD before a single rerun of the sync.
+  2. The Deterministic gate and the Contract lane, skipped on `fa65488d` only because of the allowed Lint item, are
+     acceptable for that push. They ran green on `b15c5dd1`, and they must run green on the first records commit
+     after the verdict.
+  3. The `review.md` correction follows the verdict, so the tree does not move before it. The packet named the three
+     wrong lines in plain words.
+- **Resolution**: the maintainer typed `approved for review-signoff`; boundary commit `9c9a132f`. H-022 is back, and the
+  three `review.md` lines are corrected in the records commit after it.
+- **Class closure**: NONE. A record written before the sync must guess whether the gate will want an override; the
+  gate's decision is known only after the record is pushed. That belongs to the sign-off gate, which is feature 203's
+  area (iteration 001's H-007 is the same seam).
+
+### DRIFT-023 — Cross-Platform Validation's Windows job could not install Pester (external CI failure)
+
+- **Observed**: 2026-11-14 23:22:51Z, Cross-Platform Validation run 43652924955, attempt 1, job 132625113293,
+  "Deterministic fake-provider review runtime (windows-latest)", step "Verify PowerShell and install pinned Pester",
+  on `fa65488d` (two Markdown records): `Install-Package: No match was found for the specified search criteria and
+  module name 'Pester'. Try Get-PSRepository to see all available registered module repositories.` It then threw
+  `pester-allusers-install-failed`. No test ran. The other seven jobs were green, among them the same job on macOS and
+  Ubuntu.
+- **Resolution**: reported first. One rerun of the failed job was ruled by the reviewer session (routine; infrastructure
+  outside the push). Attempt 2 was green in all eight jobs (Windows job 132627411329).
+- **Class closure**: NONE. The cause is the package gallery or the runner, not 205's change, and it differs from the
+  `empty-result-retry` sighting (DRIFT-020). The workflow is not 205's to change.
 
 <!--
   Every new ### DRIFT-... event includes:

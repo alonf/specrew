@@ -148,3 +148,22 @@ previous turn's Stop, or have the refusal say that no token was issued for this 
 one.
 
 **Status**: open; owner feature 203.
+
+## H-022 — sighting of HO-206-1 / B5F-051: `empty-result-retry` read a non-empty first attempt as empty
+
+**Severity**: as feature 206 rated HO-206-1. Not a new item.
+
+**Observed**: 2026-11-14, Specrew CI run 43635706006, attempt 1, job 132572686582, ubuntu-latest, on `b15c5dd1` (drift
+log only), the only failure of 131: case "does NOT retry a non-empty result (single spawn, no retry telemetry)", line
+86, `Expected regular expression '"run_id":"t108"' to match <empty>`. Attempt 2 passed after one rerun the reviewer
+ruled. Recorded in 205's iteration 002 drift log as DRIFT-020.
+
+**Why it is useful**: a different symptom from the earlier sighting of this case on `cf01f599` (there, two spawns at
+line 87; here, empty stdout at line 86). It fits HO-206-1's candidate cause more directly than the earlier sightings:
+`Invoke-ContinuousCoReviewAgentInWorktree` (`scripts/internal/continuous-co-review/worktree-reviewer.ps1:1598`) keeps
+stdout only if the `ReadToEndAsync` task already shows `RanToCompletion` when `WaitForExit(slice)` returns. Here the
+first attempt's output, which the fake agent wrote, was read as empty.
+
+**Count**: the fifth sighting in the records (206's bug list item 3 lists four).
+
+**Status**: open; owner feature 203 (HO-206-1, B5F-051).
