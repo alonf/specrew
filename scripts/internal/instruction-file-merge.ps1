@@ -210,3 +210,139 @@ function Set-SpecrewInstructionFileSection {
 
     return [pscustomobject]@{ Path = $Path; Changed = $changed; Created = (-not $existed) }
 }
+
+# --- F-206 T020 (FR-003, SC-002, bug list item 21, design D5-a): whole files `specrew start` wrote itself ---------
+# Start heals `.github/agents/squad.agent.md` and creates the `.squad/agents/*/charter.md` files. Once those writes are
+# committed, the next start's change detection read them as the user's. Start records, in a git-ignored runtime
+# record, the SHA-256 of each session-loaded file it created or changed during its run; a changed file whose committed
+# content still matches its recorded hash is Specrew's own. Any edit changes the hash, so it is the user's; a file
+# with no record entry is the user's (the error is toward pausing). The record holds relative paths and hashes only.
+
+function Get-SpecrewStartWrittenFilesRecordPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+    return (Join-Path (Join-Path $ProjectPath '.specrew\runtime') 'start-written-files.json')
+}
+
+function Get-SpecrewStartWrittenContentHash {
+    # Pure: SHA-256 (lowercase hex) of text with a leading BOM removed, CRLF read as LF and trailing newlines dropped,
+    # so the working-tree file and the committed blob hash the same whatever the checkout's line endings.
+    param([AllowNull()][AllowEmptyString()][string]$Content)
+
+    if ($null -eq $Content) { return $null }
+    $normalized = ($Content.TrimStart([char]0xFEFF) -replace "`r`n", "`n").TrimEnd("`n")
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = $sha.ComputeHash([System.Text.UTF8Encoding]::new($false).GetBytes($normalized))
+        return (($bytes | ForEach-Object { $_.ToString('x2') }) -join '')
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-SpecrewSessionLoadedFileSnapshot {
+    # The hash of every existing file matching the session-loaded globs, keyed by its project-relative path with
+    # forward slashes. Globs are project-relative (for example '.squad/agents/*/charter.md').
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [Parameter(Mandatory = $true)][string[]]$Globs
+    )
+
+    $root = (Resolve-Path -LiteralPath $ProjectPath).ProviderPath
+    $snapshot = @{}
+    foreach ($glob in $Globs) {
+        if ([string]::IsNullOrWhiteSpace($glob)) { continue }
+        foreach ($file in @(Get-ChildItem -Path (Join-Path $root $glob) -File -Force -ErrorAction SilentlyContinue)) {
+            $relative = [System.IO.Path]::GetRelativePath($root, $file.FullName) -replace '\\', '/'
+            if ($snapshot.ContainsKey($relative)) { continue }
+            $snapshot[$relative] = Get-SpecrewStartWrittenContentHash -Content ([System.IO.File]::ReadAllText($file.FullName))
+        }
+    }
+
+    return $snapshot
+}
+
+function Read-SpecrewStartWrittenFilesRecord {
+    # The recorded hashes, keyed by relative path. A missing or unreadable record reads as empty.
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+
+    $record = @{}
+    $recordPath = Get-SpecrewStartWrittenFilesRecordPath -ProjectPath $ProjectPath
+    if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) { return $record }
+    try {
+        $parsed = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -ne $parsed -and $parsed.PSObject.Properties['files'] -and $null -ne $parsed.files) {
+            foreach ($property in $parsed.files.PSObject.Properties) {
+                if ([string]$property.Value -match '^[0-9a-f]{64}$') {
+                    $record[[string]$property.Name] = [string]$property.Value
+                }
+            }
+        }
+    }
+    catch {
+        return @{}
+    }
+
+    return $record
+}
+
+function Save-SpecrewStartWrittenFilesRecord {
+    # Merge this run's writes into the record: a file whose hash differs between the snapshots taken before and
+    # after the run's writes (or that did not exist before) is recorded with its new hash; earlier entries are kept
+    # while their file exists; entries for deleted files are dropped. Written whole, atomically.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [Parameter(Mandatory = $true)][System.Collections.IDictionary]$Before,
+        [Parameter(Mandatory = $true)][System.Collections.IDictionary]$After
+    )
+
+    $merged = @{}
+    $existing = Read-SpecrewStartWrittenFilesRecord -ProjectPath $ProjectPath
+    foreach ($key in @($existing.Keys)) {
+        if ($After.Contains($key)) { $merged[$key] = $existing[$key] }
+    }
+    foreach ($key in @($After.Keys)) {
+        if (-not $Before.Contains($key) -or [string]$Before[$key] -ne [string]$After[$key]) {
+            $merged[$key] = [string]$After[$key]
+        }
+    }
+
+    $files = [ordered]@{}
+    foreach ($key in @($merged.Keys | Sort-Object)) { $files[$key] = $merged[$key] }
+    $json = ([ordered]@{ schema = 1; files = $files } | ConvertTo-Json -Depth 4) + "`n"
+
+    $recordPath = Get-SpecrewStartWrittenFilesRecordPath -ProjectPath $ProjectPath
+    $dir = Split-Path -Parent $recordPath
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+    $tempPath = '{0}.{1}.tmp' -f $recordPath, ([guid]::NewGuid().ToString('N'))
+    try {
+        [System.IO.File]::WriteAllText($tempPath, $json, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($tempPath, $recordPath, $true)
+    }
+    finally {
+        if (Test-Path -LiteralPath $tempPath -PathType Leaf) { Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+function Get-SpecrewCommittedContentHash {
+    # The hash of a file's content at HEAD, or $null when HEAD has no such file. The change detection compares
+    # commits, so the committed content (not a working-tree copy this run may already have rewritten) is what counts.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $previousEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+        $lines = @(& git -C $ProjectPath show ('HEAD:{0}' -f ($RelativePath -replace '\\', '/')) 2>$null)
+        if ($LASTEXITCODE -ne 0) { return $null }
+        return (Get-SpecrewStartWrittenContentHash -Content ($lines -join "`n"))
+    }
+    catch {
+        return $null
+    }
+    finally {
+        [Console]::OutputEncoding = $previousEncoding
+    }
+}

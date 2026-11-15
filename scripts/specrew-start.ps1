@@ -53,6 +53,12 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 }
 . $boundaryStateHelperPath
 
+$instructionFileMergeHelperPath = Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1'
+if (-not (Test-Path -LiteralPath $instructionFileMergeHelperPath -PathType Leaf)) {
+    throw "Missing instruction-file merge helper '$instructionFileMergeHelperPath'."
+}
+. $instructionFileMergeHelperPath
+
 $sessionRecoveryHelperPath = Join-Path $PSScriptRoot 'internal\session-recovery.ps1'
 if (-not (Test-Path -LiteralPath $sessionRecoveryHelperPath -PathType Leaf)) {
     throw "Missing session-recovery helper '$sessionRecoveryHelperPath'."
@@ -2209,7 +2215,8 @@ function Get-RestartTriggerFiles {
     param(
         [string]$ResolvedProjectPath,
         [AllowNull()][string]$BaselineCommitHash,
-        [string[]]$ChangedFiles
+        [string[]]$ChangedFiles,
+        [AllowNull()][System.Collections.IDictionary]$StartWrittenFiles
     )
 
     $restartTriggerFiles = New-Object System.Collections.Generic.List[string]
@@ -2219,6 +2226,19 @@ function Get-RestartTriggerFiles {
         }
 
         $normalizedChangedFile = ([string]$changedFile).Trim() -replace '/', '\'
+        # F-206 T020 (FR-003, D5-a): a whole file start created or repaired itself is bookkeeping while its committed
+        # content still matches the hash start recorded when it wrote it; any edit changes the hash, so it is the
+        # user's. A file with no record entry is the user's.
+        $recordKey = ([string]$changedFile).Trim() -replace '\\', '/'
+        if ($null -ne $StartWrittenFiles -and $StartWrittenFiles.Contains($recordKey)) {
+            if (-not (Get-Command -Name 'Get-SpecrewCommittedContentHash' -ErrorAction SilentlyContinue)) {
+                . (Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1')
+            }
+            $committedHash = Get-SpecrewCommittedContentHash -ProjectPath $ResolvedProjectPath -RelativePath $recordKey
+            if (-not [string]::IsNullOrWhiteSpace($committedHash) -and $committedHash -ceq [string]$StartWrittenFiles[$recordKey]) {
+                continue
+            }
+        }
         if ($normalizedChangedFile -ieq '.github\copilot-instructions.md') {
             # F-206 T003 (FR-003): start heals Specrew's coordinator block into this file before it classifies,
             # so compare with Specrew's matched specrew-managed blocks stripped from both sides; an unbalanced
@@ -2451,7 +2471,14 @@ function Save-StartArtifacts {
     # Get baseline commit and check for session-loaded file changes
     $baselineCommit = Get-BaselineCommitHash -ResolvedProjectPath $ResolvedProjectPath
     $changedFiles = @(Test-SessionLoadedFilesChanged -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit)
-    $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles)
+    $startWrittenFiles = @{}
+    try {
+        $startWrittenFiles = Read-SpecrewStartWrittenFilesRecord -ProjectPath $ResolvedProjectPath
+    }
+    catch {
+        Write-Verbose ("Start-written files record not read: {0}" -f $_.Exception.Message)
+    }
+    $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles -StartWrittenFiles $startWrittenFiles)
     $hasChanges = ($restartTriggerFiles.Count -gt 0)
     $templateRefreshArtifacts = @(Get-UnresolvedTemplateRefreshArtifacts -ResolvedProjectPath $ResolvedProjectPath)
 
@@ -2996,6 +3023,16 @@ if ($missingBootstrapPaths.Count -gt 0) {
     exit 1
 }
 
+# F-206 T020 (FR-003, D5-a): snapshot the session-loaded files before start writes any of them, so the
+# files this run creates or repairs can be recorded as Specrew's own after its last write. Fail-open.
+$startWrittenSnapshotBefore = $null
+try {
+    $startWrittenSnapshotBefore = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $resolvedProjectPath -Globs (Get-SessionLoadedPaths)
+}
+catch {
+    Write-Verbose ("Start-written files snapshot skipped: {0}" -f $_.Exception.Message)
+}
+
 # F-184 iter-002 (T003, FR-016): heal/refresh the coordinator instruction section in each
 # supported host's InstructionsFile (idempotent backstop; init/update are the primary deploy
 # path). Fail-open + silent: never fails `specrew start`.
@@ -3470,6 +3507,19 @@ if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
     }
     catch {
         Write-Info ("WARN: Crew runtime sync failed for host '{0}': {1}" -f $selectedHost, $_.Exception.Message)
+    }
+}
+
+# F-206 T020 (FR-003, D5-a): record the session-loaded files this run created or changed (the instruction heal
+# and the crew runtime sync above are start's last writes to them). Fail-open: a failed record only means the
+# next start may pause on these files, as it did before.
+if ($null -ne $startWrittenSnapshotBefore) {
+    try {
+        $startWrittenSnapshotAfter = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $resolvedProjectPath -Globs (Get-SessionLoadedPaths)
+        Save-SpecrewStartWrittenFilesRecord -ProjectPath $resolvedProjectPath -Before $startWrittenSnapshotBefore -After $startWrittenSnapshotAfter
+    }
+    catch {
+        Write-Info ("WARN: Could not record the files start wrote: {0}" -f $_.Exception.Message)
     }
 }
 
