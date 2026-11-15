@@ -29708,3 +29708,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 120530da19bbdbb366b0ea7f40b3f9c354168180
 - **Recorded At**: 2026-11-15T15:20:01Z
+
+## 2026-11-15T16:47:19Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0e8a108ec1c1724f4ea693d375be7c40710116fd
+- **Recorded At**: 2026-11-15T16:47:08Z
