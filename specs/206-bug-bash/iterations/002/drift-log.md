@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 100% (4/4 resolved)
+**Total drift events**: 5
+**Resolution rate**: 100% (5/5 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -96,3 +96,23 @@ The following resolution strategies remain available if drift is detected later 
 - **Class closure**: NONE — a crew error; plan-stage rule 6 (author into the scaffold) already covers it. The crew's
   practice from here: scaffold the design analysis with `New-SpecrewDesignAnalysisArtifact` and check it with the gate
   before the decision stop.
+
+### DRIFT-206-I002-005 — the reviewer's rulings on the before-implement discussion prompts (human-decision)
+
+- **What**: 2026-11-15, after the maintainer's "approved for before-implement". The reviewer (specrewreviewer-98) told
+  the maintainer the answers first and sent them on the maintainer's approval, with no objection raised; routine
+  rulings under the delegation, not approvals.
+  1. `/speckit.analyze` is not run: the traceability check covers the same links, and governance passes on the
+     iteration.
+  2. The first review round runs after Phase 5 (T020 to T025), on three conditions:
+     - before asking for it, all five lanes run green in the review's own layout, built as the engine builds it, with
+       the environment the launch really has (HOME included);
+     - `--timeout-seconds` is sized from the lanes' measured time in that layout plus the reviewer's pass, and the
+       number is stated in the request;
+     - the round's scope file is committed before the round, with T037's two brief additions in it, and the tree holds
+       nothing the sign-off sync counts as an uncommitted product or methodology path.
+  Each round is still the maintainer's typed approval.
+- **Also**: no quiet is needed for feature 203 now (its review is signed off, its sweeps done). T020 and T022 fixtures
+  and any supervised run stay inside temp folders the crew creates; home hashed before and after every run.
+- **Resolution**: recorded; applied at the Phase 5 review request.
+- **Class closure**: NONE — a ruling, not a defect.
