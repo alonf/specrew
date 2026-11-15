@@ -29,14 +29,24 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ('hook-length-' + [guid]::NewGuid()
 # Run from this checkout with no working directory, the antigravity launcher started this project's own hook dispatcher
 # (session start, 02:23:38 local on 2026-11-14), which rewrote iterations/001/state.md and tasks-progress.yml. Every command
 # runs in its scratch project, and the checkout's changed and untracked files are the same, byte for byte, at the end.
+function Get-CheckoutEntryHash {
+    # What a listed path holds, without following it: '-' when absent, a link by its target text (a tracked link can point
+    # at another machine, round E's preflight), a file by its content hash, and a file that cannot be read as unreadable
+    # with the reason. Never throws: one unreadable entry must not stop the check.
+    param([string]$Path)
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) { return '-' }
+    if (-not [string]::IsNullOrEmpty([string]$item.LinkTarget)) { return 'link:' + [string]$item.LinkTarget }
+    if ($item.PSIsContainer) { return 'dir' }
+    try { return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash }
+    catch { return 'unreadable:' + $_.Exception.GetType().Name + ':' + [string]$_.Exception.Message }
+}
 function Get-CheckoutState {
     param([string]$Root)
     $lines = @(& git -C $Root status --porcelain --untracked-files=all 2>$null)
     return @($lines | ForEach-Object {
             $rel = ([string]$_).Substring(3).Trim('"')
-            $full = Join-Path $Root $rel
-            $hash = if (Test-Path -LiteralPath $full -PathType Leaf) { (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash } else { '-' }
-            '{0} {1}' -f ([string]$_), $hash
+            '{0} {1}' -f ([string]$_), (Get-CheckoutEntryHash -Path (Join-Path $Root $rel))
         } | Sort-Object)
 }
 function Get-CheckoutChanges {
