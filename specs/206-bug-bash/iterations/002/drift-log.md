@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution rate**: 100% (8/8 resolved)
+**Total drift events**: 9
+**Resolution rate**: 100% (9/9 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -167,3 +167,19 @@ The following resolution strategies remain available if drift is detected later 
   2026-11-15). All three join it when the plan moves to iteration 002 for the first review round, so the review's
   preflight and the pre-push run both carry them. The push of this entry went out with the governance check red, because
   the command did not stop on that failure; the next push gates on it.
+
+### DRIFT-206-I002-009 — a records commit pushed while the governance check was failing (crew error)
+
+- **Observed**: 2026-11-15. `3ca2f46a` (DRIFT-206-I002-008's entry) was pushed although `validate-governance
+  -ChangedOnly` had just failed on it ("missing required Class closure"): the shell call printed the check's exit code
+  and went on to `git push`. Specrew CI run 43755677442 shows it: Lint job 132939119745 red on that entry, the
+  Deterministic gate and the Contract lane skipped. Outside the maintainer's allowances; the reviewer has told the
+  maintainer. The second time on 2026-11-15 that a check's failure did not stop what came after it (the first is
+  DRIFT-206-I002-008).
+- **Resolution**: `7bdb0943`, with markdownlint and governance green first: the label in the validator's form.
+- **Class closure**: `safe-push.ps1`, a script in the crew's scratchpad, not in the repository (the reviewer's ruling,
+  2026-11-15). It is the only way this crew pushes: it refuses `main` and a difference holding
+  `.squad/active-features.yml`; runs the CI markdownlint command and `validate-governance -ChangedOnly` against the last
+  pushed commit, and `lint-self-leak` when `extensions/` or `.specify/` changed; for anything that is not a record,
+  requires the five lanes green in the review layout on a clean tree at a commit with only records since; and pushes
+  only if every check exits 0.
