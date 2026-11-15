@@ -221,34 +221,99 @@ and D4-b it falls by 1.0, which would let item 16 back in with 0.5 SP to spare.
 
 ## Alternatives
 
-### Option A: Clear of 203 — nothing in `shared-governance.ps1`
+### Option A: Simplest — clear of 203, nothing in `shared-governance.ps1`
 
-- **D1:** D1-a.
-- **D2:** D2-a.
-- **D3:** D3-c, detection only.
-- **D4:** D4-b, owed in the packet.
-- **D5:** D5-a.
-- **D6:** D6-b, the test passes a recovery choice.
-- **Size:** 23.5 SP before the cut.
-- **Trade:** no merge risk with 203. The closeout keeps its step after the verdict (items 41 and 44 are detected,
-  not removed), and a fresh clone still refuses.
+**Approach**: D1-a, D2-a, D3-c (the validator flags a sealed closeout dashboard whose phase is not
+`iteration-closeout`), D4-b (the Completed date and the open hardening rows named as owed in the packet), D5-a,
+D6-b (the test passes `--recovery-choice A`).
+**Architectural pattern**: detect and report at the existing checks; no change to the capture or the seal.
+**Quality features considered**: no merge risk with feature 203; correctness of the records is checked, not produced.
+**Effort estimate**: 23.5 SP before the cut (1.75 SP below Option B).
+**Reversibility cost**: Low — each change is a check or a test.
+**Trade-offs**:
 
-### Option B: Remove the recurring costs (recommended)
+- (+) nothing in `shared-governance.ps1`, so no rebase work when 203 merges.
+- (−) items 41 and 44 are detected, not removed: the crew still redraws, writes the date and reseals after every
+  closeout verdict.
+- (−) a fresh clone of a governed project still refuses a no-console start.
 
-- **D1:** D1-a.
-- **D2:** D2-a.
-- **D3:** D3-a.
-- **D4:** D4-a.
-- **D5:** D5-a.
-- **D6:** D6-a.
-- **Size:** 25.25 SP before the cut; 20.0 SP after moving out items 15, 16, 19, 20, 28 and 35.
-- **Trade:** two small changes in `shared-governance.ps1`, each in a part of the file 203 has not changed. The
-  closeout needs no step after the verdict, and a fresh clone starts.
+**Design principle / why this matters**: the cheapest honest signal, leaving the human's extra step in place.
 
-### Option C: By the book — both anchors
+**Recommended for**: a feature that must not touch the capture before 203 merges.
 
-As Option B with D1-b. 25.75 SP before the cut; it needs items 12 and 18 moved out as well. It covers 203's T014 inside
-this feature instead of leaving it to proposal 206.
+**Diagram**:
+
+```mermaid
+flowchart LR
+  V[closeout verdict] --> M[mirrors] --> S[seal]
+  S --> G[validator flags stale dashboard or missing date]
+  G --> H[human: redraw, write date, reseal]
+```
+
+### Option B: Reasonable — remove the recurring costs (chosen)
+
+**Approach**: D1-a, D2-a, D3-a (the capture redraws the dashboard after the mirrors and before the seal), D4-a (the
+mirror write that moves plan.md to `complete` writes the Completed date; the arrival lists open hardening rows), D5-a,
+D6-a (a governed project with no session files starts as a first start).
+**Architectural pattern**: the step that owns the state writes it, once, in the same act: the capture draws what it
+seals, the mirror writes the date it implies, start records what it wrote itself.
+**Quality features considered**: correctness of the sealed records; idempotence of the capture (a second capture
+leaves the date unchanged); failure semantics (a redraw failure warns and never blocks the seal); testability (every
+fix behind a failing test); merge risk with 203 (both changes are in code its branch has not changed).
+**Effort estimate**: 25.25 SP before the cut; 20.0 SP after moving out items 15, 16, 19, 20, 28 and 35.
+**Reversibility cost**: Low to Medium — two small additions to the capture's closeout tail and the mirror writer, each
+behind its own test.
+**Trade-offs**:
+
+- (+) no step after the closeout verdict, at every closeout on every crew.
+- (+) a fresh clone starts, and Specrew's own whole-file writes stop pausing the next start.
+- (−) two changes in `shared-governance.ps1`, about 100 lines from feature 203's nearest hunk, so a rebase when 203
+  merges.
+
+**Design principle / why this matters**: items 41 and 44 recur at every boundary; removing them is worth a small,
+well-separated change in a file 203 also edits.
+
+**Recommended for**: this iteration.
+
+**Diagram**:
+
+```mermaid
+flowchart LR
+  V[closeout verdict] --> M[mirrors: status complete and Completed date]
+  M --> D[redraw dashboard]
+  D --> S[seal]
+  A[closeout arrival] --> P[pending-verdict artifact lists open hardening rows]
+  ST[specrew start] --> R[record of whole files it wrote] --> C[classifier]
+```
+
+### Option C: By-the-book — both anchors for a deferred verdict
+
+**Approach**: as Option B, with D1-b: a `deferred` row names either a decision id or the plan row that schedules the
+task after sign-off, so feature 203's T014 is covered inside this feature.
+**Architectural pattern**: as Option B, plus a second anchor rule read from plan.md.
+**Quality features considered**: as Option B, plus completeness of the task vocabulary for both known cases.
+**Effort estimate**: 25.75 SP before the cut; it needs items 12 and 18 (0.5 SP) moved out as well.
+**Reversibility cost**: Medium — a second anchor rule that proposal 206 may later replace.
+**Trade-offs**:
+
+- (+) 203's T014 gets an honest verdict now.
+- (−) a second rule over free text (what counts as "scheduled after sign-off"), which lesson 1 says to build only
+  from listed affirmative forms.
+- (−) two more carried items out, and overlap with proposal 206's item 4.
+
+**Design principle / why this matters**: complete the vocabulary for every case seen, at the cost of building ahead
+of the proposal that designs it.
+
+**Recommended for**: a feature that owns proposal 206's vocabulary.
+
+**Diagram**:
+
+```mermaid
+flowchart LR
+  R[review.md deferred row] --> X{anchor}
+  X -->|decision id| D[decisions.md]
+  X -->|plan row| P[plan.md: scheduled after sign-off]
+```
 
 ## Applicable Lenses
 

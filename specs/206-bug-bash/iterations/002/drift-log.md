@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved)
+**Total drift events**: 4
+**Resolution rate**: 100% (4/4 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -80,3 +80,19 @@ The following resolution strategies remain available if drift is detected later 
 
 - This artifact was scaffolded before review starts so drift can be logged immediately when detected.
 - Replace the zero-drift summary with real counts when the first drift event is recorded.
+
+### DRIFT-206-I002-004 — the design analysis was written freehand, and the plan sync's design gate refused it
+
+- **Observed**: 2026-11-15. `sync-boundary-state.ps1 -BoundaryType plan -IterationNumber 002 -AuthCommitHash 5099ba32`
+  refused in `design-analysis-gate.ps1`: the Alternatives had no populated Simplest or Reasonable option, and the
+  By-the-book option lacked the seven required fields and a diagram. The draft named its options by content ("Clear of
+  203", "Remove the recurring costs", "By the book") with prose, not in the template's shape. The sync wrote nothing.
+- **Resolution**: the Alternatives section rewritten in the template's shape, with the same three options under the
+  same letters (A Simplest, B Reasonable, C By-the-book), each with Approach, Architectural pattern, Quality features
+  considered, Effort estimate, Reversibility cost, Trade-offs and a Mermaid diagram. The decision points, sizes, cut and
+  the maintainer's recorded choice (Option B) are unchanged. `Test-SpecrewDesignAnalysisArtifact` and
+  `Invoke-SpecrewDesignAnalysisPlanBoundaryGate` both return Valid, Option B selected and recommended, before the
+  sync is run again.
+- **Class closure**: NONE — a crew error; plan-stage rule 6 (author into the scaffold) already covers it. The crew's
+  practice from here: scaffold the design analysis with `New-SpecrewDesignAnalysisArtifact` and check it with the gate
+  before the decision stop.
