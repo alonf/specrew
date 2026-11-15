@@ -487,6 +487,8 @@ $perPush = @(
 )
 $releaseOnly = @(
     'tests/integration/validator-hardening-iteration1.ps1'
+    # Feature 206 T021 (SC-002, maintainer ruling 2026-11-12): excluded until green, then the release manifest.
+    'tests/integration/validator-hardening-iteration2.ps1'
 )
 $notInCi = @($perPush | Where-Object { -not $names.CiNamed.Contains($_) })
 Assert-True ($notInCi.Count -eq 0) ("the scripts registered per push are named by a CI step (missing: {0})" -f ($notInCi -join ', '))
@@ -505,7 +507,6 @@ $rulingExclusions = [ordered]@{
     'tests/integration/distribution-module-publish.ps1'              = 'would publish to PSGallery if PSGALLERY_API_KEY is set'
     'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
     'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
-    'tests/integration/validator-hardening-iteration2.ps1'           = 'red: '
     'tests/integration/project-path-resolution-regression.ps1'       = 'SC-001 not met in iteration 001: supervised runs 3 and 4 wrote into this repository'
 }
 foreach ($excludedPath in $rulingExclusions.Keys) {
@@ -525,6 +526,11 @@ foreach ($excludedPath in $rulingExclusions.Keys) {
 # support files a review preflight restores into its verification copy (the suite's own test proves both).
 $t002Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/unit/overclaim-dirty-check-separator.tests.ps1')
 Assert-True (($t002Text -match 'ls-files --cached --others --exclude-standard') -and ($t002Text -notmatch "Copy-Item -LiteralPath \`$source -Destination \`$root -Recurse")) "T002's fixture copies the files git does not ignore under .specrew, .squad and .github, so its result depends neither on the local review store nor on whether those files are tracked"
+
+# SC-002's script (feature 206 T021) built its fixtures under this repository's .scratch/ and copied .specrew, .squad
+# and .github whole. Its fixtures live in a temp folder it creates and copy only the files git does not ignore.
+$vh2Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/validator-hardening-iteration2.ps1')
+Assert-True (($vh2Text -match 'ls-files --cached --others --exclude-standard') -and ($vh2Text -match "GetTempPath\(\)\) \('validator-hardening-iteration2-'") -and ($vh2Text -notmatch "'\.scratch\\validator-hardening-iteration2'") -and ($vh2Text -notmatch "foreach \(\`$item in @\('\.specrew', '\.squad', '\.github'\)\)")) "SC-002's script builds its fixtures in a temp folder and copies only the files git does not ignore under .specrew, .squad and .github"
 
 $sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
 Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture copies only the files git tracks under .specrew, so its result does not depend on the developer's session files"
