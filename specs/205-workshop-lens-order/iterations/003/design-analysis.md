@@ -66,6 +66,11 @@ volatile facts.
 
 **Reversibility cost**: High. Two fields, one function, lens text; a revert restores today's lens.
 
+**What the human sees when a date is stale**: when the stack is resolved, the lens shows one line per stack, for
+example "C#/.NET — sources last checked 2026-11-15: <current versions>". After 90 days the line ends "— stale: check
+the release notes before relying on it", every time the lens runs, until the catalog is refreshed. The workshop goes
+on; the human knows that line's versions may be out of date, and the agent looks them up before recommending one.
+
 **Trade-offs**: one more call the agent makes in the code lens. The skill's "not invoked mid-workshop" sentence gains
 an exception, which is a wording change the reviewer must check.
 
@@ -99,6 +104,10 @@ rule holds a version.
 
 **Reversibility cost**: High. Lens text only.
 
+**What the human sees when a date is stale**: the same words as Option A only if the agent compares the dates
+correctly. If it does not, the human sees a stale line with no marker, or a marker on a fresh one, and nothing tests
+which.
+
 **Trade-offs**: it does not meet SC-011 as written, and it leaves a run-time fact to the agent.
 
 **Diagram**:
@@ -125,6 +134,14 @@ unnoticed.
 **Effort estimate**: 3.5 SP for FR-030.
 
 **Reversibility cost**: Medium. A CI step that other features' pushes depend on.
+
+**What the human sees when a date is stale**: in the workshop, the same line and marker as Option A.
+
+**What the red build does to other branches**: on the day the oldest date passes 90 days, the freshness step fails
+on every branch's next CI run, whatever that push changed: each open feature's push goes red at once, and under the
+CI rule each of those features stops for a ruling. The builds stay red until a refreshed catalog lands on main and
+each branch takes it in. A feature in the middle of a review stop or a pin advance is blocked by a date, not by its
+own change.
 
 **Trade-offs**: it enforces freshness at the cost of unrelated red builds. FR-030 asks for the marker to be shown, not
 for the build to fail.
