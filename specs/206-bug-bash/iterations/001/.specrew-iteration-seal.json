@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "feature": "206-bug-bash",
+  "iteration": "001",
+  "sealed_at": "2026-11-15T01:12:22.3236476+00:00",
+  "sealed_files": [
+    {
+      "path": "closed-open-table-post-t006.md",
+      "sha256": "de3b2c81f7aeb92d9951f36ea4bc2f0876264274b4db1d3f0e8f4e91f029c719"
+    },
+    {
+      "path": "closed-open-table.md",
+      "sha256": "955d9aea7413a34dcc0cf1cb4a7267a18bc0c017c8946266f07c0dde778df067"
+    },
+    {
+      "path": "closed-open-table.ps1",
+      "sha256": "b2265c62e364ea12c0eda07f7e4fcadef651f2a1e1cd2b199499679d2ef685d8"
+    },
+    {
+      "path": "dashboard.md",
+      "sha256": "927be5980f4f4d4a13fed8b5abbbd7cc4a06c5079c7b1f47c15acb0228406a68"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "98f7b10981cbcde32485139268b779471df795766b26a9fc09064ceba1021c9f"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "9d03b5d1a254c6b6473c8a715a756b622371173e9e7fe88ec6f6f5e21c108ada"
+    },
+    {
+      "path": "handover-to-203.md",
+      "sha256": "f647c21ac56d6f1d6a86eb29c08079d4c4d566cc7f4eaaf954ae1a95952a4886"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "1f52f65be271a12a42ea2ab60449a5ae5e216dacbca81a61f0ca586501ba9633"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "4c003e3ea4ddc8480994bc1068b7b59156383119dd5deaac93c4b48d59536669"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "22779cb4f825450213ea6c384f8246db2d3803d17b46fd46a1476321d953e8c1"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "ddc5d74b2c85c22a2c6bd2e74ccd26f75f5d00555c34437720046504c0d0692f"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "6afc2e68fd977642c74ee2b6332df85229cb9d18ed8434fb22b8c7aa995af2a8"
+    },
+    {
+      "path": "review-scope-round-1.md",
+      "sha256": "18d841ef13df0abf6c21c86dd92fa4d4e123d02f1e2cdd0c965342c130da6802"
+    },
+    {
+      "path": "review-scope-round-3.md",
+      "sha256": "463527f7de1ef9c9b2744869d67296715f772cc6ed5b57c084047b20fbae77cf"
+    },
+    {
+      "path": "review-scope-round-4.md",
+      "sha256": "98e4daf70c58b44f425a3e66ab8015cf8ca6b3ed94509afce072398f4d460ac7"
+    },
+    {
+      "path": "review.md",
+      "sha256": "c711955115df6a2da7b601d664383fa2437eecd22a13a09cb03f2870fa7fec8f"
+    },
+    {
+      "path": "specrew-start-facts.md",
+      "sha256": "74150d3b897bee2d273f719e50d06e1a817b85372cec3ca23a7fc9459f1a03c1"
+    },
+    {
+      "path": "state.md",
+      "sha256": "d9f277a165d52b28e787693b0d1f5a1924cc04ac02570791530c17aa7f4f3e39"
+    },
+    {
+      "path": "t014-held-scripts.md",
+      "sha256": "bee7fc749a22d038d532bb69c6d9c28e70891dc2269ec5242bac366851dff55f"
+    },
+    {
+      "path": "t015-registration.md",
+      "sha256": "2d80f31e1a94104cd8c95a85c40e71e38a01066f03bf773006c8c9a81958eeed"
+    },
+    {
+      "path": "t018-acceptance.md",
+      "sha256": "811ce0d136c5cb76fe1a533f85bbd4166747dc6f2b954567bf2f5b0672e40d17"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "b9be2fc4d06b140e1f42436082789949356e9e5026808a5dd1c7b072b37e443a"
+    },
+    {
+      "path": "verification-plan-record.md",
+      "sha256": "4b814038c220a6f3c59891acf9c5e2c9def8100afb659aaf62525dfa89b478e2"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}
