@@ -163,5 +163,7 @@ The following resolution strategies remain available if drift is detected later 
   `tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1` (every declared authority control has a
   production consumer). The self-leak firewall is a job of its own and is run before any push touching
   `extensions/` or `.specify/`.
-- **Class closure (reviewer, 2026-11-15)**: all three join a lane of 206's verification plan when it moves to
-  iteration 002 for the first review round, so the review's preflight and the pre-push run both carry them.
+- **Class closure**: `f206-structural-guards`, a new lane of 206's verification plan (the reviewer's ruling,
+  2026-11-15). All three join it when the plan moves to iteration 002 for the first review round, so the review's
+  preflight and the pre-push run both carry them. The push of this entry went out with the governance check red, because
+  the command did not stop on that failure; the next push gates on it.
