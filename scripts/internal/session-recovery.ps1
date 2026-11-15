@@ -236,9 +236,21 @@ function Test-SpecrewSessionStateConsistency {
         @{ Name = 'identity/now.md';      State = $Snapshot.identity; Path = $Snapshot.identity_path }
     )
 
+    # F-206 T022 (FR-001, SC-001, bug list item 22, design D6-a): last-start-prompt.md and start-context.json are
+    # per-machine and ignored by git, so a fresh clone of a governed project has neither while it carries the tracked
+    # identity file. With BOTH absent from disk this is a first start on this machine, not stale state: their absence
+    # is not reported. A file that is present but unreadable is still reported, and so is one missing beside the other.
+    $perMachineEntries = @($namedStates | Where-Object { $_.Name -in @('last-start-prompt.md', 'start-context.json') })
+    $noPerMachineFiles = @($perMachineEntries | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string]$_.Path) -and (Test-Path -LiteralPath ([string]$_.Path) -PathType Leaf)
+        }).Count -eq 0
+
     $existingCount = @($namedStates | Where-Object { $null -ne $_.State }).Count
     if ($existingCount -gt 0) {
         foreach ($entry in $namedStates) {
+            if ($noPerMachineFiles -and $entry.Name -in @('last-start-prompt.md', 'start-context.json')) {
+                continue
+            }
             if ($null -eq $entry.State) {
                 $fileOnDisk = $false
                 if (-not [string]::IsNullOrWhiteSpace([string]$entry.Path)) {
