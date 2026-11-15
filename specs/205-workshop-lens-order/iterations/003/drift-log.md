@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 100% (4/4 resolved or placed)
-**Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006)
+**Total drift events**: 6
+**Resolution rate**: 83% (5/6 resolved or placed; DRIFT-005's FR-030 wording waits for the maintainer)
+**Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 is proposed (DRIFT-005)
 
 ## Events
 
@@ -76,6 +76,45 @@
   confirm when prioritising; it is not a side question.
 - **Action 6** (H-015 to H-022): with feature 203.
 - **Class closure**: NONE — process carry-forward, not a defect.
+
+### DRIFT-005 — the code lens confirms a version the human's choice depends on (maintainer decision; FR-030 wording)
+
+- **Decision**: the maintainer's words at 19:02 local on 2026-11-15, "Yes for all", relayed by specrewreviewer-98 with
+  the question it answered. The reviewer had told them Option A rests on a 90-day window and a release can land well
+  inside it, as the recorded run showed (a session called a .NET release short-support, then corrected itself;
+  iteration 002 DRIFT-019 item 5), and proposed one sentence for the code lens's conduct: when the human's choice
+  depends on a version, the agent confirms it against the official source and shows the source and the date, even if
+  the stack's line is not yet stale. With it: if the host has no way to look a source up, the conduct says so to the
+  human in plain words and marks the version as unconfirmed; it does not guess.
+- **Placement**: T030 (the conduct change) adds the sentence and the fallback to `code-implementation.md`'s Workshop
+  Conduct. T027 covers it the way it covers the rest of the conduct text: the sentence and the fallback must be
+  present, and a self-test that removes either fails naming it.
+- **Spec**: FR-030 asks for dated lines and a stale marker. It does not ask the agent to confirm a version at the
+  point of choice, and SC-011 does not test the conduct. Doing it under FR-030 as written would stretch the
+  requirement, so it goes through clarify (TG-004) as Amendment A3, approved at the tasks boundary as A1 and A2 were at
+  the plan boundary. Proposed wording, not yet in spec.md:
+  - FR-030, appended: "When the human's choice depends on a version, the lens's conduct MUST tell the agent to confirm
+    it against the official source at that point and show the source and the date, even when the stack's line is not
+    stale. When the host cannot look a source up, the agent MUST say so in plain words and mark the version
+    unconfirmed, never guessing."
+  - SC-011, appended: "and the lens's conduct carries the confirm-at-the-point-of-choice rule and its no-lookup
+    fallback."
+- **Class closure**: the T027 check over the conduct text.
+
+### DRIFT-006 — the records-only push rule now covers records in general (maintainer decision)
+
+- **Decision**: the maintainer's words at 19:02 local on 2026-11-15, "Yes for all", relayed by specrewreviewer-98 for
+  all three crews, answering "should the records-only push rule cover records in general and not only Markdown".
+- **The rule now**: when the only difference from the last commit on which the full pre-push checks were green is
+  records, run markdownlint and the governance check, push, and follow CI to its end. Records are: Markdown under
+  `specs/` or `docs/`; the files a boundary sync writes (the `.squad` records, the sign-off gate's record and listing,
+  `state.md`, the closed-iterations index and the seal); and the iteration's own record files. Anything else in the
+  difference (any lens file, skill, template, script, test, configuration file, deployed copy or hash record) still
+  gets the full checks. Before using the rule, print the changed files and confirm each is a record of those kinds;
+  one that is not clearly so is not.
+- **Unchanged**: it does not relax a review round's head, and it does not widen the CI rerun exception
+  (DRIFT-205-INTAKE-007).
+- **Class closure**: NONE — a working rule, saved as the crew's standing rule.
 
 <!--
   Every new ### DRIFT-... event includes:

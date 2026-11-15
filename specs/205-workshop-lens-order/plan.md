@@ -578,6 +578,7 @@ plan approved the same day). Amendment A2 is approved at this plan boundary, as 
 | `code-rules.yml` | Each of the six per-stack rules (C#/.NET, C/C++, TypeScript/JavaScript, Python, Go, Java) gains `sources_checked` (a date) and `current` (the version facts confirmed from official release notes). Version numbers leave `title` and `default`. |
 | `code-implementation-lens.ps1` | One pure, read-only function returns one line per stack from the catalog, with today's date as a parameter. |
 | `code-implementation.md` | The conduct shows those lines when the stack is resolved. Source Notes list each stack's sources with URL and the date checked; a fact that could not be confirmed is left out. |
+| Lens conduct, added (DRIFT-005; FR-030 wording proposed as Amendment A3) | When the human's choice depends on a version, the agent confirms it against the official source and shows the source and the date, even when the line is not stale; when the host cannot look a source up, it says so in plain words and marks the version unconfirmed, never guessing. |
 | Workshop skill | The sentence that the lens helper "is not invoked mid-workshop" gains one exception: this read-only call. |
 | Tests | One new test file for SC-011, per rule, with self-tests. |
 
@@ -617,18 +618,18 @@ merged), and no new solution-side lens before 177. The `proposals/INDEX.md` row 
 
 | Work | SP |
 | --- | --- |
-| FR-030 test, red-first, per-rule self-tests (SC-011) | 1 |
+| FR-030 test, red-first, per-rule and conduct self-tests (SC-011) | 1.25 |
 | FR-030 refresh: release notes for six stacks, the two fields, Source Notes | 1.5 |
-| FR-030 line function, conduct and the skill's exception | 0.5 |
+| FR-030 line function, conduct (with the confirm-at-the-point-of-choice sentence) and the skill's exception | 0.75 |
 | FR-032 test, red-first: real catalog, a changed-tag fixture, the kept lines, UTF-8 round trip | 0.75 |
 | FR-032 renderer, UTF-8 output, skill agenda template and lens-open marker | 0.75 |
 | FR-031 proposal 220 status history and `proposals/INDEX.md` | 0.5 |
 | copies, hash record, parity, workshop regression, CI steps | 1 |
 | FR-032 recorded render check in a scratch project (last) | 0.5 |
 | rework buffer (iteration 002 retro calibration) | 2 |
-| **Total** | **8.5** |
+| **Total** | **9** |
 
-8.5 of 20. The review-signoff crossing stays unplanned while it stays small (iteration 002 retro, calibration).
+9 of 20. T027 and T030 each gained 0.25 SP for the confirm-at-the-point-of-choice sentence (iteration 003 DRIFT-005). The review-signoff crossing stays unplanned while it stays small (iteration 002 retro, calibration).
 
 ### Quality and risks
 

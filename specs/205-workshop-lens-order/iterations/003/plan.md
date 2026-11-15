@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 6.5/20 story_points
+**Capacity**: 7/20 story_points
 **Started**: 2026-11-15
 **Completed**:
 
@@ -31,10 +31,10 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T027 | Code-lens freshness test, red-first; verification plan re-pointed | FR-030 | US6 | 1 | implementer | — | planned | — | — | — |
+| T027 | Code-lens freshness test, red-first; verification plan re-pointed | FR-030 | US6 | 1.25 | implementer | — | planned | — | — | — |
 | T028 | Agenda grouping test, red-first | FR-032 | US6 | 0.75 | implementer | — | planned | — | — | — |
 | T029 | Six per-stack rules refreshed from release notes; Source Notes | FR-030 | US6 | 1.5 | implementer | — | planned | — | — | — |
-| T030 | Line function, lens conduct, skill exception | FR-030 | US6 | 0.5 | implementer | — | planned | — | — | — |
+| T030 | Line function, lens conduct (with the confirm-at-the-point-of-choice sentence), skill exception | FR-030 | US6 | 0.75 | implementer | — | planned | — | — | — |
 | T031 | Grouped agenda renderer, UTF-8 output, skill template and marker | FR-032 | US6 | 0.75 | implementer | — | planned | — | — | — |
 | T032 | Proposal 220 status history and INDEX row | FR-031 | US6 | 0.5 | implementer | — | planned | — | — | — |
 | T033 | Copies, hash record, green, regression, CI steps | FR-030, FR-032 | US6 | 1 | implementer | — | planned | — | — | — |
@@ -68,7 +68,7 @@
 | ----- | ---------------- | ----- |
 | Planning | done | Amendment A2, design analysis (Option A), this plan |
 | Discovery/Spikes | 0 | the release-notes lookups are inside T029 |
-| Implementation | 6.5 | T027 to T034 |
+| Implementation | 7 | T027 to T034 |
 | Review | 0 | the review-signoff crossing is not planned capacity (iteration 002 retro, calibration); the retro reports its actual cost |
 | Rework | 2 | rework buffer (iteration 002 retro calibration) |
 
@@ -82,7 +82,7 @@
 
 ## Notes
 
-- Planned effort 8.5 story_points against a 20 cap: 6.5 in tasks (the Capacity line, which the governance check sums
+- Planned effort 9 story_points against a 20 cap: 7 in tasks (the Capacity line, which the governance check sums
   from the task table) and the 2 SP rework buffer from the iteration 002 retro's calibration, held in the Phase
   Baseline rather than as a task row.
 - The scope above was written by hand; the scaffold left it empty (DRIFT-002, H-024).
