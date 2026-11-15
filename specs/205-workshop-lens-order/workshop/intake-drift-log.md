@@ -90,6 +90,12 @@ conformance provider detects the agenda by its `Selected lenses:` line (`specrew
 205 does not edit), so FR-032 keeps that line; if `conformance-detection.tests.ps1` still pins the old format, that
 becomes a hand-over to 203.
 
+**FR-032's wording accepted**: the crew session asked whether FR-032 is right as written, including its two
+choices (a heading with no lenses is left out; each lens's opening heading repeats its group's marker). The reviewer
+recommended accepting it as written. The maintainer's words, to the reviewer, at 13:27 local on 2026-11-15, answering
+that and one decision on feature 203 together: "OK for both". FR-032 stands as written; the marker characters are
+chosen in the plan, with how they render in a Claude Code terminal and the fallback.
+
 ## DRIFT-205-INTAKE-007 — the standing rerun exception also covers empty-result-retry.Tests.ps1, until feature 203 merges
 
 **Decided**: 2026-11-15, by the maintainer, relayed by the reviewer session under the wider delegation. The reviewer put

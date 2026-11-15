@@ -1,0 +1,101 @@
+# Drift Log: Iteration 003
+
+**Schema**: v2
+
+<!--
+  Markdown authoring note (Specrew lifecycle convention):
+
+  When you add new drift events to this file, watch for MD032 (blanks-around-lists).
+  A sentence ending with a colon, immediately followed by a bullet list, is the most
+  common violation. Always put a BLANK LINE between the colon line and the list:
+
+      BAD:                              GOOD:
+      Resolution steps:                 Resolution steps:
+      - Step one                        <— blank line here
+      - Step two                        - Step one
+                                        - Step two
+
+  The F-033 pre-boundary markdownlint gate runs markdownlint-cli --fix on .md
+  changes before every boundary-sync write, so most violations auto-fix — but the
+  blank line you write in the first place avoids the cleanup churn.
+-->
+
+## Summary
+
+**Total drift events**: 4
+**Resolution rate**: 100% (4/4 resolved or placed)
+**Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006)
+
+## Events
+
+### DRIFT-001 — HookRenderDedupe I3a failed once on iteration 002's closeout push (external CI failure; handed over)
+
+- **Observed**: 2026-11-15 03:22:57Z (05:22 local), Specrew CI run 43670851775, attempt 1, Deterministic gate job
+  132681450478, step "Bootstrap suite (F-174 hook chain - incl. directive delivery cap, P2)", on `ce444ca8`. That push
+  carried iteration 002's closeout records only: plan.md, the drift log, hardening-gate.md, the dashboard, the seal
+  JSON, `closed-iterations.yml` and the sync's `.squad` files.
+- **Failure**: `tests/bootstrap/HookRenderDedupe.Tests.ps1`, case "I3a: two concurrent missing-id fires BOTH render
+  (per-launch fallback keys, never shared suppression)": expected '2', got '1'. It was the only failed bootstrap
+  suite, and the Contract lane was skipped as a consequence. Test and Cross-Platform Validation were green, and the
+  same suite passed on `57f14996`, `00273e84` and the pushes before them.
+- **Resolution**: reported first; one rerun ruled by the reviewer session (a timing-dependent case on a records push).
+  Attempt 2 was green. Iteration 002 was sealed by then, so the sighting is recorded here.
+- **Earlier records naming this test** (not read into): `specs/174-hook-driven-session-bootstrap/iterations/010/state.md`,
+  `specs/183-stability-quality-bundle/iterations/001/`, `specs/198-beta2-hardening/iterations/007/retro.md`,
+  `specs/198-beta2-hardening/iterations/008/drift-log.md`, `specs/199-beta3-stabilization/iterations/001/drift-log.md`.
+- **Count**: the third different CI failure outside 205's pushes in one night: `empty-result-retry` on `b15c5dd1`
+  (iteration 002 DRIFT-020), the Windows Pester install on `fa65488d` (iteration 002 DRIFT-023), and this one.
+- **Rerun rule**: not covered by the standing exception, which since 2026-11-15 covers `co-review-service.Tests.ps1:129`
+  and `empty-result-retry.Tests.ps1` only (DRIFT-205-INTAKE-007). A recurrence still goes to the reviewer session.
+- **Class closure**: NONE — the hook chain's test is outside 205's scope. Handed over as H-023
+  (`handover-to-203.md`); the test was last changed by feature 202, and 203 holds the CI-stability hand-overs.
+
+### DRIFT-002 — the plan scaffold listed every requirement of the spec (recurrence of iteration 002's DRIFT-002)
+
+- **Observed**: 2026-11-15. `scaffold-iteration-plan.ps1` was run without a scope, as iteration 002 did after the
+  scoped form refused every requirement. The stub lists FR-001 to FR-032.
+- **Resolution**: the scope is written by hand (FR-030, FR-031, FR-032).
+- **Class closure**: NONE — the scaffold is part of the deployed extension. Handed over as H-024; iteration 002
+  named it a candidate but did not hand it over.
+
+### DRIFT-003 — the quality resolver reads the stack as frontend again (recurrence of iteration 002's DRIFT-001)
+
+- **Observed**: 2026-11-15. The plan scaffold's concurrency section reads "Frontend-oriented signals dominate the
+  scoped requirements". The real stack is PowerShell 7 scripts, lens markdown, a YAML catalog and tests.
+- **Resolution**: corrected by hand in the plan, as in iterations 001 and 002.
+- **Class closure**: NONE — the resolver is part of the deployed extension. Handed over as H-025.
+
+### DRIFT-004 — iteration 002's improvement actions carried into this intake
+
+- **Actions 1 to 4** (practices): per-item checks with swap, replace and reword self-tests; re-point the verification
+  plan in the first commit after before-implement; check each planned item's lens `space` tag at planning (done in the
+  design analysis: FR-032 reads `space` from index.yml); `review.md` names the gate's coverage decision only after the
+  sync. Carried into this plan.
+- **Action 5** (the three reviewer-brief additions in the round scope-file template): open. Iteration 001's version
+  was not done either. It most likely belongs to proposal 140 (Reviewer Instruction Surface), for the maintainer to
+  confirm when prioritising; it is not a side question.
+- **Action 6** (H-015 to H-022): with feature 203.
+- **Class closure**: NONE — process carry-forward, not a defect.
+
+<!--
+  Every new ### DRIFT-... event includes:
+
+  - **Class closure**: the executable mechanism that makes the next instance impossible or loud
+
+  If the change fixes only this instance, write NONE — <why class closure is not in scope>.
+  A bare Resolution: FIXED is not class closure.
+-->
+
+### Resolution Strategies (Unused)
+
+The following resolution strategies remain available if drift is detected later in execution:
+
+- **spec-updated**: Update the spec to reflect implementation choice
+- **implementation-reverted**: Revert implementation to match spec
+- **deferred**: Mark drift as deferred to next iteration
+- **human-decision**: Escalate to Alon for resolution
+
+### Notes
+
+- This artifact was scaffolded before review starts so drift can be logged immediately when detected.
+- Replace the zero-drift summary with real counts when the first drift event is recorded.
