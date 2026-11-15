@@ -2626,3 +2626,54 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   Other crews ran a review round and lanes during this sweep. The next sweep runs alone; whether the slowdown is round
   D finding 1's whole-transcript read or load is decided from it.
 - **Class closure**: each defect has its guard case (`hook-command-length`'s clean-checkout case, `sweep-driver` case 13).
+
+### DRIFT-081 — Round E's preflight found two more defects in the round D batch's test code (finding, fixed test first; maintainer's decisions)
+
+- **Trigger**: round E (`run-20261115-011232703-6c6475f7`, launched 03:12 local on 2026-11-15 from the pin on the
+  maintainer's typed `approved for review round`, recorded as round 5) failed in its preflight after 2,802 s:
+  `verification-command-failed:f203-i001-suites:diagnostics-require-command-scoped-disclosure`. No round was used; the
+  round-5 authorization stays available. Home hook files: 0 changed.
+- **Why it said nothing**: the pin seals a plan command's output by design, the lane's own "suite FAILED" line included,
+  and the stable reason points at a human-authorized, command-scoped disclosure path. The derived diagnosis the engine
+  owns (exit code, duration, timeout, the env_refs the plan allowed) reached neither the console summary nor
+  `result.json`. The operator learned the lane's name and nothing else; finding it took a reproduction.
+- **The review target's layout**: the frozen copy has the support folders (`.specify`, `.specrew`, `.squad`, `.claude`
+  and the other host folders) deleted in the index; for the lanes the engine restores them in the working tree only, so
+  `git status` lists about 1,500 entries a full checkout never shows. The first reproduction stripped them without the
+  restore, which is the wrong layout (two other suites failed there for want of `.specify`); the second matched it.
+- **Causes and fixes**, both in `tests/unit/hook-command-length.tests.ps1`, each a guard committed red first:
+  1. The checkout check threw on the tracked symbolic link `.antigravitycli/f95594b5-b180-4b4d-b9e9-93dd0b5890b8.json`,
+     whose target is on another machine: `Test-Path -PathType Leaf` is true for a dangling link and `Get-FileHash` then
+     fails. Fixed: a link is recorded by its target text and never followed, an entry that cannot be read is recorded
+     as unreadable with the reason, nothing throws (`a0211eb7` red 4 of 28, `1a5627e7`). 2,201 entries take about 1 s;
+     the target-layout copy's 1,504, 1.3 s.
+  2. Found while proving the first fix with no `HOME`, as a review launched from a shell without one sees it:
+     `Invoke-ThroughCmd` put an absent variable back as an empty one (PowerShell hands `$null` to a .NET string
+     parameter as `''`), so `HOME`, `CLAUDE_PROJECT_DIR` and `SPECREW_MODULE_PATH` ended set to empty values. With an
+     empty `HOME` git read no global ignore file, and the check reported `.claude/settings.local.json` (ignored only by
+     that file in the target layout) as new though nothing was written. Fixed: a null removes the variable
+     (`8fbe919b` red 1 of 31, 2 of 31 in the target layout with no `HOME`; `424d6c85`). A relaunch with only the first
+     fix would have failed again.
+- **The batch's record**: both defects are in test code written for round D's own fix batch. That batch has now produced
+  four test-code defects (the null list and the Describe line, DRIFT-080; the dangling link and the environment
+  restore, here): two found by the sweep, two only in the review target's layout.
+- **The rule adopted** (the reviewer session's ruling, from feature 206's DRIFT-023, now this feature's too): every
+  lane is run green in the review target's layout, alone on the machine, before a round is asked for.
+- **The maintainer's decisions**, relayed by the reviewer session; their words at 04:55 local on 2026-11-15:
+  "203: commits yes, skip the sweep".
+  1. The guards, the fixes and this records commit go in while the round-5 approval is unspent; the relaunch uses it.
+     An exception to the no-commit rule for this fix batch only, because the approved round cannot run without it.
+  2. The full sweep is skipped for this batch only: both defects are in one test file whose helpers nothing else
+     loads. Required in its place: that suite alone in the full checkout and in the target layout, each with `HOME`
+     set and unset; all ten lanes in the target layout, built as the engine builds it, from the PowerShell tool with
+     no `HOME`, alone on the machine; markdownlint; push; CI to its end with the whole Test workflow green. A red result
+     is not covered by the skip.
+- **Follow-up for iteration 002**: the same restore pattern (`SetEnvironmentVariable($key, $saved[$key])`) is in
+  `review-stop-here.Tests.ps1`, `review-crew-stops.Tests.ps1`, `refocus-dispatcher.tests.ps1`,
+  `f198-iter005-hook-health-production-path.tests.ps1` and `WorkshopHostDetection.Tests.ps1`; whether any is red with
+  no `HOME` is not known. What the target-layout lane run shows for those in the plan's lanes is recorded after the
+  sign-off, with the sealed-diagnosis gap above.
+- **Class closure**: each defect has its guard case (`hook-command-length`'s target-layout case: over 1,000 listed
+  entries with a dangling link and an unreadable entry; and its environment case: an absent variable stays absent).
+  The class itself, a suite green in a full checkout and red in the review target's layout, is closed by the adopted
+  rule: all ten lanes are run in that layout before the round is relaunched.
