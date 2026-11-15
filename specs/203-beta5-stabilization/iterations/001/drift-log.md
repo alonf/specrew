@@ -2580,9 +2580,12 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
 - **Severity (proposed)**: major. A correct human decision (accept the remaining findings and stop) costs an extra round,
   or a partial sign-off, every time the last round has a major finding.
 - **Proposal** (not built): in the records-only branch, an `accept-current` disposition recorded for the reviewed digest
-  authorizes a records-only difference on top of it, as a recorded allow does. **Placement**: the maintainer's
-  decision, pending; the reviewer session has recommended iteration 002.
-- **Class closure**: NONE — evidence only until the maintainer places it.
+  authorizes a records-only difference on top of it, as a recorded allow does. **Placement**: iteration 002, first
+  batch, with the hook cost (DRIFT-073), and not before the pin advance. The maintainer's words to the reviewer session,
+  relayed, 01:19 local on 2026-11-15: "203: yes". Recorded here after the sign-off, so the tree round E read did not
+  move. The design has to account for B5F-071: no run of this campaign marked a finding resolved, so the sign-off gate
+  still lists every fixed finding of rounds A to D as open (DRIFT-086).
+- **Class closure**: NONE — evidence only until iteration 002 builds the fix.
 
 ### DRIFT-079 — T014 is blocked until the review sign-off; the review ends with a fifth round on a tree that holds its records (maintainer's decision)
 
@@ -2712,3 +2715,202 @@ Choices the spec leaves open, proposed before any T008 engine code is written. I
   it to `reviewing` again. review.md's T014 row and overall verdict ("blocked until sign-off") are corrected after the
   sign-off.
 - **Class closure**: NONE — the deadlock between the sync's truth gate and the validator is B5F-050, still open.
+
+### DRIFT-083 — Round E finding 1: an approval with more than 2 MiB after it can still be refused, when a later message reuses its prompt ID (review outcome, open, iteration 002)
+
+- **Finding**: `finding-cf1fe81e0398f883`, major, `scripts/internal/bootstrap/HumanAuthorityStore.ps1:2526`, round E
+  (`run-20261115-042146354-0a33bd36`). Round D finding 1's fix (`99223e7d`) is incomplete. The scenario: approval A, more
+  than 2 MiB of conversation, then a message B under the same running prompt ID (a case `typed-act-writer` already
+  covers). The exact lookup misses A in the tail window, the message-ID fallback in that window returns B,
+  `Read-SpecrewCitedTypedTurn` sees only B for that ID, and the non-null turn ends the window loop before the
+  whole-transcript read. `Test-SpecrewAuthorizationRecordMatchesTurn` then compares A's approval with B's text and
+  refuses it.
+- **Confirmed in the code**: the fallback runs inside each window, before the next, wider window is tried.
+- **Fail mode**: closed. A valid stored approval is refused at a review launch or the boundary matcher; nothing is
+  authorized that the human did not type.
+- **Fix, iteration 002 first batch** (the reviewer session's list): try the exact identity across every window, the
+  whole transcript included, before the message-ID fallback in any window; extend the large-transcript regression with
+  a later message sharing the ID.
+- **Class closure**: NONE — open; the guard is the extended large-transcript case, written red first in iteration 002.
+
+### DRIFT-084 — Round E finding 2: a review-stop answer lost on the recovery path gets no report (review outcome, open, iteration 002)
+
+- **Finding**: `finding-a537d3f72672e5f5`, major, `scripts/internal/bootstrap/HumanAuthorityStore.ps1:2052`, round E.
+  Round D finding 2's fix (`ef58deae`) is incomplete. The scenario: a review waits at a stop, the human types `allow
+  reviewer copilot`, the prompt hook misses it, and the turn-end recovery meets a turn ledger it can read but not
+  append to while the report journal is writable. Nothing is saved, and the human is not told. The recovery branch's
+  report uses only `Get-SpecrewTypedAuthorityShape`, which returns nothing for the stop answers (`allow reviewer`,
+  `defer` / `drop` / `fix finding`); those are recognized by `Get-SpecrewStopAnswerShape`. Setting `Act.Report` does not
+  help: `Update-SpecrewRollingHandover` gets a non-null recovery result and neither surfaces the flag nor takes its
+  fallback capture.
+- **Confirmed in the code**: the prompt path has the stop-answer fallback; the recovery path does not.
+- **Fail mode**: closed. The answer is not used, so nothing is authorized; the human is not told it was not saved
+  (FR-026's gap, on one path).
+- **The commit message**: the asymmetry was seen while fixing round D finding 2 and written into that fix's commit
+  message (`ef58deae`) instead of being closed. Round E found it. Recorded as it happened.
+- **Fix, iteration 002 first batch**: the same stop-answer fallback on the recovery path, and a stop-answer phrase in
+  `typed-act-writer` case 9b beside the allowance-reset reservation-failure fixture.
+- **Class closure**: NONE — open; the guard is case 9b's stop-answer case, written red first in iteration 002.
+
+### DRIFT-085 — The review ended on a partial sign-off, after the pin advance (review outcome; the maintainer's decisions)
+
+- **The stop**: the maintainer typed `stop the review here` (11:17 local on 2026-11-15) after round E's two findings
+  were reported to the reviewer session with the recommendation to stop and carry both. The stop ran from the pin and
+  ended at 12:09:51, gate allow `complete-current-findings-human-accepted` on tree `59abeef8`. Home hook files: 0
+  changed. The stop's record cites the July standing grant again (DRIFT-075, the old pin).
+- **The sync refusal and the pin advance**: DRIFT-082. The records commit `c28b2af6` put plan.md back to `executing`.
+  CI on it: Test and Cross-Platform Validation green. Specrew CI was red on Lint only, the allowed item, and its
+  deterministic gate and contract lane were skipped (B5F-074, DRIFT-087).
+- **The partial sign-off**: the first sync (17:26 local) refused `latest-result-not-current` and wrote the pending
+  override `override-3526cb8302d3f9bc222913e9` for tree `63c5f030`. It listed all 15 major findings of rounds A to E as
+  not covered (B5F-071). The maintainer typed at 17:30 local, as the whole message: "approved for partial review
+  signoff - the two major findings of round E fail closed and go to iteration 002, and since round E only records
+  changed, the status line of plan.md and drift entry DRIFT-082". The wording has no apostrophes, semicolons or colons;
+  that was the reviewer session's precaution after feature 206's empty captures. The advanced pin captured it with its
+  transcript path and message ID. The second sync (17:31 local) allowed `human-authorized-partial-override`, its sender
+  check read human, accepted, typed by the human, and it recorded
+  `crossing-78b58d2dfdeb81d7747eed8c53dec8d00a83e54cd3b45a77c43e2a6bf43eb461`. The round-5 approval was not touched (the old
+  pin's re-spend, B5F-072, did not recur).
+- **The verdict**: `approved for review-signoff`, typed by the maintainer, captured at 18:44 local, bound to
+  `c28b2af6`. The boundary commit is `e9c1b20f`.
+- **review.md corrected** in this commit: T014's row and the overall verdict. They had said T014 was blocked until the
+  sign-off. They now say the pin advance was done before it, the sign-off waited on it, and the capture check follows.
+  The sign-off is recorded as a partial.
+- **T014's capture check, as it now stands** (on the advanced pin, after the sign-off): a verdict after a compaction, a
+  quoted phrase, a pasted phrase, an approval followed by more than 2 MiB in the same running turn (added for
+  DRIFT-083), and a stop that reads its disposition's `authorization_ref` (DRIFT-075).
+- **Left for the maintainer**: the project's hook launcher `.claude/specrew-hook-launch.ps1` was not redeployed. The
+  sign-off did not need it (the dry run landed with the old launcher). The deployer changes only how a refusal is
+  reported (stderr and exit 1 instead of a throw), and it may write hook bindings in the home folder. It is put to the
+  maintainer as its own decision.
+- **Class closure**: NONE — a process record; round E's findings are DRIFT-083 and DRIFT-084.
+
+### DRIFT-086 — What the sign-off dry runs found (findings)
+
+The dry runs of DRIFT-082 used scratch copies with the real state and a redirected home. Nothing in the real tree, its
+records or the home folder changed. Outputs are in the crew's scratchpad.
+
+1. **DRIFT-072 still holds on `a56ac787`.** The old pin captured a partial sign-off with no transcript path or message
+   ID (its `Register-SpecrewExhaustedTurn` stores none). The sign-off sync, which runs the tree's sender check
+   (`Resolve-SpecrewAuthorizationSender` needs the path, `HumanAuthorityStore.ps1:2512-2515`), then discarded it with
+   "could not find the message it came from" (turn-not-found). The pin advance closed this; the real partial was
+   captured with both fields.
+2. **B5F-072: the old pin's partial capture re-spent the round-5 approval.** It rewrote that approval's `spent_at` and
+   `authorization_ref` and added a new `review-round-approval-spent` row. It did not recur on `da78b600`, in the dry
+   run or in the real capture.
+3. **B5F-071: findings never close.** `Get-ReviewCampaignOpenFindings` (`review-campaign-orchestrator.ps1:1530`)
+   closes a finding only through a run result's `finding_resolutions` (`:1560-1567`) or a defer or drop disposition
+   (`:1573-1575`). No run result of this campaign has `finding_resolutions`. So the sign-off gate lists the 13 fixed
+   majors of rounds A to D as not covered, still open, next to round E's two. On this campaign, no findings result
+   can authorize a records difference, and a partial sign-off is the only way past one. This matters for DRIFT-078's
+   design. The dry run said 16 majors; that was a miscount, it is 15.
+4. **B5F-073: the feature-closeout sync passed and recorded a crossing while iteration 002 is planned.** In the
+   candidate 4 dry run, the retro and iteration-closeout syncs passed as expected. The feature-closeout sync then
+   passed too, though iteration 002 is planned, and left `.specrew/closed-iterations.yml` uncommitted.
+5. **On `da78b600`**: a turn that waits on the human was not blocked by a coverage decision, but the state of the
+   field sighting (exhausted rounds with drift, DRIFT-089) was not reproduced. An approval queued mid-turn was
+   captured.
+6. **The truth gate**: the refusal of DRIFT-082 is a second sighting of B5F-050 (feature 205's DRIFT-011,
+   2026-11-11). The trace missed it because neither the crew nor the reviewer session ran the sync with plan.md at
+   `reviewing`. Check for next time: a readiness trace runs the boundary sync itself on a scratch copy, not only the
+   capture and the gate.
+
+- **Class closure**: NONE — evidence only; B5F-071, B5F-072 and B5F-073 are placed by the maintainer.
+
+### DRIFT-087 — Sweeps and CI from the round D batch to the sign-off (evidence)
+
+- **The start-command allowance** (DRIFT-077), each use recorded:
+  - The `064a2ff4` sweep (alone, 00:08 to about 01:54 local on 2026-11-15) timed out at 301 s. It passed alone in a
+    scratch worktree in 196 s. CI on it was Specrew CI and Test green.
+  - The `da78b600` sweep (13:28 to 15:25 local, 7,037 s) timed out at 301 s. It passed alone in 238 s (15:32). CI on it
+    was green.
+  - Home hook files: 0 changed in both sweeps and both solo runs.
+- **The `da78b600` sweep**: 279 suites, 1 failed (the allowance) and 2 known red (B5F-036); all ten lanes exit 0.
+- **Suite times** (`message-identity`, `review-loop-stops`, `review-budget-loop`):
+
+  | Commit | Times |
+  | --- | --- |
+  | `f6478946`, before round D | 948, 977, 889 s |
+  | `671b2dfc`, under load | 1,199, 1,148, 1,017 s |
+  | `064a2ff4`, alone | 1,044, 1,144, 1,029 s |
+  | `da78b600` | 1,189, 1,248, 1,135 s |
+
+  The code under these suites is the same in `064a2ff4` and `da78b600`; the difference is one test file and records.
+  So the further 10% is load or noise, not code. The rise from `f6478946` stayed when the sweep ran alone.
+  **Suspect, not investigated**: round D finding 1's whole-transcript read on a miss (`99223e7d`), which these suites
+  reach through not-found lookups.
+- **The `t008` lane**: 759 s on `064a2ff4`, 820 s in the target-layout run, 838 s of 900 s on `da78b600` (93%). The
+  reviewer session placed it at the top of iteration 002's first batch, with the hook cost. Its limit is the
+  maintainer's question then.
+- **Windows CI, a B5F-067 sighting**: Cross-Platform Validation on `064a2ff4` (`43655902942`) failed on the
+  windows-latest fake-provider job. `review-cross-platform-fault-matrix.Tests.ps1` had 6 failures, exit -1073741502
+  (`0xC0000142`, STATUS_DLL_INIT_FAILED). The six were the five "rejects prose-wrapped output from the <host> fake
+  process" cases and "kills a timed-out fake provider and descendant". Nothing in the diff touches that area; the
+  Windows fake is a `.cmd` starting `powershell.exe` 5.1 and loads neither store. One rerun (the reviewer session's
+  routine ruling) passed. The same job failed on feature 205's branch the same night, at the Pester install step.
+- **B5F-074: a red Lint skips two gates.** On `c28b2af6`, Specrew CI's Lint failure (the allowed item) skipped the
+  deterministic gate and the contract lane. Both passed on `da78b600`, and both run again on the boundary commit
+  `e9c1b20f`. A gate that does not run on a pushed commit is a finding even when the red that caused it was allowed.
+- **B5F-075: the coverage line**: the review-signoff packet's line read "1 source file(s) changed since; 1 of 2 rounds
+  remaining". Only records had changed (plan.md's status line and the drift log); plan.md counts as a source file to
+  the records-only predicate (DRIFT-078). Five rounds were used, so "1 of 2 rounds remaining" matches no budget the
+  maintainer set. Not investigated.
+- **Class closure**: NONE — evidence only; the findings are placed by the maintainer.
+
+### DRIFT-088 — Round E's preflight follow-ups: the sealed diagnosis, the target-layout lanes, the dangling link (findings)
+
+- **B5F-076: a failed preflight tells the operator nothing.** In DRIFT-081, the engine's derived diagnosis
+  (`Get-ContinuousCoReviewVerificationFailureDiagnosis`, `verification-plan-runner.ps1:243`: exit code, duration,
+  timeout, the allowed env refs) reached neither the console summary nor the run's `result.json` (712 bytes, no
+  diagnosis field). The output stays sealed by design (`review-campaign-orchestrator.ps1:483-495`). The gap is that the
+  derived, non-sensitive facts are dropped. The operator learned the lane's name only, not even the exit code or whether
+  it timed out; finding the cause took a reproduction.
+- **The target-layout lane run** (DRIFT-081's required check; `da78b600`, 05:07 to 05:52 local, PowerShell tool,
+  `HOME` unset): all ten lanes exit 0. Times against limits:
+
+  | Lane | Time / limit (s) |
+  | --- | --- |
+  | governance | 27 / 180 |
+  | suites | 438 / 900 |
+  | verdict-review | 360 / 900 |
+  | budget | 385 / 900 |
+  | authority-sender | 30 / 600 |
+  | t008 | 820 / 900 |
+  | validator-scope | 174 / 1,200 |
+  | carried | 202 / 360 |
+  | guards-a | 133 / 270 |
+  | guards-b | 144 / 270 |
+
+  The child environment held PATH, PATHEXT, SYSTEMROOT, COMSPEC, TEMP, TMP, USERPROFILE, APPDATA, LOCALAPPDATA,
+  PROGRAMFILES, PROGRAMFILES(X86), PROGRAMDATA and PSModulePath. It did not hold TMPDIR or HOME, which were unset in the
+  launching shell.
+- **The five same-pattern suites** (DRIFT-081's follow-up: `review-stop-here`, `review-crew-stops`,
+  `refocus-dispatcher`, `f198-iter005-hook-health-production-path`, `WorkshopHostDetection`): no lane holding them went
+  red in that run. Whether each restores an absent variable as empty is still unchecked; iteration 002.
+- **B5F-077: a tracked link into another machine's home folder.** `.antigravitycli/f95594b5-b180-4b4d-b9e9-93dd0b5890b8.json`
+  is a tracked symbolic link (mode 120000) to a path under `C:\Users\alon.HOME\` on another machine. It was added in
+  `f72dcfd1` (2026-05-27, feat(f049-i003)). It is public-repository hygiene and the cause of DRIFT-081's first defect.
+  Removing it is the maintainer's decision.
+- **Class closure**: NONE — evidence only; the findings are placed by the maintainer.
+
+### DRIFT-089 — A field sighting: a turn waiting on the human was refused three times for a coverage decision (finding, not reproduced)
+
+- **The sighting** (relayed by the reviewer session; shown by the maintainer at 23:40 local on 2026-11-14). It came
+  from a Claude session in another project, on another machine, with the installed engine (version not stated). The
+  turn waited on the human: it explained a script change and asked them to run a command and paste the output. There
+  was no boundary and no packet. The Stop hook refused the turn end three times for the same unmet requirement, a
+  coverage decision. Then the refusal cap released it ("this stop was refused 3 consecutive times for the same unmet
+  requirement (coverage decision) ...") and asked for a "packet discipline capped" line. The human saw the answer twice
+  with the hook's text between the copies; whether the second copy had the capped line is unknown (the paste was cut).
+- **Why it is a finding** (the reviewer session's three points):
+  1. A turn that waits for input was treated as a stop that owes a coverage decision.
+  2. That requirement cannot be met in such a turn, so only the cap ends it, three turn ends each paying the Stop
+     hook's cost (DRIFT-073).
+  3. The human got a duplicated answer, the hook's text, and nothing saying what they could type.
+- **Here**: this session's own Stop hook raised the same coverage-decision block twice on 2026-11-14, after the round D
+  fixes, each answered in one line. On `da78b600` a waiting turn was not blocked (DRIFT-086 item 5), but the sighting's
+  state, rounds exhausted with drift, was not set up. The message is at `specrew-conformance-provider.ps1:1991-1993` and
+  the coverage block near `:1720`.
+- **B5F-078**, proposed for iteration 002 with the hook cost (the reviewer session's placement guess, the maintainer's
+  decision).
+- **Class closure**: NONE — not reproduced; the guard is a waiting-turn case with rounds exhausted and stale coverage.

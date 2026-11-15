@@ -1,15 +1,19 @@
 # Review: Iteration 001
 
 **Schema**: v1
-**Reviewed**: 2026-11-14
-**Overall Verdict**: blocked: T001 to T013 pass; T014 (pin advance) is scheduled after sign-off by plan and is blocked on it; the verdict is corrected when T014 is done
+**Reviewed**: 2026-11-15
+**Overall Verdict**: blocked: T001 to T013 pass; T014's pin advance was done before the sign-off, and its capture check runs after it; the verdict is corrected when that check passes
 
 This record covers review rounds A to D and their fixes. It was committed before round E, because on this engine a
-records commit made after the stop cannot be signed off (DRIFT-078). Round E runs on this exact tree. Its result is
-recorded after the review sign-off, in the drift log and in the round E section below, before any other commit.
+records commit made after the stop cannot be signed off (DRIFT-078). Round E ran on this exact tree. Its result was
+added after the review sign-off, in the drift log and in the round E section below, before any other commit.
 
-"Blocked" here is not a failed review: every task the review covers passes. T014 is the pin advance, which the plan
-puts after the review sign-off, so it cannot pass before it.
+"Blocked" here is not a failed review: every task the review covers passes. T014 has two parts. The pin advance was
+done before the sign-off, on the maintainer's decision (DRIFT-082), and the sign-off waited on it. The Claude-only
+capture check runs on the advanced pin after the sign-off, so T014 cannot pass before it.
+
+The sign-off is a partial one: the maintainer typed `approved for partial review signoff` for the records-only change
+after round E (DRIFT-085), then `approved for review-signoff`.
 
 ## Independent review
 
@@ -24,6 +28,7 @@ after every round: 0 changed.
 | B | `run-20261113-172304585-393b6102` | The review engine | 4 major | All fixed, each test first (DRIFT-071) |
 | C | `run-20261113-230313149-5c350d9c` | Extension scripts, dispatcher and hosts | 3 major | All fixed, each test first (DRIFT-072) |
 | D | `run-20261114-172156973-8e5f3fa1` | The whole tree with the tests | 3 major | All fixed, each test first (DRIFT-076) |
+| E | `run-20261115-042146354-0a33bd36` | The four fixes since round D, and the records | 2 major | Open, fail closed, to iteration 002 (DRIFT-083, DRIFT-084) |
 
 That is 13 major findings, 14 defects, each checked against the code and fixed behind a test committed red first. The
 maintainer's batch after round D also fixed `hook-command-length.tests.ps1`, which could start the dispatcher of the
@@ -38,7 +43,19 @@ round E is the fifth and last round (DRIFT-076), and whatever it finds that does
 
 ## Round E
 
-Not yet run. Its run, findings and outcome are added here after the review sign-off.
+Run `run-20261115-042146354-0a33bd36`, relaunched at 06:21 local on 2026-11-15 from the pin `a56ac787`, on the tree
+`59abeef8`, using the maintainer's round-5 approval. Its first launch had failed in its preflight without using a round
+(DRIFT-081). The preflight passed in 2,812 s and the run ended at 3,185 s: completion complete, currentness current,
+verdict findings, 2 major, 0 blocking. Home hook files: 0 changed.
+
+| ID | Location | Finding | Fail mode | Placement |
+| --- | --- | --- | --- | --- |
+| `finding-cf1fe81e0398f883` | `HumanAuthorityStore.ps1:2526` | Round D finding 1's fix is incomplete: inside the tail window the message-ID fallback can return a later message that reuses the same running prompt ID, and the loop stops before the whole-transcript read (DRIFT-083) | Closed: a valid approval is refused | Iteration 002, first batch |
+| `finding-a537d3f72672e5f5` | `HumanAuthorityStore.ps1:2052` | Round D finding 2's fix is incomplete: the recovery path reports an unsaved turn only for approval shapes, so a review-stop answer gets no report (DRIFT-084) | Closed: nothing is saved and nothing is said | Iteration 002, first batch |
+
+Both were confirmed in the code. Neither shows a fix is wrong, and neither blocks: each refuses an act rather than
+allowing one. The maintainer typed `stop the review here` at 11:17 local. The stop ended at 12:09 with the gate's
+allow (`complete-current-findings-human-accepted`). The sign-off then took the path in DRIFT-082 and DRIFT-085.
 
 ## What This Sign-off Claims, and What It Does Not
 
@@ -47,11 +64,13 @@ Not yet run. Its run, findings and outcome are added here after the review sign-
   log; and that the commits after it, which change only `hook-command-length.tests.ps1` and records, pass the checks
   the maintainer set in place of a second sweep: that suite in both layouts, all ten lanes in the review target's
   layout, and CI (DRIFT-081).
-- **It does not claim** the live hooks run the reviewed code. They still run the pinned engine `a56ac787`, which has
-  no sender check (DRIFT-072) and whose stop cites a standing grant instead of the typed answer (DRIFT-075). Both
-  change at T014.
-- **It does not claim** the hook cost is fixed: about 19 s per turn (DRIFT-073), placed by the maintainer.
-- **It does not claim** a records commit after a human-accepted stop can be signed off (DRIFT-078, placement pending).
+- **It claims** the live hooks run the code round E reviewed. The pin moved from `a56ac787` to `da78b600` at 17:11
+  local on 2026-11-15, on the maintainer's typed `advance the pin`, after a full sweep of `da78b600` (DRIFT-082,
+  DRIFT-087). The project's hook launcher was not redeployed (DRIFT-085).
+- **It does not claim** round E's two findings are fixed. Both fail closed and go to iteration 002's first batch.
+- **It does not claim** the hook cost is fixed: about 19 s per turn (DRIFT-073), placed in iteration 002's first batch.
+- **It does not claim** a records commit after a human-accepted stop can be signed off. DRIFT-078 is placed in
+  iteration 002's first batch; this sign-off needed a partial sign-off instead.
 
 ## Task Verdicts
 
@@ -68,14 +87,17 @@ Not yet run. Its run, findings and outcome are added here after the review sign-
 | T011 | FR-046 | pass | `turn-end-after-stop-block`, `crossing-presentation`. |
 | T012 | FR-024, FR-041 | pass | `authority-audit`; FR-041's turn identity in drift entries is iteration 002's. |
 | T013 | FR-042, FR-043 | pass | `mint-path-fixtures` (435), `authorization-sender`, `authorization-consumers`; round D finding 1 fixed. |
-| T014 | FR-045 | blocked | Scheduled after the review sign-off by plan and blocked on it; corrected when the pin advance and the Claude-only capture check are done. The same gap as feature 206's bug list item 37 (a task the plan defers has no verdict value), here for a task scheduled after sign-off; hand-over to whoever fixes item 37. |
+| T014 | FR-045 | blocked | The pin advance was done before the sign-off (`da78b600`, 17:11 local on 2026-11-15; the maintainer's decision at 13:27, DRIFT-082), and the sign-off waited on it. The Claude-only capture check runs after the sign-off: a verdict after a compaction, a quoted phrase, a pasted phrase, an approval followed by more than 2 MiB in the same running turn, and a stop that reads its disposition's `authorization_ref` (DRIFT-085). Corrected when that check passes. The same gap as feature 206's bug list item 37 (a task the plan defers has no verdict value); hand-over to whoever fixes item 37. |
 
 ## Gap Ledger
 
-No entries. The open items are follow-ups in the drift log: the hook cost (DRIFT-073), DRIFT-078, and the iteration
-002 scope the plan names.
+No entries. The open items are follow-ups in the drift log. Iteration 002's first batch holds round E's two findings,
+the hook cost (DRIFT-073), DRIFT-078 and the `t008` lane's time (DRIFT-087). The rest is the iteration 002 scope the
+plan names, plus the findings recorded in DRIFT-086 to DRIFT-089.
 
 ## Notes
 
 - The review needed a fifth round because the review-end records could not follow the stop (DRIFT-078); the path was
   proved on scratch copies before any record was written (DRIFT-076).
+- The sign-off sync then refused once at its state-truth gate. Its way through was proved on scratch copies before
+  anything changed in the real tree (DRIFT-082, DRIFT-086).
