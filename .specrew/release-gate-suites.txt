@@ -386,3 +386,7 @@ tests/unit/start-written-files-record.tests.ps1
 # Feature 206 T015 (maintainer ruling 2026-11-12): a script suite no lane ran before the test census, too slow for
 # the per-push CI step (98 s alone here).
 tests/integration/validator-hardening-iteration1.ps1
+
+# Feature 206 T021 (SC-002; maintainer ruling 2026-11-12, release manifest, not per push): its fixtures copy only
+# what git does not ignore and live in a temp folder; green in the review preflight's layout.
+tests/integration/validator-hardening-iteration2.ps1

@@ -129,11 +129,16 @@ function New-Workspace {
 
     $null = New-Item -ItemType Directory -Path $workspaceRoot -Force
 
-    foreach ($item in @('.specrew', '.squad', '.github')) {
-        $source = Join-Path $repoRoot $item
-        if (Test-Path -LiteralPath $source) {
-            Copy-Item -LiteralPath $source -Destination $workspaceRoot -Recurse -Force
-        }
+    # Feature 206 T021 (bug list items 22 and 29): copy only the files git does not ignore, tracked or not, so the
+    # fixture never carries this machine's session state or local review store, and reads the same in a working
+    # checkout and in the review preflight's layout (where .specrew, .squad and .specify are restored untracked).
+    foreach ($relative in @(& git -C $repoRoot -c core.quotepath=off ls-files --cached --others --exclude-standard -- '.specrew' '.squad' '.github')) {
+        if ([string]::IsNullOrWhiteSpace($relative)) { continue }
+        $source = Join-Path $repoRoot $relative
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+        $destination = Join-Path $workspaceRoot $relative
+        $null = New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force
+        Copy-Item -LiteralPath $source -Destination $destination -Force
     }
 
     $featureDestination = Join-Path $workspaceRoot 'specs\013-validator-hardening'
@@ -235,13 +240,31 @@ $classifierScriptPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\
 $startScriptPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 $featureSource = Join-Path $repoRoot 'specs\013-validator-hardening'
 $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\013-validator-hardening'
-$scratchRoot = Join-Path $repoRoot '.scratch\validator-hardening-iteration2'
+# Feature 206 T021: the fixtures live in a temp folder this script creates, never inside the repository, and the
+# folder is removed by its exact path on every exit.
+$scratchRoot = Join-Path ([IO.Path]::GetTempPath()) ('validator-hardening-iteration2-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+
+function Exit-ValidatorHardening {
+    param([Parameter(Mandatory = $true)][int]$Code)
+    if ((Split-Path -Leaf $scratchRoot) -like 'validator-hardening-iteration2-*' -and (Test-Path -LiteralPath $scratchRoot)) {
+        Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_USER_PROFILE_PATH) -and (Split-Path -Leaf $env:SPECREW_USER_PROFILE_PATH) -like 'specrew-test-profile-*') {
+        Remove-Item -LiteralPath $env:SPECREW_USER_PROFILE_PATH -Force -ErrorAction SilentlyContinue
+    }
+    exit $Code
+}
+
+trap {
+    Write-Fail ("Unexpected error: {0}" -f $_.Exception.Message)
+    Exit-ValidatorHardening -Code 1
+}
 $classifierBeforePath = Join-Path $fixtureRoot 'copilot-instructions\before.md'
 
 foreach ($requiredPath in @($validatorScriptPath, $classifierScriptPath, $startScriptPath, $featureSource, $fixtureRoot, $classifierBeforePath)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         Write-Fail "Missing validator-hardening iteration 002 dependency: $requiredPath"
-        exit 1
+        Exit-ValidatorHardening -Code 1
     }
 }
 
@@ -383,7 +406,7 @@ Commit-Workspace -WorkspaceRoot $startRoot -Message 'Seed specrew-start classifi
 $null = & pwsh -NoProfile -ExecutionPolicy Bypass -File $startScriptPath -ProjectPath $startRoot -NoLaunch 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Fail 'Baseline specrew-start run failed in classifier fixture.'
-    exit 1
+    Exit-ValidatorHardening -Code 1
 }
 $promptPath = Join-Path $startRoot '.specrew\last-start-prompt.md'
 
@@ -394,7 +417,7 @@ $bookkeepingExitCode = $LASTEXITCODE
 $bookkeepingOutput = $null
 if ($bookkeepingExitCode -ne 0) {
     Write-Fail 'Bookkeeping-only specrew-start run failed in classifier fixture.'
-    exit 1
+    Exit-ValidatorHardening -Code 1
 }
 $bookkeepingPrompt = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 if (-not (Assert-NotMatch -Text $bookkeepingPrompt -Pattern 'PAUSE-AND-CONFIRM|Session-loaded files changed|Session-Loaded Files Changed' -FailureMessage 'Bookkeeping-only copilot-instructions changes should not trigger pause-and-confirm.')) { $allChecksPassed = $false }
@@ -406,7 +429,7 @@ $null = & pwsh -NoProfile -ExecutionPolicy Bypass -File $startScriptPath -Projec
 $behaviorExitCode = $LASTEXITCODE
 if ($behaviorExitCode -ne 0) {
     Write-Fail 'Behavior specrew-start run failed in classifier fixture.'
-    exit 1
+    Exit-ValidatorHardening -Code 1
 }
 $behaviorPrompt = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 if (-not (Assert-Match -Text $behaviorPrompt -Pattern 'PAUSE-AND-CONFIRM|Session-loaded files changed|Session-Loaded Files Changed' -FailureMessage 'Behavior-affecting copilot-instructions changes should trigger pause-and-confirm.')) { $allChecksPassed = $false }
@@ -414,8 +437,8 @@ if (-not (Assert-Match -Text $behaviorPrompt -Pattern '\.github[/\\]copilot-inst
 Write-Pass 'specrew-start pauses when copilot-instructions changes affect behavior.'
 
 if (-not $allChecksPassed) {
-    exit 1
+    Exit-ValidatorHardening -Code 1
 }
 
 Write-Pass 'Validator hardening Iteration 002 fixtures exercise approval-reuse, over-claim, classifier, and compatibility paths through validate-governance.ps1 and specrew-start.ps1'
-exit 0
+Exit-ValidatorHardening -Code 0
