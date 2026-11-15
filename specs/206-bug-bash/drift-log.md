@@ -69,3 +69,18 @@
   clarify bookkeeping (`.squad/decisions.md`, `.squad/events/lifecycle-events.jsonl`, `.squad/identity/now.md`) is
   committed as a `boundary(clarify)` bookkeeping commit with this entry; `.squad/active-features.yml` stays out.
   Amendment A1 is approved by the maintainer at iteration 002's plan boundary, and the plan packet says so.
+
+## DRIFT-206-005 — the records-only push rule widened to records in general (maintainer, relayed)
+
+- **Decision**: the maintainer's words to the reviewer, at 19:02 local on 2026-11-15, "Yes for all", answering feature
+  203's question whether the records-only push rule covers records in general and not only Markdown. Relayed by the
+  reviewer (specrewreviewer-98) for all three crews; a decision, not a boundary approval.
+- **The rule**: when the only difference from the last commit on which the full pre-push checks were green is records,
+  run markdownlint and the governance check, push, and follow CI to its end. Records are Markdown under `specs/` or
+  `docs/`; the files a boundary sync writes (the `.squad` records, the sign-off gate's record and listing, `state.md`,
+  the closed-iterations index and the seal); and the iteration's own record files such as `tasks-progress.yml`.
+  Anything else (any script, test, workflow, configuration file, deployed copy or hash record) still gets the five
+  lanes in the preflight layout. Before using it, the changed files are printed and each confirmed a record of those
+  kinds; one that is not clearly so is not.
+- **Unchanged**: `.squad/active-features.yml` is in no commit; the rule does not relax a review round's head or widen
+  the item 13 rerun exception.
