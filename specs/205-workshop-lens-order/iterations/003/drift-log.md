@@ -23,8 +23,8 @@
 ## Summary
 
 **Total drift events**: 7
-**Resolution rate**: 86% (6/7 resolved or placed; DRIFT-005's FR-030 wording waits for the maintainer)
-**Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 is proposed (DRIFT-005)
+**Resolution rate**: 100% (7/7 resolved or placed)
+**Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 recorded in spec.md, approved at the tasks boundary (DRIFT-005)
 
 ## Events
 
@@ -92,13 +92,16 @@
 - **Spec**: FR-030 asks for dated lines and a stale marker. It does not ask the agent to confirm a version at the
   point of choice, and SC-011 does not test the conduct. Doing it under FR-030 as written would stretch the
   requirement, so it goes through clarify (TG-004) as Amendment A3, approved at the tasks boundary as A1 and A2 were at
-  the plan boundary. Proposed wording, not yet in spec.md:
+  the plan boundary. The wording, accepted by the maintainer as written at 20:57 local on 2026-11-15 ("OK, accept the
+  wording", relayed by the reviewer session) and now in spec.md with its Clarifications entry:
   - FR-030, appended: "When the human's choice depends on a version, the lens's conduct MUST tell the agent to confirm
     it against the official source at that point and show the source and the date, even when the stack's line is not
     stale. When the host cannot look a source up, the agent MUST say so in plain words and mark the version
     unconfirmed, never guessing."
   - SC-011, appended: "and the lens's conduct carries the confirm-at-the-point-of-choice rule and its no-lookup
     fallback."
+- **Resolution**: spec-updated (Amendment A3); no clarify sync mid-iteration (reviewer's ruling); approved at the tasks
+  boundary.
 - **Class closure**: the T027 check over the conduct text.
 
 ### DRIFT-006 — the records-only push rule now covers records in general (maintainer decision)

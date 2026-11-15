@@ -224,7 +224,10 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   time, for each of its six stacks. Each per-stack rule MUST carry the date its sources were checked, and the lens MUST
   show one "last checked" line per stack when it runs, marked stale after 90 days. Version numbers MUST appear only in
   that dated line and in the lens's Source Notes, each source with its URL and date. Facts that could not be confirmed
-  MUST be left out.
+  MUST be left out. (Amendment A3) When the human's choice depends on a version, the lens's conduct MUST tell the agent
+  to confirm it against the official source at that point and show the source and the date, even when the stack's line
+  is not stale. When the host cannot look a source up, the agent MUST say so in plain words and mark the version
+  unconfirmed, never guessing.
 - **FR-031**: Proposal 220's status history MUST record the iteration change (iteration 003 is the code-implementation
   lens refresh; the two-pass split moves to iteration 004, after 203) and the order agreed for after iteration 002:
   proposal 177 as its own feature (implementer side first, reviewer side after feature 203 merges), then the testing lens (proposals 178 and
@@ -288,7 +291,8 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - **SC-010** (iteration 002): The FR-025 questions sit under their lenses' problem headings, the iteration 001 parity
   and tagging tests still pass, and each lens's extractor count changes by exactly its added questions.
 - **SC-011** (iteration 003): Each code-implementation stack rule carries a sources-checked date, no rule text holds a
-  version number, and a fixture with an old date shows the stale marker.
+  version number, and a fixture with an old date shows the stale marker, and the lens's conduct carries the
+  confirm-at-the-point-of-choice rule and its no-lookup fallback (Amendment A3).
 - **SC-012** (iteration 002): One recorded Light workshop run on a small sample, in a scratch project, shows a lens
   presenting its recommendations as one list, "accept" closing it, and product-domain asking the compliance question.
 
@@ -324,6 +328,17 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   iteration 004.
 - Provenance: DRIFT-205-INTAKE-006 in `workshop/intake-drift-log.md`. As with Amendment A1, the amendment is approved
   at the plan boundary.
+
+### Session 2026-11-15 (Amendment A3, iteration 003)
+
+- FR-030 gains two sentences and SC-011 one clause: when the human's choice depends on a version, the code lens's
+  conduct has the agent confirm it against the official source at that point and show the source and the date, even
+  when the stack's line is not stale; with no way to look a source up, the agent says so and marks the version
+  unconfirmed, never guessing. The maintainer decided the conduct sentence at 19:02 local ("Yes for all", relayed by the
+  reviewer session) and accepted this wording at 20:57 local ("OK, accept the wording", relayed by the reviewer
+  session).
+- Provenance: iteration 003 DRIFT-005. No clarify sync is run mid-iteration (reviewer's ruling); the amendment is
+  approved at the tasks boundary, and the tasks packet names it.
 
 ## Assumptions
 
