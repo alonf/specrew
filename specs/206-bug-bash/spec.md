@@ -61,7 +61,7 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
 
 | Item | What is fixed |
 | ---- | ------------- |
-| 37 | a task the plan defers, or schedules after sign-off, has a review verdict that says so, beside an `accepted` review |
+| 37 | a task deferred by a recorded decision has a review verdict that says so, beside an `accepted` review |
 | 39 | a review record or retro pushed before its approval no longer turns Specrew CI Lint red |
 | 41 | the closeout dashboard is drawn after the verdict, so the sealed snapshot shows what was delivered |
 | 44 | the Completed date and the hardening rows are settled before the closeout packet is shown |
@@ -170,30 +170,35 @@ removes its temporary 60-second known-red limits for the two B5F-036 suites.**
 Source: the maintainer's scope decision for iteration 002 (2026-11-15, 11:31 local, relayed by the reviewer session;
 Clarifications below). The diagnosis for each item is in the bug list.
 
-- **FR-015 (item 37)**: A task the plan defers, or schedules after the review sign-off, MUST have a review verdict
-  that says so. review.md accepts a task verdict `deferred` that names, on the same row, the decision id that
+- **FR-015**: (Item 37.) A task deferred by a recorded decision MUST have a review verdict that says so. review.md accepts a task verdict `deferred` that names, on the same row, the decision id that
   deferred it (an entry in `.squad/decisions.md`); a `deferred` row with no decision id, or one naming a decision
   that does not exist, fails validation. An `accepted` review may hold `deferred` rows; it still may not hold
-  `needs-work` or `blocked` ones. Both known cases are covered: 206 iteration 001's T003 (deferred to iteration 002,
-  recorded today as `pass` with a note, DRIFT-206-I001-027) and feature 203's T014 (the pin advance, scheduled after
-  sign-off by plan and recorded as `blocked`, `specs/203-beta5-stabilization/iterations/001/review.md` row T014).
+  `needs-work` or `blocked` ones. This covers 206 iteration 001's T003 (deferred to iteration 002 by a decision, recorded today as
+  `pass` with a note, DRIFT-206-I001-027).
   - **How far this goes:** one task-level value and its decision-id check, and nothing that changes what a gate
-    enforces.
-  - **Left to proposal 206** (Governance-Schema Vocabulary Completeness, its item 4 and the rest): an overall verdict
+    enforces (design D1-a, maintainer 2026-11-15).
+  - **Not covered: feature 203's T014** (the pin advance, scheduled after sign-off by the plan itself, with no
+    decision, and recorded as `blocked`, `specs/203-beta5-stabilization/iterations/001/review.md` row T014). That case
+    stays with proposal 206.
+  - **Left to proposal 206** (Governance-Schema Vocabulary Completeness, its item 4 and the rest): T014's case, a task
+    scheduled after sign-off by the plan; an overall verdict
     meaning "accepted with recorded deferrals", the distinction between work satisfied elsewhere and work satisfied
     nowhere yet, a deferral identity that fresh review rounds see, and the boundary-subject and bounding vocabulary.
-- **FR-016 (item 39)**: The plan-status staleness checks MUST treat "record written, its boundary approval still
+- **FR-016**: (Item 39.) The plan-status staleness checks MUST treat "record written, its boundary approval still
   pending" as a normal state. review.md beside plan.md at `executing` is accepted while the review-signoff crossing is
   pending or not yet reached, and retro.md beside `reviewing` while the retro crossing is. Once the verdict is
   recorded and the phase line has not moved, the check fails as today. The pending crossing is read through the
   existing start-context reader. Proved by four cases: record before the verdict, at the verdict, after the line
-  moves, and the verdict recorded with the line behind.
-- **FR-017 (item 41)**: The iteration closeout dashboard MUST be drawn after the closeout verdict is captured and
+  moves, and the verdict recorded with the line behind. **Where `.specrew/start-context.json` is absent** (it is ignored
+  by git, so CI and a fresh clone have none), the record-before-verdict state is accepted with a warning that names the
+  missing file; the case of a recorded verdict with the line behind is then left to the local check and the capture's
+  mirror check (design D2-a, maintainer 2026-11-15).
+- **FR-017**: (Item 41.) The iteration closeout dashboard MUST be drawn after the closeout verdict is captured and
   before the iteration is sealed, so the sealed `dashboard.md` shows the iteration's delivered points, the phase
   `iteration-closeout` and the iteration among the shipped ones. The arrival may still draw a preview; the sealed
   copy is the one drawn after the verdict. A failed redraw is reported and does not block the seal, as the arrival's
   draw is today.
-- **FR-018 (item 44)**: The Completed date and the hardening-gate rows MUST be settled before the closeout packet is
+- **FR-018**: (Item 44.) The Completed date and the hardening-gate rows MUST be settled before the closeout packet is
   shown, not discovered by the governance check after the verdict. At the retro → iteration-closeout arrival, every
   hardening row still at `planning-time-analysis` / `pending-post-implementation` is named in the closeout packet as
   owed, and the Completed date is written by the same capture that moves plan.md to `complete`, so the boundary
@@ -224,14 +229,15 @@ Clarifications below). The diagnosis for each item is in the bug list.
 - **SC-006**: The quality resolver, run on this repository with feature 201's spec, selects no Node or
   React preset, and the moved stack-detection assertion passes on its fixture.
 - **SC-007**: The home hook-file hashes are identical before and after every test run in this feature.
-- **SC-008 (FR-015)**: A review.md with an `accepted` verdict and a `deferred` row naming an existing decision passes
+- **SC-008**: (FR-015.) A review.md with an `accepted` verdict and a `deferred` row naming an existing decision passes
   validation; the same row with no decision id, or a missing one, fails; a `needs-work` row beside `accepted` still
   fails.
-- **SC-009 (FR-016)**: The four staleness cases pass in a unit suite, and the push of a review or retro record made
+- **SC-009**: (FR-016.) The four staleness cases pass in a unit suite, a fifth case with no `start-context.json`
+  gives the warning and no error, and the push of a review or retro record made
   before its verdict leaves Specrew CI Lint green.
-- **SC-010 (FR-017)**: In a fixture closeout, the sealed `dashboard.md` shows the planned points as delivered, the phase
+- **SC-010**: (FR-017.) In a fixture closeout, the sealed `dashboard.md` shows the planned points as delivered, the phase
   `iteration-closeout` and the iteration under Recent Shipped.
-- **SC-011 (FR-018)**: In a fixture closeout, an open hardening row is named in the closeout packet, and the boundary
+- **SC-011**: (FR-018.) In a fixture closeout, an open hardening row is named in the closeout packet, and the boundary
   commit made by the capture passes validate-governance with a Completed date.
 
 ## Clarifications
@@ -269,8 +275,9 @@ The reviewer session put a recommendation to the maintainer; their answer, at 11
   A: Not in iteration 002. Items 40, 42 and 43 are in code feature 203 owns or has rewritten and stay hand-overs or
   wait for its merge; items 36 and 38 come later.
 - Q: How far does item 37's fix go?
-  A: As FR-015 states: one task-level value with its decision-id check, covering 206's T003 and 203's T014; the wider
-  vocabulary stays with proposal 206.
+  A: As FR-015 states: one task-level value with its decision-id check, covering 206's T003; 203's T014 (scheduled
+  after sign-off by the plan, with no decision) and the wider vocabulary stay with proposal 206 (design D1-a, chosen by
+  the maintainer with Option B on 2026-11-15).
 - Recorded for the plan (not a question): item 41's seal step is `Invoke-SpecrewCloseoutSeal`, called from
   `Add-SpecrewBoundaryAuthorization` in `extensions/specrew-speckit/scripts/shared-governance.ps1`. That file is not
   on 206's protected list, but feature 203's branch has changed it since `df1141a8` (321 lines added and 23 removed

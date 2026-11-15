@@ -267,4 +267,14 @@ None selected, as in iteration 001: bug-bash conduct, with root causes in the bu
 
 ## Human Decision
 
-**Decision verdict**: pending.
+- **Decision verdict**: approved for plan with Option B
+- **Chosen option**: Option B
+- **Choices**: D1-a, D2-a, D3-a, D4-a, D5-a, D6-a; the cut as proposed (items 15, 16, 19, 20, 28 and 35 to iteration
+  003), 20.0 SP.
+- **Reason**: as recommended. It removes the step after the verdict at every closeout, in parts of
+  `shared-governance.ps1` that feature 203 has not changed; D2-a is the only honest reading of a pending verdict in CI.
+- **Modifications**: none.
+- **Verdict given**: typed by the maintainer on 2026-11-15, at the design-analysis decision stop rendered over the
+  committed draft `57d2ec50`. No crossing was pending, so the prompt hook recorded nothing as a boundary verdict (as in
+  feature 205's iteration 002); the plan's own approval comes at the plan boundary.
+- **Transcription disclosure**: agent-transcribed from the maintainer's typed reply in the governing session.
