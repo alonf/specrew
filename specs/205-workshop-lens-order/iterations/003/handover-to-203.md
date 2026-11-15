@@ -21,6 +21,16 @@ ruled. Recorded in 205's iteration 003 drift log as DRIFT-001.
 `empty-result-retry` and iteration 002's Windows Pester install). The test was last changed by feature 202
 (`7bb8028f`); earlier records naming it are listed in DRIFT-001.
 
+**Second sighting, a different case** (DRIFT-007): 2026-11-15 17:24:35Z, Specrew CI run 43739142768, attempt 1,
+Deterministic gate job 132889634266, the same step, on `b6ba0341` (Markdown records only). Case "I4b: all concurrent
+journal rows remain present" (truncated in the log after "present and pa"): expected '16', got '15'. The suite had
+passed on `d03a1f08` an hour earlier. Attempt 2 (job 132894671162) was green after one rerun the reviewer ruled for
+that run only.
+
+**Pattern**: two different concurrency cases in the same suite (I3a, then I4b) failed on two records-only pushes
+within a day. That is a pattern for whoever owns the bootstrap hook chain, not a one-off. The standing rerun exception
+does not cover this suite; the reviewer is asking the maintainer whether it should.
+
 **Status**: open; owner feature 203 (CI stability), or the hook chain's owner if 203 names another.
 
 ## H-024 — the iteration plan scaffold refuses a requirement scope and, without one, lists every requirement

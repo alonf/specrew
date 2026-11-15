@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 83% (5/6 resolved or placed; DRIFT-005's FR-030 wording waits for the maintainer)
+**Total drift events**: 7
+**Resolution rate**: 86% (6/7 resolved or placed; DRIFT-005's FR-030 wording waits for the maintainer)
 **Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 is proposed (DRIFT-005)
 
 ## Events
@@ -115,6 +115,24 @@
 - **Unchanged**: it does not relax a review round's head, and it does not widen the CI rerun exception
   (DRIFT-205-INTAKE-007).
 - **Class closure**: NONE — a working rule, saved as the crew's standing rule.
+
+### DRIFT-007 — HookRenderDedupe failed again, a different case (second sighting today; handed over)
+
+- **Observed**: 2026-11-15 17:24:35Z (19:24 local), Specrew CI run 43739142768, attempt 1, Deterministic gate job
+  132889634266, step "Bootstrap suite (F-174 hook chain - incl. directive delivery cap, P2)", on `b6ba0341`. That push
+  carried Markdown records only (DRIFT-005 and DRIFT-006, plan.md, the feature plan, tasks.md).
+- **Failure**: `tests/bootstrap/HookRenderDedupe.Tests.ps1`, case "I4b: all concurrent journal rows remain present"
+  (the log line is cut after "present and pa"): expected '16', got '15'. The only failed suite; the Contract lane was
+  skipped as a consequence. Test and Cross-Platform Validation were green, and the suite passed on `d03a1f08` an hour
+  earlier.
+- **Resolution**: reported first; one rerun ruled by the reviewer session for that run only. Attempt 2 was green
+  (Deterministic gate job 132894671162, Contract lane job 132899218902).
+- **Pattern**: the second HookRenderDedupe sighting today, a different case from the first (I3a on `ce444ca8`,
+  DRIFT-001). Two concurrency cases in one suite failed on two records-only pushes within a day.
+- **Rerun rule**: unchanged. The standing exception covers `co-review-service.Tests.ps1:129` and
+  `empty-result-retry.Tests.ps1` only; the reviewer is asking the maintainer whether this suite should join it.
+- **Class closure**: NONE — the hook chain's test is outside 205's scope. Added to H-023 (`handover-to-203.md`) as
+  the second sighting.
 
 <!--
   Every new ### DRIFT-... event includes:
