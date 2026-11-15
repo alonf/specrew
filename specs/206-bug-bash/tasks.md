@@ -499,7 +499,9 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Depends:** T035.
   - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`, its `.specify` mirror,
     `scripts/internal/sync-boundary-state.ps1`, the deployed hash file, `tests/unit/**`.
-- [ ] T037 [owner: Implementer] [sp: 0.25] [US3] **The two reviewer-brief promotions from iteration 001's retro.**
+- [x] T037 [owner: Implementer] [sp: 0.25] [US3] **The two reviewer-brief promotions from iteration 001's retro.**
+  - **Done (2026-11-15):** both are in `iterations/002/review-scope-round-1.md` ("Two standing instructions"), the
+    scope file the first review round is given with `--design-context-ref`.
   - **Work:** this iteration's review brief asks the reviewer, for any text-matching rule, to try a phrasing that
     matches the pattern but denies or conditions it; and, for any test that reads workflow or script files, to try
     each YAML and shell construct that can hide or fake a line.
