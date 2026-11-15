@@ -750,6 +750,122 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
 - **Disposition (maintainer, 2026-11-14, 22:39 local, relayed by the reviewer):** recorded for iteration 002; whether it
   goes in is the maintainer's decision at that iteration's plan. Not started.
 
+## 40. A turn that waits on the human is refused three times for a "coverage decision", then released by the cap
+
+- **Source:** the maintainer, relayed by the reviewer session (2026-11-14, 23:47 local): "OK, can you descibe the
+  problem to 206 for the next iteration to solve".
+- **Seen:** a Claude session in another of the maintainer's projects, on another machine, on the installed engine (its
+  version was not stated; the paste is cut off). The turn ended by asking the human something. The Stop hook refused
+  it three times for a coverage decision, then the refusal cap released it, and the human saw the answer twice with
+  hook text between. Here too, on 2026-11-15, the Stop hook asked for the same coverage decision twice. Both times the
+  iteration was closed and only records had changed since the last review.
+- **Defect:**
+  - (a) Wrong moment: a turn that only waits for input owes no coverage decision.
+  - (b) Unsatisfiable in that turn, so only the cap ends it: three refused turn ends, about 14 s per Stop run
+    (203's DRIFT-073 in `specs/203-beta5-stabilization/iterations/001/drift-log.md` on 203's branch).
+  - (c) The human is not told what to type.
+- **Expected:** a waiting turn owes no coverage decision. When one is owed, the human is told once what settles it. A
+  requirement the session cannot meet in the turn is not refused three times.
+- **Where:** the cap text is in `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` here at lines
+  1920 to 1922 (and 2294), and on 203's branch at lines 1991 to 1993. Since the merge base `df1141a8`, 203's branch has
+  changed the file (both copies, `extensions/` and `.specify/`) by 126 lines added and 66 removed in 8 commits.
+- **Reproduction:** not yet run. A scratch fixture on the installed engine (stale coverage, and a turn that ends by
+  asking the human) waits until the reviewer clears the load hold for feature 203's last review round. It is to say
+  what the classifier decided and why.
+- **Size:** about 1.5 SP (0.5 for the fixture and the classification, 1 for the fix and its tests).
+- **Protected:** the reviewer treats the conformance provider as protected until the maintainer says otherwise.
+  Feature 205's protected list names it; 206's list (`scripts/internal/continuous-co-review/` and the capture stores
+  under `scripts/internal/bootstrap/`) does not. **The maintainer is asked to settle the list as well as the item.**
+- **Choice for the maintainer:** fix it after 203 merges, hand it to 203, or lift the protection.
+
+## 41. The closeout dashboard is drawn before the verdict and never redrawn
+
+- **Observed (2026-11-15, 206 iteration 001):** the closeout sync draws `iterations/<NNN>/dashboard.md` when the retro
+  -> iteration-closeout crossing is opened (`Invoke-SpecrewAutoRenderDashboard`, `scripts/internal/sync-boundary-state.ps1`
+  line 1585, which runs `scripts/specrew-where.ps1 -CaptureKind iteration-closeout`). The verdict capture then moves
+  the phase lines and seals the iteration, and nothing redraws the dashboard. The sealed snapshot showed:
+  - the phase as retro;
+  - `20 SP planned | 0 SP delivered`;
+  - an "AWAITING YOUR VERDICT" banner;
+  - a closed list without the iteration.
+- **Corrected once:** redrawn and resealed by the maintainer's decision (DRIFT-206-I001-032). After the verdict the
+  same renderer gives 20 SP delivered, phase iteration-closeout and the iteration under Recent Shipped.
+- **Direction:** draw the dashboard as the capture's last act before the seal, or at the boundary commit.
+- **Files:** `sync-boundary-state.ps1` and the capture's seal step. Before planning, check whether the seal step is in
+  203's area (`scripts/internal/bootstrap/`).
+- **Size:** about 1 SP with its test.
+
+## 42. An approval with instructions is not captured, while the bare phrase is (hand-over to 203)
+
+- **Observed (2026-11-15):** `approved for iteration-closeout - after the boundary commit, check the dashboard's
+  delivered points; if it still shows 0 SP delivered, stop before pushing and report` was typed twice, at 01:19 and
+  02:50 local. Both are journaled as `verdict-not-captured-disclosed` with `leading_text` empty, at prompt submit and
+  again at Stop. The first came right after a context compaction; the second did not. The bare phrase was captured at
+  03:12. The packet offers `approved for <to> - <your instructions>` as a line the human can send.
+- **Where:** the capture code, under `scripts/internal/bootstrap/`, protected for 206. A hand-over to 203.
+  Recorded in DRIFT-206-I001-031.
+
+## 43. The stale-review wording at sign-off makes Specrew the subject, not the change
+
+- **Source:** the maintainer, relayed by the reviewer session, 2026-11-15:
+  - about 04:05 local: "Is that a Specrew problem? I think this is by desing, but the wording feals like a SPecrew
+    issue";
+  - at 04:07: "Yes, pass to 206".
+- **Situation:** a crew on the installed engine made fixes after its last co-review round. The sign-off gate found the
+  review stale and offered a partial review signoff or an allowance reset; the gate worked as designed. The crew told
+  the human: "Specrew will not record the review stage yet, because its own code review last read an older version of
+  the code." / "Specrew's co-review gate refused because its last code review read the tree as of 7cb2794, and a lot
+  has changed since." / "Accept partial coverage (my recommendation)."
+- **Where the text comes from (at `ebf13f19`):**
+  - `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1` lines 960 to 962 (1339 lines): "The latest
+    campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current
+    tree. ..."
+  - `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1` lines 185 to 191 (198 lines), appended to that
+    refusal: "If you intentionally accept partial coverage for this exact tree, do these three things in order, ..."
+  - The Stop hook notice, `scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1` (1625 lines):
+    - line 1423, "Specrew review — {route sentence}.";
+    - line 1469, the review-stale sentence: "your last review no longer covers these files";
+    - line 1523: "What to do: ask the human to approve a fresh review round ... If they prefer not to spend a round,
+      they can review the artifacts themselves".
+  - `docs/troubleshooting.md` lines 377 to 379 teach the same sequence. No skill or squad template carries it.
+- **Why the crew's wording came out this way:** the subjects are "the latest campaign result", "partial coverage" and
+  "your last review". None names the human's change, so a paraphrase lands on the tool.
+- **Proposed wording:** the change is the subject, and the typed phrases stay exactly as they are.
+  - Opening: "<N> file(s) changed after the last review round (run <run>, tree <short>); no reviewer has read those
+    changes. Usually these are the fixes for what that review found."
+  - The two choices: sign off with those changes unread, by `approved for partial review signoff - <why that is
+    safe>`; or have them read first, by `approved for allowance reset` (when no rounds remain) or `approved for review
+    round`, then the round.
+  - The three-step order, the no-commits rule and the advisory clause stay, worded about the human's files.
+- **Size:** about 2 SP for the three scripts, the doc and the tests that pin the wording.
+- **Protected:** all three scripts are under `scripts/internal/continuous-co-review/`, in 203's area. On 203's branch
+  since `df1141a8`:
+  - `signoff-gate-wiring.ps1`: 61 lines added in 1 commit; the suffix is unchanged (line 244).
+  - `review-signoff-evidence-gate.ps1`: 86 lines added and 9 removed in 7 commits; the stale message is unchanged
+    (line 974).
+  - `continuous-co-review-navigator.ps1`: 18 lines added and 422 removed in 5 commits; the Stop notice text is no
+    longer found under `scripts/` there, so it must be re-read after 203 merges.
+- **Choice for the maintainer:** as item 40: fix it after 203 merges, hand it to 203, or lift the protection.
+- **The design point (separate, for a proposal):**
+  - On the ordinary path (review, fix what it found, sign off), the fixes always come after the last round, so the
+    review is always stale at sign-off. The engine names that everyday outcome with words for an exception
+    ("partial coverage", "override").
+  - Features 205 and 203 and this iteration all met it in the week of 2026-11-14.
+  - `proposals/INDEX.md` has no proposal that covers it. The nearest are 197 (continuous co-review) and 102
+    (cross-model independent reviewer). It would be a new proposal; it is not designed here.
+
+## 44. The Completed date and the hardening rows are checked only after the closeout verdict
+
+- **Observed (2026-11-15, 206 iteration 001):** the governance check failed the closed iteration twice: plan.md had no
+  Completed date, and hardening-gate.md's five rows were still `planning-time-analysis` / `pending-post-implementation`.
+  The check applies only once plan.md is at complete, which happens after the maintainer's closeout verdict. So the
+  closeout packet was shown with both open, and the boundary commit `900b21b7` would have been red alone.
+- **Precedent:** feature 205 met the same pair (its DRIFT-028, corrected in `d4c11236`), and feature 202 has it on main
+  in `794f6559`.
+- **Corrected once:** by the maintainer's decision at 04:55 local (DRIFT-206-I001-033, `ebf13f19`).
+- **Direction:** check both before the closeout packet is shown (at the retro -> iteration-closeout arrival), and name
+  what is open in the packet.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
@@ -763,3 +879,6 @@ Carried from iteration 001 by name, with the decision that carried each (`.squad
 - **Items 12 and 15 to 30**, as the review's gap ledger lists them (each item says what remains), and **items 31 to
   38**, with item 36 including plan.md's stale note. Item 39 is a candidate; it goes in only by the maintainer's word at
   iteration 002's plan.
+- **Items 40 to 44**, recorded after the iteration-closeout. Items 40 and 43 are in, or next to, feature 203's area and
+  carry the same choice: after 203 merges, a hand-over to 203, or the protection lifted. Item 42 is a hand-over to 203.
+  Whether any of them is planned for iteration 002 is the maintainer's decision at that iteration's plan.
