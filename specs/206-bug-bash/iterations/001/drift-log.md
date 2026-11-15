@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 30
-**Resolution rate**: 80% (24/30 resolved; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
+**Total drift events**: 33
+**Resolution rate**: 79% (26/33 resolved; 031 reported for feature 203; 028 reported for feature 203's triage; 017 deferred to iteration 002 planning; 007 deferred to iteration 002 as bug list item 12; 010 deferred to
 iteration 002 as a required item: feature 206 does not close without it; 022 reported for feature 203's triage; 025
 deferred to iteration 002 by the maintainer's ruling)
 **Specification drift**: None detected (process drift only)
@@ -587,6 +587,64 @@ deferred to iteration 002 by the maintainer's ruling)
   candidate for iteration 002, not a hand-over to 203. The approved retro is left as it is.
 - **Resolution**: recorded for iteration 002's plan.
 - **Class closure**: NONE — rulings and a correction to a record, not a defect.
+
+### DRIFT-206-I001-031 — the closeout verdict with instructions was not captured twice; the bare phrase was
+
+- **Recorded**: 2026-11-15, after the iteration-closeout verdict.
+- **What**: the maintainer typed `approved for iteration-closeout - after the boundary commit, check the dashboard's
+  delivered points; if it still shows 0 SP delivered, stop before pushing and report` twice (01:19 and 02:50 local).
+  Neither was recorded as the verdict, at prompt submit or at turn end. `.specrew/runtime/handover-journal.jsonl` holds
+  both as `verdict-not-captured-disclosed` with `leading_text` empty. The first came right after a context compaction,
+  but the second did not, so compaction was not the cause. The bare `approved for iteration-closeout` was recorded at
+  03:12 local. The packet offers the instructions form as a line the human can send.
+- **Resolution**: reported for feature 203: the capture is 203's code. It goes on the bug list as its own item after
+  the closeout push. The maintainer's instruction in the uncaptured replies was followed as typed.
+- **Class closure**: NONE — the capture code is not 206's to change.
+
+### DRIFT-206-I001-032 — the closeout dashboard redrawn after the verdict and the iteration resealed
+
+- **Recorded**: 2026-11-15, after the iteration-closeout boundary commit `900b21b7`.
+- **What**: the closeout sync drew dashboard.md before the verdict, and nothing redrew it after. The sealed dashboard
+  showed the retro phase, `20 SP planned | 0 SP delivered`, and the closed list without this iteration. The maintainer
+  had said to stop before pushing in that case, and I did.
+- **Decision**: relayed by the reviewer session (`specrewreviewer-98`) under delegation, in the maintainer's words to
+  it at 03:15 local, 2026-11-15: "OK, tell the crew to try the second as you suggested". First redraw it on a scratch
+  copy. If the iteration shows as closed, its delivered points are not 0 and it is in the closed list, redraw it in
+  the worktree, reseal with `specrew reseal`, and push it with `900b21b7`. Do not fill the Actual column.
+- **Result**: the scratch redraw (a temporary worktree at `900b21b7` with the ignored `.specrew` state copied in,
+  removed by its exact path afterwards) showed phase iteration-closeout, `20 SP planned | 20 SP delivered | 0 SP
+  remaining`, and `[x] F-206 · iter-001 20.0 SP` under Recent Shipped. The worktree was then redrawn with the same
+  renderer the sync uses (`scripts/specrew-where.ps1 -CaptureKind iteration-closeout -FeatureId 206-bug-bash
+  -IterationNumber 001`), with the same figures, and the iteration was resealed.
+- **Resolution**: RESOLVED for this iteration. The class goes on the bug list after the push, with item 40, in the
+  Iteration 002 Intake.
+- **Class closure**: NONE — the redraw fixes this instance; the ordering defect is a bug list item.
+
+### DRIFT-206-I001-033 — the closeout left Completed empty and the hardening gate unchecked; both corrected
+
+- **Recorded**: 2026-11-15, after the iteration-closeout boundary commit `900b21b7`.
+- **What**: once plan.md was at complete, the governance check failed the closed iteration on two items. plan.md had
+  no Completed date, and hardening-gate.md's five rows still read `planning-time-analysis` /
+  `pending-post-implementation`. Both come from the closeout itself, not from the redraw. They are the same pair
+  feature 205 met (its DRIFT-028, corrected in `d4c11236`). The check runs only after the maintainer's closeout
+  verdict, so the packet was shown with both open.
+- **Decision**: relayed by the reviewer session (`specrewreviewer-98`) under delegation. The maintainer's words to it
+  at 04:55 local, 2026-11-15, quoting its wording back: "\"closeout fixes: yes\"". The wording was "add the Completed
+  date, close the hardening rows with evidence, redraw the dashboard if needed, reseal and push". Each row is closed
+  with what the iteration did, citing a commit or a test, or with a reason it does not apply. No bare tick, and no
+  claim the records do not support.
+- **Result**: plan.md Completed is 2026-11-15, the day the closeout verdict was recorded. The five rows are closed with
+  `runtime-evidence` / `recorded`, citing their tests and commits. Each row also names what is not covered:
+  - the gh-failure throw has no test;
+  - the notifier has not run live, because it acts only on main;
+  - quality-evidence.md was not updated after implementation;
+  - SC-001 and SC-002 are not met;
+  - the round 1 and round 4 gaps are deferred with their decision ids in the Approval column.
+
+  The iteration was resealed together with DRIFT-032's dashboard redraw.
+- **Resolution**: RESOLVED for this iteration. The class (both items checked only after the closeout verdict instead of
+  before the closeout packet) goes on the bug list after the push.
+- **Class closure**: NONE — the correction fixes this instance; the ordering defect is a bug list item.
 
 <!--
   Every new ### DRIFT-... event includes:
