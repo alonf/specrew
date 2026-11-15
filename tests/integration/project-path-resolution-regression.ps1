@@ -4,15 +4,9 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# REFUSES TO RUN (feature 206, T015; reviewer ruling 2026-11-12, maintainer's option 1). Supervised runs 3 and 4 wrote
-# into the repository that holds this script: both rewrote specs/206-bug-bash/iterations/001/state.md, and run 4 left
-# a .specrew-squad-probe-* folder at its root. The items, in specs/206-bug-bash/bug-list.md: 23, specrew start
-# re-anchors to, and writes into, a feature outside the project it was given (through the tracked
-# .squad/identity/now.md); 24, this script's fixture was not isolated; 25, specrew init runs its Squad probe in the
-# install root even with -DryRun, and its cleanup fails silently. No switch or variable bypasses this; iteration 002
-# removes it when those items are fixed.
-Write-Host 'project-path-resolution-regression.ps1 does not run until feature 206 bug list items 23, 24 and 25 are fixed (specs/206-bug-bash/bug-list.md). Nothing was run.' -ForegroundColor Yellow
-exit 1
+# Feature 206, iteration 002 (T024): iteration 001 made this script refuse to run after supervised runs 3 and 4 wrote
+# into the repository that holds it (bug list items 23, 24 and 25). T023 keeps `specrew start` inside -ProjectPath,
+# T025 runs init's Squad probe in a temp folder, and this script's fixture is what a fresh checkout holds.
 
 # `specrew start` writes the user profile when it is missing (scripts/specrew-start.ps1). This script points
 # that write at a temp file itself, so it never writes the real home folder and never relies on the shell
@@ -99,29 +93,22 @@ $null = New-Item -Path $dotNetRoot -ItemType Directory -Force
 $null = New-Item -Path $fixtureRoot -ItemType Directory -Force
 $null = New-Item -Path $initFixtureRoot -ItemType Directory -Force
 
+# Only the files git does not ignore, tracked or not, as a fresh checkout (or the review preflight's layout) has them:
+# the working folders also hold the developer's ignored session state (last-start-prompt.md, start-context.json, the
+# authority, review and runtime stores), and a stale prompt there made `specrew start` refuse, so the result depended
+# on who ran it (feature 206, T015 for .specrew; T024 for every folder, bug list items 22, 24 and 29).
 $fixtureItems = @('.specrew', '.specify', '.squad', '.github', 'specs')
-foreach ($item in $fixtureItems) {
-    $source = Join-Path $repoRoot $item
-    if (-not (Test-Path -LiteralPath $source)) {
+foreach ($relative in @(& git -C $repoRoot -c core.quotepath=off ls-files --cached --others --exclude-standard -- $fixtureItems)) {
+    if ([string]::IsNullOrWhiteSpace($relative)) {
         continue
     }
-    if ($item -eq '.specrew') {
-        # Only the files git tracks, as a fresh checkout has them: the working folder also holds the developer's
-        # gitignored session state (last-start-prompt.md, start-context.json, the authority, review and runtime
-        # stores), and a stale prompt there made `specrew start` refuse, so the result depended on who ran it
-        # (feature 206, T015).
-        foreach ($trackedPath in @(& git -C $repoRoot -c core.quotepath=off ls-files -- '.specrew')) {
-            $trackedSource = Join-Path $repoRoot $trackedPath
-            if (-not (Test-Path -LiteralPath $trackedSource -PathType Leaf)) {
-                continue
-            }
-            $trackedTarget = Join-Path $fixtureRoot $trackedPath
-            $null = New-Item -Path (Split-Path -Parent $trackedTarget) -ItemType Directory -Force
-            Copy-Item -LiteralPath $trackedSource -Destination $trackedTarget -Force
-        }
+    $copySource = Join-Path $repoRoot $relative
+    if (-not (Test-Path -LiteralPath $copySource -PathType Leaf)) {
         continue
     }
-    Copy-Item -LiteralPath $source -Destination $fixtureRoot -Recurse -Force
+    $copyTarget = Join-Path $fixtureRoot $relative
+    $null = New-Item -Path (Split-Path -Parent $copyTarget) -ItemType Directory -Force
+    Copy-Item -LiteralPath $copySource -Destination $copyTarget -Force
 }
 
 $requiredFixturePaths = @(
@@ -151,7 +138,15 @@ foreach ($relativePath in $requiredFixturePaths) {
 
 # The fixture is its own git repository. Without one, git inside it resolved to the repository that holds it, and
 # `specrew start` re-anchored to that repository's feature and wrote its real state.md (feature 206, T015).
-$null = & git -C $fixtureRoot init --quiet 2>&1
+# A fresh checkout of a feature has that feature's branch checked out (T024): name the fixture's branch after the
+# feature the copied identity file names, so the start case meets a governed project as a collaborator receives it.
+$fixtureIdentityPath = Join-Path $fixtureRoot '.squad\identity\now.md'
+$fixtureBranch = 'main'
+if (Test-Path -LiteralPath $fixtureIdentityPath -PathType Leaf) {
+    $identityFeature = [regex]::Match((Get-Content -LiteralPath $fixtureIdentityPath -Raw -Encoding UTF8), '(?m)^session_state_feature:\s*"?(?<ref>\d{3}-[A-Za-z0-9._-]+)"?\s*$')
+    if ($identityFeature.Success) { $fixtureBranch = $identityFeature.Groups['ref'].Value }
+}
+$null = & git -C $fixtureRoot init --quiet --initial-branch=$fixtureBranch 2>&1
 $null = & git -C $fixtureRoot add -A 2>&1
 $null = & git -C $fixtureRoot -c user.name='SC-001 Fixture' -c user.email='sc001-fixture@example.invalid' -c commit.gpgsign=false commit --quiet -m 'SC-001 fixture' 2>&1
 $fixtureTopLevel = [string](& git -C $fixtureRoot rev-parse --show-toplevel 2>$null)
@@ -167,10 +162,9 @@ $entryPointCases = @(
     @{
         Label = 'specrew start --no-launch (default path)'
         ScriptPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
-        # A fresh copy of a governed project has features but no session files, which start reads as stale; with
-        # no console it refuses (item 1). Recovery A re-anchors, so this case measures path resolution (feature
-        # 206, T015, maintainer's option 1).
-        Arguments = '-NoLaunch -RecoveryChoice A'
+        # A fresh copy of a governed project has features but no session files. Since feature 206 T022 that is a
+        # first start, so the case passes no recovery choice: it is SC-001's fresh checkout starting with no console.
+        Arguments = '-NoLaunch'
         WorkingDirectory = $fixtureRoot
         ExpectedExitCode = 0
         OutputPattern = [regex]::Escape($fixtureRoot)
@@ -271,6 +265,14 @@ if ($findings.Count -gt 0) {
 }
 else {
     Write-Pass 'Static scan found no raw GetFullPath usage for audited path parameters.'
+}
+
+# The fixtures and the profile file are this script's own temp folders; removed by their exact paths (T024).
+if ((Split-Path -Leaf $scratchRoot) -eq 'specrew-project-path-resolution-regression' -and (Test-Path -LiteralPath $scratchRoot)) {
+    Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+if ((Split-Path -Leaf $env:SPECREW_USER_PROFILE_PATH) -like 'specrew-test-profile-*') {
+    Remove-Item -LiteralPath $env:SPECREW_USER_PROFILE_PATH -Force -ErrorAction SilentlyContinue
 }
 
 if (-not $allChecksPassed) {

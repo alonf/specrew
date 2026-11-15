@@ -507,7 +507,7 @@ $rulingExclusions = [ordered]@{
     'tests/integration/distribution-module-publish.ps1'              = 'would publish to PSGallery if PSGALLERY_API_KEY is set'
     'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
     'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
-    'tests/integration/project-path-resolution-regression.ps1'       = 'SC-001 not met in iteration 001: supervised runs 3 and 4 wrote into this repository'
+    'tests/integration/project-path-resolution-regression.ps1'       = 'awaiting the maintainer: green in iteration 002 (T024)'
 }
 foreach ($excludedPath in $rulingExclusions.Keys) {
     $declared = if ($exclusions.Contains($excludedPath)) { [string]$exclusions[$excludedPath] } else { '' }
@@ -533,11 +533,12 @@ $vh2Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/val
 Assert-True (($vh2Text -match 'ls-files --cached --others --exclude-standard') -and ($vh2Text -match "GetTempPath\(\)\) \('validator-hardening-iteration2-'") -and ($vh2Text -notmatch "'\.scratch\\validator-hardening-iteration2'") -and ($vh2Text -notmatch "foreach \(\`$item in @\('\.specrew', '\.squad', '\.github'\)\)")) "SC-002's script builds its fixtures in a temp folder and copies only the files git does not ignore under .specrew, .squad and .github"
 
 $sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
-Assert-True ($sc001Text -match 'ls-files[^\r\n]*\.specrew') "SC-001's fixture copies only the files git tracks under .specrew, so its result does not depend on the developer's session files"
-# A fresh copy of a governed project has features but no session files, which `specrew start` reads as stale
-# state; with no console it refuses (item 1, T001). The start case chooses recovery A itself, so SC-001 measures
-# path resolution (maintainer, option 1, 2026-11-12).
-Assert-True ($sc001Text -match "(?s)scripts\\specrew-start\.ps1'\s*\r?\n\s*Arguments\s*=\s*'[^']*-RecoveryChoice A\b") "SC-001's start case passes -RecoveryChoice A, so a fresh fixture's missing session files cannot stop it"
+# Feature 206 T024 (bug list items 22, 24 and 29): the fixture copies the files git does not ignore under each folder it
+# takes, tracked or not, so it holds what a fresh checkout holds and never the developer's session files or review store.
+Assert-True (($sc001Text -match 'ls-files --cached --others --exclude-standard') -and ($sc001Text -notmatch 'Copy-Item -LiteralPath \$source -Destination \$fixtureRoot -Recurse')) "SC-001's fixture copies the files git does not ignore, so its result does not depend on the developer's session files"
+# Since T022 a governed project with no session files is a first start, so the start case passes no recovery choice:
+# SC-001 is a fresh checkout's no-console start, not a recovery (iteration 001 passed -RecoveryChoice A instead).
+Assert-True (($sc001Text -match "(?s)scripts\\specrew-start\.ps1'\s*\r?\n\s*Arguments\s*=\s*'-NoLaunch'") -and ($sc001Text -notmatch '-RecoveryChoice')) "SC-001's start case passes no recovery choice: a fresh checkout's first start needs none (T022)"
 # Supervised run 3: the fixture sat under this repository's .scratch and was not its own git repository, so git
 # inside it resolved to this worktree, recovery A re-anchored to this repository's own feature, and `specrew start`
 # rewrote its real state.md. The fixture is built under the temp folder, given its own `git init`, and the script
@@ -546,41 +547,11 @@ $sc001Isolated = ($sc001Text -match '\$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Pat
     ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+init') -and ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+rev-parse\s+--show-toplevel')
 Assert-True $sc001Isolated "SC-001's fixture is built outside this repository, has its own git repository, and the script checks that the fixture's git top level is not this repository"
 
-# Supervised runs 3 and 4 rewrote this repository's state.md (bug list item 23, through the tracked
-# .squad/identity/now.md) and run 4 left an init probe folder in it (item 25). Being excluded keeps the script out of
-# the automated lists only, so it refuses to run at all until iteration 002 fixes those items: its first statement
-# exits, before any fixture is built, with no switch or variable to bypass it (reviewer ruling 2026-11-12, maintainer's
-# option 1). It is executed below only once the refusal is in place, so this check never runs the old script.
-$sc001Path = Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1'
-$sc001Raw = Get-Content -LiteralPath $sc001Path -Raw -Encoding UTF8
-$refusalAt = $sc001Raw.IndexOf('bug list items 23, 24 and 25', [StringComparison]::Ordinal)
-$firstWriteAt = [regex]::Match($sc001Raw, '(?m)^[^#\r\n]*\b(New-Item|Copy-Item|Remove-Item|Set-Content|git\s+-C)\b').Index
-$refusalFirst = $refusalAt -ge 0 -and $refusalAt -lt $firstWriteAt -and ($sc001Raw.Substring($refusalAt, [Math]::Min(400, $sc001Raw.Length - $refusalAt)) -match '\bexit\s+1\b') -and
-    ($sc001Raw -notmatch 'SPECREW_[A-Z_]*(ALLOW|BYPASS|FORCE)')
-Assert-True $refusalFirst ("SC-001's script refuses before it writes anything, naming bug list items 23, 24 and 25, with no bypass (refusal at {0}; first write at {1})" -f $refusalAt, $firstWriteAt)
-if ($refusalFirst) {
-    $refusalTemp = Join-Path ([IO.Path]::GetTempPath()) ('sc001-refusal-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
-    $null = New-Item -ItemType Directory -Path $refusalTemp -Force
-    $repoStateBefore = ((& git -C $repoRoot status --porcelain=v1 --untracked-files=all) -join "`n") + "`n" + ((& git -C $repoRoot diff --no-ext-diff) -join "`n")
-    $savedTemp = $env:TEMP; $savedTmp = $env:TMP; $savedTmpDir = $env:TMPDIR
-    try {
-        $env:TEMP = $refusalTemp; $env:TMP = $refusalTemp; $env:TMPDIR = $refusalTemp
-        $refusalOutput = @(& pwsh -NoProfile -NonInteractive -File $sc001Path 2>&1 | ForEach-Object { [string]$_ })
-        $refusalExit = $LASTEXITCODE
-    }
-    finally {
-        $env:TEMP = $savedTemp; $env:TMP = $savedTmp; $env:TMPDIR = $savedTmpDir
-    }
-    $repoStateAfter = ((& git -C $repoRoot status --porcelain=v1 --untracked-files=all) -join "`n") + "`n" + ((& git -C $repoRoot diff --no-ext-diff) -join "`n")
-    $tempWrites = @(Get-ChildItem -LiteralPath $refusalTemp -Recurse -Force -ErrorAction SilentlyContinue)
-    Remove-Item -LiteralPath $refusalTemp -Recurse -Force -ErrorAction SilentlyContinue
-    $refusalText = $refusalOutput -join ' '
-    Assert-True ($refusalExit -ne 0 -and $refusalText -match '23' -and $refusalText -match '24' -and $refusalText -match '25' -and $tempWrites.Count -eq 0 -and $repoStateAfter -eq $repoStateBefore) ("SC-001's script, run, refuses and writes nothing in the repository or the temp folder (exit {0}; temp entries {1}; repository unchanged {2}; output: {3})" -f
-        $refusalExit, $tempWrites.Count, ($repoStateAfter -eq $repoStateBefore), $refusalText)
-}
-else {
-    Assert-True $false "SC-001's script, run, refuses and writes nothing (not run: the refusal is not its first statement, and the old script must not run)"
-}
+# Iteration 001 made the script refuse to run (DRIFT-206-I001-019) until bug list items 23, 24 and 25 were fixed; T023,
+# T024 and T025 fixed them in iteration 002, so the refusal is gone. The script stays out of the automated lists until
+# the maintainer has seen its supervised run (iteration 001 ruling).
+$sc001Raw = Get-Content -LiteralPath (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1') -Raw -Encoding UTF8
+Assert-True ($sc001Raw -notmatch 'does not run until feature 206 bug list items') "SC-001's script no longer refuses to run: bug list items 23, 24 and 25 are fixed (T023, T024, T025)"
 
 # --- A registered script decides on Test-Json's result, not on whether it throws (bug list item 26) ------------------
 # mechanical-findings-contract.ps1, registered per push at T015, went red on one Ubuntu image and green on another
