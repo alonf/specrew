@@ -368,7 +368,11 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Depends:** T022, T023, T025.
   - **Owns:** `tests/integration/project-path-resolution-regression.ps1`, `.github/workflows/specrew-ci.yml`,
     `.specrew/release-gate-suites.txt`, `tests/support/test-census.ps1`.
-- [ ] T025 [owner: Implementer] [sp: 1.0] [US1] **`specrew init`'s Squad probe runs in a temp folder (item 25).**
+- [x] T025 [owner: Implementer] [sp: 1.0] [US1] **`specrew init`'s Squad probe runs in a temp folder (item 25).**
+  - **Done (2026-11-15):** RED 3/4 in `091a0b06`, GREEN 4/4 in `4bca00ae`, registered in `bc501e7b`. The init case's
+    cause (read): in a dry run on an existing folder no action names the project path, and the summary prints the path
+    only after a real run ("Bootstrap completed for ..."), so the output never holds the path SC-001's case looks for.
+    A gap in what the case can observe, not wrong path resolution; T024 settles it (bug list item 25).
   - **RED:** `specrew init -DryRun` leaves a probe folder in the install root today.
   - **Work:** the probe runs in a temp folder; a failed cleanup is reported; the cause of the init case found and
     recorded (discovery, within the 1.0).

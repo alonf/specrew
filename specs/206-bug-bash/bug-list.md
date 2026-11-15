@@ -565,6 +565,15 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   output is the dry-run summary with no project path. Cause not established.
 - **Not fixed here.** For iteration 002, with item 23: the probe belongs in a temp folder, and a failed cleanup should
   be reported.
+- **Fixed (iteration 002, T025, 2026-11-15):** the probe makes its folder under the temp folder, `specrew init` no
+  longer passes the install root, and a folder the cleanup cannot remove is reported with its exact path (RED 3/4
+  `091a0b06`, GREEN 4/4 `4bca00ae`).
+- **The init case's cause (read, T025):** the case runs `specrew init -DryRun` in an existing empty folder and looks for
+  that folder's path in the output. A dry run on an existing folder records no `project-path` action, and
+  `Write-BootstrapSummary` (`scripts/init/post-bootstrap-output.ps1`) prints the path only after a real run ("Bootstrap
+  completed for ..."); in a dry run it prints the action table and "Dry run complete. No files were changed." So the
+  output never holds the path: a gap in what the case can observe, not a path resolved against the wrong folder.
+  T024 settles it.
 
 ## 26. `mechanical-findings-contract.ps1` passed an invalid document whenever `Test-Json` returned false without throwing
 
