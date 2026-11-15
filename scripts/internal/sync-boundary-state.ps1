@@ -171,7 +171,16 @@ function Test-SpecrewPathInsideProject {
         return $false
     }
 
-    $comparison = if ($IsWindows -or $IsMacOS) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    # Case semantics come from the volume, through the one path-identity primitive, never from the OS family.
+    # 'distinct' when undetermined (and Ordinal when the primitive is unreachable): a doubtful path is outside.
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+        $pathIdentityHelper = Join-Path $PSScriptRoot 'continuous-co-review/path-identity.ps1'
+        if (Test-Path -LiteralPath $pathIdentityHelper -PathType Leaf) { . $pathIdentityHelper }
+    }
+    $comparison = [System.StringComparison]::Ordinal
+    if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
+        try { $comparison = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'distinct' } catch { $comparison = [System.StringComparison]::Ordinal }
+    }
     if ([string]::Equals($pathFull, $rootFull, $comparison)) { return $true }
     foreach ($separator in @([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)) {
         if ($pathFull.StartsWith($rootFull + $separator, $comparison)) { return $true }
