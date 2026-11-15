@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: 100% (7/7 resolved)
+**Total drift events**: 8
+**Resolution rate**: 100% (8/8 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -142,3 +142,26 @@ The following resolution strategies remain available if drift is detected later 
   The conversion and the reader are proven by `tests/unit/resume-path-inside-project.tests.ps1`.
 - **Class closure**: NONE — the release-cadence suites that run `specrew start` without the profile redirect are
   bug list item 8's and feature 203's private-test-home class.
+
+### DRIFT-206-I002-008 — the Phase 5 push was red on a structural guard no 206 lane runs (crew error)
+
+- **Observed**: 2026-11-15. On `686811a6`, Specrew CI run 43752912081 (Deterministic gate, job 132931975184) and
+  Cross-Platform Validation run 43752912089 (the fake-provider review runtime on macOS, Windows and Ubuntu) failed on
+  one test, `tests/continuous-co-review/unit/path-identity.Tests.ps1`: "STRUCTURAL: no path comparison decides case
+  from the OS family outside the primitive (offenders: sync-boundary-state.ps1:174)". T023's
+  `Test-SpecrewPathInsideProject` chose case-insensitive comparison from `$IsWindows`/`$IsMacOS`. The five lanes were
+  green in the review layout: none of them runs that guard. Not bug list item 13's flake; not rerun.
+- **Resolution**: `43fb545c`. The check asks `Get-ContinuousCoReviewPathComparison -WhenUndetermined 'distinct'`, a
+  doubtful path counts as outside, and it compares exactly when the primitive cannot be loaded. The primitive (feature
+  203's file) is read and called, not changed. path-identity 17/17 and resume-path-inside-project 8/8 in the layout;
+  the five lanes green.
+- **The other repository-wide guards CI runs that 206's lanes do not** (read from `tests/f198-regression-suite.ps1`,
+  the Deterministic gate's registry of 131 suites):
+  `tests/continuous-co-review/unit/path-identity.Tests.ps1` (case and path-identity scans of the tree),
+  `tests/continuous-co-review/unit/consumer-language.Tests.ps1` (every user-facing decision message free of machinery
+  vocabulary and unglossed identifiers; relevant to T023's refusal and T025's warning), and
+  `tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1` (every declared authority control has a
+  production consumer). The self-leak firewall is a job of its own and is run before any push touching
+  `extensions/` or `.specify/`.
+- **Class closure (reviewer, 2026-11-15)**: all three join a lane of 206's verification plan when it moves to
+  iteration 002 for the first review round, so the review's preflight and the pre-push run both carry them.
