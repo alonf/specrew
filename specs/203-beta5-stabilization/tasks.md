@@ -564,7 +564,7 @@ then T014.
   - **Trace:** FR-042, FR-043.
   - **Depends:** T003 to T008, T011, T012.
   - **Owns:** `tests/unit/**`, `tests/integration/**`.
-- [ ] T014 [owner: Implementer] [sp: 1.0] **Deployment point and the Claude-only capture check.**
+- [X] T014 [owner: Implementer] [sp: 1.0] **Deployment point and the Claude-only capture check.**
   - **Work:** after the iteration's review sign-off: advance the pin to the signed-off commit and sync the
     `.specify` mirror from it in one commit; then the maintainer's check (a verdict after a compaction, a quoted
     phrase, a pasted phrase), recorded.

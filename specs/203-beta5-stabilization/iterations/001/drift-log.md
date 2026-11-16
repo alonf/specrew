@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 93 (DRIFT-001 to DRIFT-093)
-**Resolution rate**: 93 of 93 handled locally; each entry's Class closure line states whether its product class is open. This line said 28 events until the retro's records commit, which corrected it (found while drafting the retro).
+**Total drift events**: 95 (DRIFT-001 to DRIFT-095)
+**Resolution rate**: 95 of 95 handled locally; each entry's Class closure line states whether its product class is open. This line said 28 events until the retro's records commit, which corrected it (found while drafting the retro).
 **Specification drift**: 1 (DRIFT-026: FR-018 clarified to name four further acts)
 
 ## Events
@@ -3048,4 +3048,64 @@ records or the home folder changed. Outputs are in the crew's scratchpad.
   reported it to the reviewer session unprompted, and the reviewer session accepted the report.
 - **Rule adopted**: a scratch draft is linted against a copy of the repo's lint config in the scratchpad
   (`.markdownlint.json`, `.markdownlintignore`), never inside the tree.
+- **A second near-miss, no effect**: on 2026-11-16, an agent saving scratch results hit the `$F`/`$f` name collision
+  (PowerShell variables ignore case), so a `Copy-Item` loop aimed its destinations at paths in the real tree. Every
+  copy failed, because each destination ran through an existing file. `git status --short` stayed empty and HEAD
+  stayed `054f3648`. Reported to the reviewer session, which accepted the report.
 - **Class closure**: the rule above; it was used for the retro draft's later lint runs.
+
+### DRIFT-094 — The retro verdict, a CI rerun, and the retro boundary commit refused by the closure checks (maintainer's verdict; reviewer rulings; T014's outcome)
+
+- **The verdict**: the maintainer typed `approved for retro` alone. The capture recorded it at 2026-11-16 01:27 local
+  (23:27:58Z): verdict 7, through the marker path (`hook-captured-from-transcript`), bound to `654fd0ed`. plan.md moved
+  to `retro`, and state.md's phase to `retro`.
+- **What it left out of the live check**: they typed it straight after the packet, without lines 2 and 3 and without the
+  read-only stretch. So the quoted and pasted phrases and the verdict typed more than 500 transcript lines after its
+  packet were not done live. They were rehearsed on scratch copies only (DRIFT-092).
+- **A CI sighting on `654fd0ed`, its own line** (not B5F-067, which is the Windows runtime hang):
+  - Cross-Platform Validation run `43750048886`, attempt 1, job "Deterministic fake-provider review runtime
+    (ubuntu-latest)", step "Verify PowerShell and install pinned Pester", 19:03:34Z (21:03 local).
+  - The message: "No match was found for the specified search criteria and module name 'Pester'", then
+    `pester-allusers-install-failed`, before any test ran.
+  - One rerun, on the reviewer session's routine ruling: attempt 2 had all eight jobs green.
+  - Feature 205 met the same install step on a Windows runner the night of 2026-11-14/15.
+  - Specrew CI on `654fd0ed` was red on Lint for the one allowed item, and its deterministic gate and contract lane
+    were skipped (B5F-074).
+- **The boundary commit `054f3648`** (the sync's `.squad` records, plan.md and state.md) failed the governance lane
+  on four closure errors:
+  - "Complete iterations require review.md overall verdict 'accepted' (found 'blocked')";
+  - "review.md Gap Ledger entry must classify the concern as fixed-now or deferred before closure: ...", three times,
+    once for each line of the Gap Ledger paragraph.
+
+  It was held unpushed. The reviewer session refused a further red allowance, because a red Lint would skip the
+  deterministic gate and the contract lane again. The records fix was dry-run on a scratch copy first: T014 recorded
+  as passed with what was and was not done live on its row; review.md accepted; the Gap Ledger one line per item, each
+  deferred; and a decision entry quoting the maintainer's words. It passed the governance lane with no errors.
+- **The hardening gate**: the same dry run showed the closeout would then need runtime evidence for the four blocking
+  hardening rows (`validate-governance.ps1:3024`). They are closed in this commit, each with the evidence that exists
+  and what it does not cover on the same row, so they do not wait for the closeout verdict (the reviewer session's
+  ruling).
+- **The maintainer's decision on T014** (typed in the crew's session at about 02:13 local on 2026-11-16, to three
+  points the reviewer session put as one answer): "accept the rehearsal, closeout fixes yes, retry row yes".
+  1. T014 passes on the rehearsal, with its row saying what was done live, what was rehearsed only and what is owed in
+     iteration 002.
+  2. The closeout corrections allowed as for features 205 and 206: plan.md's Completed date and the dashboard are
+     corrected after the closeout verdict.
+  3. The retry-idempotency hardening row is closed with its gap stated first on the row: no test names "a second
+     top-up with no round between grants no extra window". That test goes in iteration 002's first batch.
+- **Class closure**: NONE — the closure deadlock (a task still open forbids the accepted verdict the retro's closure
+  check needs) is B5F-050's and B5F-059's family, placed for iteration 002.
+
+### DRIFT-095 — The task writer changes the iteration status after the boundary that owns it (finding, B5F-080)
+
+- **What happened**: marking T014 done with the governed task writer (`Set-TaskComplete`,
+  `scripts/internal/task-progress.ps1`) at the retro phase rewrote state.md's Iteration Status from the value the
+  retro capture had left to `ready-for-review`. It also rewrote the execution summary to "Implementation tasks are
+  complete; review-signoff is next." The boundary sync and the verdict capture own those lines; the task writer owns
+  the task counts.
+- **Handled here**: Iteration Status was set back to the capture's value. The Tasks Remaining, Last Completed Task and
+  task counts the writer set were kept. The writer's summary sentence "review-signoff is next" is left as the writer
+  wrote it and named here.
+- **B5F-080** in `docs/beta5-findings.md`. Placement: the maintainer's, at iteration 002's planning.
+- **Class closure**: NONE — evidence only; the guard is a writer case that marks the last task done after the review
+  sign-off and asserts the phase-owned lines are unchanged.

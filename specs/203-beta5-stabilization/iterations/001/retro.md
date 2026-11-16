@@ -47,8 +47,8 @@ against a 20-point baseline, so the plan itself was 43% over capacity before any
 
 ## Drift Summary
 
-- **Total drift events**: 91 (DRIFT-001 to DRIFT-091). Measured. The drift log's own summary line still says 28; it
-  was not kept up after DRIFT-028 (finding for the crew).
+- **Total drift events**: 95 (DRIFT-001 to DRIFT-095). Measured. The drift log's own summary line said 28 until
+  the retro's records commit corrected it; it was not kept up after DRIFT-028 (finding for the crew).
 - **Review outcomes**: 18 (single-task rounds 1 to 13, iteration rounds A to E).
 - **Entries that carry a maintainer ruling, decision or input**: 41 by their titles, each with its quote and time.
 - **Crew errors and incidents**: real home hook files written by tests or sweeps four times (DRIFT-021, DRIFT-044,
@@ -221,24 +221,31 @@ The first launch of round E failed its preflight after 2,802 s and said only the
 
 ## Signals for the Next Iteration
 
-- **Iteration 002's first batch** (measured: the placements in DRIFT-078, DRIFT-083, DRIFT-084, DRIFT-087, DRIFT-091):
+- **Iteration 002's first batch** (measured: the placements in DRIFT-078, DRIFT-083, DRIFT-084, DRIFT-091, and the
+  gap ledger's decision entry `f203-i001-gap-ledger-deferrals`):
   - round E's two findings;
   - the hook cost (DRIFT-073);
   - DRIFT-078 with DRIFT-091 and B5F-071, as one design input;
-  - the t008 lane.
+  - the missing test for the retry-idempotency hardening row: a second top-up with no round between grants no extra
+    window (the maintainer's "retry row yes", 2026-11-16 02:13, DRIFT-094).
 - **T014's capture check** (the pin advance and a manual check FR-045 names: a verdict after a compaction, a quoted
   phrase, a pasted phrase). Its state:
   - The pin advanced before the sign-off, on the maintainer's decision at 13:27 on 2026-11-15 (DRIFT-082).
   - The verdict after a compaction was met live at 18:44: captured once, marker path.
   - The quoted and pasted phrases, the drop-finding line and the verdict typed more than 500 transcript lines after the
-    packet are the live check at the retro boundary, on the maintainer's "Yes to all three" (20:57 local, 2026-11-15,
-    DRIFT-092). The drop-finding line was typed at 20:58 and recorded nothing; the rest follow with this packet.
+    packet were planned as the live check at the retro boundary, on the maintainer's "Yes to all three" (20:57 local,
+    2026-11-15, DRIFT-092). The drop-finding line was typed at 20:58 and recorded nothing. The maintainer then typed
+    the retro verdict straight after the packet, so the quoted and pasted phrases and the 500-line verdict were
+    rehearsed on scratch copies only (DRIFT-094). T014 is recorded as passed with that said on its row.
   - Two departures from T014's text, accepted by the maintainer in the same answer. The pin stays at `da78b600`, not
     the signed-off commit, a records-only difference. The live `stop the review here` check moves to iteration 002's
     first review stop, because there is no stop to answer before then.
   - A built rehearsal on scratch copies ran first and showed what each live line produces (DRIFT-092).
 - **The project's hook launcher** was not redeployed. The redeploy is the maintainer's own decision (DRIFT-085).
-- **Open findings to place**: B5F-071 to B5F-079; B5F-050 and B5F-059 are already proposed for iteration 002.
+- **Open findings to place**, to be placed by the maintainer at iteration 002's planning: the `t008` lane's time (838 of
+  900 s on `da78b600`, DRIFT-087), and B5F-071, B5F-072, B5F-073, B5F-074, B5F-075, B5F-076, B5F-077, B5F-078, B5F-079
+  and B5F-080. No decision of the maintainer's places them yet, so they are not in the review's gap ledger. B5F-050
+  and B5F-059 are already proposed for iteration 002.
 
 ## Improvement Actions
 

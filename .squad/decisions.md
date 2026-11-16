@@ -1,5 +1,35 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Verdict: 203 iteration 001 gap ledger - every open item deferred to iteration 002
+
+- **Decision ID**: f203-i001-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: none (no gap is requirement-scoped)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T00:14:02Z
+- **Next Action**: Fix each item in iteration 002's first batch, behind a failing test where it is a defect.
+- **Disposition**: The open items in iteration 001's review.md Gap Ledger, each with the maintainer's own words that
+  place it (local times, UTC+2; the relayed ones came through the reviewer session under the wider delegation).
+  (1) Round E's two major findings, `finding-cf1fe81e0398f883` and `finding-a537d3f72672e5f5` (DRIFT-083,
+  DRIFT-084): the maintainer typed `stop the review here` (2026-11-15 11:17) and then `approved for partial review
+  signoff - the two major findings of round E fail closed and go to iteration 002, and since round E only records
+  changed, the status line of plan.md and drift entry DRIFT-082` (2026-11-15 17:30).
+  (2) The hook cost (DRIFT-073), placed by a condition the maintainer accepted, not by words of theirs about the hook
+  cost: their "Yes fix all (203)" (2026-11-14 20:30, relayed) answered a recommendation whose third condition, shown to
+  them before they answered, read "one more fix rides in the batch and no others: the
+  `hook-command-length.tests.ps1:90` working directory; the hook cost (DRIFT-073), the lease-handoff flake and every
+  other open item stay for iteration 002" (DRIFT-076); and their "203: yes" (2026-11-15 01:19, relayed) placed
+  DRIFT-078 in iteration 002's first batch alongside the hook cost.
+  (3) DRIFT-078, with DRIFT-091 and B5F-071 as one design input: "203: yes" (2026-11-15 01:19, relayed) and "Yes for
+  all" (2026-11-15 19:02, relayed), which recorded the requirement that the ordinary review end takes one approval.
+  (4) T014's live `stop the review here` on the advanced engine, owed at iteration 002's first review stop: "Yes to
+  all three" (2026-11-15 20:57, relayed), departure B (DRIFT-092).
+  (5) The missing test for the retry-idempotency hardening row, "a second top-up with no round between grants no
+  extra window": "accept the rehearsal, closeout fixes yes, retry row yes" (2026-11-16 02:13, typed), its third part
+  (DRIFT-094).
+  Not in this entry, because no decision of the maintainer's places them: the `t008` lane's time (DRIFT-087) and
+  B5F-071 to B5F-080; the retro lists them to be placed at iteration 002's planning.
 ### 2026-10-25 — Verdict: corrected defer entry for feature 001 iteration 011 (FR-054)
 
 - **Decision ID**: defer-fr054-immutability-guardrail

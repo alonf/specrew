@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "001"
-updated_at: "2026-11-14T00:23:42.9547982Z"
+updated_at: "2026-11-15T23:46:52.6556096Z"
 tasks:
   T001:
     title: "Host facts in scratch dirs: both Copilot firings for one prompt (one identity), Copilot and Codex paste, Claude systemMessage visibility, Claude compaction fixture"
@@ -71,7 +71,7 @@ tasks:
     blocked_reason: ""
   T014:
     title: "Deployment point (pin advance) and the Claude-only capture check"
-    status: "blocked"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: "Scheduled after the review sign-off by plan and blocked on it (maintainer, 2026-11-14; DRIFT-079)"
+    status: "done"
+    started_at: "2026-11-15T23:46:52.6515960Z"
+    completed_at: "2026-11-15T23:46:52.6515960Z"
+    blocked_reason: ""

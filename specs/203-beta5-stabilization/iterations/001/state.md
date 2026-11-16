@@ -3,18 +3,18 @@
 **Schema**: v2
 **Current Phase**: retro
 **Iteration Status**: reviewing
-**Last Completed Task**: T013
-**Tasks Remaining**: T014
+**Last Completed Task**: T014
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: fca9067e
-**Updated**: 2026-11-14T20:48:57Z
+**Updated**: 2026-11-15T23:46:52.6797471Z
 
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Execution is in progress.
-- Task progress: 11 complete, 0 in-progress, 0 pending, 1 blocked.
-- Latest completed task: T013
+- Implementation tasks are complete; review-signoff is next.
+- Task progress: 12 complete, 0 in-progress, 0 pending, 0 blocked.
+- Latest completed task: T014
 <!-- specrew:task-progress-summary:end -->
 
 - Implementation started 2026-11-01 on the maintainer's before-implement approval (`fca9067e`), with T002 first and

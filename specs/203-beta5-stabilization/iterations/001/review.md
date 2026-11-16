@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Reviewed**: 2026-11-15
-**Overall Verdict**: blocked: T001 to T013 pass; T014's pin advance was done before the sign-off, and its capture check runs after it; the verdict is corrected when that check passes
+**Overall Verdict**: accepted: T001 to T014 pass; the sign-off was a partial one (DRIFT-085), and round E's two major findings, which fail closed, are carried to iteration 002 with the items in the Gap Ledger
 
 This record covers review rounds A to D and their fixes. It was committed before round E, because on this engine a
 records commit made after the stop cannot be signed off (DRIFT-078). Round E ran on this exact tree. Its result was
@@ -87,13 +87,16 @@ allow (`complete-current-findings-human-accepted`). The sign-off then took the p
 | T011 | FR-046 | pass | `turn-end-after-stop-block`, `crossing-presentation`. |
 | T012 | FR-024, FR-041 | pass | `authority-audit`; FR-041's turn identity in drift entries is iteration 002's. |
 | T013 | FR-042, FR-043 | pass | `mint-path-fixtures` (435), `authorization-sender`, `authorization-consumers`; round D finding 1 fixed. |
-| T014 | FR-045 | blocked | The pin advance was done before the sign-off (`da78b600`, 17:11 local on 2026-11-15; the maintainer's decision at 13:27, DRIFT-082), and the sign-off waited on it. The Claude-only capture check runs after the sign-off: a verdict after a compaction, a quoted phrase, a pasted phrase, an approval followed by more than 2 MiB in the same running turn, and a stop that reads its disposition's `authorization_ref` (DRIFT-085). Corrected when that check passes. The same gap as feature 206's bug list item 37 (a task the plan defers has no verdict value); hand-over to whoever fixes item 37. |
+| T014 | FR-045 | pass | done live: the pin advance to da78b600 (2026-11-15 17:11 local, on the maintainer's typed "advance the pin"), the verdict after a compaction ("approved for review-signoff", 18:44 local, captured once, marker path) and the drop-finding line (20:58 local, not recorded, its text shown); rehearsed on scratch copies and not typed live: the quoted phrase, the pasted phrase and the verdict typed more than 500 transcript lines after its packet (DRIFT-092); owed in iteration 002: the live `stop the review here` on the advanced engine at iteration 002's first review stop (the maintainer's "Yes to all three", 20:57 local, DRIFT-092); passed on the rehearsal by the maintainer's "accept the rehearsal" (2026-11-16 02:13, DRIFT-094). |
 
 ## Gap Ledger
 
-No entries. The open items are follow-ups in the drift log. Iteration 002's first batch holds round E's two findings,
-the hook cost (DRIFT-073), DRIFT-078 and the `t008` lane's time (DRIFT-087). The rest is the iteration 002 scope the
-plan names, plus the findings recorded in DRIFT-086 to DRIFT-089.
+- Deferred to iteration 002, first batch: round E's `finding-cf1fe81e0398f883`, an approval with more than 2 MiB after it can be refused when a later record shares its prompt ID (DRIFT-083); the maintainer's partial review signoff, 2026-11-15 17:30 (.squad\decisions.md, f203-i001-gap-ledger-deferrals).
+- Deferred to iteration 002, first batch: round E's `finding-a537d3f72672e5f5`, a review-stop answer lost on the recovery path gets no report (DRIFT-084); the maintainer's partial review signoff, 2026-11-15 17:30 (.squad\decisions.md, f203-i001-gap-ledger-deferrals).
+- Deferred to iteration 002, first batch: the hook cost, about 19 s per turn (DRIFT-073); placed by a condition the maintainer accepted, not by words of theirs about the hook cost: their "Yes fix all (203)" (2026-11-14 20:30) answered a recommendation whose third condition kept the hook cost for iteration 002, and their "203: yes" (2026-11-15 01:19) placed DRIFT-078 in iteration 002's first batch alongside it (.squad\decisions.md, f203-i001-gap-ledger-deferrals).
+- Deferred to iteration 002, first batch: DRIFT-078 with DRIFT-091 and B5F-071, one design input for the sign-off gate; the maintainer's decisions of 2026-11-15 01:19 and 19:02 (.squad\decisions.md, f203-i001-gap-ledger-deferrals).
+- Deferred to iteration 002's first review stop: T014's live `stop the review here` on the advanced engine (DRIFT-092); the maintainer's decision of 2026-11-15 20:57 (.squad\decisions.md, f203-i001-gap-ledger-deferrals).
+- Deferred to iteration 002, first batch: the missing test for the retry-idempotency hardening row, a second top-up with no round between grants no extra window; the maintainer's decision of 2026-11-16 02:13 (.squad\decisions.md, f203-i001-gap-ledger-deferrals).
 
 ## Notes
 
