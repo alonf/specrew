@@ -9,6 +9,10 @@ on:
     branches: [ '**' ]
   pull_request:
     branches: [ main, 001-specrew-product ]
+  # Feature 206 T027 (bug list item 12): re-check a commit without a new push, as Test and Cross-Platform
+  # Validation allow. A manual run takes the push path; with no push base, the governance step scopes to its
+  # fallback base (origin/main), a wider check.
+  workflow_dispatch:
 
 jobs:
   self-leak-lint:
