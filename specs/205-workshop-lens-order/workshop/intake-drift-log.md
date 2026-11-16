@@ -170,3 +170,22 @@ scheduled after 203.
 
 **Class closure**: NONE. The dashboard belongs to feature 206 (T035) and the test belongs to feature 203; 205 changes
 neither.
+
+## DRIFT-205-INTAKE-010 — the feature-closeout dashboard is drawn before the verdict and committed as drawn
+
+**Observed**: 2026-11-16. The feature-closeout sync at `7f841071` drew `closeout-dashboard.md` before the maintainer's
+verdict. It reads: "AWAITING YOUR VERDICT: crossing 'crossing-2aab4e2f…' (iteration-closeout -> feature-closeout) at
+commit 7f841071…, Git tree 88ed1bf8…, is NOT human-authorized (last authorized: iteration-closeout)", followed by
+"Pending next boundary: feature-closeout". Its own notice says: "Historical snapshot captured during feature closeout.
+Re-running the dashboard later produces a new live view and must not overwrite this file."
+
+**Precedent**: feature 202's committed closeout dashboard (boundary commit `4ad15d63`) reads the same.
+
+**Decided**: the reviewer session ruled (a): commit it as drawn in the boundary commit (`a1adade3`), and say so in the
+packet; the packet did. Overwriting a snapshot whose notice forbids it would be the maintainer's decision, and nobody
+asked them for it. The maintainer typed "approved for feature-closeout" on that packet.
+
+**Bug-list candidate** (passed to feature 206's crew through the reviewer session): the feature-closeout dashboard is
+drawn before the verdict and is committed reading "awaiting your verdict". The iteration-closeout case is 206's item 41.
+
+**Class closure**: NONE. The ordering belongs to the lifecycle engine (feature 206's area). 205 changes nothing there.
