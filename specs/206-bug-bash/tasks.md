@@ -359,9 +359,13 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Trace:** FR-001; SC-001.
   - **Owns:** `scripts/internal/session-recovery.ps1`, `scripts/specrew-start.ps1`,
     `scripts/internal/sync-boundary-state.ps1`, `.squad/identity/now.md`, `tests/unit/**`.
-- [ ] T024 [owner: Implementer] [sp: 0.5] [US1] **`project-path-resolution-regression.ps1` green and registered (item
+- [x] T024 [owner: Implementer] [sp: 0.5] [US1] **`project-path-resolution-regression.ps1` green and registered (item
   24).**
-  - **Green (2026-11-15), SC-001 met; registration awaits the maintainer:** the refusal removed and the fixture
+  - **Done (2026-11-16):** registered per push by the maintainer's answer of 2026-11-16 11:34 ("OK for all", relayed by
+    specrewreviewer-98): CI job `deterministic-gate`, step "Integration - script suites no lane ran before the test census
+    (F-206 T015)", and lane `f206-changed-integration`; census exclusion removed (`e5c4bbf0`). Supervised run 6: six of
+    six in 87 s; home hook files and the repository unchanged.
+  - **Green (2026-11-15), SC-001 met; registration then awaited the maintainer:** the refusal removed and the fixture
     copies what git does not ignore, on the feature's branch (`300ec6de`); a dry run's summary names its folder (RED
     1/2 `9c2195d3`, GREEN 2/2 `acb20fac`). Supervised run 5: all six checks pass in 82 s, start with no recovery
     choice; home hook files and the repository unchanged; no probe folder. Registered once the maintainer has seen it
@@ -404,8 +408,12 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
 
 ### Phase 7: Validator and nightly (US2, US3)
 
-- [ ] T026 [owner: Implementer] [sp: 1.0] [US2] **Abandoned is closed only with a recorded ruling
+- [x] T026 [owner: Implementer] [sp: 1.0] [US2] **Abandoned is closed only with a recorded ruling
   (DRIFT-206-I001-010).**
+  - **Done (2026-11-16):** RED 2/21 `6b057c76`, GREEN 21/21 `4fd14fb9` with group B's rulings recorded in the same
+    commit (the maintainer's "OK for all", 2026-11-16 11:34, relayed by specrewreviewer-98, to "206: all four abandoned,
+    publish suite per push, per push"). CI-mode full-repository run in clean worktrees at `4fd14fb9` and `eac9e210`:
+    exit 0, no finding, the same 129 closed and 13 validated; the T005 table does not change.
   - **RED:** the closed-definition suite: `abandoned` with no recorded ruling is closed today.
   - **Work:** `Test-SpecrewIterationClosed` counts `abandoned` as closed only with a recorded ruling; lands with the
     maintainer's rulings on group B (197/002, 197/007, 197/008, 198/005), so the T005 table does not change. If any
@@ -450,7 +458,13 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Acceptance:** the workflow file parses and the next push's run is green.
   - **Trace:** FR-012.
   - **Owns:** `.github/workflows/specrew-ci.yml`.
-- [ ] T028 [owner: Implementer] [sp: 0.75] [US3] **`distribution-module-publish.ps1` cannot publish (item 17, high).**
+- [x] T028 [owner: Implementer] [sp: 0.75] [US3] **`distribution-module-publish.ps1` cannot publish (item 17, high).**
+  - **Done (2026-11-16):** RED 5/5 `ae620f15`, GREEN 5/5 `619b1a85`, unit suite registered `3996f9a9`; the suite
+    restores `SPECREW_BUILD_COMMIT` too (reviewer's reading; RED 1/6 `c7a9453e`, GREEN 6/6 `ad64464a`). Run per push by
+    the maintainer's answer of 2026-11-16 11:34 ("OK for all" to "publish suite per push"; the reviewer's first gloss
+    named the unit suite and was corrected): CI job `deterministic-gate`, step "Integration - script suites no lane ran
+    before the test census (F-206 T015)", and lane `f206-changed-integration`; the unit suite in `f206-unit-suites`
+    (`6c4b2b44`). Local runs: exit 0 in 77 s; home hook files and PowerShellGet's folder unchanged.
   - **Read first:** the suite and the release script it calls, for any path that publishes or writes home.
   - **RED:** with `PSGALLERY_API_KEY` set, the publish case reaches a publish call today.
   - **Work:** the suite clears and restores `PSGALLERY_API_KEY` itself; the release script refuses a publish nobody

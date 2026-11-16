@@ -250,3 +250,18 @@ The following resolution strategies remain available if drift is detected later 
   Windows, the same family as their site 13 (`Stop-Process` with no wait). The hung suite cannot be named without
   its output.
 - **Class closure**: deferred — to feature 203, which owns the step's suites and site 13.
+
+### DRIFT-206-I002-013 — a full validator run in this worktree fails twelve old iterations on the local review store (tooling)
+
+- **Recorded**: 2026-11-16, by the crew, at T026's acceptance run.
+- **What**: `validate-governance.ps1 -ProjectPath . -FullRun` with `CI` and `GITHUB_ACTIONS` set, run in this worktree
+  at `4fd14fb9`, failed 12 iterations: 001/002 to 001/012, 005/001, 005/002 and 007/002. Each failed with the same
+  message: "review.md says the review was accepted, but the active review campaign has no completed, valid campaign
+  result". None of them is abandoned, so T026 cannot change their answer.
+- **Comparison**: the same command in two clean scratch worktrees, at `4fd14fb9` and at `eac9e210` (before T026), had
+  exit 0 and no finding. Both had the same 129 closed iterations and the same 13 validated. A clean checkout has no
+  git-ignored review store, so this worktree's local store from round 1 is the difference. The cause in the validator
+  is not established.
+- **Effect**: none on CI, which has no local store. A developer whose worktree has run a review round gets failures on
+  iterations the round never touched. T002's fixture met the same store (see its suite's comment).
+- **Class closure**: deferred — bug list item 52, an iteration 003 candidate, not placed.

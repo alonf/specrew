@@ -1002,12 +1002,16 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   reviewer's estimate). Iteration 002 is unchanged; the reviewer brings a swap only if the sync crash proves to hit
   every boundary on that machine.
 
-## 48 to 51. Four scaffold and resolver findings from feature 203's iteration 002 dry run (candidates, not placed)
+## 48 to 51. Four scaffold and resolver findings from feature 203's iteration 002 dry run (iteration 003 candidates)
 
 Recorded at the reviewer's request (2026-11-16); evidence in feature 203's `docs/beta5-findings.md` on
-`origin/203-beta5-stabilization` (commit `2cacad73`), read there, not copied. Not placed in any iteration and not put to
-the maintainer. None of the files is in feature 203's protected set, and none has changed on 203's branch since the
-merge base `df1141a8`.
+`origin/203-beta5-stabilization` (commit `2cacad73`), read there, not copied. None of the files is in feature 203's
+protected set, and none has changed on 203's branch since the merge base `df1141a8`.
+
+- **Placed (the reviewer's request, 2026-11-16):** iteration 003 candidates, after items 45 to 47. An order of
+  candidates, not a scope approval: iteration 003's scope is set at its own planning boundary, and iteration 002 is
+  unchanged. Item 51 needs no work in 206: T017 already fixed it on this branch, and it is listed so 203 can see when
+  its fix arrives.
 
 - **48 (B5F-081):** a freshly scaffolded iteration fails the governance lane on its own `hardening-gate.md` ("overall
   verdict should be 'ready' based on the concern rows but found 'blocked'"). The gate text is written by
@@ -1020,6 +1024,14 @@ merge base `df1141a8`.
 - **51 (B5F-085):** the quality-profile resolver reads this repository as `node-rest-with-postgres` and
   `react-spa-public`. The cause is the stray root `package.json`, which 206's T017 removes on this branch (`b5e6babf`);
   203's branch keeps it until it merges, so 51 is fixed for 203 by 206's merge.
+
+## 52. A full validator run fails old accepted iterations on the developer's local review store (severity: minor)
+
+- **Observed (2026-11-16, DRIFT-206-I002-013):** in this worktree after review round 1, a CI-mode `-FullRun` failed 12
+  iterations from features 001, 005 and 007 with "the active review campaign has no completed, valid campaign result".
+  Clean checkouts of the same commits passed with no finding.
+- **Scope:** a candidate for iteration 003, not placed. The cause in the validator is not established. CI is not
+  affected.
 
 ## Iteration 002 Intake
 
