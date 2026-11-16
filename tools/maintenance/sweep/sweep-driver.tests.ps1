@@ -120,6 +120,19 @@ try {
             Assert-True ($ci -ccontains $expected) ("CI's list has {0} ({1} files)" -f $expected, $ci.Count)
         }
         Assert-True ($ci -cnotcontains 'tests/f198-regression-suite.ps1') "the honesty suite's runner is expanded into its entries, not run as one suite"
+        # Feature 203 (the Phase 8 sweep of aa06b3e5b): the sweep runs each file CI names with no arguments, so a runner a
+        # workflow calls with arguments is not a suite. T015 put tests/continuous-co-review/invoke-bounded-suites.ps1 (a
+        # mandatory -Suite) in cross-platform-validation.yml, and the sweep ran it bare and reported it FAILED.
+        $needsArguments = @($ci | Where-Object {
+                $file = Join-Path $repo $_
+                if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return $false }
+                $ast = [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$null, [ref]$null)
+                $null -ne $ast.ParamBlock -and @($ast.ParamBlock.Parameters | Where-Object {
+                        @($_.Attributes | Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and
+                                @($_.NamedArguments | Where-Object { $_.ArgumentName -ieq 'Mandatory' -and ($_.ExpressionOmitted -or [string]$_.Argument.Extent.Text -match '^\$?true$') }).Count -gt 0 }).Count -gt 0
+                    }).Count -gt 0
+            })
+        Assert-True ($needsArguments.Count -eq 0) ("every file CI's list names runs with no arguments, so none is a runner taken for a suite (needs arguments: {0})" -f ($needsArguments -join ', '))
         # Every workflow that runs on a branch push and names a test file is read; a new one cannot be left out silently.
         $pushWorkflows = @(Get-ChildItem -LiteralPath (Join-Path $repo '.github/workflows') -Filter '*.yml' | Where-Object {
                 $text = [IO.File]::ReadAllText($_.FullName)
