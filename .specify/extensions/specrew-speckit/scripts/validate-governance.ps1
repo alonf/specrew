@@ -3941,8 +3941,22 @@ function Test-ReviewArtifact {
             # Feature 206 T033 (FR-015): the row names the decision that deferred the task, and the ledger holds it.
             $rowText = (@($row.PSObject.Properties | Where-Object { $_.Name -ne 'Task' -and $_.Name -ne 'Verdict' } | ForEach-Object { [string]$_.Value }) -join ' ')
             $decisionMatch = [regex]::Match($rowText, '(?i)\bdecision(?:\s+id)?\s*:?\s*`?(?<id>[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9])`?')
+            # Iteration 002 review round 2, finding 6: the plan must record the task as deferred too, and a decision the row
+            # denies or makes conditional ("not covered by", "without", "if ... is approved", "once ... is recorded") is
+            # not the decision that deferred it.
+            $planTask = @($PlanTasks | Where-Object { [string]$_.Task -ceq [string]$taskId } | Select-Object -First 1)
+            $planStatus = if ($planTask.Count -gt 0) { (Normalize-MarkdownCell ([string]$planTask[0].Status)).ToLowerInvariant() } else { '' }
+            if ($planTask.Count -gt 0 -and $planStatus -notin @('deferred', 'deferred-with-approval')) {
+                $Errors.Add("review.md task '$taskId' is deferred, but plan.md records its status as '$planStatus'; a deferral is recorded in both")
+            }
+            # Read in the clause before the decision the row names, so a word inside the id itself is never read.
+            $beforeDecision = if ($decisionMatch.Success) { $rowText.Substring(0, $decisionMatch.Index) } else { '' }
+            $deniedDecision = [regex]::Match($beforeDecision, '(?i)\b(?:not|no|never|without|if|once|unless|until|pending|awaiting|proposed|subject\s+to)\b[^.;:]*$')
             if (-not $decisionMatch.Success) {
                 $Errors.Add("review.md task '$taskId' is deferred but names no decision (expected 'decision <id>' on the row, naming an entry in .squad/decisions.md)")
+            }
+            elseif ($deniedDecision.Success) {
+                $Errors.Add("review.md task '$taskId' is deferred, but the row denies or conditions the decision it names ('$($deniedDecision.Value)'); name the decision that deferred it")
             }
             else {
                 $deferringDecision = $decisionMatch.Groups['id'].Value
@@ -3950,7 +3964,10 @@ function Test-ReviewArtifact {
                     $script:ReviewLedgerDecisionIds = @{}
                     $ledgerPath = if (-not (Test-IsNullish $ProjectRoot)) { Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot } else { $null }
                     if ($ledgerPath -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
-                        foreach ($idMatch in [regex]::Matches((Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8), '(?m)^\s*-\s+\*\*Decision ID\*\*:\s*`?(?<id>[^`\r\n]+?)`?\s*$')) {
+                        # Iteration 002 review round 2, finding 6: an id inside an HTML comment or a code fence is not an entry.
+                        $ledgerText = [regex]::Replace((Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8), '(?s)<!--.*?-->', '')
+                        $ledgerText = [regex]::Replace($ledgerText, '(?ms)^[ ]{0,3}(```+|~~~+).*?^[ ]{0,3}\1[ \t]*$', '')
+                        foreach ($idMatch in [regex]::Matches($ledgerText, '(?m)^\s*-\s+\*\*Decision ID\*\*:\s*`?(?<id>[^`\r\n]+?)`?\s*$')) {
                             $script:ReviewLedgerDecisionIds[$idMatch.Groups['id'].Value.Trim()] = $true
                         }
                     }
