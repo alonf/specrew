@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 10
-**Resolution rate**: 100% (10/10 resolved or placed)
+**Total drift events**: 11
+**Resolution rate**: 100% (11/11 resolved or placed)
 **Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 recorded in spec.md, approved at the tasks boundary (DRIFT-005)
 
 ## Events
@@ -179,6 +179,20 @@
   fully green records push follows before the sign-off packet.
 - **Class closure**: NONE — the validator rule is feature 206's T034 (`3a3ba803` on 206's branch); it reaches this
   branch when main is merged in after 206 lands.
+
+### DRIFT-011 — the sign-off commit's local check: the derived-block item reaches iteration 003, and the Gap Ledger needed one line
+
+- **Observed**: 2026-11-16, after the maintainer's `approved for review-signoff`. With the phase lines moved, the local
+  governance check failed iteration 003 on two items:
+  - the standing derived-block item, now for iteration 003 too;
+  - the Gap Ledger. "- None. Round 1 raised no findings." was refused as unclassified. A rewording that named both
+    classes was read as a deferred entry. A two-line bullet ending "fixed-now" was refused, because only its first
+    line was read.
+- **Resolution**: the Gap Ledger entry is one line ending "fixed-now", the form other iterations use for no gaps. The
+  derived-block item is covered by the maintainer's standing exception for that item (iteration 002's DRIFT-024); the
+  block is not added. No other item fails.
+- **Class closure**: NONE — the validator's first-line reading is the same pattern as iteration 002's DRIFT-026 (the
+  retro scaffold); the governance check is feature 203's area.
 <!--
   Every new ### DRIFT-... event includes:
 

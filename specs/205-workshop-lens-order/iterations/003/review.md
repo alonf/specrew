@@ -56,7 +56,7 @@ the 205 verification plan passed in 95 s. The home hook files showed 0 differenc
 
 ## Gap Ledger
 
-- None. Round 1 raised no findings.
+- **No FR/SC gaps**: round 1 found nothing; FR-030 (A3), FR-031, FR-032, SC-011 verified: fixed-now.
 
 ## Open Outside This Review
 
