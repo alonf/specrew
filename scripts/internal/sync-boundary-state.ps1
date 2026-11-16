@@ -743,6 +743,22 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add(('Multi-boundary gap: {0}' -f ([bool]$pendingState.IsMultiBoundaryGap).ToString().ToLowerInvariant())) | Out-Null
     $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
     $lines.Add('') | Out-Null
+    # Feature 206 T036 (FR-018, bug list item 44): at the closeout arrival, name what the governance check will refuse
+    # in the hardening gate once the verdict moves plan.md to complete, so the human sees it before approving.
+    if ($toMarkerBoundary -ceq 'iteration-closeout' -and (Get-Command -Name 'Get-SpecrewCloseoutOpenHardeningItems' -ErrorAction SilentlyContinue)) {
+        try {
+            $closeoutPaths = Resolve-SpecrewCrossingMirrorPaths -ProjectRoot $ProjectRoot -FeatureRef ([string]$SessionState.feature_ref) -IterationNumber ([string]$SessionState.iteration_number)
+            if ($null -ne $closeoutPaths -and -not [string]::IsNullOrWhiteSpace([string]$closeoutPaths.IterationDir)) {
+                $openItems = @(Get-SpecrewCloseoutOpenHardeningItems -IterationDirectory ([string]$closeoutPaths.IterationDir) -ProjectRoot $ProjectRoot)
+                if ($openItems.Count -gt 0) {
+                    $lines.Add('Open in quality/hardening-gate.md (name these in the packet''s What Needs Your Review; the governance check refuses a complete iteration that still has them):') | Out-Null
+                    foreach ($item in $openItems) { $lines.Add(('- {0}' -f $item)) | Out-Null }
+                    $lines.Add('') | Out-Null
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
     $lines.Add('After rendering the packet, stop. Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture writes authorization only after the human replies.') | Out-Null
     $lines.Add('') | Out-Null
     # W45 (2026-08-22): the spurious re-ask. On a host whose capture lands only at Stop, the controller

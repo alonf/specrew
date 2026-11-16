@@ -4138,6 +4138,44 @@ function Set-SpecrewMarkdownMetadataLine {
     return [pscustomobject]@{ Path = $Path; Label = $Label; Found = $true; Changed = $true; Previous = $previous }
 }
 
+function Set-SpecrewPlanCompletedDate {
+    # Feature 206 T036 (FR-018): the Completed date of an iteration that has just moved to complete. A recorded
+    # date is kept; a blank or placeholder value is filled; a plan with no Completed line gets one after Started
+    # (or after Status). This is the one metadata line the mirror writer adds, because the governance check
+    # requires it of every complete iteration and nothing else writes it.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Date)
+    $result = [pscustomobject]@{ Path = $Path; Changed = $false; Previous = $null }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $result }
+    $previous = Get-SpecrewMirrorMetadataValue -Path $Path -Label 'Completed'
+    $result.Previous = $previous
+    if ($null -ne $previous) {
+        if ($previous -notmatch '^(?:|—|-|none|null|n/a|\(none\)|blank|pending|tbd)$') { return $result }
+        # The whole line is rewritten, so a blank `**Completed**:` with no trailing space still reads `**Completed**: <date>`.
+        $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+        $blank = [regex]::Match($content, '(?m)^\*\*Completed\*\*:[^\r\n]*?(?=\r?$)')
+        if (-not $blank.Success) { return $result }
+        $updated = $content.Substring(0, $blank.Index) + '**Completed**: ' + $Date + $content.Substring($blank.Index + $blank.Length)
+        [IO.File]::WriteAllText($Path, $updated, [Text.UTF8Encoding]::new($false))
+        $result.Changed = $true
+        return $result
+    }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+    $anchor = $null
+    foreach ($label in @('Started', 'Status')) {
+        $match = [regex]::Match($content, '(?m)^\*\*' + [regex]::Escape($label) + '\*\*:[^\r\n]*(?<eol>\r?\n|$)')
+        if ($match.Success) { $anchor = $match; break }
+    }
+    if ($null -eq $anchor) { return $result }
+    $eol = if ($anchor.Groups['eol'].Value) { $anchor.Groups['eol'].Value } elseif ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $insertAt = $anchor.Index + $anchor.Length
+    $line = '**Completed**: ' + $Date
+    $updated = if ($anchor.Groups['eol'].Value) { $content.Substring(0, $insertAt) + $line + $eol + $content.Substring($insertAt) } else { $content + $eol + $line }
+    [IO.File]::WriteAllText($Path, $updated, [Text.UTF8Encoding]::new($false))
+    $result.Changed = $true
+    return $result
+}
+
 function Get-SpecrewMirrorMetadataValue {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Label)
@@ -4245,6 +4283,13 @@ function Sync-SpecrewCrossingMirrors {
             $w3 = Set-SpecrewMarkdownMetadataLine -Path $paths.PlanPath -Label 'Status' -Value ([string]$map.PlanStatus)
             if ([bool]$w3.Changed) { $wrote.Add(('plan.md Status: {0} -> {1}' -f $w3.Previous, $map.PlanStatus)) | Out-Null }
             elseif (-not [bool]$w3.Found) { $left.Add('plan.md has no Status line; not invented') | Out-Null }
+            # Feature 206 T036 (FR-018, bug list item 44): an iteration at complete must record its Completed date,
+            # and the move to complete is this write. Written once: a recorded date is kept.
+            if ([bool]$w3.Found -and ([string]$map.PlanStatus).ToLowerInvariant() -eq 'complete') {
+                $completedDate = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') } else { ([datetimeoffset]$NowUtc).ToUniversalTime().ToString('yyyy-MM-dd') }
+                $wc = Set-SpecrewPlanCompletedDate -Path $paths.PlanPath -Date $completedDate
+                if ([bool]$wc.Changed) { $wrote.Add(('plan.md Completed: {0}' -f $completedDate)) | Out-Null }
+            }
         }
     }
     $result.Wrote = $wrote.ToArray()
@@ -7287,6 +7332,27 @@ function Test-HardeningConcernBlocksImplementation {
 
     $evaluation = Get-HardeningConcernEvaluation -Concern $Concern -ProjectRoot $ProjectRoot
     return [bool]$evaluation.BlocksImplementation
+}
+
+function Get-SpecrewCloseoutOpenHardeningItems {
+    # Feature 206 T036 (FR-018, bug list item 44): what the governance check will refuse in quality/hardening-gate.md
+    # once plan.md is at complete - the same three tests, asked at the retro -> iteration-closeout arrival so the
+    # closeout packet names them before the verdict instead of the check finding them after it. Returns one line per
+    # open item; an iteration without a gate file returns none (the check reports the missing file on its own).
+    param([Parameter(Mandatory = $true)][string]$IterationDirectory, [string]$ProjectRoot)
+    $items = New-Object System.Collections.Generic.List[string]
+    $gatePath = Join-Path $IterationDirectory 'quality/hardening-gate.md'
+    if (-not (Test-Path -LiteralPath $gatePath -PathType Leaf)) { return @() }
+    $gateLines = @(Get-MarkdownContent -Path $gatePath)
+    $verification = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Post-Implementation Verification')
+    if ((Test-IsNullish $verification) -or $verification.ToLowerInvariant().Contains('pending')) { $items.Add('Post-Implementation Verification is still pending') | Out-Null }
+    $verifiedAt = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Verified At')
+    if ((Test-IsNullish $verifiedAt) -or $verifiedAt.ToLowerInvariant().Contains('pending')) { $items.Add('Verified At is not recorded') | Out-Null }
+    $gateState = Get-HardeningGateState -Path $gatePath -ProjectRoot $ProjectRoot
+    foreach ($concern in @($gateState.ConcernRows | Where-Object { Test-HardeningConcernBlocksClosure -Concern $_ -ProjectRoot $ProjectRoot })) {
+        $items.Add(("concern '{0}' has no recorded post-implementation evidence ({1} / {2})" -f $concern.Concern, $concern.EvidenceBasis, $concern.RuntimeEvidenceStatus)) | Out-Null
+    }
+    return @($items)
 }
 
 function Test-HardeningConcernBlocksClosure {
