@@ -198,3 +198,25 @@ The following resolution strategies remain available if drift is detected later 
   crew's say and goes to the maintainer with the numbers. No numeric target is set; that is the maintainer's to set.
 - **Class closure**: NONE — a plan correction before the plan stop. DRIFT-009's line on (4) stands corrected by this
   entry.
+
+### DRIFT-011 — Feature 206 already fixed T023's governance-check half; main is merged in before the review (maintainer's decision)
+
+- **The finding** (the reviewer session, on the plan): 206's T034 (`3a3ba803`, RED `4128585a`, manifest `8b23047a`,
+  suite `tests/unit/record-before-approval.tests.ps1`) adds `Get-SpecrewRecordApprovalState` to
+  `validate-governance.ps1`: `review.md` beside `planning` or `executing`, and `retro.md` beside `reviewing`, are
+  accepted while the review-signoff or retro approval is pending, read through the start-context reader; with no
+  start context (CI) the record is accepted with a warning. That is T023's governance-check half, in the same function.
+- **The crew's read**: the sync's state-truth gate needs no change; the deadlock was the validator's refusal, and
+  with 206's rule the crew keeps `executing` and the sync moves the lines. Not covered by 206: B5F-083, and a test of
+  the sync and the check together. The two designs agree (both read the last authorized boundary); two observations
+  went to the 206 crew through the reviewer session: in CI the record is accepted even after the verdict, and
+  `review.md` beside `planning` is accepted too. A trial `git cherry-pick -n` of the three commits in a scratch
+  worktree (removed by its path): the test applied, the fix conflicted, since 206 changed that file in 17 earlier
+  commits and the fix calls a function 203 lacks.
+- **The decision**: "203: 1", typed by the maintainer to the reviewer session at 12:22 local on 2026-11-16 and relayed,
+  answering "203 merge: 1, 2 or 3"; option 1 is "merge main into 203 before 203's review". Recorded in
+  `.squad\decisions.md` as `f203-i002-merge-main-before-review`, with the option text.
+- **The plan**: T023 1.5 to 0.75 SP (B5F-083 through 206's reader, 0.5; the end-to-end test after the merge, 0.25);
+  T030, merge main into 203 before the campaign, 1.5 SP (judgment), conditional on 206 being on main, with the
+  fallback after closeout; rows 20.0 of 20, a stated 22.0 with the buffer; B5F-080 stays out.
+- **Class closure**: NONE — a scope decision; the rule itself is fixed once, by 206.

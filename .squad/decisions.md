@@ -1,5 +1,32 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Decision: 203 iteration 002 - main is merged into 203 before the review campaign; T023 relies on 206's fix
+
+- **Decision ID**: f203-i002-merge-main-before-review
+- **Type**: scope-amendment
+- **Affected Requirement**: none (B5F-050, B5F-059 and B5F-083 are lifecycle defects, not requirement-scoped)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T10:24:02Z
+- **Decision**: Feature 206's T034 (`3a3ba803`, on `206-bug-bash`) already fixes the governance-check half of
+  B5F-050 and B5F-059 in the same function T023 planned to change, and the maintainer's merge order puts 206 on main
+  first. So T023 shrinks from 1.5 to 0.75 SP: B5F-083 through the same enforcement-state reader as 206 (0.5), and a
+  test of the sync and the governance check together (0.25), written after main is merged in; 206's T034 is the one
+  design for the rule. A new task, T030 (1.5 SP, the crew's judgment, the middle of 1.0 to 2.0): when the build tasks
+  are done and 206 is on main, the crew merges main into 203 (a merge, not a rebase), runs the full sweep, and then
+  starts the review, so the campaign reviews the tree that will merge. Task rows 20.0 of 20; the 2.0 SP buffer stays
+  in the plan's text, a stated total of 22.0 SP. B5F-080 stays out. Fallback, if 206 is not on main by then: the
+  merge moves after closeout and the crew asks the maintainer for the red-push allowance at that time. 205 has an
+  iteration 004 ahead and will probably not be on main by then; whether to take 206 alone or wait is decided when it
+  arrives. Before merging, the crew tells the reviewer session, which confirms with the maintainer what is on main.
+- **The maintainer's words**: "203: 1", typed to the reviewer session specrewreviewer-98 at 2026-11-16 12:22 local
+  (UTC+2) and relayed under the wider delegation, answering the choice put to them as "203 merge: 1", "203 merge: 2"
+  or "203 merge: 3". Option 1 as shown to them: "Option 1: merge main into 203 before 203's review (recommended)",
+  with the conditions above. Options 2 and 3 were the merge after closeout with two red pushes, and a port of 206's
+  fix into 203; in all three, T023 shrank to 0.75 SP and relied on 206's fix.
+- **Next Action**: The plan is amended (T023, T030, the review and pin sequence, the merge notes, the expected
+  conflicts) and brought to the plan boundary.
+
 ### 2026-11-16 — Decision: 203 iteration 002 scope - option 1, B5F-080 out, the full 2 SP buffer stated in the plan's text
 
 - **Decision ID**: f203-i002-scope-option-1

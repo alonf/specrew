@@ -485,3 +485,11 @@ and the spec amendment (0.25 SP). The maintainer chose option 1: "option 1 it is
 11:49 local and relayed, answering "B5F-080 out, full 2 SP buffer". The task rows total 19.25 of 20 SP and the 2.0 SP
 review buffer is stated in the plan's text, so the stated total is 21.25 SP. B5F-080 moves to the follow-up feature.
 Decision entry `f203-i002-scope-option-1`; drift log DRIFT-007.
+
+### Main merged in before the review (2026-11-16 12:22 local)
+
+Feature 206's T034 (`3a3ba803`) already fixes the governance-check half of B5F-050 and B5F-059, and 206 reaches main
+first. The maintainer chose option 1: "203: 1", typed to the reviewer session at 12:22 local and relayed, answering
+"merge main into 203 before 203's review". T023 shrinks to 0.75 SP and relies on 206's fix; T030 (1.5 SP, judgment)
+merges main into 203 before the campaign when 206 is on main, with the merge after closeout as the fallback. Task rows
+20.0 of 20, a stated 22.0 SP with the buffer. Decision entry `f203-i002-merge-main-before-review`; drift log DRIFT-011.
