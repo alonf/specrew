@@ -122,27 +122,57 @@ function Get-WorkflowRunText {
     param([string] $Path)
     $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
     $run = [Collections.Generic.List[string]]::new()
-    $stepsIndent = -1    # indent of the current "steps:" key; -1 outside a steps list
+    # Feature 206 T031 (bug list item 31): the real structure, not any line that reads "steps:". Only a job's own
+    # steps: key (a key of a job under the top-level jobs: map) starts a step list, and a block scalar's lines
+    # ("key: |" or "key: >" and everything deeper) are its text, never workflow structure.
+    $inJobs = $false     # inside the top-level jobs: map
+    $jobIdIndent = -1    # indent of the job ids under jobs:
+    $jobKeyIndent = -1   # indent of the current job's keys
+    $scalarIndent = -1   # a block scalar's key column; deeper lines are its text
+    $stepsIndent = -1    # indent of the current job's "steps:" key; -1 outside a steps list
     $itemIndent = -1     # indent of that list's "- " items
     $stepKeyIndent = -1  # indent of the current step's keys
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
         $indent = $line.Length - $line.TrimStart().Length
-        if ($line -match '^\s*steps:\s*(?:#.*)?$') { $stepsIndent = $indent; $itemIndent = -1; $stepKeyIndent = -1; continue }
-        if ($stepsIndent -lt 0) { continue }
+        if ($scalarIndent -ge 0) {
+            if ($indent -gt $scalarIndent) { continue }
+            $scalarIndent = -1
+        }
         $item = [regex]::Match($line, '^\s*-(?:\s+|$)')
-        if ($indent -lt $stepsIndent -or ($indent -eq $stepsIndent -and -not $item.Success)) { $stepsIndent = -1; continue }
+        $keyColumn = if ($item.Success) { $item.Length } else { $indent }
+        $keyText = if ($item.Success) { $line.Substring($item.Length) } else { $line.TrimStart() }
+        $opensScalar = $keyText -match '^[^\s#''"][^:]*:\s*[|>][-+0-9]*\s*(?:#.*)?$'
+        if ($indent -eq 0 -and -not $item.Success) {
+            $inJobs = ($line -match '^jobs:\s*(?:#.*)?$')
+            $jobIdIndent = -1; $jobKeyIndent = -1; $stepsIndent = -1
+            if ($opensScalar) { $scalarIndent = 0 }
+            continue
+        }
+        if (-not $inJobs) { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        if ($jobIdIndent -lt 0) { $jobIdIndent = $indent }
+        if ($indent -le $jobIdIndent) {
+            $jobIdIndent = $indent; $jobKeyIndent = -1; $stepsIndent = -1
+            if ($opensScalar) { $scalarIndent = $keyColumn }
+            continue
+        }
+        if ($jobKeyIndent -lt 0) { $jobKeyIndent = $indent }
+        if ($indent -eq $jobKeyIndent -and -not $item.Success) {
+            if ($line -match '^\s*steps:\s*(?:#.*)?$') { $stepsIndent = $indent; $itemIndent = -1; $stepKeyIndent = -1 }
+            else { $stepsIndent = -1; if ($opensScalar) { $scalarIndent = $keyColumn } }
+            continue
+        }
+        if ($stepsIndent -lt 0) { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
         if ($item.Success -and ($itemIndent -lt 0 -or $indent -eq $itemIndent)) {
             $itemIndent = $indent
-            $keyText = $line.Substring($item.Length)
             # "-" alone on its line: the step's keys start on the next line, one level deeper.
             $stepKeyIndent = if ([string]::IsNullOrWhiteSpace($keyText)) { -2 } else { $item.Length }
         }
         elseif ($stepKeyIndent -eq -2 -and $indent -gt $itemIndent) { $stepKeyIndent = $indent; $keyText = $line.TrimStart() }
         elseif ($indent -eq $stepKeyIndent) { $keyText = $line.TrimStart() }
-        else { continue }
-        if ($keyText -notmatch '^run:\s*(?<rest>.*)$') { continue }
+        else { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        if ($keyText -notmatch '^run:\s*(?<rest>.*)$') { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
         $keyIndent = $stepKeyIndent
         $rest = $Matches['rest'].Trim()
         if ($rest -match '^[|>][-+0-9]*\s*(?:#.*)?$') {
