@@ -110,3 +110,63 @@ still go to the reviewer session.
 
 **Background**: the test's failure on `b15c5dd1` (iteration 002, DRIFT-020) was one of three different CI failures
 outside 205's pushes in one night; it needed a ruled rerun then.
+
+## DRIFT-205-INTAKE-008 — the feature closes at iteration 003; iteration 004's scope becomes a follow-up feature (Amendment A4)
+
+**Decided**: 2026-11-16, by the maintainer, relayed by the reviewer session under the wider delegation. Their words,
+typed to the reviewer at 20:56 local: "OK for both". They were answering the reviewer's list of open answers. For 205
+the list read "205: close now, 004 as follow-up" (recommended) or "205: wait for 203", and "both" covers the two
+crews. The option as the reviewer showed it:
+
+- "205 closes as a feature with iterations 001 to 003 and merges after 206. Your order 206, 205, 203 holds."
+- "Iteration 004's scope becomes a follow-up feature after 203 is on main, the same shape you chose for 203 this
+  morning."
+- "The work is records only: a spec amendment, the corrected lines, proposal 220 marked as partly shipped, then the
+  feature-closeout stop."
+- "One caution with closing now: the merge into main still needs your separate go for each feature, and 206 must land
+  first."
+
+This is a scope decision. It is not a boundary approval and not a go to merge.
+
+**Background**: the spec had iteration 004 (the two-pass split, the back-check, the amendment flow, the sweeps) waiting
+for feature 203 to merge (spec.md, Iterations and TG-003; plan.md, Explicit Phase 2+ Deferrals and the iteration 002
+plan). The maintainer's stated merge order, 206 then 205 then 203, could not hold while 205 waited for 203. The crew
+reported the facts to the reviewer session: only the amendment flow needs 203's code (the typed receipts in
+`workshop-authority-store.ps1`), two carried items sit in 203's protected review-engine folder, and the rest is only
+scheduled after 203.
+
+**Resolution (records only; the sealed iteration folders are not touched)**:
+
+- spec.md: the Amendment A4 session under Clarifications, plus amendment lines under the Iterations summary, TG-003 and
+  the Assumptions line. The earlier rulings' wording is kept.
+- plan.md: amendment lines under Explicit Phase 2+ Deferrals and the iteration 002 plan's "Iterations after this one".
+- Proposal 220: `status: partially-shipped` (a value the governance validator accepts), `shipped-as` naming
+  iterations 1 to 3, and a status-history line in FR-031's form.
+- `proposals/INDEX.md`: a Shipped row for iterations 1 to 3, the Draft row narrowed to the remaining scope, and the
+  summary line corrected.
+- `follow-up-seed.md`: the follow-up's scope, its one dependency on 203, the shared merge surface, the carried items,
+  and the practice notes iteration 004 would have carried.
+- The decision ledger, `.squad/decisions.md`: a ruling entry.
+
+## DRIFT-205-INTAKE-009 — iteration 003's closeout: no dashboard drawn, and a HookRenderDedupe I3a rerun
+
+**Observed**: 2026-11-16, at iteration 003's closeout (boundary commit `cec8ee06`). Recorded here because iteration
+003's folder is sealed and the feature has no iteration 004.
+
+- **No dashboard.md**: the closeout sync drew no dashboard for iteration 003; in iteration 002 it drew one. Governance
+  now warns: "WARN [dashboard] missing-dashboard-auto-render-regression: Specrew-managed closed iteration is missing
+  dashboard.md; auto-render regression suspected: closed iteration '205-workshop-lens-order 003'." It is a warning, not
+  a failure. It is item 41 on feature 206's bug list, fixed there as T035 (the closeout tail redraws the dashboard
+  after the mirrors and before the seal), and it reaches this branch when main is merged in after 206 lands. Drawing it
+  now would change a sealed folder, which is the maintainer's decision (iteration 002's DRIFT-027). The reviewer
+  session's recommendation is to leave it; the dashboard is not drawn and the folder is not resealed.
+- **HookRenderDedupe I3a**: Specrew CI run 43919881259, attempt 1, failed only in the Deterministic gate, job
+  133486978295: "I3a: two concurrent missing-id fires BOTH render (per-launch fallback keys, never shared
+  suppression) (expected '2', got '1')". The Contract lane was skipped as a result. The push touched no hook code. It
+  was rerun once under the standing exception, and attempt 2 was green on every job: Deterministic gate 133499337002,
+  Self-leak firewall 133499339212, Lint 133499404531, Contract lane 133509366042. Test 43919881344 and Cross-Platform
+  Validation 43919881310 were green on their first attempt. The reviewer session passed the log to the 203 crew, who
+  found that I3a is not the journal defect fixed that day; its rerun rule stays.
+
+**Class closure**: NONE. The dashboard belongs to feature 206 (T035) and the test belongs to feature 203; 205 changes
+neither.

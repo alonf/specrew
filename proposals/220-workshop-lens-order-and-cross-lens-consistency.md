@@ -1,8 +1,8 @@
 ---
 proposal: 220
 title: Workshop Lens Order and Cross-Lens Consistency - Problem Space Before Solution Space, a Back-Check After Every Lens, and a Final Sweep
-status: active
-shipped-as: feature-205
+status: partially-shipped
+shipped-as: feature-205 - iterations 1 to 3 only (one order in index.yml with a space per lens, tagged lens questions, parity proof, FR-013 migration; problem-space completeness; the code-implementation lens refresh and the grouped agenda). FR-002, FR-003, FR-006 to FR-012 and FR-014 remain, for a follow-up feature after feature 203 is on main.
 phase: phase-2
 estimated-sp: 20-30
 priority-tier: 2
@@ -257,3 +257,16 @@ that already exist. Not inside Feature 203.
   - Iteration 4, after feature 203 merges: the two-pass split (FR-002/FR-003), the back-check, amendments and sweeps.
   - The order after this feature: proposal 177 as its own feature (implementer side first, reviewer side after 203
     merges), then the testing lens (proposals 178 and 195 merged), and no new solution-side lens before 177.
+- 2026-11-16: `partially-shipped`. Feature 205 closes with iterations 1 to 3, and iteration 4's scope becomes a
+  follow-up feature after feature 203 is on main. The maintainer's words, relayed by the reviewer session, at 20:56
+  local: "OK for both" (feature 205's spec, Amendment A4).
+  - Shipped as feature 205: its FR-001 to FR-032. From this proposal that covers FR-001, FR-004, FR-005 and FR-013,
+    plus problem-space completeness, the code-implementation lens refresh and the grouped agenda.
+  - Remaining, for the follow-up: FR-002 and FR-003 (the two-pass split), FR-006 to FR-009 (the back-check, the
+    amendment flow and the `bindings` flow), FR-010 and FR-011 (the final sweeps), FR-012, and FR-014's fixtures.
+    The carried items are the short-name lens lists outside the id sweep and the review-signoff gate comment and
+    exemption; `specs/205-workshop-lens-order/follow-up-seed.md` lists them.
+  - Known gap until the follow-up ships: the order is one pass, problem-first inside each lens, so a lens with
+    questions in both spaces still asks its solution questions at intake, before architecture-core runs.
+  - The follow-up waits for feature 203 because the amendment flow records an amendment only on a typed reply with
+    its receipt, and 203 changes that receipt store (`workshop-authority-store.ps1`).

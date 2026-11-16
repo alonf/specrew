@@ -17,6 +17,7 @@ The workshop records under `workshop/` are the source of truth. This section sum
   - Iteration 1 (this spec's delivery scope): order, tagging, parity proof, migration.
   - Iteration 2: problem-space completeness, filling thin problem-side questions. It gets its own short workshop.
   - Iteration 3: the two-pass split (proposal FR-002/FR-003), the end-of-lens back-check, amendments and final sweeps. It waits for feature 203 to merge.
+  - **Amended 2026-11-16 (Amendment A4)**: the line above is the 2026-11-10 plan. Iteration 3 became the code-implementation lens refresh and the grouped agenda (Amendments A2 and A3). The two-pass split, the back-check, the amendment flow, the sweeps and FR-014's fixtures are no longer part of feature 205: they move to a follow-up feature that starts after feature 203 is on main (see the A4 session under Clarifications, and `follow-up-seed.md`).
 - **requirements-nfr**: binding constraints and scope (moved here from architecture-core); the parity proof; the tagging proof; the failure output.
 - **architecture-core**:
   - Order option A, with the problem section asked first inside every lens.
@@ -253,6 +254,7 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
   - US6 (iteration 002): FR-023 to FR-029; FR-030, FR-031 and FR-032 cut across.
 - **TG-002**: The implementer owns all FRs, the reviewer (codex co-review) owns review evidence, and the spec steward owns drift.
 - **TG-003**: FR-001 to FR-022 are in iteration 001. FR-023 to FR-029 (Amendment A1, problem-space completeness) are in iteration 002. FR-030, the code-implementation lens refresh, FR-031, proposal 220's status history, and FR-032, the grouped agenda (Amendment A2), are iteration 003, straight after 002; it does not wait for feature 203 (the maintainer's ruling at the iteration 002 design decision, 2026-11-13; FR-031 moved by the approved iteration 002 plan; FR-032 added on 2026-11-15). Iteration 004, after 203 merges, holds the two-pass split (proposal FR-002/FR-003), the back-check, amendments and sweeps (proposal FR-006 to FR-012, FR-014), and the short-name lists and the review-signoff comment carried from iteration 001's gap list.
+  - **Amended 2026-11-16 (Amendment A4)**: feature 205 closes with iterations 001 to 003. There is no iteration 004 in this feature. The scope written above for iteration 004 moves to a follow-up feature that starts after feature 203 is on main; `follow-up-seed.md` lists it.
 - **TG-004**: Any spec or implementation conflict is recorded in the iteration drift log and routed through clarify, never edited silently into this spec.
 
 ### Key Entities
@@ -340,9 +342,41 @@ Requirement ids keep proposal 220's numbers where the maintainer named them. FR-
 - Provenance: iteration 003 DRIFT-005. No clarify sync is run mid-iteration (reviewer's ruling); the amendment is
   approved at the tasks boundary, and the tasks packet names it.
 
+### Session 2026-11-16 (Amendment A4, the feature closes at iteration 003)
+
+- **Decision**: feature 205 closes with iterations 001 to 003. Iteration 004's scope becomes a follow-up feature after
+  feature 203 is on main.
+  - The maintainer's words, typed to the reviewer session at 20:56 local on 2026-11-16 and relayed under the wider
+    delegation: "OK for both".
+  - The option they answered, as the reviewer showed it: "205 closes as a feature with iterations 001 to 003 and merges
+    after 206. Your order 206, 205, 203 holds." "Iteration 004's scope becomes a follow-up feature after 203 is on main,
+    the same shape you chose for 203 this morning." "The work is records only: a spec amendment, the corrected lines,
+    proposal 220 marked as partly shipped, then the feature-closeout stop." "One caution with closing now: the merge
+    into main still needs your separate go for each feature, and 206 must land first."
+  - This is a scope decision. It is not a boundary approval and not a go to merge.
+- **What moves out**:
+  - the two-pass split (proposal FR-002/FR-003);
+  - the end-of-lens back-check (proposal FR-006/FR-007);
+  - the amendment flow and the `bindings` flow (FR-008/FR-009);
+  - the final sweeps (FR-010/FR-011);
+  - FR-012 and FR-014's fixtures;
+  - the short-name lists and the review-signoff comment carried from iteration 001's gap list.
+
+  None of this feature's own FRs moves: FR-001 to FR-032 were delivered in iterations 001 to 003.
+- **Known gap on main**: the order is one pass, problem-first inside each lens. A lens with questions in both spaces
+  still asks its solution questions at intake, before architecture-core runs (`workshop/architecture-core.md:16`).
+  The follow-up's two-pass split closes it.
+- **Why the follow-up waits for 203**: the amendment flow records an amendment only on the human's typed reply, with
+  its receipt. Feature 203 changes the receipt store, `workshop-authority-store.ps1` (the typed-sender check and the turn
+  identity on each receipt). The rest of the scope is only scheduled after 203. The design-workshop skill is a shared
+  merge surface.
+- **Provenance**: DRIFT-205-INTAKE-008 in `workshop/intake-drift-log.md`, and the ruling in `.squad/decisions.md`. The
+  seed list for the follow-up is `follow-up-seed.md`. Proposal 220 is marked `partially-shipped`.
+
 ## Assumptions
 
 - The two-pass split (proposal FR-002/FR-003) is out of iteration 1. The maintainer assigned it to iteration 3 on 2026-11-10, with the back-check, amendments and sweeps.
+  - **Amended 2026-11-16 (Amendment A4)**: it later moved to iteration 004 (Amendment A2's TG-003 line), and now moves out of this feature to a follow-up after feature 203 is on main.
 - The before-specify command list is a full list. The maintainer confirmed this on 2026-11-10.
 - `Read-IntakeYamlDocument -Kind lenses` parses `space` as bare or quoted and keeps list order. This was verified on a scratch copy on 2026-11-10.
 - The two deploy scripts refresh every checked copy, including `.cursor`, and never write to the home folder. This was verified in scratch on 2026-11-10.

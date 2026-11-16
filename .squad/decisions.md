@@ -29722,3 +29722,13 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: cb7da34a8863a4705e87d4313e2eca28386d1289
 - **Recorded At**: 2026-11-16T13:31:52Z
+
+## 2026-11-16T18:56:00Z — Ruling: feature 205 closes at iteration 003; iteration 004's scope becomes a follow-up feature
+
+- **Type**: ruling
+- **Affected Requirement**: TG-003 (spec Amendment A4); proposal 220 FR-002, FR-003, FR-006 to FR-012, FR-014
+- **Affected Iteration**: specs\205-workshop-lens-order (no iteration 004)
+- **Approving Human**: Alon Fliess (2026-11-16 20:56 local, typed to the reviewer session and relayed under the wider delegation: "OK for both", answering "205: close now, 004 as follow-up")
+- **Rationale**: The maintainer's merge order is 206, then 205, then 203, and it cannot hold while 205's iteration 004 waits for 203. Feature 205's own FR-001 to FR-032 are delivered in iterations 001 to 003. Of iteration 004's scope, only the amendment flow needs 203's code: its typed receipts live in workshop-authority-store.ps1, which 203 changes. This is a scope decision, not a boundary approval, and not a go to merge.
+- **Next Action**: Records only. The spec amendment, proposal 220 marked partially-shipped, the INDEX rows, follow-up-seed.md, then the governed path to feature closeout. Provenance: DRIFT-205-INTAKE-008.
+- **Recorded At**: 2026-11-16T18:56:00Z

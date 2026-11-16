@@ -108,6 +108,8 @@ corrected surfaces are below.
   the short-name lens lists outside the id sweep (the skill's frontmatter description, launch-contract rule 9a, the
   reviewer prompt in `scripts/internal/continuous-co-review/worktree-reviewer.ps1`), and, after 203 merges,
   reordering the `review-signoff-evidence-gate.ps1:589` comment and removing its temporary exemption.
+- **Amended 2026-11-16 (spec Amendment A4)**: this became iteration 004 (2026-11-13). It is now out of feature 205.
+  It moves to a follow-up feature after feature 203 is on main, and the input above is carried to `follow-up-seed.md`.
 
 ## Phase 2 Hardening and Specialist Review Planning
 
@@ -408,6 +410,10 @@ approved for plan by the maintainer on 2026-11-13). Amendment A1 is approved at 
 **Iterations after this one** (the maintainer's ruling at the design decision): iteration 003 is the
 code-implementation lens refresh (FR-030), straight after 002, not waiting for feature 203. Iteration 004, after 203
 merges, holds the two-pass split, the back-check, amendments, sweeps, and the items iteration 001 carried forward.
+
+**Amended 2026-11-16 (spec Amendment A4)**: the feature closes with iterations 001 to 003. Iteration 004 is not
+planned in this feature; its scope moves to a follow-up feature after feature 203 is on main (`follow-up-seed.md`).
+The maintainer's words, relayed by the reviewer session, at 20:56 local: "OK for both".
 
 ### What changes, Option A
 
