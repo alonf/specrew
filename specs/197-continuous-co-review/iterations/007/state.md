@@ -9,6 +9,14 @@
 **Baseline Ref**: 49f887174c4a668ece3aaede6ca0910741e085c3
 **Updated**: 2026-06-26
 
+## Disposition (2026-11-16, recorded by feature 206, T026)
+
+**Abandoned by the maintainer's ruling of 2026-11-16.** The maintainer typed "OK for all" at 11:34 local time on
+2026-11-16, answering the line "206: all four abandoned, publish suite per push, per push" put to them by the
+reviewer session (specrewreviewer-98), which relayed it. The ruling covers 197/002, 197/007, 197/008 and 198/005.
+The abandonment account elsewhere in this file is the earlier record; this section is the ruling the closed check
+reads (FR-008, T026). `Current Phase` and `plan.md` are left as they were.
+
 ## Abandonment Reason
 
 - **Status set to `abandoned`** (recorded 2026-06-26; canonical state fields added 2026-07-01 for governance completeness). Iteration 007 ran as an exploratory drive-the-real-path iteration and **pivoted to iteration 008 before running its own review/retro/signoff cycle** — no review-signoff verdict, no Task Verdicts table, and no retro were recorded. It is `abandoned` (its cycle did not complete) rather than `complete` because authoring those now would fabricate governance that never happened (the 2026-06-24 anti-fabrication ruling). Its DELIVERED fixes are live and were carried forward into 008/009: subtree-scoped change-set diff (`81b7070e`), scaffolding-exclusion + large-diff cap + adapter input-size guard + diagnostics (`85c12930`), deploy-completeness (`49f88717`), and the Pester v4→v5.5 migration. The reviewer-context flow was found architecturally fragile (see below) — the finding that justified the pivot.

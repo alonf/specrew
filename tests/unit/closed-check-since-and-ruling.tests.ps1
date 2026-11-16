@@ -6,10 +6,11 @@
 #   - Iteration closeout writes the stamp (Add-SpecrewClosedIterationEntry), and the index reader returns it.
 #   - A recorded ruling is a `## Disposition` section in state.md naming a maintainer ruling or decision
 #     with its date. The tests pin 174/007 (2026-06-14), 197/006 and 198/011 (2026-11-10) and 198/010
-#     (2026-11-11); the four group B iterations record none.
+#     (2026-11-11). The four group B iterations recorded none until the maintainer ruled them abandoned on
+#     2026-11-16 (T026); each now records that ruling.
 #   - An iteration whose state.md says `abandoned` with a recorded ruling is not held to the plan-status
 #     rule (retro.md exists) or the review-verdict rule; `abandoned` with no recorded ruling still gets both.
-#   - Not here (iteration 002, maintainer 2026-11-12): "abandoned is closed only with a recorded ruling".
+#   - Not here: "abandoned is closed only with a recorded ruling" (T026) is in iteration-closed-definition.tests.ps1.
 #
 # The fixture tests run the validator on a temp-folder project; the last test runs it read-only on this
 # repository's 198/011 (its memoization cache is under .specrew/.cache, gitignored).
@@ -309,7 +310,7 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
         Test-SpecrewIterationAbandonedByRuling -StatePath $statePath | Should -BeTrue
     }
 
-    It 'finds no recorded ruling for group B iteration <Key>' -ForEach @(
+    It 'finds the maintainer''s 2026-11-16 ruling recorded for group B iteration <Key> (T026)' -ForEach @(
         @{ Key = '197-continuous-co-review/002' }
         @{ Key = '197-continuous-co-review/007' }
         @{ Key = '197-continuous-co-review/008' }
@@ -317,7 +318,8 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
     ) {
         $parts = $Key -split '/'
         $statePath = Join-Path $script:RepoRoot ('specs\{0}\iterations\{1}\state.md' -f $parts[0], $parts[1])
-        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeFalse
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeTrue
+        Get-Content -LiteralPath $statePath -Raw | Should -Match "(?m)^\*\*Abandoned by the maintainer's ruling of 2026-11-16\.\*\*"
     }
 }
 

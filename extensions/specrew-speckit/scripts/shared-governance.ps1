@@ -900,7 +900,8 @@ function Test-SpecrewIterationClosed {
     # THE definition of a closed iteration (FR-008a), used by the validator's closed
     # filter, the dashboard check and the dashboard renderer.
     #   closed = in .specrew/closed-iterations.yml (Proposal 085), or state.md Iteration Status
-    #            `complete` / `abandoned`, or a status that claims closure (Test-SpecrewClosureClaimStatus:
+    #            `complete`, or `abandoned` with the maintainer's ruling recorded (Test-SpecrewIterationRulingRecorded,
+    #            T026), or a status that claims closure (Test-SpecrewClosureClaimStatus:
     #            the validator's own claim words, in one of the listed affirmative forms);
     #   an entry of .specrew/legacy-frozen.yml is never closed (frozen: judged by no check, FR-007);
     #   a review verdict never makes an iteration closed, and the old state.md text heuristic decides
@@ -938,7 +939,12 @@ function Test-SpecrewIterationClosed {
 
     $statePath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath ('specs\{0}\iterations\{1}\state.md' -f $Feature, $Iteration)
     $status = Get-SpecrewIterationStatusValue -StatePath $statePath
-    return (($status -in @('complete', 'abandoned')) -or (Test-SpecrewClosureClaimStatus -IterationStatus $status))
+    if ($status -eq 'abandoned') {
+        # T026 (DRIFT-206-I001-010): abandoned is closed only with the maintainer's ruling recorded in state.md's
+        # Disposition section. An abandonment reason alone is the agent's account, not a ruling.
+        return (Test-SpecrewIterationRulingRecorded -StatePath $statePath)
+    }
+    return (($status -eq 'complete') -or (Test-SpecrewClosureClaimStatus -IterationStatus $status))
 }
 
 function Test-SpecrewClosureClaimStatus {

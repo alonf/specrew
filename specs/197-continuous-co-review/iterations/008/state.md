@@ -9,6 +9,14 @@
 **Baseline Ref**: 49f887174c4a668ece3aaede6ca0910741e085c3
 **Updated**: 2026-06-27T21:15:17Z
 
+## Disposition (2026-11-16, recorded by feature 206, T026)
+
+**Abandoned by the maintainer's ruling of 2026-11-16.** The maintainer typed "OK for all" at 11:34 local time on
+2026-11-16, answering the line "206: all four abandoned, publish suite per push, per push" put to them by the
+reviewer session (specrewreviewer-98), which relayed it. The ruling covers 197/002, 197/007, 197/008 and 198/005.
+The abandonment account elsewhere in this file is the earlier record; this section is the ruling the closed check
+reads (FR-008, T026). `Current Phase` and `plan.md` are left as they were.
+
 ## Abandonment Reason
 
 - **Status set to `abandoned`** (per plan.md; canonical `Current Phase` / `Iteration Status` fields added 2026-07-01 for governance completeness). Iteration 008 delivered the dogfood hard-gate repair slice (T087–T089, validated 148 tests on 2026-06-27) and the worktree-reviewer cutover exploration, then **pivoted to iteration 009 before running its own review/retro/signoff cycle** — so no review-signoff verdict, Task Verdicts table, or retro were recorded. It is `abandoned` (its cycle did not complete) rather than `complete` because authoring those now would fabricate governance that never happened; the delivered fixes and the worktree cutover are live and were carried into iteration 009.
