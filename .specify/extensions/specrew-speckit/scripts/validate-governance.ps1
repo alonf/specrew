@@ -117,8 +117,8 @@ function Add-ValidatorStopMessage {
 
 function Get-SpecrewRecordApprovalState {
     # Feature 206 T034 (FR-016, design D2-a): whether the boundary a record belongs to (review-signoff for review.md,
-    # retro for retro.md) is still waiting for the human's verdict. 'pending': the last authorized boundary is before it,
-    # so the record is a normal state. 'decided': that verdict is recorded (or the start context is about another feature
+    # retro for retro.md) is still waiting for the human's verdict. 'pending': the last authorized boundary is the one right
+    # before it, so the record is a normal state. 'decided': that verdict is recorded (or the start context is about another feature
     # or iteration, or cannot be read), so the plan-status check applies as before. 'unknown': .specrew/start-context.json
     # is absent - it is ignored by git, so CI and a fresh clone have none - and the record is accepted with a warning; the
     # local check and the boundary sync's mirror check still hold the line where the file exists.
@@ -144,15 +144,25 @@ function Get-SpecrewRecordApprovalState {
     $sessionIteration = [string]$session['iteration_number']
     if ($sessionFeature -cne $featureRef) { return 'decided' }
     if (-not [string]::IsNullOrWhiteSpace($sessionIteration) -and $sessionIteration -cne $iterationName) { return 'decided' }
+    if ([string]::IsNullOrWhiteSpace($sessionIteration)) {
+        # Iteration 002 review round 2, finding 5: a session that names no iteration can be waiting only on the feature's
+        # newest iteration; an older iteration's record is judged as decided.
+        $iterationsRoot = Split-Path -Parent $IterationDirectory
+        $newest = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } | Select-Object -Last 1)
+        if ($newest.Count -eq 0 -or $newest[0].Name -cne $iterationName) { return 'decided' }
+    }
 
     $effective = $enforcement.EffectiveState
     if ($null -eq $effective) { return 'decided' }
     $last = [string]$effective['last_authorized_boundary']
     $order = @(Get-SpecrewBoundaryOrder)
-    $lastIndex = [array]::IndexOf($order, $last)
     $boundaryIndex = [array]::IndexOf($order, $Boundary)
-    if ($lastIndex -lt 0 -or $boundaryIndex -lt 0) { return 'decided' }
-    if ($lastIndex -lt $boundaryIndex) { return 'pending' }
+    if ($boundaryIndex -lt 1) { return 'decided' }
+    # Iteration 002 review round 2, finding 5: only the approval that comes next is pending - the last authorized boundary
+    # is the one right before the record's (before-implement for review.md, review-signoff for retro.md). Any earlier one
+    # means the record was written before the work it records was authorized.
+    if ($last -ceq $order[$boundaryIndex - 1]) { return 'pending' }
     return 'decided'
 }
 
