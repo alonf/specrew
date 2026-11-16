@@ -4643,6 +4643,14 @@ function Add-SpecrewBoundaryAuthorization {
         if ($authorizedCanonical -ceq 'iteration-closeout' -and $null -ne $mirrorResult -and [bool]$mirrorResult.Attempted -and
             $mirrorResult.PSObject.Properties['IterationDir'] -and -not [string]::IsNullOrWhiteSpace([string]$mirrorResult.IterationDir) -and
             (Get-Command -Name 'Invoke-SpecrewCloseoutSeal' -ErrorAction SilentlyContinue)) {
+            # Feature 206 T035 (FR-017): redraw the closeout dashboard from the advanced records, then seal it. A failed
+            # redraw is loud but never blocks the seal or un-records the verdict.
+            try {
+                Invoke-SpecrewCloseoutDashboardRedraw -ProjectRoot $ProjectRoot -IterationDirectory ([string]$mirrorResult.IterationDir) -Feature $rebindFeature -Iteration $rebindIteration
+            }
+            catch {
+                try { [Console]::Error.WriteLine(('[specrew-governance] WARN CLOSEOUT_DASHBOARD_NOT_REDRAWN the closeout verdict for {0}/{1} is recorded and the iteration is sealed, but its dashboard still shows the arrival''s view: {2}. Run: specrew where --capture-kind iteration-closeout, then specrew reseal --feature {0} --iteration {1}' -f $rebindFeature, $rebindIteration, $_.Exception.Message)) } catch { $null = $_ }
+            }
             try {
                 $sealPath = Invoke-SpecrewCloseoutSeal -ProjectRoot $ProjectRoot -IterationDirectory ([string]$mirrorResult.IterationDir) -Feature $rebindFeature -Iteration $rebindIteration
                 if (-not [string]::IsNullOrWhiteSpace([string]$sealPath)) { $mirrorResult | Add-Member -NotePropertyName 'SealPath' -NotePropertyValue ([string]$sealPath) -Force }
@@ -8364,6 +8372,31 @@ function Add-SpecrewSealJournalEvent {
             Add-Content -LiteralPath $journal -Encoding UTF8
     }
     catch { $null = $_ }
+}
+
+function Invoke-SpecrewCloseoutDashboardRedraw {
+    # Feature 206 T035 (FR-017, bug list item 41, design D3-a): the closeout sync draws the iteration dashboard when the
+    # retro -> iteration-closeout crossing opens, before the verdict. The capture redraws it after its mirrors have
+    # moved the records to complete, so the sealed snapshot shows what the verdict accepted. specrew-where.ps1 sits in
+    # the module's scripts/ folder, three levels above this file in both the module and the source tree. Throws when it
+    # cannot be found or fails; the caller warns and seals anyway.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$IterationDirectory,
+        [AllowNull()][string]$Feature,
+        [AllowNull()][string]$Iteration
+    )
+    $candidates = @(Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'scripts/specrew-where.ps1')
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates += Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew-where.ps1' }
+    $whereScript = @($candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1)
+    if ($whereScript.Count -eq 0) { throw 'specrew-where.ps1 was not found beside this module' }
+    $whereArgs = @('-ProjectPath', $ProjectRoot, '-OutputPath', (Join-Path $IterationDirectory 'dashboard.md'), '-CaptureKind', 'iteration-closeout', '-NoColor')
+    if (-not [string]::IsNullOrWhiteSpace($Feature)) { $whereArgs += @('-FeatureId', $Feature) }
+    if (-not [string]::IsNullOrWhiteSpace($Iteration)) { $whereArgs += @('-IterationNumber', $Iteration) }
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript[0] @whereArgs *>&1 | Out-Null
+    $whereExit = $LASTEXITCODE
+    $global:LASTEXITCODE = 0
+    if ($whereExit -ne 0) { throw ("specrew-where exited with code {0}" -f $whereExit) }
 }
 
 function Invoke-SpecrewCloseoutSeal {
