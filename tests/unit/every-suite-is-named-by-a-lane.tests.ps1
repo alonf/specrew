@@ -552,6 +552,14 @@ Assert-True $sc001Isolated "SC-001's fixture is built outside this repository, h
 # the maintainer has seen its supervised run (iteration 001 ruling).
 $sc001Raw = Get-Content -LiteralPath (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1') -Raw -Encoding UTF8
 Assert-True ($sc001Raw -notmatch 'does not run until feature 206 bug list items') "SC-001's script no longer refuses to run: bug list items 23, 24 and 25 are fixed (T023, T024, T025)"
+# Round 1 F6: one fixed temp folder name let two runs at once delete each other's fixture. Each run's folder has a
+# unique suffix, and the cleanup removes that exact folder.
+Assert-True (($sc001Text -match "\`$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)\s*\('specrew-project-path-resolution-regression-'\s*\+\s*\[guid\]::NewGuid\(\)") -and ($sc001Text -notmatch "Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)\s*'specrew-project-path-resolution-regression'")) "SC-001's script gives each run its own temp folder (unique suffix), so two runs at once cannot delete each other's fixture"
+# Round 1 F9: every entry-point case runs in the fixture, none in the repository that holds the script.
+$sc001Cases = [regex]::Match($sc001Text, '(?s)\$entryPointCases\s*=\s*@\((?<body>.*?)\r?\n\)').Groups['body'].Value
+$caseCount = [regex]::Matches($sc001Cases, '(?m)^\s*Label\s*=').Count
+$inFixture = [regex]::Matches($sc001Cases, '(?m)^\s*WorkingDirectory\s*=\s*\$(fixtureRoot|initFixtureRoot)\s*$').Count
+Assert-True ($caseCount -ge 5 -and $inFixture -eq $caseCount) ("every SC-001 entry-point case runs in a fixture, none in this repository (cases {0}; in a fixture {1})" -f $caseCount, $inFixture)
 
 # --- A registered script decides on Test-Json's result, not on whether it throws (bug list item 26) ------------------
 # mechanical-findings-contract.ps1, registered per push at T015, went red on one Ubuntu image and green on another
