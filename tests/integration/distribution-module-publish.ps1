@@ -82,6 +82,12 @@ function Reset-ReleaseWorkspace {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+# Feature 206 T028 (FR-012, bug list item 17): the no-key case below must not become a live publish on a machine or
+# runner that has PSGALLERY_API_KEY set. The key is cleared here, before the first release call, and restored on every
+# exit path (the finally block at the end of this file; `exit` runs it too).
+$savedPsGalleryApiKey = $env:PSGALLERY_API_KEY
+Remove-Item -LiteralPath 'Env:PSGALLERY_API_KEY' -ErrorAction SilentlyContinue
+try {
 $scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\distribution-module-publish'
 $workspaceParent = Join-Path -Path $scratchRoot -ChildPath 'workspace'
 $workspaceRoot = Join-Path -Path $workspaceParent -ChildPath 'Specrew'
@@ -254,7 +260,8 @@ $publishNoKeyOutput = @(
         -RepositoryRoot $workspaceRoot `
         -ReleaseMode publish-stable `
         -GitRefType tag `
-        -GitRefName $expectedTag 2>&1
+        -GitRefName $expectedTag `
+        -ConfirmLivePublish 2>&1
 )
 $publishNoKeyExitCode = $LASTEXITCODE
 
@@ -272,4 +279,8 @@ Write-Pass 'Publish mode reports missing PSGALLERY_API_KEY clearly.'
 
 Write-Host ''
 Write-Host 'Distribution module publish workflow tests passed.' -ForegroundColor Green
+}
+finally {
+    if ($null -ne $savedPsGalleryApiKey) { $env:PSGALLERY_API_KEY = $savedPsGalleryApiKey }
+}
 exit 0
