@@ -115,6 +115,47 @@ function Add-ValidatorStopMessage {
     if (-not [string]::IsNullOrWhiteSpace($Message)) { $script:ValidatorStopMessages.Add($Message) | Out-Null }
 }
 
+function Get-SpecrewRecordApprovalState {
+    # Feature 206 T034 (FR-016, design D2-a): whether the boundary a record belongs to (review-signoff for review.md,
+    # retro for retro.md) is still waiting for the human's verdict. 'pending': the last authorized boundary is before it,
+    # so the record is a normal state. 'decided': that verdict is recorded (or the start context is about another feature
+    # or iteration, or cannot be read), so the plan-status check applies as before. 'unknown': .specrew/start-context.json
+    # is absent - it is ignored by git, so CI and a fresh clone have none - and the record is accepted with a warning; the
+    # local check and the boundary sync's mirror check still hold the line where the file exists.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory,
+        [Parameter(Mandatory = $true)][ValidateSet('review-signoff', 'retro')][string]$Boundary
+    )
+
+    $recordName = if ($Boundary -eq 'retro') { 'retro.md' } else { 'review.md' }
+    try { $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot } catch { return 'decided' }
+    if (-not [bool]$enforcement.Exists) {
+        Write-TrustHardeningWarning -Category 'record-before-approval-unverified' -Detail ("{0} beside plan.md's status is accepted, but .specrew/start-context.json is absent (it is not committed), so whether the {1} approval is still pending cannot be read here." -f $recordName, $Boundary)
+        return 'unknown'
+    }
+
+    $iterationName = Split-Path -Leaf $IterationDirectory
+    $featureRef = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent $IterationDirectory))
+    $context = $enforcement.Context
+    $session = if ($null -ne $context -and $context.Contains('session_state')) { $context['session_state'] } else { $null }
+    if ($null -eq $session) { return 'decided' }
+    $sessionFeature = [string]$session['feature_ref']
+    $sessionIteration = [string]$session['iteration_number']
+    if ($sessionFeature -cne $featureRef) { return 'decided' }
+    if (-not [string]::IsNullOrWhiteSpace($sessionIteration) -and $sessionIteration -cne $iterationName) { return 'decided' }
+
+    $effective = $enforcement.EffectiveState
+    if ($null -eq $effective) { return 'decided' }
+    $last = [string]$effective['last_authorized_boundary']
+    $order = @(Get-SpecrewBoundaryOrder)
+    $lastIndex = [array]::IndexOf($order, $last)
+    $boundaryIndex = [array]::IndexOf($order, $Boundary)
+    if ($lastIndex -lt 0 -or $boundaryIndex -lt 0) { return 'decided' }
+    if ($lastIndex -lt $boundaryIndex) { return 'pending' }
+    return 'decided'
+}
+
 function Write-ValidatorSummaryAndExit {
     param(
         [AllowNull()]
@@ -5207,12 +5248,19 @@ function Test-IterationGovernance {
     # recorded ruling still gets both.
     $abandonedByRuling = Test-SpecrewIterationAbandonedByRuling -StatePath $statePath
 
+    # Feature 206 T034 (FR-016, bug list item 39, design D2-a): a record written while its boundary approval is still
+    # pending is a normal state, since the phase line moves only at the sync after the verdict. Once that approval is
+    # recorded and the line has not moved, the check fails as before.
     if ($hasReviewArtifact -and $status -in @('planning', 'executing')) {
-        $errors.Add("plan.md status '$status' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete")
+        if ((Get-SpecrewRecordApprovalState -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Boundary 'review-signoff') -eq 'decided') {
+            $errors.Add("plan.md status '$status' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete")
+        }
     }
 
     if ($hasRetroArtifact -and $status -notin @('retro', 'complete') -and -not $abandonedByRuling) {
-        $errors.Add("plan.md status '$status' is stale: retro.md exists, so the iteration must be in retro or complete")
+        if ($status -ne 'reviewing' -or (Get-SpecrewRecordApprovalState -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Boundary 'retro') -eq 'decided') {
+            $errors.Add("plan.md status '$status' is stale: retro.md exists, so the iteration must be in retro or complete")
+        }
     }
 
     Test-GovernanceGateConsistency -PlanLines $planLines -HasCompletionEvidence ($hasAcceptedReview -or $hasCompleteEvidence) -Errors $errors
