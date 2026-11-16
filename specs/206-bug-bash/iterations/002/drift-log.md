@@ -229,4 +229,4 @@ The following resolution strategies remain available if drift is detected later 
   confirmation. The new unit suite `tests/unit/release-script-refuses-unasked-publish.tests.ps1` pins the workflow's line.
 - **Not done**: the publish suite was not run here. Whether it runs per push or stays excluded is the maintainer's ruling,
   which is the task's own stop.
-- **Class closure**: NONE. This is a wrong path in one task's file list, not a recurring mechanism.
+- **Class closure**: NONE — this is a wrong path in one task's file list, not a recurring mechanism.
