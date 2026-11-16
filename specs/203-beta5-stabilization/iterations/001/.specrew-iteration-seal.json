@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "feature": "203-beta5-stabilization",
   "iteration": "001",
-  "sealed_at": "2026-11-16T00:57:06.3947376+00:00",
+  "sealed_at": "2026-11-16T00:59:18.1055270+00:00",
   "sealed_files": [
     {
       "path": "dashboard.md",
-      "sha256": "de687d9ea45cd799d1eef7f421739693a3cec1a4468511031212bd38347f82e0"
+      "sha256": "e768a144b2e324716aaa00f12b447a31c617232fb91fc39a4811b6bdf0a3293d"
     },
     {
       "path": "design-analysis.md",
@@ -14,7 +14,7 @@
     },
     {
       "path": "drift-log.md",
-      "sha256": "ac77269f611aca76d07ab0c35921b9e5dd6d678039d07e4b70a54bb2e1c82183"
+      "sha256": "8a961b4ecb145865d6c6c56a6158c419f69b2a434dadd13255e0ec009102c6d9"
     },
     {
       "path": "lens-applicability.json",
@@ -22,7 +22,7 @@
     },
     {
       "path": "plan.md",
-      "sha256": "2e9a8468a46bf6d4417a8d62e659727d6f733c6daf71507a3a000486e5e18c50"
+      "sha256": "ebaabbd286128d825f1e049f4e655d292c66aa7613394c0fe83f30a5ff31b85c"
     },
     {
       "path": "quality/hardening-gate.md",
@@ -53,5 +53,5 @@
       "sha256": "3772df6d5073d4fc6f589f3aaab1a0e6d7affb864ee06816255f5d747602b264"
     }
   ],
-  "source": "iteration-closeout-authorization"
+  "source": "specrew-reseal"
 }

@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 95 (DRIFT-001 to DRIFT-095)
-**Resolution rate**: 95 of 95 handled locally; each entry's Class closure line states whether its product class is open. This line said 28 events until the retro's records commit, which corrected it (found while drafting the retro).
+**Total drift events**: 96 (DRIFT-001 to DRIFT-096)
+**Resolution rate**: 96 of 96 handled locally; each entry's Class closure line states whether its product class is open. This line said 28 events until the retro's records commit, which corrected it (found while drafting the retro).
 **Specification drift**: 1 (DRIFT-026: FR-018 clarified to name four further acts)
 
 ## Events
@@ -3109,3 +3109,24 @@ records or the home folder changed. Outputs are in the crew's scratchpad.
 - **B5F-080** in `docs/beta5-findings.md`. Placement: the maintainer's, at iteration 002's planning.
 - **Class closure**: NONE — evidence only; the guard is a writer case that marks the last task done after the review
   sign-off and asserts the phase-owned lines are unchanged.
+
+### DRIFT-096 — Iteration 001 closed; the closeout corrections after the verdict (maintainer's verdict and decision)
+
+- **The verdict**: the maintainer typed `approved for iteration-closeout` alone. It was captured at 2026-11-16 02:57
+  local (00:57:05Z): verdict 8, through the marker path (`hook-captured-from-transcript`), bound to `d536e2d5`. The
+  capture moved plan.md to `complete` and state.md to `iteration-closeout` / `complete`. The sync, at 02:40, had
+  recorded the crossing, written the closed-iterations index and the seal, and drawn the dashboard. The boundary
+  commit is `2caa32a1`.
+- **The corrections**, on the maintainer's "closeout fixes yes" (2026-11-16 02:13, DRIFT-094), as for features 205
+  and 206:
+  - plan.md's Completed date: 2026-11-16, the day the closeout verdict was recorded.
+  - dashboard.md: it was drawn at the sync, before the verdict, so it read "AWAITING YOUR VERDICT", phase retro and 7
+    verdicts. It was redrawn after the verdict with the renderer the sync uses (`scripts/specrew-where.ps1
+    -CaptureKind iteration-closeout -FeatureId 203-beta5-stabilization -IterationNumber 001`), into the scratchpad
+    first and checked. It now reads phase iteration-closeout, last authorized boundary iteration-closeout, nothing
+    pending and 8 verdicts.
+  - The iteration was resealed with `scripts/specrew-reseal.ps1` after these edits.
+- **The hardening rows** were closed before the verdict, in `d536e2d5`, so they did not wait for it (DRIFT-094).
+- **Class closure**: NONE — the closeout's pre-verdict dashboard and the empty Completed date are the shape feature
+  205 and 206 met too; a dashboard drawn before the verdict it describes is part of B5F-050's family (the checks
+  expect a state that only a later step writes).
