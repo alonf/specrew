@@ -292,6 +292,7 @@ Describe 'A path that one OS calls absolute and another does not (Specrew CI on 
         @{ Name = 'another machine''s absolute path'; Value = 'FOREIGN' }
         @{ Name = 'a drive-relative path'; Value = 'C:specs\001-demo' }
         @{ Name = 'a UNC path'; Value = '\\server\share\specs\001-demo' }
+        @{ Name = 'a relative path that climbs out of the project (iteration 002 round 2, finding 4)'; Value = '../other-checkout/specs/001-demo' }
     ) {
         $value = if ($Value -eq 'FOREIGN') { $script:ForeignWindows } else { $Value }
         $root = New-GovernedProject -Name 'reader-foreign' -IdentityFeaturePath $value
