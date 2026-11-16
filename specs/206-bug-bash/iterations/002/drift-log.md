@@ -345,3 +345,30 @@ The following resolution strategies remain available if drift is detected later 
 - **Effort**: the rework estimate goes from 0.75 to about 1.0 SP.
 - **Class closure**: deferred — bug list item 56 for the manifest; the job's first green run, with the job listed, is
   the evidence for this push.
+
+### DRIFT-206-I002-016 — Lint's PSScriptAnalyzer install failed on 9d314cfd before any check ran; one rerun (tooling)
+
+- **Recorded**: 2026-11-16, by the crew, at the reviewer's routine ruling (specrewreviewer-98, for this push only, not
+  a new standing exception).
+- **What**: Specrew CI run `43871215362` on `9d314cfd`, job Lint (`133312591002`), step "Install PSScriptAnalyzer"
+  (`Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser`).
+  - It failed six seconds in, at 12:58:18 UTC: "Install-Package: .../PowerShellGet/public/psgetfunctions/
+    Install-Module.ps1:167 ... Package 'PSScriptAnalyzer' failed to be installed because: End of Central Directory
+    record could not be found."
+  - That is a truncated or corrupt package archive from the gallery: an infrastructure fault, not a check of this
+    change.
+  - No lint and no test ran. The Deterministic gate and the Contract lane were skipped behind Lint.
+  - Self-leak firewall and the new Publish suite (windows-latest) job passed.
+- **Rerun**: one rerun of the failed jobs (`gh run rerun 43871215362 --failed`), after Test and Cross-Platform
+  Validation finished. If the install fails again, or anything else is red, the work stops for the reviewer; there is
+  no second rerun.
+- **Result**: attempt 2 passed on all five jobs: Lint `133316437696`, Self-leak firewall, Publish suite
+  (windows-latest; attempt 1's pass, `133312591442`, kept), Deterministic gate `133318223831` and Contract lane
+  `133328519147`.
+  - In the gate, `tests/integration/project-path-resolution-regression.ps1` exited 0 in 27 s: "All 24 script suites
+    and 1 Pester suites green".
+  - The Windows job's log ends "Distribution module publish workflow tests passed."
+  - Test (1 job) and Cross-Platform Validation (8 jobs) were green on attempt 1.
+  - So `9d314cfd` is green on all three workflows with every job run, one job rerun.
+- **Class closure**: deferred — bug list item 57: Lint installs PSScriptAnalyzer from the gallery on every run, with no
+  retry and no cache. Feature 203 records the same class for its Pester-gallery sightings.

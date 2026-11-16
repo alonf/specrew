@@ -1083,6 +1083,13 @@ protected set, and none has changed on 203's branch since the merge base `df1141
 - **Scope:** an iteration 003 candidate (option C as put to the maintainer): remove the entries, after reading whether
   those empty folders must ship. Not placed.
 
+## 57. Lint installs PSScriptAnalyzer from the gallery on every run, with no retry and no cache (severity: minor)
+
+- **Observed (2026-11-16, DRIFT-206-I002-016):** Specrew CI's Lint failed on `9d314cfd` at `Install-Module
+  PSScriptAnalyzer` ("End of Central Directory record could not be found"), so a gallery hiccup turned a push red
+  before any check ran. Feature 203 records the same class for its Pester-gallery sightings. An iteration 003
+  candidate, not placed.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
