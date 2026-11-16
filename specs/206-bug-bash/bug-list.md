@@ -763,6 +763,9 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   record is the one likely conflict, resolved by recomputing the hashes.
 - **Disposition (maintainer, 2026-11-14, 22:39 local, relayed by the reviewer):** recorded for iteration 002; whether it
   goes in is the maintainer's decision at that iteration's plan. Not started.
+- **Link (2026-11-16):** feature 203's B5F-083 (a scaffolded iteration cannot be pushed until its plan exists) is in
+  203's iteration 002 scope with B5F-050 and B5F-059, and touches the same staleness checks as 206's T034.
+- **Fixed (iteration 002, T034, 2026-11-16):** RED 4/7 `4128585a`, GREEN 7/7 `3a3ba803`.
 
 ## 40. A turn that waits on the human is refused three times for a "coverage decision", then released by the cap
 
@@ -998,6 +1001,25 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   top of iteration 003's candidates, with item 45; an order of candidates, not a scope approval. About 1 SP (the
   reviewer's estimate). Iteration 002 is unchanged; the reviewer brings a swap only if the sync crash proves to hit
   every boundary on that machine.
+
+## 48 to 51. Four scaffold and resolver findings from feature 203's iteration 002 dry run (candidates, not placed)
+
+Recorded at the reviewer's request (2026-11-16); evidence in feature 203's `docs/beta5-findings.md` on
+`origin/203-beta5-stabilization` (commit `2cacad73`), read there, not copied. Not placed in any iteration and not put to
+the maintainer. None of the files is in feature 203's protected set, and none has changed on 203's branch since the
+merge base `df1141a8`.
+
+- **48 (B5F-081):** a freshly scaffolded iteration fails the governance lane on its own `hardening-gate.md` ("overall
+  verdict should be 'ready' based on the concern rows but found 'blocked'"). The gate text is written by
+  `extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1` (and its `.specify` copy). 206 met it at its
+  own iteration 002 scaffold (DRIFT-206-I002-002); feature 205 at its iteration 003 (its `27b2d647`).
+- **49 (B5F-082):** the same generated `hardening-gate.md` text carries three MD038 errors (34:143, 36:133, 36:145);
+  same file as 48, also met by 205.
+- **50 (B5F-084):** `scaffold-iteration-artifacts.ps1` writes `specs/<feature>/contracts/mechanical-findings.schema.json`,
+  outside the iteration folder, without saying so.
+- **51 (B5F-085):** the quality-profile resolver reads this repository as `node-rest-with-postgres` and
+  `react-spa-public`. The cause is the stray root `package.json`, which 206's T017 removes on this branch (`b5e6babf`);
+  203's branch keeps it until it merges, so 51 is fixed for 203 by 206's merge.
 
 ## Iteration 002 Intake
 

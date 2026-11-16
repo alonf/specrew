@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "206-bug-bash"
 iteration: "002"
-updated_at: "2026-11-15T20:09:53.3788954Z"
+updated_at: "2026-11-16T01:39:17.8775151Z"
 tasks:
   T020:
     title: "Start records the hash of each whole file it creates or repairs, in a git-ignored record; a matching file is bookkeeping, an edited one the user's (D5-a; failing test first)"
@@ -41,15 +41,15 @@ tasks:
     blocked_reason: ""
   T016:
     title: "Delete the empty `tests/integration/_ctl-spec.ps1`"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.2876276Z"
+    completed_at: "2026-11-16T01:39:17.2876276Z"
     blocked_reason: ""
   T017:
     title: "Remove the stray root `package.json`; the f049 stack-detection assertion onto a fixture with its own `package.json`; the resolver selects no Node or React preset (failing test first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.3966487Z"
+    completed_at: "2026-11-16T01:39:17.3966487Z"
     blocked_reason: ""
   T026:
     title: "Abandoned is closed only with a recorded ruling (DRIFT-206-I001-010; failing test first)"
@@ -59,27 +59,27 @@ tasks:
     blocked_reason: ""
   T032:
     title: "A managed-block opener's trailing arrows must match its direction; a mismatched pair is unbalanced (item 33; failing test first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.7711267Z"
+    completed_at: "2026-11-16T01:39:17.7711267Z"
     blocked_reason: ""
   T031:
     title: "Census guard tracks YAML block scalars and job and step structure, and treats `;` as a comment boundary; one fixture per construct (items 31, 32; failing fixtures first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.7002047Z"
+    completed_at: "2026-11-16T01:39:17.7002047Z"
     blocked_reason: ""
   T030:
     title: "The four repository-level stops and the outer catch pass their messages with `-FailureMessages` (items 30, 34; failing test first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.6310776Z"
+    completed_at: "2026-11-16T01:39:17.6310776Z"
     blocked_reason: ""
   T027:
     title: "`workflow_dispatch:` on Specrew CI, as the other two workflows have (item 12)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.4821885Z"
+    completed_at: "2026-11-16T01:39:17.4821885Z"
     blocked_reason: ""
   T028:
     title: "`distribution-module-publish.ps1` clears and restores `PSGALLERY_API_KEY` itself; the release script refuses a publish nobody asked for; run or keep excluded by the maintainer's ruling (item 17, high; failing test first)"
@@ -89,9 +89,9 @@ tasks:
     blocked_reason: ""
   T029:
     title: "`multi-host-smoke.ps1`: rename the loop variable that collides with `$Host` (item 18; read, not run: it deploys hooks)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.5596339Z"
+    completed_at: "2026-11-16T01:39:17.5596339Z"
     blocked_reason: ""
   T033:
     title: "review.md accepts a `deferred` task verdict naming an existing decision id, beside `accepted` (D1-a; failing test first)"
@@ -101,9 +101,9 @@ tasks:
     blocked_reason: ""
   T034:
     title: "Staleness checks accept a record before its verdict; with no `start-context.json`, a warning (D2-a; five cases, failing first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:39:17.8763521Z"
+    completed_at: "2026-11-16T01:39:17.8763521Z"
     blocked_reason: ""
   T035:
     title: "The capture redraws the closeout dashboard after the mirrors and before the seal; a failed redraw warns and never blocks the seal (D3-a; failing test first)"

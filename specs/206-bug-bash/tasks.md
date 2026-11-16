@@ -387,11 +387,14 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
 
 ### Phase 6: Deferred from iteration 001 (US3, US4)
 
-- [ ] T016 [owner: Implementer] [sp: 0.25] [US3] **Delete the empty `tests/integration/_ctl-spec.ps1`.**
+- [x] T016 [owner: Implementer] [sp: 0.25] [US3] **Delete the empty `tests/integration/_ctl-spec.ps1`.**
+  - **Done (2026-11-16):** deleted with its census exclusion (`773c1a36`); the census guard passes.
   - **Acceptance:** the census guard green without it.
   - **Trace:** FR-013.
   - **Owns:** `tests/integration/_ctl-spec.ps1`, `tests/support/test-census.ps1`.
-- [ ] T017 [owner: Implementer] [sp: 1.5] [US4] **No Node or React preset for this repository (item 6a).**
+- [x] T017 [owner: Implementer] [sp: 1.5] [US4] **No Node or React preset for this repository (item 6a).**
+  - **Done (2026-11-16):** RED 2/3 `aa850089`, GREEN 3/3 `b5e6babf` (the root `package.json` removed; f049's
+    assertion reads a fixture), registered `be0fe3eb`. Also fixes feature 203's B5F-085 once 206 merges (item 51).
   - **RED:** the resolver, run on this repository with feature 201's spec, selects a Node or React preset.
   - **Work:** remove the stray root `package.json`; move the f049 stack-detection assertion onto a fixture with its
     own `package.json`.
@@ -413,12 +416,15 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`,
     `extensions/specrew-speckit/scripts/validate-governance.ps1`, their `.specify` mirrors, the deployed hash file,
     `tests/unit/**`.
-- [ ] T032 [owner: Implementer] [sp: 0.75] [US1] **A malformed managed-block opener is unbalanced (item 33).**
+- [x] T032 [owner: Implementer] [sp: 0.75] [US1] **A malformed managed-block opener is unbalanced (item 33).**
+  - **Done (2026-11-16):** RED 2/15 `e496b099`, GREEN 15/15 `f329c895`.
   - **RED:** an opener with `<<<` where `>>>` belongs is treated as a matched pair today.
   - **Acceptance:** a matched pair still strips; a mismatched pair compares the whole file.
   - **Trace:** FR-003.
   - **Owns:** `scripts/internal/instruction-file-merge.ps1`, `tests/unit/**`.
-- [ ] T031 [owner: Implementer] [sp: 1.5] [US3] **The census guard reads YAML and shell by structure (items 31, 32).**
+- [x] T031 [owner: Implementer] [sp: 1.5] [US3] **The census guard reads YAML and shell by structure (items 31, 32).**
+  - **Done (2026-11-16):** RED 33/83 `7e7998b1`; item 32 `25f191f2`, item 31 `359b1c95`; 83/83, the repository's own
+    workflows included.
   - **RED:** one fixture per construct: `steps:` inside a block scalar, a key of the same name at another level, a
     comment after `;`.
   - **Work:** the guard tracks block scalars and job and step structure, and treats `;` as a comment boundary.
@@ -426,8 +432,9 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Trace:** FR-011; SC-004.
   - **Owns:** `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, `tests/support/test-census.ps1`,
     `tests/unit/fixtures/**`.
-- [ ] T030 [owner: Implementer] [sp: 1.25] [US2] **Every repository-level stop writes its message hash (items 30,
+- [x] T030 [owner: Implementer] [sp: 1.25] [US2] **Every repository-level stop writes its message hash (items 30,
   34).**
+  - **Done (2026-11-16):** RED 3 `eda9fff9`; item 30 `57e0cdbd`, item 34 `899f76f8`; nightly-tracking-issue 24/24.
   - **RED:** two different messages in one stop category give one fingerprint today.
   - **Work:** the four repository-level stops and the outer catch pass their messages with `-FailureMessages`.
   - **Acceptance:** two messages give two fingerprints; the same message gives one.
@@ -437,7 +444,8 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
 
 ### Phase 8: Scripts and CI (US3)
 
-- [ ] T027 [owner: Implementer] [sp: 0.25] [US3] **Specrew CI gets a manual trigger (item 12).**
+- [x] T027 [owner: Implementer] [sp: 0.25] [US3] **Specrew CI gets a manual trigger (item 12).**
+  - **Done (2026-11-16):** `5a0f65a8`; the workflow parses; its first run is the next push's.
   - **Work:** `workflow_dispatch:` on Specrew CI, as the other two workflows have.
   - **Acceptance:** the workflow file parses and the next push's run is green.
   - **Trace:** FR-012.
@@ -451,7 +459,8 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
     maintainer's ruling (**stop**).
   - **Trace:** FR-012; SC-007.
   - **Owns:** `tests/integration/distribution-module-publish.ps1`, `scripts/release/**`.
-- [ ] T029 [owner: Implementer] [sp: 0.25] [US3] **`multi-host-smoke.ps1` stops assigning to `$Host` (item 18).**
+- [x] T029 [owner: Implementer] [sp: 0.25] [US3] **`multi-host-smoke.ps1` stops assigning to `$Host` (item 18).**
+  - **Done (2026-11-16):** `61e46c46` (17 uses renamed); read and parsed, not run.
   - **Work:** rename the loop variable. Read, not run: the script deploys hooks.
   - **Acceptance:** the diff renames only that variable; the script parses.
   - **Trace:** FR-012.
@@ -459,7 +468,8 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
 
 ### Phase 9: Review and closeout records (US2, items 37, 39, 41, 44)
 
-- [ ] T034 [owner: Implementer] [sp: 1.0] [US2] **A record written before its approval is not stale (D2-a, item 39).**
+- [x] T034 [owner: Implementer] [sp: 1.0] [US2] **A record written before its approval is not stale (D2-a, item 39).**
+  - **Done (2026-11-16):** RED 4/7 `4128585a`, GREEN 7/7 `3a3ba803`, registered `8b23047a`.
   - **RED:** review.md beside `executing`, with the review-signoff crossing pending, fails Lint today.
   - **Work:** the staleness checks accept a record whose boundary approval is still pending (review.md beside
     `executing`, retro.md beside `reviewing`), read through the existing start-context reader; where
