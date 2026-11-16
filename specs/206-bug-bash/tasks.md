@@ -480,7 +480,8 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Trace:** FR-016; SC-009.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` mirror, the deployed hash
     file, `tests/unit/**`.
-- [ ] T033 [owner: Implementer] [sp: 1.0] [US2] **A `deferred` task verdict with its decision id (D1-a, item 37).**
+- [x] T033 [owner: Implementer] [sp: 1.0] [US2] **A `deferred` task verdict with its decision id (D1-a, item 37).**
+  - **Done (2026-11-16):** RED 3/4 `53c78d13`, GREEN 4/4 `078578ae`, registered `7ef85fb9`.
   - **RED:** `accepted` with a `deferred` row naming an existing decision fails today.
   - **Work:** review.md accepts `deferred` beside `accepted` when the row names a decision id present in
     `.squad/decisions.md`.
@@ -490,7 +491,9 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Depends:** T034.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` mirror, the deployed hash
     file, `tests/unit/**`.
-- [ ] T035 [owner: Implementer] [sp: 1.25] [US2] **The closeout dashboard is drawn after the verdict (D3-a, item 41).**
+- [x] T035 [owner: Implementer] [sp: 1.25] [US2] **The closeout dashboard is drawn after the verdict (D3-a, item 41).**
+  - **Done (2026-11-16):** RED 2/2 `4d391ecd`, GREEN 2/2 `7921e149` (the redraw runs after the mirrors and before
+    the seal; a failed redraw warns `CLOSEOUT_DASHBOARD_NOT_REDRAWN` and the seal is still written), registered `3d79d258`.
   - **RED:** a fixture closeout seals a dashboard drawn before the verdict.
   - **Work:** the capture's closeout tail redraws the dashboard after `Sync-SpecrewCrossingMirrors` and before
     `Invoke-SpecrewCloseoutSeal`.
@@ -499,7 +502,8 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Trace:** FR-017; SC-010.
   - **Owns:** `extensions/specrew-speckit/scripts/shared-governance.ps1`, its `.specify` mirror, the deployed hash
     file, `tests/unit/**`.
-- [ ] T036 [owner: Implementer] [sp: 1.5] [US2] **The Completed date and the open hardening rows (D4-a, item 44).**
+- [x] T036 [owner: Implementer] [sp: 1.5] [US2] **The Completed date and the open hardening rows (D4-a, item 44).**
+  - **Done (2026-11-16):** RED 3/6 `1f8ab2fa`, GREEN 6/6 `217ad08f`, registered `bb4e8cb5`.
   - **RED:** a fixture closeout leaves plan.md `complete` with no Completed date, and the arrival names no open
     hardening row.
   - **Work:** the mirror write that moves plan.md to `complete` writes the Completed date; the closeout arrival lists

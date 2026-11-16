@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "206-bug-bash"
 iteration: "002"
-updated_at: "2026-11-16T01:39:17.8775151Z"
+updated_at: "2026-11-16T01:59:35.7018166Z"
 tasks:
   T020:
     title: "Start records the hash of each whole file it creates or repairs, in a git-ignored record; a matching file is bookkeeping, an edited one the user's (D5-a; failing test first)"
@@ -95,9 +95,9 @@ tasks:
     blocked_reason: ""
   T033:
     title: "review.md accepts a `deferred` task verdict naming an existing decision id, beside `accepted` (D1-a; failing test first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:59:35.5084675Z"
+    completed_at: "2026-11-16T01:59:35.5084675Z"
     blocked_reason: ""
   T034:
     title: "Staleness checks accept a record before its verdict; with no `start-context.json`, a warning (D2-a; five cases, failing first)"
@@ -107,15 +107,15 @@ tasks:
     blocked_reason: ""
   T035:
     title: "The capture redraws the closeout dashboard after the mirrors and before the seal; a failed redraw warns and never blocks the seal (D3-a; failing test first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:59:35.6088968Z"
+    completed_at: "2026-11-16T01:59:35.6088968Z"
     blocked_reason: ""
   T036:
     title: "The mirror write that moves plan.md to complete writes the Completed date; the closeout arrival lists open hardening rows in the pending-verdict artifact (D4-a; failing tests first)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-16T01:59:35.7010975Z"
+    completed_at: "2026-11-16T01:59:35.7010975Z"
     blocked_reason: ""
   T037:
     title: "The two reviewer-brief promotions from iteration 001's retro, in this iteration's review brief"
