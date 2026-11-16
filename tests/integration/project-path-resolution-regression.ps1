@@ -101,7 +101,8 @@ if ((Get-Location).Path -eq [Environment]::CurrentDirectory) {
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 # Outside the repository, so nothing the entry points do in the fixture can reach this repository (feature 206, T015).
-$scratchRoot = Join-Path ([IO.Path]::GetTempPath()) 'specrew-project-path-resolution-regression'
+# Round 1 F6: each run has its own folder, so two runs at once cannot delete each other's fixture.
+$scratchRoot = Join-Path ([IO.Path]::GetTempPath()) ('specrew-project-path-resolution-regression-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
 $dotNetRoot = Join-Path $scratchRoot 'dotnet-root'
 $fixtureRoot = Join-Path $scratchRoot 'fixture-project'
 $initFixtureRoot = Join-Path $scratchRoot 'init-project'
@@ -291,7 +292,7 @@ else {
 }
 
 # The fixtures and the profile file are this script's own temp folders; removed by their exact paths (T024).
-if ((Split-Path -Leaf $scratchRoot) -eq 'specrew-project-path-resolution-regression' -and (Test-Path -LiteralPath $scratchRoot)) {
+if ((Split-Path -Leaf $scratchRoot) -like 'specrew-project-path-resolution-regression-*' -and (Test-Path -LiteralPath $scratchRoot)) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 if ((Split-Path -Leaf $env:SPECREW_USER_PROFILE_PATH) -like 'specrew-test-profile-*') {
