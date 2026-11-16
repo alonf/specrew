@@ -99,9 +99,20 @@ Both are fixed, with failing tests first.
    - a UNC path;
    - a POSIX absolute path;
    - a drive-relative `C:x`, which is not absolute, is never adopted, and is dropped with the warning;
-   - a relative path that merely contains a colon;
+   - a relative path that merely contains a colon. A single-letter folder followed by a colon (`a:b`) reads as
+     drive-relative and is dropped: right on Windows, and harmless elsewhere. Judge it;
    - a tracked `now.md` carrying another machine's absolute path. It must not be adopted, it must not cause the
      stale-state refusal, and the warning must name the file and say it was not changed.
+
+   RED of record: 14/27 at `1cb31e60`, the restored tests against the unfixed code. The "outside" case is red only on
+   Linux (CI run `43851050990`); DRIFT-206-I002-014 lists each failing case and why it failed.
+
+   `tests/integration/Test-LegacyStateReaders.Tests.ps1`:
+   - no assertion changed. Its import list gained the two functions the reader uses, and it loads the path-identity
+     and reparse helpers first. Its 0.23.0 fixture's `C:/example/...` path is now dropped with the warning, and the
+     suite asserts nothing about it;
+   - a real 0.23.0 project on Windows whose saved feature path is absolute and inside the project is still adopted:
+     the reader keeps an absolute path that the inside check accepts.
 
    Also check every caller of the inside check for a path that still reaches `GetFullPath` or `Join-Path` before its
    kind is known. Known and unchanged: `specrew-start.ps1`'s `.specify/feature.json` auto path (about line 709) has no

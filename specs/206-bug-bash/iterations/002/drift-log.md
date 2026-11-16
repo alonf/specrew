@@ -299,6 +299,17 @@ The following resolution strategies remain available if drift is detected later 
       imports the two functions the reader uses and loads the path-identity and reparse helpers first (read and
       called, not changed).
   - Supervised SC-001 run 7: six of six in 79 s, home hook files and the repository unchanged.
+  - **RED of record** (the reviewer's question): `b616ce23`'s 14/27 was taken on damaged test text. The restored tests
+    at `1cb31e60`, run against the unfixed code on Windows in a scratch worktree (home hook files unchanged), give
+    14/27. Every failure is for the defect:
+    - the eight path-kind cases fail because the helper does not exist yet;
+    - the three identity-reader cases fail because the reader returns the foreign, drive-relative or UNC path;
+    - start on a clone carrying another machine's path fails on the stale-state refusal;
+    - `sync-boundary-state.ps1` loaded on its own calls `C:specs\x` inside the project, a drive-relative defect on
+      Windows;
+    - `session-recovery.ps1` loaded on its own cannot reach the helper.
+
+    The "outside the project" case passes on Windows before the fix. Its RED is Linux: Specrew CI run `43851050990`.
 - **Candidates, not changed**: `scripts/specrew-start.ps1`'s `.specify/feature.json` auto path (about line 709) has
   no inside rule; `scripts/internal/session-recovery.ps1`'s FR-024 stale check decides inside with `-like`. After
   the reader fix the stale check no longer meets a foreign identity path. Both are named in the round 2 scope file.
