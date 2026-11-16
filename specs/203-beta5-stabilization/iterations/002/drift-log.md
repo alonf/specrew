@@ -425,3 +425,41 @@ The following resolution strategies remain available if drift is detected later 
   fires' output on the next failure, and the I3a rerun rule continues.
 - **B5F-090** filed: the campaign reviewer's absolute deadline with no clock on hosts without a shell (206's round 2).
 - **Class closure**: NONE — Phase 8's tip goes to the sweep next.
+
+### DRIFT-022 — The Phase 8 sweep of `aa06b3e5b` was red; four of its causes fixed (maintainer's "Fix them")
+
+- **The sweep** (20:31 to 22:40 local, 283 suites, wall 7,751 s, 6 at a time, 1,500 s suite limit): 6 suites failed
+  and lane `f203-i001-verdict-review` failed; 2 known red (B5F-036). Home hook files: 0 changed (the sweep's check and
+  the crew's 12-file hash). Nothing pushed. Each failure was checked on the pushed tip `5f82692e7` in a scratch worktree
+  (removed by its path):
+  1. `tests/continuous-co-review/invoke-bounded-suites.ps1`, exit 1 in 1 s: Phase 8's own. T015 made
+     `cross-platform-validation.yml` call the runner with `-Suite`; the sweep's CI collector takes every `tests/*.ps1` a
+     push workflow names and ran it bare.
+  2. The lane's `self-repo-review-integrity.tests.ps1`: red on `5f82692e7` too. It put the sealed iteration 001 into
+     reviewing status in a copy, and since 001's closeout seal (`2caa32a17`) the validator stops on
+     `closed-iteration-edited` before the W43 check the case exists for. The product is right; the test was stale.
+  3. `version-info-states.tests.ps1`: red on `5f82692e7` too ("expected '5f82692e', got '5f82692e7'"). A source
+     checkout's build id used git's default short length, now nine characters in this clone; the packager stamps eight.
+  4. `start-command-non-interactive-first-run.tests.ps1`: its 300 s limit, as in every sweep since `f6478946`.
+  5. `review-posix-runtime.Tests.ps1`, one case: its own 100 ms wall budget under load; 3 of 3 green alone.
+  6. `review-budget-loop` and `review-loop-stops` at the 1,500 s cap. Neither reaches T017's or T015's code; their
+     times have climbed every sweep. Not yet measured.
+- **Decision** (the maintainer, typed in this session, about 22:50 local on 2026-11-16, after the reviewer session's
+  questions were answered): "Fix them" — items 1, 2, 3 and 5, the four the crew recommended fixing before the push.
+- **The fixes** (each run alone, one suite at a time, while 206's lanes ran):
+  - Item 3: `5cec4bf6`, `version-check.ps1` asks for `--short=8`; `version-info-states` green. A packaged install was
+    never affected (it reads `build-stamp.json`); a module run from a git checkout, the live-engine pin included,
+    printed nine characters.
+  - Item 5: `eee6946a`, the case's budget 30,000 ms (the reader and the sleep stay injected); 7 passed, 4 skipped.
+  - Item 2: `a0c2e604`, the case checks the feature's newest numbered iteration; both cases pass on 002.
+  - Item 1: RED `2d6590f6` (the sweep self-test: every file CI's list names runs with no arguments; red 3 of 58), fix
+    `9b491ac5` (the runner moves to `tools/ci/`; the workflow and `bounded-suite-runner.Tests.ps1` follow; 4 of 4 and
+    58 of 58 green).
+  - Items 2, 3 and 5 have no separate RED commit: each was red on the pushed tip, recorded above.
+- **Open, for the maintainer through the reviewer session**: item 4 and the 1,500 s suite limit. Both were ruled for
+  iteration 001 only (DRIFT-077 of iteration 001, "203: bothe yes", 20:49 local on 2026-11-14); this sweep carried the
+  1,500 s limit over with no iteration 002 record, which the crew disclosed. Item 6 waits for the timing measurement
+  (`review-budget-loop` at `5f82692e7` and the new tip, `review-loop-stops` at the new tip), on the reviewer session's
+  go; widening T026 to these suites was recommended (+0.25 SP), not decided.
+- **Class closure**: item 1 by the sweep self-test's new case; items 2, 3 and 5 by their own suites, now green; items
+  4 and 6 NONE yet.
