@@ -757,7 +757,8 @@ with the plan.
     - product Markdown: a skill file under `extensions/`, a template, the coordinator fragment (red today);
     - a test fixture `.md` and a test fixture `.txt` under `tests/` (red today);
     - a `.agents/skills/**/SKILL.md` (red today);
-    - a `.github/prompts/**` file and a `.github/agents/**` file in the source repository (red today);
+    - a `.github/prompts/**` file and a `.github/agents/**` file in the source repository (red today); test `:112`
+      is amended to this source-repository answer for `.github/agents/squad.agent.md`;
     - a `.md` under `scripts/` (red today);
     - `AGENTS.md`, `CLAUDE.md`, a `.squad/agents/*/charter.md` and `.specrew/constitution.md` (red today);
     - `docs/methodology/**` (red today);
@@ -769,7 +770,12 @@ with the plan.
     - pinned records cases, one per records place, each records-only (passing today): a drift log in the active
       feature, `.squad/decisions.md`, `.squad/identity/now.md`, a `.squad/log/` file, a `docs/` findings file, a
       `proposals/` file, `README.md`, `.specrew/reviewer-regression-log.md`;
-    - a downstream fixture: the same host-directory and `.specify` paths stay records-only there (passing today);
+    - a downstream fixture: the same host-directory and `.specify` paths stay records-only there (passing today),
+      including its own named case, `.github/agents/squad.agent.md` is machinery downstream, so the pin `:112` made
+      is kept for downstream projects, not dropped;
+    - a non-Markdown file in the active feature's iteration folder, the scaffold's
+      `iterations/<NNN>/quality/mechanical-findings.json`: records-only today (the output allowlist's `quality/`
+      folder, `Test-SpecrewLifecycleExecutionRecordPath`); pinned as records, not changed;
     - the gate: a stop for digest D then a records-only commit is refused today (DRIFT-078); an ordinary review end
       needs two approvals today (DRIFT-091); a fixed finding stays open today (B5F-071).
 

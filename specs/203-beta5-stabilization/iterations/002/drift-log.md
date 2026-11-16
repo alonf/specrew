@@ -293,6 +293,10 @@ The following resolution strategies remain available if drift is detected later 
   source. T022's RED and Acceptance add the new refusing cases and one pinned records case per records place;
   B5F-087's case list matches. Within the maintainer's "203 T022: 1" and within 4.5 SP (the crew's judgment: one
   ordered rule and a list; the cases are one-line path assertions).
-- **Left open, stated in B5F-087**: non-Markdown configuration under `.specrew/` and `.squad/` (such as
-  `.specrew/verification-plan.json`, `.specrew/config.yml`) stays records as machinery.
+- **Left open, stated in B5F-087**: non-Markdown configuration under `.specrew/` and `.squad/`
+  (`.specrew/verification-plan.json`, `.specrew/config.yml`, `.specrew/iteration-config.yml`) stays records as
+  machinery; the reviewer session agreed it is a different class wanting its own design, a candidate, not scope.
+- **Accepted with two additions** (the reviewer session): test `:112` is amended for the source repository and
+  keeps a named downstream case; a pinned case shows the scaffold's `quality/mechanical-findings.json` in the
+  iteration folder is records-only today, unchanged.
 - **Class closure**: NONE — a task amendment before the tasks stop.
