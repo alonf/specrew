@@ -380,3 +380,23 @@ The following resolution strategies remain available if drift is detected later 
   group on Unix). A grandchild outlives the child until then by design ("Straggler reap ... must not outlive the
   run"); the drain waits inside that window, and whatever still runs is killed at the reap.
 - **Class closure**: NONE — a scheduling ruling and a record.
+
+### DRIFT-020 — Phase 8 records: T016's I4b cause shown, I3a unconfirmed, a residual filed; T015's limit margin
+
+- **T016, I4b: shown to be the cause by its own RED.** HookRenderDedupe I4b on Linux CI (205's run `43739142768`,
+  2026-11-15): "expected '16', got '15'" with I4a passing, so sixteen appends reported success and one row was lost.
+  The stale-claim reclaim in `HookJournalAccessor.ps1` read a vanished claim's age through the 1601 sentinel (RED
+  `4a2dcd21`: 13,439,325,127 s), judged it stale, and could rename a third writer's live claim away (POSIX allows it).
+  Fixed in `8823b864` (a vanished or sentinel time is no claim).
+- **T016, I3a: unconfirmed.** 205's run `43670851775`, attempt 1, job `132681450478`, 2026-11-15 03:22:57Z: "I3a: two
+  concurrent missing-id fires BOTH render ... (expected '2', got '1')". Not the same cause: the render claim is keyed
+  by each fire's own per-launch token and has no stale-reclaim path, and the log shows nothing of the fire that did
+  not render. So the HookRenderDedupe rerun rule for I3a does not end with T016. The suite now prints each fire's
+  output when I3a's count is wrong (`HookRenderDedupe.Tests.ps1`), so the next sighting is diagnosable.
+- **T016's residual**: two reclaimers on a truly stale claim can still both reclaim; filed as B5F-089 with the
+  sequence, a candidate for the follow-up feature or 206's list.
+- **T015's 300 s per-suite limit, against CI today** (Cross-Platform `43883686490` on `7a7b83df`, from the step's
+  log timestamps): the longest suite is `review-public-campaign-command.Tests.ps1`, 83.5 s on macOS, 72.2 s on
+  Windows, 26.2 s on Linux; the next is `review-cross-platform-fault-matrix.Tests.ps1`, 28.7 s on macOS. With each
+  suite now in its own pwsh (a few seconds' start-up), the margin under 300 s is about 3.5 times the longest.
+- **Class closure**: NONE — records of Phase 8 work in progress.
