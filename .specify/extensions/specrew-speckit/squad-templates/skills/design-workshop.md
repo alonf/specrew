@@ -291,8 +291,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    do not switch to a structured menu after rendering. Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
    **Head the lens with its group's marker (FR-032).** The opening turn's heading repeats the marker of the agenda
-   group the lens sits in, with the lens id, for example `🟦 requirements-nfr`, `🟪 data-storage` or `🟧 architecture-core`,
-   so the human sees which space the lens works in. The marker is one per group, never one per lens.
+   group the lens sits in, with the lens id (for example `🟦 <lens-id>` for a problem-space lens), so the human sees which space
+   the lens works in. The marker is one per group, never one per lens.
    **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
