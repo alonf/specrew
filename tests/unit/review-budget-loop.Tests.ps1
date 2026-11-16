@@ -196,6 +196,35 @@ Describe 'the review loop spends the budget grant, and nothing else (FR-003, FR-
         (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-reset-5').invoked | Should -BeFalse
         script:Get-LoopSpendCount -Repo $repo | Should -Be 4
     }
+
+    It 'F5 (T018): a second top-up with no round between grants no extra window (FR-007, FR-043)' {
+        # Iteration 001 closed its retry-idempotency row with this control untested (the maintainer's "retry row yes",
+        # 2026-11-16 02:13; DRIFT-094). Two top-ups typed back to back, with no round spent between them, open ONE
+        # window of the floor (one fix and one verification round), not two.
+        $repo = script:New-LoopRepo -Root (Join-Path $TestDrive 'double-reset')
+        $null = script:Set-LoopBudgetGrant -Repo $repo -Total 2
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-double-1').invoked | Should -BeTrue
+        script:Add-LoopFix -Repo $repo -Number 1
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-double-2').invoked | Should -BeTrue
+        foreach ($n in 1, 2) {
+            $reset = [pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'round-budget-reset'; campaign_id = $script:CampaignId; reset_id = ('reset-loop-double-000{0}' -f $n)
+                authority_kind = 'human'; authorized_by = 'maintainer'; reason = ''; observed_at = [DateTimeOffset]::UtcNow.AddSeconds($n).ToString('o')
+            }
+            $null = Write-ReviewCampaignBudgetResetFact -StoreRoot $repo.store -Fact $reset
+        }
+        Start-Sleep -Milliseconds 2100
+        $counter = script:Get-LoopCounter -Repo $repo
+        $counter.rounds_used | Should -Be 0
+        $counter.budget_total | Should -Be 2 -Because 'a second top-up with no round between opens no second window'
+        script:Add-LoopFix -Repo $repo -Number 2
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-double-3').invoked | Should -BeTrue
+        script:Add-LoopFix -Repo $repo -Number 3
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-double-4').invoked | Should -BeTrue
+        script:Add-LoopFix -Repo $repo -Number 4
+        (script:Invoke-LoopRound -Repo $repo -RunId 'run-loop-double-5').invoked | Should -BeFalse -Because 'the double top-up bought two rounds, not four'
+        script:Get-LoopSpendCount -Repo $repo | Should -Be 4
+    }
 }
 
 Describe 'a stale budget decision cannot spend a round past the budget (iteration review round B finding 1)' {
