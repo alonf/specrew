@@ -102,7 +102,9 @@ function Remove-ShellComment {
             }
             if ($c -eq "'" -or $c -eq '"') { $quote = $c; [void]$text.Append($c); $i++; continue }
             if ($c -eq '<' -and $next -eq '#') { $inBlock = $true; $i += 2; continue }
-            if ($c -eq '#' -and ($i -eq 0 -or [char]::IsWhiteSpace($line[$i - 1]))) { break }
+            # Feature 206 T031 (bug list item 32): '#' starts a comment at the start of a word, which is also right after
+            # a statement delimiter or pipe (';', '|', '&', '('), not only after whitespace.
+            if ($c -eq '#' -and ($i -eq 0 -or [char]::IsWhiteSpace($line[$i - 1]) -or ';|&('.Contains([string]$line[$i - 1]))) { break }
             [void]$text.Append($c)
             $i++
         }
