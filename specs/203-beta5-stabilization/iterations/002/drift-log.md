@@ -168,3 +168,19 @@ The following resolution strategies remain available if drift is detected later 
 - **The check it asked for**: both files parse, and `mechanical-findings.json` validates against the schema with
   `Test-Json` (True), the same check `run-mechanical-checks.ps1:1162` makes.
 - **Class closure**: NONE — a record of how this push was checked.
+
+### DRIFT-009 — The reviewer session's five comments on the plan, worked in before the plan sync
+
+- **The comments** (specrewreviewer-98, on `8970a0e7`; none changes scope): (1) write out the review and pin sequence,
+  and where T027 lands; (2) say what the maintainer does in T028; (3) say the merge is not a task, with its cost if
+  205 and 206 reach main first; (4) name T025's measure and what counts as done; (5) correct the hardening gate's
+  `Reviewed At`.
+- **(1)**: the plan's "advanced engine" for T027 is the pin at `da78b600`, the engine advanced at T014 in iteration 001
+  (iteration 001 DRIFT-092, departure B), not the advance this iteration plans after its review. The plan now says
+  so and gives the sequence round by round, with what happens if the campaign ends with no stop.
+- **(2) to (4)**: in the plan's Notes and T025's row; T025's measure is DRIFT-073's method, with no target, as the
+  maintainer's "measure first" covers.
+- **(5)**: `Reviewed At` was the scaffold's time (01:20:42Z); it is now the plan commit's time, `09:55:13Z`, when the
+  rows were written. No check reads the hardening gate's `Reviewed At`: the validator reads that label only from
+  `quality-evidence.md`, and only for presence (`validate-governance.ps1:3129`).
+- **Class closure**: NONE — plan corrections before the plan stop.

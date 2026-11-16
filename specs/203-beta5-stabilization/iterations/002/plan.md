@@ -61,10 +61,10 @@ DRIFT-087 (T026).
 | T022 | F4, the sign-off gate: a human-accepted disposition for the reviewed digest covers a records-only difference after it (DRIFT-078); the ordinary review end takes one approval (DRIFT-091); a finding is resolved by the run that reviews its fix or by the human's stop (B5F-071); a typed override with a reason stays for product code no reviewer read and no test covers | FR-005, FR-006, FR-011 | US1 | 4.0 | Implementer | scripts/internal/continuous-co-review/signoff-gate-wiring.ps1, scripts/internal/continuous-co-review/*.ps1, scripts/internal/sync-boundary-state.ps1, .specify/extensions/specrew-speckit/**, tests/continuous-co-review/unit/**, tests/unit/** | planned | | | |
 | T023 | Phase lines, one owner: the truth gate and the governance check read the authority record's cursor, so `review.md` beside `plan.md` at `executing` and `retro.md` beside `reviewing` pass with a warning (B5F-050, B5F-059); a scaffolded iteration's records can be pushed before its plan (B5F-083) | Gap Ledger: B5F-050, B5F-059, B5F-083 | US1 | 1.5 | Implementer | scripts/internal/sync-boundary-state.ps1, .specify/extensions/specrew-speckit/scripts/validate-governance.ps1, .specify/extensions/specrew-speckit/**, extensions/specrew-speckit/scripts/**, tests/unit/**, tests/integration/** | planned | | | |
 | T024 | B5F-075: the sign-off coverage line counts records apart from source files and states no round budget nobody set | FR-011 | US1 | 0.5 | Implementer | scripts/internal/continuous-co-review/*.ps1, tests/continuous-co-review/unit/** | planned | | | |
-| T025 | F3, the hook cost (DRIFT-073): one git snapshot and one transcript tail read per hook run, handed to the providers; the stores loaded once; measured before and after. T006's launcher half (plain-text refusals, DRIFT-046) travels in the same push and sweep | Gap Ledger: DRIFT-073; FR-027 (launcher half) | US3 | 5.0 | Implementer | extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-*-provider.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, scripts/internal/specrew-*.ps1, scripts/internal/bootstrap/*.ps1, scripts/internal/deploy-refocus-hooks.ps1, .specify/extensions/specrew-speckit/**, tests/unit/**, tests/integration/** | planned | | | |
+| T025 | F3, the hook cost (DRIFT-073): one git snapshot and one transcript tail read per hook run, handed to the providers; the stores loaded once. Measured as DRIFT-073 measured it: the Stop and prompt hooks through the deployed launcher on a scratch copy of the tree, the same payload, a typed prompt appended to a copy of a real 53 MB transcript, ten turns per engine, median and worst; on `5cb83329` the medians were 14.1 s Stop and 4.8 s prompt per turn. Done: the numbers before and after reported, every hook check still run; no target (design decision: measure first). T006's launcher half (plain-text refusals, DRIFT-046) travels in the same push and sweep | Gap Ledger: DRIFT-073; FR-027 (launcher half) | US3 | 5.0 | Implementer | extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-*-provider.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, scripts/internal/specrew-*.ps1, scripts/internal/bootstrap/*.ps1, scripts/internal/deploy-refocus-hooks.ps1, .specify/extensions/specrew-speckit/**, tests/unit/**, tests/integration/** | planned | | | |
 | T026 | The t008 lane's time: measure `f203-i001-t008-suites` (838 of 900 s on `da78b600`) against round D finding 1's whole-transcript read before any limit moves | Gap Ledger: DRIFT-087 | US1 | 0.5 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
-| T027 | F6: the live `stop the review here` on the advanced engine at this iteration's first review stop, reading its disposition's `authorization_ref` (owed from T014, DRIFT-092) | FR-045, FR-011 | US2 | 0.25 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
-| T028 | Copilot and Codex capture walk before the merge, manual with records: a verdict typed after a compaction, a quoted phrase and a pasted phrase, on each host, after the pin advance | FR-042, FR-045 | US2 | 1.0 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
+| T027 | F6: the live `stop the review here` on the pin at `da78b600` (the engine advanced at T014, iteration 001) at this iteration's first review stop, reading its disposition's `authorization_ref` (owed from T014, DRIFT-092 departure B); see Notes, Review and pin sequence | FR-045, FR-011 | US2 | 0.25 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
+| T028 | Copilot and Codex capture walk before the merge, manual with records: a verdict typed after a compaction, a quoted phrase and a pasted phrase, on each host, after the pin advance; the maintainer types, the crew prepares and records (Notes, The walk) | FR-042, FR-045 | US2 | 1.0 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
 | T029 | Spec amendment: US4 to US7, FR-012, FR-013 and FR-044 marked moved to the follow-up feature; the traceability table and the capacity model amended | TG-003 | US1 | 0.25 | Spec Steward | specs/203-beta5-stabilization/spec.md, specs/203-beta5-stabilization/tasks.md | done | Claude | 0.25 | applied with this plan; the governance check accepts the moved requirements with no code change (dry run, DRIFT-007) |
 
 ## Effort Model
@@ -120,10 +120,40 @@ DRIFT-087 (T026).
 - **Moved out:** B5F-080 (the task writer rewrites state.md's Iteration Status after the boundary that owns it),
   B5F-076, B5F-073 and B5F-072, and the rest of B5F-051's census, to the follow-up feature. **B5F-080 will occur once
   more, at this iteration's last task; that is the known defect, not a new one.**
-- **Pin advance:** placed after this iteration's review round that covers the batch (design decision 5). The advance
-  itself needs the maintainer's typed `advance the pin` at that time, after a full sweep of the tip (DRIFT-057). Until
-  then the hooks and review rounds run from `da78b600`: T020's hook-side part, T021, T025 and the stop side of T022
-  serve no one before the advance (design-analysis.md, "When each fix becomes live").
+- **Review and pin sequence**, round by round (the budget is the feature plan's `iteration-002` entry: 4 rounds,
+  codex, copilot, claude, snapshotted at before-implement):
+  1. T015 to T026 are built and pushed. The hooks and review rounds run from the pin at `da78b600` throughout; that
+     pin is the engine advanced at T014 in iteration 001, so it is the "advanced engine" T027 names.
+  2. The review campaign runs on `da78b600` over the whole tree at the batch's tip: round 1, and after each
+     fix-needed round a fix and the next round, with no stop (FR-005). A stop comes only for (a) to (d).
+  3. **T027 lands at the first stop of this campaign**, on `da78b600`: the maintainer answers `stop the review here`
+     if that is their answer, and the crew reads the disposition's `authorization_ref`. If the campaign ends with no
+     stop (round 1 clean), T027 is recorded as not exercised live and the crew brings the maintainer one choice: a
+     rehearsal on a scratch copy (as T014's, accepted 2026-11-16 02:13) or the live check in the follow-up feature.
+     The crew does not provoke a stop to make room for it.
+  4. When the campaign ends clean, or at a stop with only fail-closed findings the maintainer accepts: a full sweep
+     of the reviewed tip (DRIFT-057, about 2 h), the home hook files hashed, then the maintainer's typed `advance the
+     pin`. The pin moves to the reviewed tip. Until then T020's hook-side part, T021, T025 and the stop side of T022
+     serve no one (design-analysis.md, "When each fix becomes live").
+  5. T028, the walk, on the advanced pin (below).
+  6. After the advance, what is reviewed: if the walk changes records only, nothing new is reviewed; T022's gate
+     covers a records-only difference on the reviewed digest at the sign-off. If the walk needs a code fix, the fix
+     gets a round on the advanced pin within the budget, test red first; T025's launcher redeploy is reviewed in step
+     2, not after.
+  7. Review sign-off, retro, iteration closeout and feature closeout, each at its own boundary.
+- **The walk (T028)**: the maintainer types, on Copilot CLI and on Codex CLI, in a scratch copy of this project on
+  the advanced pin that the crew prepares (never in this checkout; the agentic CLI probe rule). Per host: open the
+  session, send three lines the crew gives in one paste block (a verdict at a waiting stop, the same phrase quoted
+  mid-sentence, the same phrase inside pasted content), compact the session, then type the verdict again. About 15
+  minutes per host, 30 to 40 minutes in all (judgment). The crew prepares the two scratch projects with a pending
+  crossing through the governed sync, the paste block, and a script that reads what each line recorded; the crew
+  writes the records. Expected: the verdict recorded once, the quoted and pasted phrases record nothing and are
+  reported.
+- **The merge is not a task of this iteration.** Merging 203 into main needs the maintainer's separate go; there is
+  no pull request and no push to main without it. If 206 and 205 reach main first, in the maintainer's stated order
+  206, 205, 203, then 203 merges main in (a merge, not a rebase), resolves the conflicts and runs the full sweep
+  again. That work is not in the 19.25 SP; the crew's estimate, a judgment with no measurement behind it, is 1.0 to
+  2.0 SP plus about 2 h of sweep, most of it in the shared scripts (the sync, the validator, the hooks).
 - **Launcher:** T006's launcher half runs with T025's push (design decision 8, refining "launcher: wait" of 03:13).
   The crew asks the maintainer before running the deployer then.
 - **Rerun rules while this iteration runs:** HookRenderDedupe (2026-11-16 02:56) and "203 rerun: yes" (11:34) apply
