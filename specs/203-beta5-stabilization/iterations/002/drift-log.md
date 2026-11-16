@@ -461,5 +461,11 @@ The following resolution strategies remain available if drift is detected later 
   1,500 s limit over with no iteration 002 record, which the crew disclosed. Item 6 waits for the timing measurement
   (`review-budget-loop` at `5f82692e7` and the new tip, `review-loop-stops` at the new tip), on the reviewer session's
   go; widening T026 to these suites was recommended (+0.25 SP), not decided.
+- **Capacity, an overrun on record** (the reviewer session's instruction, routine): the four fixes are about 0.7 SP
+  with no task row of their own, taken from the stated buffer (the plan's Effort Model, Rework 2.0 SP, the review
+  buffer, option 1), so about 1.3 SP of it is left for the campaign's rework. Where they sit: item 1 (about 0.25) beside
+  T015, whose runner it moves; items 2, 3 and 5 (about 0.45 together: 0.25, 0.1, 0.1) beside no Phase 8 row, since they
+  were red on the pushed tip before Phase 8, and next to T026 as the sweep-health work of this phase. The task table's
+  20/20 is unchanged.
 - **Class closure**: item 1 by the sweep self-test's new case; items 2, 3 and 5 by their own suites, now green; items
   4 and 6 NONE yet.
