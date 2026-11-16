@@ -815,10 +815,18 @@ function Test-SpecrewIterationRulingRecorded {
     if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
         return $false
     }
+    # Iteration 002 review round 2, finding 3: the section is read as Markdown. A code fence's lines are not text and
+    # are no heading; any heading (any level) ends the section; HTML comments are removed before the sentences are read.
     $inDisposition = $false
+    $fence = $null
     $section = New-Object System.Collections.Generic.List[string]
     foreach ($line in @(Get-Content -LiteralPath $StatePath -Encoding UTF8)) {
-        if ($line -match '^##\s') {
+        if ($null -ne $fence) {
+            if ($line -match ('^\s{0,3}' + [regex]::Escape($fence) + '\s*$')) { $fence = $null }
+            continue
+        }
+        if ($line -match '^\s{0,3}(?<f>```+|~~~+)') { $fence = $Matches['f']; continue }
+        if ($line -match '^#{1,6}\s') {
             if ($inDisposition) { break }
             if ($line -match '^##\s+Disposition\b') {
                 # The heading is not read: its date is when the section was written, not a ruling.
@@ -840,12 +848,25 @@ function Test-SpecrewIterationRulingRecorded {
     $date = '\d{4}-\d{2}-\d{2}'
     $byRuling = "by the maintainer(?:$apostrophe" + 's)?\s+(?:ruling|decision)\s+(?:of|on)\s+' + $date
     $bracketed = '\(' + $date + ",\s+maintainer(?:$apostrophe" + 's)?\s+(?:ruling|decision)\)'
-    $affirmative = '^(?:closed as\s+)?abandoned(?:-superseded)?(?:,?\s+(?:and\s+)?superseded(?:\s+by\s+iteration\s+\d+)?)?,?\s+(?:' + $byRuling + '|' + $bracketed + ')(?:\s*\([^)]*\))?$'
-    $text = (($section -join ' ') -replace '\*', '').ToLowerInvariant()
+    # Iteration 002 review round 2, finding 3: the one bracketed note after the date is a listed form - where the
+    # ruling was given, "(at ...)" - and never a word that denies or conditions it. The date is a real date, not later
+    # than tomorrow (UTC, so a ruling typed late on the maintainer's local day still reads).
+    $note = '\(at\s[^)]*\)'
+    $affirmative = '^(?:closed as\s+)?abandoned(?:-superseded)?(?:,?\s+(?:and\s+)?superseded(?:\s+by\s+iteration\s+\d+)?)?,?\s+(?:' + $byRuling + '|' + $bracketed + ')(?:\s*' + $note + ')?$'
+    $denies = '\b(?:not|no|never|pending|withdrawn|revoked|reversed|rejected|unconfirmed|awaiting|proposed|draft|if|unless|once|until|subject)\b'
+    $latest = [datetime]::UtcNow.Date.AddDays(1)
+    $text = ((([regex]::Replace(($section -join "`n"), '(?s)<!--.*?-->', ' ')) -replace '\s+', ' ') -replace '\*', '').ToLowerInvariant()
     foreach ($sentence in @($text -split '[.;!?](?:\s+|$)')) {
-        if ($sentence.Trim() -match $affirmative) {
-            return $true
+        $candidate = $sentence.Trim()
+        if ($candidate -notmatch $affirmative) { continue }
+        $noteText = [regex]::Match($candidate, '\([^)]*\)\s*$').Value
+        if ($noteText -and $noteText -notmatch ('^\(' + $date) -and $noteText -match $denies) { continue }
+        $dateOk = $true
+        foreach ($d in [regex]::Matches($candidate, $date)) {
+            $parsed = [datetime]::MinValue
+            if (-not [datetime]::TryParseExact($d.Value, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$parsed) -or $parsed -gt $latest) { $dateOk = $false }
         }
+        if ($dateOk) { return $true }
     }
     return $false
 }
