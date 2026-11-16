@@ -670,16 +670,24 @@ function Resolve-FeatureDirectory {
             }
 
             $candidate = [string]$featureJson['feature_directory']
-            if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+            # Another OS's absolute path or a drive-relative one is refused as it is written, before GetFullPath could
+            # read it as a folder under the current directory.
+            if ((Get-SpecrewPathRootKind -Path $candidate) -eq 'relative') {
                 $candidate = Join-Path $Root $candidate
+            }
+            else {
+                $null = & $assertInsideProject $candidate
             }
 
             return (& $assertInsideProject ([System.IO.Path]::GetFullPath($candidate)))
         }
 
         $candidatePath = $ResumeFeature
-        if (-not [System.IO.Path]::IsPathRooted($candidatePath)) {
+        if ((Get-SpecrewPathRootKind -Path $candidatePath) -eq 'relative') {
             $candidatePath = Join-Path $Root $candidatePath
+        }
+        else {
+            $null = & $assertInsideProject $candidatePath
         }
 
         return (& $assertInsideProject ([System.IO.Path]::GetFullPath($candidatePath)))

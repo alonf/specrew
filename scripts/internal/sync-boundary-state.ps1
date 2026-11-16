@@ -153,6 +153,24 @@ function New-SpecrewMarkdownContent {
     return ($lines -join [Environment]::NewLine)
 }
 
+function Get-SpecrewPathRootKind {
+    # What kind of path this is on ANY operating system, so a path written on one machine is read the same on another:
+    #   'absolute'       - a drive letter with a separator (C:\x, C:/x), a UNC path (\\server\share, //server/share),
+    #                      or a path this OS calls rooted;
+    #   'drive-relative' - a drive letter with no separator (C:x), which names no fixed folder on any OS;
+    #   'relative'       - anything else, a relative path that merely contains a colon included.
+    # [IO.Path]::IsPathRooted alone answers for this OS only: on Linux it calls C:\x relative, and a caller that then
+    # joins it under the project root reads another machine's path as a folder inside this one.
+    param([AllowNull()][AllowEmptyString()][string]$Path)
+
+    if ([string]::IsNullOrEmpty($Path)) { return 'relative' }
+    if ($Path -match '^[A-Za-z]:[\\/]') { return 'absolute' }
+    if ($Path -match '^[A-Za-z]:') { return 'drive-relative' }
+    if ($Path -match '^[\\/]{2}[^\\/]') { return 'absolute' }
+    if ([System.IO.Path]::IsPathRooted($Path)) { return 'absolute' }
+    return 'relative'
+}
+
 function Test-SpecrewPathInsideProject {
     # F-206 T023 (FR-001, bug list item 23): whether a path is the project root or below it. Both sides are made full
     # and compared whole-segment, so a sibling whose name starts the same ('proj' and 'proj-sibling') is outside.
@@ -163,9 +181,14 @@ function Test-SpecrewPathInsideProject {
     )
 
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    # A drive-relative path names no fixed folder, and another OS's absolute path (C:\x on Linux, a UNC path this OS
+    # does not root) is a place on another machine: neither is inside. Joining either under the root would make it so.
+    $kind = Get-SpecrewPathRootKind -Path $Path
+    if ($kind -eq 'drive-relative') { return $false }
+    if ($kind -eq 'absolute' -and -not [System.IO.Path]::IsPathRooted($Path)) { return $false }
     try {
         $rootFull = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\', '/')
-        $pathFull = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $rootFull $Path })).TrimEnd('\', '/')
+        $pathFull = [System.IO.Path]::GetFullPath($(if ($kind -eq 'absolute') { $Path } else { Join-Path $rootFull $Path })).TrimEnd('\', '/')
     }
     catch {
         return $false
@@ -224,7 +247,7 @@ function ConvertTo-SpecrewIdentityFeaturePath {
     if ([string]::IsNullOrWhiteSpace($FeaturePath) -or $FeaturePath -eq '(none)') { return '(none)' }
     if (-not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $FeaturePath)) { return '(none)' }
     $rootFull = [System.IO.Path]::GetFullPath($ProjectRoot)
-    $pathFull = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($FeaturePath)) { $FeaturePath } else { Join-Path $rootFull $FeaturePath }))
+    $pathFull = [System.IO.Path]::GetFullPath($(if ((Get-SpecrewPathRootKind -Path $FeaturePath) -eq 'absolute') { $FeaturePath } else { Join-Path $rootFull $FeaturePath }))
     $relative = [System.IO.Path]::GetRelativePath($rootFull, $pathFull) -replace '\\', '/'
     if ([string]::IsNullOrWhiteSpace($relative) -or $relative -eq '.') { return '(none)' }
     return $relative

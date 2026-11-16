@@ -55,9 +55,26 @@ function Get-SpecrewIdentitySessionState {
     $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.IdentityPath -Raw -Encoding UTF8)
     $state = Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
     # F-206 T023 (bug list item 23): the tracked identity file records the feature path relative to the project;
-    # it is resolved against this project's root. An absolute path written before that is returned as written.
-    if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.feature_path) -and -not [System.IO.Path]::IsPathRooted([string]$state.feature_path)) {
-        $state.feature_path = [System.IO.Path]::GetFullPath((Join-Path (Resolve-ProjectPath -Path $ProjectRoot) ([string]$state.feature_path)))
+    # it is resolved against this project's root. An absolute path inside the project, written before that, is returned
+    # as written. An absolute path outside it - another checkout, or another machine's path such as C:\x read on Linux -
+    # and a drive-relative path are not used: the file is tracked and travels between machines, so such a path names a
+    # folder this checkout does not have. The reader does not change the file; the next boundary sync rewrites it.
+    if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.feature_path)) {
+        $savedPath = [string]$state.feature_path
+        $kind = Get-SpecrewPathRootKind -Path $savedPath
+        if ($kind -eq 'relative') {
+            $state.feature_path = [System.IO.Path]::GetFullPath((Join-Path (Resolve-ProjectPath -Path $ProjectRoot) $savedPath))
+        }
+        elseif ($kind -eq 'drive-relative' -or -not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $savedPath)) {
+            $why = if ($kind -eq 'drive-relative') { 'a drive-relative path, which names no fixed folder' } else { 'an absolute path outside this project, written in another checkout or on another machine' }
+            $warnKey = '{0}|{1}' -f $ProjectRoot, $savedPath
+            if (-not (Get-Variable -Name SpecrewIdentityPathWarned -Scope Script -ErrorAction SilentlyContinue)) { $script:SpecrewIdentityPathWarned = @{} }
+            if (-not $script:SpecrewIdentityPathWarned.ContainsKey($warnKey)) {
+                $script:SpecrewIdentityPathWarned[$warnKey] = $true
+                Write-Warning ("The feature path in .squad/identity/now.md ('{0}') is {1}, so it is not used. The file was not changed; the next boundary sync writes the feature path relative to the project." -f $savedPath, $why)
+            }
+            $state.feature_path = $null
+        }
     }
     return $state
 }

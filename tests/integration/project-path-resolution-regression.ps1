@@ -37,7 +37,7 @@ function Set-Sc001FixtureIdentityRelative {
     $line = [regex]::Match($text, '(?m)^session_state_feature_path:[ \t]*(?<value>[^\r\n]*?)[ \t]*(?=\r?$)')
     if (-not $line.Success) { return }
     $value = $line.Groups['value'].Value.Trim().Trim('"')
-    if ([string]::IsNullOrWhiteSpace($value) -or $value -eq '(none)' -or -not [IO.Path]::IsPathRooted($value)) { return }
+    if ([string]::IsNullOrWhiteSpace($value) -or $value -eq '(none)' -or (Get-SpecrewPathRootKind -Path $value) -eq 'relative') { return }
     $relative = ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $SourceRoot -FeaturePath $value
     $text = $text.Substring(0, $line.Index) + ('session_state_feature_path: {0}' -f $relative) + $text.Substring($line.Index + $line.Length)
     [IO.File]::WriteAllText($IdentityPath, $text, [Text.UTF8Encoding]::new($false))
