@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 9
-**Resolution rate**: 100% (9/9 resolved or placed)
+**Total drift events**: 10
+**Resolution rate**: 100% (10/10 resolved or placed)
 **Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 recorded in spec.md, approved at the tasks boundary (DRIFT-005)
 
 ## Events
@@ -161,6 +161,24 @@
 - **Resolution**: covered by the standing exception (DRIFT-205-INTAKE-007, DRIFT-008): one rerun without asking.
   Attempt 2 green (Deterministic gate job 133028487355, Contract lane job 133032838976).
 - **Class closure**: NONE — 203's test. Handed over as H-026.
+
+### DRIFT-010 — the review record is pushed with the plan still at executing, by the maintainer's allowance (decision, this push only)
+
+- **Observed**: 2026-11-16, after round 1 (`run-20261116-095117164-6e1e0a46`, no findings, on `a0c6a849`). The local
+  governance check fails iteration 003 on one item beyond the standing derived-block item of iterations 001 and 002:
+  "plan.md status 'executing' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete".
+  The review-signoff sync needs `review.md` on origin while plan.md is still at `executing`, as in iteration 002
+  (its DRIFT-021).
+- **Decision**: the maintainer, relayed by the reviewer session under the wider delegation. The reviewer offered
+  "205: allow, standing" (recommended) or "205: allow". The maintainer's words, at 12:22 local on 2026-11-16: "205:
+  ok". That allows this push under either reading; it does not say which was meant, so the reviewer relayed the
+  narrower one (this push only) and is asking the maintainer once whether "standing" was meant.
+- **Resolution**: `review.md` and this entry are pushed with that one named local failure. Specrew CI may be red on
+  Lint for that message only; Test and Cross-Platform Validation must be green under the standing rerun rules;
+  anything else red stops the work. Then the review-signoff sync binds to this commit and moves the phase lines, and a
+  fully green records push follows before the sign-off packet.
+- **Class closure**: NONE — the validator rule is feature 206's T034 (`3a3ba803` on 206's branch); it reaches this
+  branch when main is merged in after 206 lands.
 <!--
   Every new ### DRIFT-... event includes:
 
