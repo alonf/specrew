@@ -1171,6 +1171,99 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   the capture's UTC day. A date-shape test (keep only a value that parses as a date) would close the list. An iteration
   003 candidate.
 
+## 66. A session start rewrites a finished iteration to "not started" when plan.md and tasks.md use different task ids (severity: major)
+
+- **Observed (2026-11-16, a downstream project on Specrew 0.40.0, reported through the reviewer session):** the
+  iteration's work was finished, reviewed and signed off. At 17:39:03Z, inside a new session's start (a second
+  window opened on the project), the engine wrote `tasks-progress.yml` with 19 tasks `pending` and rebuilt
+  `state.md` as `not-started`, "Execution has not started yet.", four minutes before the retro approval. The
+  iteration-closeout sync's state-truth gate then refused it.
+- **Why (read at tag v0.40.0-beta41; the same functions in this tree):**
+  - `Sync-IterationTaskProgress` (`scripts/internal/task-progress.ps1:648`) takes the task list from plan.md's Tasks
+    table (`Get-IterationTaskCatalog`, `:163`): Task, Title, Requirement, Story and Effort. The Status column is not
+    read.
+  - Status hints come, for iteration 001 only, from tasks.md checkbox rows whose id is `T` and digits
+    (`Get-TaskProgressDerivedStatusHints`, `:229`). That project's plan table uses `CP-01` to `CP-RW` and its tasks.md
+    is fully ticked (`T001` to `T036`), so no hint matches.
+  - With no hint and no ledger entry, each task is created pending. An existing `done` entry is kept ("may promote,
+    never demote"), which is why a hand-corrected ledger repairs it.
+- **Asked:** derive status from plan.md's Status column when the ids do not match tasks.md, or refuse at the first
+  boundary naming both lists; never write "not started" when review evidence exists. An iteration 003 candidate.
+
+## 67. The task-progress writer's own words go stale after review sign-off (severity: minor)
+
+- **Observed (2026-11-16, the same downstream project; feature 203's iteration 001):** with every task done,
+  `Update-IterationStateFromTaskProgress` (`task-progress.ps1:501`) writes Iteration Status `ready-for-review` and
+  "Implementation tasks are complete; review-signoff is next.", and nothing rewrites that line at review-signoff,
+  retro or closeout. Feature 203's iteration 001 is sealed with it beside Current Phase `iteration-closeout` and
+  Iteration Status `complete`. Related: 203's B5F-080.
+- The field's vocabulary is stated only in a code comment (`Get-SpecrewCrossingMirrorMap`,
+  `shared-governance.ps1:4110`); the downstream crew proposed two values the engine never writes.
+- A note only: when two tasks share the latest `completed_at`, the strictly-greater comparison names the first in
+  ledger order as Last Completed Task. An iteration 003 candidate.
+
+## 68. The state-truth refusal names no command that repairs it (severity: minor)
+
+- **Observed (2026-11-16, the same downstream project):** the refusal says "through the normal task/gate path"
+  (`scripts/internal/sync-boundary-state.ps1:969`) and "Repair state.md through the normal task-progress/resume/gate
+  path or record an explicit send-back" (`:1049`). It names no skill, script or command, and does not say the header
+  and managed block are rebuilt from `tasks-progress.yml`. The crew nearly wrote the block by hand. Item 47's class;
+  item 70 shows no such command exists. An iteration 003 candidate.
+
+## 69. A second sync of a boundary whose crossing is already pending records it again (severity: minor)
+
+- **Observed (2026-11-16, the same downstream project):** a second `retro` sync a minute after the first recorded the
+  same crossing a second time, added a second lifecycle event, and wrote the decisions.md warning "Expected next
+  boundary 'iteration-closeout' but received 'retro'". A repeated sync of the same boundary at the same commit should
+  be a no-op that says so. An iteration 003 candidate.
+
+## 70. No command runs the task-progress writer on demand (severity: minor)
+
+- **Observed (2026-11-16, the same downstream project; read at tag v0.40.0-beta41):**
+  - `Sync-IterationTaskProgress` and `Update-IterationStateFromTaskProgress` are reached only through
+    `Get-TaskProgressSummary` in `scripts/internal/coordinator-resume.ps1` (`Get-CoordinatorResumeSnapshot`, `:148` to
+    `:165`), inside the launch-contract generator: `specrew start` (`scripts/specrew-start.ps1:3446` here) and the
+    session-start bootstrap provider (`specrew-bootstrap-provider.ps1:604`; not on a compaction).
+  - `Set-TaskStatus`, `Set-TaskComplete` and `Set-TaskBlocked` have no caller outside `task-progress.ps1`.
+  - The project's `resume-iteration.ps1` does not load `task-progress.ps1`. With `-ResumeMode continue` on a state.md
+    that said not-started, it exited 0, set Tasks Remaining to `(none)`, appended a "Resume Report" with Last
+    Completed Task `(none)`, and left the header and "Execution has not started yet." as they were: a second summary
+    that contradicts the ledger.
+- **Asked:** a project-exposed command that rebuilds state.md's header and managed block from the ledger, named in
+  item 68's refusal; `resume-iteration.ps1` reading the ledger; and item 66's no-pending-ledger rule at session start.
+  An iteration 003 candidate.
+
+## 71. The feature-closeout dashboard is drawn before the verdict and committed reading "awaiting" (severity: minor)
+
+- **Observed (2026-11-16, feature 205's closeout, in the 205 crew's words):**
+  1. The feature-closeout sync draws `closeout-dashboard.md` before the human's verdict, so the committed snapshot
+     reads "AWAITING YOUR VERDICT ... is NOT human-authorized (last authorized: iteration-closeout)" and "Pending next
+     boundary: feature-closeout" for a feature that is closed (205 `a1adade3`; 202 `4ad15d63`).
+  2. The file's own notice forbids overwriting it, so the crew cannot correct it afterwards. The draw belongs after
+     the verdict capture, as T035 does for the iteration dashboard (item 41).
+  3. The same sync's coverage line counted the amendment's six records files as "source file(s) changed since"
+     (B5F-075's class on feature 203's list), which a closeout packet then has to explain away.
+- Item 41's class at the feature level; T035 does not cover it. An iteration 003 candidate.
+
+## 72. A runner image change turns Cross-Platform Validation red: the Ubuntu PowerShell install has no fallback (severity: minor)
+
+- **Observed (2026-11-16):** "Ubuntu Validation" failed at "Setup PowerShell" on feature 205's `8ebfef8f` (run
+  `43954284857`) and on this branch's `7b54d49d` (run `43956458711`, and its one rerun), on image ubuntu-26.04
+  20261111.196.1: `dpkg -i powershell_7.4.1-1.deb_amd64.deb` needs `libicu72`, which that image lacks, and the step
+  had nothing after `||`. No test ran (DRIFT-206-I002-018).
+- **Fixed on this branch by feature 203's T015 commit** (`f2493ccc`, cherry-picked as `00cef4d5`): use the runner's
+  pwsh when present, otherwise install from Microsoft's package feed. The class remains: the workflows install tools
+  on every run with no retry and no pinned image (item 57). An iteration 003 candidate for the class.
+
+## 52, one more sighting (2026-11-16)
+
+- On a downstream project on Specrew 0.40.0, the local validator failed review.md's evidence (round 34: "reviewed tree
+  ... and 1 source file(s) have changed since: plan.md"; the derived independent-review block did not match), while
+  Specrew CI's validator passed the same commit. The working tree holds the local review store; the clean checkout
+  does not. Item 52 is not confined to this repository.
+- On this branch (2026-11-16), a `-ChangedOnly` run from the fallback base failed 197/006 and 206/001 on the local
+  store, and both passed in a clean scratch worktree of `7b54d49d`.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,

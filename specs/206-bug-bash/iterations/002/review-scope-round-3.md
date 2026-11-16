@@ -89,6 +89,14 @@ What to attack:
   `tests/integration/validate-versions-cli-behavior.ps1`) now run only in the `windows-shim-suites` job. They are not
   run on the developer machine: the first runs `specrew-init`, which writes the real home's hook files. Can the job
   pass without running them?
+- **The job's first CI run was red** (DRIFT-206-I002-018): `specrew-init`'s dependency check refused the runner's
+  Node 22, and the second suite was skipped behind it. Nothing was excluded. By the maintainer's "You can apply both"
+  (2026-11-17), `f41ae713` (RED 2/12) and `e3a26586` (GREEN 12/12) add the Node 24 setup step and run the second suite
+  with `if: always()`. Check that a failed first step still fails the job, and whether either suite needs anything
+  else the runner lacks.
+- **`00cef4d5`** is feature 203's `f2493ccc` (T015), cherry-picked with identical hunks: the Ubuntu "Setup
+  PowerShell" steps in `cross-platform-validation.yml`. It is 203's change, reviewed there; here, check only that it
+  is the same text.
 - **F5** is the one feature 203 builds on. Check the boundary order it uses, a boundary at the start of the order, and
   an iteration folder whose name is not a number.
 - **F1** keeps every existing index entry (append-only). An abandoned iteration indexed by an earlier rebuild stays

@@ -426,3 +426,45 @@ The following resolution strategies remain available if drift is detected later 
   RED commit.
 - **Effort**: about 3.0 SP estimated; F2 about 0.75 so far. Actuals are recorded at T038.
 - **Class closure**: deferred — bug list items 58 to 62 (the engine, feature 203's), 63 to 65 (F7 to F9).
+
+### DRIFT-206-I002-018 — CI on 7b54d49d: the new Windows job failed its first run on Node 22, and Ubuntu Validation failed to install PowerShell (human-decision)
+
+- **Recorded**: 2026-11-17, by the crew.
+- **Lanes first**: the six lanes were green at `7b54d49d` in the review layout (928 s; unit 678 s, changed-integration
+  210 s), home and repository unchanged. The gated push passed markdownlint, governance from the last pushed commit,
+  and the self-leak lint.
+- **windows-shim-suites, first run** (Specrew CI run `43956458767`, job `133612182338`, image windows-2025
+  20261103.298.1): red, as it is.
+  - `tests/integration/bootstrap-asset-blocker-recovery.ps1` stopped in `specrew-init`'s dependency check after
+    17 s: "Outdated dependencies: [Windows] Node.js v22.23.4 (required: 24.0+) ... Install all required dependencies
+    before running specrew init." `scripts/init/preflight.ps1` requires Node 24 and npm 10; the other Specrew CI jobs
+    set up Node 24 with `actions/setup-node`, and this job did not. That is a defect in F2's job, found by its first
+    run.
+  - `tests/integration/validate-versions-cli-behavior.ps1` was skipped behind it and has not run yet.
+  - Nothing was excluded.
+- **Ubuntu Validation** (Cross-Platform Validation run `43956458711`, job `133612182895`, image ubuntu-26.04
+  20261111.196.1): red at "Setup PowerShell". `sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb` failed on "Package
+  libicu72 is not installed", with nothing after `||`, so no test ran. Feature 205 met the same failure an hour
+  earlier (bug list item 72).
+  - One rerun of the failed job, at the reviewer's routine ruling, for this push only: job `133629013894`, the same
+    image, the same failure. No second rerun.
+- **Everything else was green**: Specrew CI's Lint, Self-leak firewall, Publish suite (windows-latest), Deterministic
+  gate (with the census guard, 90/90) and Contract lane; Cross-Platform Validation's other seven jobs; Test.
+- **Decision**: the maintainer typed "You can apply both" in this session on 2026-11-17 at about 01:52 local,
+  answering the crew's summary of the two prepared fixes: the shim job's fix on this branch, and feature 203's
+  Cross-Platform fix taken onto this branch with identical text.
+- **Done**:
+  - RED 2/12 `f41ae713`, GREEN 12/12 `e3a26586` (`tests/unit/release-script-refuses-unasked-publish.tests.ps1`):
+    `windows-shim-suites` sets up Node 24 with the same `actions/setup-node@v6` step as the other jobs, and runs
+    `validate-versions-cli-behavior` with `if: always()`, so each suite gives its own result on one runner and a
+    failed step still fails the job.
+  - `00cef4d5`: feature 203's `f2493ccc` (T015) cherry-picked. Its hunks are identical; only the line offsets differ,
+    by three lines. The three Ubuntu "Setup PowerShell" steps use the runner's pwsh when it has one and otherwise
+    install it from Microsoft's package feed, with an error annotation on failure.
+  - Checked: the census guard 90/90; `review-cross-platform-fault-matrix.Tests.ps1`'s CI-wiring case passes.
+- **Not established**: whether `specrew-init -Agents copilot` reaches anything else the runner lacks after the
+  dependency check. That suite has no green CI run on record (it ran on Linux and failed until `81a365cf` skipped
+  it). If it is red again for another reason, the work stops for the maintainer.
+- **Effort**: about 0.5 SP with the records, inside round 2's rework.
+- **Class closure**: deferred — bug list item 72 (a runner image change turns a push red; item 57's class), and item
+  57.
