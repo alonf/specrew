@@ -338,9 +338,26 @@ function New-CensusFixture {
                 '          tests/integration/only-in-a-multiline-block-comment.ps1'
                 '          #>'
                 '          & pwsh -File tests/integration/ci-after-block-comment.ps1'
+                # Feature 206 T031 (bug list item 31): a block scalar's text is not workflow structure, even when it
+                # holds "steps:" and a "- run:" line.
+                '      - name: An env value written as a block scalar'
+                '        env:'
+                '          SCRIPT: |'
+                '            steps:'
+                '              - run: tests/integration/only-in-a-block-scalar.ps1'
+                '        run: echo env-block'
+                # T031 (the T037 brief): a key named steps at another level is not a job's steps.
+                '      - name: An action input named steps'
+                '        uses: some/action@v1'
+                '        with:'
+                '          steps:'
+                '            - run: tests/integration/only-in-an-input-named-steps.ps1'
+                # T031 (bug list item 32): a statement delimiter starts a new command, so a '#' after it is a comment.
+                '      - run: Write-Host done;# tests/integration/only-after-a-semicolon.ps1'
+                '      - run: pwsh -File tests/integration/ci-after-new-cases.ps1'
             ) -join "`n") + "`n")
     foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1', 'tests/integration/ci-block-named.ps1',
-            'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
+            'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/ci-after-new-cases.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
         [IO.File]::WriteAllText((Join-Path $root $file), "exit 0`n")
     }
     return $root
@@ -358,7 +375,8 @@ try {
             'tests/integration/deeper/zz_probe.ps1', 'tests/integration/only-in-a-comment.ps1', 'tests/integration/only-in-an-inline-comment.ps1',
             'tests/integration/only-in-a-step-name.ps1', 'tests/integration/only-in-a-block-comment.ps1', 'tests/integration/only-in-a-paths-filter.ps1',
             'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1',
-            'tests/integration/only-in-a-multiline-block-comment.ps1')) {
+            'tests/integration/only-in-a-multiline-block-comment.ps1', 'tests/integration/only-in-a-block-scalar.ps1',
+            'tests/integration/only-in-an-input-named-steps.ps1', 'tests/integration/only-after-a-semicolon.ps1')) {
         $probePath = Join-Path $fixture $probe
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
         [IO.File]::WriteAllText($probePath, "exit 0`n")
