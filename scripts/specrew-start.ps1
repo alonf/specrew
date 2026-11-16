@@ -3379,6 +3379,14 @@ $validatedSessionState = if ($null -ne $validatedSessionState -and $resolvedFeat
         recorded_at      = $validatedSessionState.recorded_at
     }
 }
+elseif ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_path) -and
+    -not (Test-SpecrewPathInsideProject -ProjectRoot $resolvedProjectPath -Path ([string]$validatedSessionState.feature_path))) {
+    # Round 1, F4: an outside feature path start did not adopt is not written back into the prompt or the start
+    # context either, or it would persist into the next start; the rest of the session state is kept.
+    $clearedSessionState = $validatedSessionState.PSObject.Copy()
+    $clearedSessionState.feature_path = $null
+    $clearedSessionState
+}
 else {
     $validatedSessionState
 }
