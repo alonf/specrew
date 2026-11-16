@@ -15,7 +15,14 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$iteration = 'specs/203-beta5-stabilization/iterations/001'
+# The feature's newest iteration, never a closed one: iteration 001 was sealed at its closeout (2caa32a17,
+# 2026-11-16), and putting a sealed iteration into reviewing status in the copy stops the validator on
+# closed-iteration-edited before it reaches W43, so this case went red for a reason that is not its own.
+$iterationsRoot = Join-Path $repoRoot 'specs/203-beta5-stabilization/iterations'
+$newest = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory | Where-Object { $_.Name -match '^\d{3}$' } | Sort-Object Name | Select-Object -Last 1)
+if ($newest.Count -eq 0) { Write-Host "FAIL: no numbered iteration folder under $iterationsRoot" -ForegroundColor Red; exit 1 }
+$iterationNumber = $newest[0].Name
+$iteration = "specs/203-beta5-stabilization/iterations/$iterationNumber"
 $integrityLine = 'does not match what was installed'
 $failures = 0
 function Write-Result {
@@ -68,7 +75,7 @@ try {
     [IO.File]::WriteAllText($planPath, $plan, [Text.UTF8Encoding]::new($false))
     $reviewPath = Join-Path $copy "$iteration/review.md"
     if (-not (Test-Path -LiteralPath $reviewPath)) {
-        $review = @('# Review: Iteration 001', '', '**Schema**: v1', ('**Reviewed**: {0}' -f (Get-Date -Format 'yyyy-MM-dd')),
+        $review = @("# Review: Iteration $iterationNumber",'', '**Schema**: v1', ('**Reviewed**: {0}' -f (Get-Date -Format 'yyyy-MM-dd')),
             '**Overall Verdict**: accepted', '', 'Written by self-repo-review-integrity in a copy of the tree, so the review-artifact check runs.', '',
             '## Task Verdicts', '', '| Task | Requirement | Verdict | Notes |', '| ---- | ----------- | ------- | ----- |') + @($verdictRows) + @('')
         [IO.File]::WriteAllText($reviewPath, ($review -join "`n"), [Text.UTF8Encoding]::new($false))
@@ -89,7 +96,7 @@ try {
 
     $clean = Invoke-CopyValidator
     $hit = @($clean -split "`n" | Where-Object { $_ -match [regex]::Escape($integrityLine) })
-    Write-Result -Ok ($hit.Count -eq 0) -Message 'With iteration 001 in reviewing status, the deployed mirror matches its install record (no integrity error).' -Detail ($hit -join "`n")
+    Write-Result -Ok ($hit.Count -eq 0) -Message "With iteration $iterationNumber in reviewing status, the deployed mirror matches its install record (no integrity error)." -Detail ($hit -join "`n")
 
     Add-Content -LiteralPath (Join-Path $copy '.specify/extensions/specrew-speckit/scripts/validate-governance.ps1') -Value '# hand-patched in the copy; extensions/ unchanged' -Encoding UTF8
     $edited = Invoke-CopyValidator
