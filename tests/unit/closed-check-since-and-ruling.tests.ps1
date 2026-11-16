@@ -304,6 +304,16 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
         @{ Name = 'abandonment overturned'; Body = "## Disposition`n`nAbandoned on 2026-11-01, overturned by the maintainer's ruling of 2026-11-12.`n" }
         @{ Name = 'abandonment reversed'; Body = "## Disposition`n`nThe abandonment was reversed by the maintainer's decision of 2026-11-12.`n" }
         @{ Name = 'abandonment that may follow'; Body = "## Disposition`n`nAbandoned, by the maintainer's ruling of 2026-11-12, may follow.`n" }
+        # Iteration 002 review round 2, finding 3: a trailing note that denies the ruling, a sentence inside an HTML
+        # comment or a code fence, text under a deeper heading, and a date that has not come yet.
+        @{ Name = 'a trailing note that says it is not confirmed'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (not yet confirmed).`n" }
+        @{ Name = 'a trailing note that withdraws it'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (withdrawn 2026-11-15).`n" }
+        @{ Name = 'a sentence inside a multi-line HTML comment'; Body = "## Disposition`n`n<!-- draft, for the maintainer.`nAbandoned by the maintainer's ruling of 2026-11-14.`n-->`n" }
+        @{ Name = 'a sentence inside a code fence'; Body = "## Disposition`n`nThe form to use:`n`n``````text`nAbandoned by the maintainer's ruling of 2026-11-14.`n```````n" }
+        @{ Name = 'a sentence under a level 3 heading that says it is not ruled'; Body = "## Disposition`n`nNo ruling yet.`n`n### Proposed, not ruled.`n`nAbandoned by the maintainer's ruling of 2026-11-14.`n" }
+        @{ Name = 'a ruling dated in the future'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2099-01-01.`n" }
+        # Invented for this round (iteration 001 retro: every text rule's RED set carries a conditioned phrasing too).
+        @{ Name = 'a trailing note that makes it conditional'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (if feature 203 merges first).`n" }
     ) {
         $dir = Join-Path $script:Root ('ruling-negative-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
         $null = New-Item -ItemType Directory -Path $dir -Force
