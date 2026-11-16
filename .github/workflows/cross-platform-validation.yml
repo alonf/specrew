@@ -352,8 +352,11 @@ jobs:
             # wall-clock limit (the whole step took about 130 s on a green run). A suite that exceeds it is named
             # and its process tree stopped. The runner keeps this step's rule from DRIFT-198-I009-039: a suite
             # passes only on Pester's terminal Result 'Passed', so a failed BeforeAll container still fails.
+            # The runner is called in this process: through `pwsh -File` the suite array did not bind to -Suite
+            # (CI 43981760363), and the runner already starts one pwsh per suite. Tested through these two lines
+            # (tests/continuous-co-review/unit/bounded-suite-runner.Tests.ps1).
             $suiteTimeoutSeconds = 300
-            & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -File ./tools/ci/invoke-bounded-suites.ps1 -Suite $suites -SuiteTimeoutSeconds $suiteTimeoutSeconds
+            & ./tools/ci/invoke-bounded-suites.ps1 -Suite $suites -SuiteTimeoutSeconds $suiteTimeoutSeconds
             if ($LASTEXITCODE -ne 0) { throw 'review-fault-suite-failed: see the suite named above' }
           }
           if ($IsLinux) {
