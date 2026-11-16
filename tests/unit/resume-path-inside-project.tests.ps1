@@ -268,7 +268,7 @@ Describe 'A path that one OS calls absolute and another does not (Specrew CI on 
     It 'one helper names what kind of path it is: <Path> is <Kind>' -ForEach @(
         @{ Path = 'C:\x\specs'; Kind = 'absolute' }
         @{ Path = 'C:/x/specs'; Kind = 'absolute' }
-        @{ Path = '\server\share\specs'; Kind = 'absolute' }
+        @{ Path = '\\server\share\specs'; Kind = 'absolute' }
         @{ Path = '//server/share/specs'; Kind = 'absolute' }
         @{ Path = '/home/runner/specs'; Kind = 'absolute' }
         @{ Path = 'C:specs\001-demo'; Kind = 'drive-relative' }
@@ -280,7 +280,7 @@ Describe 'A path that one OS calls absolute and another does not (Specrew CI on 
 
     It 'another OS''s absolute path, a UNC path and a drive-relative path are outside the project; a colon in a relative path is not' {
         $root = New-TempFolder -Name 'kinds'
-        foreach ($outside in @($script:ForeignWindows, ($script:ForeignWindows -replace '\', '/'), '\server\share\specs\001-demo', '//server/share/specs/001-demo', '/elsewhere/specs/001-demo', 'C:specs\001-demo')) {
+        foreach ($outside in @($script:ForeignWindows, ($script:ForeignWindows -replace '\\', '/'), '\\server\share\specs\001-demo', '//server/share/specs/001-demo', '/elsewhere/specs/001-demo', 'C:specs\001-demo')) {
             Test-SpecrewPathInsideProject -ProjectRoot $root -Path $outside | Should -BeFalse -Because $outside
             ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $root -FeaturePath $outside | Should -Be '(none)' -Because $outside
         }
@@ -291,7 +291,7 @@ Describe 'A path that one OS calls absolute and another does not (Specrew CI on 
     It 'the identity reader does not use <Name>, and warns naming the file and why' -ForEach @(
         @{ Name = 'another machine''s absolute path'; Value = 'FOREIGN' }
         @{ Name = 'a drive-relative path'; Value = 'C:specs\001-demo' }
-        @{ Name = 'a UNC path'; Value = '\server\share\specs\001-demo' }
+        @{ Name = 'a UNC path'; Value = '\\server\share\specs\001-demo' }
     ) {
         $value = if ($Value -eq 'FOREIGN') { $script:ForeignWindows } else { $Value }
         $root = New-GovernedProject -Name 'reader-foreign' -IdentityFeaturePath $value
