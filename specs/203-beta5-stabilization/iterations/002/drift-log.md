@@ -324,3 +324,19 @@ The following resolution strategies remain available if drift is detected later 
 - **Class closure**: NONE — T017 fixes it, first in the batch.
 - **The rerun**: `43870780425` attempt 2 on `8ca144ab`, under the new rule: green with every job run (Lint, the
   firewall, the Deterministic gate, the Contract lane).
+
+### DRIFT-017 — Main merged in before the before-implement packet, under the records rule (the reviewer session's ruling)
+
+- **Why**: the custom rule `feature-203.rule.main-sync-before-implement-packet` (main is merged in before each
+  iteration's before-implement packet if it has moved, never after the approval). Main had moved by 13 proposal
+  merges since the merge base `df1141a8`. This is not T030 (the maintainer's merge of main once 206 is on main),
+  which stays as planned.
+- **The merge** (`459857b4`, a merge, not a rebase): no conflict; nine files, all under `proposals/`: 041, 053, 100,
+  211, 217, 218, 219, 220 and `INDEX.md`. 203 had changed nothing under `proposals/`. The code tree is unchanged since
+  `da78b600`'s full sweep.
+- **The ruling**: the records rule, no full sweep, plus the checks that read `proposals/`. On the merged tree: the
+  self-leak lint clean (215 shipped files, 12 deny-list entries); of the four suites that name `proposals/`, only
+  `tests/unit/validate-governance.post-ship-proposal-amendment.tests.ps1` reads the real folder (`proposals/INDEX.md`),
+  and it passes; `self-leak-lint.tests.ps1` and `non-specrew-session-bypass.tests.ps1` use fixtures, and
+  `host-coupling-firewall.tests.ps1` skips `proposals/` wholesale, so they were not run here and CI is their evidence.
+- **Class closure**: NONE — a record of how this merge was checked.
