@@ -322,3 +322,5 @@ The following resolution strategies remain available if drift is detected later 
   first" at 15:48 local. Recorded in `.squad\decisions.md` as
   `f203-i002-rerun-reviewer-hook-suppression-t017-first`. One rerun of `43870780425`'s failed jobs started under it.
 - **Class closure**: NONE — T017 fixes it, first in the batch.
+- **The rerun**: `43870780425` attempt 2 on `8ca144ab`, under the new rule: green with every job run (Lint, the
+  firewall, the Deterministic gate, the Contract lane).
