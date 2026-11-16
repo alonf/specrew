@@ -237,3 +237,46 @@ The following resolution strategies remain available if drift is detected later 
 - **Also recorded with this entry**: B5F-086 (the sync's "expected feature-closeout" warning on every next
   iteration's plan; candidate for 206's list); T030's expected conflicts gain 206's Linux drive-path fix.
 - **Class closure**: NONE — a record of order; nothing failed.
+
+### DRIFT-013 — T022 narrows the records-only rule; T024 moves out (maintainer's decision); the tasks are amended before their stop
+
+- **The question** (the reviewer session, on tasks.md at `9b75ae7b`): T022 makes the records-only definition decide
+  what reaches sign-off unread; does T022 reuse the gate's classifier unchanged, or change it? The crew's answer: it
+  was drafted to reuse `Test-ReviewCampaignDeltaIsRecordsOnly` unchanged, but that classifier passes six cases that
+  should stale in this repository (B5F-087), and under T022 they would reach sign-off unread.
+- **The decision**: "203 T022: 1", typed by the maintainer to the reviewer session at 14:17 local on 2026-11-16 and
+  relayed: narrow the rule inside T022 (4.0 to 4.5 SP) and move T024 (0.5 SP, B5F-075) to the follow-up feature.
+  Recorded in `.squad\decisions.md` as `f203-i002-t022-narrowed-records-rule`, with the option text.
+- **One statement in the option text, checked**: "T022 already makes the sign-off packet state records and code
+  separately, which covers most of what T024 was for." T024's line is a different line: the coverage line the sync
+  writes into every boundary stop. With T024 out it keeps counting records as source files and keeps stating the
+  campaign's own round count; T022 covers records and code apart only in the sign-off packet. The tasks packet says
+  so.
+- **The amendment**: T022 names the narrowing, how the code knows it is the source repository (a tested case both
+  ways), its effect on the two existing consumers, and every negative case, red or passing today. The reviewer
+  session's four notes are folded in: a relative link in tasks.md; T019's `.gitignore` entry and that no check refuses
+  a tracked link pointing outside the repository; T023 (i)'s CI blind spot; the 50-run batches announced first and the
+  CI evidence taken from the first green pushes. Rows stay 20.0 of 20, a stated 22.0 with the buffer.
+- **The tasks sync** is rerun at the amended head; the first tasks sync's bookkeeping (crossing `crossing-fa6d44ed` at
+  `9b75ae7b`) stays uncommitted with the second's until after the verdict.
+- **Class closure**: NONE — a scope decision; B5F-087 is closed by T022 when it lands.
+
+### DRIFT-014 — Specrew CI red on the records-only push 9b75ae7b: reviewer-hook-suppression case 1 (sighting)
+
+- **The run**: Specrew CI `43863692367` on `9b75ae7b` (tasks.md, plan.md, the drift log, docs; no code, no test).
+  The Deterministic gate failed, F-198 suite "1 of 132 FAILED in 490.583s"; the Contract lane was skipped. Lint and
+  the firewall green; Test and Cross-Platform Validation green.
+- **The case**: `tests/continuous-co-review/unit/reviewer-hook-suppression.Tests.ps1:22-36`, "the reviewer launch
+  path passes SPECREW_REFOCUS_DISABLE=1 to the spawned reviewer child process": "Expected regular expression
+  'RD=\[1\]' to match <empty>". The stub child exited 0 (the exit-code assertion passed) and
+  `Invoke-ContinuousCoReviewAgentInWorktree` returned empty stdout. Green on `bc9a6249`, `af9df07d` and `02aacdb9`.
+- **A possibility, not a finding**: an exit-0-with-empty-stdout race in the agent invoker's output capture, the
+  family of `empty-result-retry` (T017); if so, a product defect: a real reviewer whose output is lost reads as an
+  empty result.
+- **Handling**: not on any rerun list; reported to the reviewer session, which ruled option (2): no rerun of
+  `43863692367`, which stays red on the record as a finding; the amendment's push is the next CI run and must be
+  green with every job run before the tasks sync and the packet. If this case, or any case not on a rerun list, is
+  red again on that push, the crew stops and reports. Attached to T017 as evidence; no change to T017's size or
+  text. If T017's cause is in the agent invoker's output capture and its fix exceeds 0.5 SP, the crew comes back
+  before building it.
+- **Class closure**: NONE — evidence for T017.

@@ -1,7 +1,7 @@
 # Tasks: beta5 stabilization (iterations 001 and 002)
 
 **Feature**: 203-beta5-stabilization
-**Plan**: file:///C:/Dev/specrew-b4f-142/specs/203-beta5-stabilization/plan.md
+**Plan**: [plan.md](plan.md)
 **Date**: 2026-10-31
 **Effort unit**: story points. 28.5 SP is planned against the 20 SP convention, an overcommit of 8.5 SP accepted
 by the maintainer's plan verdict. Review is governed by the review budget, not SP.
@@ -589,7 +589,7 @@ then T014.
 
 ## Iteration 002: the stabilization batch (plan verdict, 2026-11-16)
 
-Iteration 002 is T015 to T030 (plan: file:///C:/Dev/specrew-b4f-142/specs/203-beta5-stabilization/iterations/002/plan.md).
+Iteration 002 is T015 to T030 (plan: [iterations/002/plan.md](iterations/002/plan.md)).
 Task rows total 20.0 of 20 SP; the 2.0 SP review buffer is stated in the plan's text, a stated total of 22.0 SP (the
 maintainer's "option 1 it is", 2026-11-16 11:49 local). 203 closes after this iteration and merges; US4 to US7,
 FR-012, FR-013 and FR-044 moved to a follow-up feature (decision `f203-i002-merge-then-follow-up`).
@@ -603,13 +603,13 @@ in the same commit. The tree-run gates (the boundary syncs, the governance check
 
 ### Execution order (iteration 002)
 
-T015, T016, T017, T018, T019; then T020, T021; then T022, T023 (i), T024; then T025; T026 before any lane limit
+T015, T016, T017, T018, T019; then T020, T021; then T022, T023 (i); then T025; T026 before any lane limit
 changes; then T030 (main merged in, if feature 206 is on main) and T023 (ii); then the review campaign, with T027 at
 its first stop; then the full sweep and the maintainer's `advance the pin`; then T028; then sign-off. T029 is done
 with the plan.
 
 - T015 to T017 come first: each ends a rerun exception for all three crews when its fix reaches main.
-- T020 and T021 share `HumanAuthorityStore.ps1`; T022, T023 and T024 share the sign-off gate and run serially.
+- T020 and T021 share `HumanAuthorityStore.ps1`; T022 and T023 share the sign-off gate and run serially.
 - T025 goes last among the builds: its push needs the full sweep and carries T006's launcher half.
 - T030 needs the reviewer session's confirmation, with the maintainer, of what is on main and whether 205 is taken.
 
@@ -625,7 +625,9 @@ with the plan.
   - **RED:** (1) a case that reads the supervisor's exit at the moment the handoff-failure path returns, repeated
     enough to show the race on this machine, red count recorded; (2) a runner test with a fixture suite that sleeps
     past a short limit: today nothing names it.
-  - **Acceptance:** the site 13 case passes 50 runs in a row locally; the runner names a hung suite, stops its process
+  - **Acceptance:** the site 13 case passes 50 runs in a row locally (the reviewer session is told before the runs,
+    so they do not land on another crew's lanes), and the CI evidence is the first green pushes after the fix, since
+    the flake showed under CI load; the runner names a hung suite, stops its process
     tree and fails; the step's limit is below the job's.
   - **Trace:** Gap Ledger (B5F-051 site 13); DRIFT-004, DRIFT-005.
   - **Depends:** none.
@@ -637,7 +639,8 @@ with the plan.
     on records-only pushes (the maintainer's rerun rule, 2026-11-16 02:56). Find what each case times, and make the
     case control its clock or measure the behaviour without one; fix the product if the product is at fault.
   - **RED:** the two cases run with the delay that made them fail in CI, red count recorded.
-  - **Acceptance:** both cases pass with that delay and 50 runs in a row; the rerun rule for HookRenderDedupe ends
+  - **Acceptance:** both cases pass with that delay and 50 runs in a row (the reviewer session told first); the CI
+    evidence is the first green pushes after the fix; the rerun rule for HookRenderDedupe ends
     when this reaches main.
   - **Trace:** the maintainer's rerun rule (2026-11-16 02:56).
   - **Depends:** none.
@@ -646,7 +649,8 @@ with the plan.
   - **Work:** the suite has been on the rerun exception since 2026-11-15 11:31. Find its timing dependence and remove
     it.
   - **RED:** the failing case under the condition that made it fail, red count recorded.
-  - **Acceptance:** 50 runs in a row; the exception ends when this reaches main.
+  - **Acceptance:** 50 runs in a row (the reviewer session told first); the CI evidence is the first green pushes
+    after the fix; the exception ends when this reaches main.
   - **Trace:** the rerun exception (2026-11-15 11:31).
   - **Depends:** none.
   - **Owns:** `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`,
@@ -664,6 +668,8 @@ with the plan.
   - **Work:** remove `.antigravitycli/f95594b5-b180-4b4d-b9e9-93dd0b5890b8.json` from the index (the maintainer's
     "remove the link") and keep it from coming back.
   - **Acceptance:** the link is gone from the tree; a fresh file listing of the repository no longer aborts on it.
+    Kept from coming back by a `.gitignore` entry for `.antigravitycli/`; no existing check (the self-leak lint or a
+    unit test) refuses a tracked link that points outside the repository, and none is added here.
   - **Trace:** Gap Ledger (B5F-077).
   - **Depends:** none.
   - **Owns:** `.antigravitycli/**`, `.gitignore`.
@@ -696,21 +702,52 @@ with the plan.
 
 ### Phase 10: the sign-off gate and the phase lines
 
-- [ ] T022 [owner: Implementer] [sp: 4.0] [US1] **F4: the ordinary review end takes one approval.**
-  - **Work:** one design (DRIFT-078, DRIFT-091, B5F-071; the decision entry `f203-i001-gap-ledger-deferrals`, part 3):
-    a human-accepted disposition for the reviewed digest covers a records-only difference after it; a finding is
-    resolved by the run that reviews its fix, or by the human's stop for the open ones; the sign-off packet states the
-    coverage (fixed findings and their failing-first tests, open findings and where they go, records and code changed
-    since the last round, apart); a separate typed override with a reason stays for product code no reviewer read and
-    no test covers.
-  - **RED:** in `signoff-gate-wiring.Tests.ps1` and the sync's gate suites: a stop for digest D then a records-only
-    commit is refused today (DRIFT-078); an ordinary review end needs two approvals today (DRIFT-091); a fixed finding
-    stays open today (B5F-071).
-  - **Acceptance:** each RED case passes; unreviewed, untested product code is still refused without the typed
-    override.
-  - **Trace:** FR-005, FR-006, FR-011.
+- [ ] T022 [owner: Implementer] [sp: 4.5] [US1] **F4: the ordinary review end takes one approval, on a narrowed records rule.**
+  - **Work (the gate):** one design (DRIFT-078, DRIFT-091, B5F-071; the decision entry `f203-i001-gap-ledger-deferrals`,
+    part 3): a human-accepted disposition for the reviewed digest covers a records-only difference after it; a finding
+    is resolved by the run that reviews its fix, or by the human's stop for the open ones; the sign-off packet states
+    the coverage (fixed findings and their failing-first tests, open findings and where they go, records and code
+    changed since the last round, apart); a separate typed override with a reason stays for product code no reviewer
+    read and no test covers.
+  - **Work (the records rule, the maintainer's "203 T022: 1", 2026-11-16 14:17 local; B5F-087):** the disposition
+    uses the gate's existing classifier, `Test-ReviewCampaignDeltaIsRecordsOnly`
+    (`scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1:410`), narrowed inside that function: in
+    the Specrew source repository, `.specify/**` (the mirror the boundary syncs and the governance check run, and its
+    `.specrew-extension-runtime.json` hash record), non-Markdown files under `docs/`, and Markdown or text under
+    `extensions/`, `templates/` and the deployed skill directories (`.claude/skills/`, `.github/skills/`) count as
+    source. The acceptance carry's diff (`:397`) gets `--no-renames`. The shared classifier
+    `Test-SpecrewReviewAuthorshipSourcePath` is not changed, so the validator's authorship rule and the boundary
+    coverage line keep today's answers. Downstream projects keep today's answers; test `:112` (a `.github/agents`
+    host mirror is machinery) stays true.
+  - **How the code knows it is the source repository:** the existing `Test-ContinuousCoReviewSpecrewSourceRepo`
+    (`scripts/internal/continuous-co-review/worktree-reviewer.ps1:54`): both `Specrew.psd1` and
+    `scripts/internal/continuous-co-review/_load.ps1` at the root. Tested both ways: a downstream fixture with only
+    `Specrew.psd1`, or only `_load.ps1`, keeps today's answers (it cannot switch the stricter rule on or off by one
+    stray file), and a source checkout keeps the stricter rule (it cannot lose it while both files are there).
+  - **Effect on the two existing consumers** (they use the same classifier): run currentness
+    (`records-only-delta-does-not-stale`, `:807`, `:948`) and the partial-override carry (`:366-407`). On 203, and
+    on 205 and 206 when this reaches them through main, a commit after a round that touches `.specify/**`, a `docs/`
+    script, or product Markdown now stales that round (a new round or a typed override), where today it does not.
+    Downstream projects are unchanged.
+  - **RED and Acceptance**, each a refusing test (the delta is not records-only), red or passing today as marked:
+    - a script under `docs/` (red today);
+    - a `.specify`-only change (red today);
+    - a hash-record-only change, `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` (red today);
+    - product Markdown: a skill file, a template, the coordinator fragment (red today);
+    - a code file renamed into a records path, through the acceptance carry (red today);
+    - `plan.md`, `spec.md`, `tasks.md` (passing today, test `:87`);
+    - a rename and a mode change of a code file on the `--no-renames` paths (passing today; pinned);
+    - a records file and a code file in one commit (passing today, test `:68`);
+    - an executable under `specs/` (passing today; pinned);
+    - the gate: a stop for digest D then a records-only commit is refused today (DRIFT-078); an ordinary review end
+      needs two approvals today (DRIFT-091); a fixed finding stays open today (B5F-071).
+
+    Acceptance: every case above refuses or passes as stated, with the red ones red first; the source-repository
+    detection cases pass; unreviewed, untested product code is still refused without the typed override.
+  - **Trace:** FR-005, FR-006, FR-011; B5F-087.
   - **Depends:** none (the stop side reaches the hooks at the pin advance).
   - **Owns:** `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1`,
+    `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1`,
     `scripts/internal/continuous-co-review/*.ps1`, `scripts/internal/sync-boundary-state.ps1`, their `.specify`
     copies and the hash record, `tests/continuous-co-review/unit/**`, `tests/unit/**`.
 - [ ] T023 [owner: Implementer] [sp: 0.75] [US1] **Phase lines: B5F-083, and the sync and check together.**
@@ -723,20 +760,14 @@ with the plan.
     pending: "Missing required artifact: plan.md" today. (ii) `review.md` with `executing` and last boundary
     before-implement passes the check, the sync accepts it, and afterwards the check requires `reviewing`; the same
     for `retro.md` with `reviewing`.
-  - **Acceptance:** (i) passes, and the folder still fails once the plan crossing is behind; (ii) passes on the
+  - **Acceptance:** (i) passes, and the folder still fails once the plan crossing is behind, where
+    `.specrew/start-context.json` exists; in CI, which has no start context, the folder is accepted with a warning
+    always (the blind spot 206 recorded as its item 53), so that half holds locally only; (ii) passes on the
     merged tree.
   - **Trace:** Gap Ledger (B5F-050, B5F-059, B5F-083).
   - **Depends:** (ii) on T030.
   - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` copy and the hash record,
     `tests/unit/**`, `tests/integration/**`.
-- [ ] T024 [owner: Implementer] [sp: 0.5] [US1] **B5F-075: the sign-off coverage line.**
-  - **Work:** the coverage line counts a records change as a source file and states a round budget nobody set; it
-    counts records apart and states only the budget the plan set.
-  - **RED:** a records-only change counted as "source file(s) changed" today.
-  - **Acceptance:** records and code are counted apart; no budget is stated that the plan did not set.
-  - **Trace:** FR-011.
-  - **Depends:** T022.
-  - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/continuous-co-review/unit/**`.
 
 ### Phase 11: the hook cost
 
@@ -827,6 +858,13 @@ with the plan.
   reported by <host>" otherwise. Trace: FR-012. Owns: `scripts/internal/continuous-co-review/review-*-harness-port.ps1`,
   `review-progress-projection.ps1`, `tests/unit/review-usage.Tests.ps1`.
 
+- [ ] T024 [owner: Implementer] [sp: 0.5] [US1] **B5F-075: the boundary coverage line.** Moved to the follow-up
+  feature by the maintainer's "203 T022: 1" (2026-11-16 14:17 local), to make room for T022's narrowed records
+  rule. The line the sync writes into every boundary stop ("Review coverage: ... N source file(s) changed since;
+  N of M rounds remaining ...") keeps counting records as source files and keeps stating the campaign's own round
+  count, which can disagree with the maintainer's rulings (B5F-075). Trace: FR-011. Owns:
+  `extensions/specrew-speckit/scripts/shared-governance.ps1` (`Get-SpecrewReviewCoverageLine`), its tests.
+
 ## Traceability
 
 | Requirement | Tasks |
@@ -856,7 +894,7 @@ with the plan.
 | --- | --- |
 | FR-005, FR-006 | T022 |
 | FR-007 | T018 |
-| FR-011 | T022, T024, T027 |
+| FR-011 | T022, T027 (T024 moved to the follow-up feature) |
 | FR-019, FR-022 | T020 |
 | FR-026 | T021 |
 | FR-027 | T021, T025 (the launcher half) |

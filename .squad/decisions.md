@@ -1,5 +1,34 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Decision: 203 iteration 002 - T022 narrows the records-only rule; T024 moves to the follow-up feature
+
+- **Decision ID**: f203-i002-t022-narrowed-records-rule
+- **Type**: scope-amendment
+- **Affected Requirement**: FR-011 (T024, the boundary coverage line, moves out); FR-005, FR-006 (T022)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T12:21:24Z
+- **Decision**: T022 lets a human-accepted stop cover a records-only difference, so the definition of records-only
+  decides what reaches sign-off unread. The gate's classifier (`Test-ReviewCampaignDeltaIsRecordsOnly`) accepts today
+  as records a script under `docs/`, a `.specify` mirror or hash-record change, product Markdown outside `specs/`, and
+  a code file renamed into a records path through the acceptance carry (B5F-087). Option 1: fix it in T022 (4.0 to
+  4.5 SP): in the Specrew source repository those kinds count as source, every case gets a refusing test, the rename
+  edge is closed, downstream projects keep today's behaviour; T024 (0.5 SP, B5F-075) moves to the follow-up feature
+  so the task rows stay at 20.0.
+- **The maintainer's words**: "203 T022: 1", typed to the reviewer session specrewreviewer-98 at 2026-11-16 14:17
+  local (UTC+2) and relayed under the wider delegation, answering "203 T022: 1, 2 or 3". Option 1 as shown: "Fix it
+  in T022, and move T024 out to the follow-up feature (recommended)." "In the Specrew repo those three kinds count as
+  source, every case gets a refusing test, and the rename edge is closed. Downstream projects keep today's
+  behaviour." "This costs about 0.5 SP (the crew's judgment). T024 (0.5 SP, the wording of the coverage line) moves
+  out so the rows stay at 20.0. T022 already makes the sign-off packet state records and code separately, which
+  covers most of what T024 was for." Option 2 was the same fix with capacity raised to 20.5; option 3 was T022 as
+  drafted with the gaps recorded as B5F-087.
+- **A correction to the option text, checked by the crew**: T024's line is not the line T022's sign-off packet
+  states. It is the coverage line the sync writes into every boundary stop (`Get-SpecrewReviewCoverageLine`,
+  `shared-governance.ps1`). With T024 out, that line keeps counting records as source files and keeps stating the
+  campaign's own round count at every stop; T022's packet states records and code apart only at the review sign-off.
+- **Next Action**: tasks.md and plan.md amended; the tasks boundary is brought again.
+
 ### 2026-11-16 — Decision: 203 iteration 002 - main is merged into 203 before the review campaign; T023 relies on 206's fix
 
 - **Decision ID**: f203-i002-merge-main-before-review
