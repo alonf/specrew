@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "feature": "205-workshop-lens-order",
+  "iteration": "003",
+  "sealed_at": "2026-11-16T17:31:34.8982157+00:00",
+  "sealed_files": [
+    {
+      "path": "design-analysis.md",
+      "sha256": "cdb1de13f7b7bbdae35db529ec5b1f12e0fd0ff9f32662565fc7c80515219b8f"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "16ee2be002a6cfdc8dcd9f087c0ba3cc1ddb5aac0a307b65dbbbfa4181bdc1fe"
+    },
+    {
+      "path": "handover-to-203.md",
+      "sha256": "a15c72980adff8153930d2f4dbdc983780d2633221bd363f8a6bd009be4627f7"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "eded20f5faf546d14eb69ac8f6a65fd23a26752da3da038926c9b4a1dd44f72f"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "3142e0396b63011ac8059ce4b7d056b27ae9880dbcd6990a9c97af8597f8c7b7"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "cc4522708de14d54b5254530e0e938ffba2bd117b51c6ca80b2affb1455cdb8c"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "a765e26296d340f88d7130136c290584dc8cc8b9653f29b34ce637a31a7b38d3"
+    },
+    {
+      "path": "quality/t034-render-check.md",
+      "sha256": "ecc27a580b223d1a8c609920e1bb6680fd2053b87a23c76634102bd9e3dbc492"
+    },
+    {
+      "path": "quality/t034-render-default.txt",
+      "sha256": "a37a1b8b6847d080746d48cd892ac3291bc8abdc27cccd4d9363a8f03a510716"
+    },
+    {
+      "path": "quality/t034-render-latin1.txt",
+      "sha256": "a37a1b8b6847d080746d48cd892ac3291bc8abdc27cccd4d9363a8f03a510716"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "9e1a5eb64a5f1f6d63fed9da39f76ec12b805dbe12f11132a497dd64c6cd80d2"
+    },
+    {
+      "path": "review-scope-round-1.md",
+      "sha256": "e6504ee25d8da390621e815e593b0402a4062f5fed49fb63b0318188e53d0dc3"
+    },
+    {
+      "path": "review.md",
+      "sha256": "30ac3260278355944a8f60b08db87b13f48fa0db6c45cafbca3640bcbd3c20fd"
+    },
+    {
+      "path": "state.md",
+      "sha256": "793643c08e26ad84df6b67d745da0851a4b6ea7b17aba3ebecb4f42186901264"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}

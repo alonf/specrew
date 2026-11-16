@@ -419,3 +419,6 @@ closed:
   - feature: 205-workshop-lens-order
     iteration: 002
     closed_at: 2026-11-15T02:54:27Z
+  - feature: 205-workshop-lens-order
+    iteration: 003
+    closed_at: 2026-11-16T17:31:34Z

@@ -29713,3 +29713,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: f1ed7c6a1d9ba2e89c72aaa17fd2b7c0e7d64fc5
 - **Recorded At**: 2026-11-16T12:28:35Z
+
+## 2026-11-16T13:32:02Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: cb7da34a8863a4705e87d4313e2eca28386d1289
+- **Recorded At**: 2026-11-16T13:31:52Z
