@@ -63,6 +63,21 @@ function Get-ContinuousCoReviewWorktreeIdentity {
     return ([string]$treeId).Trim()
 }
 
+# Feature 203 T015 (B5F-051 site 13): how long a failed lease handoff waits for the stopped supervisor to exit.
+$script:ContinuousCoReviewSupervisorStopWaitSeconds = 10
+
+function Wait-ContinuousCoReviewProcessExit {
+    # T015: process termination is asynchronous - Stop-Process returns before the process is gone. Wait, bounded,
+    # so a caller that promises "the reviewer was stopped" can say so truthfully. A process that is already gone,
+    # or cannot be opened, counts as exited.
+    param([Parameter(Mandatory)][int]$ProcessId, [Parameter(Mandatory)][int]$TimeoutSeconds)
+    $process = $null
+    try { $process = [System.Diagnostics.Process]::GetProcessById($ProcessId) } catch { return $true }
+    try { return [bool]$process.WaitForExit($TimeoutSeconds * 1000) }
+    catch { return $true }
+    finally { $process.Dispose() }
+}
+
 function Start-ContinuousCoReviewServiceRun {
     # TRIGGER. Fire a review of the committed state. -Detached spawns the detached orchestrator NON-BLOCKING and
     # registers a reap-compatible pending entry (the navigator/MCP fire-and-forget path); otherwise runs inline
@@ -214,8 +229,11 @@ function Start-ContinuousCoReviewServiceRun {
     catch { $handoffOk = $false }
     if (-not $handoffOk) {
         try { Stop-Process -Id $supPid -Force -ErrorAction Stop } catch { [Console]::Error.WriteLine("[co-review] WARN SUPERVISOR_STOP_FAILED pid=$supPid after a failed lease owner handoff: $($_.Exception.Message)") }
+        $stopped = Wait-ContinuousCoReviewProcessExit -ProcessId $supPid -TimeoutSeconds $script:ContinuousCoReviewSupervisorStopWaitSeconds
+        if (-not $stopped) { [Console]::Error.WriteLine("[co-review] WARN SUPERVISOR_STILL_RUNNING pid=$supPid $($script:ContinuousCoReviewSupervisorStopWaitSeconds) s after it was stopped") }
         $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken
-        & $writeReg $null 'failed' @{ failure_reason = 'lease-owner-handoff-failed: the supervisor could not be stamped as the lease owner; the spawned reviewer was stopped (never an unprotected running reviewer)' }
+        $stopText = if ($stopped) { 'the spawned reviewer was stopped' } else { "a stop was requested but the spawned reviewer (pid $supPid) was still running $($script:ContinuousCoReviewSupervisorStopWaitSeconds) s later" }
+        & $writeReg $null 'failed' @{ failure_reason = ('lease-owner-handoff-failed: the supervisor could not be stamped as the lease owner; {0} (never an unprotected running reviewer)' -f $stopText) }
         throw "lease-owner-handoff-failed for run $RunId (lineage '$LineageId', generation '$TreeId'): the lease could not be re-stamped to the supervisor; the spawned reviewer was stopped."
     }
     & $writeReg $supPid 'running' @{ lineage_id = $LineageId; generation = $TreeId; owner_token = $leaseOwnerToken }
