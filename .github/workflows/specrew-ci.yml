@@ -430,11 +430,20 @@ jobs:
     # 2026-05-20). They run here on every push. The local review lanes do not run them: bootstrap-asset-blocker-recovery
     # runs specrew-init, which writes the real home's hook files on a developer machine, and the runner's home is
     # disposable. This job maps no secret, needs no other job and is not continue-on-error.
+    # Its first run (2026-11-16, job 133612182338) stopped in specrew-init's dependency check, "Node.js v22.23.4
+    # (required: 24.0+)" (scripts/init/preflight.ps1): it now sets up Node 24 as the other jobs do. The suites shim
+    # specify, uv and squad; git and PowerShell 7 come with the runner. The second suite runs even when the first fails
+    # (if: always()), so each gives its own result; a failed step still turns the job red.
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
 
       - name: Integration - bootstrap asset blocker recovery
         shell: pwsh
@@ -442,6 +451,7 @@ jobs:
         run: pwsh -NoProfile -NonInteractive -File ./tests/integration/bootstrap-asset-blocker-recovery.ps1
 
       - name: Integration - validate versions cli behavior
+        if: always()
         shell: pwsh
         timeout-minutes: 6
         run: pwsh -NoProfile -NonInteractive -File ./tests/integration/validate-versions-cli-behavior.ps1
