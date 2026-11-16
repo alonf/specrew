@@ -150,6 +150,7 @@ $registry = @(
     @{ area = 'reviewer independence/fallback (shared engine)'; path = 'tests/continuous-co-review/unit/reviewer-independence-fallback.Tests.ps1'; kind = 'pester' }
     @{ area = 'empty-result retry-once (shared engine)'; path = 'tests/continuous-co-review/unit/empty-result-retry.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewer hook suppression - empty-exit0 root cause (shared engine)'; path = 'tests/continuous-co-review/unit/reviewer-hook-suppression.Tests.ps1'; kind = 'pester' }
+    @{ area = 'agent invoker drains an exited child''s output (T017, shared engine)'; path = 'tests/continuous-co-review/unit/agent-invoker-output-drain.Tests.ps1'; kind = 'pester' }
     @{ area = 'file-primary reviewer result - codex empty-stdout file delivery (shared engine)'; path = 'tests/continuous-co-review/unit/reviewer-file-primary-result.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewed-state digest + exec-bit restoration (T034b partial)'; path = 'tests/continuous-co-review/unit/reviewed-state-digest.Tests.ps1'; kind = 'pester' }
     @{ area = 'universal recorded-run runner - language/framework-neutral evidence (T018/FR-015)'; path = 'tests/continuous-co-review/unit/recorded-run.Tests.ps1'; kind = 'pester' }
