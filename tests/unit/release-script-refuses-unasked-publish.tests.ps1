@@ -114,3 +114,31 @@ Describe 'The publish suite copies hidden release files on every OS (FR-012; CI 
         Test-Path -LiteralPath $dst | Should -BeTrue
     }
 }
+
+Describe 'The publish suite runs per push on Windows, in a job that sees no secret (FR-012; maintainer 2026-11-16 14:38)' {
+    BeforeAll {
+        $script:CiText = Get-Content -LiteralPath (Join-Path $script:RepoRoot '.github/workflows/specrew-ci.yml') -Raw
+        $script:CiCode = (($script:CiText -split "`r?`n") | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+        $script:Job = [regex]::Match($script:CiCode, '(?ms)^  publish-suite-windows:\n(?<body>.*?)(?=^  [A-Za-z0-9_-]+:\s*$|\z)').Groups['body'].Value
+    }
+
+    It 'Specrew CI maps no secret anywhere, so no job of it can see PSGALLERY_API_KEY' {
+        $script:CiCode | Should -Not -Match 'secrets\.'
+        $script:CiCode | Should -Not -Match 'PSGALLERY_API_KEY\s*:'
+    }
+
+    It 'a windows-latest job with its own timeout runs the publish suite, and nothing lets it fail quietly' {
+        $script:Job | Should -Not -BeNullOrEmpty
+        $script:Job | Should -Match '(?m)^    runs-on:\s*windows-latest\s*$'
+        $script:Job | Should -Match '(?m)^    timeout-minutes:\s*\d+\s*$'
+        $script:Job | Should -Match '(?m)^\s+run:\s*pwsh -NoProfile -NonInteractive -File \./tests/integration/distribution-module-publish\.ps1\s*$'
+        $script:Job | Should -Not -Match 'continue-on-error'
+        $script:Job | Should -Not -Match '(?m)^\s+if:'
+    }
+
+    It 'the Linux deterministic gate no longer lists the publish suite' {
+        $gate = [regex]::Match($script:CiCode, '(?ms)^  deterministic-gate:\n(?<body>.*?)(?=^  [A-Za-z0-9_-]+:\s*$|\z)').Groups['body'].Value
+        $gate | Should -Not -BeNullOrEmpty
+        $gate | Should -Not -Match 'distribution-module-publish\.ps1'
+    }
+}
