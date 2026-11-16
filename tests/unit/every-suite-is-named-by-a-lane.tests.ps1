@@ -113,6 +113,76 @@ function Remove-ShellComment {
     return @($out)
 }
 
+# Iteration 002 review round 2, finding 2: a step or job with an if: runs only when its condition holds. Two suites in
+# specrew-ci.yml sat under if: runner.os != 'Linux' inside an ubuntu-latest job and never ran, while this guard read
+# them as named. A condition counts as running only when every '&&' term is on this declared list, or is a runner.os
+# comparison that holds for the job's literal runs-on. A runs-on expression (a matrix) may match on some leg, so a
+# runner.os term is taken to hold there. Any other condition, and any '||', names nothing.
+$script:WorkflowConditionsThatRun = [ordered]@{
+    'always()'                            = 'runs whenever the job runs'
+    'success()'                           = 'the default condition: runs when the earlier steps passed'
+    '!cancelled()'                        = 'runs unless the run was cancelled'
+    "github.event_name != 'pull_request'" = 'runs on every push'
+}
+
+function Test-WorkflowConditionRuns {
+    param([AllowNull()][string] $Condition, [AllowNull()][string] $RunnerOs)
+    if ([string]::IsNullOrWhiteSpace($Condition)) { return $true }
+    $c = $Condition.Trim()
+    if ($c.Length -ge 2 -and $c[0] -eq '"' -and $c[-1] -eq '"') { $c = $c.Substring(1, $c.Length - 2).Trim() }
+    if ($c -match '^\$\{\{\s*(?<inner>.*?)\s*\}\}$') { $c = $Matches['inner'] }
+    if ($c -match '\|\|') { return $false }
+    foreach ($term in @($c -split '&&')) {
+        $t = ($term.Trim() -replace '\s+', ' ')
+        if ($script:WorkflowConditionsThatRun.Contains($t)) { continue }
+        if ($t -match "^runner\.os (?<op>==|!=) '(?<os>[A-Za-z]+)'$") {
+            if ([string]::IsNullOrWhiteSpace($RunnerOs)) { continue }
+            $same = $RunnerOs -eq $Matches['os']
+            if (($Matches['op'] -eq '==') -ne $same) { return $false }
+            continue
+        }
+        return $false
+    }
+    return $true
+}
+
+function Get-WorkflowRunnerOs {
+    param([AllowNull()][string] $RunsOn)
+    $r = ([string]$RunsOn).Trim().Trim("'", '"')
+    if ($r -match '^ubuntu-') { return 'Linux' }
+    if ($r -match '^windows-') { return 'Windows' }
+    if ($r -match '^macos-') { return 'macOS' }
+    return $null
+}
+
+# Iteration 002 review round 2, finding 2: "per push" means a workflow a push to a feature branch starts: an on: push
+# trigger with no tags-only and no paths: filter (publish-module runs on tags, specrew-project-sync on some paths of
+# main, the nightly and the confidence lane on a schedule).
+function Test-WorkflowRunsPerPush {
+    param([string] $Path)
+    $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
+    $inOn = $false; $inPush = $false; $pushIndent = -1; $hasPush = $false; $hasBranches = $false; $hasTags = $false; $hasPaths = $false
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
+        $indent = $line.Length - $line.TrimStart().Length
+        if ($indent -eq 0) {
+            $inOn = ($line -match '^(?:on|"on"|''on''):')
+            if ($inOn -and $line -match '^on:\s*\[?.*\bpush\b') { $hasPush = $true; $hasBranches = $true }
+            $inPush = $false
+            continue
+        }
+        if (-not $inOn) { continue }
+        if ($line -match '^\s*push:\s*(?:#.*)?$') { $inPush = $true; $pushIndent = $indent; $hasPush = $true; continue }
+        if ($inPush -and $indent -le $pushIndent) { $inPush = $false }
+        if ($inPush) {
+            if ($line -match '^\s*branches(?:-ignore)?:') { $hasBranches = $true }
+            if ($line -match '^\s*tags:') { $hasTags = $true }
+            if ($line -match '^\s*paths(?:-ignore)?:') { $hasPaths = $true }
+        }
+    }
+    return ($hasPush -and -not $hasPaths -and ($hasBranches -or -not $hasTags))
+}
+
 # Review round 2, finding 6: what a workflow's steps execute - the text of each run: key (one line, or the
 # indented block after "run: |" / "run: >"), with shell comments removed. A step name, a trigger paths: filter,
 # an env: value and any comment name a file without running it, so they name nothing.
@@ -132,6 +202,19 @@ function Get-WorkflowRunText {
     $stepsIndent = -1    # indent of the current job's "steps:" key; -1 outside a steps list
     $itemIndent = -1     # indent of that list's "- " items
     $stepKeyIndent = -1  # indent of the current step's keys
+    # Iteration 002 round 2, finding 2: a step's run text is held until the step ends, and a job's until the job ends,
+    # because an if: may come after the run: key. Each is kept only when its condition runs.
+    $stepRun = [Collections.Generic.List[string]]::new(); $stepIf = $null
+    $jobRun = [Collections.Generic.List[string]]::new(); $jobIf = $null; $jobOs = $null
+    $flushStep = {
+        if ($stepRun.Count -gt 0 -and (Test-WorkflowConditionRuns -Condition $stepIf -RunnerOs $jobOs)) { foreach ($kept in $stepRun) { $jobRun.Add($kept) } }
+        $stepRun.Clear(); $stepIf = $null
+    }
+    $flushJob = {
+        . $flushStep
+        if ($jobRun.Count -gt 0 -and (Test-WorkflowConditionRuns -Condition $jobIf -RunnerOs $jobOs)) { foreach ($kept in $jobRun) { $run.Add($kept) } }
+        $jobRun.Clear(); $jobIf = $null; $jobOs = $null
+    }
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
@@ -145,6 +228,7 @@ function Get-WorkflowRunText {
         $keyText = if ($item.Success) { $line.Substring($item.Length) } else { $line.TrimStart() }
         $opensScalar = $keyText -match '^[^\s#''"][^:]*:\s*[|>][-+0-9]*\s*(?:#.*)?$'
         if ($indent -eq 0 -and -not $item.Success) {
+            . $flushJob
             $inJobs = ($line -match '^jobs:\s*(?:#.*)?$')
             $jobIdIndent = -1; $jobKeyIndent = -1; $stepsIndent = -1
             if ($opensScalar) { $scalarIndent = 0 }
@@ -153,18 +237,23 @@ function Get-WorkflowRunText {
         if (-not $inJobs) { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
         if ($jobIdIndent -lt 0) { $jobIdIndent = $indent }
         if ($indent -le $jobIdIndent) {
+            . $flushJob
             $jobIdIndent = $indent; $jobKeyIndent = -1; $stepsIndent = -1
             if ($opensScalar) { $scalarIndent = $keyColumn }
             continue
         }
         if ($jobKeyIndent -lt 0) { $jobKeyIndent = $indent }
         if ($indent -eq $jobKeyIndent -and -not $item.Success) {
+            . $flushStep
+            if ($line -match '^\s*if:\s*(?<cond>.*?)\s*$') { $jobIf = $Matches['cond'] }
+            if ($line -match '^\s*runs-on:\s*(?<on>[^#]*?)\s*(?:#.*)?$') { $jobOs = Get-WorkflowRunnerOs -RunsOn $Matches['on'] }
             if ($line -match '^\s*steps:\s*(?:#.*)?$') { $stepsIndent = $indent; $itemIndent = -1; $stepKeyIndent = -1 }
             else { $stepsIndent = -1; if ($opensScalar) { $scalarIndent = $keyColumn } }
             continue
         }
         if ($stepsIndent -lt 0) { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
         if ($item.Success -and ($itemIndent -lt 0 -or $indent -eq $itemIndent)) {
+            . $flushStep
             $itemIndent = $indent
             # "-" alone on its line: the step's keys start on the next line, one level deeper.
             $stepKeyIndent = if ([string]::IsNullOrWhiteSpace($keyText)) { -2 } else { $item.Length }
@@ -172,6 +261,7 @@ function Get-WorkflowRunText {
         elseif ($stepKeyIndent -eq -2 -and $indent -gt $itemIndent) { $stepKeyIndent = $indent; $keyText = $line.TrimStart() }
         elseif ($indent -eq $stepKeyIndent) { $keyText = $line.TrimStart() }
         else { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        if ($keyText -match '^if:\s*(?<cond>.*?)\s*$') { $stepIf = $Matches['cond']; continue }
         if ($keyText -notmatch '^run:\s*(?<rest>.*)$') { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
         $keyIndent = $stepKeyIndent
         $rest = $Matches['rest'].Trim()
@@ -181,15 +271,16 @@ function Get-WorkflowRunText {
                 if (-not [string]::IsNullOrWhiteSpace($lines[$j]) -and ($lines[$j].Length - $lines[$j].TrimStart().Length) -le $keyIndent) { break }
                 $body.Add($lines[$j])
             }
-            foreach ($kept in @(Remove-ShellComment -Lines @($body))) { $run.Add($kept) }
+            foreach ($kept in @(Remove-ShellComment -Lines @($body))) { $stepRun.Add($kept) }
             $i = $j - 1
             continue
         }
         if ($rest.Length -ge 2 -and (($rest[0] -eq '"' -and $rest[-1] -eq '"') -or ($rest[0] -eq "'" -and $rest[-1] -eq "'"))) {
             $rest = $rest.Substring(1, $rest.Length - 2)
         }
-        foreach ($kept in @(Remove-ShellComment -Lines @($rest))) { $run.Add($kept) }
+        foreach ($kept in @(Remove-ShellComment -Lines @($rest))) { $stepRun.Add($kept) }
     }
+    . $flushJob
     return ($run -join "`n")
 }
 
@@ -198,6 +289,7 @@ function Get-NamedTests {
     param([Parameter(Mandatory)][string] $Root)
     $named = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $laneNamed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $pushNamed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $ciNamed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $registriesRead = [Collections.Generic.List[string]]::new()
     $planCommands = @()
@@ -238,7 +330,11 @@ function Get-NamedTests {
     $workflowRoot = Join-Path $Root '.github/workflows'
     if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
         foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
-            foreach ($hit in @(Get-TestPathsIn -Text (Get-WorkflowRunText -Path $workflow.FullName))) { [void]$ciNamed.Add($hit); [void]$named.Add($hit) }
+            $perPushWorkflow = Test-WorkflowRunsPerPush -Path $workflow.FullName
+            foreach ($hit in @(Get-TestPathsIn -Text (Get-WorkflowRunText -Path $workflow.FullName))) {
+                [void]$ciNamed.Add($hit); [void]$named.Add($hit)
+                if ($perPushWorkflow) { [void]$pushNamed.Add($hit) }
+            }
         }
     }
     # A registry runner that a CI step runs runs every script it lists (tests/support/test-census.ps1).
@@ -250,7 +346,7 @@ function Get-NamedTests {
     }
     return [pscustomobject]@{
         Named = $named; LaneNamed = $laneNamed; PlanCommands = $planCommands.Count; ParkedCommands = $parkedCommands.Count
-        ReleaseCount = $releaseNamed.Count; CiNamed = $ciNamed; RegistriesRead = @($registriesRead)
+        ReleaseCount = $releaseNamed.Count; CiNamed = $ciNamed; PushNamed = $pushNamed; RegistriesRead = @($registriesRead)
     }
 }
 
@@ -334,6 +430,7 @@ function New-CensusFixture {
                 '      - tests/integration/only-in-a-paths-filter.ps1'
                 'jobs:'
                 '  t:'
+                '    runs-on: ubuntu-latest'
                 '    steps:'
                 '      # tests/integration/only-in-a-comment.ps1'
                 '      - run: pwsh -File ./tests/integration/ci-named.ps1'
@@ -392,6 +489,15 @@ function New-CensusFixture {
                 '      - name: A step that runs only off Linux'
                 "        if: runner.os != 'Linux'"
                 '        run: pwsh -File tests/integration/only-under-a-step-if.ps1'
+                # A condition on the declared list, and a runner.os test that holds for the job's runner, still run.
+                '      - name: A step every push runs'
+                "        if: github.event_name != 'pull_request'"
+                '        run: pwsh -File tests/integration/ci-under-a-push-if.ps1'
+                "      - if: always() && runner.os == 'Linux'"
+                '        run: pwsh -File tests/integration/ci-under-a-linux-if.ps1'
+                '      - name: A condition that is not on the list'
+                "        if: github.event_name == 'workflow_dispatch'"
+                '        run: pwsh -File tests/integration/only-under-an-unlisted-if.ps1'
                 '  u:'
                 '    if: false'
                 '    runs-on: ubuntu-latest'
@@ -399,7 +505,8 @@ function New-CensusFixture {
                 '      - run: pwsh -File tests/integration/only-under-a-job-if.ps1'
             ) -join "`n") + "`n")
     foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1', 'tests/integration/ci-block-named.ps1',
-            'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/ci-after-new-cases.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
+            'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/ci-after-new-cases.ps1',
+            'tests/integration/ci-under-a-push-if.ps1', 'tests/integration/ci-under-a-linux-if.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
         [IO.File]::WriteAllText((Join-Path $root $file), "exit 0`n")
     }
     return $root
@@ -419,7 +526,7 @@ try {
             'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1',
             'tests/integration/only-in-a-multiline-block-comment.ps1', 'tests/integration/only-in-a-block-scalar.ps1',
             'tests/integration/only-in-an-input-named-steps.ps1', 'tests/integration/only-after-a-semicolon.ps1',
-            'tests/integration/only-under-a-step-if.ps1', 'tests/integration/only-under-a-job-if.ps1')) {
+            'tests/integration/only-under-a-step-if.ps1', 'tests/integration/only-under-a-job-if.ps1', 'tests/integration/only-under-an-unlisted-if.ps1')) {
         $probePath = Join-Path $fixture $probe
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
         [IO.File]::WriteAllText($probePath, "exit 0`n")
@@ -556,8 +663,12 @@ $releaseOnly = @(
     # Feature 206 T021 (SC-002, maintainer ruling 2026-11-12): excluded until green, then the release manifest.
     'tests/integration/validator-hardening-iteration2.ps1'
 )
-$notInCi = @($perPush | Where-Object { -not $names.CiNamed.Contains($_) })
-Assert-True ($notInCi.Count -eq 0) ("the scripts registered per push are named by a CI step (missing: {0})" -f ($notInCi -join ', '))
+$notInCi = @($perPush | Where-Object { -not $names.PushNamed.Contains($_) })
+Assert-True ($notInCi.Count -eq 0) ("the scripts registered per push are named by a CI step of a workflow every push runs (missing: {0})" -f ($notInCi -join ', '))
+# Iteration 002 review round 2, finding 2: which workflows count as per push.
+$pushVerdicts = [ordered]@{ 'specrew-ci.yml' = $true; 'cross-platform-validation.yml' = $true; 'publish-module.yml' = $false; 'specrew-nightly-truth-check.yml' = $false; 'specrew-confidence-lane.yml' = $false; 'specrew-project-sync.yml' = $false }
+$wrongPush = @($pushVerdicts.Keys | Where-Object { (Test-WorkflowRunsPerPush -Path (Join-Path $repoRoot ('.github/workflows/' + $_))) -ne $pushVerdicts[$_] })
+Assert-True ($wrongPush.Count -eq 0) ("per push means a push trigger with no tags-only and no paths filter (wrong: {0})" -f ($wrongPush -join ', '))
 $notInRelease = @($releaseOnly | Where-Object { -not $names.LaneNamed.Contains($_) -or $names.CiNamed.Contains($_) })
 Assert-True ($notInRelease.Count -eq 0) ("the slow scripts are in the release manifest, not a per-push CI step (wrong: {0})" -f ($notInRelease -join ', '))
 

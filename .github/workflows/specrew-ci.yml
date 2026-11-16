@@ -249,15 +249,6 @@ jobs:
         shell: pwsh
         run: ./tests/integration/bootstrap-to-iteration.ps1
 
-      - name: Integration - bootstrap asset blocker recovery
-        if: runner.os != 'Linux'
-        shell: pwsh
-        # .cmd shim scripts (bootstrap-asset-blocker-recovery.ps1 invokes .cmd-based tooling)
-        # are not portable to Linux; native sh/bash equivalents not yet available.
-        # Real fix (multi-platform bootstrap shimming) is queued for post-F-024 work.
-        # See: bootstrap-asset-blocker-recovery.ps1 for context.
-        run: ./tests/integration/bootstrap-asset-blocker-recovery.ps1
-
       - name: Integration - brownfield conflict handling
         shell: pwsh
         run: ./tests/integration/brownfield-conflict-handling.ps1
@@ -287,15 +278,6 @@ jobs:
           }
           if ($failed.Count -gt 0) { Write-Host "FAILED bootstrap suites: $($failed -join ', ')"; exit 1 }
           Write-Host "Bootstrap suite: all green"
-
-      - name: Integration - validate versions cli behavior
-        if: runner.os != 'Linux'
-        shell: pwsh
-        # .cmd shim scripts (validate-versions-cli-behavior.ps1 invokes .cmd-based tooling)
-        # are not portable to Linux; native sh/bash equivalents not yet available.
-        # Real fix (multi-platform bootstrap shimming) is queued for post-F-024 work.
-        # See: validate-versions-cli-behavior.ps1 for context.
-        run: ./tests/integration/validate-versions-cli-behavior.ps1
 
       - name: Integration - drift scenario
         shell: pwsh
@@ -439,6 +421,30 @@ jobs:
         shell: pwsh
         timeout-minutes: 8
         run: pwsh -NoProfile -NonInteractive -File ./tests/integration/distribution-module-publish.ps1
+
+  windows-shim-suites:
+    name: Windows .cmd-shim suites (windows-latest)
+    # Feature 206, iteration 002 review round 2, finding 2 (maintainer 2026-11-16 20:56, "OK for both"): these two suites
+    # drive specrew-init and the specrew CLI through .cmd shims, which only Windows runs. They sat in the ubuntu-latest
+    # deterministic gate under if: runner.os != 'Linux', so they never ran (bootstrap-asset-blocker-recovery since
+    # 2026-05-20). They run here on every push. The local review lanes do not run them: bootstrap-asset-blocker-recovery
+    # runs specrew-init, which writes the real home's hook files on a developer machine, and the runner's home is
+    # disposable. This job maps no secret, needs no other job and is not continue-on-error.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Integration - bootstrap asset blocker recovery
+        shell: pwsh
+        timeout-minutes: 6
+        run: pwsh -NoProfile -NonInteractive -File ./tests/integration/bootstrap-asset-blocker-recovery.ps1
+
+      - name: Integration - validate versions cli behavior
+        shell: pwsh
+        timeout-minutes: 6
+        run: pwsh -NoProfile -NonInteractive -File ./tests/integration/validate-versions-cli-behavior.ps1
 
   contract-lane:
     name: Contract lane
