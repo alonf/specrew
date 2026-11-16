@@ -100,7 +100,9 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
             if ($script:readyReceiptReads -eq 1) { return '{' }
             return '{"schema_version":"1.0","mode":"process-group","pid":42}'
         }
-        $ready = Wait-ReviewPosixReadyFile -Path $path -ExpectedMode process-group -TimeoutMilliseconds 100 -ReadText $transientRead -Sleep { param($Milliseconds) }
+        # The reader and the sleep are injected, so only the wall clock could fail this case; a 100 ms budget did,
+        # under a loaded sweep (aa06b3e5b). The production budget is 15,000 ms; the case checks retries, not speed.
+        $ready = Wait-ReviewPosixReadyFile -Path $path -ExpectedMode process-group -TimeoutMilliseconds 30000 -ReadText $transientRead -Sleep { param($Milliseconds) }
         $ready.pid | Should -Be 42
         $script:readyReceiptReads | Should -Be 2
 
@@ -110,7 +112,7 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
             $null = $script:mismatchedReadyReceiptReads++
             return '{"schema_version":"1.0","mode":"linux-cgroup","pid":42}'
         }
-        Wait-ReviewPosixReadyFile -Path $path -ExpectedMode process-group -TimeoutMilliseconds 100 -ReadText $mismatchRead -Sleep { param($Milliseconds) } | Should -BeNullOrEmpty
+        Wait-ReviewPosixReadyFile -Path $path -ExpectedMode process-group -TimeoutMilliseconds 30000 -ReadText $mismatchRead -Sleep { param($Milliseconds) } | Should -BeNullOrEmpty
         $script:mismatchedReadyReceiptReads | Should -Be 1
     }
 
