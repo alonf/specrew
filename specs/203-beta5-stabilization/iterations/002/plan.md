@@ -92,7 +92,11 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
   `extensions/specrew-speckit/scripts/shared-governance.ps1` (206 added `Set-SpecrewPlanCompletedDate` and changed
   `Sync-SpecrewCrossingMirrors`, `Add-SpecrewBoundaryAuthorization`, `Test-HardeningConcernBlocksImplementation` and
   the seal journal); T023 with `validate-governance.ps1`; and the `.specify` hash record, regenerated, never merged by
-  hand. Each is expected to be textual, not semantic; the full sweep after the merge is the check.
+  hand. Also 206's Linux drive-path fix (`b616ce23`, `1cb31e60`, `7f85bded`, reported 2026-11-16, not yet on its
+  branch's remote when noted): `Get-SpecrewPathRootKind` (new), `Test-SpecrewPathInsideProject` and
+  `ConvertTo-SpecrewIdentityFeaturePath` in the sync, `Get-SpecrewIdentitySessionState` in `session-recovery.ps1`,
+  `Resolve-FeatureDirectory` and two resume branches in `specrew-start.ps1`; no task of this iteration touches them.
+  Each is expected to be textual, not semantic; the full sweep after the merge is the check.
 - **Recommendation:** serial, in the order the maintainer accepted (design-analysis.md, Key Design Decision Point 4):
   1. T015, T016, T017 (the three flaky tests first in the batch), then T018 and T019.
   2. T020 and T021, the open round E findings.

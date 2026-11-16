@@ -220,3 +220,20 @@ The following resolution strategies remain available if drift is detected later 
   T030, merge main into 203 before the campaign, 1.5 SP (judgment), conditional on 206 being on main, with the
   fallback after closeout; rows 20.0 of 20, a stated 22.0 with the buffer; B5F-080 stays out.
 - **Class closure**: NONE — a scope decision; the rule itself is fixed once, by 206.
+
+### DRIFT-012 — The plan crossing's bookkeeping was committed before the verdict; the capture accepted it
+
+- **What happened**: after the plan sync (crossing `crossing-9070951c`, boundary commit `af9df07d`, 2026-11-16T11:31Z),
+  the crew committed and pushed the sync's `.squad` bookkeeping as `bc9a6249` before showing the packet, to keep the
+  rule of no commit between an approval and its step. Under the pin, iteration 001's later boundaries had committed
+  their bookkeeping after the verdict, so this order was untried on `da78b600`; the packet said so.
+- **Why it holds**: the pin's crossing check (`extensions/specrew-speckit/scripts/shared-governance.ps1:2779-2783`
+  in the pinned copy) resolves the artifact state from the crossing's own boundary commit, not from HEAD. The
+  maintainer's typed `approved for plan` was captured at 12:03:12Z (14:03 local), `auth_commit_hash` `bc9a6249`,
+  `hook-captured-from-transcript`. An earlier `approved for plan`, typed before the packet was shown, was correctly
+  not recorded ("no record of showing you that decision's packet").
+- **From now on**: a boundary sync's bookkeeping is committed after the verdict, as 205 does (the reviewer session's
+  agreement).
+- **Also recorded with this entry**: B5F-086 (the sync's "expected feature-closeout" warning on every next
+  iteration's plan; candidate for 206's list); T030's expected conflicts gain 206's Linux drive-path fix.
+- **Class closure**: NONE — a record of order; nothing failed.
