@@ -249,3 +249,11 @@ that already exist. Not inside Feature 203.
   - The workshop chose **order option A**: one pass, problem-first. product-domain and requirements-nfr come first,
     then the lenses with questions in both spaces, then the solution-space lenses, with the problem section asked
     first inside every lens.
+- 2026-11-16: the iteration plan changed, and the order after this feature was agreed.
+  - Iteration 3 is now the code-implementation lens refresh (dated per-stack lines, stale after 90 days, versions
+    confirmed at the point of choice) and the grouped agenda (problem space, both spaces, solution space, each with a
+    text label and one coloured marker). It did not wait for feature 203 (the maintainer's ruling at the iteration 2
+    design decision, 2026-11-13).
+  - Iteration 4, after feature 203 merges: the two-pass split (FR-002/FR-003), the back-check, amendments and sweeps.
+  - The order after this feature: proposal 177 as its own feature (implementer side first, reviewer side after 203
+    merges), then the testing lens (proposals 178 and 195 merged), and no new solution-side lens before 177.
