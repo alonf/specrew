@@ -227,10 +227,31 @@ Describe 'The identity file records the feature path relative to the project (it
         ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $root -FeaturePath '' | Should -Be '(none)'
     }
 
-    It 'the boundary sync writes the identity file through that conversion' {
-        $identityWrite = [regex]::Match($script:SyncSource, '(?m)^.*Update-SpecrewMarkdownStateFile -Path \$paths\.IdentityPath.*$').Value
-        $identityWrite | Should -Not -BeNullOrEmpty
-        $identityWrite | Should -Match '-SessionState \$identitySessionState'
-        $script:SyncSource | Should -Match 'ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot \$paths\.ProjectRoot'
+    It 'a real boundary sync writes the identity file''s feature path relative (round 1, F7)' {
+        # Round 1 F7: this case read sync-boundary-state.ps1 as text, so a comment or a dead line could keep it green while
+        # the identity file was written with the absolute path again. It now runs the boundary sync itself, through the
+        # extension's wrapper, on a temp project, and reads the identity file the sync wrote.
+        $root = New-TempFolder -Name 'f7-sync'
+        & git -C $root init --quiet --initial-branch=main
+        & git -C $root config user.email 'resume-inside-fixture@example.invalid'
+        & git -C $root config user.name 'Resume Inside Fixture'
+        Set-FixtureFile -Root $root -RelativePath '.specrew/config.yml' -Content "project_name: sample`nspecrew_version: `"0.0.0`"`nbootstrap_date: `"2026-01-01`"`n"
+        Set-FixtureFile -Root $root -RelativePath '.specify/feature.json' -Content "{`n  `"feature_directory`": `"specs/022-identity-relative`"`n}"
+        Set-FixtureFile -Root $root -RelativePath '.squad/team.md' -Content "# Team`n"
+        Set-FixtureFile -Root $root -RelativePath '.squad/config.json' -Content "{}`n"
+        Set-FixtureFile -Root $root -RelativePath '.squad/decisions.md' -Content "# Decisions`n"
+        Set-FixtureFile -Root $root -RelativePath '.github/agents/squad.agent.md' -Content "# Squad Agent`n"
+        Set-FixtureFile -Root $root -RelativePath 'specs/022-identity-relative/spec.md' -Content "# Spec`n"
+        $null = New-Item -ItemType Directory -Path (Join-Path $root 'specs\022-identity-relative\iterations\001') -Force
+        Set-FixtureFile -Root $root -RelativePath 'README.md' -Content "# Test Repo`n"
+        Save-FixtureCommit -Root $root -Message 'seed'
+        & git -C $root checkout --quiet -b 022-identity-relative
+
+        $syncScript = Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
+        $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $syncScript -ProjectPath $root -BoundaryType specify -FeatureRef 022-identity-relative -IterationNumber 001 2>&1)
+        $LASTEXITCODE | Should -Be 0 -Because ($output -join "`n")
+        $identity = Get-Content -LiteralPath (Join-Path $root '.squad\identity\now.md') -Raw
+        $identity | Should -Match '(?m)^session_state_feature_path:\s*specs/022-identity-relative\s*$'
+        $identity | Should -Not -Match ([regex]::Escape($root))
     }
 }
