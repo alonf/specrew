@@ -94,11 +94,16 @@ function Remove-SpecrewManagedInstructionBlocks {
     param([AllowNull()][AllowEmptyString()][string]$Content)
 
     $text = if ($null -eq $Content) { '' } else { $Content }
-    $markerPattern = '<!-- (?<dir>>>>|<<<) specrew-managed (?<name>[^\s<>]+) (?:>>>|<<<) -->'
+    $markerPattern = '<!-- (?<dir>>>>|<<<) specrew-managed (?<name>[^\s<>]+) (?<tail>>>>|<<<) -->'
     $spans = New-Object System.Collections.Generic.List[object]
     $openName = $null
     $openStart = -1
     foreach ($match in [regex]::Matches($text, $markerPattern)) {
+        # F-206 T032 (item 33): a marker's trailing arrows must point the same way as its leading ones, as Specrew
+        # writes them; a mixed marker is not Specrew's, so the whole file is compared.
+        if ($match.Groups['dir'].Value -cne $match.Groups['tail'].Value) {
+            return [pscustomobject]@{ Content = $text; Balanced = $false; Stripped = $false }
+        }
         $name = $match.Groups['name'].Value
         if ($match.Groups['dir'].Value -eq '>>>') {
             if ($null -ne $openName) {
