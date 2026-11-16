@@ -41,8 +41,9 @@ function Test-SquadInitSupportsNonInteractive {
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
     try {
         try {
-            # B4F-122: the probe folder sits inside the install root, which may itself be inside a repository; fence Git
-            # discovery at the install root so the probe's squad.agent.md lands in the probe folder and is removed with it.
+            # B4F-122: the probe folder sits under the probe root (the temp folder unless a caller names another, F-206
+            # T025), which may itself be inside a repository; fence Git discovery at the probe root so the probe's
+            # squad.agent.md lands in the probe folder and is removed with it.
             $probeResult = Invoke-NativeCommandWithClosedInput -FilePath $SquadCommand -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory -TimeoutSeconds $TimeoutSeconds -GitCeilingDirectory $ProbeRoot
         }
         catch [System.TimeoutException] {
