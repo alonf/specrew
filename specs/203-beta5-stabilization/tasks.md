@@ -1,4 +1,4 @@
-# Tasks: beta5 stabilization (iteration 001)
+# Tasks: beta5 stabilization (iterations 001 and 002)
 
 **Feature**: 203-beta5-stabilization
 **Plan**: file:///C:/Dev/specrew-b4f-142/specs/203-beta5-stabilization/plan.md
@@ -7,8 +7,9 @@
 by the maintainer's plan verdict. Review is governed by the review budget, not SP.
 
 Iteration 001 is T001 to T008 and T011 to T014. T009 (scoped rounds, FR-013) and T010 (token usage, FR-012) moved
-to iteration 002 at the plan verdict and keep their feature-global IDs; they are listed at the end and are not
-worked in iteration 001. Tasks mirror the plan's work items: W0 is T001, W1 is T002, then in order.
+to iteration 002 at the plan verdict, and then to the follow-up feature (decision `f203-i002-merge-then-follow-up`,
+2026-11-16); they keep their feature-global IDs and are listed at the end. Iteration 002 is T015 to T030 (its own
+section below). Tasks mirror the plan's work items: W0 is T001, W1 is T002, then in order.
 
 **Every task lands RED-first:** its fixture first reproduces the defect through the shipped entry point (the real
 dispatcher with a deployed binding, or the real script), and only then does the fix turn it green. On every
@@ -586,7 +587,227 @@ then T014.
   - **Depends:** the review sign-off.
   - **Owns:** `specs/203-beta5-stabilization/iterations/001/**`, `.specify/extensions/specrew-speckit/**`.
 
-## Moved to iteration 002 (plan verdict, 2026-10-31)
+## Iteration 002: the stabilization batch (plan verdict, 2026-11-16)
+
+Iteration 002 is T015 to T030 (plan: file:///C:/Dev/specrew-b4f-142/specs/203-beta5-stabilization/iterations/002/plan.md).
+Task rows total 20.0 of 20 SP; the 2.0 SP review buffer is stated in the plan's text, a stated total of 22.0 SP (the
+maintainer's "option 1 it is", 2026-11-16 11:49 local). 203 closes after this iteration and merges; US4 to US7,
+FR-012, FR-013 and FR-044 moved to a follow-up feature (decision `f203-i002-merge-then-follow-up`).
+
+The iteration 001 rules hold: every fix lands as a test commit with its red count, then the fix, one bug per fix
+commit, through the shipped entry point. One change: the hooks and review rounds now run from the pin
+(`da78b600`), so the `.specify` mirror in this tree no longer reaches the live hooks; a commit that changes a file
+under `extensions/specrew-speckit/` updates its `.specify` copy and the `.specrew-extension-runtime.json` hash record
+in the same commit. The tree-run gates (the boundary syncs, the governance check) go live on commit
+(design-analysis.md, "When each fix becomes live").
+
+### Execution order (iteration 002)
+
+T015, T016, T017, T018, T019; then T020, T021; then T022, T023 (i), T024; then T025; T026 before any lane limit
+changes; then T030 (main merged in, if feature 206 is on main) and T023 (ii); then the review campaign, with T027 at
+its first stop; then the full sweep and the maintainer's `advance the pin`; then T028; then sign-off. T029 is done
+with the plan.
+
+- T015 to T017 come first: each ends a rerun exception for all three crews when its fix reaches main.
+- T020 and T021 share `HumanAuthorityStore.ps1`; T022, T023 and T024 share the sign-off gate and run serially.
+- T025 goes last among the builds: its push needs the full sweep and carries T006's launcher half.
+- T030 needs the reviewer session's confirmation, with the maintainer, of what is on main and whether 205 is taken.
+
+### Phase 8: CI stability (first in the batch)
+
+- [ ] T015 [owner: Implementer] [sp: 1.5] [US1] **Site 13 and the deterministic suites' time limits.**
+  - **Work:** (1) `co-review-service.ps1:216` stops a supervisor whose lease handoff failed with `Stop-Process -Force`
+    and does not wait, so `co-review-service.Tests.ps1:127-129` can see the process still alive (B5F-051 site 13;
+    DRIFT-004). The stop waits for the exit, bounded, and reports a process that does not exit. (2) The Cross-Platform
+    step "Run bounded deterministic review fault and conformance suites" runs each suite under a wall-clock limit that
+    names the suite and stops its process tree, and the step gets a `timeout-minutes` below the job's 25, so a hang
+    fails the step and keeps its log (DRIFT-005; 206's DRIFT-206-I002-012).
+  - **RED:** (1) a case that reads the supervisor's exit at the moment the handoff-failure path returns, repeated
+    enough to show the race on this machine, red count recorded; (2) a runner test with a fixture suite that sleeps
+    past a short limit: today nothing names it.
+  - **Acceptance:** the site 13 case passes 50 runs in a row locally; the runner names a hung suite, stops its process
+    tree and fails; the step's limit is below the job's.
+  - **Trace:** Gap Ledger (B5F-051 site 13); DRIFT-004, DRIFT-005.
+  - **Depends:** none.
+  - **Owns:** `scripts/internal/continuous-co-review/co-review-service.ps1`,
+    `tests/continuous-co-review/unit/co-review-service.Tests.ps1`, `.github/workflows/cross-platform-validation.yml`,
+    a runner script and its test under `tests/continuous-co-review/`.
+- [ ] T016 [owner: Implementer] [sp: 1.0] [US3] **HookRenderDedupe timing cases.**
+  - **Work:** cases I3a and I4b in `tests/bootstrap/HookRenderDedupe.Tests.ps1` depend on wall-clock time and failed
+    on records-only pushes (the maintainer's rerun rule, 2026-11-16 02:56). Find what each case times, and make the
+    case control its clock or measure the behaviour without one; fix the product if the product is at fault.
+  - **RED:** the two cases run with the delay that made them fail in CI, red count recorded.
+  - **Acceptance:** both cases pass with that delay and 50 runs in a row; the rerun rule for HookRenderDedupe ends
+    when this reaches main.
+  - **Trace:** the maintainer's rerun rule (2026-11-16 02:56).
+  - **Depends:** none.
+  - **Owns:** `tests/bootstrap/HookRenderDedupe.Tests.ps1`, `scripts/internal/bootstrap/**` if the product is at fault.
+- [ ] T017 [owner: Implementer] [sp: 0.5] [US1] **`empty-result-retry.Tests.ps1`.**
+  - **Work:** the suite has been on the rerun exception since 2026-11-15 11:31. Find its timing dependence and remove
+    it.
+  - **RED:** the failing case under the condition that made it fail, red count recorded.
+  - **Acceptance:** 50 runs in a row; the exception ends when this reaches main.
+  - **Trace:** the rerun exception (2026-11-15 11:31).
+  - **Depends:** none.
+  - **Owns:** `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`,
+    `scripts/internal/continuous-co-review/**` if the product is at fault.
+- [ ] T018 [owner: Implementer] [sp: 0.5] [US1] **F5: a second top-up grants no extra window.**
+  - **Work:** the control iteration 001 closed without a test (the retry-idempotency hardening row, the maintainer's
+    "retry row yes", 2026-11-16 02:13; DRIFT-094).
+  - **RED:** a fixture through the shipped top-up path: two top-ups with no round between them; a mutation that
+    lets the second grant a window turns it red.
+  - **Acceptance:** the second top-up grants nothing and says so; the first still grants one window.
+  - **Trace:** FR-007, FR-043.
+  - **Depends:** none.
+  - **Owns:** `tests/continuous-co-review/unit/**` (a new case or suite).
+- [ ] T019 [owner: Implementer] [sp: 0.25] [US2] **B5F-077: the tracked link into another machine's home folder.**
+  - **Work:** remove `.antigravitycli/f95594b5-b180-4b4d-b9e9-93dd0b5890b8.json` from the index (the maintainer's
+    "remove the link") and keep it from coming back.
+  - **Acceptance:** the link is gone from the tree; a fresh file listing of the repository no longer aborts on it.
+  - **Trace:** Gap Ledger (B5F-077).
+  - **Depends:** none.
+  - **Owns:** `.antigravitycli/**`, `.gitignore`.
+
+### Phase 9: round E's open findings
+
+- [ ] T020 [owner: Implementer] [sp: 1.5] [US2] **F1: the exact turn identity before the message-ID fallback.**
+  - **Work:** round E `finding-cf1fe81e0398f883`: an approval with more than 2 MiB after it can be refused when a
+    later record shares its prompt ID. Look for the exact identity across every window first; a compaction summary
+    under the same prompt ID is never the cited turn (its real shape, DRIFT-083).
+  - **RED:** a fixture transcript with the approval, a compaction summary sharing its prompt ID, and more than 2 MiB
+    after it: refused today.
+  - **Acceptance:** the approval is found and recorded once; a compaction summary under the same ID is still never
+    taken as the cited turn; every existing refusal stays.
+  - **Trace:** FR-019, FR-022.
+  - **Depends:** none.
+  - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`,
+    `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`, `tests/unit/**` (`authorization-sender`,
+    `typed-act-writer`).
+- [ ] T021 [owner: Implementer] [sp: 1.0] [US3] **F2: a lost review-stop answer is reported.**
+  - **Work:** round E `finding-a537d3f72672e5f5`: a review-stop answer lost on the turn-end recovery path gets no
+    report. The recovery path reports it in the same turn with its reason (DRIFT-084).
+  - **RED:** a stop-answer case in `typed-act-writer` case 9b: today it records nothing and says nothing.
+  - **Acceptance:** the answer is reported in the same turn through the visible line; nothing is recorded that the
+    human did not give.
+  - **Trace:** FR-026, FR-027.
+  - **Depends:** T020 (same store).
+  - **Owns:** `scripts/internal/bootstrap/HumanAuthorityStore.ps1`, `scripts/internal/bootstrap/HandoverStore.ps1`,
+    `extensions/specrew-speckit/scripts/specrew-*-provider.ps1` and their twins, `tests/unit/**`.
+
+### Phase 10: the sign-off gate and the phase lines
+
+- [ ] T022 [owner: Implementer] [sp: 4.0] [US1] **F4: the ordinary review end takes one approval.**
+  - **Work:** one design (DRIFT-078, DRIFT-091, B5F-071; the decision entry `f203-i001-gap-ledger-deferrals`, part 3):
+    a human-accepted disposition for the reviewed digest covers a records-only difference after it; a finding is
+    resolved by the run that reviews its fix, or by the human's stop for the open ones; the sign-off packet states the
+    coverage (fixed findings and their failing-first tests, open findings and where they go, records and code changed
+    since the last round, apart); a separate typed override with a reason stays for product code no reviewer read and
+    no test covers.
+  - **RED:** in `signoff-gate-wiring.Tests.ps1` and the sync's gate suites: a stop for digest D then a records-only
+    commit is refused today (DRIFT-078); an ordinary review end needs two approvals today (DRIFT-091); a fixed finding
+    stays open today (B5F-071).
+  - **Acceptance:** each RED case passes; unreviewed, untested product code is still refused without the typed
+    override.
+  - **Trace:** FR-005, FR-006, FR-011.
+  - **Depends:** none (the stop side reaches the hooks at the pin advance).
+  - **Owns:** `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1`,
+    `scripts/internal/continuous-co-review/*.ps1`, `scripts/internal/sync-boundary-state.ps1`, their `.specify`
+    copies and the hash record, `tests/continuous-co-review/unit/**`, `tests/unit/**`.
+- [ ] T023 [owner: Implementer] [sp: 0.75] [US1] **Phase lines: B5F-083, and the sync and check together.**
+  - **Work:** (i) B5F-083: an iteration folder with no `plan.md` is accepted, with a warning, while its plan crossing
+    is the next one pending, read through the same enforcement-state reader as feature 206's T034 (`3a3ba803`); 0.5
+    SP. (ii) After main is merged in (T030): a test of the sync and the governance check together over the sign-off
+    and retro sequences; 0.25 SP. The rule for `review.md` and `retro.md` beside the earlier phase lines (B5F-050,
+    B5F-059) is 206's T034, the one design; 203 builds no second one.
+  - **RED:** (i) the governance check on a scaffolded iteration folder with no `plan.md` and the plan crossing
+    pending: "Missing required artifact: plan.md" today. (ii) `review.md` with `executing` and last boundary
+    before-implement passes the check, the sync accepts it, and afterwards the check requires `reviewing`; the same
+    for `retro.md` with `reviewing`.
+  - **Acceptance:** (i) passes, and the folder still fails once the plan crossing is behind; (ii) passes on the
+    merged tree.
+  - **Trace:** Gap Ledger (B5F-050, B5F-059, B5F-083).
+  - **Depends:** (ii) on T030.
+  - **Owns:** `extensions/specrew-speckit/scripts/validate-governance.ps1`, its `.specify` copy and the hash record,
+    `tests/unit/**`, `tests/integration/**`.
+- [ ] T024 [owner: Implementer] [sp: 0.5] [US1] **B5F-075: the sign-off coverage line.**
+  - **Work:** the coverage line counts a records change as a source file and states a round budget nobody set; it
+    counts records apart and states only the budget the plan set.
+  - **RED:** a records-only change counted as "source file(s) changed" today.
+  - **Acceptance:** records and code are counted apart; no budget is stated that the plan did not set.
+  - **Trace:** FR-011.
+  - **Depends:** T022.
+  - **Owns:** `scripts/internal/continuous-co-review/*.ps1`, `tests/continuous-co-review/unit/**`.
+
+### Phase 11: the hook cost
+
+- [ ] T025 [owner: Implementer] [sp: 5.0] [US3] **F3: the hook cost.**
+  - **Work:** about 19 s of hooks per turn (DRIFT-073): each hook run takes one git snapshot and one transcript tail
+    read and hands them to the providers; the stores load once. T006's launcher half (the plain-text launcher
+    refusals, DRIFT-046) travels in the same push and sweep; the crew asks the maintainer before running the deployer.
+  - **RED:** a Stop run through the dispatcher with a git shim that counts invocations (24 today) and a reader count
+    (five transcript reads today); each change behind its own red count.
+  - **Measure:** DRIFT-073's method: the Stop and prompt hooks through the deployed launcher on a scratch copy, the
+    same payload, a typed prompt appended to a copy of a real 53 MB transcript, ten turns per engine, median and worst;
+    before (re-measured on the tree T025 starts from; 14.1 s Stop and 4.8 s prompt medians on `5cb83329`) and after.
+  - **Acceptance:** one snapshot and one tail read per hook run, every hook check still runs; the numbers reported.
+    If the medians do not fall, T025 is not done on the crew's say and goes to the maintainer with the numbers. No
+    numeric target is set.
+  - **Trace:** Gap Ledger (DRIFT-073); FR-027 (the launcher half).
+  - **Depends:** T020, T021 (same providers).
+  - **Owns:** `extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`,
+    `extensions/specrew-speckit/scripts/specrew-*-provider.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`,
+    `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `scripts/internal/specrew-*.ps1`,
+    `scripts/internal/bootstrap/*.ps1`, `scripts/internal/deploy-refocus-hooks.ps1`, their `.specify` copies and the
+    hash record, `tests/unit/**`, `tests/integration/**`.
+
+### Phase 12: measurement, merge, checks
+
+- [ ] T026 [owner: Implementer] [sp: 0.5] [US1] **The t008 lane's time.**
+  - **Work:** `f203-i001-t008-suites` ran 838 of 900 s on `da78b600` (DRIFT-087). Time it against round D finding 1's
+    whole-transcript read before any limit moves (the maintainer's "measure first").
+  - **Acceptance:** the measurement recorded in the drift log with the suspect named or ruled out; any limit change
+    goes to the maintainer.
+  - **Trace:** Gap Ledger (DRIFT-087).
+  - **Depends:** none.
+  - **Owns:** `specs/203-beta5-stabilization/iterations/002/**`.
+- [ ] T030 [owner: Implementer] [sp: 1.5] [US1] **Merge main into 203 before the review campaign.**
+  - **Work:** after T015 to T026, if feature 206 is on main: merge main into 203 (a merge, not a rebase), resolve the
+    conflicts (the expected ones are listed in the plan's Concurrency Rationale), regenerate the `.specify` hash
+    record, run the full sweep with the home hook files hashed before and after. Before merging, the crew tells the
+    reviewer session, which confirms with the maintainer what is on main and whether 205 is taken. Fallback, if 206 is
+    not on main: the merge moves after closeout and the crew asks the maintainer for the red-push allowance then. 1.5
+    SP is the crew's judgment (1.0 to 2.0).
+  - **Acceptance:** the merged tree passes the full sweep; CI green on the merge push; T023 (ii) passes.
+  - **Trace:** the maintainer's decision, 2026-11-16 12:22 (`f203-i002-merge-main-before-review`).
+  - **Depends:** T015 to T026; feature 206 on main.
+  - **Owns:** the whole tree for the merge.
+- [ ] T027 [owner: Implementer] [sp: 0.25] [US2] **F6: the live `stop the review here`.**
+  - **Work:** at the first stop of this iteration's review campaign, on the pin at `da78b600` (the engine advanced at
+    T014), the maintainer answers `stop the review here` if that is their answer; the crew reads the disposition's
+    `authorization_ref` (owed from T014, iteration 001 DRIFT-092 departure B). If the campaign ends with no stop, T027
+    is recorded as not exercised live and the maintainer chooses a rehearsal or the follow-up feature; no stop is
+    provoked.
+  - **Acceptance:** the disposition cites the typed turn; recorded in the drift log.
+  - **Trace:** FR-045, FR-011.
+  - **Depends:** T030 (the campaign starts after it).
+  - **Owns:** `specs/203-beta5-stabilization/iterations/002/**`.
+- [ ] T028 [owner: Implementer] [sp: 1.0] [US2] **Copilot and Codex capture walk before the merge.**
+  - **Work:** after the pin advance, on Copilot CLI and Codex CLI, in scratch copies of this project the crew prepares
+    (never this checkout): a verdict at a waiting stop, the same phrase quoted mid-sentence, the same phrase inside
+    pasted content, a compaction, the verdict typed again. The maintainer types, about 15 minutes per host (judgment);
+    the crew prepares the projects, the paste block and a reader script, and writes the records.
+  - **Acceptance:** on each host the verdict records once and the quoted and pasted phrases record nothing and are
+    reported; a defect found gets a test and a fix and a round on the advanced pin.
+  - **Trace:** FR-042, FR-045.
+  - **Depends:** the pin advance.
+  - **Owns:** `specs/203-beta5-stabilization/iterations/002/**`.
+- [X] T029 [owner: Spec Steward] [sp: 0.25] [US1] **Spec amendment.**
+  - **Work:** US4 to US7, FR-012, FR-013 and FR-044 marked moved to the follow-up feature; the Scope paragraph, the
+    traceability table and the capacity model amended. Done with the plan (`8970a0e7`); the governance check accepts
+    the moved requirements with no code change (DRIFT-007).
+  - **Trace:** TG-003.
+
+## Moved to the follow-up feature (moved to iteration 002 at the plan verdict, 2026-10-31; then out, 2026-11-16)
 
 - [ ] T009 [owner: Implementer] [sp: 2.0] [US1] **Scoped late-fix round (DA-7).** **Maintainer input (2026-11-05;
   DRIFT-032): back into iteration 001 if possible, after T008**, because an unscoped verification round keeps finding
@@ -628,3 +849,26 @@ then T014.
 | FR-043 | T008, T013 |
 | FR-045 | T014 |
 | FR-046 | T011 |
+
+### Iteration 002
+
+| Requirement or placement | Tasks |
+| --- | --- |
+| FR-005, FR-006 | T022 |
+| FR-007 | T018 |
+| FR-011 | T022, T024, T027 |
+| FR-019, FR-022 | T020 |
+| FR-026 | T021 |
+| FR-027 | T021, T025 (the launcher half) |
+| FR-042 | T028 |
+| FR-043 | T018 |
+| FR-045 | T027, T028 |
+| TG-003 | T029 |
+| Gap Ledger and rulings (no requirement of their own) | T015, T016, T017, T019, T023, T025, T026, T030 |
+
+**Check, both directions (2026-11-16):** every iteration 002 task names a requirement or the maintainer's placement
+of its item (decisions `f203-i001-gap-ledger-deferrals`, `f203-i002-merge-then-follow-up`, `f203-i002-scope-option-1`,
+`f203-i002-merge-main-before-review`, and the rerun rules); every requirement in the plan's scope (FR-005, FR-006,
+FR-007, FR-011, FR-019, FR-022, FR-026, FR-027, FR-042, FR-043, FR-045, TG-003) has at least one task. No orphan
+task, no uncovered requirement. Every task has an owner, an effort and a story. The moved requirements (FR-012,
+FR-013, FR-028 to FR-040, FR-044) are out of this feature's scope by the amendment, not gaps.
