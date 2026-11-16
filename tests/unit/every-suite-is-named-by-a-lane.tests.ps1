@@ -387,6 +387,16 @@ function New-CensusFixture {
                 # T031 (bug list item 32): a statement delimiter starts a new command, so a '#' after it is a comment.
                 '      - run: Write-Host done;# tests/integration/only-after-a-semicolon.ps1'
                 '      - run: pwsh -File tests/integration/ci-after-new-cases.ps1'
+                # Iteration 002 review round 2, finding 2: a step or a job with an if: may never run (two suites in
+                # specrew-ci.yml carry if: runner.os != 'Linux' inside an ubuntu-latest job), so its run: names nothing.
+                '      - name: A step that runs only off Linux'
+                "        if: runner.os != 'Linux'"
+                '        run: pwsh -File tests/integration/only-under-a-step-if.ps1'
+                '  u:'
+                '    if: false'
+                '    runs-on: ubuntu-latest'
+                '    steps:'
+                '      - run: pwsh -File tests/integration/only-under-a-job-if.ps1'
             ) -join "`n") + "`n")
     foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1', 'tests/integration/ci-block-named.ps1',
             'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/ci-after-new-cases.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
@@ -408,7 +418,8 @@ try {
             'tests/integration/only-in-a-step-name.ps1', 'tests/integration/only-in-a-block-comment.ps1', 'tests/integration/only-in-a-paths-filter.ps1',
             'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1',
             'tests/integration/only-in-a-multiline-block-comment.ps1', 'tests/integration/only-in-a-block-scalar.ps1',
-            'tests/integration/only-in-an-input-named-steps.ps1', 'tests/integration/only-after-a-semicolon.ps1')) {
+            'tests/integration/only-in-an-input-named-steps.ps1', 'tests/integration/only-after-a-semicolon.ps1',
+            'tests/integration/only-under-a-step-if.ps1', 'tests/integration/only-under-a-job-if.ps1')) {
         $probePath = Join-Path $fixture $probe
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
         [IO.File]::WriteAllText($probePath, "exit 0`n")
