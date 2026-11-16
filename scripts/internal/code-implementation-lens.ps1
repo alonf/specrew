@@ -367,6 +367,60 @@ function Merge-SpecrewCodeRuleCatalog {
     return @{ merged = $merged.ToArray(); dropped = @($dropped); added = $added.ToArray() }
 }
 
+# Feature 205 (FR-030): the per-stack "last checked" lines. Each per-stack rule in code-rules.yml carries
+# sources_checked (the date its official sources were read) and current (the version facts those sources gave).
+# The lens shows one line per stack when the stack is resolved; a line older than the freshness window is marked
+# stale. Read-only and pure: it reads the catalog file it is given and takes today's date as a parameter.
+$script:SpecrewCodeStackLabels = [ordered]@{
+    'language:csharp-dotnet'          = 'C#/.NET'
+    'language:c-cpp'                  = 'C/C++'
+    'language:typescript-javascript'  = 'TypeScript/JavaScript'
+    'language:python'                 = 'Python'
+    'language:go'                     = 'Go'
+    'language:java'                   = 'Java'
+}
+$script:SpecrewCodeStackFreshDays = 90
+$script:SpecrewCodeStackDash = [string][char]0x2014
+$script:SpecrewCodeStackStaleText = 'stale: check the release notes before relying on it'
+
+function Get-SpecrewCodeStackFreshnessLines {
+    # One line per per-stack rule, in catalog order: "<stack> - sources last checked <date>: <current>", ending
+    # " - stale: check the release notes before relying on it" when more than 90 days have passed since the date (or
+    # when the rule has no valid date). Graceful: a missing catalog returns @().
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$CatalogPath,
+        [datetime]$Today = (Get-Date).Date
+    )
+    if (-not (Test-Path -LiteralPath $CatalogPath -PathType Leaf)) { return @() }
+    $dash = $script:SpecrewCodeStackDash
+    $stale = ' {0} {1}' -f $dash, $script:SpecrewCodeStackStaleText
+    $rules = [System.Collections.Generic.List[hashtable]]::new()
+    $rule = $null
+    foreach ($line in (Get-Content -LiteralPath $CatalogPath -Encoding UTF8)) {
+        if ($line -match '^\s*-\s+id:\s*(?<v>\S.*)$') { $rule = @{ id = $Matches['v'].Trim().Trim('"') }; $rules.Add($rule) | Out-Null; continue }
+        if ($null -ne $rule -and $line -match '^\s+(?<k>scope|sources_checked|current):\s*(?<v>.*?)\s*$') {
+            $rule[$Matches['k']] = ($Matches['v'] -replace '^"(.*)"$', '$1')
+        }
+    }
+    $lines = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $rules) {
+        if (-not $entry.ContainsKey('scope') -or -not $script:SpecrewCodeStackLabels.Contains($entry['scope'])) { continue }
+        $label = $script:SpecrewCodeStackLabels[$entry['scope']]
+        $current = if ($entry.ContainsKey('current')) { $entry['current'] } else { '' }
+        $checked = [datetime]::MinValue
+        $hasDate = $entry.ContainsKey('sources_checked') -and [datetime]::TryParseExact($entry['sources_checked'], 'yyyy-MM-dd',
+            [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$checked)
+        if (-not $hasDate) {
+            $lines.Add(('{0} {1} sources last checked: unknown{2}' -f $label, $dash, $stale)) | Out-Null
+            continue
+        }
+        $text = '{0} {1} sources last checked {2}: {3}' -f $label, $dash, $entry['sources_checked'], $current
+        if (($Today.Date - $checked.Date).TotalDays -gt $script:SpecrewCodeStackFreshDays) { $text += $stale }
+        $lines.Add($text) | Out-Null
+    }
+    return $lines.ToArray()
+}
 function Test-SpecrewImplementationRulesManifest {
     # FR-004 / FR-013 / SC-002: validate the persisted manifest. Reads + parses the constrained YAML,
     # projects to JSON, validates against the schema (Test-Json) when present, and enforces invariants

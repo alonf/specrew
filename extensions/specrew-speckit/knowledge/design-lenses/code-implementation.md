@@ -112,6 +112,23 @@ The code rules are mostly **product-level and stable**:
 - **Resolve the stack**, then present the **grouped, pre-checked set/unset checklist** — baseline as a
   summary (exceptions only), decision-prompts paced (offer all-at-once or one-at-a-time on a dense set),
   applicability-filtered only when context applies. Never a flat wall.
+- **Show the stack's last-checked line** (FR-030): when the stack is resolved, run the read-only line call
+  `Get-SpecrewCodeStackFreshnessLines` and show the resolved stack's line as it prints, before the checklist:
+
+  ```powershell
+  $helper = @($env:SPECREW_MODULE_PATH, '.', (Get-Module -ListAvailable Specrew | Select-Object -First 1).ModuleBase) |
+      Where-Object { $_ } | ForEach-Object { Join-Path $_ 'scripts/internal/code-implementation-lens.ps1' } |
+      Where-Object { Test-Path $_ } | Select-Object -First 1
+  & { . $helper; Get-SpecrewCodeStackFreshnessLines -CatalogPath .specify/extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml }
+  ```
+
+  A line ending "stale: check the release notes before relying on it" means its versions may be out of date: look
+  them up before recommending one. If the call fails (an installed Specrew older than this lens), say so and treat
+  the catalog's versions as unconfirmed.
+- **Confirm a version at the point of choice** (FR-030, Amendment A3): when the human's choice depends on a version,
+  confirm it against the official source at that point and show the source and the date, even when the stack's line
+  is not stale. When the host cannot look a source up, say so in plain words and mark the version unconfirmed; never
+  guess.
 - **Keep defaults coherent**: "use the defaults" delegates choices; it does not select every familiar
   mechanism. Check the bundle for contradictions before recording it. In .NET, for example, a manually
   composed small CLI can own one shared `HttpClient`, while `IHttpClientFactory` implies factory/service-

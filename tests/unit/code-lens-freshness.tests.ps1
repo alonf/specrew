@@ -41,6 +41,15 @@ $script:Stacks = [ordered]@{
     'code-rule.go.boundaries-and-tooling-posture'  = 'Go'
     'code-rule.java.baseline-and-tooling-posture'  = 'Java'
 }
+# The catalog scope of each per-stack rule (the line function finds a stack's rule by its scope).
+$script:StackScopes = [ordered]@{
+    'code-rule.csharp.langversion-posture'         = 'language:csharp-dotnet'
+    'code-rule.cpp.standard-and-safety-posture'    = 'language:c-cpp'
+    'code-rule.ts.strictness-posture'              = 'language:typescript-javascript'
+    'code-rule.python.typing-and-layout-posture'   = 'language:python'
+    'code-rule.go.boundaries-and-tooling-posture'  = 'language:go'
+    'code-rule.java.baseline-and-tooling-posture'  = 'language:java'
+}
 
 # A version number in rule text: a dotted number (8.0, 3.12), a language standard (C11, C++20, the "/17" of
 # "C11/17"), or a product name followed by a number (.NET 9, Java 21, Python 3, ES2022).
@@ -262,6 +271,7 @@ function New-FixtureTree {
         $label = $script:Stacks[$ruleId]
         $catalogLines.Add("  - id: $ruleId")
         $catalogLines.Add('    group: decision-prompt')
+        $catalogLines.Add("    scope: `"$($script:StackScopes[$ruleId])`"")
         $catalogLines.Add("    title: `"$label`: posture`"")
         $catalogLines.Add('    default: "strictness, layout and tooling posture"')
         $catalogLines.Add('    sources_checked: "2026-01-10"')
@@ -328,7 +338,7 @@ function Invoke-SelfTests {
     $fn = $script:LineFunction
     Invoke-SelfTest -Name 'valid fixture' -Mutate $null
     Invoke-SelfTest -Name 'date swapped for a non-date' -Item $cpp -Check 'sources-checked' -Mutate {
-        param($r) Edit-FixtureFile $r $cat "  - id: $cpp`n    group: decision-prompt`n    title: `"C/C++: posture`"`n    default: `"strictness, layout and tooling posture`"`n    sources_checked: `"2026-01-10`"" "  - id: $cpp`n    group: decision-prompt`n    title: `"C/C++: posture`"`n    default: `"strictness, layout and tooling posture`"`n    sources_checked: `"2026-02-30`""
+        param($r) Edit-FixtureFile $r $cat "    sources_checked: `"2026-01-10`"`n    current: `"C/C++ fixture release, supported`"" "    sources_checked: `"2026-02-30`"`n    current: `"C/C++ fixture release, supported`""
     }.GetNewClosure()
     Invoke-SelfTest -Name 'date removed' -Item $go -Check 'sources-checked' -Mutate {
         param($r) Edit-FixtureFile $r $cat "    title: `"Go: posture`"`n    default: `"strictness, layout and tooling posture`"`n    sources_checked: `"2026-01-10`"`n" "    title: `"Go: posture`"`n    default: `"strictness, layout and tooling posture`"`n"

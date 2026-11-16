@@ -170,7 +170,7 @@ run-cadence, and the full conduct. The conduct in brief:
    `implementation-rules.schema.json` (beside the lens in the design-lens catalog), plus the human-readable
    `workshop/code-implementation.md`; record the lens in `lens-applicability.json`. (Like `product-domain`,
    you author the record by hand following the schema -- you do NOT call a PowerShell writer; the lens
-   helper validates, it is not invoked mid-workshop.) Reviewer setup is part of this capture: use the reviewer
+   helper validates, it is not invoked mid-workshop, except `Get-SpecrewCodeStackFreshnessLines`, the one read-only call that prints each stack's last-checked line, FR-030.) Reviewer setup is part of this capture: use the reviewer
    choice the human made at agenda confirmation (ask it here only if it was not asked then: list the live hosts and
    present the marked default), record one concrete host + authorization reference, and run the explicit
    `specrew review --host ... --authorization-ref ...` setup command. Never leave a completed code lens with
