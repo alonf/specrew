@@ -192,7 +192,13 @@ function Test-FreshnessLines {
 
 function Test-SourceNotes {
     param([string]$LensPath)
-    $notes = Get-SectionLines -Lines (Get-NormalizedLines $LensPath) -Heading 'Source Notes'
+    # One entry per bullet, its wrapped continuation lines joined to it.
+    $entries = [Collections.Generic.List[string]]::new()
+    foreach ($line in (Get-SectionLines -Lines (Get-NormalizedLines $LensPath) -Heading 'Source Notes')) {
+        if ($line -match '^\s*-\s') { $entries.Add($line.Trim()) }
+        elseif ($entries.Count -gt 0 -and $line -match '^\s+\S') { $entries[$entries.Count - 1] += ' ' + $line.Trim() }
+    }
+    $notes = @($entries)
     foreach ($ruleId in $script:Stacks.Keys) {
         $label = $script:Stacks[$ruleId]
         # The label as a whole word: "Go" must not match "Google".
@@ -201,7 +207,7 @@ function Test-SourceNotes {
                 $_ -match $labelPattern -and $_ -match 'https?://\S+' -and $_ -match '\b\d{4}-\d{2}-\d{2}\b'
             })
         if ($hit.Count -eq 0) {
-            New-Problem $ruleId 'source-notes' ("Source Notes have no line naming '{0}' with a URL and a date" -f $label)
+            New-Problem $ruleId 'source-notes' ("Source Notes have no entry naming '{0}' with a URL and a date" -f $label)
         }
     }
 }

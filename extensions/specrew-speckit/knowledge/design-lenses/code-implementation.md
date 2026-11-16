@@ -240,3 +240,20 @@ provenance:
   google-java-format. (Sources catalogued in Proposal 163; checked 2026-06-08.)
 - Later catalog additions (2026-06-10): SOLID baseline, Strategy/State over repeated conditionals, polymorphism
   mechanism choice, and example-project ingestion.
+- Version facts for the six per-stack rules (FR-030). Each rule's `current` field holds what these official sources
+  said on the date checked; a fact they did not confirm is left out. Update the date and the field together.
+  - C#/.NET — <https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json> (release type,
+    support phase and end-of-support date per channel) and
+    <https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-versioning> (default C# version per
+    target framework); checked 2026-11-16.
+  - C/C++ — <https://www.open-std.org/jtc1/sc22/wg14/> (C23 adopted by ISO and IEC in 2024) and
+    <https://isocpp.org/std/status> (C++23 published, C++26 in progress); checked 2026-11-16.
+  - TypeScript/JavaScript — <https://registry.npmjs.org/typescript> (dist-tags and release dates) and
+    <https://nodejs.org/dist/index.json> (LTS lines); checked 2026-11-16.
+  - Python — <https://peps.python.org/api/release-cycle.json> (status, first release and end of life per version,
+    the data behind <https://devguide.python.org/versions/>); checked 2026-11-16.
+  - Go — <https://go.dev/doc/devel/release> (release dates, minor revisions and the support policy) and
+    <https://go.dev/dl/?mode=json> (current stable releases); checked 2026-11-16.
+  - Java — <https://openjdk.org/projects/jdk/> (GA dates) and
+    <https://www.oracle.com/java/technologies/java-se-support-roadmap.html> (LTS and support dates); checked
+    2026-11-16.
