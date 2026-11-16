@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 10
-**Resolution rate**: 90% (9/10 resolved)
+**Resolution rate**: 100% (10/10 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -204,5 +204,17 @@ The following resolution strategies remain available if drift is detected later 
   on all three systems; F3 resolves links through the path-identity helper and refuses when it cannot tell; F7 runs a
   real sync on a temp fixture, and the phase's other tests are checked for the same source-text shape; every fix
   through the gated push script with the six lanes in the review layout; past about 2 SP, stop and tell the reviewer.
-- **Resolution**: open; each fix is recorded as it lands.
+- **Resolution** (2026-11-16): the nine fixed, each RED first and one finding per commit: F1 `409df238` (the shared
+  `copilot-instructions.md` never in the record; T003's classifier pauses on the user's edit), F2 `541708af` (SC-001's
+  fixture writes the copied identity path relative), F3 `1553dbdc` (a junction or symlink below the project is outside,
+  through the one reparse-point policy; unknown is outside), F4 `79c3c224` (an outside session path not adopted is
+  cleared before it is written back), F5 `0245115a` (a record region per writing step, none spanning a prompt), F6
+  `5bbaec3b` and F9 `f87330bd` (SC-001's temp folder per run; every case in the fixture), F7 `55d42b72` (a real
+  boundary sync on a temp project; mutation-checked), F10 `32244053` (comment). SC-001's supervised run 6: six checks
+  pass, home and repository unchanged. Not yet in CI.
+- **The phase's other source-text cases** (the reviewer's condition 4): three remain, each a wiring check with a
+  behavioural one beside it: start's regions (F5's region case and T020's end-to-end), init's probe call (the
+  probe's unit case and SC-001's run, which leaves no probe folder in the repository), and SC-001's identity call
+  (supervised run 6). Listed for round 2.
+- **Effort**: within the reviewer's 2 SP bound; no task moved.
 - **Class closure**: NONE — a decision on review findings, not a defect.
