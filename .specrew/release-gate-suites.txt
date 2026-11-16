@@ -387,6 +387,7 @@ tests/unit/resume-path-inside-project.tests.ps1
 tests/unit/squad-probe-temp-folder.tests.ps1
 tests/unit/init-dry-run-names-project.tests.ps1
 tests/unit/sc001-fixture-identity.tests.ps1
+tests/unit/no-node-preset-for-this-repo.tests.ps1
 
 # Feature 206 T015 (maintainer ruling 2026-11-12): a script suite no lane ran before the test census, too slow for
 # the per-push CI step (98 s alone here).
