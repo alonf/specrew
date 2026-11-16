@@ -354,3 +354,29 @@ The following resolution strategies remain available if drift is detected later 
   writer (`Set-TaskStatus`), which writes `Current Phase: before-implement` and `Iteration Status: executing`;
   `tasks-progress.yml` created. Not edited by hand.
 - **Class closure**: NONE — B5F-088, candidate for 206's list.
+
+### DRIFT-019 — One full sweep per phase, at the phase tip (the reviewer session's ruling); T017's drain and containment facts
+
+- **The ruling** (specrewreviewer-98, routine; it changes no rule and no scope): every code push still sits on a green
+  full sweep of exactly what it pushes (iteration 001 DRIFT-074, widened by DRIFT-090), but a sweep runs once per
+  phase, at the phase tip, then one push: Phase 8 (T017, T015, T016, T018, T019), Phase 9 (T020, T021), Phase 10 (T022,
+  T023 (i)), Phase 11 (T025, its own sweep). T026 rides with the records push after it. Inside a phase: each task's
+  RED and fix commits, its own tests green locally, and the phase's earlier suites rerun after each new fix. At the
+  tip: the 50-run batches, the full sweep with the home hook set hashed before and after, the gated push, CI with
+  every job run; the reviewer session is asked before the batches and before the sweep. A red sweep stops, is
+  bisected by commit and reported before fixing; no partial-phase push. Unpushed commits are kept in a bundle file
+  under the crew's scratchpad after each fix commit.
+- **What it costs**: the first CI evidence for T017, and the end of its rerun rule on 203's pushes, come some hours
+  later; one sweep covers five fixes, so a red result is bisected by commit; a defect found at the tip means more
+  rebuilding.
+- **T017's drain bound, stated**: when the 10 s bound (per stream) expires, stdout is returned empty (the text read
+  so far is lost: `ReadToEndAsync` yields nothing before EOF) and stderr carries `[co-review] output-drain-incomplete:
+  ... still open 10 s after the reviewer exited`. The caller then takes the empty-exit0 branch: the file-primary
+  check, one retry, and if still empty a failed invocation (`no-parseable-findings-json`) whose stderr tail carries
+  the marker. A host whose helper holds the pipe costs at most 20 s and a named failure: not a hang, not a silent
+  empty result. The campaign path does not read stdout.
+- **Containment and the drain**: `Close-SpecrewProcessContainment` (`scripts/internal/agent-tasks/process-tree.ps1:307`)
+  runs in the invoker's `finally`, after the result is built (Job Object close on Windows, a KILL to the process
+  group on Unix). A grandchild outlives the child until then by design ("Straggler reap ... must not outlive the
+  run"); the drain waits inside that window, and whatever still runs is killed at the reap.
+- **Class closure**: NONE — a scheduling ruling and a record.
