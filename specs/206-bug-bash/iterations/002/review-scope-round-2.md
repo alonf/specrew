@@ -68,15 +68,18 @@ Each code fix landed with a failing test first, then the fix, one bug per commit
 
 ### Registrations
 
-The per-push registrations are in CI job `deterministic-gate`, step "Integration - script suites no lane ran before
-the test census (F-206 T015)", and in lane `f206-changed-integration`:
+Both per-push registrations are in lane `f206-changed-integration` on this machine. In CI:
 
-- `tests/integration/distribution-module-publish.ps1` (T028);
-- `tests/integration/project-path-resolution-regression.ps1` (T024, SC-001).
+- `tests/integration/distribution-module-publish.ps1` (T028) runs in its own Specrew CI job `publish-suite-windows`
+  (windows-latest, the OS of the real publish job), by the maintainer's answer of 2026-11-16 14:38 ("206 publish: A");
+- `tests/integration/project-path-resolution-regression.ps1` (T024, SC-001) runs in job `deterministic-gate`, step
+  "Integration - script suites no lane ran before the test census (F-206 T015)".
 
 The census exclusions for both are removed. Both first failed on Linux CI at `792e432d` (DRIFT-206-I002-014). The
 publish suite read a hidden dot-file without `-Force`, and SC-001's start met the tracked identity file's Windows path.
-Both are fixed, with failing tests first.
+Both are fixed, with failing tests first. The publish suite then failed on Linux for a second cause: PowerShellGet's
+own `Publish-Module -WhatIf` copy drops the hidden `.gitkeep` files that `Specrew.psd1`'s FileList names. That is why it
+moved to Windows (bug list item 56).
 
 **Known and deferred:**
 
@@ -130,6 +133,13 @@ Both are fixed, with failing tests first.
      call;
    - its one `-ConfirmLivePublish` call (`:261` to `:266`) depends on that clear;
    - the `finally` at `:285` restores the key and `SPECREW_BUILD_COMMIT`.
+
+   The new job `publish-suite-windows` in `specrew-ci.yml`:
+   - Can it ever see the secret?
+   - Does any path make it skip while the workflow still passes: a condition, a `needs`, `continue-on-error`, or a
+     step that exits 0 without running the suite?
+   - The unit suite pins no secret, windows-latest, its own timeout, and no `continue-on-error` or `if:`. Check what
+     that reading of the YAML misses.
 3. **Records judged before and after their approval (T034, T033).** A record accepted as pending when the crossing
    that is pending is a different one. A `deferred` row whose decision id is in a comment or a different section of
    `decisions.md`. A `deferred` row that hides a `needs-work`.

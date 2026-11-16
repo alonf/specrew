@@ -470,7 +470,10 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
     before the test census (F-206 T015)", and lane `f206-changed-integration`; the unit suite in `f206-unit-suites`
     (`6c4b2b44`). Local runs: exit 0 in 77 s; home hook files and PowerShellGet's folder unchanged. On Linux CI the
     suite failed at its first copy (a hidden dot-file read without `-Force`): RED 1/7 `db3fa171`, GREEN 7/7 `e97fdb18`
-    (DRIFT-206-I002-014).
+    (DRIFT-206-I002-014). It then failed in PowerShellGet's own `Publish-Module -WhatIf` copy, which drops the hidden
+    `.gitkeep` files on Linux. By the maintainer's answer of 2026-11-16 14:38 ("206 publish: A"), it runs per push in
+    its own Specrew CI job `publish-suite-windows` (windows-latest), and the Linux gate drops it: RED 2/10 `936f8463`,
+    GREEN 10/10 `347de313`.
   - **Read first:** the suite and the release script it calls, for any path that publishes or writes home.
   - **RED:** with `PSGALLERY_API_KEY` set, the publish case reaches a publish call today.
   - **Work:** the suite clears and restores `PSGALLERY_API_KEY` itself; the release script refuses a publish nobody

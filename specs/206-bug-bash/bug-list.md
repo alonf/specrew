@@ -1069,6 +1069,20 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   until 203 merges.
 - **Scope:** an iteration 003 candidate, set at its planning by the maintainer.
 
+## 56. A publish from Linux fails on the module's hidden .gitkeep FileList entries (severity: minor)
+
+- **Observed (2026-11-16, Specrew CI run `43864236359`, ubuntu-latest, DRIFT-206-I002-014):** the publish suite's dry
+  run reached PowerShellGet's `Publish-Module -WhatIf`, whose own copy of the module drops hidden dot-files on Unix. It
+  then refused: "The specified FileList entry 'extensions/specrew-speckit/hooks/.gitkeep' in the module manifest
+  '/tmp/2101440027/Specrew/Specrew.psd1' is invalid. Try again after updating this entry with valid values."
+  `Specrew.psd1` names three such files: `extensions/specrew-speckit/hooks/.gitkeep`,
+  `extensions/specrew-speckit/templates/quality/lenses/.gitkeep` and
+  `extensions/specrew-speckit/templates/quality/presets/.gitkeep`, all since F-019 (2026-05-16).
+- **Effect today:** none on a release, because `publish-module.yml`'s publish job runs on windows-latest. A publish from
+  Linux would fail. The suite runs per push on Windows instead (option A, the maintainer's answer of 2026-11-16 14:38).
+- **Scope:** an iteration 003 candidate (option C as put to the maintainer): remove the entries, after reading whether
+  those empty folders must ship. Not placed.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,

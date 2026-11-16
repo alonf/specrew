@@ -321,3 +321,27 @@ The following resolution strategies remain available if drift is detected later 
 - **Effort**: 0.75 SP estimated, inside the reviewer's 1.0 SP bound; the actual is recorded at T038.
 - **Class closure**: deferred — the two candidates above, and the rule that a per-push registration needs CI evidence
   on every system it runs on before it is registered, go to iteration 003's planning as candidates.
+
+### DRIFT-206-I002-015 — the publish suite failed on Linux CI for a second cause; it moved to a Windows job (human-decision)
+
+- **Recorded**: 2026-11-16, by the crew.
+- **What**: on `9f8c270f`, Specrew CI run `43864236359` (Deterministic gate, `133291077845`, ubuntu-latest).
+  - SC-001's script passed (exit 0 in 23 s), so DRIFT-206-I002-014's path fix holds on Linux.
+  - The publish suite passed its copy and the release script's stamping and Test-ModuleManifest, then failed in
+    PowerShellGet's own `Publish-Module -WhatIf`. That copy drops the hidden `.gitkeep` files named in FileList:
+    "The specified FileList entry 'extensions/specrew-speckit/hooks/.gitkeep' in the module manifest ... is invalid".
+  - The Contract lane was skipped. Test and Cross-Platform Validation were green.
+- **Decision**: the maintainer's answer of 2026-11-16 14:38, "206 publish: A", relayed by specrewreviewer-98, to the option shown as "A (recommended): run the publish suite per push on Windows. A small Windows job in Specrew CI runs only this suite, and the Linux list drops it." Its other lines, as shown:
+  - "Evidence comes on every push, on the same OS the real publish uses."
+  - "It costs one Windows runner for about 2 to 3 minutes per push, and about 0.25 SP."
+  - "There is no product change."
+  - The decision refines "publish suite per push" of 11:34. It is not an approval.
+- **Done**: RED 2/10 `936f8463`, GREEN 10/10 `347de313`.
+  - New job `publish-suite-windows` in `specrew-ci.yml`: windows-latest, `timeout-minutes` 10 (step 8). It has no
+    `needs`, no `if:` and no `continue-on-error`, and a comment says it must never map a secret.
+  - The Linux gate drops the suite. `cross-platform-validation.yml` is not touched.
+  - The census guard sees the suite in the new job with no change (81/81), and the local lane still runs it.
+  - Option C, removing the three `.gitkeep` FileList entries, is bug list item 56.
+- **Effort**: the rework estimate goes from 0.75 to about 1.0 SP.
+- **Class closure**: deferred — bug list item 56 for the manifest; the job's first green run, with the job listed, is
+  the evidence for this push.
