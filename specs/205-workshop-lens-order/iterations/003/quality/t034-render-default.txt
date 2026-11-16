@@ -1,0 +1,23 @@
+Workshop agenda
+
+Selected lenses:
+
+🟦 Problem space
+- requirements-nfr (medium): Choose the timeouts, the error output and the exit codes.
+
+🟪 Both spaces
+- data-storage (light): Choose where the report history is kept and for how long.
+- devops-operations (light): Choose how the tool is released and run on a schedule.
+
+🟧 Solution space
+- architecture-core (medium): Choose the processing pipeline and its concurrency boundary.
+- code-implementation (medium): Choose the implementation rules and the dependency stance.
+
+Skipped lenses:
+- ui-ux: The tool is terminal-only.
+- security-compliance: It handles no credentials or personal data.
+- integration-api: It calls no outside service.
+- component-design: The pipeline already sets the component boundary.
+- observability-resilience: A local tool with no long-running service.
+
+Does this complete selected + skipped agenda look right? Reply with confirm or tell me what to change.

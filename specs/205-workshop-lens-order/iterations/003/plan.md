@@ -38,7 +38,7 @@
 | T031 | Grouped agenda renderer, UTF-8 output, skill template and marker | FR-032 | US6 | 0.75 | implementer | — | done | — | — | — |
 | T032 | Proposal 220 status history and INDEX row | FR-031 | US6 | 0.5 | implementer | — | done | — | — | — |
 | T033 | Copies, hash record, green, regression, CI steps | FR-030, FR-032 | US6 | 1 | implementer | — | done | — | — | — |
-| T034 | Recorded render check in a scratch project (last) | FR-032 | US6 | 0.5 | implementer | — | planned | — | — | — |
+| T034 | Recorded render check in a scratch project (last) | FR-032 | US6 | 0.5 | implementer | — | done | — | — | — |
 
 ## Effort Model
 

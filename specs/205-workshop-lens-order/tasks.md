@@ -122,7 +122,7 @@ never-run list is run.
 ### Phase 10: Green, regression and evidence
 
 - [x] T033 [US6] [assigned_to: implementer] [effort: 1] Refresh the deployed copies with the two project-only deploy scripts and update `.specrew-extension-runtime.json` in the same commit; bring T027 and T028 green; run the parity, length, agenda and every existing workshop test against the iteration 002 results; add both new tests as named `specrew-ci.yml` steps (Trace: FR-030, FR-032, SC-011)
-- [ ] T034 [US6] [assigned_to: implementer] [effort: 0.5] Last: a recorded render check in a scratch project under the session temp folder (deployed copies only through the two project-only deploy scripts; no `specrew init` or `specrew start`; home hashed before and after). Render a sample agenda, keep the bytes and the terminal view as evidence in `iterations/003/quality/`, and confirm the pasted block matches `canonical_text`. If the binding refuses, it is a hand-over to 203 (Trace: FR-032)
+- [x] T034 [US6] [assigned_to: implementer] [effort: 0.5] Last: a recorded render check in a scratch project under the session temp folder (deployed copies only through the two project-only deploy scripts; no `specrew init` or `specrew start`; home hashed before and after). Render a sample agenda, keep the bytes and the terminal view as evidence in `iterations/003/quality/`, and confirm the pasted block matches `canonical_text`. If the binding refuses, it is a hand-over to 203 (Trace: FR-032)
 
 ### Iteration 003 dependencies
 
