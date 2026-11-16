@@ -88,12 +88,12 @@ Write-Host '--- Phase 2: Per-host scenarios ---' -ForegroundColor Cyan
 
 $results = @{}
 
-foreach ($host in $Hosts) {
+foreach ($smokeHost in $Hosts) {
     Write-Host ''
-    Write-Host "=== Host: $host ===" -ForegroundColor Magenta
+    Write-Host "=== Host: $smokeHost ===" -ForegroundColor Magenta
 
     # Check binary availability (for --no-launch mode this is informational only; --no-launch still writes artifacts)
-    $hostBinary = switch ($host) {
+    $hostBinary = switch ($smokeHost) {
         'copilot' { 'copilot' }
         'claude'  { 'claude' }
         'codex'   { 'codex' }
@@ -102,7 +102,7 @@ foreach ($host in $Hosts) {
     Write-Info "$hostBinary on PATH: $hostInstalled"
 
     # Create scratch project
-    $scratchDir = Join-Path $ScratchRoot "scenario-$host"
+    $scratchDir = Join-Path $ScratchRoot "scenario-$smokeHost"
     if (Test-Path -LiteralPath $scratchDir) {
         Remove-Item -LiteralPath $scratchDir -Recurse -Force
     }
@@ -131,7 +131,7 @@ foreach ($host in $Hosts) {
         Write-Pass 'specrew init succeeded'
 
         # specrew start --host <kind> --no-launch (or actual launch)
-        $launchFlags = @('--host', $host)
+        $launchFlags = @('--host', $smokeHost)
         if ($useNoLaunch) { $launchFlags += '--no-launch' }
         Write-Info "Running specrew start $($launchFlags -join ' ') 'multi-host smoke test'..."
         $startOut = & specrew start "multi-host smoke test" @launchFlags 2>&1 | Out-String
@@ -178,8 +178,8 @@ foreach ($host in $Hosts) {
                     $scenarioPass = $false
                 }
                 else {
-                    if ($context.selected_host -ne $host) {
-                        Write-Fail "selected_host=$($context.selected_host); expected $host"
+                    if ($context.selected_host -ne $smokeHost) {
+                        Write-Fail "selected_host=$($context.selected_host); expected $smokeHost"
                         $scenarioPass = $false
                     }
                     else {
@@ -200,7 +200,7 @@ foreach ($host in $Hosts) {
                     $scenarioPass = $false
                 }
                 else {
-                    $expectedStatus = if ($host -eq 'copilot') { 'squad-runtime' } else { 'bootstrap_only' }
+                    $expectedStatus = if ($smokeHost -eq 'copilot') { 'squad-runtime' } else { 'bootstrap_only' }
                     if ($context.crew_runtime_status -ne $expectedStatus) {
                         Write-Fail "crew_runtime_status=$($context.crew_runtime_status); expected $expectedStatus"
                         $scenarioPass = $false
@@ -233,18 +233,18 @@ foreach ($host in $Hosts) {
             }
 
             # FR-012: Squad-runtime-path strip on non-Copilot hosts
-            if ($host -ne 'copilot') {
+            if ($smokeHost -ne 'copilot') {
                 if ($promptContent -match '\.squad/decisions\.md|\.squad\\decisions\.md') {
-                    Write-Fail "Non-Copilot host '$host' should STRIP .squad/decisions.md references (FR-012)"
+                    Write-Fail "Non-Copilot host '$smokeHost' should STRIP .squad/decisions.md references (FR-012)"
                     $scenarioPass = $false
                 }
                 else {
-                    Write-Pass "FR-012: Squad-runtime-path .squad/decisions.md stripped on $host"
+                    Write-Pass "FR-012: Squad-runtime-path .squad/decisions.md stripped on $smokeHost"
                 }
             }
 
             # FR-014: Codex pwsh-form rewrite
-            if ($host -eq 'codex') {
+            if ($smokeHost -eq 'codex') {
                 if ($promptContent -match 'pwsh -File.*sync-boundary-state\.ps1') {
                     Write-Pass 'FR-014: Codex pwsh-form boundary-advance instructions present'
                 }
@@ -265,7 +265,7 @@ foreach ($host in $Hosts) {
         }
     }
 
-    $results[$host] = $scenarioPass
+    $results[$smokeHost] = $scenarioPass
 }
 
 # Phase 3: Summary
@@ -275,12 +275,12 @@ Write-Host 'Smoke Test Summary' -ForegroundColor Magenta
 Write-Host '================================================================' -ForegroundColor Magenta
 
 $allPassed = $true
-foreach ($host in $Hosts) {
-    if ($results[$host]) {
-        Write-Host "  [PASS] --host $host" -ForegroundColor Green
+foreach ($smokeHost in $Hosts) {
+    if ($results[$smokeHost]) {
+        Write-Host "  [PASS] --host $smokeHost" -ForegroundColor Green
     }
     else {
-        Write-Host "  [FAIL] --host $host" -ForegroundColor Red
+        Write-Host "  [FAIL] --host $smokeHost" -ForegroundColor Red
         $allPassed = $false
     }
 }
