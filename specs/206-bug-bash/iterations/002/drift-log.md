@@ -218,3 +218,15 @@ The following resolution strategies remain available if drift is detected later 
   (supervised run 6). Listed for round 2.
 - **Effort**: within the reviewer's 2 SP bound; no task moved.
 - **Class closure**: NONE — a decision on review findings, not a defect.
+
+### DRIFT-206-I002-011 — T028's fix lies partly outside the files the task names (plan-correction)
+
+- **Recorded**: 2026-11-16, by the crew, at T028.
+- **What**: T028 names `tests/integration/distribution-module-publish.ps1` and `scripts/release/**` as its files.
+  There is no `scripts/release/` folder: the release script the suite calls is `scripts/internal/invoke-module-release.ps1`.
+  The refusal also needs its one caller to ask for the publish, which is a line in `.github/workflows/publish-module.yml`.
+- **Done**: the fix changed those two files, plus the suite (`619b1a85`). Each change is limited to the publish
+  confirmation. The new unit suite `tests/unit/release-script-refuses-unasked-publish.tests.ps1` pins the workflow's line.
+- **Not done**: the publish suite was not run here. Whether it runs per push or stays excluded is the maintainer's ruling,
+  which is the task's own stop.
+- **Class closure**: NONE. This is a wrong path in one task's file list, not a recurring mechanism.
