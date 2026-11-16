@@ -298,13 +298,15 @@ jobs:
 
       - name: Run bounded deterministic review fault and conformance suites
         shell: pwsh
+        # Feature 203 T015 (DRIFT-005): below the job's 25 minutes, so a hang fails THIS step and its log is kept,
+        # instead of the job being cancelled with no log. The runner below also bounds each suite on its own.
+        timeout-minutes: 20
         env:
           SPECREW_REQUIRE_POSIX_RUNTIME_PROOF: '1'
         run: |
           $ErrorActionPreference = 'Stop'
           $runSuites = {
             $ErrorActionPreference = 'Stop'
-            Import-Module Pester -RequiredVersion 5.7.1 -Force
             $suites = @(
               './tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'
               './tests/continuous-co-review/unit/path-identity.Tests.ps1'
@@ -340,18 +342,13 @@ jobs:
             else {
               $suites += './tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1'
             }
-            foreach ($suite in $suites) {
-              Write-Host "--- deterministic suite: $suite" -ForegroundColor Cyan
-              $result = Invoke-Pester -Path $suite -Output Detailed -PassThru
-              # Honour Pester's TERMINAL Result, not just FailedCount. FailedCount stays ZERO for a
-              # failed BeforeAll/AfterAll container, so gating on it alone let this lane report green
-              # while a suite died in setup - with the per-volume measurement absent entirely
-              # (DRIFT-198-I009-039, blocking). tests/f198-regression-suite.ps1:209-211 already carried
-              # exactly this rule and this comment; the lane that was designated the path-identity
-              # certification instrument had never been given it. The shape is not hypothetical: it was
-              # observed the same day as `Tests Passed: 0, Failed: 0 / Container failed: 1`.
-              if ($result.Result -ne 'Passed') { throw "review-fault-suite-failed:$suite (result=$($result.Result) failed=$($result.FailedCount))" }
-            }
+            # Feature 203 T015 (DRIFT-005; 206's DRIFT-206-I002-012): each suite runs in its own pwsh under a
+            # wall-clock limit (the whole step took about 130 s on a green run). A suite that exceeds it is named
+            # and its process tree stopped. The runner keeps this step's rule from DRIFT-198-I009-039: a suite
+            # passes only on Pester's terminal Result 'Passed', so a failed BeforeAll container still fails.
+            $suiteTimeoutSeconds = 300
+            & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -File ./tests/continuous-co-review/invoke-bounded-suites.ps1 -Suite $suites -SuiteTimeoutSeconds $suiteTimeoutSeconds
+            if ($LASTEXITCODE -ne 0) { throw 'review-fault-suite-failed: see the suite named above' }
           }
           if ($IsLinux) {
             & sudo git config --global --add safe.directory ([IO.Path]::GetFullPath((Get-Location).Path))
