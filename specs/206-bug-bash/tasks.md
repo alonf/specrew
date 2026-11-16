@@ -353,6 +353,10 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Done (2026-11-15):** RED 6/8 in `ed2a27e8`, GREEN 8/8 in `824e9604`, registered in `7f265f9b`; the suite and the
     five lanes green in the review layout. The release-cadence `closeout-identity-schema-parity.tests.ps1` now pins
     the relative path (DRIFT-206-I002-007). This repository's own identity file is rewritten relative at its next sync.
+  - **Reworked (2026-11-16, Specrew CI on Linux, DRIFT-206-I002-014):** a path one OS calls absolute is absolute on
+    every OS (`Get-SpecrewPathRootKind`); a foreign or drive-relative identity path is not used and is named in a
+    warning (RED 14/27 `b616ce23`, test text restored `1cb31e60`, GREEN 27/27 `7f85bded`). Supervised SC-001 run 7:
+    six of six; home hook files and the repository unchanged.
   - **RED:** a rooted resume path outside the fixture is followed today, and start writes into it.
   - **Work:** refuse a resume path outside `-ProjectPath`; the identity file stops carrying an absolute feature path.
   - **Acceptance:** a path inside the project resumes; no write lands outside the fixture.
@@ -464,7 +468,9 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
     the maintainer's answer of 2026-11-16 11:34 ("OK for all" to "publish suite per push"; the reviewer's first gloss
     named the unit suite and was corrected): CI job `deterministic-gate`, step "Integration - script suites no lane ran
     before the test census (F-206 T015)", and lane `f206-changed-integration`; the unit suite in `f206-unit-suites`
-    (`6c4b2b44`). Local runs: exit 0 in 77 s; home hook files and PowerShellGet's folder unchanged.
+    (`6c4b2b44`). Local runs: exit 0 in 77 s; home hook files and PowerShellGet's folder unchanged. On Linux CI the
+    suite failed at its first copy (a hidden dot-file read without `-Force`): RED 1/7 `db3fa171`, GREEN 7/7 `e97fdb18`
+    (DRIFT-206-I002-014).
   - **Read first:** the suite and the release script it calls, for any path that publishes or writes home.
   - **RED:** with `PSGALLERY_API_KEY` set, the publish case reaches a publish call today.
   - **Work:** the suite clears and restores `PSGALLERY_API_KEY` itself; the release script refuses a publish nobody

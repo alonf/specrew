@@ -1046,6 +1046,29 @@ protected set, and none has changed on 203's branch since the merge base `df1141
 - **Scope:** a candidate for iteration 003, not placed. Named in the round 2 scope file. Feature 203's iteration 002
   relies on T034 for this rule, so a change here changes what 203 would take.
 
+## 54. The plan scaffold refuses a requirement scope that is in the spec (severity: minor)
+
+- **Observed (feature 205's hand-over H-024; its iteration 002 DRIFT-002 and iteration 003 DRIFT-002, relayed by the
+  reviewer 2026-11-16):** `scaffold-iteration-plan.ps1 -RequirementScope FR-022,FR-024` refused with "Requirement(s)
+  not found in spec: FR-022,FR-024", although both are in spec.md. Run without a scope, the stub lists every
+  requirement of the feature (FR-001 to FR-032), so each iteration's scope is written by hand.
+- **Scope:** an iteration 003 candidate, set at its planning by the maintainer.
+
+## 55. The deploy scripts restamp files outside the feature being refreshed (severity: minor)
+
+- **Observed (feature 205's iteration 003 retro, lesson 5, relayed by the reviewer 2026-11-16):** `deploy-speckit-extension.ps1
+  -ProjectPath . -RefreshExisting` and `deploy-squad-runtime.ps1 -ProjectPath .`, run to refresh one feature's
+  deployed copies, also rewrite `scripts/internal/continuous-co-review/.specrew-runtime.json`,
+  `.squad/casting/registry.json`, five `.squad/agents/*/charter.md`, `.squad/ceremonies.md`, `routing.md`, `team.md`,
+  `.github/agents/squad.agent.md`, and the `specrew_version` in `.specrew-extension-runtime.json`, which they set to
+  the installed module's version instead of the branch's. Today each file is restored by exact path and the version
+  set back by hand, at every deploy.
+- **Asked:** a refresh-only mode that touches only the copies whose sources changed and does not take the version
+  from the installed module.
+- **Note for sizing:** the first file is under `scripts/internal/continuous-co-review/`, feature 203's protected area
+  until 203 merges.
+- **Scope:** an iteration 003 candidate, set at its planning by the maintainer.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,

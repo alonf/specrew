@@ -265,3 +265,48 @@ The following resolution strategies remain available if drift is detected later 
 - **Effect**: none on CI, which has no local store. A developer whose worktree has run a review round gets failures on
   iterations the round never touched. T002's fixture met the same store (see its suite's comment).
 - **Class closure**: deferred — bug list item 52, an iteration 003 candidate, not placed.
+
+### DRIFT-206-I002-014 — both per-push registrations failed on Linux CI; I registered SC-001 before its Linux evidence (process)
+
+- **Recorded**: 2026-11-16, by the crew, at the reviewer's routine ruling (specrewreviewer-98, option A).
+- **What**: on `792e432d`, Specrew CI run `43851050990`, job Deterministic gate (`133245142830`, ubuntu-latest), step
+  "Integration - script suites no lane ran before the test census (F-206 T015)": FAILED (2). The Contract lane was
+  then skipped. Test (1 job) and Cross-Platform Validation (8 jobs) were green. Both suites passed on Windows here,
+  in the lanes and alone.
+  - `tests/integration/distribution-module-publish.ps1`, exit 1 in 0 s. Its copy helper read
+    `extensions/specrew-speckit/hooks/.gitkeep` with `Get-Item` and no `-Force`. On Unix a dot-file is hidden, so
+    `Test-Path` found it and `Get-Item` threw "Could not find item".
+  - `tests/integration/project-path-resolution-regression.ps1` (SC-001), the start case: "Saved session feature path
+    no longer exists: /tmp/.../fixture-project/C:/Dev/specrew-206-bug-bash/specs/206-bug-bash". This repository's
+    tracked `.squad/identity/now.md` holds this machine's Windows path. `IsPathRooted` calls it relative on Linux, so
+    round 1 F2's fixture rewrite skipped it and the identity reader joined it under the project root. That is a
+    product defect in T023's work, not a fixture defect: a Linux clone of this repository meets the same refusal,
+    and so does a Windows clone in another folder.
+- **My error, stated plainly**: round 1's condition was that SC-001's script is not registered per push until F2's
+  fix is green in CI on all three systems (DRIFT-206-I002-010). I registered it per push on the maintainer's answer
+  without that evidence, so CI became the test, and the push went red.
+- **Fix** (reviewer's option A, failing tests first, one bug per commit):
+  - the publish suite: RED 1/7 `db3fa171`, GREEN 7/7 `e97fdb18`, `-Force` on the read (test file only);
+  - the path kind: RED 14/27 `b616ce23`, the test text restored `1cb31e60`, GREEN 27/27 `7f85bded`.
+    - One helper, `Get-SpecrewPathRootKind` in `scripts/internal/sync-boundary-state.ps1`, names a path absolute
+      (a drive letter with a separator, UNC, or this OS's rooted test), drive-relative (`C:x`) or relative (a colon
+      inside a relative path included).
+    - Changed callers: `Test-SpecrewPathInsideProject` and `ConvertTo-SpecrewIdentityFeaturePath`
+      (`sync-boundary-state.ps1`); `Get-SpecrewIdentitySessionState` (`session-recovery.ps1`), which no longer uses
+      a foreign or drive-relative path and warns once, naming the file and saying it was not changed;
+      `Resolve-FeatureDirectory` (`specrew-start.ps1`); SC-001's fixture function `Set-Sc001FixtureIdentityRelative`.
+    - `tests/integration/Test-LegacyStateReaders.Tests.ps1`, which CI runs, imports the reader by name. It now
+      imports the two functions the reader uses and loads the path-identity and reparse helpers first (read and
+      called, not changed).
+  - Supervised SC-001 run 7: six of six in 79 s, home hook files and the repository unchanged.
+- **Candidates, not changed**: `scripts/specrew-start.ps1`'s `.specify/feature.json` auto path (about line 709) has
+  no inside rule; `scripts/internal/session-recovery.ps1`'s FR-024 stale check decides inside with `-like`. After
+  the reader fix the stale check no longer meets a foreign identity path. Both are named in the round 2 scope file.
+- **Also**: `b616ce23` was appended through a shell heredoc, which collapsed each doubled backslash. The UNC cases
+  became a root-relative `\server` path, and one `-replace` became an invalid regex. `1cb31e60` restores the text;
+  no case was added or removed.
+- **Evidence for the fix is Linux CI**, not the Windows lanes. The round 2 request waits for all three workflows
+  green, with the Deterministic gate and the Contract lane both run.
+- **Effort**: 0.75 SP estimated, inside the reviewer's 1.0 SP bound; the actual is recorded at T038.
+- **Class closure**: deferred — the two candidates above, and the rule that a per-push registration needs CI evidence
+  on every system it runs on before it is registered, go to iteration 003's planning as candidates.

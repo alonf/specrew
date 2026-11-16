@@ -74,7 +74,9 @@ the test census (F-206 T015)", and in lane `f206-changed-integration`:
 - `tests/integration/distribution-module-publish.ps1` (T028);
 - `tests/integration/project-path-resolution-regression.ps1` (T024, SC-001).
 
-The census exclusions for both are removed.
+The census exclusions for both are removed. Both first failed on Linux CI at `792e432d` (DRIFT-206-I002-014). The
+publish suite read a hidden dot-file without `-Force`, and SC-001's start met the tracked identity file's Windows path.
+Both are fixed, with failing tests first.
 
 **Known and deferred:**
 
@@ -90,6 +92,20 @@ The census exclusions for both are removed.
 
 ## What to Attack First
 
+0. **A path that one OS calls absolute and another does not (DRIFT-206-I002-014, `7f85bded`).** Specrew CI on Linux
+   refused SC-001's start because the tracked identity file held a Windows path. `Get-SpecrewPathRootKind` now names
+   the kind on every OS. Check these, on Windows and on Linux:
+   - `C:\x` and `C:/x`;
+   - a UNC path;
+   - a POSIX absolute path;
+   - a drive-relative `C:x`, which is not absolute, is never adopted, and is dropped with the warning;
+   - a relative path that merely contains a colon;
+   - a tracked `now.md` carrying another machine's absolute path. It must not be adopted, it must not cause the
+     stale-state refusal, and the warning must name the file and say it was not changed.
+
+   Also check every caller of the inside check for a path that still reaches `GetFullPath` or `Join-Path` before its
+   kind is known. Known and unchanged: `specrew-start.ps1`'s `.specify/feature.json` auto path (about line 709) has no
+   inside rule, and the FR-024 stale check in `session-recovery.ps1` decides inside with `-like`.
 1. **Closed and not closed (T026).** A Disposition sentence that matches the affirmative form but denies, conditions or
    postdates the ruling. A ruling outside the `## Disposition` section. A Disposition heading of another level. An
    abandoned iteration that is also in the closed index or frozen list. Any caller of the closed definition that still
