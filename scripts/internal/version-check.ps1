@@ -176,7 +176,9 @@ function Get-SpecrewVersionInfoFromManifest {
             $buildId = [string]$stamp.commit
         }
         elseif (Test-Path -LiteralPath (Join-Path $moduleRoot '.git')) {
-            $head = (& git -C $moduleRoot rev-parse --short HEAD 2>$null)
+            # Eight characters, the packager's stamp format (module-packaging.ps1), so a checkout and a package of
+            # the same commit print the same id; git's own default length grows with the repository.
+            $head = (& git -C $moduleRoot rev-parse --short=8 HEAD 2>$null)
             if ($LASTEXITCODE -eq 0) { $buildId = ([string]$head).Trim() }
         }
     }
