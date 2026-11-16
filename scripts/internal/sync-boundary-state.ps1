@@ -182,10 +182,34 @@ function Test-SpecrewPathInsideProject {
         try { $comparison = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'distinct' } catch { $comparison = [System.StringComparison]::Ordinal }
     }
     if ([string]::Equals($pathFull, $rootFull, $comparison)) { return $true }
+    $lexicallyInside = $false
     foreach ($separator in @([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)) {
-        if ($pathFull.StartsWith($rootFull + $separator, $comparison)) { return $true }
+        if ($pathFull.StartsWith($rootFull + $separator, $comparison)) { $lexicallyInside = $true }
     }
-    return $false
+    if (-not $lexicallyInside) { return $false }
+
+    # Round 1, F3: the comparison above is lexical, so a junction or symlink below the root would pass while it leads
+    # into another checkout. Every existing component below the root is classified by the one reparse-point policy
+    # (read and called, not changed); a component that redirects is outside, and so is any answer that cannot be
+    # established (the policy unreachable, or a component that cannot be read). Cloud placeholders redirect nothing.
+    if (-not (Get-Command -Name 'Get-SpecrewReparseTagDisposition' -ErrorAction SilentlyContinue)) {
+        $reparsePolicy = Join-Path $PSScriptRoot 'continuous-co-review/reparse-tag-policy.ps1'
+        if (Test-Path -LiteralPath $reparsePolicy -PathType Leaf) { . $reparsePolicy }
+    }
+    if (-not (Get-Command -Name 'Get-SpecrewReparseTagDisposition' -ErrorAction SilentlyContinue)) { return $false }
+    $walked = $rootFull
+    $separators = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    foreach ($segment in @($pathFull.Substring($rootFull.Length).Split($separators, [System.StringSplitOptions]::RemoveEmptyEntries))) {
+        $walked = Join-Path $walked $segment
+        if (-not (Test-Path -LiteralPath $walked)) { break }
+        try {
+            if ([string](Get-SpecrewReparseTagDisposition -Path $walked).disposition -ceq 'refuse-link') { return $false }
+        }
+        catch {
+            return $false
+        }
+    }
+    return $true
 }
 
 function ConvertTo-SpecrewIdentityFeaturePath {
