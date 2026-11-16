@@ -711,14 +711,34 @@ with the plan.
     read and no test covers.
   - **Work (the records rule, the maintainer's "203 T022: 1", 2026-11-16 14:17 local; B5F-087):** the disposition
     uses the gate's existing classifier, `Test-ReviewCampaignDeltaIsRecordsOnly`
-    (`scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1:410`), narrowed inside that function: in
-    the Specrew source repository, `.specify/**` (the mirror the boundary syncs and the governance check run, and its
-    `.specrew-extension-runtime.json` hash record), non-Markdown files under `docs/`, and Markdown or text under
-    `extensions/`, `templates/` and the deployed skill directories (`.claude/skills/`, `.github/skills/`) count as
-    source. The acceptance carry's diff (`:397`) gets `--no-renames`. The shared classifier
-    `Test-SpecrewReviewAuthorshipSourcePath` is not changed, so the validator's authorship rule and the boundary
-    coverage line keep today's answers. Downstream projects keep today's answers; test `:112` (a `.github/agents`
-    host mirror is machinery) stays true.
+    (`scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1:410`), narrowed inside that function, in
+    the Specrew source repository only:
+    - **Non-Markdown:** `.specify/**` (the mirror the boundary syncs and the governance check run, and its
+      `.specrew-extension-runtime.json` hash record) and non-Markdown files under `docs/` count as source.
+    - **Markdown and text, turned round:** a `.md` or `.txt` file is records only if it sits in a named records
+      place; everything else is source, whichever host directory it is in (a list of source places is always one
+      host directory behind). The records places: the active feature's output allowlist under `specs/`, as today;
+      `.squad/decisions.md`, `.squad/decisions-archive.md`, `.squad/decisions/**`, `.squad/log/**`,
+      `.squad/orchestration-log/**`, `.squad/identity/now.md` and `.squad/agents/*/history.md` (what the syncs and the
+      scribe write); `.specrew/cross-platform-backlog.md`, `.specrew/reviewer-regression-log.md` and
+      `.specrew/review/inline/**` (logs and review output); `docs/**/*.md` except `docs/methodology/**`; `proposals/**`;
+      and the root prose `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `NOTICE.md`, `SECURITY.md`,
+      `CODE_OF_CONDUCT.md`, `LICENSE`.
+    - **Source, by that rule, and why:** `AGENTS.md` and `CLAUDE.md` (instructions the agents working here obey, the
+      product's deployed copies); `.squad/agents/*/charter.md`, `.squad/ceremonies.md`, `.squad/routing.md`,
+      `.squad/team.md` and `.squad/identity/wisdom.md` (team instructions agents read); `.specrew/constitution.md`,
+      `.specrew/team/agents/*.md`, `.specrew/review/contracts/**` and `.specrew/quality/known-traps.md` (instructions
+      and contracts); `.specrew/release-gate-suites.txt` (it selects the release gate's suites);
+      `docs/methodology/**` (the deep sources the refocus tells agents to read); `tests/**` fixtures (978 files: a
+      changed fixture changes what a test proves); every host directory (`.agents/`, `.claude/`, `.cursor/`,
+      `.copilot/`, `.github/prompts/`, `.github/agents/`, `.github/skills/`); Markdown under `extensions/`,
+      `templates/`, `scripts/`, `hosts/` and `tools/`. When in doubt, source: a wrong "source" costs one round or a
+      typed override; a wrong "records" is unread text that hosts execute.
+    - The acceptance carry's diff (`:397`) gets `--no-renames`. The shared classifier
+      `Test-SpecrewReviewAuthorshipSourcePath` is not changed, so the validator's authorship rule and the boundary
+      coverage line keep today's answers. Downstream projects keep today's answers; test `:112` (a `.github/agents`
+      host mirror is machinery downstream) stays true downstream, and in the source repository the same path is now
+      source, which `:112` is amended to say.
   - **How the code knows it is the source repository:** the existing `Test-ContinuousCoReviewSpecrewSourceRepo`
     (`scripts/internal/continuous-co-review/worktree-reviewer.ps1:54`): both `Specrew.psd1` and
     `scripts/internal/continuous-co-review/_load.ps1` at the root. Tested both ways: a downstream fixture with only
@@ -729,16 +749,27 @@ with the plan.
     on 205 and 206 when this reaches them through main, a commit after a round that touches `.specify/**`, a `docs/`
     script, or product Markdown now stales that round (a new round or a typed override), where today it does not.
     Downstream projects are unchanged.
-  - **RED and Acceptance**, each a refusing test (the delta is not records-only), red or passing today as marked:
+  - **RED and Acceptance**, each a refusing test (the delta is not records-only) unless marked as a pinned records
+    case, red or passing today as marked:
     - a script under `docs/` (red today);
     - a `.specify`-only change (red today);
     - a hash-record-only change, `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` (red today);
-    - product Markdown: a skill file, a template, the coordinator fragment (red today);
+    - product Markdown: a skill file under `extensions/`, a template, the coordinator fragment (red today);
+    - a test fixture `.md` and a test fixture `.txt` under `tests/` (red today);
+    - a `.agents/skills/**/SKILL.md` (red today);
+    - a `.github/prompts/**` file and a `.github/agents/**` file in the source repository (red today);
+    - a `.md` under `scripts/` (red today);
+    - `AGENTS.md`, `CLAUDE.md`, a `.squad/agents/*/charter.md` and `.specrew/constitution.md` (red today);
+    - `docs/methodology/**` (red today);
     - a code file renamed into a records path, through the acceptance carry (red today);
     - `plan.md`, `spec.md`, `tasks.md` (passing today, test `:87`);
     - a rename and a mode change of a code file on the `--no-renames` paths (passing today; pinned);
     - a records file and a code file in one commit (passing today, test `:68`);
     - an executable under `specs/` (passing today; pinned);
+    - pinned records cases, one per records place, each records-only (passing today): a drift log in the active
+      feature, `.squad/decisions.md`, `.squad/identity/now.md`, a `.squad/log/` file, a `docs/` findings file, a
+      `proposals/` file, `README.md`, `.specrew/reviewer-regression-log.md`;
+    - a downstream fixture: the same host-directory and `.specify` paths stay records-only there (passing today);
     - the gate: a stop for digest D then a records-only commit is refused today (DRIFT-078); an ordinary review end
       needs two approvals today (DRIFT-091); a fixed finding stays open today (B5F-071).
 

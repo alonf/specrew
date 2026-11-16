@@ -280,3 +280,19 @@ The following resolution strategies remain available if drift is detected later 
   text. If T017's cause is in the agent invoker's output capture and its fix exceeds 0.5 SP, the crew comes back
   before building it.
 - **Class closure**: NONE — evidence for T017.
+
+### DRIFT-015 — T022's narrowing turned round for Markdown and text (the reviewer session's comment)
+
+- **The comment** (on `5dd6b393`): a list of source places misses tracked Markdown and text that hosts execute or
+  tests depend on: 978 `.md` and `.txt` fixtures under `tests/`, `.agents/skills` and agent text, `.github/prompts`
+  and `.github/agents`, Markdown under `scripts/`, `hosts/` and `tools/`, `AGENTS.md` and `CLAUDE.md`. A list of
+  source places is always one host directory behind.
+- **The amendment**: in the source repository, a `.md` or `.txt` file is records only in a named records place (the
+  active feature's output allowlist, the `.squad` records the syncs and the scribe write, two `.specrew` logs and the
+  inline review output, `docs/**/*.md` except `docs/methodology/**`, `proposals/**`, root prose); everything else is
+  source. T022's RED and Acceptance add the new refusing cases and one pinned records case per records place;
+  B5F-087's case list matches. Within the maintainer's "203 T022: 1" and within 4.5 SP (the crew's judgment: one
+  ordered rule and a list; the cases are one-line path assertions).
+- **Left open, stated in B5F-087**: non-Markdown configuration under `.specrew/` and `.squad/` (such as
+  `.specrew/verification-plan.json`, `.specrew/config.yml`) stays records as machinery.
+- **Class closure**: NONE — a task amendment before the tasks stop.
