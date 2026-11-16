@@ -29732,3 +29732,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Rationale**: The maintainer's merge order is 206, then 205, then 203, and it cannot hold while 205's iteration 004 waits for 203. Feature 205's own FR-001 to FR-032 are delivered in iterations 001 to 003. Of iteration 004's scope, only the amendment flow needs 203's code: its typed receipts live in workshop-authority-store.ps1, which 203 changes. This is a scope decision, not a boundary approval, and not a go to merge.
 - **Next Action**: Records only. The spec amendment, proposal 220 marked partially-shipped, the INDEX rows, follow-up-seed.md, then the governed path to feature closeout. Provenance: DRIFT-205-INTAKE-008.
 - **Recorded At**: 2026-11-16T18:56:00Z
+
+## 2026-11-16T19:52:16Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7f841071f065ea6e22fed1771ce1476214934c93
+- **Recorded At**: 2026-11-16T19:52:03Z
