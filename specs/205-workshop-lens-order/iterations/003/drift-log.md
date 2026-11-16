@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 11
-**Resolution rate**: 100% (11/11 resolved or placed)
+**Total drift events**: 14
+**Resolution rate**: 100% (14/14 resolved or placed)
 **Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 recorded in spec.md, approved at the tasks boundary (DRIFT-005)
 
 ## Events
@@ -193,6 +193,51 @@
   block is not added. No other item fails.
 - **Class closure**: NONE — the validator's first-line reading is the same pattern as iteration 002's DRIFT-026 (the
   retro scaffold); the governance check is feature 203's area.
+
+### DRIFT-012 — the retro scaffold refuses a one-line worded review verdict (recurrence of iteration 002's DRIFT-026)
+
+- **Observed**: 2026-11-16, at the start of the retro. `scaffold-retro-artifact.ps1 -IterationDirectory
+  .\specs\205-workshop-lens-order\iterations\003` stopped with "review.md contains an invalid overall verdict:
+  'accepted: one round on a0c6a849 passed with no findings and covers the files as they are'." This verdict is on
+  one line. So the refusal is not only about wrapping, as iteration 002 read it: the scaffold refuses any verdict
+  worded beyond the bare enum. The governance check accepts the same `review.md`.
+- **Resolution**: `retro.md` was written by hand, as in iterations 001 and 002. The signed-off `review.md` was not
+  changed to suit the scaffold.
+- **Class closure**: NONE — the scaffold is feature 203's area; the third sighting, now with the narrower cause.
+
+### DRIFT-013 — the sign-off gate reads product Markdown as records (caution for iteration 004; practice rule)
+
+- **Observed**: 2026-11-16, relayed by the reviewer session from feature 203's reading of the code
+  (`Test-ReviewCampaignDeltaIsRecordsOnly`, `review-signoff-evidence-gate.ps1:410`; `shared-governance.ps1:7708-7728`).
+  Any `.md` or `.txt` outside `specs/` is classed non-source, and so is `.specify/**`. A change to a lens file, a
+  skill, a template, conduct text or a deployed copy after a round is therefore read as
+  "records-only-delta-does-not-stale", and the round still counts as current. This feature's product is that
+  Markdown.
+- **Iteration 003**: not affected. `a0c6a849..018c14c6` is `review.md` and `drift-log.md` only, and `ec2638da` adds
+  only the sync files and the Gap Ledger line (checked by the reviewer session).
+- **Practice rule, until the classifier is fixed**: rely on the gate's allow only for files under the iteration folder
+  and `.squad/`. If any lens, skill, template, conduct text or deployed copy changes after a round, it gets a new
+  round whatever the gate says, and the reviewer session is told. Carried into iteration 004's plan notes.
+- **Class closure**: NONE — the classifier is feature 203's; 203 is deciding whether to fix it in its iteration 002.
+
+### DRIFT-014 — the review and retro red-push allowance is standing for 205 (maintainer decision; settles DRIFT-010)
+
+- **Decision**: the maintainer, relayed by the reviewer session under the wider delegation. The reviewer offered
+  "205: standing" (recommended) or "205: allow retro" (this push only). The maintainer's words, at 14:18 local on
+  2026-11-16: "205: standing". This settles the open reading of "205: ok" at 12:22 (DRIFT-010).
+- **Terms**:
+  - **Scope**: feature 205's review-record and retro pushes, in this and later iterations, until feature 206's T034
+    fix reaches the 205 branch (when main is merged in after 206 lands). It then ends without a further word.
+  - **May be red**: Specrew CI's Lint job, for the phase-line message only ("plan.md status '<x>' is stale:
+    review.md exists ..." or the retro.md form), and the jobs skipped because Lint failed first. The derived-block item
+    has its own standing exception.
+  - **May not be red**: Test and Cross-Platform Validation must be green under the rerun rules. Any other Lint
+    failure, or a failure in any job that ran, stops the push sequence and goes to the reviewer session.
+  - **Each use** is recorded in the drift log with the run id and the one failing line quoted. The next push after
+    the boundary commit must be fully green with every job run.
+  - It is not an approval and covers no other kind of push.
+- **First use**: this iteration's retro push.
+- **Class closure**: NONE — the rule's fix is feature 206's T034; the exception ends when it lands here.
 <!--
   Every new ### DRIFT-... event includes:
 
