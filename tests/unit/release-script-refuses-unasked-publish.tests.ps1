@@ -92,3 +92,25 @@ Describe 'The publish suite clears the key itself (FR-012)' {
         $finally | Should -Match 'Env:SPECREW_BUILD_COMMIT'
     }
 }
+
+Describe 'The publish suite copies hidden release files on every OS (FR-012; CI on Linux, 2026-11-16)' {
+    It 'copies a dot-file the module FileList names, hidden on Linux and here marked hidden as well' {
+        # Specrew CI's Linux runner failed the suite at its first copy: extensions/specrew-speckit/hooks/.gitkeep is a
+        # dot-file, hidden on Unix, and Get-Item without -Force does not find a hidden item. Marking the file hidden here
+        # gives Windows the same state, so this case fails on both systems while the helper omits -Force.
+        $suitePath = Join-Path $script:RepoRoot 'tests/integration/distribution-module-publish.ps1'
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($suitePath, [ref]$null, [ref]$null)
+        $helper = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Copy-ReleaseSurface' }, $true)
+        $helper | Should -Not -BeNullOrEmpty
+        . ([scriptblock]::Create($helper.Extent.Text))
+        $src = Join-Path $script:Workspace 'hidden-src'
+        $null = New-Item -ItemType Directory -Path $src -Force
+        $file = Join-Path $src '.gitkeep'
+        [IO.File]::WriteAllText($file, '')
+        if ($IsWindows) { (Get-Item -LiteralPath $file -Force).Attributes = 'Hidden' }
+        $dst = Join-Path $script:Workspace 'hidden-dst/hooks/.gitkeep'
+        $ErrorActionPreference = 'Stop'   # as the suite runs it
+        { Copy-ReleaseSurface -SourcePath $file -DestinationPath $dst } | Should -Not -Throw
+        Test-Path -LiteralPath $dst | Should -BeTrue
+    }
+}
