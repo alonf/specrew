@@ -6275,6 +6275,8 @@ try {
     Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 0 -HardWarnings 0
 }
 catch {
+    # Feature 206 T030 (item 34): the exception's text is passed on, so only its hash reaches the findings file.
+    $unexpectedMessage = [string]$_.Exception.Message
     Write-Host 'FAIL validate-governance' -ForegroundColor Red
     Write-Host ('  - {0}' -f (New-StructuredValidationFailureText -FilePath '(none)' -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the validator inputs or configuration and rerun validate-governance.ps1.')) -ForegroundColor Red
     $summaryProjectRoot = $null
@@ -6283,6 +6285,6 @@ catch {
     }
     catch {
     }
-    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1 -FailureRule 'unexpected-validator-error'
+    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1 -FailureRule 'unexpected-validator-error' -FailureMessages @($unexpectedMessage)
 }
 # specrew-self-provenance-ok: DRIFT-198-I009-033,DRIFT-199-I001-122,DRIFT-199-I001-126,F-025,F-028,F-030,F-033,F-040,F-047,F-049,DRIFT-199-I001-134; implementation history is recorded for maintainers and is never emitted as consumer instruction
