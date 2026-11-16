@@ -24,7 +24,7 @@ function Copy-ReleaseSurface {
         throw "Missing release surface '$SourcePath'."
     }
 
-    $item = Get-Item -LiteralPath $SourcePath
+    $item = Get-Item -LiteralPath $SourcePath -Force   # a dot-file is hidden on Unix (Specrew.psd1 ships hooks/.gitkeep)
     if ($item.PSIsContainer) {
         Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Recurse -Force
         return
