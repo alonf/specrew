@@ -23,6 +23,26 @@ function Write-Fail {
     Write-Host "FAIL: $Message" -ForegroundColor Red
 }
 
+function Set-Sc001FixtureIdentityRelative {
+    # Feature 206, round 1 F2: the copied identity file may hold the absolute feature path of the machine that wrote
+    # it, which exists only there. Write it relative to the project, as T023 makes the boundary sync write it, or
+    # (none) when it points outside the repository the fixture was copied from.
+    param(
+        [Parameter(Mandatory = $true)][string]$IdentityPath,
+        [Parameter(Mandatory = $true)][string]$SourceRoot
+    )
+
+    if (-not (Test-Path -LiteralPath $IdentityPath -PathType Leaf)) { return }
+    $text = [IO.File]::ReadAllText($IdentityPath)
+    $line = [regex]::Match($text, '(?m)^session_state_feature_path:[ \t]*(?<value>[^\r\n]*?)[ \t]*(?=\r?$)')
+    if (-not $line.Success) { return }
+    $value = $line.Groups['value'].Value.Trim().Trim('"')
+    if ([string]::IsNullOrWhiteSpace($value) -or $value -eq '(none)' -or -not [IO.Path]::IsPathRooted($value)) { return }
+    $relative = ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $SourceRoot -FeaturePath $value
+    $text = $text.Substring(0, $line.Index) + ('session_state_feature_path: {0}' -f $relative) + $text.Substring($line.Index + $line.Length)
+    [IO.File]::WriteAllText($IdentityPath, $text, [Text.UTF8Encoding]::new($false))
+}
+
 function Invoke-EntryPoint {
     param(
         [Parameter(Mandatory = $true)]
@@ -141,6 +161,9 @@ foreach ($relativePath in $requiredFixturePaths) {
 # A fresh checkout of a feature has that feature's branch checked out (T024): name the fixture's branch after the
 # feature the copied identity file names, so the start case meets a governed project as a collaborator receives it.
 $fixtureIdentityPath = Join-Path $fixtureRoot '.squad\identity\now.md'
+# Round 1 F2: the identity path the fixture carries is relative, as a fresh checkout after T023 has it.
+. (Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1')
+Set-Sc001FixtureIdentityRelative -IdentityPath $fixtureIdentityPath -SourceRoot $repoRoot
 $fixtureBranch = 'main'
 if (Test-Path -LiteralPath $fixtureIdentityPath -PathType Leaf) {
     $identityFeature = [regex]::Match((Get-Content -LiteralPath $fixtureIdentityPath -Raw -Encoding UTF8), '(?m)^session_state_feature:\s*"?(?<ref>\d{3}-[A-Za-z0-9._-]+)"?\s*$')
