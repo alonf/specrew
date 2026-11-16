@@ -102,3 +102,37 @@ The following resolution strategies remain available if drift is detected later 
   Contract lane). The reviewer session will ask the maintainer whether 203's records-only rule should cover site 13 and
   `empty-result-retry` as it covers HookRenderDedupe.
 - **Class closure**: NONE — site 13's fix is proposed for this iteration's first batch (design-analysis.md).
+
+### DRIFT-005 — A Windows hang in the deterministic suites step on feature 206's push (evidence; handed over)
+
+- **The run**: on 206's push `fdb42f2d` (release script, publish workflow, publish test; nothing 203's suites read),
+  Cross-Platform Validation `43793714104`, attempt 1, the Windows job "Deterministic fake-provider review runtime"
+  (job `133057670105`) hung in the step "Run bounded deterministic review fault and conformance suites". It started at
+  02:44:26Z (04:44 local, 2026-11-16), never completed, and was cancelled at 30 minutes against the job's
+  `timeout-minutes: 25`. No log was kept (BlobNotFound). The same step took 133 s on `53bc6574` and 130 s on attempt 2
+  (job `133068036828`, all 8 jobs green). Feature 206 records it as DRIFT-206-I002-012 at `eac9e210`; the reviewer
+  session handed it over.
+- **A possibility, not a finding**: a review process that does not exit on Windows, site 13's family (`Stop-Process`
+  with no wait).
+- **What the step has** (`.github/workflows/cross-platform-validation.yml:243`, `:299-364`): no per-suite time limit.
+  On Windows it runs 14 suites one after another in the step's own `pwsh` through `Invoke-Pester -Output Detailed`,
+  with no step-level `timeout-minutes`; only the job's 25 minutes bound it. It prints `--- deterministic suite: <path>`
+  before each suite, so the live log would have named the suite and the last test; the job-level cancel lost that log.
+  The cancel came five minutes after the job's limit.
+- **Class closure**: NONE — the plan's flaky-test task takes a per-suite time limit that names the suite and stops its
+  process tree, and a step-level `timeout-minutes` below the job's so a hang fails the step and keeps its log.
+
+### DRIFT-006 — The maintainer's nine design decisions and "203 rerun: yes", relayed
+
+- **The words**: "OK for all", typed by the maintainer to the reviewer session specrewreviewer-98 at 11:34 local on
+  2026-11-16 and relayed under the wider delegation, answering two lines quoted in design-analysis.md's Human Decision.
+- **What they decide**: Option A, A-buffered, merge then a follow-up feature, the first-batch order as recommended, the
+  pin advance placed after the first batch's round (the advance itself still needs their typed `advance the pin`),
+  B5F-077's link removed, the t008 lane measured first, T006's launcher half with F3's push (refining "launcher: wait"
+  of 03:13), the rest of the census later. The merge shape is recorded in `.squad\decisions.md` as
+  `f203-i002-merge-then-follow-up`.
+- **"203 rerun: yes"**: on 203's records-only pushes, a sole failure of site 13 (`co-review-service.Tests.ps1:129`) or
+  `empty-result-retry.Tests.ps1` is rerun once without asking and the sighting recorded; a second failure stops; no
+  exception on a push that touches code. HookRenderDedupe stays as ruled at 02:56.
+- **Not an approval**: no boundary is crossed by it; the plan boundary takes the maintainer's own typed verdict.
+- **Class closure**: NONE — a record of a decision, not a defect.

@@ -1,5 +1,27 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Decision: 203 merges after iteration 002; the rest of its spec moves to a follow-up feature
+
+- **Decision ID**: f203-i002-merge-then-follow-up
+- **Type**: scope-amendment
+- **Affected Requirement**: FR-012, FR-013, FR-028 to FR-040, FR-044 (US4 to US7, T009, T010 and the three-host walk)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T09:36:52Z
+- **Decision**: Feature 203 closes after iteration 002 and merges into main. The spec's remaining scope, US4 to US7
+  (FR-028 to FR-040), T009 (FR-013), T010 (FR-012) and the three-host walk (FR-044), moves to a follow-up feature, with
+  B5F-051's other timing sites, B5F-076, B5F-073 and B5F-072. Before the merge, a short Copilot and Codex walk of the
+  capture cases (about 1 SP, the crew's estimate) checks live the capture code that iteration 001 checked on Claude
+  only. The spec is amended to say which requirements moved; the traceability check is to read them as moved, not as
+  gaps. This departs from the specify verdict's two iterations with the walk at the end of iteration 2 (2026-10-31).
+- **The maintainer's words**: "OK for all", typed to the reviewer session specrewreviewer-98 at 2026-11-16 11:34 local
+  (UTC+2) and relayed under the wider delegation. They answered two lines put to them to accept or change, quoted as
+  shown: "203: A, A-buffered, merge then follow-up, order as recommended, advance after the first batch, remove the
+  link, measure first, launcher with F3, census later" and "203 rerun: yes". This entry records the third point,
+  "merge then follow-up"; all nine are in iteration 002's design-analysis.md, Human Decision.
+- **Next Action**: The plan places the Copilot and Codex capture walk and the spec amendment; the follow-up feature
+  opens through its own specify stop, when the maintainer chooses.
+
 ### 2026-11-16 — Verdict: 203 iteration 001 gap ledger - every open item deferred to iteration 002
 
 - **Decision ID**: f203-i001-gap-ledger-deferrals

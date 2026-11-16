@@ -444,6 +444,35 @@ decides.
 
 ## Human Decision
 
-- **Decision verdict**: pending
-- **Chosen option**: pending
-- **Reason**: pending
+- **Decision verdict**: accepted as recommended, all nine points
+- **Chosen option**: Option A, A-buffered, with the merge variant
+- **Given**: 2026-11-16 11:34 local (UTC+2), by the maintainer, typed to the reviewer session specrewreviewer-98 and
+  relayed to this crew under the wider delegation. Their words: "OK for all". The three words carry no content of
+  their own; they answered these two lines, which the reviewer session had put to them to accept or change (quoted as
+  shown to them):
+  - "203: A, A-buffered, merge then follow-up, order as recommended, advance after the first batch, remove the link,
+    measure first, launcher with F3, census later"
+  - "203 rerun: yes"
+- **The nine points, in this analysis's order**:
+  1. Option A.
+  2. A-buffered: 18.0 SP of work and a 2.0 SP review buffer; B5F-076, B5F-073 and B5F-072 move out.
+  3. Merge, then a follow-up feature: 203 closes after iteration 002 and merges; US4 to US7, T009, T010 and the
+     three-host walk (FR-044) move to a follow-up feature. This needs a spec amendment and a decision entry quoting
+     the maintainer, and the short Copilot and Codex capture walk (about 1 SP) before the merge.
+  4. The first-batch order as recommended (Key Design Decision Point 4).
+  5. The pin advance after the first batch's round. This places the advance in the plan only; the advance itself still
+     needs the maintainer's typed `advance the pin` at that time.
+  6. B5F-077: remove the tracked link.
+  7. The t008 lane: measure first; no limit changes before the measurement.
+  8. T006's launcher half travels with F3's push. This refines "launcher: wait" (2026-11-16 03:13); nothing is
+     redeployed now.
+  9. The rest of B5F-051's census: later, in the follow-up feature.
+- **"203 rerun: yes"**: on 203's own pushes of records only, a sole CI failure of site 13
+  (`co-review-service.Tests.ps1:129`) or of `empty-result-retry.Tests.ps1` may be rerun once without asking; the
+  sighting is recorded; a second failure stops. No exception on a push that touches code. HookRenderDedupe stays as
+  ruled on 2026-11-16 02:56.
+- **Reason**: the crew's recommendation (Crew Recommendation above), accepted without change.
+- **Decision commit**: this section's commit.
+- **Transcription disclosure**: agent-transcribed from the reviewer session's relay, which quotes the maintainer's
+  words and time. It records the design choice only. It is not an approval: the plan is approved, or not, at the plan
+  boundary with the maintainer's own typed verdict.
