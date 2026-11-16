@@ -92,6 +92,17 @@ try {
     $nsOuts = @(($n1 | Receive-Job), ($n2 | Receive-Job))
     $n1, $n2 | Remove-Job -Force
     $nsRenders = @($nsOuts | Where-Object { $_ -match 'VISIBLE PROSE' }).Count
+    if ($nsRenders -ne 2) {
+        # Feature 203 T016: I3a failed once on Linux CI (run 43670851775, expected 2 renders, got 1) with nothing in the
+        # log to say why. Print each fire's output (trimmed) so the next sighting shows what the non-rendering fire did.
+        $fireIndex = 0
+        foreach ($nsOut in $nsOuts) {
+            $fireIndex++
+            $text = [string]$nsOut
+            if ($text.Length -gt 2000) { $text = $text.Substring(0, 2000) + ' ...[trimmed]' }
+            Write-Host ("  I3a fire {0} output: {1}" -f $fireIndex, $text) -ForegroundColor Yellow
+        }
+    }
     Assert-Equal $nsRenders 2 'I3a: two concurrent missing-id fires BOTH render (per-launch fallback keys, never shared suppression)'
     $nsRows = @(Get-Content -LiteralPath (Join-Path $tmp2 '.specrew/runtime/bootstrap-journal.jsonl') | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
     $nsKeys = @($nsRows | ForEach-Object { [string]$_.dedupe_key })
