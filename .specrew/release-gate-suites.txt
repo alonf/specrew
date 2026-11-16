@@ -290,6 +290,7 @@ tests/integration/workshop-controller-initialization.tests.ps1
 tests/integration/workshop-state-transition-table.tests.ps1
 tests/unit/authorization-ref-not-the-advice.tests.ps1
 tests/unit/bootstrap-commit.tests.ps1
+tests/unit/bootstrap-journal-claim-age.Tests.ps1
 tests/unit/boundary-authorization-prompt-truth.tests.ps1
 tests/unit/boundary-correction-ledger.tests.ps1
 tests/unit/boundary-ratchet.tests.ps1
