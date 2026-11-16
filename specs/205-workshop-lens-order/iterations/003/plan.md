@@ -31,13 +31,13 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T027 | Code-lens freshness test, red-first; verification plan re-pointed | FR-030 | US6 | 1.25 | implementer | — | planned | — | — | — |
-| T028 | Agenda grouping test, red-first | FR-032 | US6 | 0.75 | implementer | — | planned | — | — | — |
-| T029 | Six per-stack rules refreshed from release notes; Source Notes | FR-030 | US6 | 1.5 | implementer | — | planned | — | — | — |
-| T030 | Line function, lens conduct (with the confirm-at-the-point-of-choice sentence), skill exception | FR-030 | US6 | 0.75 | implementer | — | planned | — | — | — |
-| T031 | Grouped agenda renderer, UTF-8 output, skill template and marker | FR-032 | US6 | 0.75 | implementer | — | planned | — | — | — |
-| T032 | Proposal 220 status history and INDEX row | FR-031 | US6 | 0.5 | implementer | — | planned | — | — | — |
-| T033 | Copies, hash record, green, regression, CI steps | FR-030, FR-032 | US6 | 1 | implementer | — | planned | — | — | — |
+| T027 | Code-lens freshness test, red-first; verification plan re-pointed | FR-030 | US6 | 1.25 | implementer | — | done | — | — | — |
+| T028 | Agenda grouping test, red-first | FR-032 | US6 | 0.75 | implementer | — | done | — | — | — |
+| T029 | Six per-stack rules refreshed from release notes; Source Notes | FR-030 | US6 | 1.5 | implementer | — | done | — | — | — |
+| T030 | Line function, lens conduct (with the confirm-at-the-point-of-choice sentence), skill exception | FR-030 | US6 | 0.75 | implementer | — | done | — | — | — |
+| T031 | Grouped agenda renderer, UTF-8 output, skill template and marker | FR-032 | US6 | 0.75 | implementer | — | done | — | — | — |
+| T032 | Proposal 220 status history and INDEX row | FR-031 | US6 | 0.5 | implementer | — | done | — | — | — |
+| T033 | Copies, hash record, green, regression, CI steps | FR-030, FR-032 | US6 | 1 | implementer | — | done | — | — | — |
 | T034 | Recorded render check in a scratch project (last) | FR-032 | US6 | 0.5 | implementer | — | planned | — | — | — |
 
 ## Effort Model

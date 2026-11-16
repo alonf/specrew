@@ -49,3 +49,26 @@ yet). The home hook files were hashed before and after; both matched the known-g
   solution), and reports 13 problems, one per selected lens: "listed before any group heading". The round trip
   passes today only because the block has no marker yet.
 - Exit code 1.
+
+## T029 to T033: green, regression and copies
+
+On `ebbe1b9b` (2026-11-16), every run out of process, the home hook files hashed before and after each (0
+differences every time).
+
+- **T029** (`babf2cf8`): the six per-stack rules carry `sources_checked: "2026-11-16"` and a `current` field from
+  official release data fetched that day (.NET release index and C# language-versioning page; WG14 and isocpp.org;
+  the npm registry and Node's index; the Python release-cycle data; Go's release history and download JSON; OpenJDK
+  GA dates and Oracle's support roadmap). The C/C++ default no longer names editions. Facts the sources did not
+  confirm were left out: Node's active/maintenance split and the next ECMAScript edition.
+- **T030** (`79667a2a`): `Get-SpecrewCodeStackFreshnessLines`, the conduct and the skill exception.
+  `code-lens-freshness.tests.ps1`: 11 of 11 self-tests and the repository check pass (from 1 and 24 at T027).
+- **T031** (`cd5b6ba8`): the grouped agenda and UTF-8 output. `workshop-agenda-grouping.tests.ps1`: 10 of 10
+  self-tests and the repository check pass (from 13 problems at T028). Mutation check: with the UTF-8 line removed,
+  the Latin-1 round trip fails on all three renders.
+- **T032** (`3230e1d5`): proposal 220's status history and INDEX row.
+- **T033** (`515a432b`, `ebbe1b9b`): the copies through the two project-only deploy scripts and their four hashes;
+  two named CI steps. The deploy's restamps outside the copies were restored by exact path. The parity sweep caught
+  T031's three-lens example in the skill, fixed in `ebbe1b9b`.
+- Regression on `ebbe1b9b`: 34 of 34 workshop tests pass (the 32 of iteration 002 and the two new ones), parity and
+  the length budget pass, markdownlint is clean, and governance fails only on the standing derived-block exception
+  (iterations 001 and 002).
