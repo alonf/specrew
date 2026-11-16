@@ -380,9 +380,6 @@ jobs:
             'tests/integration/concurrency-sizing.ps1'
             'tests/integration/descriptive-reference-authored-prose.ps1'
             'tests/integration/descriptive-reference-excluded-surfaces.ps1'
-            # F-206 T028 (maintainer 2026-11-16): clears PSGALLERY_API_KEY itself; the release script refuses a live
-            # publish without -ConfirmLivePublish, which only publish-module.yml passes. No secret reaches this job.
-            'tests/integration/distribution-module-publish.ps1'
             'tests/integration/feature-018-render-budget.ps1'
             'tests/integration/gap-governance.ps1'
             'tests/integration/hardening-gate-contract.ps1'
@@ -424,6 +421,24 @@ jobs:
           }
           if ($failed.Count -gt 0) { Write-Host ("FAILED ({0}): {1}" -f $failed.Count, ($failed -join ', ')); exit 1 }
           Write-Host ("All {0} script suites and {1} Pester suites green" -f $suites.Count, $pesterSuites.Count)
+
+  publish-suite-windows:
+    name: Publish suite (windows-latest)
+    # Feature 206 T028 (maintainer 2026-11-16 14:38, "206 publish: A"): the publish suite runs on every push, on the OS
+    # the real publish job uses (publish-module.yml, windows-latest). On Linux, PowerShellGet's Publish-Module -WhatIf
+    # copies the module without its hidden .gitkeep files and rejects the FileList (bug list item 56).
+    # This job must never map PSGALLERY_API_KEY, or any secret: the suite's no-key case relies on the key being absent.
+    # It needs no other job and is not continue-on-error, so a red publish suite turns Specrew CI red.
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Integration - distribution module publish suite (F-206 T028)
+        shell: pwsh
+        timeout-minutes: 8
+        run: pwsh -NoProfile -NonInteractive -File ./tests/integration/distribution-module-publish.ps1
 
   contract-lane:
     name: Contract lane
