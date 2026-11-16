@@ -40,7 +40,6 @@ function Get-SpecrewTestCensusExclusions {
         'tests/integration/update-command.ps1'                           = 'writes the real home; not run until feature 203''s private test home is merged'
         'tests/integration/validate-baseline-team.ps1'                   = 'writes the real home; not run until feature 203''s private test home is merged'
         'tests/manual/copilot-squad-smoke.ps1'                           = 'writes the real home; not run until feature 203''s private test home is merged'
-        'tests/integration/distribution-module-publish.ps1'              = 'would publish to PSGallery if PSGALLERY_API_KEY is set; bug list item 17 (severity high)'
         'tests/integration/feature-017-dashboard-core.ps1'               = 'red: its healthy fixture is not a Specrew project to `specrew where` ("requires a Specrew-managed project"); bug list item 19, fixed in iteration 002'
         'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: the rendered rich dashboard no longer matches rich-capable-expected.txt (golden file or velocity change, not established); bug list item 20, fixed in iteration 002'
         'tests/integration/project-path-resolution-regression.ps1'       = 'awaiting the maintainer: green in iteration 002 (T024), and registered once the maintainer has seen its supervised run (iteration 001 ruling); bug list items 22 to 25'

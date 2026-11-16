@@ -9,7 +9,7 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$r = Invoke-Pester -Path 'tests/unit/recovery-choice-no-console.tests.ps1','tests/unit/overclaim-dirty-check-separator.tests.ps1','tests/unit/instruction-classifier-managed-blocks.tests.ps1','tests/unit/iteration-closed-definition.tests.ps1','tests/unit/legacy-frozen-judged-by-nothing.tests.ps1','tests/unit/closed-check-since-and-ruling.tests.ps1','tests/unit/review-verdict-names-status.tests.ps1','tests/unit/nightly-tracking-issue.tests.ps1','tests/unit/start-written-files-record.tests.ps1','tests/unit/fresh-clone-first-start.tests.ps1','tests/unit/resume-path-inside-project.tests.ps1','tests/unit/squad-probe-temp-folder.tests.ps1','tests/unit/init-dry-run-names-project.tests.ps1','tests/unit/sc001-fixture-identity.tests.ps1','tests/unit/no-node-preset-for-this-repo.tests.ps1','tests/unit/record-before-approval.tests.ps1','tests/unit/deferred-task-verdict.tests.ps1','tests/unit/closeout-dashboard-redraw.tests.ps1','tests/unit/closeout-completed-and-open-rows.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
+        "$r = Invoke-Pester -Path 'tests/unit/recovery-choice-no-console.tests.ps1','tests/unit/overclaim-dirty-check-separator.tests.ps1','tests/unit/instruction-classifier-managed-blocks.tests.ps1','tests/unit/iteration-closed-definition.tests.ps1','tests/unit/legacy-frozen-judged-by-nothing.tests.ps1','tests/unit/closed-check-since-and-ruling.tests.ps1','tests/unit/review-verdict-names-status.tests.ps1','tests/unit/nightly-tracking-issue.tests.ps1','tests/unit/start-written-files-record.tests.ps1','tests/unit/fresh-clone-first-start.tests.ps1','tests/unit/resume-path-inside-project.tests.ps1','tests/unit/squad-probe-temp-folder.tests.ps1','tests/unit/init-dry-run-names-project.tests.ps1','tests/unit/sc001-fixture-identity.tests.ps1','tests/unit/no-node-preset-for-this-repo.tests.ps1','tests/unit/record-before-approval.tests.ps1','tests/unit/deferred-task-verdict.tests.ps1','tests/unit/closeout-dashboard-redraw.tests.ps1','tests/unit/closeout-completed-and-open-rows.tests.ps1','tests/unit/release-script-refuses-unasked-publish.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
       ],
       "timeout_seconds": 1200,
       "env_refs": [
@@ -33,7 +33,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 206: the eight Pester suites iteration 001's tasks wrote (T001, T002, T003, T006, T008, T009, T011, T012) and the five iteration 002's Phase 5 wrote (T020, T022, T023, T025, T024). Each was read for home writes before it ran; none deploys hooks or runs specrew-update, and those that run specrew start or init do it in temp folders they create with the user profile pointed at a temp file. The eight measured 285 s in the review layout (2026-11-15); the five add about 145 s; against 1200 s."
+      "label": "Feature 206: the eight Pester suites iteration 001's tasks wrote (T001, T002, T003, T006, T008, T009, T011, T012), the five iteration 002's Phase 5 wrote (T020, T022, T023, T025, T024), and Phase 7's (T033, T035, T036, T028). Each was read for home writes before it ran; none deploys hooks or runs specrew-update, and those that run specrew start or init do it in temp folders they create with the user profile pointed at a temp file. The eight measured 285 s in the review layout (2026-11-15); the five add about 145 s; against 1200 s."
     },
     {
       "command_id": "f206-changed-integration",
@@ -42,9 +42,9 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$fail = 0; $r = Invoke-Pester -Path 'tests/integration/closed-iterations-are-history.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { $fail = 1 }; foreach ($s in @('tests/integration/non-specrew-session-bypass.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
+        "$fail = 0; $r = Invoke-Pester -Path 'tests/integration/closed-iterations-are-history.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { $fail = 1 }; foreach ($s in @('tests/integration/non-specrew-session-bypass.tests.ps1','tests/integration/distribution-module-publish.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
       ],
-      "timeout_seconds": 120,
+      "timeout_seconds": 300,
       "env_refs": [
         "PATH",
         "PATHEXT",
@@ -66,7 +66,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 206 iteration 001: the two integration suites whose fixtures 206 changed for T008 and T009 (DRIFT-206-I001-003 and -009). Measured alone 23 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
+      "label": "Feature 206: the two integration suites whose fixtures iteration 001 changed for T008 and T009 (DRIFT-206-I001-003 and -009), measured alone 23 s (2026-11-13), and iteration 002's T028 publish suite, tests/integration/distribution-module-publish.ps1, per push by the maintainer's answer of 2026-11-16 (77 s alone; home hook files, PowerShellGet's folder and the repository unchanged; it clears PSGALLERY_API_KEY itself). Against 300 s."
     },
     {
       "command_id": "f206-census-guard",

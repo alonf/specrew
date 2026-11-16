@@ -512,6 +512,9 @@ Assert-True ($held.Count -eq 0) ("the census holds no script back: each is regis
 
 $perPush = @(
     'tests/integration/brownfield-merge.ps1'
+    # Feature 206 T028 (FR-012, maintainer 2026-11-16 "OK for all"): per push once it clears the key itself and the
+    # release script refuses a live publish nobody asked for.
+    'tests/integration/distribution-module-publish.ps1'
     'tests/integration/carry-forward-closed-iteration.ps1'
     'tests/integration/concurrency-sizing.ps1'
     'tests/integration/descriptive-reference-authored-prose.ps1'
@@ -554,7 +557,6 @@ $rulingExclusions = [ordered]@{
     'tests/integration/update-command.ps1'                           = $homeWriter
     'tests/integration/validate-baseline-team.ps1'                   = $homeWriter
     'tests/manual/copilot-squad-smoke.ps1'                           = $homeWriter
-    'tests/integration/distribution-module-publish.ps1'              = 'would publish to PSGallery if PSGALLERY_API_KEY is set'
     'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
     'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
     'tests/integration/project-path-resolution-regression.ps1'       = 'awaiting the maintainer: green in iteration 002 (T024)'
