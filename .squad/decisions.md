@@ -1,5 +1,28 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Decision: 203 iteration 002 - both sweep allowances renewed, T026 widened, a new full sweep tonight
+
+- **Decision ID**: f203-i002-sweep-yes-renew-allowances-widen-t026
+- **Type**: scope-amendment
+- **Affected Requirement**: none (sweep rules for iteration 002, the use of the stated review buffer, T026's scope)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T21:07:00Z
+- **Decision**: As the reviewer session put it to the maintainer, one answer meaning: (1) fix items 1, 2, 3 and 5 of
+  the red Phase 8 sweep before the phase is pushed, 0.7 SP from the 2 SP review buffer, recorded as such; (2) renew
+  both 14 November allowances for iteration 002 on the same terms (source: iteration 001's DRIFT-077) - "The 1,500 s
+  per-suite limit in full sweeps" and "the start-command test: when it times out under sweep load, it counts as green
+  if it passes alone and in CI, recorded each time"; (3) widen T026 to the three slow suites (+0.25 SP from the
+  buffer) and run it before the next phase, so any limit question comes to the maintainer with a cause; (4) run a new
+  full sweep on the fixed tip overnight, then the push if it is green. A ruling and a scope decision, not a boundary
+  approval. Task rows stay at 20.0 SP; the 0.7 and the 0.25 are buffer use on record (about 1.05 SP left).
+- **The maintainer's words**: "203 sweep: yes", typed to the reviewer session at 23:07 local (UTC+2) on 2026-11-16,
+  relayed by `specrewreviewer-98` under the wider delegation, answering the answer line the reviewer session had
+  defined. The four fixes themselves were on the maintainer's earlier "Fix them", typed directly in the 203 session at
+  about 22:50 local.
+- **Next Action**: the timing measurement ends; this records commit; the full sweep of the new tip at 1,500 s per
+  suite; on green, the gated push of Phase 8 and CI; then T026 as widened, before Phase 9.
+
 ### 2026-11-16 — Decision: 203 - reviewer-hook-suppression joins the records-only rerun rule; T017 first in the batch
 
 - **Decision ID**: f203-i002-rerun-reviewer-hook-suppression-t017-first

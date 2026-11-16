@@ -850,11 +850,19 @@ with the plan.
 
 ### Phase 12: measurement, merge, checks
 
-- [ ] T026 [owner: Implementer] [sp: 0.5] [US1] **The t008 lane's time.**
+- [ ] T026 [owner: Implementer] [sp: 0.5] [US1] **The t008 lane's time and the three slow suites.**
   - **Work:** `f203-i001-t008-suites` ran 838 of 900 s on `da78b600` (DRIFT-087). Time it against round D finding 1's
-    whole-transcript read before any limit moves (the maintainer's "measure first").
-  - **Acceptance:** the measurement recorded in the drift log with the suspect named or ruled out; any limit change
-    goes to the maintainer.
+    whole-transcript read before any limit moves (the maintainer's "measure first"). Widened (the maintainer's "203
+    sweep: yes", 23:07 local on 2026-11-16; iteration 002's DRIFT-023): the same question for `message-identity`,
+    `review-loop-stops` and `review-budget-loop`, whose sweep times climbed every sweep and reached the 1,500 s cap in
+    the Phase 8 sweep of `aa06b3e5b`. Run after Phase 8's push, before Phase 9. Size: 0.5 in the row, plus 0.25 from
+    the stated review buffer, on record. The measurement of 2026-11-16 (DRIFT-024) widens the question: alone,
+    `review-budget-loop` and `review-loop-stops` take 356 to 390 s, and in the sweep (6 suites at a time) past
+    1,500 s. So measure both: (a) each of the three suites alone at two or three older commits, to see whether they
+    grow when run alone; (b) the same suites inside a sweep-shaped load, to see why they take about four times longer
+    at the sweep's throttle of 6 and whether that factor grows. Change no throttle and no limit; report.
+  - **Acceptance:** the measurement recorded in the drift log for the lane and each of the three suites, with the
+    suspect named or ruled out; any limit change goes to the maintainer.
   - **Trace:** Gap Ledger (DRIFT-087).
   - **Depends:** none.
   - **Owns:** `specs/203-beta5-stabilization/iterations/002/**`.

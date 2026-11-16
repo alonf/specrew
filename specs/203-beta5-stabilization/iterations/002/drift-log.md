@@ -469,3 +469,69 @@ The following resolution strategies remain available if drift is detected later 
   20/20 is unchanged.
 - **Class closure**: item 1 by the sweep self-test's new case; items 2, 3 and 5 by their own suites, now green; items
   4 and 6 NONE yet.
+
+### DRIFT-023 — Both sweep allowances renewed for iteration 002, T026 widened, a new full sweep tonight (maintainer's decision)
+
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "203 sweep: yes", 23:07
+  local on 2026-11-16), answering the answer line the reviewer session defined. As it was shown to them: "My
+  recommendation, as one answer: "203 sweep: yes". It means: 1. Fix items 1, 2, 3 and 5 before the phase is pushed: 0.7
+  SP, taken from the 2 SP review buffer and recorded as such. 2. Renew both 14 Nov allowances for iteration 002 on the
+  same terms. 3. Widen T026 to the three slow suites (+0.25 SP from the buffer) and run it before the next phase, so any
+  limit question comes to you with a cause. 4. Run a new full sweep on the fixed tip overnight, then the push if it is
+  green." A later shorter form, "203 sweep: renew both, widen T026", was answered with the first, which contains it.
+- **The renewed allowances, for iteration 002** (terms from iteration 001's DRIFT-077, as the reviewer session
+  described them to the maintainer): "The 1,500 s per-suite limit in full sweeps"; and "the start-command test: when it
+  times out under sweep load, it counts as green if it passes alone and in CI, recorded each time". Nothing else red
+  counts as green.
+- **Capacity**: task rows unchanged at 20.0 SP. Buffer use on record: 0.7 SP for DRIFT-022's four fixes and 0.25 SP
+  for T026's widening; about 1.05 SP of the 2.0 left for the campaign's rework.
+- **T026**: widened in tasks.md and plan.md to the t008 lane plus `message-identity`, `review-loop-stops` and
+  `review-budget-loop`; run after Phase 8's push and before Phase 9, whose start waits for the reviewer session to see
+  T026's result.
+- **The overnight sequence** (the reviewer session's, routine): the timing measurement ends and is reported; this
+  records commit; the full sweep of the new tip at 1,500 s per suite with the home hook set hashed before and after;
+  if green (the start-command allowance only on its terms), the gated push of Phase 8 and CI with every job, then the
+  rerun rules that end, in the drift log; if red for any other reason, stop, sort by cause, push nothing, report.
+- **Class closure**: NONE — a ruling and a scope decision, not a boundary approval.
+
+### DRIFT-024 — The timing measurement, and the Ubuntu runner image that moved under the CI
+
+- **The measurement** (on the reviewer session's go after 206's lanes, 23:05 to 23:28 local on 2026-11-16, one suite at
+  a time through `run-suites.ps1 -Throttle 1` with a 2,400 s limit, each commit in a scratch worktree removed by its
+  path; the home hook set identical before and after; 0 files written to the redirected home):
+
+  | Suite | Commit | Alone | In the `aa06b3e5b` sweep | Tests |
+  | --- | --- | --- | --- | --- |
+  | `review-budget-loop` | `5f82692e7` | 356 s | (not swept) | 23 of 23 |
+  | `review-budget-loop` | `9779a4b33` | 390 s | over 1,500 s | 24 of 24 |
+  | `review-loop-stops` | `9779a4b33` | 382 s | over 1,500 s | 21 of 21 |
+  | `start-command-non-interactive-first-run` | `9779a4b33` | 235 s | 301 s (its own 300 s limit) | passed |
+
+  T018's one new case costs about 34 s (the suite averages about 15 s a case), so Phase 8 explains none of tonight's two
+  caps: alone, both suites take about 6.5 minutes; in the sweep, 6 suites at a time, about 4 times that. Why the sweep
+  times have climbed sweep after sweep is T026's question, as widened.
+- **The start-command allowance** (DRIFT-023's terms): the "passes alone" fact for this tip is the 235 s run above; it
+  is used only if the next sweep times it out and CI on the push passes it, and is recorded then.
+- **The CI fault** (the reviewer session's ruling, routine; T015 owns the file): Cross-Platform Validation's "Ubuntu
+  Validation" failed at "Setup PowerShell" on 205's `8ebfef8f` (run `43954284857`, job `133604592995`) and 206's
+  `7b54d49d` (run `43956458711`, job `133612182895`, 21:05:31Z): "powershell depends on libicu72 | ... | libicu52",
+  every later step skipped. It ran on image `ubuntu-26.04`, version 20261111.196.1: `ubuntu-latest` is moving to
+  26.04. The same run's green wrapper-proof job (`133612182422`, same image) shows why it stayed green: dpkg "Selecting
+  previously unselected package powershell" (the image ships no pwsh), the 7.4.1 package failed on libicu, and its
+  `|| apt-get install -f -y` upgraded it to 7.7.0 from `packages.microsoft.com/ubuntu/26.04/prod`, so that job ran
+  PowerShell 7.7.0, not 7.4.1.
+- **The fix**: `f2493ccc` (workflow file only). All three Ubuntu "Setup PowerShell" steps use the runner's pwsh when it
+  has one and otherwise install `powershell` from Microsoft's package feed, failing with an `::error::` naming the OS.
+  Each prints its version. The RED is the two runs above; no local test can reproduce a runner image. No test reads the
+  step; the sweep self-test, which reads this workflow, is 58 of 58. Nothing in the repository depends on 7.4.x (every
+  script requires 7.0). The Ubuntu jobs will run 7.7.0 on 26.04 runners.
+- **Not changed, for the maintainer**: `runs-on: ubuntu-latest` (four jobs in this workflow, and specrew-ci.yml's
+  jobs). The label moved under the project's CI without notice. Whether to pin an image is a separate decision. The
+  reviewer session will ask whether 205 and 206 take `f2493ccc` by cherry-pick, so the text is the same everywhere.
+- **In the reviewer session's words** (routine, on reading the fix): that green job was already running 7.7.0 from
+  the feed, so the 7.4.1 pin was fiction on the new image. The Ubuntu jobs now run whatever pwsh the runner or
+  Microsoft's feed provides; nothing in the tree depends on 7.4.x (checked with `git grep` over every `.ps1`, `.psd1`,
+  `.psm1` and `.sh` for `7.4.<n>`, a `PSVersion` test against 7.4 and `-Version 7.<n>` above 7.0: no match outside the
+  removed download lines).
+- **Class closure**: NONE — whether to pin the runner image is the maintainer's decision, not taken here; the setup
+  step itself no longer depends on one image's library versions.
