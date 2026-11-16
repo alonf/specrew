@@ -191,6 +191,14 @@ Describe '-RebuildClosedIndex keeps the closeout stamps (FR-008; review round 2,
         $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\005'
         $null = New-Item -ItemType Directory -Path $dir -Force
         Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 005`n`n**Schema**: v2`n**Iteration Status**: executing`n"
+        # Review iteration 002 round 2, finding 1: 006 is abandoned with no recorded ruling and no index entry, so the
+        # canonical definition (T026) reads it as open. 007 is abandoned with the ruling recorded, so it is closed.
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\006'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 006`n`n**Schema**: v2`n**Iteration Status**: abandoned`n**Abandonment Reason**: superseded`n"
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\007'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 007`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n## Disposition`n`n**Abandoned by the maintainer's ruling of 2026-11-16.**`n"
         Set-Content -LiteralPath (Join-Path $script:RebuildRoot 'specs\910-rebuild\spec.md') -Value '# Feature Specification: 910-rebuild' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $script:RebuildRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
 closed:
@@ -244,6 +252,15 @@ closed:
     It 'does not index an iteration the canonical definition reads as open (review round 3, finding 3)' {
         $script:AfterRebuild.ContainsKey('910-rebuild/004') | Should -BeFalse
         Test-SpecrewIterationClosed -ProjectRoot $script:RebuildRoot -Feature '910-rebuild' -Iteration '004' | Should -BeFalse
+    }
+
+    It 'does not index an abandoned iteration with no recorded ruling (T026; iteration 002 round 2, finding 1)' {
+        Test-SpecrewIterationClosed -ProjectRoot $script:RebuildRoot -Feature '910-rebuild' -Iteration '006' -ClosedIndex $script:BeforeRebuild | Should -BeFalse
+        $script:AfterRebuild.ContainsKey('910-rebuild/006') | Should -BeFalse -Because 'an entry would make it closed for good'
+    }
+
+    It 'indexes an abandoned iteration whose ruling is recorded (T026; iteration 002 round 2, finding 1)' {
+        $script:AfterRebuild.ContainsKey('910-rebuild/007') | Should -BeTrue
     }
 
     It 'never removes an entry: the index is append-only, so every iteration closed before the rebuild is closed after it (review round 3, finding 3)' {
