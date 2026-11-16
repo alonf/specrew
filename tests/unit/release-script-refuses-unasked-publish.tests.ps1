@@ -81,4 +81,14 @@ Describe 'The publish suite clears the key itself (FR-012)' {
         $clear.Index | Should -BeLessThan $firstCall
         $suite | Should -Match '\$env:PSGALLERY_API_KEY\s*=\s*\$savedPsGalleryApiKey'
     }
+
+    It 'restores SPECREW_BUILD_COMMIT in the same finally, so a caller running it in-process does not inherit it' {
+        $suite = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests/integration/distribution-module-publish.ps1') -Raw
+        $save = [regex]::Match($suite, '\$savedBuildCommit\s*=\s*\$env:SPECREW_BUILD_COMMIT')
+        $save.Success | Should -BeTrue
+        $save.Index | Should -BeLessThan $suite.IndexOf('$env:SPECREW_BUILD_COMMIT = $expectedBuildId')
+        $finally = $suite.Substring($suite.LastIndexOf('finally {'))
+        $finally | Should -Match '\$env:SPECREW_BUILD_COMMIT\s*=\s*\$savedBuildCommit'
+        $finally | Should -Match 'Env:SPECREW_BUILD_COMMIT'
+    }
 }
