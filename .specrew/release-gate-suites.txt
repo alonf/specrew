@@ -78,6 +78,7 @@ tests/continuous-co-review/integration/verification-plan-end-to-end.Tests.ps1
 tests/continuous-co-review/unit/agent-invoker-output-drain.Tests.ps1
 tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1
 tests/continuous-co-review/unit/boundary-reader-conformance.Tests.ps1
+tests/continuous-co-review/unit/bounded-suite-runner.Tests.ps1
 tests/continuous-co-review/unit/bounded-verification.Tests.ps1
 tests/continuous-co-review/unit/campaign-pause-core.Tests.ps1
 tests/continuous-co-review/unit/campaign-pause-wiring.Tests.ps1
