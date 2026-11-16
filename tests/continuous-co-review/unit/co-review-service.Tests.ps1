@@ -133,4 +133,42 @@ Describe 'Continuous co-review service lease-gated spawn (T019 step 6 piece 2b)'
         [string]$reg.failure_reason | Should -Match 'lease-owner-handoff-failed'
         (Get-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L-handoff') | Should -BeNullOrEmpty -Because 'the lease is released so the lineage is not stuck'
     }
+
+    It 'T015 site 13: after a failed handoff the stop WAITS for the supervisor to exit, even when the kill takes effect late (deterministic)' {
+        # B5F-051 site 13 (DRIFT-004): the stop was Stop-Process -Force with no wait, and process termination is
+        # asynchronous, so the supervisor could still be listed when the transaction returned (the CI flake on the
+        # case above). Here the kill is made late on purpose: the mocked Stop-Process starts a separate killer that
+        # ends the supervisor about 1.5 s later and returns at once. A transaction that does not wait for the exit
+        # returns while the supervisor is still alive.
+        $repo = Join-Path $TestDrive 'lease-handoff-late'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        $pwshPath = (Get-Process -Id $PID).Path
+        $sleeper = [System.Diagnostics.ProcessStartInfo]::new($pwshPath)
+        $sleeper.UseShellExecute = $false
+        foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120')) { [void]$sleeper.ArgumentList.Add($a) }
+        $script:LateFixtureProcess = [System.Diagnostics.Process]::Start($sleeper)
+        $script:LatePwsh = $pwshPath
+        if ($IsWindows) {
+            Mock -CommandName Invoke-CimMethod -MockWith { [pscustomobject]@{ ReturnValue = 0; ProcessId = $script:LateFixtureProcess.Id } }
+        }
+        else {
+            Mock -CommandName Start-Process -MockWith { $script:LateFixtureProcess }
+        }
+        Mock -CommandName Update-ContinuousCoReviewLineageLeaseOwnerProcess -MockWith { $false }
+        Mock -CommandName Stop-Process -MockWith {
+            $killer = [System.Diagnostics.ProcessStartInfo]::new($script:LatePwsh)
+            $killer.UseShellExecute = $false
+            foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', ("Start-Sleep -Milliseconds 1500; Stop-Process -Id {0} -Force -ErrorAction SilentlyContinue" -f $script:LateFixtureProcess.Id))) { [void]$killer.ArgumentList.Add($a) }
+            [void][System.Diagnostics.Process]::Start($killer)
+        }
+        try {
+            { Start-ContinuousCoReviewServiceRun -RepoRoot $repo -RunId 'handoff-late' -TreeId '3333333333333333333333333333333333333333' -LineageId 'L-handoff-late' -Detached } |
+                Should -Throw -ExpectedMessage '*lease-owner-handoff-failed*'
+            $script:LateFixtureProcess.Refresh()
+            $script:LateFixtureProcess.HasExited | Should -BeTrue -Because 'the transaction returns only after the stopped supervisor has actually exited'
+        }
+        finally {
+            if (-not $script:LateFixtureProcess.HasExited) { try { $script:LateFixtureProcess.Kill() } catch { $null = $_ } }
+        }
+    }
 }
