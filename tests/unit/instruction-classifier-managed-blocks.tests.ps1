@@ -77,6 +77,24 @@ Describe 'A missing or unbalanced marker compares the whole file (FR-003, condit
         $pair.Stripped | Should -BeFalse
     }
 
+    It 'compares the whole file when an opener''s trailing arrows point the wrong way (T032, item 33)' {
+        # `<!-- >>> specrew-managed coordinator <<< -->` is not Specrew's opener: the healer keeps it as user content,
+        # so a real change in that section must not be stripped as bookkeeping.
+        $wrongOpener = '<!-- >>> specrew-managed coordinator <<< -->'
+        $broken = $script:AfterTimestamp.TrimEnd() + "`n`n" + $wrongOpener + "`n" + $script:Fragment + "`n" + $script:EndMarker + "`n"
+        $pair = Get-SpecrewInstructionComparisonPair -BeforeContent $script:Before -AfterContent $broken
+        $pair.Stripped | Should -BeFalse
+        $pair.AfterContent | Should -BeExactly $broken
+    }
+
+    It 'compares the whole file when a closer''s trailing arrows point the wrong way (T032, item 33)' {
+        $wrongCloser = '<!-- <<< specrew-managed coordinator >>> -->'
+        $broken = $script:AfterTimestamp.TrimEnd() + "`n`n" + $script:BeginMarker + "`n" + $script:Fragment + "`n" + $wrongCloser + "`n"
+        $pair = Get-SpecrewInstructionComparisonPair -BeforeContent $script:Before -AfterContent $broken
+        $pair.Stripped | Should -BeFalse
+        $pair.AfterContent | Should -BeExactly $broken
+    }
+
     It 'compares both sides whole when only the baseline is unbalanced' {
         $brokenBefore = $script:Before.TrimEnd() + "`n`n" + $script:BeginMarker + "`n" + $script:Fragment + "`n"
         $healed = Merge-SpecrewManagedInstructionSection -ExistingContent $script:AfterTimestamp -ManagedContent $script:Fragment
