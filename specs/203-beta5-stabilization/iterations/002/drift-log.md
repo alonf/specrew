@@ -154,3 +154,17 @@ The following resolution strategies remain available if drift is detected later 
 - **B5F-080**: moves to the follow-up feature. It will occur once more at this iteration's last task; that is the
   known defect, not a new one.
 - **Class closure**: NONE — a scope decision, not a defect.
+
+### DRIFT-008 — The plan push goes under the records rule, on the reviewer session's ruling
+
+- **The push**: the five held commits, `79d26013` to the plan commit. Nothing under `scripts/`, `extensions/`, `tests/`
+  or `.github/`; Markdown under `specs/` and `.squad/`, and two JSON files the iteration scaffold wrote:
+  `specs/203-beta5-stabilization/iterations/002/quality/mechanical-findings.json` and
+  `specs/203-beta5-stabilization/contracts/mechanical-findings.schema.json`. The second sits outside the iteration
+  folder because the scaffold writes it there (B5F-084), not by the crew's choice.
+- **The ruling**: the reviewer session (specrewreviewer-98) checked the diff and ruled the two JSON files iteration
+  records, so the records rule applies: markdownlint and the governance check, no lanes; CI is the test run. This
+  replaces its earlier "lanes green first" for this push only.
+- **The check it asked for**: both files parse, and `mechanical-findings.json` validates against the schema with
+  `Test-Json` (True), the same check `run-mechanical-checks.ps1:1162` makes.
+- **Class closure**: NONE — a record of how this push was checked.
