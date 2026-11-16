@@ -57,16 +57,19 @@ function Get-SpecrewIdentitySessionState {
     # F-206 T023 (bug list item 23): the tracked identity file records the feature path relative to the project;
     # it is resolved against this project's root. An absolute path inside the project, written before that, is returned
     # as written. An absolute path outside it - another checkout, or another machine's path such as C:\x read on Linux -
-    # and a drive-relative path are not used: the file is tracked and travels between machines, so such a path names a
+    # a relative path that leads outside it, and a drive-relative path are not used: the file is tracked and travels between machines, so such a path names a
     # folder this checkout does not have. The reader does not change the file; the next boundary sync rewrites it.
     if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.feature_path)) {
         $savedPath = [string]$state.feature_path
         $kind = Get-SpecrewPathRootKind -Path $savedPath
-        if ($kind -eq 'relative') {
-            $state.feature_path = [System.IO.Path]::GetFullPath((Join-Path (Resolve-ProjectPath -Path $ProjectRoot) $savedPath))
+        # Iteration 002 review round 2, finding 4: a relative path is resolved under the project root and then held to the
+        # same inside check, so one that climbs out with ../ is not used either.
+        $resolved = if ($kind -eq 'relative') { [System.IO.Path]::GetFullPath((Join-Path (Resolve-ProjectPath -Path $ProjectRoot) $savedPath)) } else { $null }
+        if ($kind -eq 'relative' -and (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $resolved)) {
+            $state.feature_path = $resolved
         }
-        elseif ($kind -eq 'drive-relative' -or -not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $savedPath)) {
-            $why = if ($kind -eq 'drive-relative') { 'a drive-relative path, which names no fixed folder' } else { 'an absolute path outside this project, written in another checkout or on another machine' }
+        elseif ($kind -eq 'relative' -or $kind -eq 'drive-relative' -or -not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $savedPath)) {
+            $why = if ($kind -eq 'relative') { 'a relative path that leads outside this project' } elseif ($kind -eq 'drive-relative') { 'a drive-relative path, which names no fixed folder' } else { 'an absolute path outside this project, written in another checkout or on another machine' }
             $warnKey = '{0}|{1}' -f $ProjectRoot, $savedPath
             if (-not (Get-Variable -Name SpecrewIdentityPathWarned -Scope Script -ErrorAction SilentlyContinue)) { $script:SpecrewIdentityPathWarned = @{} }
             if (-not $script:SpecrewIdentityPathWarned.ContainsKey($warnKey)) {
