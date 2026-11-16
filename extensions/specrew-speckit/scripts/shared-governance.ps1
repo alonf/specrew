@@ -940,7 +940,7 @@ function Test-SpecrewIterationClosed {
     $statePath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath ('specs\{0}\iterations\{1}\state.md' -f $Feature, $Iteration)
     $status = Get-SpecrewIterationStatusValue -StatePath $statePath
     if ($status -eq 'abandoned') {
-        # T026 (DRIFT-206-I001-010): abandoned is closed only with the maintainer's ruling recorded in state.md's
+        # T026: abandoned is closed only with the maintainer's ruling recorded in state.md's
         # Disposition section. An abandonment reason alone is the agent's account, not a ruling.
         return (Test-SpecrewIterationRulingRecorded -StatePath $statePath)
     }
