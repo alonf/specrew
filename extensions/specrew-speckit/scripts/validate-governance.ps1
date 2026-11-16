@@ -308,7 +308,10 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 $allowedIterationStatuses = @('planning', 'executing', 'reviewing', 'retro', 'complete', 'abandoned')
 $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
-$allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked')
+# Feature 206 T033 (FR-015, design D1-a): `deferred` is a task deferred by a recorded decision; its row names that
+# decision (`decision <id>`, an entry in .squad/decisions.md), and it does not count as non-passing.
+$allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked', 'deferred')
+$script:ReviewLedgerDecisionIds = $null
 $allowedQualityGateStatuses = @('planned', 'passed', 'failed', 'excepted', 'not-applicable')
 $allowedProposalStatuses = @('candidate', 'draft', 'active', 'promoted', 'shipped', 'partially-shipped', 'superseded', 'withdrawn')
 $postShipProposalStatuses = @('shipped', 'partially-shipped', 'superseded')
@@ -3922,7 +3925,30 @@ function Test-ReviewArtifact {
             $Errors.Add("review.md is missing a verdict for task '$taskId'")
         }
         elseif ($normalizedVerdict -notin $allowedReviewTaskVerdicts) {
-            $Errors.Add("review.md contains invalid verdict '$($row.Verdict)' for task '$taskId' (expected pass | needs-work | blocked)")
+            $Errors.Add("review.md contains invalid verdict '$($row.Verdict)' for task '$taskId' (expected pass | needs-work | blocked | deferred)")
+        }
+        elseif ($normalizedVerdict -eq 'deferred') {
+            # Feature 206 T033 (FR-015): the row names the decision that deferred the task, and the ledger holds it.
+            $rowText = (@($row.PSObject.Properties | Where-Object { $_.Name -ne 'Task' -and $_.Name -ne 'Verdict' } | ForEach-Object { [string]$_.Value }) -join ' ')
+            $decisionMatch = [regex]::Match($rowText, '(?i)\bdecision(?:\s+id)?\s*:?\s*`?(?<id>[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9])`?')
+            if (-not $decisionMatch.Success) {
+                $Errors.Add("review.md task '$taskId' is deferred but names no decision (expected 'decision <id>' on the row, naming an entry in .squad/decisions.md)")
+            }
+            else {
+                $deferringDecision = $decisionMatch.Groups['id'].Value
+                if ($null -eq $script:ReviewLedgerDecisionIds) {
+                    $script:ReviewLedgerDecisionIds = @{}
+                    $ledgerPath = if (-not (Test-IsNullish $ProjectRoot)) { Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot } else { $null }
+                    if ($ledgerPath -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+                        foreach ($idMatch in [regex]::Matches((Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8), '(?m)^\s*-\s+\*\*Decision ID\*\*:\s*`?(?<id>[^`\r\n]+?)`?\s*$')) {
+                            $script:ReviewLedgerDecisionIds[$idMatch.Groups['id'].Value.Trim()] = $true
+                        }
+                    }
+                }
+                if (-not $script:ReviewLedgerDecisionIds.ContainsKey($deferringDecision)) {
+                    $Errors.Add("review.md task '$taskId' is deferred by decision '$deferringDecision', which .squad/decisions.md does not hold")
+                }
+            }
         }
         elseif ($normalizedVerdict -ne 'pass') {
             $null = $nonPassingVerdictTaskIds.Add([string]$taskId)
