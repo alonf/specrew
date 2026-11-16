@@ -184,3 +184,17 @@ The following resolution strategies remain available if drift is detected later 
   rows were written. No check reads the hardening gate's `Reviewed At`: the validator reads that label only from
   `quality-evidence.md`, and only for presence (`validate-governance.ps1:3129`).
 - **Class closure**: NONE — plan corrections before the plan stop.
+
+### DRIFT-010 — T025's pass line attributed "no target" to the wrong decision; corrected
+
+- **What was wrong**: `962cc8a6` wrote T025's pass line as "no target (design decision: measure first)", and DRIFT-009
+  said the same. "Measure first" is design decision 7, the t008 lane's 900 s limit (design-analysis.md); it says
+  nothing about the hook cost. The maintainer has set no target for T025 and has not said none is needed. The
+  reviewer session caught it.
+- **Corrected** (T025's row): done when, structurally and proven by tests committed red first, each hook run takes one
+  git snapshot and one transcript tail read handed to the providers, the stores load once and every hook check still
+  runs; measured by DRIFT-073's method, before (re-measured on the tree T025 starts from; 14.1 s Stop and 4.8 s prompt
+  medians on `5cb83329`) and after, median and worst, reported. If the medians do not fall, T025 is not done on the
+  crew's say and goes to the maintainer with the numbers. No numeric target is set; that is the maintainer's to set.
+- **Class closure**: NONE — a plan correction before the plan stop. DRIFT-009's line on (4) stands corrected by this
+  entry.
