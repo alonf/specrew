@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 9
-**Resolution rate**: 100% (9/9 resolved)
+**Total drift events**: 10
+**Resolution rate**: 90% (9/10 resolved)
 **Specification drift**: FR-015 and FR-016 corrected by the design decision (DRIFT-206-I002-003)
 
 ## Events
@@ -188,3 +188,21 @@ The following resolution strategies remain available if drift is detected later 
   pushed commit, and `lint-self-leak` when `extensions/` or `.specify/` changed; for anything that is not a record,
   requires the five lanes green in the review layout on a clean tree at a commit with only records since; and pushes
   only if every check exits 0.
+
+### DRIFT-206-I002-010 — round 1's findings: nine fixed before round 2 (human-decision)
+
+- **Round 1** (`cmp-206-bug-bash-i002`, run `run-20261115-233001030-c21b0c2f`, head `7c006d67`): verdict findings, 10
+  findings, none blocking; two reported major and demoted for stating no concrete failure scenario (F1, the
+  start-written record taking a user's uncommitted edit to `copilot-instructions.md` as Specrew's; F2, SC-001's fixture
+  carrying this machine's absolute identity path). The crew checked each against the code: nine are real, F8 is noted.
+- **Decision**: the maintainer's words to the reviewer, at 02:16 local on 2026-11-16, "For 206, agree", to option 1:
+  fix F1 to F7, F9 and F10 now, a failing test first and one finding per commit, about 1.5 SP on a plan at 20 of 20;
+  then Phase 6; round 2 reviews the fixes with the next phases. Relayed by the reviewer (specrewreviewer-98); not an
+  answer to the engine's open round question, which stays the maintainer's.
+- **The reviewer's conditions**: F1 first, its test showing that exact case and T003's classifier still pausing once
+  the file is out of the record; F2 next, and SC-001's script is not registered per push until F2's fix is green in CI
+  on all three systems; F3 resolves links through the path-identity helper and refuses when it cannot tell; F7 runs a
+  real sync on a temp fixture, and the phase's other tests are checked for the same source-text shape; every fix
+  through the gated push script with the six lanes in the review layout; past about 2 SP, stop and tell the reviewer.
+- **Resolution**: open; each fix is recorded as it lands.
+- **Class closure**: NONE — a decision on review findings, not a defect.
