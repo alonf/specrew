@@ -212,11 +212,22 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    ```text
    Workshop agenda — <N> lenses
 
+   🟦 Problem space
    <lens-id> (<full | medium | light>) — <the decision this lens will ask you to make for THIS feature>
+
+   🟪 Both spaces
+   <lens-id> (<full | medium | light>) — <the decision …>
+
+   🟧 Solution space
    <lens-id> (<full | medium | light>) — <the decision …>
    ...
    Skipped: <lens-id> — <why it does not apply here>
    ```
+
+   **The three headings (FR-032)** come from each lens's `space` tag in index.yml: problem space, both spaces,
+   solution space, in that order, index.yml order inside each, and a heading with no selected lens left out. The
+   agenda command below renders them for you (UTF-8, so the markers survive the paste). The text label carries the
+   meaning; the coloured marker only helps the eye, so a host that cannot draw it loses nothing.
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
    name); render the whole filled block in your message, THEN ask the human to confirm or adjust it as visible
@@ -279,6 +290,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    prose and typed numbered choices. On every other host the same choices remain visible prose with a typed reply;
    do not switch to a structured menu after rendering. Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
+   **Head the lens with its group's marker (FR-032).** The opening turn's heading repeats the marker of the agenda
+   group the lens sits in, with the lens id, for example `🟦 requirements-nfr`, `🟪 data-storage` or `🟧 architecture-core`,
+   so the human sees which space the lens works in. The marker is one per group, never one per lens.
    **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
