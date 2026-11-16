@@ -165,6 +165,43 @@ Describe 'A changed session-loaded file that start wrote itself is not a restart
     }
 }
 
+Describe 'Only changes made inside one of start''s writing steps are recorded (round 1, F5)' {
+    # The before snapshot used to be taken before the first write and the after snapshot after the last, so the window
+    # spanned start's interactive prompts: a change a user or another tool made while start waited was recorded as
+    # Specrew's own. Each writing step now has its own region, and nothing between regions is recorded.
+    It 'records what a region writes and nothing written between regions' {
+        $root = New-FixtureRepo -Name 'f5'
+        Set-FixtureFile -Root $root -RelativePath '.github/agents/squad.agent.md' -Content "# Squad Agent`n"
+        $region = Start-SpecrewStartWrittenRegion -ProjectPath $root -Globs $script:Globs
+        Set-FixtureFile -Root $root -RelativePath '.github/agents/squad.agent.md' -Content "# Squad Agent`n`nHealed by start.`n"
+        Complete-SpecrewStartWrittenRegion -ProjectPath $root -Globs $script:Globs -Before $region
+
+        # While start waits on a prompt, the user writes a charter.
+        Set-FixtureFile -Root $root -RelativePath '.squad/agents/user-added/charter.md' -Content "# The user's own role`n"
+
+        $region = Start-SpecrewStartWrittenRegion -ProjectPath $root -Globs $script:Globs
+        Set-FixtureFile -Root $root -RelativePath '.squad/agents/planner/charter.md' -Content "# Planner`n"
+        Complete-SpecrewStartWrittenRegion -ProjectPath $root -Globs $script:Globs -Before $region
+
+        $record = Read-SpecrewStartWrittenFilesRecord -ProjectPath $root
+        $record.Contains('.github/agents/squad.agent.md') | Should -BeTrue
+        $record.Contains('.squad/agents/planner/charter.md') | Should -BeTrue
+        $record.Contains('.squad/agents/user-added/charter.md') | Should -BeFalse
+    }
+
+    It 'specrew start takes no snapshot that spans its prompts' {
+        $promptLine = [regex]::Match($script:StartSource, '(?m)^\s*\$expertiseDials = Invoke-FirstRunExpertisePrompt').Index
+        $regions = [regex]::Matches($script:StartSource, '(?m)^\s*\$\w+ = Start-SpecrewStartWrittenRegion\b')
+        $regions.Count | Should -BeGreaterOrEqual 3
+        $script:StartSource | Should -Not -Match '(?m)^\s*\$startWrittenSnapshotBefore\s*='
+        foreach ($m in $regions) {
+            $completeAt = $script:StartSource.IndexOf('Complete-SpecrewStartWrittenRegion', $m.Index)
+            $completeAt | Should -BeGreaterThan $m.Index
+            ($m.Index -lt $promptLine -and $completeAt -gt $promptLine) | Should -BeFalse -Because 'a region must not contain the first-run profile prompt'
+        }
+    }
+}
+
 Describe 'copilot-instructions.md is shared, so the record never covers it (round 1, F1)' {
     # Start writes only its managed block into .github/copilot-instructions.md and keeps every other byte, so the file
     # is not one start wrote whole. A user's uncommitted edit outside the block, present when start refreshes the
