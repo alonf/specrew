@@ -1090,6 +1090,87 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   before any check ran. Feature 203 records the same class for its Pester-gallery sightings. An iteration 003
   candidate, not placed.
 
+## 58. A partial review's findings are dropped from the pause record, and the packet says it "found nothing" (severity: major)
+
+- **Observed (2026-11-16, i002 round 2, run `run-20261116-173258054-8f47fc5f`):** `result.json` holds nine findings
+  (`completion: partial`). `pending-pause.json` has `result_produced: false`, `evidence_state: not-produced` and all
+  counts 0, and the packet says "That review did not finish, so it found nothing and cleared nothing".
+- **Where (by reading):** `scripts/internal/continuous-co-review/review-authority-core.ps1:234-239`
+  (`if (... $resultCompletion -cne 'complete') { $resultProduced = $false }`), then :251-282, which return fixed zero
+  counts. The packet text comes from `continuous-co-review-navigator.ps1:1176-1177`.
+- The console then prints only the automatic retry's object (`scripts/specrew-review.ps1:1748`, rendered from :1841),
+  so the nine findings never reached the screen. Feature 203's engine; not changed here.
+
+## 59. The retry message says the approval is "NOT spent" while the campaign's spend record is dated at the invocation (severity: minor)
+
+- **Observed:** the console printed "Their approval is NOT spent ... this attempt DID use one of the review rounds".
+  `pending-round-approval.json` says `spent_at: null`, and `spend/res-95c5355ff2ec5a42478f.json` is dated 17:50:00Z (the
+  invocation).
+- **Where (by reading):** these are two ledgers. The typed approval is marked spent only on `delivered`
+  (`scripts/specrew-review.ps1:1757-1759`). The allowance slot is spent when the reviewer starts
+  (`review-campaign-orchestrator.ps1:2029-2033`, reason `preflight-passed-invocation-spends-slot`). The message
+  (`specrew-review.ps1:1823`) is accurate for each ledger but names neither. Feature 202 recorded the two disagreeing after a
+  partial round (B4F-150).
+
+## 60. The automatic retry after a partial result cannot run: the first attempt's own pause blocks it (severity: minor)
+
+- **Observed:** "Retrying once automatically (fresh-run-same-host)", then at once `Status paused, Invoked False`,
+  reason `review-round-paused:pause-decision-pending`. No run folder, grant or spend record for the retry.
+- **Where (by reading):** every published result writes a pause (`review-campaign-orchestrator.ps1:2112`); the retry
+  meets the pause gate (:1679-1705; `review-authority-core.ps1:491-492`) before any grant is minted (:1725). With an
+  unchanged tree the retry is always refused.
+
+## 61. Every major or blocking finding from a campaign round is demoted, because the campaign prompt never asks for the clause the ingestor needs (severity: major)
+
+- **Observed:** findings `finding-30faa1624cf6d7a1` and `finding-124f7de3f876daab` were reported major and stored minor
+  "[demoted to minor: no concrete failure scenario, so it cannot gate]". Each describes a concrete failure in prose.
+- **Where (by reading):** `review-result-ingestor.ps1:138-155` requires the literal text `Failure scenario:` in the
+  description; :180-200 demotes blocking and major without it. The campaign prompt
+  (`reviewer-candidate-prompt.md:39`) lists `local_id, severity, title, description, location` and never asks for it;
+  only the older slim prompt does (`worktree-reviewer.ps1:1170-1176`).
+- **Can a demoted finding gate?** No: it is stored as minor, and pause counting (`review-authority-core.ps1:208-218`)
+  and the stop-here check (`review-campaign-orchestrator.ps1:984-986`, :1010-1014) count only blocking and major.
+
+## 62. The reviewer is given an absolute deadline but no way to read the time, and stopped after 265 s of 2400 s (severity: minor)
+
+- **Observed:** the reviewer ran 17:50:00Z to 17:54:25Z and wrote "Not covered before the deadline".
+- **Where (by reading):** `reviewer-candidate-prompt.md:20` ("The deadline is `__DEADLINE__`"), set at
+  `review-campaign-orchestrator.ps1:1944` to the clock after verification plus the full `--timeout-seconds`. The
+  reviewer's tools are Read, Glob, Grep and Write (`reviewer-host-catalog.ps1:56`), so it cannot read the clock. The
+  rendered prompt is not persisted, so the deadline string itself cannot be quoted.
+
+## 63. The closeout dashboard redraw looks for specrew-where.ps1 three levels up, which is wrong from the deployed copy (severity: minor)
+
+- **Observed (2026-11-16, review iteration 002 round 2, `finding-00622024f23b735f`, T035):** from
+  `.specify/extensions/specrew-speckit/scripts` the lookup lands in `.specify/`, where no `scripts/specrew-where.ps1`
+  exists.
+- **Not reachable, by reading:** the only writer that runs the redraw is `Add-SpecrewBoundaryAuthorization`, called
+  from `HandoverStore.ps1:1146`. The handover provider loads shared-governance from the module root it resolved for
+  the bootstrap folder (`specrew-handover-provider.ps1:82-113`: beside itself, the self-host source tree,
+  `SPECREW_MODULE_PATH`, or the installed module), never from `.specify`. An iteration 003 candidate: make the
+  comment say why, or add the deployed layout to the candidates.
+
+## 64. The validator never refuses a hardening gate whose verification fields say "pending" (severity: minor)
+
+- **Observed (2026-11-16, review iteration 002 round 2, `finding-fd13b52728ad4bb8`):** `validate-governance.ps1:4129`
+  and `:4133` write `if (Test-IsNullish $x -or $x.ToLowerInvariant().Contains('pending'))`. PowerShell parses that as
+  one command with `-or` passed as an argument.
+- **Shown by experiment**, with the validator's own `Test-IsNullish` loaded from the file: 'pending' and
+  'Pending - after merge' are accepted as written and refused when the call is parenthesised; '—' is refused either
+  way.
+- **Older code:** feature 013, `99cdf514`, 2026-05-12.
+- **Fixing it would newly refuse eight hardening gates** that say pending: 045/002, 050/002, 050/003, 051/001,
+  051/002, 182/004, 197/006 and 198/010. Check the frozen and closed lists first. Also, the validator's own
+  `Test-IsNullish` (`:478`) lacks the shared one's `tbd` and `unknown`. An iteration 003 candidate.
+
+## 65. The Completed date's placeholder list is closed, and the date written is the UTC day (severity: note)
+
+- **Observed (2026-11-16, review iteration 002 round 2, `finding-4ec6649b1b32b425`, T036):**
+  `Set-SpecrewPlanCompletedDate` fills a blank value and its listed words. It keeps a backticked or italic
+  placeholder, an en dash, `YYYY-MM-DD`, `<date>`, `unknown` and `not yet` as if they were a date. The written date is
+  the capture's UTC day. A date-shape test (keep only a value that parses as a date) would close the list. An iteration
+  003 candidate.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,

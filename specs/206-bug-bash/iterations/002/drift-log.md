@@ -372,3 +372,57 @@ The following resolution strategies remain available if drift is detected later 
   - So `9d314cfd` is green on all three workflows with every job run, one job rerun.
 - **Class closure**: deferred — bug list item 57: Lint installs PSScriptAnalyzer from the gallery on every run, with no
   retry and no cache. Feature 203 records the same class for its Pester-gallery sightings.
+
+### DRIFT-206-I002-017 — review round 2 ended partial with nine findings; the maintainer chose to fix six before round 3 (human-decision)
+
+- **Recorded**: 2026-11-16, by the crew.
+- **Round**: run `run-20261116-173258054-8f47fc5f` (campaign `cmp-206-bug-bash-i002`, round 2 of 4), on head
+  `3ee41574`, baseline `7c006d67`, timeout 2400 s, on the maintainer's typed approval captured at 17:31:48Z.
+  - Preflight took 1014 s: 180 s of setup before the first lane, the six lanes 801 s, 41 s to invocation. I sized the
+    timeout from the lanes alone (781 s), without the setup.
+  - The reviewer ran 17:50:00Z to 17:54:25Z (about 265 s) and published a partial candidate: verdict incomplete,
+    nine findings, none blocking. It covered attack items 0 to 5 and wrote that the nine round 1 fixes, T030, T029,
+    T017 and T016 were "not covered before the deadline". It is given an absolute deadline and has no tool that
+    reads the clock (bug list item 62), so the stop was its own guess, not a limit.
+  - The engine's automatic retry was refused by the first attempt's own pause and ran nothing (item 60). The
+    packet said the review "found nothing" (item 58), and two findings the reviewer rated major were stored minor
+    (item 61).
+- **Triage** (by failing tests unless stated; sent to the reviewer session before the decision):
+  - F1 `finding-30faa1624cf6d7a1`, the closed-index rebuild ignores the ruling check: real, RED 1.
+  - F2 `finding-124f7de3f876daab`, the census guard ignores `if:`: real, RED 2. Two suites never ran in CI.
+  - F3 `finding-8440e050721c87ad`, the ruling matcher: real, RED 5 (6 with the invented conditioned case).
+  - F4 `finding-4b72620596668b79`, the identity reader adopts `../`: real, RED 1.
+  - F5 `finding-e2ef0515b3bc7a8f`, T034's pending test too wide: real, RED 3 (4 with the blank-iteration case).
+  - F6 `finding-6b34e25ddeb81569`, a deferred row passes with any decision id: real, RED 3 (6 with the invented
+    conditioned cases).
+  - F7 `finding-00622024f23b735f`: not reachable, by reading (bug list item 63).
+  - F8 `finding-fd13b52728ad4bb8`: real by a three-line experiment, older code (bug list item 64).
+  - F9 `finding-4ec6649b1b32b425`: a note (bug list item 65).
+- **Decision**: the maintainer's answer of 2026-11-16 20:56 local, "OK for both", relayed by specrewreviewer-98, to
+  the option shown as "206 round 2: fix six (recommended). All six are fixed (3.0 SP), then round 3 runs. Every one
+  is proven and sits in this iteration's own work. F2 is the uncertain one: the two suites that have not run in six
+  months may be red when they finally run. If they are, that comes back to you and is not hidden in an exclusion."
+  - The other option shown was "206 round 2: fix five, F2 later". "Both" covers the two crews (205 had its own
+    choice).
+  - The reviewer showed the cost: planned 20 SP, about 2.5 over before this, about 5.5 over after; 206 reaches
+    main later.
+  - It is a scope decision, not an approval: round 3 needs a fresh typed approval.
+- **Done**, one RED commit and one fix commit per finding, in result.json order:
+  - F1 RED 1/46 `6cc4da16`, GREEN 46/46 `c1ed64c7`.
+  - F2 RED 2/87 `e66e3191`, GREEN 90/90 `b2e0b890`. The two suites move to the new `windows-shim-suites` job.
+    The RED fixture's job had no `runs-on`, which the fix's matrix rule reads as possibly running, so the fix commit
+    adds `runs-on: ubuntu-latest` to it and says so.
+  - F3 RED 6/53 `982ffe9f`, GREEN 53/53 `e22084ca`.
+  - F4 RED 1/28 `f37ba01d`, GREEN 28/28 `a56476d6`.
+  - F5 RED 4/12 `e31a5fd3`, GREEN 12/12 `d1e428b9`. Feature 203's T023 half takes the same rule.
+  - F6 RED 6/10 `50f97212`, GREEN 10/10 `cca9cb65`. A first version read "no" inside a decision id as a denial;
+    the existing missing-id case caught it, and the check now reads only the clause before the id.
+- **Not run locally**: `tests/integration/bootstrap-asset-blocker-recovery.ps1` runs `specrew-init`, which writes
+  the real home's hook files, and `validate-versions-cli-behavior.ps1` drives the `specrew` CLI through `.cmd`
+  shims. Both run only in the Windows CI job. Their first run there is this push's evidence; if either is red, the
+  work stops for the reviewer and the maintainer, and neither goes into an exclusion.
+- **A slip, caught before commit**: a patch script passed through a Bash heredoc turned `\002` in a test path into
+  a control byte. The scan for control bytes found it; the line was restored by a byte-level script before the
+  RED commit.
+- **Effort**: about 3.0 SP estimated; F2 about 0.75 so far. Actuals are recorded at T038.
+- **Class closure**: deferred — bug list items 58 to 62 (the engine, feature 203's), 63 to 65 (F7 to F9).
