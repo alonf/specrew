@@ -33,3 +33,19 @@ The home hook files were hashed before and after; both matched the known-good se
   - the three conduct sentences (show the lines, confirm at the point of choice, the no-lookup fallback);
   - the skill's "not invoked mid-workshop" sentence names no exception.
 - Exit code 1.
+
+## T028 red first: `tests/unit/workshop-agenda-grouping.tests.ps1` on today's tree
+
+Run on 2026-11-16 at 02:16 local, on `3b85cc06` plus the new test file (no change to the agenda writer or the skill
+yet). The home hook files were hashed before and after; both matched the known-good set (0 differences).
+
+- Self-tests: 10 of 10 passed. Nine run the grouping check over synthetic agenda text and prove it names what is
+  wrong: a lens under the wrong heading, a tag changed with the text not regrouped, headings out of order, an empty
+  heading kept, a marker removed from a heading, two lenses swapped inside a heading, the `Selected lenses:` line
+  removed, and the closing question reworded. The tenth is a probe: a child process with a Latin-1 console writes one
+  marker unforced, and it does not survive, so the UTF-8 round trip is a real check.
+- The repository check renders three agendas through the real writer in scratch projects (the real catalog with all
+  three groups, the real catalog with no both-spaces lens, and a fixture index.yml with data-storage tagged
+  solution), and reports 13 problems, one per selected lens: "listed before any group heading". The round trip
+  passes today only because the block has no marker yet.
+- Exit code 1.
