@@ -96,20 +96,80 @@ Sizes are crew estimates except T009 and T010, which tasks.md sizes.
 | FR-044: the three-host walk (Claude, Copilot, Codex), manual with records | FR-044 | 2.0 |
 | **Planned scope** | | **19.0** |
 
+## When each fix becomes live
+
+Two kinds of code run in this project, and a fix reaches them at different times (read from the code, 2026-11-16):
+
+- **Run from the tree, so live on commit**: CI and every test; the boundary syncs, which the governed commands start
+  from the project's own `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` and which resolve no pin
+  (iteration 001's DRIFT-078); the sign-off evidence gate and the sender check the sync runs (`signoff-gate-wiring.ps1`
+  loads the tree's `HumanAuthorityStore.ps1`, `:171-192`); the governance check; the task writer; the verification
+  plan's lanes (`.specrew/verification-plan.json` is the project's file).
+- **Run from the pin, so live only when the pin advances**: every hook. The launcher runs the pin's dispatcher
+  (`.claude/specrew-hook-launch.ps1:12-27`, the record in `.specrew/runtime/live-engine.json`), so the capture, the
+  not-recorded reports and the Stop checks are the pin's. The review rounds and their stops run the pin's
+  `scripts/specrew-review.ps1` (iteration 001's DRIFT-076, DRIFT-081).
+- **What moves the pin**: `live-engine-pin.ps1 -Action Advance -Commit <sha>` checks only that the pinned copy is a clean
+  commit (`:54-60`, `:120-124`). The rest is this feature's rule: a reviewed, signed-off tree, a full sweep first
+  (DRIFT-057), and the maintainer's typed `advance the pin`. The pin is at `da78b600` and moves only on that line.
+
+| Item | Where it runs | Live when |
+| --- | --- | --- |
+| F1 (exact identity before the message-ID fallback) | The sync's sender check (tree) and the hooks' and review launch's checks (pin) | The sync's check on commit; the rest at a pin advance |
+| F2 (the recovery path's stop-answer report) | The Stop hook (pin) | Pin advance |
+| F3 (the hook cost) | The hooks (pin) | Pin advance |
+| F4 (the sign-off gate) | The gate, the phase checks and the coverage line run in the sync and the validator (tree); the stop's landing and the packet capture run from the pin | The gate and phase checks on commit; the stop and capture parts at a pin advance |
+| F5 (the retry test) | A test (tree) | On commit |
+| F6 (the live stop check) | A check of the pin's stop | Needs the advanced pin; a check, not a change |
+| B5F-050, B5F-059, B5F-083 (phase lines) | The sync's truth gate and the validator (tree) | On commit |
+| B5F-075 (the coverage line) | The sync's gate (tree) | On commit |
+| Site 13 | Its test (tree); its production half, the wait after `Stop-Process`, runs in review rounds (pin) | The CI flake ends on commit; the production wait at a pin advance |
+| HookRenderDedupe, empty-result-retry | Tests (tree) | On commit |
+| The t008 lane | The verification plan (project file) | On commit |
+| B5F-077 (the link) | The tree | On commit |
+| B5F-076 (the preflight diagnosis) | The review orchestrator (pin) | Pin advance |
+| B5F-073, B5F-080 (closeout sync, task writer) | Tree scripts | On commit |
+| B5F-072 (old pin re-spend) | A guard test (tree) | On commit |
+
+Two consequences:
+
+1. **Until the pin moves, F2, F3 and the pin-side parts of F1 and F4 change nothing the maintainer sees**, iteration
+   002's own review end included. The hook cost stays at about 19 s per turn all iteration.
+2. **The tree-run gates go live unreviewed.** F4's gate and the phase-line checks judge iteration 002's own sign-off
+   as soon as they are committed, before any review round has read them. This was true in iteration 001 as well: the
+   sign-off sync ran the development tree's gate (DRIFT-078).
+
 ## Capacity
 
 | Part | SP |
 | --- | --- |
 | Fixed first batch (F1 to F6) | 12.25 |
-| Proposed first-batch additions (B5F-050 + B5F-059, B5F-075, t008, site 13, HookRenderDedupe, empty-result-retry, B5F-077) | 5.25 |
+| Proposed first-batch additions (B5F-050 + B5F-059 + B5F-083, B5F-075, t008, site 13, HookRenderDedupe, empty-result-retry, B5F-077) | 5.25 |
 | Proposed later items (B5F-076, B5F-073, B5F-080, B5F-072, B5F-078, B5F-079, env-restore, classifier) | 4.75 |
 | The spec's planned scope | 19.0 |
 | **All of it** | **41.25** |
 | Rest of the census, if taken | 3.0 |
+| Review rework buffer (see below) | 2.0 |
 
 The baseline is 20 SP. Iteration 001 planned 28.5 and ran well over (retro calibration: keep the 20-point baseline and
 plan to it). The retro also asks the plan to price review: about two rounds per authority task, and half a day for the
 review end until F4 lands. So the work does not fit one iteration, and the decision is what moves out.
+
+**The review allowance.** Iteration 001 took 13 single-task rounds and five iteration rounds (A to E); every round found
+real defects. Feature 206 planned 20 of 20 and was 1.5 SP over after its first round. Feature 205 plans 7 SP plus a
+2 SP buffer. This draft prices a **2.0 SP rework buffer** for fixes that review rounds find, as 205 does. Measured
+evidence for the size: 206's 1.5 SP after one round; judgment for the rest.
+
+| Option A shape | Work | Buffer | Total | Against 20 |
+| --- | --- | --- | --- | --- |
+| A as drafted | 20.25 | 0 | 20.25 | +0.25, no room for review findings |
+| A with buffer | 20.25 | 2.0 | 22.25 | +2.25 |
+| A-buffered, at the baseline | 18.0 | 2.0 | 20.0 | 0 |
+
+**A-buffered** keeps the fixed batch (12.25), the first-batch additions (5.25) and B5F-080 (0.5), and moves out B5F-076
+(1.0), B5F-073 (1.0) and B5F-072 (0.25) to the next iteration or the follow-up feature. The cost: a review preflight
+failure in iteration 002 still tells the operator nothing (B5F-076). The feature-closeout sync can still pass with work
+planned (B5F-073); that matters less if 203 merges after this iteration (see Option A's merge variant).
 
 ## Key Design Decision Points
 
@@ -119,8 +179,32 @@ review end until F4 lands. So the work does not fit one iteration, and the decis
 2. **F4's design**: how the sign-off gate lets the ordinary review end take one approval, how findings are resolved,
    and who owns the phase lines (B5F-050, B5F-059).
 3. **F3's design**: how far the hook cost is cut in one step, and whether T006's launcher half rides in the same push.
-4. **The order inside the first batch**: the flaky tests first (they slow every crew's pushes), or F1 and F2 first
-   (they are open review findings).
+4. **The order inside the first batch**. Recommended:
+   1. The three flaky tests (site 13, HookRenderDedupe, empty-result-retry), with F5 and B5F-077. They are cheap and
+      live on commit, and each ends a rerun exception for all three crews at their next merge of this branch.
+   2. F1 and F2, the open round E findings, each behind a failing test.
+   3. F4 with the phase-line ownership (B5F-050, B5F-059, B5F-083) and B5F-075. They are one design, and their gate side
+      goes live on commit, so it lands before the iteration's own review end rather than at it.
+   4. F3 last. Its push needs the full sweep anyway, and it can carry T006's launcher half in the same sweep.
+   5. F6 at the iteration's first review stop. The t008 measurement comes before any lane limit changes.
+
+   Reason: the reviewer session's lean, which the crew shares. One change: F5 and B5F-077 ride in the first step,
+   because they are test-only and file-only.
+5. **An earlier pin advance**. Without one, F2, F3 and the pin-side parts of F1 and F4 serve no one until iteration
+   002 ends (see "When each fix becomes live"). An advance in the middle of the iteration would let the hook cost and
+   the one-approval review end serve the rest of it.
+   - *What it needs*: today's rule asks for a reviewed, signed-off tree, a full sweep and the maintainer's typed line.
+     A mid-iteration advance would rest on a review round that covers the first batch (a whole-tree round, since T009's
+     scoped rounds are not built), a stop on that round, a full sweep, and the typed `advance the pin`. Iteration 001
+     did this per task: T002 and T004 each had their own review and sign-off, and the pin then advanced (DRIFT-037).
+   - *What it risks*: the maintainer's concern at the clarify verdict of 2026-10-31, that a half-built capture never
+     judges their approvals. A round that reviews exactly what goes live limits it; the rest of iteration 002's work
+     still reaches the hooks only at the next advance.
+   - *Recommended*: one advance after the first batch's round, once F1, F2, F3 and F4 are fixed and that round stops
+     clean or with only fail-closed findings. Then the iteration's own review end runs on the one-approval gate and the
+     faster hooks. The pin moves only on the maintainer's typed line, whatever is chosen here.
+6. **The merge shape**: an iteration 003 inside feature 203, or 203 merging after this iteration with the rest as a
+   follow-up feature (Option A's merge variant).
 
 ## Alternatives
 
@@ -158,7 +242,32 @@ fix is local, behind a test written to fail first.
 rule and one source of truth for the phase lines.
 
 **Trade-offs**: the spec's iteration 2 scope and the three-host walk wait one more iteration, which departs from the
-two iterations the specify verdict set. Iteration 002's own review still runs on today's gate until F4 lands within it.
+two iterations the specify verdict set. The gate side of F4 goes live for the sync on commit, so iteration 002's own
+sign-off uses it unreviewed. But the hooks, the stops and the capture stay on the pin at `da78b600` until the pin
+advances, which today is after the review sign-off. So unless the pin moves earlier, iteration 002 runs with today's
+hook cost and today's capture all through, its own review end included (see "When each fix becomes live").
+
+**Variant: 203 merges after this iteration.** The maintainer's goal is to merge 206, then 205, then 203 into main, and
+features 205 and 206 run under rerun exceptions and a protected-file rule "until 203 merges". In this variant, 203
+closes after iteration 002 and merges. The spec's remaining scope (US4 to US7, T009, T010, the three-host walk FR-044)
+becomes a follow-up feature.
+
+- *What it needs in the records*: the feature-closeout checks look at the working tree and the dashboard
+  (`sync-boundary-state.ps1:1406-1443`, `validate-governance.ps1:2598-2630`); none checks that every requirement was
+  delivered, and the feature-closeout sync even passed with iteration 002 planned (B5F-073). So the move must be stated
+  in the records themselves: a spec amendment that moves US4 to US7 and their requirements to the follow-up feature,
+  and a decision entry that names the maintainer and quotes their words. The traceability check (every requirement has
+  a task) must then read the moved requirements as moved, not as gaps.
+- *The three-host walk*: FR-044 (spec.md:435) is the manual walk on Claude, Copilot and Codex, and the specify verdict
+  put it "at the end of iteration 2". Iteration 001's capture changes were checked live on Claude only (T014); the
+  hardening row lists "the Copilot and Codex replays" as not covered. Merging without the walk puts capture code on main
+  that was never checked live on Copilot or Codex. A short walk of the capture cases only, on Copilot and Codex, before
+  the merge closes most of that gap at about 1 SP. That is a judgment, not a measurement.
+- *What main gains*: the reviewed capture, sender and review-loop code of iteration 001 and the stabilization batch.
+  The rerun exceptions end for 205 and 206, and so does the protected-file rule tied to 203. The other crews stop
+  running against a branch that moves under them.
+- *Cost*: the follow-up feature starts with its own specify and plan stops, a few hours of the maintainer's time. The
+  spec's two-iteration shape becomes two features.
 
 **Diagram**:
 
@@ -309,17 +418,29 @@ integration-api.*
 **Recommended: Option A.** It fits the 20 SP baseline (20.25), which the retro asks for after iteration 001 ran well
 over. It closes every item the maintainer already placed and the flaky tests that slow all three crews, and it guards
 iteration 002's own end against the deadlocks this feature met. Option B adds the budget-model tasks at 4.25 SP over
-the baseline. Option C is twice the baseline. Both A and B need the maintainer's word to add an iteration 003, since
-the specify verdict set two.
+the baseline. Option C is twice the baseline. Both A and B need the maintainer's word on what follows iteration 002,
+since the specify verdict set two iterations.
+
+Within A, the crew recommends **A-buffered** (20.0 SP with a 2.0 SP review buffer), because every review round of
+iteration 001 found real defects. It also recommends **the merge variant**: 203 merges after iteration 002, with a short
+Copilot and Codex capture walk before the merge, and the rest becomes a follow-up feature. That ends the other crews'
+exceptions soonest, and main gets reviewed code it does not have today. Both are recommendations; the maintainer
+decides.
 
 ## Open decision points for the maintainer (each answerable in one line)
 
 1. The iteration's shape: "Option A", "Option B" or "Option C".
-2. An iteration 003 for the planned scope (Options A and B): "iteration 003: yes" or "no".
-3. B5F-077, the tracked link into another machine's home folder: "remove it" or "keep it".
-4. The t008 lane's 900 s limit, after the measurement: "measure first" (recommended) or a new limit.
-5. T006's launcher half: "with the merge" or "with F3's push".
-6. The rest of B5F-051's census (13 timing sites, about 3 SP): "iteration 003" or "this iteration if capacity allows".
+2. Within A, the buffer: "A-buffered" (recommended; B5F-076, -073 and -072 move out) or "A as drafted".
+3. After iteration 002: "merge, then a follow-up feature" (recommended, with a short Copilot and Codex capture walk
+   first) or "iteration 003 inside 203".
+4. The first-batch order: "order as recommended" (flaky tests, F5 and B5F-077; then F1, F2; then F4 with the phase
+   lines; F3 last) or another order.
+5. An earlier pin advance: "advance after the first batch's round" (recommended) or "advance at the iteration's end".
+6. B5F-077, the tracked link into another machine's home folder: "remove it" or "keep it".
+7. The t008 lane's 900 s limit, after the measurement: "measure first" (recommended) or a new limit.
+8. T006's launcher half: "with the merge" or "with F3's push" (recommended: F3's push shares its sweep).
+9. The rest of B5F-051's census (13 timing sites, about 3 SP): "next iteration or follow-up feature" or "this iteration
+   if capacity allows".
 
 ## Human Decision
 
