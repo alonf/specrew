@@ -142,3 +142,37 @@ Describe 'The publish suite runs per push on Windows, in a job that sees no secr
         $gate | Should -Not -Match 'distribution-module-publish\.ps1'
     }
 }
+
+Describe 'The Windows .cmd-shim suites job has what its suites need, and runs both (iteration 002 round 2, F2; first CI run 2026-11-16)' {
+    # The job's first run (Specrew CI job 133612182338) stopped in specrew-init's dependency check: "Node.js v22.23.4
+    # (required: 24.0+)" (scripts/init/preflight.ps1 requires Node 24 and npm 10). The other Specrew CI jobs set up
+    # Node 24 with actions/setup-node; this one did not. The second suite was skipped behind the first, so it never ran.
+    BeforeAll {
+        $script:CiText = Get-Content -LiteralPath (Join-Path $script:RepoRoot '.github/workflows/specrew-ci.yml') -Raw
+        $script:CiCode = (($script:CiText -split "`r?`n") | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+        $script:ShimJob = [regex]::Match($script:CiCode, '(?ms)^  windows-shim-suites:\n(?<body>.*?)(?=^  [A-Za-z0-9_-]+:\s*$|\z)').Groups['body'].Value
+        $script:ShimSteps = @([regex]::Split($script:ShimJob, '(?m)^      - ') | Select-Object -Skip 1)
+    }
+
+    It 'sets up Node 24 with the same setup-node step the other Specrew CI jobs use, before the suites' {
+        $script:ShimJob | Should -Not -BeNullOrEmpty
+        $nodeStep = @($script:ShimSteps | Where-Object { $_ -match 'uses:\s*actions/setup-node@v6' })
+        $nodeStep.Count | Should -Be 1
+        $nodeStep[0] | Should -Match "node-version:\s*'24'"
+        $nodeAt = [array]::IndexOf($script:ShimSteps, $nodeStep[0])
+        $firstSuiteAt = [array]::IndexOf($script:ShimSteps, @($script:ShimSteps | Where-Object { $_ -match 'bootstrap-asset-blocker-recovery\.ps1' })[0])
+        $nodeAt | Should -BeLessThan $firstSuiteAt
+    }
+
+    It 'runs each suite in its own step, the second even when the first fails, and nothing lets the job pass quietly' {
+        $first = @($script:ShimSteps | Where-Object { $_ -match 'run:\s*pwsh -NoProfile -NonInteractive -File \./tests/integration/bootstrap-asset-blocker-recovery\.ps1' })
+        $second = @($script:ShimSteps | Where-Object { $_ -match 'run:\s*pwsh -NoProfile -NonInteractive -File \./tests/integration/validate-versions-cli-behavior\.ps1' })
+        $first.Count | Should -Be 1
+        $second.Count | Should -Be 1
+        $first[0] | Should -Not -Match '(?m)^\s+if:'
+        $second[0] | Should -Match '(?m)^\s+if:\s*always\(\)\s*$'
+        $script:ShimJob | Should -Not -Match 'continue-on-error'
+        $script:ShimJob | Should -Match '(?m)^    runs-on:\s*windows-latest\s*$'
+        $script:ShimJob | Should -Not -Match '(?m)^    if:'
+    }
+}
