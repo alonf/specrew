@@ -206,12 +206,16 @@ $entryPointCases = @(
         ScriptPath = Join-Path $repoRoot 'scripts\specrew-update.ps1'
         Arguments = '-InfoMode'
         ExpectedExitCode = 0
-        OutputPattern = [regex]::Escape("Version info for $repoRoot")
+        # Round 1 F9: run in the fixture, not in the repository that holds this script.
+        WorkingDirectory = $fixtureRoot
+        OutputPattern = [regex]::Escape("Version info for $fixtureRoot")
     }
     @{
         Label = 'specrew team list (-ProjectPath .)'
         ScriptPath = Join-Path $repoRoot 'scripts\specrew-team.ps1'
         Arguments = "list -ProjectPath '.'"
+        # Round 1 F9: run in the fixture, not in the repository that holds this script.
+        WorkingDirectory = $fixtureRoot
         ExpectedExitCode = 0
         OutputPattern = 'Squad Team Members'
     }
@@ -219,6 +223,8 @@ $entryPointCases = @(
         Label = 'specrew review (-ProjectPath .)'
         ScriptPath = Join-Path $repoRoot 'scripts\specrew-review.ps1'
         Arguments = "-ProjectPath '.' -FeatureId '001-specrew-product' -IterationNumber '012' -Json"
+        # Round 1 F9: run in the fixture, not in the repository that holds this script.
+        WorkingDirectory = $fixtureRoot
         ExpectedExitCode = 0
         OutputPattern = '"feature"'
     }
