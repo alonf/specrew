@@ -959,10 +959,21 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   text. The other project's npx.cmd shim failed the same way and its `--version` probes pass; its file count is asked
   for. Not a one-machine fault: any Windows project reaches it once a long iteration has enough changed Markdown (the
   crews here are at about 40 to 90 files).
-- **Proposed shape (replacing the earlier one):** pass the files in batches under a safe length, or relative to the
-  project root with the working directory set there, or both; a launch that throws degrades with the exception text in
-  the warning. Tests: a list past the limit is linted in batches; a launch that throws does not end the sync. About 1.5
-  SP (the crew's estimate: batching, the degrade, two tests, and the `.specify` mirror with its hash record).
+- **Confirmed on the other machine (relayed by the reviewer, 2026-11-16):** the RingMCPBridge crew ran Specrew's own
+  functions read-only: `Get-SpecrewLocalScopeBaseRef` gives `origin/main`; `Get-ChangedMarkdownFiles` gives 425
+  absolute paths (the raw diff 519); with quotes and spaces that is 39,211 characters against the 32,767 limit. The
+  cause is proven there as well as reproduced here.
+- **A third part (that crew's point, the reviewer agrees):** batching or relative paths alone would let `--fix` run over
+  everything changed since the base ref. In that project a no-fix run over the 425 files reports 1,522 problems, none
+  in the project's CI lint scope: 994 in research notes, 124 in workshop records, 366 in Specrew-managed skill copies
+  (`.agents`, `.claude`, `.copilot`, `.github/agents`, `.specify`) and 36 in `.specrew/review`, the committed review
+  store. A `--fix` there would rewrite Specrew-managed files and review evidence at a boundary sync.
+- **Shape, three parts:** batch under a safe length; degrade, with the exception text, when the launch throws; and
+  narrow what is linted, by one of two options left to iteration 003's design analysis: (a) only the files in the
+  project's own lint scope (its markdownlint ignore list and globs), or (b) only the files the sync itself writes.
+- **Estimate:** about 2.5 SP with the third part (the crew's estimate, up from 1.5): the design choice, the scope
+  resolution or the written-files list, the batching and the degrade, three tests, and the `.specify` mirror with its
+  hash record.
 - **Placed (the maintainer, 2026-11-16, 02:26 local, "OK, give this information to 206", relayed by the reviewer):** at the
   top of iteration 003's candidates, with item 45; an order of candidates, not a scope approval. About 1 SP (the
   reviewer's estimate). Iteration 002 is unchanged; the reviewer brings a swap only if the sync crash proves to hit
