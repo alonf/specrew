@@ -25,10 +25,16 @@ jobs:
       - name: Setup PowerShell
         shell: bash
         run: |
-          # Install PowerShell 7.x
-          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
-          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb
-          sudo apt-get install -f
+          # Use the runner's own pwsh when it has one; otherwise install it from Microsoft's package feed, which the
+          # runner image configures. The pinned 7.4.1 .deb cannot install on ubuntu-26.04 (it accepts libicu52 to
+          # libicu72 only), and ubuntu-latest is moving to that image (runs 43954284857 and 43956458711, 2026-11-16).
+          if command -v pwsh >/dev/null 2>&1; then
+            echo "Using the runner's PowerShell: $(command -v pwsh)"
+          else
+            echo "PowerShell not found on the runner; installing it from Microsoft's package feed..."
+            sudo apt-get update
+            sudo apt-get install -y powershell || { echo "::error::PowerShell could not be installed from Microsoft's package feed on $(. /etc/os-release && echo "$PRETTY_NAME")"; exit 1; }
+          fi
           pwsh --version
 
       - name: Setup Node.js 24
@@ -425,8 +431,16 @@ jobs:
       - name: Setup PowerShell
         shell: bash
         run: |
-          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
-          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb || sudo apt-get install -f -y
+          # Use the runner's own pwsh when it has one; otherwise install it from Microsoft's package feed, which the
+          # runner image configures. The pinned 7.4.1 .deb cannot install on ubuntu-26.04 (it accepts libicu52 to
+          # libicu72 only), and ubuntu-latest is moving to that image (runs 43954284857 and 43956458711, 2026-11-16).
+          if command -v pwsh >/dev/null 2>&1; then
+            echo "Using the runner's PowerShell: $(command -v pwsh)"
+          else
+            echo "PowerShell not found on the runner; installing it from Microsoft's package feed..."
+            sudo apt-get update
+            sudo apt-get install -y powershell || { echo "::error::PowerShell could not be installed from Microsoft's package feed on $(. /etc/os-release && echo "$PRETTY_NAME")"; exit 1; }
+          fi
           pwsh --version
 
       - name: Wrapper runtime suite (FR-002/003/004/008) on real Ubuntu sh + pwsh
@@ -452,8 +466,16 @@ jobs:
       - name: Setup PowerShell
         shell: bash
         run: |
-          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
-          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb || sudo apt-get install -f -y
+          # Use the runner's own pwsh when it has one; otherwise install it from Microsoft's package feed, which the
+          # runner image configures. The pinned 7.4.1 .deb cannot install on ubuntu-26.04 (it accepts libicu52 to
+          # libicu72 only), and ubuntu-latest is moving to that image (runs 43954284857 and 43956458711, 2026-11-16).
+          if command -v pwsh >/dev/null 2>&1; then
+            echo "Using the runner's PowerShell: $(command -v pwsh)"
+          else
+            echo "PowerShell not found on the runner; installing it from Microsoft's package feed..."
+            sudo apt-get update
+            sudo apt-get install -y powershell || { echo "::error::PowerShell could not be installed from Microsoft's package feed on $(. /etc/os-release && echo "$PRETTY_NAME")"; exit 1; }
+          fi
           pwsh --version
 
       - name: Regenerate wrappers and assert no drift (registry -> bin)
