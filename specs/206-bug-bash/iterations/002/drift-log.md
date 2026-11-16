@@ -230,3 +230,23 @@ The following resolution strategies remain available if drift is detected later 
 - **Not done**: the publish suite was not run here. Whether it runs per push or stays excluded is the maintainer's ruling,
   which is the task's own stop.
 - **Class closure**: NONE — this is a wrong path in one task's file list, not a recurring mechanism.
+
+### DRIFT-206-I002-012 — a Windows co-review CI step hung on fdb42f2d and passed on its one rerun (tooling)
+
+- **Recorded**: 2026-11-16, by the crew, at the reviewer's ruling (specrewreviewer-98, for this push only, not an
+  addition to the standing rerun rule).
+- **What**: on the T028 push `fdb42f2d`, Cross-Platform Validation run `43793714104` was cancelled. Its Windows job
+  "Deterministic fake-provider review runtime (windows-latest)" (job `133057670105`, attempt 1) ran from 02:41:46 to
+  03:11:46 UTC and was cancelled at 30 minutes, against a `timeout-minutes` of 25. GitHub kept no log (`BlobNotFound`).
+  The API's step timings name the step that hung: step 7, "Run bounded deterministic review fault and conformance
+  suites". It started at 02:44:26 and never finished. Steps 1 to 5 passed and step 6 was skipped.
+- **Comparison**: the same job took 5 minutes on `53bc6574` and on `37778592`. On `53bc6574` its step 7 took 133s.
+- **The push**: it changed the release script, the publish workflow, the publish suite, one new unit test, the release
+  manifest and this log. None of them is read by step 7, which runs feature 197's co-review suites. All six lanes were
+  green on that exact tree (571s), and home was unchanged.
+- **Rerun**: one rerun at the reviewer's ruling (`gh run rerun 43793714104 --failed`, attempt 2). All 8 jobs passed;
+  the Windows job (`133068036828`) took 03:15:01 to 03:19:47 UTC, and its step 7 took 130s.
+- **Hand-over to 203** (the suites are theirs). A possibility, not a finding: a review process that does not exit on
+  Windows, the same family as their site 13 (`Stop-Process` with no wait). The hung suite cannot be named without
+  its output.
+- **Class closure**: deferred — to feature 203, which owns the step's suites and site 13.
