@@ -81,3 +81,7 @@ testResults.xml
 .specrew/review/signoff-gate/
 .specrew/review/pause-decision/
 .specrew/bootstrap-baseline.json
+
+# Feature 203 T019 (B5F-077): the Antigravity CLI writes a per-machine link here into the user's home folder
+# (~/.gemini/config/projects/<id>.json). It is machine-local and must never be tracked.
+.antigravitycli/

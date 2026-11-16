@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "002"
-updated_at: "2026-11-16T18:27:31.5773102Z"
+updated_at: "2026-11-16T18:27:56.2501940Z"
 tasks:
   T017:
     title: "The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's \"203 rerun: add reviewer-hook-suppression; T017 first\", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun"
@@ -29,8 +29,8 @@ tasks:
     blocked_reason: ""
   T019:
     title: "B5F-077: remove the tracked `.antigravitycli/` link into another machine's home folder; keep it from coming back"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-11-16T18:27:56.2458339Z"
     completed_at: ""
     blocked_reason: ""
   T020:
