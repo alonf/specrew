@@ -218,6 +218,19 @@ function Set-SpecrewInstructionFileSection {
 # content still matches its recorded hash is Specrew's own. Any edit changes the hash, so it is the user's; a file
 # with no record entry is the user's (the error is toward pausing). The record holds relative paths and hashes only.
 
+# Round 1, F1: files Specrew and the user share. Start writes only its managed block into them and keeps every other
+# byte, so they are never files start wrote whole; T003's block-aware classifier decides their changes. The record
+# neither stores them nor is consulted for them.
+$script:SpecrewSharedInstructionFiles = @('.github/copilot-instructions.md')
+
+function Test-SpecrewSharedInstructionFile {
+    param([AllowNull()][AllowEmptyString()][string]$RelativePath)
+    if ([string]::IsNullOrWhiteSpace($RelativePath)) { return $false }
+    # Exact match: the paths come from git and the session-loaded globs, which give the tracked spelling.
+    $normalized = $RelativePath.Trim().Replace('\', '/')
+    return (@($script:SpecrewSharedInstructionFiles | Where-Object { $_ -ceq $normalized }).Count -gt 0)
+}
+
 function Get-SpecrewStartWrittenFilesRecordPath {
     param([Parameter(Mandatory = $true)][string]$ProjectPath)
     return (Join-Path (Join-Path $ProjectPath '.specrew\runtime') 'start-written-files.json')
@@ -273,6 +286,7 @@ function Read-SpecrewStartWrittenFilesRecord {
         $parsed = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
         if ($null -ne $parsed -and $parsed.PSObject.Properties['files'] -and $null -ne $parsed.files) {
             foreach ($property in $parsed.files.PSObject.Properties) {
+                if (Test-SpecrewSharedInstructionFile -RelativePath ([string]$property.Name)) { continue }
                 if ([string]$property.Value -match '^[0-9a-f]{64}$') {
                     $record[[string]$property.Name] = [string]$property.Value
                 }
@@ -302,6 +316,7 @@ function Save-SpecrewStartWrittenFilesRecord {
         if ($After.Contains($key)) { $merged[$key] = $existing[$key] }
     }
     foreach ($key in @($After.Keys)) {
+        if (Test-SpecrewSharedInstructionFile -RelativePath ([string]$key)) { continue }
         if (-not $Before.Contains($key) -or [string]$Before[$key] -ne [string]$After[$key]) {
             $merged[$key] = [string]$After[$key]
         }

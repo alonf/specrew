@@ -2239,11 +2239,13 @@ function Get-RestartTriggerFiles {
         # F-206 T020 (FR-003, D5-a): a whole file start created or repaired itself is bookkeeping while its committed
         # content still matches the hash start recorded when it wrote it; any edit changes the hash, so it is the
         # user's. A file with no record entry is the user's.
+        # Round 1, F1: a file Specrew and the user share (copilot-instructions.md) is never consulted in the record,
+        # even if an older record holds it; T003's block-aware classifier below decides it.
         $recordKey = ([string]$changedFile).Trim() -replace '\\', '/'
-        if ($null -ne $StartWrittenFiles -and $StartWrittenFiles.Contains($recordKey)) {
-            if (-not (Get-Command -Name 'Get-SpecrewCommittedContentHash' -ErrorAction SilentlyContinue)) {
-                . (Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1')
-            }
+        if (-not (Get-Command -Name 'Get-SpecrewCommittedContentHash' -ErrorAction SilentlyContinue)) {
+            . (Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1')
+        }
+        if ($null -ne $StartWrittenFiles -and $StartWrittenFiles.Contains($recordKey) -and -not (Test-SpecrewSharedInstructionFile -RelativePath $recordKey)) {
             $committedHash = Get-SpecrewCommittedContentHash -ProjectPath $ResolvedProjectPath -RelativePath $recordKey
             if (-not [string]::IsNullOrWhiteSpace($committedHash) -and $committedHash -ceq [string]$StartWrittenFiles[$recordKey]) {
                 continue
