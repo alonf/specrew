@@ -603,18 +603,48 @@ in the same commit. The tree-run gates (the boundary syncs, the governance check
 
 ### Execution order (iteration 002)
 
-T015, T016, T017, T018, T019; then T020, T021; then T022, T023 (i); then T025; T026 before any lane limit
+T017, T015, T016, T018, T019; then T020, T021; then T022, T023 (i); then T025; T026 before any lane limit
 changes; then T030 (main merged in, if feature 206 is on main) and T023 (ii); then the review campaign, with T027 at
 its first stop; then the full sweep and the maintainer's `advance the pin`; then T028; then sign-off. T029 is done
 with the plan.
 
-- T015 to T017 come first: each ends a rerun exception for all three crews when its fix reaches main.
+- T017 comes first (the maintainer's "203 rerun: add reviewer-hook-suppression; T017 first", 2026-11-16 15:48 local): its defect fails
+  203's own pushes now. Then T015 and T016; each of the three ends a rerun exception for all three crews when its
+  fix reaches main.
 - T020 and T021 share `HumanAuthorityStore.ps1`; T022 and T023 share the sign-off gate and run serially.
 - T025 goes last among the builds: its push needs the full sweep and carries T006's launcher half.
 - T030 needs the reviewer session's confirmation, with the maintainer, of what is on main and whether 205 is taken.
 
 ### Phase 8: CI stability (first in the batch)
 
+- [ ] T017 [owner: Implementer] [sp: 0.5] [US1] **The agent invoker loses an exited child's output (`empty-result-retry`,
+  `reviewer-hook-suppression`).**
+  - **Work:** `Invoke-ContinuousCoReviewAgentInWorktree` (`scripts/internal/continuous-co-review/worktree-reviewer.ps1`)
+    starts `ReadToEndAsync()` on stdout and stderr (`:1551`), waits for exit with `WaitForExit(sliceMs)`
+    (`:1560-1571`), and then takes stdout only if the read task has already completed, without waiting for it
+    (`:1598`, and `:1599` for stderr): a read still in flight at exit returns an empty string with exit code 0. The
+    timeout path waits (`:1590`); the normal-exit path does not. The likely single cause of
+    `empty-result-retry.Tests.ps1:29` (on the rerun exception since 2026-11-15 11:31) and
+    `reviewer-hook-suppression.Tests.ps1:22-36` (red on 203's records-only pushes `9b75ae7b` and `8ca144ab`, both on
+    runner image ubuntu-24.04 20261111.127.1; DRIFT-014, DRIFT-016). A product defect, not only a test one: on the
+    legacy worktree path any real reviewer's final output can be lost this way (then one retry, then a failed round,
+    never a pass). Fix: after exit, wait for both read tasks with a bound, and report a read that did not finish
+    instead of returning an empty string.
+  - **RED:** a stub child that writes several MB to stdout and exits at once: the invoker returns empty stdout today,
+    red count recorded. If that does not fail reliably, a seam (an injectable delay in the reader) makes it
+    deterministic.
+  - **Acceptance:** the RED passes; `empty-result-retry` and `reviewer-hook-suppression` each pass 50 runs in a row
+    locally (the reviewer session told first, so the runs do not land on another crew's lanes); the CI evidence is the
+    first green pushes after the fix, since the failures showed under CI; the rerun rules for both cases end when this
+    reaches main.
+  - **Size:** 0.5 SP in the plan. If the RED needs the seam, the extra 0.25 SP is taken from the stated review buffer
+    and recorded as an overrun (the maintainer's decision, as recommended).
+  - **Trace:** the rerun exception (2026-11-15 11:31) and the maintainer's rerun rule (2026-11-16 15:48); DRIFT-014,
+    DRIFT-016.
+  - **Depends:** none. First in the batch.
+  - **Owns:** `scripts/internal/continuous-co-review/worktree-reviewer.ps1`, its `.specify` copy and the hash record
+    if mirrored, `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`,
+    `tests/continuous-co-review/unit/reviewer-hook-suppression.Tests.ps1`, a new invoker test.
 - [ ] T015 [owner: Implementer] [sp: 1.5] [US1] **Site 13 and the deterministic suites' time limits.**
   - **Work:** (1) `co-review-service.ps1:216` stops a supervisor whose lease handoff failed with `Stop-Process -Force`
     and does not wait, so `co-review-service.Tests.ps1:127-129` can see the process still alive (B5F-051 site 13;
@@ -645,16 +675,6 @@ with the plan.
   - **Trace:** the maintainer's rerun rule (2026-11-16 02:56).
   - **Depends:** none.
   - **Owns:** `tests/bootstrap/HookRenderDedupe.Tests.ps1`, `scripts/internal/bootstrap/**` if the product is at fault.
-- [ ] T017 [owner: Implementer] [sp: 0.5] [US1] **`empty-result-retry.Tests.ps1`.**
-  - **Work:** the suite has been on the rerun exception since 2026-11-15 11:31. Find its timing dependence and remove
-    it.
-  - **RED:** the failing case under the condition that made it fail, red count recorded.
-  - **Acceptance:** 50 runs in a row (the reviewer session told first); the CI evidence is the first green pushes
-    after the fix; the exception ends when this reaches main.
-  - **Trace:** the rerun exception (2026-11-15 11:31).
-  - **Depends:** none.
-  - **Owns:** `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`,
-    `scripts/internal/continuous-co-review/**` if the product is at fault.
 - [ ] T018 [owner: Implementer] [sp: 0.5] [US1] **F5: a second top-up grants no extra window.**
   - **Work:** the control iteration 001 closed without a test (the retry-idempotency hardening row, the maintainer's
     "retry row yes", 2026-11-16 02:13; DRIFT-094).

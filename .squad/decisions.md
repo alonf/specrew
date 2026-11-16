@@ -1,5 +1,23 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Decision: 203 - reviewer-hook-suppression joins the records-only rerun rule; T017 first in the batch
+
+- **Decision ID**: f203-i002-rerun-reviewer-hook-suppression-t017-first
+- **Type**: scope-amendment
+- **Affected Requirement**: none (a CI rule and the order of a defect fix)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T13:48:01Z
+- **Decision**: On 203's records-only pushes, a failure of `reviewer-hook-suppression.Tests.ps1` case 1 gets one rerun
+  and the sighting is recorded; a second failure on the same push stops; a push that changes code gets no exception;
+  the rule ends when T017 lands. T017 moves to the front of iteration 002's batch, ahead of T015. T017 stays at 0.5 SP
+  in the plan; if its failing-first test needs a seam, the extra 0.25 SP comes from the stated review buffer as a
+  recorded overrun.
+- **The maintainer's words**: "203 rerun: add reviewer-hook-suppression; T017 first", typed directly in the 203
+  session at 15:48 local (UTC+2) on 2026-11-16, answering the crew's recommendation to their question "What should we
+  do, and how and when we will solve this issue?".
+- **Next Action**: tasks.md and plan.md put T017 first; the tasks boundary is brought again.
+
 ### 2026-11-16 — Decision: 203 iteration 002 - T022 narrows the records-only rule; T024 moves to the follow-up feature
 
 - **Decision ID**: f203-i002-t022-narrowed-records-rule

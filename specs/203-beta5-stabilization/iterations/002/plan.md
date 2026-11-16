@@ -52,9 +52,9 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T017 | The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's "203 rerun: add reviewer-hook-suppression; T017 first", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun | the rerun exception, 2026-11-15 11:31; the maintainer's rerun rule, 2026-11-16 15:48 | US1 | 0.5 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/continuous-co-review/unit/empty-result-retry.Tests.ps1, tests/continuous-co-review/unit/reviewer-hook-suppression.Tests.ps1, tests/continuous-co-review/** | planned | | | |
 | T015 | Site 13: wait for the stopped supervisor after `Stop-Process` (`co-review-service.ps1:216`), test red first; the deterministic suites get a per-suite time limit that names the suite and stops its process tree, and the step a `timeout-minutes` below the job's so a hang keeps its log | Gap Ledger: B5F-051 site 13; DRIFT-004, DRIFT-005 | US1 | 1.5 | Implementer | scripts/internal/continuous-co-review/co-review-service.ps1, tests/continuous-co-review/unit/co-review-service.Tests.ps1, .github/workflows/cross-platform-validation.yml, tests/continuous-co-review/** | planned | | | |
 | T016 | HookRenderDedupe timing cases I3a and I4b: remove the wall-clock dependency, test red first | the maintainer's rerun rule, 2026-11-16 02:56 | US3 | 1.0 | Implementer | tests/bootstrap/HookRenderDedupe.Tests.ps1, scripts/internal/bootstrap/** | planned | | | |
-| T017 | `empty-result-retry.Tests.ps1`: find and remove its timing dependency, test red first | the rerun exception, 2026-11-15 11:31 | US1 | 0.5 | Implementer | tests/continuous-co-review/unit/empty-result-retry.Tests.ps1, scripts/internal/continuous-co-review/** | planned | | | |
 | T018 | F5: a second top-up with no round between grants no extra window, as a fixture through the shipped command | FR-007, FR-043 | US1 | 0.5 | Implementer | tests/continuous-co-review/unit/**, tests/unit/** | planned | | | |
 | T019 | B5F-077: remove the tracked `.antigravitycli/` link into another machine's home folder; keep it from coming back | Gap Ledger: B5F-077 | US2 | 0.25 | Implementer | .antigravitycli/**, .gitignore | planned | | | |
 | T020 | F1, round E `finding-cf1fe81e0398f883`: try the exact identity across every window before the message-ID fallback; a compaction summary is never the cited turn (DRIFT-083), test red first | FR-019, FR-022 | US2 | 1.5 | Implementer | scripts/internal/bootstrap/HumanAuthorityStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/unit/** | planned | | | |
@@ -97,7 +97,8 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
   `Resolve-FeatureDirectory` and two resume branches in `specrew-start.ps1`; no task of this iteration touches them.
   Each is expected to be textual, not semantic; the full sweep after the merge is the check.
 - **Recommendation:** serial, in the order the maintainer accepted (design-analysis.md, Key Design Decision Point 4):
-  1. T015, T016, T017 (the three flaky tests first in the batch), then T018 and T019.
+  1. T017 first (the maintainer's "203 rerun: add reviewer-hook-suppression; T017 first", 15:48 local), then T015 and T016 (the other
+     flaky tests), then T018 and T019.
   2. T020 and T021, the open round E findings.
   3. T022 and T023, one design.
   4. T025 last; its push needs the full sweep and carries the launcher half.
@@ -180,8 +181,8 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
   rule, and the crew asks the maintainer for that red-push allowance at that time; T023(ii) is written at the merge.
 - **Launcher:** T006's launcher half runs with T025's push (design decision 8, refining "launcher: wait" of 03:13).
   The crew asks the maintainer before running the deployer then.
-- **Rerun rules while this iteration runs:** HookRenderDedupe (2026-11-16 02:56) and "203 rerun: yes" (11:34) apply
-  to records-only pushes only; a push that touches code gets no exception. Each rule ends when its fix lands.
+- **Rerun rules while this iteration runs:** HookRenderDedupe (2026-11-16 02:56), "203 rerun: yes" (11:34) and
+  reviewer-hook-suppression case 1 (15:48) apply to records-only pushes only; a push that touches code gets no exception. Each rule ends when its fix lands.
 - **Out, evidence only:** the Windows `0xC0000142` and Pester-gallery CI sightings; B5F-081, B5F-082, B5F-084 and
   B5F-085 are candidates for feature 206's list.
 - **Design:** see design-analysis.md (Option A, A-buffered, the merge variant; Human Decision and its scope

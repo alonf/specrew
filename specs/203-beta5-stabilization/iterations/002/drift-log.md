@@ -300,3 +300,25 @@ The following resolution strategies remain available if drift is detected later 
   keeps a named downstream case; a pinned case shows the scaffold's `quality/mechanical-findings.json` in the
   iteration folder is records-only today, unchanged.
 - **Class closure**: NONE — a task amendment before the tasks stop.
+
+### DRIFT-016 — reviewer-hook-suppression case 1 red again; one product defect behind two flaky suites; T017 first (maintainer)
+
+- **The second failure**: Specrew CI `43870780425` on `8ca144ab` (records only), attempt 1: the Deterministic gate
+  failed on the same case and message as DRIFT-014 ("Expected regular expression 'RD=\[1\]' to match <empty>", 932
+  ms), the Contract lane skipped; the crew stopped and reported, as the reviewer session had ruled. Two red in six
+  Specrew CI runs on this branch that day, both on records-only pushes.
+- **The reading** (read only, about 15 minutes): `Invoke-ContinuousCoReviewAgentInWorktree`
+  (`worktree-reviewer.ps1`) starts `ReadToEndAsync()` on stdout and stderr (`:1551`), waits for exit
+  (`:1560-1571`), then takes stdout only if the read task has already completed, without waiting for it (`:1598`,
+  `:1599`): an exit-0 child whose output is still being read returns an empty string. The timeout path waits
+  (`:1590`); the normal path does not. `empty-result-retry.Tests.ps1:29` fails the same way (its retry's stub
+  writes and exits 0, and the retry's stdout comes back empty), so the two are likely one defect. On the campaign
+  path (codex file-primary), stdout carries no authority, so a lost output cannot be recorded as a pass there; on the
+  legacy path it costs a retry and then a failed round, never a pass.
+- **What the logs show**: both failing runs on runner image ubuntu-24.04 20261111.127.1; the four greens since the
+  morning on 20261111.370.1, and one earlier green (`2cacad73`) on .127.1. A correlation, not proof.
+- **The decision**: the maintainer asked "What should we do, and how and when we will solve this issue?"; the crew
+  recommended the rerun rule now and T017 first; the maintainer typed "203 rerun: add reviewer-hook-suppression; T017
+  first" at 15:48 local. Recorded in `.squad\decisions.md` as
+  `f203-i002-rerun-reviewer-hook-suppression-t017-first`. One rerun of `43870780425`'s failed jobs started under it.
+- **Class closure**: NONE — T017 fixes it, first in the batch.
