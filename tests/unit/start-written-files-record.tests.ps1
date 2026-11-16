@@ -165,6 +165,50 @@ Describe 'A changed session-loaded file that start wrote itself is not a restart
     }
 }
 
+Describe 'copilot-instructions.md is shared, so the record never covers it (round 1, F1)' {
+    # Start writes only its managed block into .github/copilot-instructions.md and keeps every other byte, so the file
+    # is not one start wrote whole. A user's uncommitted edit outside the block, present when start refreshes the
+    # block, must not become "Specrew's own" once committed: T003's block-aware classifier decides that file.
+    BeforeAll {
+        $fixtures = Join-Path $script:RepoRoot 'tests\integration\fixtures\013-validator-hardening\copilot-instructions'
+        $script:F1Before = Get-Content -LiteralPath (Join-Path $fixtures 'before.md') -Raw -Encoding UTF8
+        $script:F1UserEdit = Get-Content -LiteralPath (Join-Path $fixtures 'after-behavior.md') -Raw -Encoding UTF8
+        $script:F1Fragment = Get-SpecrewCoordinatorFragment
+    }
+
+    It 'pauses on the user''s committed edit after start refreshed its block around it' {
+        $root = New-FixtureRepo -Name 'f1'
+        Set-FixtureFile -Root $root -RelativePath '.github/copilot-instructions.md' -Content (Merge-SpecrewManagedInstructionSection -ExistingContent $script:F1Before -ManagedContent $script:F1Fragment)
+        $baseline = Save-FixtureCommit -Root $root -Message 'baseline with the coordinator block'
+
+        # The user edits outside the block and has not committed; start then refreshes its block (a new fragment).
+        Set-FixtureFile -Root $root -RelativePath '.github/copilot-instructions.md' -Content (Merge-SpecrewManagedInstructionSection -ExistingContent $script:F1UserEdit -ManagedContent $script:F1Fragment)
+        $before = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $root -Globs $script:Globs
+        Set-FixtureFile -Root $root -RelativePath '.github/copilot-instructions.md' -Content (Merge-SpecrewManagedInstructionSection -ExistingContent $script:F1UserEdit -ManagedContent ($script:F1Fragment + "`n`nA refreshed coordinator line."))
+        $after = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $root -Globs $script:Globs
+        Save-SpecrewStartWrittenFilesRecord -ProjectPath $root -Before $before -After $after
+        $null = Save-FixtureCommit -Root $root -Message 'user commits the edit with the refreshed block'
+
+        $record = Read-SpecrewStartWrittenFilesRecord -ProjectPath $root
+        $record.Contains('.github/copilot-instructions.md') | Should -BeFalse
+        . ([scriptblock]::Create($script:RestartTriggerFunction))
+        $result = @(Get-RestartTriggerFiles -ResolvedProjectPath $root -BaselineCommitHash $baseline -ChangedFiles @('.github/copilot-instructions.md') -StartWrittenFiles $record)
+        $result | Should -Contain '.github\copilot-instructions.md'
+    }
+
+    It 'ignores a copilot-instructions.md entry an older record still holds' {
+        $root = New-FixtureRepo -Name 'f1-old'
+        Set-FixtureFile -Root $root -RelativePath '.github/copilot-instructions.md' -Content (Merge-SpecrewManagedInstructionSection -ExistingContent $script:F1Before -ManagedContent $script:F1Fragment)
+        $baseline = Save-FixtureCommit -Root $root -Message 'baseline'
+        $edited = Merge-SpecrewManagedInstructionSection -ExistingContent $script:F1UserEdit -ManagedContent $script:F1Fragment
+        Set-FixtureFile -Root $root -RelativePath '.github/copilot-instructions.md' -Content $edited
+        $null = Save-FixtureCommit -Root $root -Message 'user edit'
+        . ([scriptblock]::Create($script:RestartTriggerFunction))
+        $result = @(Get-RestartTriggerFiles -ResolvedProjectPath $root -BaselineCommitHash $baseline -ChangedFiles @('.github/copilot-instructions.md') -StartWrittenFiles @{ '.github/copilot-instructions.md' = (Get-SpecrewStartWrittenContentHash -Content $edited) })
+        $result | Should -Contain '.github\copilot-instructions.md'
+    }
+}
+
 Describe 'specrew start keeps the record across runs (end to end, item 21)' {
     BeforeAll {
         $script:ProfilePath = Join-Path ([IO.Path]::GetTempPath()) ('specrew-test-profile-' + [guid]::NewGuid().ToString('N') + '.yml')
