@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: 100% (7/7 resolved or placed)
+**Total drift events**: 8
+**Resolution rate**: 100% (8/8 resolved or placed)
 **Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 recorded in spec.md, approved at the tasks boundary (DRIFT-005)
 
 ## Events
@@ -136,6 +136,19 @@
   `empty-result-retry.Tests.ps1` only; the reviewer is asking the maintainer whether this suite should join it.
 - **Class closure**: NONE — the hook chain's test is outside 205's scope. Added to H-023 (`handover-to-203.md`) as
   the second sighting.
+
+### DRIFT-008 — HookRenderDedupe joins the standing CI rerun rule (maintainer decision)
+
+- **Decision**: the maintainer's words at 02:56 local on 2026-11-16, "rerun: add HookRenderDedupe", relayed by
+  specrewreviewer-98 after it showed them the two records-only failures of 2026-11-15 (I3a, DRIFT-001; I4b,
+  DRIFT-007), each green on rerun.
+- **The rule now, until feature 203 merges**: a CI failure in `co-review-service.Tests.ps1:129`, in
+  `empty-result-retry.Tests.ps1`, or in the HookRenderDedupe suite's named timing cases (I3a, I4b) may be rerun once
+  without asking, when the push did not touch that code or anything it reads. A failed rerun, in the same case or
+  another, stops the crew. Every sighting is recorded (run, job, system, case and numbers) and passed to 203. Any
+  other failure in that suite is a failure, and the exception does not apply to a push that changed hook rendering,
+  the capture stores or anything the suite exercises.
+- **Class closure**: NONE — a working rule, saved as the crew's standing rule.
 
 <!--
   Every new ### DRIFT-... event includes:
