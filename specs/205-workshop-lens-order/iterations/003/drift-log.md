@@ -236,7 +236,10 @@
   - **Each use** is recorded in the drift log with the run id and the one failing line quoted. The next push after
     the boundary commit must be fully green with every job run.
   - It is not an approval and covers no other kind of push.
-- **First use**: this iteration's retro push.
+- **First use**: this iteration's retro push, `f1ed7c6a`: Specrew CI run 43865599529, Lint job 133293218474, one
+  failing line: "plan.md status 'reviewing' is stale: retro.md exists, so the iteration must be in retro or complete".
+  The Deterministic gate and the Contract lane were skipped because Lint failed first; Test 43865599633 and
+  Cross-Platform Validation 43865599583 were green.
 - **Class closure**: NONE — the rule's fix is feature 206's T034; the exception ends when it lands here.
 <!--
   Every new ### DRIFT-... event includes:
