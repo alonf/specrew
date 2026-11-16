@@ -255,3 +255,83 @@ Describe 'The identity file records the feature path relative to the project (it
         $identity | Should -Not -Match ([regex]::Escape($root))
     }
 }
+
+Describe 'A path that one OS calls absolute and another does not (Specrew CI on Linux, 2026-11-16)' {
+    # Specrew CI's Linux runner (run 43851050990) met this repository's tracked identity file carrying a Windows
+    # path: [IO.Path]::IsPathRooted('C:\...') is false on Linux, so the reader joined it under the project root and
+    # start refused with stale session state. A Windows clone in another folder meets the same refusal for a path
+    # that does not exist there. Every case below holds on Windows and on Linux.
+    BeforeAll {
+        $script:ForeignWindows = 'C:\Dev\other-machine-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '\specs\001-demo'
+    }
+
+    It 'one helper names what kind of path it is: <Path> is <Kind>' -ForEach @(
+        @{ Path = 'C:\x\specs'; Kind = 'absolute' }
+        @{ Path = 'C:/x/specs'; Kind = 'absolute' }
+        @{ Path = '\server\share\specs'; Kind = 'absolute' }
+        @{ Path = '//server/share/specs'; Kind = 'absolute' }
+        @{ Path = '/home/runner/specs'; Kind = 'absolute' }
+        @{ Path = 'C:specs\001-demo'; Kind = 'drive-relative' }
+        @{ Path = 'specs/001-demo'; Kind = 'relative' }
+        @{ Path = 'specs/odd:name'; Kind = 'relative' }
+    ) {
+        Get-SpecrewPathRootKind -Path $Path | Should -Be $Kind
+    }
+
+    It 'another OS''s absolute path, a UNC path and a drive-relative path are outside the project; a colon in a relative path is not' {
+        $root = New-TempFolder -Name 'kinds'
+        foreach ($outside in @($script:ForeignWindows, ($script:ForeignWindows -replace '\', '/'), '\server\share\specs\001-demo', '//server/share/specs/001-demo', '/elsewhere/specs/001-demo', 'C:specs\001-demo')) {
+            Test-SpecrewPathInsideProject -ProjectRoot $root -Path $outside | Should -BeFalse -Because $outside
+            ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $root -FeaturePath $outside | Should -Be '(none)' -Because $outside
+        }
+        Test-SpecrewPathInsideProject -ProjectRoot $root -Path 'specs/odd:name' | Should -BeTrue
+        ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $root -FeaturePath 'specs/001-demo' | Should -Be 'specs/001-demo'
+    }
+
+    It 'the identity reader does not use <Name>, and warns naming the file and why' -ForEach @(
+        @{ Name = 'another machine''s absolute path'; Value = 'FOREIGN' }
+        @{ Name = 'a drive-relative path'; Value = 'C:specs\001-demo' }
+        @{ Name = 'a UNC path'; Value = '\server\share\specs\001-demo' }
+    ) {
+        $value = if ($Value -eq 'FOREIGN') { $script:ForeignWindows } else { $Value }
+        $root = New-GovernedProject -Name 'reader-foreign' -IdentityFeaturePath $value
+        $before = Get-Content -LiteralPath (Join-Path $root '.squad\identity\now.md') -Raw
+        $state = Get-SpecrewIdentitySessionState -ProjectRoot $root -WarningVariable warned -WarningAction SilentlyContinue
+        $state | Should -Not -BeNullOrEmpty
+        $state.feature_path | Should -BeNullOrEmpty
+        $state.feature_ref | Should -Be '001-demo'
+        ($warned -join "`n") | Should -Match ([regex]::Escape('.squad/identity/now.md'))
+        ($warned -join "`n") | Should -Match 'not changed'
+        Get-Content -LiteralPath (Join-Path $root '.squad\identity\now.md') -Raw | Should -BeExactly $before
+    }
+
+    It 'specrew start on a clone whose tracked identity file holds another machine''s path starts, warns, and leaves the file as committed' {
+        $previous = $env:SPECREW_USER_PROFILE_PATH
+        $env:SPECREW_USER_PROFILE_PATH = Join-Path ([IO.Path]::GetTempPath()) ('specrew-test-profile-' + [guid]::NewGuid().ToString('N') + '.yml')
+        try {
+            $root = New-GovernedProject -Name 'clone-foreign' -IdentityFeaturePath $script:ForeignWindows
+            $result = Invoke-FixtureStart -Root $root
+            $result.ExitCode | Should -Be 0 -Because $result.Text
+            $result.Text | Should -Not -Match 'stale session state'
+            $result.Text | Should -Match ([regex]::Escape('.squad/identity/now.md'))
+            Get-Content -LiteralPath (Join-Path $root '.specrew\last-start-prompt.md') -Raw | Should -Not -Match ([regex]::Escape('other-machine'))
+            & git -C $root diff --quiet -- .squad/identity/now.md
+            $LASTEXITCODE | Should -Be 0 -Because 'start does not rewrite the tracked identity file'
+        }
+        finally {
+            Remove-Item -LiteralPath $env:SPECREW_USER_PROFILE_PATH -Force -ErrorAction SilentlyContinue
+            $env:SPECREW_USER_PROFILE_PATH = $previous
+        }
+    }
+
+    It 'each entry point reaches the helper when loaded on its own: <Entry>' -ForEach @(
+        @{ Entry = 'scripts/internal/sync-boundary-state.ps1'; Call = 'Test-SpecrewPathInsideProject -ProjectRoot ([IO.Path]::GetTempPath()) -Path ''C:specs\x''' }
+        @{ Entry = 'scripts/internal/session-recovery.ps1'; Call = 'Get-SpecrewPathRootKind -Path ''C:/x''' }
+    ) {
+        $script = ". '{0}'; {1}" -f (Join-Path $script:RepoRoot $Entry), $Call
+        $out = @(& pwsh -NoProfile -NonInteractive -Command $script 2>&1)
+        $LASTEXITCODE | Should -Be 0 -Because ($out -join "`n")
+        ($out -join "`n") | Should -Not -Match 'is not recognized'
+        ($out | Select-Object -Last 1).ToString() | Should -BeIn @('False', 'absolute')
+    }
+}
