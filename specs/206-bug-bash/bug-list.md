@@ -1033,6 +1033,19 @@ protected set, and none has changed on 203's branch since the merge base `df1141
 - **Scope:** a candidate for iteration 003, not placed. The cause in the validator is not established. CI is not
   affected.
 
+## 53. With no start-context, a record beside an earlier phase line is accepted even after its verdict (severity: minor)
+
+- **Observed (2026-11-16, the reviewer and feature 203's crew, reading T034's `3a3ba803`):** with no
+  `.specrew/start-context.json` (CI, a fresh clone), `Get-SpecrewRecordApprovalState` returns `unknown`, and review.md
+  beside `executing` (or retro.md beside `reviewing`) is accepted with a warning. That holds also after the verdict is
+  recorded, when the phase line is really stale. CI cannot catch that case; a local run and the sync's mirror check
+  (`Get-SpecrewCrossingMirrorIssues`) can.
+- **Weighed before:** design D2 weighed the missing file and rejected reading commit subjects (D2-b). It did not weigh
+  the tracked ledger (`.squad/events/lifecycle-events.jsonl`, the verdict entries in `.squad/decisions.md`), which is in
+  CI and could tell a recorded verdict from a pending one.
+- **Scope:** a candidate for iteration 003, not placed. Named in the round 2 scope file. Feature 203's iteration 002
+  relies on T034 for this rule, so a change here changes what 203 would take.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,

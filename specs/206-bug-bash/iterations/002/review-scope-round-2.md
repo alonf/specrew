@@ -76,9 +76,17 @@ the test census (F-206 T015)", and in lane `f206-changed-integration`:
 
 The census exclusions for both are removed.
 
-**Known and deferred:** DRIFT-206-I002-013 (bug list item 52). A CI-mode full validator run in a worktree that has run
-a review round fails old accepted iterations on the local review store, while clean checkouts pass. It is not changed
-in this round.
+**Known and deferred:**
+
+- DRIFT-206-I002-013 (bug list item 52). A CI-mode full validator run in a worktree that has run a review round fails
+  old accepted iterations on the local review store, while clean checkouts pass. It is not changed in this round.
+- Bug list item 53, T034's CI blind spot.
+  - With no `start-context.json` (CI, a fresh clone), the record is accepted with a warning. That holds even after the
+    verdict is recorded, when the phase line really is stale. So CI cannot catch a stale phase line; a local run and
+    the sync's mirror check can.
+  - Design D2 weighed the missing file and rejected commit subjects (D2-b). It did not weigh the tracked ledger
+    (`.squad/events/lifecycle-events.jsonl`, the verdict entries in `.squad/decisions.md`), which could answer in CI.
+  - Judge D2-a knowing this.
 
 ## What to Attack First
 
@@ -88,10 +96,19 @@ in this round.
    reads `abandoned` as closed on its own: the validator's filter, the dashboard check and the renderer.
 2. **The publish refusal (T028).** Any path to `Publish-Module` without `-ConfirmLivePublish`. A key that reaches the
    release script other than through its parameter. A run of the suite that leaves either environment variable changed.
-   Whether the CI step that now runs the suite can see the secret.
+   Whether the CI step that now runs the suite can see the secret. The facts to check, at `1edab530`:
+   - only `.github/workflows/publish-module.yml:277` maps `secrets.PSGALLERY_API_KEY`, and `specrew-ci.yml` maps no
+     secret at all;
+   - the suite clears the key at `tests/integration/distribution-module-publish.ps1:91`, before its first release
+     call;
+   - its one `-ConfirmLivePublish` call (`:261` to `:266`) depends on that clear;
+   - the `finally` at `:285` restores the key and `SPECREW_BUILD_COMMIT`.
 3. **Records judged before and after their approval (T034, T033).** A record accepted as pending when the crossing
    that is pending is a different one. A `deferred` row whose decision id is in a comment or a different section of
    `decisions.md`. A `deferred` row that hides a `needs-work`.
+   - T034 accepts review.md beside `planning` as well as `executing` while review-signoff is pending. It kept the old
+     condition and only gated it on the approval state. Feature 203's B5F-050 asked only for `executing`, and no
+     legitimate review.md at `planning` is known. Is there a path where that acceptance hides a real error?
 4. **The closeout tail (T035, T036).** A dashboard redraw that writes outside the iteration folder or reads the wrong
    feature. A Completed date overwritten on a later capture. A placeholder shape that is not filled. An open hardening
    row that the arrival does not list, or a recorded row that it lists.
