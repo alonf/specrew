@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution rate**: 100% (8/8 resolved or placed)
+**Total drift events**: 9
+**Resolution rate**: 100% (9/9 resolved or placed)
 **Specification drift**: None; Amendment A2 went through clarify (DRIFT-205-INTAKE-006); Amendment A3 recorded in spec.md, approved at the tasks boundary (DRIFT-005)
 
 ## Events
@@ -150,6 +150,17 @@
   the capture stores or anything the suite exercises.
 - **Class closure**: NONE — a working rule, saved as the crew's standing rule.
 
+### DRIFT-009 — co-review-service.Tests.ps1:129 failed on a records push (standing rerun exception used)
+
+- **Observed**: 2026-11-16 00:57:31Z (02:57 local), Specrew CI run 43782743984, attempt 1, Deterministic gate job
+  133024616043 (Linux runner), step "F-198 honesty regression suite (NFR-007)", on `1b8f22d6`. That push carried
+  iteration 003's T034 records and the round 1 scope file only.
+- **Failure**: `tests/continuous-co-review/unit/co-review-service.Tests.ps1:129`, "Expected $null or empty ... but got
+  System.Diagnostics.Process (pwsh)"; 1 of 131 suites failed, and the Contract lane was skipped as a consequence.
+  Test and Cross-Platform Validation were green.
+- **Resolution**: covered by the standing exception (DRIFT-205-INTAKE-007, DRIFT-008): one rerun without asking.
+  Attempt 2 green (Deterministic gate job 133028487355, Contract lane job 133032838976).
+- **Class closure**: NONE — 203's test. Handed over as H-026.
 <!--
   Every new ### DRIFT-... event includes:
 

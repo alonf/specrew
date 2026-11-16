@@ -52,3 +52,16 @@ signals dominate the scoped requirements"; the resolved profile names Node and a
 PowerShell 7 scripts, lens markdown, a YAML catalog and tests.
 
 **Status**: open; owner feature 203.
+
+## H-026 — sighting: co-review-service.Tests.ps1:129 failed on a records push (standing rerun exception used)
+
+**Severity**: low. A records-only push went red on the lease-handoff case, and the Contract lane was skipped.
+
+**Observed**: 2026-11-16 00:57:31Z, Specrew CI run 43782743984, attempt 1, Deterministic gate job 133024616043 (Linux
+runner), step "F-198 honesty regression suite (NFR-007)", on `1b8f22d6` (iteration 003 records only).
+`tests/continuous-co-review/unit/co-review-service.Tests.ps1:129`, "a FAILED lease owner-handoff STOPS the spawned
+supervisor ...": "Expected $null or empty ... but got System.Diagnostics.Process (pwsh)". 1 of 131 suites failed.
+Rerun once under the standing exception; attempt 2 green (Deterministic gate job 133028487355, Contract lane job
+133032838976). Recorded in 205's iteration 003 drift log as DRIFT-009.
+
+**Status**: open; owner feature 203.
