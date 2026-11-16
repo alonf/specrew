@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 Describe 'the bounded deterministic suite runner (T015)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
-        $script:Runner = Join-Path $script:RepoRoot 'tests/continuous-co-review/invoke-bounded-suites.ps1'
+        $script:Runner = Join-Path $script:RepoRoot 'tools/ci/invoke-bounded-suites.ps1'
         $script:PwshPath = (Get-Process -Id $PID).Path
         $script:FixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('bounded-runner-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $script:FixtureRoot -Force | Out-Null
