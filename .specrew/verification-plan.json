@@ -42,9 +42,9 @@
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$fail = 0; $r = Invoke-Pester -Path 'tests/integration/closed-iterations-are-history.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { $fail = 1 }; foreach ($s in @('tests/integration/non-specrew-session-bypass.tests.ps1','tests/integration/distribution-module-publish.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
+        "$fail = 0; $r = Invoke-Pester -Path 'tests/integration/closed-iterations-are-history.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { $fail = 1 }; foreach ($s in @('tests/integration/non-specrew-session-bypass.tests.ps1','tests/integration/distribution-module-publish.ps1','tests/integration/project-path-resolution-regression.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
       ],
-      "timeout_seconds": 300,
+      "timeout_seconds": 420,
       "env_refs": [
         "PATH",
         "PATHEXT",
@@ -66,7 +66,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Feature 206: the two integration suites whose fixtures iteration 001 changed for T008 and T009 (DRIFT-206-I001-003 and -009), measured alone 23 s (2026-11-13), and iteration 002's T028 publish suite, tests/integration/distribution-module-publish.ps1, per push by the maintainer's answer of 2026-11-16 (77 s alone; home hook files, PowerShellGet's folder and the repository unchanged; it clears PSGALLERY_API_KEY itself). Against 300 s."
+      "label": "Feature 206: the two integration suites whose fixtures iteration 001 changed for T008 and T009 (DRIFT-206-I001-003 and -009), measured alone 23 s (2026-11-13), and iteration 002's T028 publish suite, tests/integration/distribution-module-publish.ps1, per push by the maintainer's answer of 2026-11-16 (77 s alone; home hook files, PowerShellGet's folder and the repository unchanged; it clears PSGALLERY_API_KEY itself). Also T024's SC-001 script, tests/integration/project-path-resolution-regression.ps1, per push by the same answer (87 s alone, 2026-11-16; home hook files and the repository unchanged; its fixture is a temp folder with its own git repository). About 190 s in all, against 420 s."
     },
     {
       "command_id": "f206-census-guard",

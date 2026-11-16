@@ -388,6 +388,8 @@ jobs:
             'tests/integration/hardening-gate-contract.ps1'
             'tests/integration/lockout-chain-cap.ps1'
             'tests/integration/mechanical-findings-contract.ps1'
+            # F-206 T024 (SC-001, maintainer 2026-11-16): its fixture is a temp folder with its own git repository.
+            'tests/integration/project-path-resolution-regression.ps1'
             'tests/integration/quality-evidence-governance.ps1'
             'tests/integration/quality-profile-foundation.ps1'
             'tests/integration/reviewer-artifacts.ps1'

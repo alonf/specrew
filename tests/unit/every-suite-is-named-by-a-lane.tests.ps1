@@ -515,6 +515,8 @@ $perPush = @(
     # Feature 206 T028 (FR-012, maintainer 2026-11-16 "OK for all"): per push once it clears the key itself and the
     # release script refuses a live publish nobody asked for.
     'tests/integration/distribution-module-publish.ps1'
+    # Feature 206 T024 (SC-001, maintainer 2026-11-16 "OK for all"): per push after its supervised runs.
+    'tests/integration/project-path-resolution-regression.ps1'
     'tests/integration/carry-forward-closed-iteration.ps1'
     'tests/integration/concurrency-sizing.ps1'
     'tests/integration/descriptive-reference-authored-prose.ps1'
@@ -559,7 +561,6 @@ $rulingExclusions = [ordered]@{
     'tests/manual/copilot-squad-smoke.ps1'                           = $homeWriter
     'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
     'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
-    'tests/integration/project-path-resolution-regression.ps1'       = 'awaiting the maintainer: green in iteration 002 (T024)'
 }
 foreach ($excludedPath in $rulingExclusions.Keys) {
     $declared = if ($exclusions.Contains($excludedPath)) { [string]$exclusions[$excludedPath] } else { '' }
