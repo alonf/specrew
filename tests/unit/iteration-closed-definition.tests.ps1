@@ -1,5 +1,6 @@
 # Feature 206, T006 (FR-008a, design D3): one definition of "closed", used by every path.
-#   closed = in .specrew/closed-iterations.yml, or state.md Iteration Status `complete` / `abandoned`, or a
+#   closed = in .specrew/closed-iterations.yml, or state.md Iteration Status `complete`, or `abandoned` with the
+#            maintainer's ruling recorded in a `## Disposition` section (T026), or a
 #            status that claims closure in the words the validator already reads as a claim ("closed",
 #            "closeout complete", "closure complete") with no negation or future wording before it
 #            (maintainer ruling 2026-11-11, option 1 with conditions);
@@ -33,7 +34,7 @@ BeforeAll {
 
     New-FixtureIteration -Feature '901-fixture' -Iteration '001' -StateBody "**Iteration Status**: reviewing`n"
     New-FixtureIteration -Feature '901-fixture' -Iteration '002' -StateBody "**Iteration Status**: complete`n"
-    New-FixtureIteration -Feature '901-fixture' -Iteration '003' -StateBody "**Iteration Status**: abandoned`n"
+    New-FixtureIteration -Feature '901-fixture' -Iteration '003' -StateBody "**Iteration Status**: abandoned`n`n## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-16.`n"
     New-FixtureIteration -Feature '901-fixture' -Iteration '004' -StateBody "**Iteration Status**: retro`n" -ReviewVerdict 'accepted'
     New-FixtureIteration -Feature '901-fixture' -Iteration '005' -StateBody "**Current Phase**: iteration-closeout`n**Iteration Status**: reviewing`n`nRETRO COMPLETE; iteration closed.`n"
     New-FixtureIteration -Feature '901-fixture' -Iteration '006' -StateBody "**Iteration Status**: complete`n"
@@ -58,6 +59,8 @@ BeforeAll {
     # Review round 3, finding 2: modal wording describes a closure that has not happened.
     New-FixtureIteration -Feature '901-fixture' -Iteration '020' -StateBody "**Iteration Status**: may be closed after review`n"
     New-FixtureIteration -Feature '901-fixture' -Iteration '021' -StateBody "**Iteration Status**: can be closed after review`n"
+    # T026 (DRIFT-206-I001-010): abandoned with no recorded ruling - an abandonment reason is not a ruling.
+    New-FixtureIteration -Feature '901-fixture' -Iteration '022' -StateBody "**Iteration Status**: abandoned`n`n## Abandonment Reason`n`nSuperseded by later work.`n"
 
     Set-Content -LiteralPath (Join-Path $script:Root '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
 closed:
@@ -92,8 +95,12 @@ Describe 'Test-SpecrewIterationClosed: one definition (FR-008a)' {
         Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration '002' | Should -BeTrue
     }
 
-    It 'is closed when Iteration Status is abandoned' {
+    It 'is closed when Iteration Status is abandoned and state.md records the maintainer''s ruling' {
         Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration '003' | Should -BeTrue
+    }
+
+    It 'is not closed when Iteration Status is abandoned with no recorded ruling (T026, DRIFT-206-I001-010)' {
+        Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration '022' | Should -BeFalse
     }
 
     It 'reads the status without backticks or case' {
@@ -221,7 +228,7 @@ Describe 'Test-SpecrewIterationClosed: one definition (FR-008a)' {
         $index = Get-SpecrewClosedIterationIndex -ProjectRoot $script:Root
         $frozen = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $script:Root)
         $frozen | Should -Be @('901-fixture/006')
-        foreach ($n in '001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017') {
+        foreach ($n in '001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '022') {
             $plain = Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n
             $preloaded = Test-SpecrewIterationClosed -ProjectRoot $script:Root -Feature '901-fixture' -Iteration $n -ClosedIndex $index -FrozenKeys $frozen
             $preloaded | Should -Be $plain -Because "iteration $n"
