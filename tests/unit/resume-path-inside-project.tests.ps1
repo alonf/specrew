@@ -94,6 +94,37 @@ Describe 'Which paths are inside the project' {
     }
 }
 
+Describe 'A link inside the project does not make an outside folder inside (round 1, F3)' {
+    BeforeAll {
+        $script:LinkRoot = New-TempFolder -Name 'f3'
+        $script:LinkTargetRoot = New-TempFolder -Name 'f3-target'
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:LinkTargetRoot 'specs\001-demo') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:LinkRoot 'specs') -Force
+        $script:LinkPath = Join-Path $script:LinkRoot 'specs\linked'
+        $linkType = if ($IsWindows) { 'Junction' } else { 'SymbolicLink' }
+        $null = New-Item -ItemType $linkType -Path $script:LinkPath -Target (Join-Path $script:LinkTargetRoot 'specs') -Force
+    }
+    AfterAll {
+        # Remove the link itself first, so the cleanup never walks into the target.
+        if (Test-Path -LiteralPath $script:LinkPath) { [IO.Directory]::Delete($script:LinkPath, $false) }
+    }
+
+    It 'treats a path through a junction or symlink as outside' {
+        Test-Path -LiteralPath (Join-Path $script:LinkPath '001-demo') | Should -BeTrue
+        Test-SpecrewPathInsideProject -ProjectRoot $script:LinkRoot -Path (Join-Path $script:LinkPath '001-demo') | Should -BeFalse
+    }
+
+    It 'still accepts an ordinary folder inside the same project' {
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:LinkRoot 'specs\002-real') -Force
+        Test-SpecrewPathInsideProject -ProjectRoot $script:LinkRoot -Path (Join-Path $script:LinkRoot 'specs\002-real') | Should -BeTrue
+    }
+
+    It 'Resolve-FeatureDirectory refuses a feature folder reached through a link' {
+        . ([scriptblock]::Create($script:ResolveFeatureDirectory))
+        { Resolve-FeatureDirectory -Root $script:LinkRoot -ResumeFeature 'specs\linked\001-demo' } | Should -Throw -ExpectedMessage '*outside the project*'
+    }
+}
+
 Describe 'A resume path outside -ProjectPath is refused (item 23)' {
     It 'Resolve-FeatureDirectory refuses a rooted path outside the project' {
         $script:ResolveFeatureDirectory | Should -Not -BeNullOrEmpty
