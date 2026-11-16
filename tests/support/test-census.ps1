@@ -30,7 +30,6 @@ function Get-SpecrewTestCensusExclusions {
         'tests/host-probes/copilot-hook-firing-probe.ps1'  = 'live host probe, run by hand: drives the real Copilot CLI; no lane can run it'
         'tests/host-probes/host-payload-capture-probe.ps1' = 'live host probe, run by hand: records real host payloads; no lane can run it'
         'tests/host-probes/walk-capture-hook.ps1'          = 'not a test: a capture hook installed for a live walk'
-        'tests/integration/_ctl-spec.ps1'                  = 'empty 0-byte file, not a test; deleted by T016 (feature 206, iteration 002)'
 
         # The T014/T015 rulings (maintainer, 2026-11-12) on the scripts no lane ran before this census. Each was
         # read for writes to the real home folder; a red one is excluded only by the maintainer's ruling (FR-012).
