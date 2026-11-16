@@ -22,6 +22,14 @@ function Get-SpecrewBootstrapJournal {
     return , $records.ToArray()
 }
 
+function Get-SpecrewJournalClaimAgeSeconds {
+    # The age of an append claim, from its last write time. One seam so the stale-claim decision can be tested.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $ClaimPath)
+    $lastWriteUtc = [System.IO.File]::GetLastWriteTimeUtc($ClaimPath)
+    return ([DateTime]::UtcNow - $lastWriteUtc).TotalSeconds
+}
+
 function Add-SpecrewBootstrapJournalRecord {
     <#
     .SYNOPSIS
@@ -78,8 +86,7 @@ function Add-SpecrewBootstrapJournalRecord {
                         # The path can disappear between these two calls when its owner completes. File's static
                         # timestamp reader is race-safe here (it returns the platform sentinel, never emits a
                         # PowerShell error record that would poison a background job's result stream).
-                        $lastWriteUtc = [System.IO.File]::GetLastWriteTimeUtc($claimPath)
-                        $ageSeconds = ([DateTime]::UtcNow - $lastWriteUtc).TotalSeconds
+                        $ageSeconds = Get-SpecrewJournalClaimAgeSeconds -ClaimPath $claimPath
                         if ($ageSeconds -ge $StaleClaimSeconds) {
                             $stalePath = "$claimPath.stale.$([guid]::NewGuid().ToString('N'))"
                             [System.IO.File]::Move($claimPath, $stalePath)
