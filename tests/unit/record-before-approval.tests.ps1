@@ -18,7 +18,7 @@ BeforeAll {
     $script:RetroStale = "plan.md status '{0}' is stale: retro.md exists"
 
     function New-RecordFixture {
-        param([string]$Name, [string]$Status, [switch]$Review, [switch]$Retro, [AllowNull()][string]$LastAuthorized, [string]$PendingTo)
+        param([string]$Name, [string]$Status, [switch]$Review, [switch]$Retro, [AllowNull()][string]$LastAuthorized, [string]$PendingTo, [string]$SessionIteration = '001', [switch]$NewerIteration)
         $root = Join-Path $script:Work $Name
         $null = New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force
         $null = New-Item -ItemType Directory -Path (Join-Path $root 'scripts\internal') -Force
@@ -35,11 +35,17 @@ BeforeAll {
         Set-Content -LiteralPath (Join-Path $dir 'drift-log.md') -Value "# Drift Log`n" -Encoding UTF8
         if ($Review) { Set-Content -LiteralPath (Join-Path $dir 'review.md') -Value "# Review`n`n**Overall Verdict**: accepted`n" -Encoding UTF8 }
         if ($Retro) { Set-Content -LiteralPath (Join-Path $dir 'retro.md') -Value "# Retro`n" -Encoding UTF8 }
+        if ($NewerIteration) {
+            $newer = Join-Path $root 'specs\908-records\iterations\002'
+            $null = New-Item -ItemType Directory -Path $newer -Force
+            Set-Content -LiteralPath (Join-Path $newer 'plan.md') -Value "# Plan`n`n**Status**: executing`n" -Encoding UTF8
+            Set-Content -LiteralPath (Join-Path $newer 'state.md') -Value "# Iteration State: 002`n`n**Schema**: v2`n**Iteration Status**: executing`n" -Encoding UTF8
+        }
         if (-not [string]::IsNullOrWhiteSpace($LastAuthorized)) {
             $pending = if ($PendingTo) { @{ from = $LastAuthorized; to = $PendingTo; crossing_id = 'crossing-fixture' } } else { $null }
             $context = [ordered]@{
                 schema_version       = '1.0'
-                session_state        = [ordered]@{ active = $true; boundary_type = $LastAuthorized; feature_ref = '908-records'; iteration_number = '001' }
+                session_state        = [ordered]@{ active = $true; boundary_type = $LastAuthorized; feature_ref = '908-records'; iteration_number = $SessionIteration }
                 boundary_enforcement = [ordered]@{
                     enabled = $true; last_authorized_boundary = $LastAuthorized; pending_next_boundary = $PendingTo; pending_crossing = $pending
                     policy_classes = @{}; verdict_history = @(); correction_history = @(); bypass_history = @()
@@ -87,6 +93,36 @@ Describe 'A review record waiting for its approval is not stale (FR-016, SC-009)
         $output = Invoke-FixtureValidator -Fixture $fixture
         $output | Should -Not -Match ([regex]::Escape(($script:ReviewStale -f 'executing')))
         $output | Should -Match 'WARN .*start-context\.json'
+    }
+}
+
+Describe 'Only the approval that comes next is pending (iteration 002 round 2, finding 5)' {
+    # The pending test accepted any earlier boundary as the last authorized one. A review record beside planning with
+    # plan or tasks authorized, and a retro record with before-implement authorized, were read as waiting for their
+    # approval, though implementation (or the review sign-off) had not been approved yet.
+    It 'fails review.md beside planning when plan is the last authorized boundary' {
+        $fixture = New-RecordFixture -Name 'early-plan' -Status 'planning' -Review -LastAuthorized 'plan'
+        Invoke-FixtureValidator -Fixture $fixture | Should -Match ([regex]::Escape(($script:ReviewStale -f 'planning')))
+    }
+
+    It 'fails review.md beside planning when tasks is the last authorized boundary' {
+        $fixture = New-RecordFixture -Name 'early-tasks' -Status 'planning' -Review -LastAuthorized 'tasks'
+        Invoke-FixtureValidator -Fixture $fixture | Should -Match ([regex]::Escape(($script:ReviewStale -f 'planning')))
+    }
+
+    It 'fails an older iteration''s review.md when the session names no iteration and a newer one exists (the newest only can be pending)' {
+        $fixture = New-RecordFixture -Name 'blank-older' -Status 'executing' -Review -LastAuthorized 'before-implement' -SessionIteration '' -NewerIteration
+        Invoke-FixtureValidator -Fixture $fixture | Should -Match ([regex]::Escape(($script:ReviewStale -f 'executing')))
+    }
+
+    It 'accepts the newest iteration''s review.md when the session names no iteration' {
+        $fixture = New-RecordFixture -Name 'blank-newest' -Status 'executing' -Review -LastAuthorized 'before-implement' -SessionIteration ''
+        Invoke-FixtureValidator -Fixture $fixture | Should -Not -Match ([regex]::Escape(($script:ReviewStale -f 'executing')))
+    }
+
+    It 'fails retro.md beside reviewing when before-implement is the last authorized boundary' {
+        $fixture = New-RecordFixture -Name 'early-retro' -Status 'reviewing' -Review -Retro -LastAuthorized 'before-implement'
+        Invoke-FixtureValidator -Fixture $fixture | Should -Match ([regex]::Escape(($script:RetroStale -f 'reviewing')))
     }
 }
 
