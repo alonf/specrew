@@ -367,6 +367,51 @@ Describe 'T012: the validator writes the findings file' {
         $hashes['Reviewer'] | Should -Not -Be $hashes['Implementer']
     }
 
+    It 'the boundary-canonical stop writes its message as a hash, so two different failures are two findings (T030, item 30)' {
+        $hashes = @{}
+        foreach ($value in 'bogus-boundary-a', 'bogus-boundary-b') {
+            $fixture = New-ValidatorFixture -Name ('v-canon-' + $value)
+            Set-Content -LiteralPath (Join-Path $fixture.Root '.specrew\start-context.json') -Encoding UTF8 -Value ('{{"schema_version":"1.0","session_state":{{"active":true,"boundary_type":"{0}","feature_ref":"905-findings"}}}}' -f $value)
+            $path = Join-Path $script:Work ('v-canon-{0}.json' -f $value)
+            $run = Invoke-ValidatorWithFindings -Fixture $fixture -FindingsPath $path
+            $run.Exit | Should -Be 1 -Because $run.Output
+            $records = @((Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).findings | Where-Object { $_.rule -eq 'boundary-canonical' })
+            $records.Count | Should -BeGreaterThan 0 -Because $run.Output
+            $records[0].PSObject.Properties.Name | Should -Contain 'message_hash'
+            $hashes[$value] = (@($records | ForEach-Object { $_.message_hash }) | Sort-Object) -join ','
+        }
+        $hashes['bogus-boundary-a'] | Should -Not -Be $hashes['bogus-boundary-b']
+    }
+
+    It 'the approved-status stop writes its message as a hash, so two different failures are two findings (T030, item 30)' {
+        $hashes = @{}
+        foreach ($feature in '906-approved-a', '907-approved-b') {
+            $fixture = New-ValidatorFixture -Name ('v-approved-' + $feature)
+            $featureDir = Join-Path $fixture.Root ('specs\' + $feature)
+            $null = New-Item -ItemType Directory -Path $featureDir -Force
+            Set-Content -LiteralPath (Join-Path $featureDir 'spec.md') -Encoding UTF8 -Value ("# Feature Specification: {0}`n`n**Status**: Approved`n" -f $feature)
+            Set-Content -LiteralPath (Join-Path $fixture.Root '.specrew\start-context.json') -Encoding UTF8 -Value ('{{"schema_version":"1.0","session_state":{{"active":true,"boundary_type":"plan","feature_ref":"{0}","feature_path":"{1}"}}}}' -f $feature, ($featureDir -replace '\\', '\\'))
+            $path = Join-Path $script:Work ('v-approved-{0}.json' -f $feature)
+            $run = Invoke-ValidatorWithFindings -Fixture $fixture -FindingsPath $path
+            $run.Exit | Should -Be 1 -Because $run.Output
+            $records = @((Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).findings | Where-Object { $_.rule -eq 'approved-status' })
+            $records.Count | Should -BeGreaterThan 0 -Because $run.Output
+            $records[0].PSObject.Properties.Name | Should -Contain 'message_hash'
+            $hashes[$feature] = (@($records | ForEach-Object { $_.message_hash }) | Sort-Object) -join ','
+        }
+        $hashes['906-approved-a'] | Should -Not -Be $hashes['907-approved-b']
+    }
+
+    It 'the other repository-level stops and the outer catch pass their messages too (T030, items 30 and 34)' {
+        # source-without-implement-authorization and handoff-evidence need a repository history to reach; the outer
+        # catch needs an unexpected exception. Their wiring is read here; the two stops above prove the behaviour.
+        $source = Get-Content -LiteralPath $script:Validator -Raw
+        foreach ($rule in 'source-without-implement-authorization', 'handoff-evidence', 'approved-status', 'boundary-canonical') {
+            $source | Should -Match ("-FailureRule '{0}' -FailureMessages @\(\`$script:ValidatorStopMessages\)" -f $rule) -Because $rule
+        }
+        $source | Should -Match "-FailureRule 'unexpected-validator-error' -FailureMessages @\(\`$unexpectedMessage\)"
+    }
+
     It 'every repository-level stop that holds its errors passes them to the findings file (review round 3, finding 4)' {
         $source = Get-Content -LiteralPath $script:Validator -Raw
         foreach ($pair in @(
