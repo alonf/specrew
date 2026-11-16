@@ -5843,9 +5843,11 @@ try {
 
     # Proposal 085: -RebuildClosedIndex is a special early-exit mode. Walks every
     # specs/<feature>/iterations/<iter>/state.md and adds to .specrew/closed-iterations.yml each iteration
-    # the canonical definition reads as closed by its state.md (FR-008a: Iteration Status complete or
-    # abandoned, or a status that claims closure in an affirmative form; never a frozen entry, never the old
-    # state.md text heuristic). Use after the index is deleted or appears incomplete.
+    # the canonical definition reads as closed by its state.md (FR-008a: Iteration Status complete, abandoned
+    # with the maintainer's ruling recorded in its Disposition section (T026), or a status that claims closure in an
+    # affirmative form; never a frozen entry, never the old state.md text heuristic). An abandoned iteration with no
+    # recorded ruling is open, and is not indexed: an entry would make it closed for good. Use after the index is
+    # deleted or appears incomplete.
     # The index is append-only: every existing entry is kept as it is, with its
     # closed_at and any closeout stamp, so a rebuild never turns a closed iteration open. New entries carry no
     # stamp: closed_at is the rebuild time, not a closure time.
@@ -5878,6 +5880,7 @@ try {
             if ($frozenKeys -contains ('{0}/{1}' -f $entryFeature, $entryIteration)) { continue }
             $entryStatus = Get-SpecrewIterationStatusValue -StatePath $sf.FullName
             if (($entryStatus -notin @('complete', 'abandoned')) -and -not (Test-SpecrewClosureClaimStatus -IterationStatus $entryStatus)) { continue }
+            if ($entryStatus -eq 'abandoned' -and -not (Test-SpecrewIterationRulingRecorded -StatePath $sf.FullName)) { continue }
             $null = $entries.Add(@{
                 feature   = $entryFeature
                 iteration = $entryIteration
