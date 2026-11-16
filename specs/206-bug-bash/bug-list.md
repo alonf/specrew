@@ -927,7 +927,57 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   helper that writes the dangling tree is under `scripts/internal/continuous-co-review/` (feature 203's) and does not
   need to change for the warning. The derived-block side (DRIFT-012) reads the same store and stays with 203: after 203
   merges, a hand-over, or the protection lifted, by the maintainer's choice.
-- **Disposition:** whether it goes into an iteration is the maintainer's decision.
+- **Issue:** alonf/specrew#3721, filed by that crew for the dangling reviewed tree.
+- **Placed (the maintainer, 2026-11-16, 02:26 local, "OK, give this information to 206", relayed by the reviewer):** at
+  the top of iteration 003's candidates, with items 46 and 47. An order of candidates, not a scope approval: iteration
+  003's scope is set at its own planning boundary. Iteration 002 is unchanged.
+- **Before feature 203 merges:** the warning in `validate-governance.ps1` (the W38 branch that adds the "not
+  comparable" error) can be done in iteration 003 on its own; it needs no change to the digest helper. Making the
+  evidence something committed would touch `scripts/internal/continuous-co-review/` and waits for 203.
+
+## 46. A boundary sync stops when markdownlint cannot be launched, although its code says it warns and proceeds
+
+- **Seen (second-hand, unconfirmed):** the maintainer's project RingMCPBridge on their other machine, Specrew 0.40.0, at
+  its iteration 001 review-signoff, 2026-11-16 about 00:30 to 02:11 local. The review-signoff sync failed twice (run by
+  the crew, and by the maintainer with `!`) with "Invoke-MarkdownLintAutoFix: ...\Specrew\0.40.0\scripts\internal\
+  sync-boundary-state.ps1:1375 ... Program 'node.exe' failed to run: StandardOutputEncoding is only supported when
+  standard output is redirected. At ...\AppData\Roaming\npm\npx.ps1:24 char:5". Nothing was recorded, and the
+  sign-off could not be reached. Pasted to the reviewer at 02:17 with "Look at this"; captured under the maintainer's
+  standing word (2026-11-15, "Yes capture it, we must get rid of all these anoying bugs").
+- **Code (this tree, read by the reviewer):** `scripts/internal/sync-boundary-state.ps1` calls
+  `Invoke-MarkdownLintAutoFix` with no try/catch under `$ErrorActionPreference = 'Stop'`; the comment above the call
+  says "If markdownlint-cli is unavailable, emits a warning and proceeds". The function
+  (`extensions/specrew-speckit/scripts/shared-governance.ps1`, about line 4943) counts as unavailable only a missing
+  `npx` and four output patterns; its two launches (`& npx @fixArgs 2>&1`, `& npx @checkArgs 2>&1`) are unguarded, so a
+  launch that throws ends the sync.
+- **Not established:** why the launch throws there. That crew infers a PowerShell update to 7.6.10; on the reviewer's
+  machine PowerShell is also 7.6.10 and the same 28-line Roaming `npx.ps1` runs, so it was not reproduced.
+- **Proposed shape:** a launch that throws counts as unavailable, with the exception text in the warning, and the sync
+  proceeds; a test that makes the launch throw.
+- **Placed (the maintainer, 2026-11-16, 02:26 local, "OK, give this information to 206", relayed by the reviewer):** at the
+  top of iteration 003's candidates, with item 45; an order of candidates, not a scope approval. About 1 SP (the
+  reviewer's estimate). Iteration 002 is unchanged; the reviewer brings a swap only if the sync crash proves to hit
+  every boundary on that machine.
+
+## 47. Before a crossing exists, the engine's wording says only the human's approval can move things, never that the sync presents the crossing
+
+- **Seen (second-hand):** the same project and session. At review-signoff the crew wrote "The sync's gate wants your
+  authorization first ... I tried to run the sync anyway, and Claude Code's safety check blocked", asked for the approval
+  with no crossing recorded; the maintainer typed "approved for review-signoff"; the hook answered that no
+  review-signoff crossing was pending, and nothing was captured. The crew says the plan and before-implement boundaries
+  went the same way: three spent approvals in one iteration.
+- **Code, candidates (which line that crew saw is not known):**
+  `extensions/specrew-speckit/scripts/readiness-verdict.ps1:95` ends "The human's typed 'approved for {0}' against the
+  presented crossing is what clears this; nothing else does." with "no crossing is pending" (:37) in the same line;
+  `shared-governance.ps1:4714` and `:4721`, "Boundary `a -> b` requires explicit human authorization."
+- **Why it matters:** read by an agent, or by a permission mode with a safety check, that says "do not run the sync";
+  but the sync authorizes nothing: it records the pending crossing the approval then answers.
+- **Proposed shape:** when no crossing is pending, the line names the next step: run the boundary sync, which records
+  and presents the crossing and authorizes nothing; then the human's typed approval. Belongs with items 42 and 43.
+- **Placed (the maintainer, 2026-11-16, 02:26 local, "OK, give this information to 206", relayed by the reviewer):** at the
+  top of iteration 003's candidates, with item 45; an order of candidates, not a scope approval. About 1 SP (the
+  reviewer's estimate). Iteration 002 is unchanged; the reviewer brings a swap only if the sync crash proves to hit
+  every boundary on that machine.
 
 ## Iteration 002 Intake
 
