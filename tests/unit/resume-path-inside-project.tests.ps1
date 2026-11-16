@@ -146,6 +146,42 @@ Describe 'A resume path outside -ProjectPath is refused (item 23)' {
     }
 }
 
+Describe 'An outside session path that is not adopted is not written back either (round 1, F4)' {
+    It 'clears the outside path from the prompt when no feature resolves' {
+        $previous = $env:SPECREW_USER_PROFILE_PATH
+        $env:SPECREW_USER_PROFILE_PATH = Join-Path ([IO.Path]::GetTempPath()) ('specrew-test-profile-' + [guid]::NewGuid().ToString('N') + '.yml')
+        try {
+            $outside = New-OutsideFeature
+            # A governed project with no feature folder, so nothing resolves; the identity names no feature, so no
+            # branch or authorization check makes it stale; its feature path points into another checkout.
+            $root = New-TempFolder -Name 'f4'
+            & git -C $root init --quiet --initial-branch=main
+            & git -C $root config user.email 'resume-inside-fixture@example.invalid'
+            & git -C $root config user.name 'Resume Inside Fixture'
+            Set-FixtureFile -Root $root -RelativePath '.gitignore' -Content ".specrew/last-*`n.specrew/start-context.json`n.specrew/start-summary.md`n.specrew/runtime/`n.specrew/host-history.json`n.specrew/active-sessions.yml`n"
+            Set-FixtureFile -Root $root -RelativePath '.specrew/config.yml' -Content "version: 1`n"
+            Set-FixtureFile -Root $root -RelativePath '.specify/README.md' -Content "fixture`n"
+            Set-FixtureFile -Root $root -RelativePath '.squad/team.md' -Content "# Team`n"
+            Set-FixtureFile -Root $root -RelativePath '.squad/config.json' -Content '{}'
+            Set-FixtureFile -Root $root -RelativePath '.squad/decisions.md' -Content "# Decisions`n"
+            Set-FixtureFile -Root $root -RelativePath '.github/agents/squad.agent.md' -Content "# Squad Agent`n"
+            Set-FixtureFile -Root $root -RelativePath '.squad/identity/now.md' -Content ("---`nschema: v1`nsession_state_active: true`nsession_state_boundary: specify`nsession_state_feature: (none)`nsession_state_feature_path: {0}`nsession_state_iteration: (none)`nsession_state_task: (none)`nsession_state_auth_commit: (none)`nsession_state_recorded_at: 2026-11-15T10:00:00Z`n---`n`n# What We're Focused On`n" -f (Join-Path $outside 'specs\001-demo'))
+            Save-FixtureCommit -Root $root -Message 'governed project with no feature'
+
+            $result = Invoke-FixtureStart -Root $root
+            $result.ExitCode | Should -Be 0 -Because $result.Text
+            Get-Content -LiteralPath (Join-Path $root '.specrew\last-start-prompt.md') -Raw | Should -Not -Match ([regex]::Escape($outside))
+            $contextPath = Join-Path $root '.specrew\start-context.json'
+            if (Test-Path -LiteralPath $contextPath) { Get-Content -LiteralPath $contextPath -Raw | Should -Not -Match ([regex]::Escape(($outside -replace '\\', '\\'))) }
+            @(& git -C $outside status --porcelain=v1 --untracked-files=all).Count | Should -Be 0
+        }
+        finally {
+            Remove-Item -LiteralPath $env:SPECREW_USER_PROFILE_PATH -Force -ErrorAction SilentlyContinue
+            $env:SPECREW_USER_PROFILE_PATH = $previous
+        }
+    }
+}
+
 Describe 'The identity file records the feature path relative to the project (item 23)' {
     It 'the reader resolves a relative feature path against the project root' {
         $root = New-GovernedProject -Name 'reader' -IdentityFeaturePath 'specs/001-demo'
