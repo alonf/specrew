@@ -340,3 +340,17 @@ The following resolution strategies remain available if drift is detected later 
   and it passes; `self-leak-lint.tests.ps1` and `non-specrew-session-bypass.tests.ps1` use fixtures, and
   `host-coupling-firewall.tests.ps1` skips `proposals/` wholesale, so they were not run here and CI is their evidence.
 - **Class closure**: NONE — a record of how this merge was checked.
+
+### DRIFT-018 — After the before-implement verdict the governance check failed on state.md; the task writer healed it at T017's start
+
+- **The verdict**: the maintainer's typed `approved for before-implement`, captured at 17:31:23Z (19:31 local),
+  `auth_commit_hash` `fa569443`, `hook-captured-from-transcript`. The review budget was snapshotted as
+  `grant-d99cc3fd635ba27fcc3f` (budget 4, ceiling 4, codex, copilot, claude, infra cap 2). The capture moved
+  `plan.md` to `executing`; the bookkeeping was committed after the verdict as `449b0b12`.
+- **The failure, caught before any push**: the gated pre-push governance check failed: "state.md is missing canonical
+  field 'Current Phase'" and "'Iteration Status'". The scaffolded `state.md` never had them, and the crossing's mirror
+  writer did not add them (B5F-088).
+- **Healed by the governed step**: T017 marked in progress, and T029 (done with the plan) marked done, through the task
+  writer (`Set-TaskStatus`), which writes `Current Phase: before-implement` and `Iteration Status: executing`;
+  `tasks-progress.yml` created. Not edited by hand.
+- **Class closure**: NONE — B5F-088, candidate for 206's list.
