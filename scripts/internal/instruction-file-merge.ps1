@@ -361,3 +361,33 @@ function Get-SpecrewCommittedContentHash {
         [Console]::OutputEncoding = $previousEncoding
     }
 }
+
+function Start-SpecrewStartWrittenRegion {
+    # Round 1, F5: one writing step's before snapshot. Each of start's writing steps is its own region, so a change a
+    # user or another tool makes while start waits between steps (on a prompt) is never recorded as Specrew's own.
+    # Fail-open: $null when the snapshot cannot be taken, and the region then records nothing.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [Parameter(Mandatory = $true)][string[]]$Globs
+    )
+    try { return (Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $ProjectPath -Globs $Globs) }
+    catch { Write-Verbose ("Start-written region not opened: {0}" -f $_.Exception.Message); return $null }
+}
+
+function Complete-SpecrewStartWrittenRegion {
+    # Records the session-loaded files the region's step created or changed. Fail-open: a failed record only means the
+    # next start may pause on these files, as it did before T020.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [Parameter(Mandatory = $true)][string[]]$Globs,
+        [AllowNull()][System.Collections.IDictionary]$Before
+    )
+    if ($null -eq $Before) { return }
+    try {
+        $after = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $ProjectPath -Globs $Globs
+        Save-SpecrewStartWrittenFilesRecord -ProjectPath $ProjectPath -Before $Before -After $after
+    }
+    catch {
+        Write-Warning ("Could not record the files start wrote: {0}" -f $_.Exception.Message)
+    }
+}

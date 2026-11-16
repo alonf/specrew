@@ -3035,19 +3035,15 @@ if ($missingBootstrapPaths.Count -gt 0) {
     exit 1
 }
 
-# F-206 T020 (FR-003, D5-a): snapshot the session-loaded files before start writes any of them, so the
-# files this run creates or repairs can be recorded as Specrew's own after its last write. Fail-open.
-$startWrittenSnapshotBefore = $null
-try {
-    $startWrittenSnapshotBefore = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $resolvedProjectPath -Globs (Get-SessionLoadedPaths)
-}
-catch {
-    Write-Verbose ("Start-written files snapshot skipped: {0}" -f $_.Exception.Message)
-}
+# F-206 T020 (FR-003, D5-a) and round 1 F5: each of start's writing steps records the session-loaded files it
+# creates or repairs, in a region of its own (this heal, the skill catalog repair, the crew runtime sync), so nothing a
+# user or another tool changes while start waits on a prompt between them is recorded as Specrew's. Fail-open.
+$startWrittenGlobs = @(Get-SessionLoadedPaths)
 
 # F-184 iter-002 (T003, FR-016): heal/refresh the coordinator instruction section in each
 # supported host's InstructionsFile (idempotent backstop; init/update are the primary deploy
 # path). Fail-open + silent: never fails `specrew start`.
+$healRegion = Start-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs
 try {
     . (Join-Path $PSScriptRoot 'internal\instruction-deploy.ps1')
     $null = @(Invoke-SpecrewInstructionDeployment -ProjectPath $resolvedProjectPath)
@@ -3055,6 +3051,7 @@ try {
 catch {
     Write-Verbose ("Coordinator-instruction heal skipped: {0}" -f $_.Exception.Message)
 }
+Complete-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs -Before $healRegion
 
 # Feature 049 Iteration 003: User profile first-run check (FR-023, FR-024, FR-026)
 # Check for user profile and prompt on first run
@@ -3205,6 +3202,7 @@ $skillCatalogState = Get-SpecrewSkillCatalogState -ProjectPath $resolvedProjectP
 if ($skillCatalogState.HasMissingRoots) {
     Write-Info ("WARN: Skill catalog directories missing: {0}" -f (Format-SpecrewSkillCatalogRoots -Roots $skillCatalogState.MissingRoots))
     Write-Info "Attempting skill catalog auto-repair via bundled runtime deployment."
+    $skillRepairRegion = Start-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs
     try {
         $skillCatalogRepair = Invoke-SpecrewSkillCatalogRepair -ProjectPath $resolvedProjectPath
         foreach ($repairAction in @($skillCatalogRepair.Actions)) {
@@ -3223,6 +3221,7 @@ if ($skillCatalogState.HasMissingRoots) {
     catch {
         Write-Info ("WARN: Skill catalog auto-repair failed: {0}" -f $_.Exception.Message)
     }
+    Complete-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs -Before $skillRepairRegion
 }
 
 # Per-host skill verification (FR-009 non-fatal warning; FR-013 Codex informational note)
@@ -3518,6 +3517,7 @@ if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
 # Proposal 108 Slice 9: deploy the selected host's Crew runtime from the canonical .specrew/team/.
 # Translation runs every launch — cheap (~50ms for 5-7 files), keeps per-host view in sync.
 if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
+    $crewRegion = Start-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs
     try {
         $crewResult = Invoke-CrewBootstrap -ProjectPath $resolvedProjectPath -HostKind $selectedHost
         $writeCount = @($crewResult.Actions | Where-Object { $_.Action -in @('written', 'updated') }).Count
@@ -3531,19 +3531,7 @@ if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
     catch {
         Write-Info ("WARN: Crew runtime sync failed for host '{0}': {1}" -f $selectedHost, $_.Exception.Message)
     }
-}
-
-# F-206 T020 (FR-003, D5-a): record the session-loaded files this run created or changed (the instruction heal
-# and the crew runtime sync above are start's last writes to them). Fail-open: a failed record only means the
-# next start may pause on these files, as it did before.
-if ($null -ne $startWrittenSnapshotBefore) {
-    try {
-        $startWrittenSnapshotAfter = Get-SpecrewSessionLoadedFileSnapshot -ProjectPath $resolvedProjectPath -Globs (Get-SessionLoadedPaths)
-        Save-SpecrewStartWrittenFilesRecord -ProjectPath $resolvedProjectPath -Before $startWrittenSnapshotBefore -After $startWrittenSnapshotAfter
-    }
-    catch {
-        Write-Info ("WARN: Could not record the files start wrote: {0}" -f $_.Exception.Message)
-    }
+    Complete-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs -Before $crewRegion
 }
 
 Write-Success "Prepared Specrew start context."
