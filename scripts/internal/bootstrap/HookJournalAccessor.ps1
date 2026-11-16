@@ -23,10 +23,17 @@ function Get-SpecrewBootstrapJournal {
 }
 
 function Get-SpecrewJournalClaimAgeSeconds {
-    # The age of an append claim, from its last write time. One seam so the stale-claim decision can be tested.
+    # The age of an append claim, or $null when there is no claim to age. Feature 203 T016: the claim can vanish
+    # between the caller's existence check and this read (its owner just finished), and the static timestamp reader
+    # then returns the platform's sentinel (1601-01-01), which made a vanished claim look centuries old and eligible
+    # for reclaim - so a reclaimer could rename a third writer's fresh claim away and two appends could interleave.
+    # FileInfo captures existence and time in one snapshot; a missing or sentinel time is "no claim", never "stale".
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $ClaimPath)
-    $lastWriteUtc = [System.IO.File]::GetLastWriteTimeUtc($ClaimPath)
+    $info = [System.IO.FileInfo]::new($ClaimPath)
+    if (-not $info.Exists) { return $null }
+    $lastWriteUtc = $info.LastWriteTimeUtc
+    if ($lastWriteUtc.Year -le 1601) { return $null }
     return ([DateTime]::UtcNow - $lastWriteUtc).TotalSeconds
 }
 
@@ -87,7 +94,7 @@ function Add-SpecrewBootstrapJournalRecord {
                         # timestamp reader is race-safe here (it returns the platform sentinel, never emits a
                         # PowerShell error record that would poison a background job's result stream).
                         $ageSeconds = Get-SpecrewJournalClaimAgeSeconds -ClaimPath $claimPath
-                        if ($ageSeconds -ge $StaleClaimSeconds) {
+                        if ($null -ne $ageSeconds -and $ageSeconds -ge $StaleClaimSeconds) {
                             $stalePath = "$claimPath.stale.$([guid]::NewGuid().ToString('N'))"
                             [System.IO.File]::Move($claimPath, $stalePath)
                             Remove-Item -LiteralPath $stalePath -Force -ErrorAction SilentlyContinue
