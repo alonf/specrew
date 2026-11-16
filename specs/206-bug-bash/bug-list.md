@@ -950,10 +950,19 @@ Recommendation: D in this feature; A or C as its own item only if per-rule dates
   (`extensions/specrew-speckit/scripts/shared-governance.ps1`, about line 4943) counts as unavailable only a missing
   `npx` and four output patterns; its two launches (`& npx @fixArgs 2>&1`, `& npx @checkArgs 2>&1`) are unguarded, so a
   launch that throws ends the sync.
-- **Not established:** why the launch throws there. That crew infers a PowerShell update to 7.6.10; on the reviewer's
-  machine PowerShell is also 7.6.10 and the same 28-line Roaming `npx.ps1` runs, so it was not reproduced.
-- **Proposed shape:** a launch that throws counts as unavailable, with the exception text in the warning, and the sync
-  proceeds; a test that makes the launch throw.
+- **Cause (established and reproduced by the reviewer, 2026-11-16, 02:30 local, PowerShell 7.6.10):**
+  `Get-ChangedMarkdownFiles` (`shared-governance.ps1`, about line 4851) returns every Markdown file changed between
+  the base ref and HEAD as an absolute path, and `Invoke-MarkdownLintAutoFix` passes them all on one command line,
+  twice. Past about 32,767 characters Windows refuses to start the process, and PowerShell reports the refusal as
+  "Program '<x>' failed to run: StandardOutputEncoding is only supported when standard output is redirected." The
+  reviewer's reproduction: 300 fake 85-character paths (25,499 characters) launch; 400 (33,999) throw exactly that
+  text. The other project's npx.cmd shim failed the same way and its `--version` probes pass; its file count is asked
+  for. Not a one-machine fault: any Windows project reaches it once a long iteration has enough changed Markdown (the
+  crews here are at about 40 to 90 files).
+- **Proposed shape (replacing the earlier one):** pass the files in batches under a safe length, or relative to the
+  project root with the working directory set there, or both; a launch that throws degrades with the exception text in
+  the warning. Tests: a list past the limit is linted in batches; a launch that throws does not end the sync. About 1.5
+  SP (the crew's estimate: batching, the degrade, two tests, and the `.specify` mirror with its hash record).
 - **Placed (the maintainer, 2026-11-16, 02:26 local, "OK, give this information to 206", relayed by the reviewer):** at the
   top of iteration 003's candidates, with item 45; an order of candidates, not a scope approval. About 1 SP (the
   reviewer's estimate). Iteration 002 is unchanged; the reviewer brings a swap only if the sync crash proves to hit
