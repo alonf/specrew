@@ -413,3 +413,6 @@ closed:
   - feature: 202-beta4-1-ux-stabilization
     iteration: 003
     closed_at: 2026-10-24T22:22:00Z
+  - feature: 203-beta5-stabilization
+    iteration: 001
+    closed_at: 2026-11-16T00:57:05Z

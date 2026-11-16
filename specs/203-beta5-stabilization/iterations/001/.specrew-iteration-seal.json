@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "feature": "203-beta5-stabilization",
+  "iteration": "001",
+  "sealed_at": "2026-11-16T00:57:06.3947376+00:00",
+  "sealed_files": [
+    {
+      "path": "dashboard.md",
+      "sha256": "de687d9ea45cd799d1eef7f421739693a3cec1a4468511031212bd38347f82e0"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "f5431ebe094fc0e3c6c0881ae7ebce17c4d0e7e62a489d364d46e849b7c154e5"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "ac77269f611aca76d07ab0c35921b9e5dd6d678039d07e4b70a54bb2e1c82183"
+    },
+    {
+      "path": "lens-applicability.json",
+      "sha256": "a8ca99db1b03147870302c817521c5ee948483af78a8c053e81ef08d1d86ef0c"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "2e9a8468a46bf6d4417a8d62e659727d6f733c6daf71507a3a000486e5e18c50"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "b32a4d050f958e6e30396baea09a460021bdb0ec8196b118555c7fac595ed0cb"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "47d1bbf529b2f300ce9117b7bb34a626f908eae912bfd24018896f99bfb2b02d"
+    },
+    {
+      "path": "review-notes.md",
+      "sha256": "1b1d5bad293525965e6351fb0e0187847cd34ca80cf39ce9036dcc80791638ca"
+    },
+    {
+      "path": "review-signoff-listing.json",
+      "sha256": "79b674306ded146d2b9fa523c02bba82da4911195e67ca6928f4ae6f37bb0f41"
+    },
+    {
+      "path": "review.md",
+      "sha256": "15a0eb6b232d82c587f60ab2b1baa4a57df14b146315665ac23289cdbc56e41d"
+    },
+    {
+      "path": "state.md",
+      "sha256": "d0ffb44ad16a458f6b1795c0b1b60c86c0137fae3f11c050e84343088bba66ec"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "3772df6d5073d4fc6f589f3aaab1a0e6d7affb864ee06816255f5d747602b264"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}
