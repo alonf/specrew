@@ -105,6 +105,16 @@ function Write-ValidatorFindingsFile {
     }
 }
 
+# Feature 206 T030 (FR-009, bug list items 30 and 34): the repository-level checks that return only a count hand the
+# messages they print to this list, so their stop writes each as a hash under its rule and a different failure in the
+# same category is a different nightly finding.
+$script:ValidatorStopMessages = [System.Collections.Generic.List[string]]::new()
+
+function Add-ValidatorStopMessage {
+    param([AllowNull()][AllowEmptyString()][string]$Message)
+    if (-not [string]::IsNullOrWhiteSpace($Message)) { $script:ValidatorStopMessages.Add($Message) | Out-Null }
+}
+
 function Write-ValidatorSummaryAndExit {
     param(
         [AllowNull()]
@@ -1907,6 +1917,7 @@ function Test-HandoffEvidenceGovernance {
                         $label = "$label at $boundary"
                     }
                     Write-Host ("FAIL [trust-hardening] handoff-evidence-packet-invalid: Boundary packet evidence for {0} failed handoff governance validation." -f $label) -ForegroundColor Red
+                    Add-ValidatorStopMessage -Message ("handoff-evidence-packet-invalid: Boundary packet evidence for {0} failed handoff governance validation." -f $label)
                     foreach ($line in $packetOutput) {
                         Write-Host ("  {0}" -f $line) -ForegroundColor Red
                     }
@@ -2224,7 +2235,9 @@ function Test-SourceWithoutImplementAuthorization {
 
     $shown = @($committed | Select-Object -First 5) -join ', '
     if ($committed.Count -gt 5) { $shown = "$shown (+$($committed.Count - 5) more)" }
-    Write-Host ("FAIL [trust-hardening] source-without-implement-authorization: {0} product source file(s) changed since the '{1}' authorization ({2}), but implementation has not been approved - verdict_history holds no 'approved for before-implement'. Code written without that verdict is outside the process this project follows, whoever wrote it and however good it is. Either obtain the verdict - complete the hardening gate, run the boundary sync, present the packet, and record the human's 'approved for before-implement' - or revert the source changes: {3}" -f $committed.Count, [string]$drift.authorized_boundary, ([string]$drift.anchor_commit).Substring(0, [Math]::Min(8, ([string]$drift.anchor_commit).Length)), $shown) -ForegroundColor Red
+    $sourceAuthorizationMessage = "source-without-implement-authorization: {0} product source file(s) changed since the '{1}' authorization ({2}), but implementation has not been approved - verdict_history holds no 'approved for before-implement'. Code written without that verdict is outside the process this project follows, whoever wrote it and however good it is. Either obtain the verdict - complete the hardening gate, run the boundary sync, present the packet, and record the human's 'approved for before-implement' - or revert the source changes: {3}" -f $committed.Count, [string]$drift.authorized_boundary, ([string]$drift.anchor_commit).Substring(0, [Math]::Min(8, ([string]$drift.anchor_commit).Length)), $shown
+    Write-Host ("FAIL [trust-hardening] " + $sourceAuthorizationMessage) -ForegroundColor Red
+    Add-ValidatorStopMessage -Message $sourceAuthorizationMessage
     return 1
 }
 
@@ -2287,6 +2300,7 @@ function Test-ApprovedFeatureStatusVerdictEvidence {
 
     if (-not $hasVerdictHistoryEvidence -and -not $hasDecisionEvidence) {
         Write-TrustHardeningWarning -Category 'approved-status-without-verdict' -Detail ("Feature spec declares Status: Approved without matching human verdict evidence in boundary_enforcement.verdict_history or .squad/decisions.md: {0}" -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $specPath))
+        Add-ValidatorStopMessage -Message ("Feature spec declares Status: Approved without matching human verdict evidence in boundary_enforcement.verdict_history or .squad/decisions.md: {0}" -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $specPath))
         return 1
     }
 
@@ -2461,6 +2475,7 @@ function Test-SessionStateBoundaryCanonical {
         Write-Host 'FAIL Test-SessionStateBoundaryCanonical' -ForegroundColor Red
         foreach ($failure in $failures) {
             Write-Host "  - $failure" -ForegroundColor Red
+        Add-ValidatorStopMessage -Message ([string]$failure)
         }
         return $failures.Count
     }
@@ -5988,7 +6003,7 @@ try {
     # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
     $sourceAuthorizationFailureCount = Test-SourceWithoutImplementAuthorization -ProjectRoot $resolvedProjectPath
     if ($sourceAuthorizationFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount -FailureRule 'source-without-implement-authorization'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount -FailureRule 'source-without-implement-authorization' -FailureMessages @($script:ValidatorStopMessages)
     }
     Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
 
@@ -6015,14 +6030,14 @@ try {
     Test-PostShipProposalAmendmentGovernance -ProjectRoot $resolvedProjectPath
     $handoffEvidenceFailureCount = Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
     if ($handoffEvidenceFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount -FailureRule 'handoff-evidence'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount -FailureRule 'handoff-evidence' -FailureMessages @($script:ValidatorStopMessages)
     }
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
     # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
     Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath
     $approvedStatusFailureCount = Test-ApprovedFeatureStatusVerdictEvidence -ProjectRoot $resolvedProjectPath
     if ($approvedStatusFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount -FailureRule 'approved-status'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount -FailureRule 'approved-status' -FailureMessages @($script:ValidatorStopMessages)
     }
     Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
@@ -6032,7 +6047,7 @@ try {
     # active=true post-closeout, etc.).
     $boundaryCanonicalFailureCount = Test-SessionStateBoundaryCanonical -ProjectRoot $resolvedProjectPath
     if ($boundaryCanonicalFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount -FailureRule 'boundary-canonical'
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount -FailureRule 'boundary-canonical' -FailureMessages @($script:ValidatorStopMessages)
     }
 
     if (-not [string]::IsNullOrWhiteSpace($scopeFallbackVerboseMessage)) {
