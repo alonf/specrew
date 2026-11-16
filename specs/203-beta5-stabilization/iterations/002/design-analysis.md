@@ -476,3 +476,12 @@ decides.
 - **Transcription disclosure**: agent-transcribed from the reviewer session's relay, which quotes the maintainer's
   words and time. It records the design choice only. It is not an approval: the plan is approved, or not, at the plan
   boundary with the maintainer's own typed verdict.
+
+### Scope after the merge shape (2026-11-16 11:49 local)
+
+The merge shape added the Copilot and Codex capture walk (1.0 SP), the per-suite time limit and step-level
+`timeout-minutes` for the deterministic suites (0.5 SP, from a hang on feature 206's push, iteration 002 DRIFT-005)
+and the spec amendment (0.25 SP). The maintainer chose option 1: "option 1 it is", typed to the reviewer session at
+11:49 local and relayed, answering "B5F-080 out, full 2 SP buffer". The task rows total 19.25 of 20 SP and the 2.0 SP
+review buffer is stated in the plan's text, so the stated total is 21.25 SP. B5F-080 moves to the follow-up feature.
+Decision entry `f203-i002-scope-option-1`; drift log DRIFT-007.

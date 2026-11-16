@@ -65,6 +65,9 @@ recording an approval nobody gave (requirements-nfr, priority b, a, c, d, f, e).
 - **D. Lifecycle.** B5F-014: a merged feature's claim is never released.
 - **Rider: CI.** B5F-013, B5F-015, B4F-079, B4F-119, B4F-158 (the gating half), B4F-142.
 
+**Moved to a follow-up feature** (decision `f203-i002-merge-then-follow-up`, 2026-11-16): US4 to US7
+(FR-028 to FR-040), FR-012 (T010), FR-013 (T009) and the three-host walk (FR-044). 203 merges after iteration 002.
+
 **Out of scope**: candidate feature 204 (maintainer, 2026-10-31), which is required before 0.40.0
 stable: init and bootstrap B5F-006 to B5F-010; the SpecKit upgrade 0.12.9 to 1.2.x; the decision between
 Squad 0.11.0 to 1.1.0 and keeping the pin until Phase 3; a refresh of the code-rules catalog (last changed
@@ -314,9 +317,9 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   each stating its consequence) and these lines: `approved for allowance reset`; `stop the review here` (the
   sign-off lists what remains uncovered); `defer finding <id> to <backlog item or iteration>` (a destination is
   required); `drop finding <id>`; `fix finding <id>`; `allow reviewer <host>`; free text for a judgment call.
-- **FR-012**: Each round result MUST show host-reported token usage or "usage: not reported by <host>"; the
+- **FR-012** (moved to the follow-up feature): Each round result MUST show host-reported token usage or "usage: not reported by <host>"; the
   sign-off MUST show the total. Usage MUST NOT be estimated or enforced.
-- **FR-013**: A fix made after the last clean round, including a fix that touches only tests, MUST get the
+- **FR-013** (moved to the follow-up feature): A fix made after the last clean round, including a fix that touches only tests, MUST get the
   next round within the budget; there is no test-only exemption (B4F-054 residue, maintainer ruling
   2026-10-31). That round MUST scope what it judges, not what the reviewer sees: the reviewer reads the whole
   tree and is told to judge only the fix (the changed lines and any code that relies on what changed). Findings
@@ -376,50 +379,50 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
 
 **C. Stops and confirmations (US4)**
 
-- **FR-028**: Every stop and force-continue reason MUST be classified keep, drop or convert per the B5F-004
+- **FR-028** (moved to the follow-up feature): Every stop and force-continue reason MUST be classified keep, drop or convert per the B5F-004
   table below, as ruled by the maintainer at specify, and implemented accordingly. Every block that remains
   MUST be capped on every host, including the navigator on Copilot, which has no cap today. The rc-current
   route (a passing review reaching the block branch) MUST be confirmed by a test and fixed if it is a defect.
-- **FR-029**: Every turn that waits on the human MUST end with one line naming what to type. The check MUST
+- **FR-029** (moved to the follow-up feature): Every turn that waits on the human MUST end with one line naming what to type. The check MUST
   supply a missing line and MUST NOT block. Each host's mechanism for adding a visible line MUST be verified;
   where a host can only add it by blocking, a drift entry MUST be recorded instead of blocking.
-- **FR-030**: Crew guidance MUST go through the host's non-blocking context channel where it has one; any text
+- **FR-030** (moved to the follow-up feature): Crew guidance MUST go through the host's non-blocking context channel where it has one; any text
   a hook blocks with MUST be plain words written for a human, with no internal codes, and MUST pass the
   banned-noun check.
-- **FR-031**: A workshop agenda or lens confirmation MUST cost one reply: "confirmed, with these changes" MUST
+- **FR-031** (moved to the follow-up feature): A workshop agenda or lens confirmation MUST cost one reply: "confirmed, with these changes" MUST
   either save against the amended text or have the crew apply the changes and save without asking again.
-- **FR-032**: Every capture, review and CI refusal 203 touches MUST follow the refusal standard: what could not
+- **FR-032** (moved to the follow-up feature): Every capture, review and CI refusal 203 touches MUST follow the refusal standard: what could not
   be completed, that the human's answers are safe where true, one recovery action, a request for approval;
   diagnosis in the drift record.
 
 **D. Lifecycle (US6)**
 
-- **FR-033**: A feature's claim MUST be released when its merge is observed, checked at session start and at
+- **FR-033** (moved to the follow-up feature): A feature's claim MUST be released when its merge is observed, checked at session start and at
   every boundary sync, with a release record. It MUST NOT be released at the closeout approval.
 
 **Rider: CI (US5)**
 
-- **FR-034**: The census sweep MUST run as a required, sharded check on every pull request into main, with the
+- **FR-034** (moved to the follow-up feature): The census sweep MUST run as a required, sharded check on every pull request into main, with the
   same selection and exclusion list as the publish workflow; a test MUST assert that parity. No path filter.
-- **FR-035**: The shard count MUST be sized against the account's concurrent-job limit so shards and lanes do
+- **FR-035** (moved to the follow-up feature): The shard count MUST be sized against the account's concurrent-job limit so shards and lanes do
   not queue behind each other. The deterministic gate MUST stay as the Linux lane with all its steps; the
   Windows shards replace none of them, because a Linux run is not a duplicate of the Windows census run
   (maintainer ruling at the specify verdict). The Linux and macOS curated lanes MUST stay.
-- **FR-036**: The census MUST select every `.ps1` under `tests/` except a reviewed list of non-suites; an
+- **FR-036** (moved to the follow-up feature): The census MUST select every `.ps1` under `tests/` except a reviewed list of non-suites; an
   unclassified file MUST fail the selection check. The 12 script-style suites the gate runs MUST join the
   census and also stay in the gate. Each of B4F-119's seven failing suites MUST be fixed or retired, with a
   record either way.
-- **FR-037**: The deterministic gate MUST NOT depend on lint; lint MUST remain its own required check.
-- **FR-038**: The coordinator fragment MUST pass lint (MD046); push lint MUST cover dot-directories (keeping the
+- **FR-037** (moved to the follow-up feature): The deterministic gate MUST NOT depend on lint; lint MUST remain its own required check.
+- **FR-038** (moved to the follow-up feature): The coordinator fragment MUST pass lint (MD046); push lint MUST cover dot-directories (keeping the
   `.squad`, `.specify` and runtime exclusions); a test MUST lint the composed `.github/agents/squad.agent.md`;
   the interim `.markdownlintignore` entry MUST be removed.
 
 **Journal (US7)**
 
-- **FR-039**: A buffer flusher MUST skip a claim another flusher made recently and re-flush only a stale claim
+- **FR-039** (moved to the follow-up feature): A buffer flusher MUST skip a claim another flusher made recently and re-flush only a stale claim
   (its flusher gone, or past an age bound). The journal MUST hold exactly one line per append except for
   duplicates from a crashed flusher's claim, which are accepted.
-- **FR-040**: The cause of the one-second lock wait on Linux CI MUST be measured (hold time and holder) before
+- **FR-040** (moved to the follow-up feature): The cause of the one-second lock wait on Linux CI MUST be measured (hold time and holder) before
   any change to the lock budget.
 - **FR-041**: Every authority record, refusal and drift entry MUST carry the turn identity; review ones MUST also
   carry the campaign id. The degraded-journal health line on `specrew status` and `specrew where` stays.
@@ -432,7 +435,7 @@ crash-recovery case asserting duplicates only from the crashed flusher's claim.
   packet and reply.
 - **FR-043**: Every budget economics invariant (FR-004, FR-006, FR-008, FR-009) MUST ship as a fixture written
   to fail first, through the shipped entry points.
-- **FR-044**: The three-host walk (Claude, Copilot, Codex), manual with records, MUST include on each host: a
+- **FR-044** (moved to the follow-up feature): The three-host walk (Claude, Copilot, Codex), manual with records, MUST include on each host: a
   verdict typed after a compaction; a review with at least one fix-needed round; a spent budget and a top-up;
   one disputed finding; one plan without a budget. It MUST record the stop reasons and the authorization count
   per boundary.
@@ -541,15 +544,15 @@ the Windows shards replace none of them; the 12 script-style suites join the cen
 
 | Story | Findings | Requirements | Owner roles | Iteration (proposed) |
 |---|---|---|---|---|
-| US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1; FR-012 in 2 (plan verdict); FR-013 back in 1 if possible, after T008 (DRIFT-032) |
+| US1 | B4F-115, B4F-121, B4F-061, B4F-126, B4F-152, B5F-012, B4F-054, B4F-058 | FR-001 to FR-013, FR-043 | Implementer; Reviewer (codex); maintainer for the walk | 1; FR-012 and FR-013 moved to the follow-up feature (decision `f203-i002-merge-then-follow-up`) |
 | US2 | B4F-112, B4F-116/150, B4F-117, B4F-140/137 | FR-014 to FR-025, FR-042, FR-045 | Implementer; Reviewer (codex); maintainer for the Claude capture check | 1 |
 | US3 | B4F-151, B4F-112 | FR-026, FR-027 | Implementer; Reviewer | 1 |
-| US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032 | Implementer; maintainer rules the audit table | 2 |
+| US4 | B5F-004, B5F-011, B5F-012 | FR-028 to FR-032 | Implementer; maintainer rules the audit table | moved to the follow-up feature |
 | US4 (part) | B5F-004 (declared-vs-reply blocks) | FR-046 | Implementer | 1 (maintainer, clarify verdict) |
-| US5 | B5F-013, B5F-015, B4F-079, B4F-119, B4F-158 | FR-034 to FR-038 | Implementer; maintainer rules the gate inventory | 2 |
-| US6 | B5F-014 | FR-033 | Implementer; Spec Steward | 2 |
-| US7 | B4F-142 | FR-039 to FR-041 | Implementer | 2 |
-| all | measures (a) to (f) | FR-044 | Maintainer (walk); Implementer (records) | 2 closeout |
+| US5 | B5F-013, B5F-015, B4F-079, B4F-119, B4F-158 | FR-034 to FR-038 | Implementer; maintainer rules the gate inventory | moved to the follow-up feature |
+| US6 | B5F-014 | FR-033 | Implementer; Spec Steward | moved to the follow-up feature |
+| US7 | B4F-142 | FR-039 to FR-041 | Implementer | FR-039, FR-040 moved to the follow-up feature; FR-041 in 1 (part) |
+| all | measures (a) to (f) | FR-044 | Maintainer (walk); Implementer (records) | moved to the follow-up feature; a Copilot and Codex capture walk in 2 |
 
 ### Key Entities
 
@@ -610,6 +613,9 @@ In priority order (b, a, c, d, f, e). `assumed` until the three-host walk measur
 - **Capacity Model**: two iterations (maintainer ruling at the specify verdict): (1) authority core, US1 to
   US3, plus FR-046 (moved at the clarify verdict), ending with the Claude-only capture check (FR-045); (2) stops, CI rider, lifecycle and journal, US4 to
   US7, ending with the three-host walk (FR-044). The plan sets the effort model.
+  **Amended 2026-11-16** (decision `f203-i002-merge-then-follow-up`): iteration 2 is the stabilization batch and a
+  short Copilot and Codex capture walk; 203 then merges, and US4 to US7, FR-012, FR-013 and FR-044 move to a
+  follow-up feature.
 - **Drift Signals**: the feature drift log from plan onward; workshop bindings reconciled across lenses; the
   validator against the known baseline; continuous co-review within the approved budget.
 - **Human Oversight Points**: every lifecycle boundary needs an explicit typed `approved for <boundary>`. The

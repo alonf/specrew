@@ -1,5 +1,27 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-16 — Decision: 203 iteration 002 scope - option 1, B5F-080 out, the full 2 SP buffer stated in the plan's text
+
+- **Decision ID**: f203-i002-scope-option-1
+- **Type**: scope-amendment
+- **Affected Requirement**: none (B5F-080 is a defect of the task writer, not requirement-scoped)
+- **Affected Iteration**: specs\203-beta5-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-16T09:52:12Z
+- **Decision**: The merge shape (`f203-i002-merge-then-follow-up`) adds the Copilot and Codex capture walk (1.0 SP),
+  the per-suite time limit and step-level `timeout-minutes` for the deterministic suites (0.5 SP) and the spec
+  amendment (0.25 SP) to iteration 002. To make room, B5F-080 (0.5 SP) moves out: the task rows total 19.25 of 20
+  SP, and the 2.0 SP review buffer is stated in the plan's text (Phase Baseline "Rework" row and Notes), not as a
+  task row, so the stated total with the buffer is 21.25 SP. The plan's capacity check counts task rows only.
+- **B5F-080's destination**: the follow-up feature. It will occur once more, at iteration 002's last task (the task
+  writer rewriting state.md's Iteration Status); that occurrence is the known defect, not a new one.
+- **The maintainer's words**: "option 1 it is", typed to the reviewer session specrewreviewer-98 at 2026-11-16 11:49
+  local (UTC+2) and relayed under the wider delegation. They answered option 1 as shown to them: "B5F-080 out, full
+  2 SP buffer", with task rows of 19.25 of 20 and a buffer of 2.0 stated in the plan's text; the reviewer session had
+  written that it would take an answer to include the buffer being stated in the plan's text unless they said
+  otherwise, and they did not.
+- **Next Action**: The plan for iteration 002 is written to this scope.
+
 ### 2026-11-16 — Decision: 203 merges after iteration 002; the rest of its spec moves to a follow-up feature
 
 - **Decision ID**: f203-i002-merge-then-follow-up

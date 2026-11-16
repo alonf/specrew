@@ -136,3 +136,21 @@ The following resolution strategies remain available if drift is detected later 
   exception on a push that touches code. HookRenderDedupe stays as ruled at 02:56.
 - **Not an approval**: no boundary is crossed by it; the plan boundary takes the maintainer's own typed verdict.
 - **Class closure**: NONE — a record of a decision, not a defect.
+
+### DRIFT-007 — The iteration's scope: option 1 (B5F-080 out, the buffer stated in the plan's text)
+
+- **The words**: "option 1 it is", typed by the maintainer to the reviewer session at 11:49 local on 2026-11-16 and
+  relayed, answering option 1 as shown: "B5F-080 out, full 2 SP buffer", task rows of 19.25 of 20 and a 2.0 SP buffer
+  stated in the plan's text. Recorded in `.squad\decisions.md` as `f203-i002-scope-option-1`.
+- **Why it was asked**: the merge shape adds the Copilot and Codex capture walk (1.0), the per-suite time limit and
+  step-level `timeout-minutes` for the deterministic suites (0.5, DRIFT-005) and the spec amendment (0.25), which did
+  not fit A-buffered's 20. The crew's first figures to the reviewer session left the 0.5 out and gave 18.75; the
+  reviewer session caught it and the corrected figures went to the maintainer.
+- **A dry run before the choice** (scratch worktree under the crew's scratchpad, removed by its path): the governance
+  check accepts requirements marked as moved with no code change. Its capacity check (`validate-governance.ps1`,
+  `Test-PlanningCapacity`) runs only at Status `planning`, sums the task rows, and fails a plan over 20 x 1.0 with no
+  waiver; iteration 001's plan (32/20, then 28.5/20) turned Specrew CI red on it (run `41197840420`). So the buffer is
+  not a task row.
+- **B5F-080**: moves to the follow-up feature. It will occur once more at this iteration's last task; that is the
+  known defect, not a new one.
+- **Class closure**: NONE — a scope decision, not a defect.

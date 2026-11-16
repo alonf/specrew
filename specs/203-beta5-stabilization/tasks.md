@@ -613,8 +613,8 @@ then T014.
 | FR-001, FR-002, FR-003, FR-008 | T007 |
 | FR-004, FR-005, FR-006, FR-007, FR-009, FR-011 | T008 |
 | FR-010 | T008 (moved from T004, DRIFT-027) |
-| FR-012 | T010 (iteration 002) |
-| FR-013 | T009 (iteration 002) |
+| FR-012 | T010, moved to the follow-up feature |
+| FR-013 | T009, moved to the follow-up feature |
 | FR-014 | T002, T003 |
 | FR-015, FR-018, FR-023 | T003 |
 | FR-016, FR-017 | T001, T003 |
