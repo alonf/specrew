@@ -1480,6 +1480,22 @@ function New-ContinuousCoReviewReviewerInvocationTelemetry {
     }
 }
 
+# Feature 203 T017: how long, per stream, the invoker waits after the reviewer exits for its output to reach EOF.
+$script:ContinuousCoReviewOutputDrainSeconds = 10
+
+function Get-ContinuousCoReviewDrainedStreamText {
+    # T017 (DRIFT-014, DRIFT-016): an exited child's last output can still be in the pipe, or held by a descendant
+    # that inherited the handle, and ReadToEndAsync completes only at EOF. Taking the text at exit without waiting
+    # returned an EMPTY result with exit code 0 - read downstream as "the reviewer printed nothing". Wait, bounded;
+    # a read that does not finish returns $null so the caller reports it instead of returning an empty string.
+    param(
+        [Parameter(Mandatory)][System.Threading.Tasks.Task[string]]$ReadTask,
+        [Parameter(Mandatory)][int]$TimeoutMilliseconds
+    )
+    try { if ($ReadTask.Wait($TimeoutMilliseconds)) { return [string]$ReadTask.Result } } catch { $null = $_ }
+    return $null
+}
+
 function Invoke-ContinuousCoReviewAgentInWorktree {
     # Run the SELECTED agentic host in the worktree cwd with a GIVEN prompt (read + run; read-only on source).
     # SHARED by the REVIEW path (slim review prompt) AND the ASK path (follow-up-question prompt), so a future
@@ -1595,8 +1611,15 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
                 telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true -Containment $containment)
             }
         }
-        $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
-        $err = if ($errTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $errTask.Result } else { '' }
+        $drainMs = $script:ContinuousCoReviewOutputDrainSeconds * 1000
+        $out = Get-ContinuousCoReviewDrainedStreamText -ReadTask $outTask -TimeoutMilliseconds $drainMs
+        $err = Get-ContinuousCoReviewDrainedStreamText -ReadTask $errTask -TimeoutMilliseconds $drainMs
+        $undrained = @()
+        if ($null -eq $out) { $undrained += 'stdout'; $out = '' }
+        if ($null -eq $err) { $undrained += 'stderr'; $err = '' }
+        if ($undrained.Count -gt 0) {
+            $err = ($err + [Environment]::NewLine + ('[co-review] output-drain-incomplete: {0} still open {1} s after the reviewer exited; its output is incomplete' -f ($undrained -join ','), $script:ContinuousCoReviewOutputDrainSeconds)).Trim()
+        }
         $code = $proc.ExitCode; $proc.Dispose()
         $sw.Stop()
         return [pscustomobject]@{
