@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3 (DRIFT-001 to DRIFT-003)
-**Resolution rate**: 3 of 3 handled locally; each entry's Class closure line states its product class
+**Total drift events**: 4 (DRIFT-001 to DRIFT-004)
+**Resolution rate**: 4 of 4 handled locally; each entry's Class closure line states its product class
 **Specification drift**: None detected
 
 ## Events
@@ -87,3 +87,18 @@ The following resolution strategies remain available if drift is detected later 
 
 - This artifact was scaffolded before review starts so drift can be logged immediately when detected.
 - Replace the zero-drift summary with real counts when the first drift event is recorded.
+
+### DRIFT-004 — Site 13 failed alone on a docs-only push (CI sighting; evidence for the first-batch fix)
+
+- **The run**: Specrew CI `43785562285` on `2cacad73` (one Markdown file, `docs/beta5-findings.md`), attempt 1. The
+  Deterministic gate failed at 01:26:41Z (03:26 local, 2026-11-16) in the F-198 honesty regression suite, "1 of 132
+  FAILED", and the Contract lane was skipped. Test and Cross-Platform Validation were green.
+- **The case**: `tests/continuous-co-review/unit/co-review-service.Tests.ps1:129`, "a FAILED lease owner-handoff STOPS
+  the spawned supervisor ...": "Expected $null or empty, because a supervisor whose lease handoff failed must not keep
+  running unprotected, but got System.Diagnostics.Process (pwsh)." This is B5F-051's site 13 (`Stop-Process -Force` with
+  no wait in `co-review-service.ps1:216`). It passed on `7daceb7d` an hour earlier.
+- **Handling**: 203's own pushes have no rerun exception for it, so the crew asked. One rerun on the reviewer session's
+  routine ruling, for this push only: attempt 2 green, every job run (Lint, the firewall, the Deterministic gate and the
+  Contract lane). The reviewer session will ask the maintainer whether 203's records-only rule should cover site 13 and
+  `empty-result-retry` as it covers HookRenderDedupe.
+- **Class closure**: NONE — site 13's fix is proposed for this iteration's first batch (design-analysis.md).
