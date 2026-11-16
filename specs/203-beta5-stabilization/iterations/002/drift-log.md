@@ -400,3 +400,28 @@ The following resolution strategies remain available if drift is detected later 
   Windows, 26.2 s on Linux; the next is `review-cross-platform-fault-matrix.Tests.ps1`, 28.7 s on macOS. With each
   suite now in its own pwsh (a few seconds' start-up), the margin under 300 s is about 3.5 times the longest.
 - **Class closure**: NONE — records of Phase 8 work in progress.
+
+### DRIFT-021 — Phase 8 built locally: the 50-run batches, T018's mutation check, T019, and I3a's second sighting
+
+- **The 50-run batches** (on the reviewer session's go-ahead after 206's round 2 ended; 19:57 to 20:26 local,
+  sequential, one suite at a time), each 50 runs in a row on the Phase 8 tip: `reviewer-hook-suppression` 50/50
+  (265 s), `empty-result-retry` 50/50 (158 s), `co-review-service` (site 13) 50/50 (194 s),
+  `agent-invoker-output-drain` (T017) 50/50 (183 s), `bootstrap-journal-claim-age` (T016) 50/50 (3 s),
+  `HookRenderDedupe` (I3a, I4b and the rest) 50/50 (888 s). Local evidence only; the CI evidence is the first green
+  pushes after the fixes.
+- **T018**: the double top-up case passes today (the control existed; its test did not). A mutant that gives each
+  top-up its own window turned it red ("Expected 2 ... but got 4") while the single-reset case stayed green; the mutant
+  was reverted and the file confirmed unchanged.
+- **T019**: the tracked link `.antigravitycli/f95594b5-...json` (to `C:/Users/alon.HOME/.gemini/config/projects/...`)
+  removed; `.antigravitycli/` ignored. No existing check refuses a tracked link that points outside the repository;
+  none added.
+- **I3a, the second sighting**: 205's closeout commit `cec8ee06`, Specrew CI `43919881259` attempt 1, job
+  `133486978295`, image ubuntu-24.04 20261111.370.1: "I3a ... (expected '2', got '1')", the same as the first
+  (`43670851775`, image 20261111.127.1). Two images, so not image-specific. Neither log shows a cause: the suite throws
+  at I3a, so I3b to I3d (journal rows, distinct tokens) never ran. Not I4b's reclaim: the render claim
+  (`Request-SpecrewHookRenderClaim`, `LauncherIntegration.ps1:86`) is keyed by each fire's own per-launch GUID and has
+  no stale-reclaim path. Candidates by reading: one fire's `PROVIDER_FAILED` (the provider's catch exits 0 with no
+  render, and I3 never counts failures, unlike I1a) or a lost job output. Still unconfirmed; the suite now prints both
+  fires' output on the next failure, and the I3a rerun rule continues.
+- **B5F-090** filed: the campaign reviewer's absolute deadline with no clock on hosts without a shell (206's round 2).
+- **Class closure**: NONE — Phase 8's tip goes to the sweep next.
