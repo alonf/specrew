@@ -629,3 +629,21 @@ The following resolution strategies remain available if drift is detected later 
   from the buffer. About 0.3 SP of the 2.0 SP buffer is left.
 - **Class closure**: NONE — the cause of the shared wait is not shown; the measurement is recorded and the decisions
   are the maintainer's.
+
+### DRIFT-027 — The t008 lane's limit raised to 1,500 s (maintainer's decision)
+
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "203 t008 lane: 1500",
+  18:50 local on 2026-11-17, answering the reviewer session's recommended line): in `.specrew/verification-plan.json`,
+  `timeout_seconds` of command `f203-i001-t008-suites` goes from 900 to 1,500. Only that value; no other lane, suite or
+  cap in the sweep driver.
+- **Why** (DRIFT-026): the lane took 838 s on `da78b600` and over 900 s alone at `da78b600c` and at `72ffa5500`, with no
+  code cause found; the limit had no margin, and the review campaign's preflight reads the same field.
+- **Where the value is read**: the review preflight resolves it through `Resolve-ContinuousCoReviewVerificationTimeout`
+  (`verification-plan-contract.ps1:82`; the engine allows up to 3,600 s), and the sweep's `run-lane.ps1:20` reads the
+  same field. Nothing hashes the plan to bind this value: the review campaign records a `verification_plan_sha256` per
+  round (`review-authority-core.ps1:567`), and iteration 002's campaign has not started; the tests that read the real
+  plan check lane names, not timeouts. No second file changed.
+- **Landing**: its own commit, before the Phase 9 sweep, so that sweep runs with it and Phase 9's gated push carries it
+  (not a records-only change).
+- **Class closure**: NONE — a limit change on the maintainer's word; the lane's time is reported against 1,500 s in the
+  Phase 9 sweep.
