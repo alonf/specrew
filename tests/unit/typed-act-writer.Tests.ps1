@@ -418,6 +418,38 @@ Assert-True ($drops9c.Count -eq 1 -and [string]$drops9c[0].reason -ceq 'not-save
 $said9c = [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $f9c.Root -HostKind 'claude' -SessionId 's1')
 Assert-True ($said9c -match 'could not be saved') ("and the next message says so (got '{0}')" -f $said9c)
 
+# Case 9b, a stop answer (feature 203 T021; round E finding-a537d3f72672e5f5, iteration 001 DRIFT-084; FR-026): a review waits
+# at stop (d), the human types `allow reviewer copilot`, the prompt hook missed it, and the turn end's recovery meets a
+# ledger it can read but not append to while the report journal is writable. The recovery branch's report recognized only
+# the authority shapes, not the stop answers, so nothing was saved and nothing was said. The answer is not used; the human
+# is told, as for the allowance reset above.
+Write-Host '--- case 9b (stop answer): a stop answer the ledger cannot record is reported on the recovery path ---'
+$f9s = New-QueuedReplyFixture
+$stopAnswer9s = 'allow reviewer copilot'
+$runDir9s = Join-Path $f9s.Root '.specrew/review/authority/campaigns/cmp-001-fixture-i001/runs/run-stop-9s'
+New-Item -ItemType Directory -Force -Path $runDir9s | Out-Null
+([pscustomobject][ordered]@{ schema_version = '1.0'; campaign_id = 'cmp-001-fixture-i001'; run_id = 'run-stop-9s'; stop_kind = 'd-host-outside-order'
+    observed_at = [DateTimeOffset]::UtcNow.AddMinutes(-2).ToString('o') } | ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $runDir9s 'pending-pause.json') -Encoding UTF8
+$id9s = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$null = Add-ClaudeEntry -Fixture $f9s -Role 'user' -Text $stopAnswer9s -PromptId $id9s
+$ledger9s = Join-Path $f9s.Root '.specrew/authority/exhausted-turns.jsonl'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ledger9s) | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $f9s.Root '.specrew/runtime') | Out-Null
+Set-Content -LiteralPath $ledger9s -Value '{"schema_version":"1.0","fact_type":"typed-turn-exhausted","turn_id":"unrelated"}' -Encoding UTF8
+(Get-Item -LiteralPath $ledger9s).IsReadOnly = $true
+try {
+    $cite9s = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $id9s; text = $stopAnswer9s })).Identity
+    $r9s = Write-SpecrewTypedAct -ProjectRoot $f9s.Root -HostKind 'claude' -TurnIdentity $cite9s -TranscriptPath $f9s.Transcript -SourceEvent 'stop-transcript' -SessionId 's1'
+}
+finally { (Get-Item -LiteralPath $ledger9s).IsReadOnly = $false }
+Assert-True ([string]$r9s.Act.Reason -ceq 'not-reserved' -and -not [bool]$r9s.Written) ("the stop answer reaches the recovery path's reservation and is not written (reason '{0}', written {1})" -f [string]$r9s.Act.Reason, [bool]$r9s.Written)
+$stored9s = @(Get-ChildItem -LiteralPath (Join-Path $f9s.Root '.specrew/review/stop-answer') -File -Recurse -ErrorAction SilentlyContinue)
+Assert-True ($stored9s.Count -eq 0) ("nothing is recorded that the human's turn could not reserve (found {0} stop-answer file(s))" -f $stored9s.Count)
+$drops9s = @(Get-Content -LiteralPath (Join-Path $f9s.Root '.specrew/runtime/authority-capture-drops.jsonl') -ErrorAction SilentlyContinue | ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } | Where-Object { $null -ne $_ -and [string]$_.event -ceq 'authority-phrase-not-recorded' })
+Assert-True ($drops9s.Count -eq 1 -and [string]$drops9s[0].reason -ceq 'not-saved') ("the recovery path reports the stop answer it could not reserve as not saved (got {0} report(s))" -f $drops9s.Count)
+$said9s = [string](Get-SpecrewAuthorityNotRecordedDisclosure -ProjectRoot $f9s.Root -HostKind 'claude' -SessionId 's1')
+Assert-True ($said9s -match 'could not be saved' -and $said9s -match [regex]::Escape($stopAnswer9s)) ("and the next message says so, with the line to type again (got '{0}')" -f $said9s)
+
 # Case 10 (co-review round 8, finding 3): A RECOVERED ACT IS DATED BY WHEN IT WAS TYPED. Approval B was captured at 10:10;
 # an older missed approval A, typed at 10:00, is recovered at 10:20. A must not retire B.
 Write-Host '--- case 10: an older approval recovered late does not retire a newer one ---'
