@@ -1390,6 +1390,21 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   told the maintainer. The crew then launched on the old entry, which the engine refused as already used, and only
   then marked spent. The maintainer's next typed phrase was captured (08:20:46Z) and round 3 ran on it. So the
   maintainer typed the approval twice and was told nothing the first time (DRIFT-206-I002-019).
+- **Item 59, the mechanism (items 59 and 60; read in the engine by the reviewer session, 2026-11-17):**
+  - A partial round is "undelivered": the typed approval is journalled as spent without delivery and the entitlement
+    stands (`specrew-review.ps1`, about `:1755` to `:1815`; `delivery-journal.jsonl` shows it for round 3).
+  - A fresh typed line is folded into that record: `Write-SpecrewReviewRoundApprovalAuthorization` returns the existing
+    unspent record with the same hash, and `Test-SpecrewTypedActReplacesRecord` (`HumanAuthorityStore.ps1:749`) refuses
+    to replace a record that has a `minted_ref`. The next round would run on the earlier round's evidence.
+  - So a partial round the human has triaged and acted on leaves a spendable approval that also swallows the next typed
+    one. The only clearing path is the human's withdrawal (`Write-SpecrewApprovalWithdrawal`,
+    `HumanAuthorityStore.ps1:2091` to `:2200`, wired in `HandoverStore.ps1:1304`), and nothing tells the human so.
+- **The question-UI detector misreads an agent's own output:** the Stop hook records a "phrase seemed to come from a
+  picker" observation when a tool result carries the round phrase as a short quoted JSON value (`HandoverStore.ps1`,
+  about `:1868` to `:1885`). It fired at 16:36:16Z when the crew printed the pending approval record to check it. It
+  is an observation, never authority; its only reader is one sentence in the review refusal (`specrew-review.ps1`
+  `:964`, `:1183`, `:1470`), and a typed capture clears it. Its diagnosis can be wrong. The crew now prints only those
+  files' date and state fields.
 - **Item 62:** the round 3 reviewer ran 08:46:46Z to 08:51:47Z (about 300 s of 2400 s) and wrote "I stopped to publish
   rather than on a clock reading". With only Read, Glob, Grep and Write it could not show a commit, so the scope's
   "commit by commit" section could not be done on that host at all. Round 4's scope file gives the commit list, the

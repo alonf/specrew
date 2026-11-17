@@ -22,8 +22,9 @@ to 3 (`review-scope-round-1.md` to `review-scope-round-3.md`) and does not repla
 
 ## How to Spend the Time
 
-You have no shell. This file gives you what a shell would: the commit list, the changed files, and each fix located by
-file and function, so you can read every one with Read and Grep.
+This file gives a reviewer with no shell what a shell would: the commit list, the changed files, and each fix located by
+file and function, so every one can be read with Read and Grep. If your host gives you a shell, read the git history
+yourself (`git log`, `git show <commit>`) and check the commit list below against it rather than trusting it.
 
 The deadline you are given is counted from your start; the verification that ran before you does not use it. You
 cannot read a clock, so do not stop for time on a guess. Cover Section 1 and Section 2 before you publish a partial
