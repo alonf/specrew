@@ -3944,9 +3944,14 @@ function Test-ReviewArtifact {
             # Iteration 002 review round 2, finding 6: the plan must record the task as deferred too, and a decision the row
             # denies or makes conditional ("not covered by", "without", "if ... is approved", "once ... is recorded") is
             # not the decision that deferred it.
-            $planTask = @($PlanTasks | Where-Object { [string]$_.Task -ceq [string]$taskId } | Select-Object -First 1)
+            # Iteration 002 review round 3, finding-f194651984ecf15e: the lookup compares as the verdict-row check does
+            # (case-insensitively, like $reviewedTaskIds), and a deferred row that matches no plan task fails.
+            $planTask = @($PlanTasks | Where-Object { [string]$_.Task -eq [string]$taskId } | Select-Object -First 1)
             $planStatus = if ($planTask.Count -gt 0) { (Normalize-MarkdownCell ([string]$planTask[0].Status)).ToLowerInvariant() } else { '' }
-            if ($planTask.Count -gt 0 -and $planStatus -notin @('deferred', 'deferred-with-approval')) {
+            if ($planTask.Count -eq 0) {
+                $Errors.Add("review.md task '$taskId' is deferred, but plan.md has no task '$taskId'; a deferral is recorded in both")
+            }
+            elseif ($planStatus -notin @('deferred', 'deferred-with-approval')) {
                 $Errors.Add("review.md task '$taskId' is deferred, but plan.md records its status as '$planStatus'; a deferral is recorded in both")
             }
             # Read in the clause before the decision the row names, so a word inside the id itself is never read.
