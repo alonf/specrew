@@ -77,6 +77,22 @@ BeforeAll {
         script:Invoke-EndGit $Project.root @('add', '-A'); script:Invoke-EndGit $Project.root @('commit', '-qm', 'code after the stop')
     }
 
+    # A second round on the files as they are now, answering the open finding as the reviewer is asked to (T008).
+    function script:Add-FixRound([pscustomobject]$Project, [string]$Status = 'resolved') {
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Project.root).tree_id
+        # The open-findings rule reads only the answer; the verdict is the round's own (no new finding reported).
+        $result = [pscustomobject][ordered]@{
+            schema_version = '1.0'; campaign_id = $script:Campaign; run_id = 'run-end-2'; target_digest = $digest; harness_id = 'fixture'
+            completion = 'complete'; verdict = 'pass'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+            currentness = 'current'; validation = 'valid'; can_approve_current = $true; summary = 'fixture'; findings = @()
+            finding_resolutions = @([pscustomobject][ordered]@{ finding_id = 'finding-00000000000000a1'; status = $Status })
+            started_at = '2026-11-17T20:30:00Z'; ended_at = '2026-11-17T20:31:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $true
+        }
+        Request-ReviewAuthorityClaim -StoreRoot $Project.store -CampaignId $script:Campaign -RunId 'run-end-2' -TargetLineage 'lin-demo' -ObservedAt '2026-11-17T20:30:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $Project.store -CampaignId $script:Campaign -RunId 'run-end-2' -Fact $result | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $Project.store -CampaignId $script:Campaign -RunId 'run-end-2' -TargetLineage 'lin-demo' -Disposition released -ObservedAt '2026-11-17T20:31:00Z' | Out-Null
+    }
+
     function script:Get-EndSignoff([pscustomobject]$Project) {
         return Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $Project.root -CampaignId $script:Campaign -TargetLineage 'lin-demo' `
             -CampaignStoreRoot $Project.store -FeatureId '001-demo' -IterationNumber '007'
@@ -110,6 +126,29 @@ Describe 'T022: the human''s stop counts for the findings it accepted (B5F-071, 
         $project = script:New-EndProject -Name 'require-correction'
         script:Add-EndDisposition -Project $project -Decision 'require-correction'
         [string](script:Get-EndSignoff -Project $project).decision | Should -BeExactly 'block'
+    }
+}
+
+Describe 'T022: a fixed finding is resolved by the round that reviews its fix (B5F-071, first half; pinned)' {
+    # B5F-071 (2026-11-15): no run of 203's iteration 001 campaign carried finding_resolutions, so the sign-off listed every
+    # fixed finding of rounds A to D as still open. Those rounds were launched from a pin older than T008; since T008
+    # (845e212dc, "an open finding closes only on the reviewer's explicit resolved on moved files") the open findings are
+    # given to the next reviewer and its explicit `resolved` on moved files closes them. Pinned here, passing since then.
+    It 'the round after the fix answers it resolved: the finding is closed and the sign-off releases' {
+        $project = script:New-EndProject -Name 'fixed-by-next-round'
+        script:Add-CodeCommit -Project $project
+        script:Add-FixRound -Project $project -Status 'resolved'
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $project.store -CampaignId $script:Campaign).Count | Should -Be 0
+        $signoff = script:Get-EndSignoff -Project $project
+        [string]$signoff.decision | Should -BeExactly 'allow'
+        [string]$signoff.message | Should -Not -Match 'finding-00000000000000a1' -Because 'a fixed finding is not listed as open'
+    }
+
+    It 'the round after the fix answers it still-open: the finding stays open and blocks' {
+        $project = script:New-EndProject -Name 'still-open-next-round'
+        script:Add-CodeCommit -Project $project
+        script:Add-FixRound -Project $project -Status 'still-open'
+        @(Get-ReviewCampaignOpenFindings -StoreRoot $project.store -CampaignId $script:Campaign).Count | Should -Be 1
     }
 }
 
