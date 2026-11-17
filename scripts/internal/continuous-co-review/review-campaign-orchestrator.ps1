@@ -1906,7 +1906,15 @@ function Format-ReviewCampaignSignoffFindingLine {
     param([Parameter(Mandatory)]$Item)
     $at = if ([string]::IsNullOrWhiteSpace([string]$Item.location)) { '' } else { ' at ' + [string]$Item.location }
     switch -CaseSensitive ([string]$Item.kind) {
-        'not-covered' { return ('Not covered (still open): {0} ({1}) {2}{3}' -f [string]$Item.finding_id, [string]$Item.severity, [string]$Item.title, $at) }
+        'not-covered' {
+            # Feature 203 T022: a finding the human accepted at the stop is still not fixed, so it stays not covered; the line
+            # says the human answered it, so the sign-off does not read as if the stop had been ignored.
+            $acceptedFlag = $Item.PSObject.Properties['accepted']
+            if ($null -ne $acceptedFlag -and [bool]$acceptedFlag.Value) {
+                return ('Not covered (open, accepted at your stop): {0} ({1}) {2}{3}' -f [string]$Item.finding_id, [string]$Item.severity, [string]$Item.title, $at)
+            }
+            return ('Not covered (still open): {0} ({1}) {2}{3}' -f [string]$Item.finding_id, [string]$Item.severity, [string]$Item.title, $at)
+        }
         'demoted' { return ('Demoted: {0} {1}{2} - the reviewer reported it as {3}; it was recorded as {4} because it states no concrete failure scenario.' -f [string]$Item.finding_id, [string]$Item.title, $at, [string]$Item.demoted_from, [string]$Item.severity) }
         'follow-up' { return ('Follow-up: {0} ({1}) {2}{3}' -f [string]$Item.finding_id, [string]$Item.severity, [string]$Item.title, $at) }
         default { throw ('review-signoff-listing-unknown-kind:' + [string]$Item.kind) }

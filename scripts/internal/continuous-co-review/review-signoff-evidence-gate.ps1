@@ -1244,6 +1244,23 @@ function Get-ReviewCampaignVerdictPacketDecision {
             -Message ('Specrew could not list the findings this review leaves behind, so it cannot ask for your sign-off yet. What could not be read: ' + $_.Exception.Message) `
             -CampaignId $CampaignId -RunId ([string]$packet.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
     }
+    # Feature 203 T022 (F4; B5F-071's second half, DRIFT-091): THE HUMAN'S STOP COUNTS FOR THE OPEN ONES. The stop's landing
+    # records an accept-current disposition for the latest result at the digest that round reviewed; the stop packet showed
+    # every finding still open, so each one open now was open when the human accepted. Those findings are not fixed and
+    # stay listed - as accepted at the stop, not as merely "still open" - but they no longer hold the sign-off: the human
+    # has answered them. A require-correction anywhere in the matching set wins (Test-ReviewCampaignDispositionAcceptsResult),
+    # and a later claimed round makes a newer latest result that this acceptance does not name, so a finding a later round
+    # reports is never covered by an earlier stop.
+    $acceptedAtStop = $false
+    if ($null -ne $latestResult -and [string]$latestResult.verdict -ceq 'findings') {
+        $acceptedAtStop = Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $dispositions -CampaignId $CampaignId `
+            -RunId ([string]$latestResult.run_id) -CurrentDigest ([string]$latestResult.target_digest)
+    }
+    if ($acceptedAtStop) {
+        foreach ($item in @($findingItems | Where-Object { [string]$_.kind -ceq 'not-covered' })) {
+            $item | Add-Member -NotePropertyName accepted -NotePropertyValue $true -Force
+        }
+    }
     $findingLines = @($findingItems | ForEach-Object { Format-ReviewCampaignSignoffFindingLine -Item $_ })
     $packet | Add-Member -NotePropertyName finding_items -NotePropertyValue $findingItems -Force
     $packet | Add-Member -NotePropertyName feature_id -NotePropertyValue ([string]$FeatureId) -Force
@@ -1263,7 +1280,7 @@ function Get-ReviewCampaignVerdictPacketDecision {
     }
     if ([bool]$packet.render_boundary_packet -or [string]$packet.route -cin @('boundary-clean', 'review-current')) {
         $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
-        if ($openFindings.Count -gt 0) {
+        if ($openFindings.Count -gt 0 -and -not $acceptedAtStop) {
             $openMessage = ('{0} from the review {1} still open, so the review has not ended clean. A finding closes when the next round confirms its fix, or with your typed defer or drop line.' -f `
                     $(if ($openFindings.Count -eq 1) { '1 finding' } else { ('{0} findings' -f $openFindings.Count) }), $(if ($openFindings.Count -eq 1) { 'is' } else { 'are' }))
             if ($findingLines.Count -gt 0) { $openMessage = $openMessage + [Environment]::NewLine + ($findingLines -join [Environment]::NewLine) }
