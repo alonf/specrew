@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "002"
-updated_at: "2026-11-17T21:58:23.6449158Z"
+updated_at: "2026-11-17T22:05:51.6565575Z"
 tasks:
   T017:
     title: "The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's \"203 rerun: add reviewer-hook-suppression; T017 first\", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun"
@@ -53,8 +53,8 @@ tasks:
     blocked_reason: ""
   T023:
     title: "Phase lines: (i) B5F-083, a scaffolded iteration folder with no plan.md is accepted with a warning while its plan crossing is the next one pending, read through the same enforcement-state reader as feature 206's T034 (`3a3ba803`), 0.5 SP; (ii) a test of the sync and the governance check together over the sign-off and retro sequences (`review.md` with `executing` and last boundary before-implement passes the check, the sync accepts it, afterwards the check requires `reviewing`; the same for `retro.md`), 0.25 SP, written after main is merged in (T030). The rule for `review.md` and `retro.md` beside the earlier phase lines (B5F-050, B5F-059) is 206's T034, the one design; 203 does not build its own"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-11-17T22:05:51.6531001Z"
     completed_at: ""
     blocked_reason: ""
   T025:

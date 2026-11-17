@@ -796,3 +796,27 @@ The following resolution strategies remain available if drift is detected later 
   deferred with this entry's id; B5F-075 names the deferred statement beside the coverage line, so the follow-up's
   triage sees one item (the reviewer session will put it in the first group there). No other wording changes.
 - **Class closure**: NONE — a scope decision; the work is recorded where the follow-up's triage reads it.
+
+### DRIFT-033 — T023 (i): a folder waiting for its plan verdict is not missing its plan (B5F-083); notes for T030's merge
+
+- **RED** `1b682f1b2` (`tests/unit/plan-crossing-pending.tests.ps1`, the validator on temp fixtures): red 4 of 10. The
+  governance check refused an iteration folder with no `plan.md` while its plan crossing was the next one pending.
+- **Fix** `df3ff11cd`: `Get-SpecrewPlanCrossingState` (`validate-governance.ps1`, beside `Test-IterationGovernance`)
+  reads the last authorized boundary through the same enforcement-state reader as feature 206's T034 and asks
+  `Get-SpecrewPendingBoundaryCrossing` whether the pending crossing is the plan crossing itself (after `clarify`, or after
+  `iteration-closeout` for a new iteration). Written to 206's round-2 rule from the start (the reviewer session's terms):
+  only the crossing that comes next is pending, and the iteration is compared even when the session names none (then
+  only the feature's newest folder can be pending). A missing start context accepts with a warning naming the file, so in
+  CI the refusing half does not hold (206's item 53). Pinned refusals: `plan` or a later boundary authorized, `specify`
+  with `clarify` still to come, another iteration, an older folder with no session iteration, another feature. The
+  `.specify` mirror and its hash record were refreshed in the same commit (`specify-mirror-record` 6 of 6). 10 of 10.
+- **T023 stays in progress**: (ii), the sync and the check together over the sign-off and retro sequences, waits on
+  main merged in (T030).
+- **Notes for T030's merge** (owed to the reviewer session): 206's T034 brings `Get-SpecrewRecordApprovalState` into the
+  same file; the two functions sit apart (206's after `Add-ValidatorStopMessage`, this one before
+  `Test-IterationGovernance`) and keep separate names, so the merge is expected to take both. 206's round-2 finding
+  `finding-e2ef0515b3bc7a8f` (minor; that function returned 'pending' under any earlier boundary and skipped the
+  iteration when the number was blank) is on T030's expected-conflict list; it was fixed on 206 in `d1e428b98`, and this
+  function follows the fixed rule.
+- **Class closure**: the plan crossing by `plan-crossing-pending`'s cases; CI's blind spot is NONE here — it is 206's
+  item 53, recorded there.
