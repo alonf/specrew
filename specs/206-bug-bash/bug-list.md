@@ -1496,7 +1496,7 @@ protected set, and none has changed on 203's branch since the merge base `df1141
 - **Observed (2026-11-17, review iteration 002 round 4, `finding-ac98d5cbfc5b6a9c`, T033):** the deferred-row check in
   `validate-governance.ps1` (about `:3977`) removes only closed fences from `.squad/decisions.md`, then collects
   `- **Decision ID**:` lines with a pattern that allows leading whitespace. A four-space-indented code example
-  (`    - **Decision ID**: D-12`) is collected as a real entry, and so is one inside a fence opened and never closed.
+  (`- **Decision ID**: D-12` indented four spaces) is collected as a real entry, and so is one inside a fence opened and never closed.
 - **Failure scenario (the reviewer's):** plan.md records T002 as deferred, an accepted review gives T002 the
   `deferred` verdict with "Moved by decision D-12", and decisions.md holds D-12 only in such a code example. No
   missing-decision error is raised, and the row is not counted as non-passing.
