@@ -394,7 +394,7 @@ function Get-SpecrewCarriedSignoffOverrideAuthorization {
         if ($accepted -ceq [string]$CurrentTreeId) { continue }
         $changed = @()
         try {
-            $output = & git -C $ProjectRoot diff --name-only $accepted $CurrentTreeId 2>$null
+            $output = & git -C $ProjectRoot diff --no-renames --name-only $accepted $CurrentTreeId 2>$null
             if ($LASTEXITCODE -ne 0) { continue }
             $changed = @(@($output) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         }
@@ -407,8 +407,40 @@ function Get-SpecrewCarriedSignoffOverrideAuthorization {
     return $best
 }
 
+function Test-ReviewCampaignSourceRepoTextPathIsRecord {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [AllowNull()][AllowEmptyString()][string]$FeatureId,
+        [Parameter(Mandatory)][StringComparison]$Comparison
+    )
+
+    if ($Path.StartsWith('specs/', $Comparison)) {
+        return Test-ReviewCampaignPathIsFeatureProcessRecord -Path $Path -FeatureId $FeatureId -Comparison $Comparison
+    }
+    foreach ($record in @(
+            '.squad/decisions.md', '.squad/decisions-archive.md', '.squad/identity/now.md',
+            '.specrew/cross-platform-backlog.md', '.specrew/reviewer-regression-log.md',
+            'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'NOTICE.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md')) {
+        if ($Path.Equals($record, $Comparison)) { return $true }
+    }
+    foreach ($prefix in @(
+            '.squad/decisions/', '.squad/log/', '.squad/orchestration-log/',
+            '.specrew/review/inline/', 'proposals/')) {
+        if ($Path.StartsWith($prefix, $Comparison)) { return $true }
+    }
+    if ($Path.StartsWith('docs/', $Comparison) -and $Path.EndsWith('.md', $Comparison) -and
+        -not $Path.StartsWith('docs/methodology/', $Comparison)) { return $true }
+
+    $segments = $Path.Split('/')
+    if ($segments.Count -eq 4 -and $Path.StartsWith('.squad/agents/', $Comparison) -and
+        -not [string]::IsNullOrWhiteSpace($segments[2]) -and $segments[3].Equals('history.md', $Comparison)) {
+        return $true
+    }
+    return $false
+}
+
 function Test-ReviewCampaignDeltaIsRecordsOnly {
-    # FR-009. Reviewable content is everything that is NOT the methodology machinery and NOT the
+    # FR-009. Subject to the source-repository guard below, reviewable content excludes the machinery and
     # lifecycle records tree. The machinery list comes from the ONE FR-012 resolver so this can never
     # drift from the digest and worktree strips; `specs/` is reviewable to a reviewer but is records,
     # not implementation, which is the distinction that stops a drift-log commit invalidating the
@@ -458,6 +490,7 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
 
     $recordsRoots = @()
     try {
+        $isSpecrewSourceRepo = Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $resolvedRoot
         foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRoot)) {
             if (-not [string]::IsNullOrWhiteSpace($machinery)) { $recordsRoots += (([string]$machinery -replace '\\', '/').Trim('/')) }
         }
@@ -504,6 +537,20 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     foreach ($raw in @($ChangedPaths)) {
         $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
         if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        # Feature 203 T022: in the source repo, text is records only in named places; .specify and
+        # non-Markdown docs are source. Wrong "records" is unread text that agents execute;
+        # wrong "source" costs one review round. Apply this before machinery or shared classification.
+        if ($isSpecrewSourceRepo) {
+            $isMarkdown = $path.EndsWith('.md', $comparison)
+            if ($path.StartsWith('.specify/', $comparison) -or
+                ($path.StartsWith('docs/', $comparison) -and -not $isMarkdown)) { return $false }
+            if ($isMarkdown -or $path.EndsWith('.txt', $comparison)) {
+                if (-not (Test-ReviewCampaignSourceRepoTextPathIsRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
+                    return $false
+                }
+                continue
+            }
+        }
         $isRecords = $false
         foreach ($root in $recordsRoots) {
             if ([string]::IsNullOrWhiteSpace($root)) { continue }
