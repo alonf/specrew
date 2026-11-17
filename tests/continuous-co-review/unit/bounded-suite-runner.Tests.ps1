@@ -22,10 +22,12 @@ Describe 'the bounded deterministic suite runner (T015)' {
         }
 
         function Invoke-Runner {
+            # In this process, as the workflow step calls it, so the caller is a process with Pester loaded.
             param([Parameter(Mandatory)][string[]]$Suite, [Parameter(Mandatory)][int]$SuiteTimeoutSeconds)
-            $output = & $script:PwshPath -NoProfile -NonInteractive -File $script:Runner -Suite $Suite -SuiteTimeoutSeconds $SuiteTimeoutSeconds 2>&1
+            $output = & $script:Runner -Suite $Suite -SuiteTimeoutSeconds $SuiteTimeoutSeconds *>&1
             return [pscustomobject]@{ exit_code = $LASTEXITCODE; text = (@($output) | ForEach-Object { [string]$_ }) -join "`n" }
         }
+        $script:CallerPester = [string](@(Get-Module Pester | Sort-Object Version -Descending)[0].Version)
     }
 
     AfterAll { Remove-Item -LiteralPath $script:FixtureRoot -Recurse -Force -ErrorAction SilentlyContinue }
@@ -39,6 +41,17 @@ Describe 'the bounded deterministic suite runner (T015)' {
         $r = Invoke-Runner -Suite @($pass) -SuiteTimeoutSeconds 120
         $r.exit_code | Should -Be 0 -Because $r.text
         $r.text | Should -Match ([regex]::Escape('--- deterministic suite: ' + $pass))
+    }
+
+    # Feature 203 (Specrew CI 43981760146 on 0e8ccd890, job 133701210065): the child always imported Pester 5.7.1,
+    # the runner's default, and the Deterministic gate has Pester 5.9.0 only: "The specified module 'Pester' with
+    # version '5.7.1' was not loaded", result=none, so a passing suite failed. The child must run the caller's Pester.
+    It 'runs each suite under the Pester its caller has loaded, not a fixed version' {
+        $seen = Join-Path $script:FixtureRoot 'pester-seen.txt'
+        $probe = New-FixtureSuite -Name 'probe.Tests.ps1' -Body ("Set-Content -LiteralPath '{0}' -Value ([string](Get-Module Pester).Version)" -f ($seen -replace "'", "''"))
+        $r = Invoke-Runner -Suite @($probe) -SuiteTimeoutSeconds 120
+        $r.exit_code | Should -Be 0 -Because $r.text
+        (Get-Content -LiteralPath $seen -Raw).Trim() | Should -Be $script:CallerPester
     }
 
     It 'fails and names a suite whose result is not Passed' {
@@ -84,6 +97,8 @@ Describe 'the bounded deterministic suite runner (T015)' {
                 $child = Join-Path $script:FixtureRoot ('as-workflow-' + [guid]::NewGuid().ToString('N') + '.ps1')
                 Set-Content -LiteralPath $child -Encoding UTF8 -Value @(
                     '$ErrorActionPreference = ''Stop'''
+                    # A caller with Pester loaded, as this test is (in CI the Deterministic gate has 5.9.0 only).
+                    ('Import-Module Pester -RequiredVersion {0} -Force' -f $script:CallerPester)
                     ('Set-Location -LiteralPath ''{0}''' -f ($script:RepoRoot -replace "'", "''"))
                     ('$suites = @({0})' -f $quoted)
                     ('$suiteTimeoutSeconds = {0}' -f $SuiteTimeoutSeconds)
