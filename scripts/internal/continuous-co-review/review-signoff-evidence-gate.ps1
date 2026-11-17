@@ -408,6 +408,14 @@ function Get-SpecrewCarriedSignoffOverrideAuthorization {
 }
 
 function Test-ReviewCampaignSourceRepoTextPathIsRecord {
+    # Feature 203 T022 (the maintainer's "203 T022: 1", B5F-087): in the Specrew source repository a Markdown or text file
+    # is records only in a named records place - the active feature's records allowlist under specs/, what the syncs and
+    # the scribe write under .squad, the two .specrew logs and review output, docs/**/*.md outside docs/methodology,
+    # proposals/**, and the root prose files. Everything else is source, whichever host directory it sits in: a list of
+    # source places is always one host directory behind. An allowlist on purpose, failing toward source - a wrong "source"
+    # costs one review round, a wrong "records" is unread text that agents execute. The caller has already decided that
+    # the path is Markdown or text; -Comparison is the volume's rule for which FILE a path names.
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Path,
         [AllowNull()][AllowEmptyString()][string]$FeatureId,
@@ -428,7 +436,7 @@ function Test-ReviewCampaignSourceRepoTextPathIsRecord {
             '.specrew/review/inline/', 'proposals/')) {
         if ($Path.StartsWith($prefix, $Comparison)) { return $true }
     }
-    if ($Path.StartsWith('docs/', $Comparison) -and $Path.EndsWith('.md', $Comparison) -and
+    if ($Path.StartsWith('docs/', $Comparison) -and $Path.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) -and
         -not $Path.StartsWith('docs/methodology/', $Comparison)) { return $true }
 
     $segments = $Path.Split('/')
@@ -541,10 +549,14 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
         # non-Markdown docs are source. Wrong "records" is unread text that agents execute;
         # wrong "source" costs one review round. Apply this before machinery or shared classification.
         if ($isSpecrewSourceRepo) {
-            $isMarkdown = $path.EndsWith('.md', $comparison)
+            # The extension names the KIND of file, not which file, so it is compared without case on every volume:
+            # notes.MD is Markdown to every agent that loads it (the volume's $comparison would let it skip this rule on a
+            # case-sensitive volume and fall back to today's records answer). Directory prefixes keep $comparison.
+            $isMarkdown = $path.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase)
+            $isText = $path.EndsWith('.txt', [StringComparison]::OrdinalIgnoreCase)
             if ($path.StartsWith('.specify/', $comparison) -or
                 ($path.StartsWith('docs/', $comparison) -and -not $isMarkdown)) { return $false }
-            if ($isMarkdown -or $path.EndsWith('.txt', $comparison)) {
+            if ($isMarkdown -or $isText) {
                 if (-not (Test-ReviewCampaignSourceRepoTextPathIsRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
                     return $false
                 }
