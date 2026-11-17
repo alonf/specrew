@@ -686,3 +686,35 @@ The following resolution strategies remain available if drift is detected later 
 - **T021 done**: round E `finding-a537d3f72672e5f5`, the stop-answer fallback on the recovery path, reported at the
   next message, with nothing recorded (`typed-act-writer` case 9b, 52 of 52).
 - **Class closure**: T021 by case 9b's stop-answer case. The trial is NONE — a process decision, measured on T022.
+
+### DRIFT-030 — Phase 9 swept green at Throttle 3; the split of the two slow suites is deferred with its measurement
+
+- **The sweep of `5d1f3c1d1`** (Throttle 3, `-SuiteTimeoutSeconds 1500`, 20:14 to 22:39 local, 2026-11-17): 282 suites,
+  1 failed, 2 known red (B5F-036), 0 spanned standby, 0 CI suites missing; all ten lanes exit 0; home hook files 0
+  changed before and during the sweep, 0 files written to the redirected home. The one failure is the start-command
+  allowance (below).
+- **The slow suites** (Throttle 3 against DRIFT-026's Throttle 6 figures, cap 1,500 s): `review-budget-loop` 1,000 s
+  (1,459 s), `review-loop-stops` 940 s (1,454 s), `message-identity` 752 s (1,421 s). Lane `f203-i001-t008-suites` took
+  932 s against its 1,500 s limit (DRIFT-027).
+- **Overlap with feature 206** (the crew's process sampler, every 30 s; it cannot tell 206's suites from the sweep's by
+  name): 206's final check ran 20:33:23 to 21:02:30. `review-budget-loop` ran about 20:50:31 to 21:06:57 and
+  `review-loop-stops` about 20:53:37 to 21:09:00, almost wholly inside that window; neither failed nor reached its cap.
+  `message-identity` and the start-command suite were not seen before the sampler stopped at 21:14, so they ran after
+  it.
+- **The suite phase** (sweep wall minus lanes): 8,685 − 3,034 = 5,651 s, against 4,814 s at `72ffa5500` and 4,619 s at
+  `0e8ccd890`, both Throttle 6: 1.17 and 1.22 times.
+- **The split trigger** (DRIFT-028) is not tripped: the reviewer session's call, under the maintainer's words of 18:58.
+  `review-budget-loop` is at 1,000 s, not more than 1,000 s, and ran almost wholly inside 206's window;
+  `review-loop-stops` is under; the suite phase is under 1.5 times. Throttle 3 stays the setting for this crew's sweeps:
+  every slow suite has 500 s or more of margin under the cap, at about a fifth more suite-phase time.
+- **Deferred item**: splitting `review-budget-loop.Tests.ps1` and `review-loop-stops.Tests.ps1` into two files each,
+  about 1 SP, with the measurement above beside it (1,000 s and 940 s at Throttle 3; 1,459 s and 1,454 s at Throttle
+  6; about 445 to 528 s alone, DRIFT-026). It is taken to the maintainer as a sized task if a later sweep trips the
+  trigger.
+- **The start-command allowance** (DRIFT-023's terms), used for this sweep (301 s, its own 300 s limit): it passed
+  alone at `5d1f3c1d1` in 219 s (22:41:39 to 22:45:18, scratch worktree under the crew's temp root, removed by its
+  path; home hook files identical before and after; 0 files written to the redirected home). The CI half is the
+  Contract lane on this push, recorded when CI concludes.
+- **Next** (the reviewer session's routine rulings): the gated push of Phase 9 and CI on every job; T022's trial starts
+  after the push, with CI followed in parallel and the trial stopped where it is if any job goes red.
+- **Class closure**: NONE — a measurement and process decisions; the split stays a deferred item, not a fix.
