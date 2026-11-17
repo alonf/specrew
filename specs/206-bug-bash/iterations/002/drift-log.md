@@ -597,3 +597,29 @@ The following resolution strategies remain available if drift is detected later 
 - **Resolution**: retro.md written by hand in iteration 001's retro's sections; review.md unchanged, as approved.
 - **Class closure**: NONE — the scaffold is the installed module's; the retro's improvement action 6 proposes it as a
   bug list item for the maintainer's word.
+
+### DRIFT-206-I002-024 — Git for Windows was removed twice by Visual Studio installer runs; every git step held (tooling)
+
+- **Recorded**: 2026-11-18, by the crew; the times and versions checked by the reviewer session.
+- **What**: a Visual Studio Installer update (running since 00:27 local) replaced Git for Windows. Git was unavailable
+  from 00:38:36 to about 01:04 local. A second installer session for another Visual Studio instance (started
+  01:08:26) removed it again from 01:12:28 until it finished at 01:21:49. Git was 2.55.0.5 before and
+  2.56.0.windows.4 after.
+- **Effect on this work**: two read-only calls failed in the first window and were not retried: a Bash (Git Bash) watch
+  of the CI rerun (exit 1, no output), and a Bash read of that watch's output at about 00:39. Between the windows the
+  crew ran only `git --version`, `git status` and `git log -1`, which all completed. No commit, push, sync or suite
+  ran in either window, and nothing was half-written. Afterwards HEAD `52c45561` and the retro sync's three
+  uncommitted files were exactly as left. The CI watch continued with `gh` from PowerShell.
+- **Process**: on the reviewer session's word, the maintainer typed the retro verdict only after the second
+  installer session finished. The crew checks `git --version` before each commit or push that night.
+- **Class closure**: NONE — a machine event, not a defect.
+
+### DRIFT-206-I002-025 — empty-result-retry failed alone on the retro push and passed on its one rerun (tooling)
+
+- **Recorded**: 2026-11-18, by the crew.
+- **What**: Specrew CI run `44185036150` on `1b40bb44` (the retro push), job Deterministic gate `134401278883`: the
+  F-198 honesty regression suite failed 1 of 131. The only failure was `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`
+  ("retries once and recovers when the second attempt produces the result": 3 passed, 1 failed).
+- **Rerun**: once, under the standing rerun exception (DRIFT-206-I002-020's list): `gh run rerun 44185036150 --failed`.
+  Attempt 2 succeeded. The head `52c45561` and `f9867637` were green on all three workflows without a rerun.
+- **Class closure**: NONE — bug list item 3 (HO-206-1), feature 203's to fix; a sighting.
