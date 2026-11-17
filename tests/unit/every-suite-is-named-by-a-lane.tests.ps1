@@ -498,6 +498,13 @@ function New-CensusFixture {
                 '      - name: A condition that is not on the list'
                 "        if: github.event_name == 'workflow_dispatch'"
                 '        run: pwsh -File tests/integration/only-under-an-unlisted-if.ps1'
+                # Iteration 002 review round 3, finding-c79fd0045cfa0bb1: runs-on written after steps: still decides the
+                # step's runner.os condition.
+                '  w:'
+                '    steps:'
+                "      - if: runner.os != 'Linux'"
+                '        run: pwsh -File tests/integration/only-under-if-before-runs-on.ps1'
+                '    runs-on: ubuntu-latest'
                 '  u:'
                 '    if: false'
                 '    runs-on: ubuntu-latest'
@@ -526,7 +533,8 @@ try {
             'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1',
             'tests/integration/only-in-a-multiline-block-comment.ps1', 'tests/integration/only-in-a-block-scalar.ps1',
             'tests/integration/only-in-an-input-named-steps.ps1', 'tests/integration/only-after-a-semicolon.ps1',
-            'tests/integration/only-under-a-step-if.ps1', 'tests/integration/only-under-a-job-if.ps1', 'tests/integration/only-under-an-unlisted-if.ps1')) {
+            'tests/integration/only-under-a-step-if.ps1', 'tests/integration/only-under-a-job-if.ps1', 'tests/integration/only-under-an-unlisted-if.ps1',
+            'tests/integration/only-under-if-before-runs-on.ps1')) {
         $probePath = Join-Path $fixture $probe
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
         [IO.File]::WriteAllText($probePath, "exit 0`n")
