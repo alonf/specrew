@@ -2053,6 +2053,12 @@ function Write-SpecrewTypedAct {
                 # as the catch below says a writer that threw. The caller reads only Written, so the report is made here.
                 try {
                     $unreservedShape = Get-SpecrewTypedAuthorityShape -Text ([string]$act.Text)
+                    # Feature 203 T021 (round E finding-a537d3f72672e5f5, DRIFT-084): a review-stop answer (allow reviewer,
+                    # defer / drop / fix finding) is no authority shape, so it was dropped here in silence; the prompt path
+                    # already reports it (HandoverStore's unreserved branch). Same fallback, same report.
+                    if ($null -eq $unreservedShape -and $null -ne (Get-SpecrewStopAnswerShape -Text ([string]$act.Text))) {
+                        $unreservedShape = [pscustomobject]@{ Kind = 'stop-answer'; Retype = ((([string]$act.Text).Trim()) -split '\r?\n')[0].Trim() }
+                    }
                     if ($null -ne $unreservedShape -and [string]$unreservedShape.Kind -cne 'approval-withdrawal') {
                         $null = Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $unreservedShape -EntryKey ([string]$act.TurnIdentity) -HostKind $HostKind -SessionId $SessionId -Reason 'not-saved' -NowUtc $NowUtc
                     }
