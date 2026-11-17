@@ -1255,6 +1255,125 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   pwsh when present, otherwise install from Microsoft's package feed. The class remains: the workflows install tools
   on every run with no retry and no pinned image (item 57). An iteration 003 candidate for the class.
 
+## 73. A session start between the plan approval and the before-implement approval makes the tasks sync impossible to pass (severity: major)
+
+- **Observed (2026-11-17, a downstream project on Specrew 0.40.0, iteration 002, relayed by the reviewer session as
+  candidate F; the maintainer's words at 18:12 local, "Yes, pass it"):** the tasks sync was refused twice. The reviewer
+  session checked the same code on main and on feature 203's branch that day.
+- **Why (by reading, on main):**
+  1. `scripts/internal/task-progress.ps1`, `Update-IterationStateFromTaskProgress` (about :600 to :612): when state.md
+     has no canonical Current Phase, the writer sets Current Phase `before-implement` and Iteration Status
+     `not-started`, with "Execution has not started yet." It is reached through a read verb, `Get-TaskProgressSummary`,
+     which `coordinator-resume.ps1` calls at every session start (item 70). The scaffold
+     (`scaffold-iteration-artifacts.ps1`) writes neither line.
+  2. `extensions/specrew-speckit/scripts/shared-governance.ps1`, `Get-SpecrewCrossingMirrorIssues`: a Current Phase
+     line must equal the last authorized boundary or the pending crossing. In `sync-boundary-state.ps1` the truth gate
+     (about :1819) runs before the sync records its own pending crossing (about :1957), so at a tasks sync only `plan`
+     is accepted and `before-implement` is refused as ahead of the record. The refusal advises correcting the line by
+     hand.
+  3. `scripts/internal/sync-boundary-state.ps1:837`: `phaseImpliesProgress` exempts only tasks, before-implement,
+     planning and not-started. `plan` is not exempt, so the hand-corrected page (Current Phase `plan` with "Execution
+     has not started yet.") is refused by the truth gate.
+- With the header lines present, no Current Phase value passes both checks at the tasks sync. The only repair is to
+  delete the lines and restore the scaffolded page, which the refusal does not say; its "repair through the normal
+  task-progress/resume/gate path" points at the writer that caused it (items 68 and 70).
+- **Failure scenario:** plan approved for iteration N; the session is resumed or a new one starts; the tasks sync is
+  refused with "Current Phase 'before-implement', but the last authorized boundary is 'plan'"; the crew sets the line
+  to `plan` as advised; the sync is refused again with "still says 'Execution has not started yet.'".
+- **Fix directions (not decided):** the writer does not invent a phase ahead of the store (it writes the store's last
+  authorized boundary, or no line); `:837` exempts every pre-implementation phase (specify, clarify, plan); the refusal
+  names the repair. Regression test: scaffold, authorize plan, run `Get-TaskProgressSummary`; the tasks sync then
+  passes. An iteration 003 candidate.
+
+## 74. Text rules read free prose through word lists: a structured line instead (design question)
+
+- **Observed (2026-11-17, review iteration 002 round 3):** three of round 3's findings (items 75 to 77) are phrasings
+  that round 2's word lists miss, or legitimate records they refuse. Each round finds more: a list of denying or
+  conditioning words is never complete, and widening it refuses more real records.
+- **The question:** where the validator must know that a record says a specific thing (a deferral names its deciding
+  decision; a Disposition records the maintainer's ruling), should the record carry a structured line the validator
+  reads exactly, for example `- **Deferred by**: <decision id>` in the verdict row's notes, or `- **Ruling**:
+  abandoned, <date>, <where>` in the Disposition, and leave the prose to the human? The rule would then be an allow-list
+  of one shape, as the maintainer's 2026-11-14 ruling already asks for the Disposition's sentence.
+- **Cost:** existing records would need the new line (T026's four rulings; any deferred row), or a read-both period.
+  For iteration 003's plan; not decided. Items 75, 76 and 77 point here.
+
+## 75. A deferred row's denial after the decision id, or in a word the list lacks, passes (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-7a83914b328c58d4`):** the deferred-row check
+  (`validate-governance.ps1`, T033) reads only the clause before the decision id. "decision D-12 does not cover this
+  task", "decision D-12 was rejected", "decision D-12 (withdrawn)" and "decision D-12 is still pending" pass; so do
+  words before the id that the list lacks: "needs", "awaits", "requires", "contrary to", "despite", "before", "should
+  decision D-12 be approved". The ledger check proves only that the id exists, not that the entry concerns the task.
+- See item 74 (the design question). An iteration 003 candidate.
+
+## 76. Natural deferral wording is refused, and words from other cells are read as the clause (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-0c9729b9966bade6`):** "until", "once", "not", "no"
+  and "if" anywhere in the last clause before the id refuse the row, and commas do not end a clause: "Deferred until
+  iteration 003 by decision D-12", "Not started, deferred by decision D-12" and "no capacity left, decision D-12" are
+  refused. Every column except Task and Verdict is joined, so "tests not run" in an Evidence cell is read as part of
+  the clause before a decision in Notes. The error says what to do, so the cost is friction, not a wrong pass.
+- See item 74. An iteration 003 candidate.
+
+## 77. The ruling's "(at ...)" note is guarded by a deny-list that misses common denials (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-8b5187ef052a4935`):** in
+  `Test-SpecrewIterationRulingRecorded` (`shared-governance.ps1`, T026) the affirmative form is an allow-list, but its
+  one free-text part, the "(at ...)" note, is guarded by denying words. "(at first, later rescinded)", "(at the stop,
+  since overturned)", "(at the time, reopened on review)", "(at the maintainer's request, to be confirmed)", "(at
+  present tentative)" and "(at the stop, cancelled the next day)" pass; "(at the 2026-11-14 stop, no objection)" is
+  refused for "no". A closed form for the note (no commas, or a short list of places) would keep the rule an
+  allow-list.
+- See item 74. An iteration 003 candidate.
+
+## 78. The lane census misreads an if: continued on the next line, or written with a quoted key (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-77b1862fd2bcb429`):** in
+  `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, `Get-WorkflowRunText` reads only an `if:` value's first line,
+  so `if: always()` continued by an indented `&& github.event_name == 'workflow_dispatch'` counts as running on every
+  push. A quoted key (`"if": false`) matches neither pattern, so the condition is ignored. A listed condition with an
+  inline comment (`if: always() # note`) is refused, a legitimate line read as not running. Block scalars are
+  refused, the safe side. An iteration 003 candidate.
+
+## 79. "Per push" accepts any branches filter, so a main-only workflow reads as run by every push (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-b6213f4d09d29d26`):** `Test-WorkflowRunsPerPush`
+  returns true for a push trigger with any `branches:` or `branches-ignore:` key and no paths filter; the patterns
+  are not read. `cross-platform-validation.yml` runs only for main, `feature/**`, `0*-*`, `1*-*` and `2*-*`, so a
+  branch named `300-...` would not start it. Today every per-push script is named in `specrew-ci.yml` (`branches:
+  ['**']`), so nothing is wrongly registered; the rule would accept moving one to a main-only workflow. An iteration
+  003 candidate.
+
+## 80. The lane census takes a runner.os term to hold under a matrix runs-on, and does not read continue-on-error (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-665d0c6f38a06f51`):** with `runs-on: ${{ matrix.os
+  }}`, a `runner.os` comparison is taken to hold (declared in the guard's comment), so a matrix of Ubuntu legs with
+  `if: runner.os == 'Windows'` names a suite that never runs. `continue-on-error` (step or job), a job's `needs:` on a
+  conditioned job, and a workflow trigger that excludes pushes for the step's event are not read; a suite under
+  `continue-on-error: true` is named though its failure cannot turn the run red.
+  `release-script-refuses-unasked-publish.tests.ps1` pins `continue-on-error` away for the two Windows jobs only. An
+  iteration 003 candidate.
+
+## 81. The two shim suites had no green CI run when round 3 read them (severity: note; answered)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-46dd269bed6f96cd`):** the `windows-shim-suites` job's
+  structure reads right, but no green run of either suite was in the frozen records, and neither suite runs in the
+  local lanes. Both build under a fixed `.scratch` folder in the checkout, harmless on a fresh runner.
+- **Answered after the round:** Specrew CI run `43985711026` on `ff6fe55e` passed the job, both suites included. Kept as
+  a note: the suites still run only in CI, so a local change to them has no local evidence.
+
+## 82. Four nightly stops read one shared message list, and two stops pass no message (severity: note)
+
+- **Observed (2026-11-17, review iteration 002 round 3, `finding-6389b64862f21650`, T030):** in
+  `validate-governance.ps1` the source-authorization, handoff-evidence, approved-status and boundary-canonical stops
+  all pass `@($script:ValidatorStopMessages)`, one list for the run, never cleared between checks. It is right only
+  while every check that adds a message also stops; a check that adds a message and returns 0 would have its message
+  written under a later stop. The boundary-canonical message carries the absolute state.md path and a line number, so
+  its fingerprint may depend on the checkout location unless normalisation removes paths (not read). The two
+  response-validation stops and the final per-iteration stop pass no `-FailureMessages`. Not verified for every call
+  site. An iteration 003 candidate.
+
 ## 52, one more sighting (2026-11-16)
 
 - On a downstream project on Specrew 0.40.0, the local validator failed review.md's evidence (round 34: "reviewed tree
@@ -1263,6 +1382,18 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   does not. Item 52 is not confined to this repository.
 - On this branch (2026-11-16), a `-ChangedOnly` run from the fallback base failed 197/006 and 206/001 on the local
   store, and both passed in a clean scratch worktree of `7b54d49d`.
+
+## 59 and 62, sightings in review round 3 (2026-11-17)
+
+- **Item 59:** after round 2's partial result, `pending-round-approval.json` still said `spent_at: null` for round 2.
+  The maintainer typed "approved for review round" and no capture was written; the stale entry blocked it, and nothing
+  told the maintainer. The crew then launched on the old entry, which the engine refused as already used, and only
+  then marked spent. The maintainer's next typed phrase was captured (08:20:46Z) and round 3 ran on it. So the
+  maintainer typed the approval twice and was told nothing the first time (DRIFT-206-I002-019).
+- **Item 62:** the round 3 reviewer ran 08:46:46Z to 08:51:47Z (about 300 s of 2400 s) and wrote "I stopped to publish
+  rather than on a clock reading". With only Read, Glob, Grep and Write it could not show a commit, so the scope's
+  "commit by commit" section could not be done on that host at all. Round 4's scope file gives the commit list, the
+  changed files and each fix by file and function instead.
 
 ## Iteration 002 Intake
 

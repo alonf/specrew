@@ -117,7 +117,7 @@ census, the workflow run list, the diff and the green Lint push.
 | Discovery/Spikes | 0.5 | T025's init-case cause; T028's release-script reading |
 | Implementation | 19.75 | T016, T017, T020 to T037, including the discovery above |
 | Review | allowance | Not priced in SP, apart from T038's records |
-| Rework | from slack | No buffer planned. Taken so far: round 1's nine fixes (about 1.5, DRIFT-206-I002-010); the Linux rework of the per-push suites, about 1.0 estimated (0.75, plus 0.25 for the Windows publish job) (DRIFT-206-I002-014); round 2's six fixes, about 3.0 estimated (maintainer, 2026-11-16 20:56, "OK for both"; DRIFT-206-I002-017). Actuals recorded at T038 |
+| Rework | from slack | No buffer planned. Taken so far: round 1's nine fixes (about 1.5, DRIFT-206-I002-010); the Linux rework of the per-push suites, about 1.0 estimated (0.75, plus 0.25 for the Windows publish job) (DRIFT-206-I002-014); round 2's six fixes, about 3.0 estimated (maintainer, 2026-11-16 20:56, "OK for both"; DRIFT-206-I002-017); the CI fixes on 7b54d49d, about 0.5 (maintainer, 2026-11-17 01:52, "You can apply both"; DRIFT-206-I002-018); round 3's four fixes with records, about 1.5 (maintainer, 2026-11-17 18:13, "206 round 3: fix four"; DRIFT-206-I002-019). About 7.5 SP over the plan's 20 by estimate. Actuals recorded at T038 |
 
 ## Traceability Summary
 

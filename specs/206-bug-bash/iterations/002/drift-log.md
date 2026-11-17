@@ -468,3 +468,49 @@ The following resolution strategies remain available if drift is detected later 
 - **Effort**: about 0.5 SP with the records, inside round 2's rework.
 - **Class closure**: deferred — bug list item 72 (a runner image change turns a push red; item 57's class), and item
   57.
+
+### DRIFT-206-I002-019 — review round 3 ended partial with 12 findings; the maintainer chose to fix four and then run round 4 (human-decision)
+
+- **Recorded**: 2026-11-17, by the crew.
+- **The approval**: after round 2's partial result, `pending-round-approval.json` still held round 2's entry with
+  `spent_at: null`. The maintainer typed "approved for review round" and no capture was written. The crew then
+  launched on the old entry; the engine refused it as already used, and only then marked it spent. The reviewer
+  session ruled: when a typed approval is not captured, stop and report, and never launch on an older approval. The
+  maintainer's next typed phrase was captured at 08:20:46Z, and round 3 ran on it. A first launch failed because
+  `--pause-choice` needs `--feature`; the relaunch passed `--feature 206-bug-bash`. Bug list item 59, sighting.
+- **Round**: run `run-20261117-082153391-a5841b35` (campaign `cmp-206-bug-bash-i002`, round 3 of 4), head `ff6fe55e`,
+  baseline `7c006d67`, timeout 2400 s, host `claude-code-file-primary`.
+  - Preflight took 1480 s: unit 890 s, changed-integration 243 s, census 11 s, structural 13 s, governance 19 s, hash
+    1 s. The lanes ran longer than round 2's (unit 678 s at `7b54d49d`). The cause is not known; feature 203's sweep
+    was not running at the time.
+  - The reviewer ran 08:46:46Z to 08:51:47Z (about 300 s) and published a partial candidate: verdict incomplete, 12
+    findings (1 major, 9 minor, 2 notes), none blocking. It wrote "I stopped to publish rather than on a clock
+    reading". It covered Section 2 and part of Section 1b. It could not cover Section 1a, the nine round 1 fixes commit
+    by commit: its tools are Read, Glob, Grep and Write, so it could not show a commit (bug list item 62, sighting).
+  - The major finding carried "Failure scenario:" and was not demoted.
+- **Triage** (sent to the reviewer session before the decision): fix now `finding-f194651984ecf15e` (major, about
+  0.25), `finding-877eda7300798107` (0.25), `finding-a9d93413b59ece33` (0.25) and `finding-c79fd0045cfa0bb1` (0.5),
+  plus 0.25 for the records; the rest to the bug list (items 75 to 82), with the shared design question written once
+  (item 74).
+- **Decision**: the maintainer's answer of 2026-11-17 18:13 local, relayed by specrewreviewer-98, to the options "206
+  round 3: fix four, round 4 on Codex", "206 round 3: fix four, round 4 on Claude" and stop: "206 round 3: fix four"
+  we are still on claude.
+  - The reviewer session reads "we are still on claude" as the Claude reviewer host for round 4. That is its reading,
+    not a quoted option, and it will confirm it with the maintainer before the round is requested.
+  - It is a scope decision, not an approval: round 4 needs a fresh typed approval.
+- **Done**, one RED commit and one fix commit per finding:
+  - `finding-f194651984ecf15e` RED 2/12 `2eeba428`, GREEN 12/12 `54c70599`.
+  - `finding-877eda7300798107` RED 1/14 `16fcff2c`, GREEN 14/14 `46b74cb7`.
+  - `finding-a9d93413b59ece33` RED 1/54 `70cb1571`, GREEN 54/54 `6cefbbe4`; the four recorded rulings (174/007,
+    197/006, 198/010, 198/011) still read.
+  - `finding-c79fd0045cfa0bb1` RED 1/92 `6860bfef`, GREEN 92/92 `1b793a5c`.
+  - Also checked: 019/001's governance result is the same under the old and the new validator.
+- **Records**: bug list items 73 (the downstream candidate F, relayed with the maintainer's "Yes, pass it", 18:12
+  local) to 82, and the item 59 and 62 sightings; round 4's scope file, written for a reviewer with no shell.
+- **CI on `ff6fe55e`** (round 3's head): all three workflows green (Specrew CI `43985711026`, with
+  `windows-shim-suites` passing both suites; Cross-Platform Validation `43985710873`; Test `43985710819`).
+- **Effort**: about 1.5 SP. The iteration's rework so far, by estimate: round 1 about 1.5, the Linux rework about 1.0,
+  round 2 about 3.0, the CI fixes about 0.5, round 3 about 1.5: **about 7.5 SP over a plan of 20, with no buffer
+  planned**. Actuals are recorded at T038.
+- **Class closure**: deferred — bug list items 74 to 82 (round 3's other findings and the design question), and items
+  59 and 62 (the review engine, feature 203's).
