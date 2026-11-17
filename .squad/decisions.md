@@ -1,5 +1,23 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-17 — Verdict: 206 iteration 002 gap ledger - every open item deferred to the next bug bash
+
+- **Decision ID**: f206-i002-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Iteration**: specs\206-bug-bash\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-17T21:42:16Z
+- **Next Action**: Each item waits as a bug list item (`specs/206-bug-bash/bug-list.md`) for the next bug bash; item
+  86, round 4's major, is marked first.
+- **Disposition**: The open items in iteration 002's review.md Gap Ledger, accepted with the maintainer's typed
+  `approved for review-signoff` (2026-11-17, captured 21:42:16Z) on a record that lists each one as deferred:
+  (1) round 4's four findings, bug list items 86 to 89, carried when the maintainer typed `stop the review here`;
+  (2) round 3's eight findings not fixed, items 75 to 82, with the design question item 74 ("206 round 3: fix four",
+  2026-11-17); (3) round 2's F7 to F9, items 63 to 65 ("OK for both", 2026-11-16); (4) round 1's F8, a note:
+  SC-001's and SC-002's scripts run in CI and the release sweep, not in the review preflight; (5) items 15, 16, 19,
+  20, 28 and 35, cut with Option B (2026-11-15); (6) items 36 and 38, later by the plan, and items 40, 42 and 43,
+  feature 203's code, a hand-over or after its merge.
+
 ### 2026-11-14 — Verdict: 206 iteration 001 gap ledger - every open item deferred to iteration 002
 
 - **Decision ID**: f206-i001-gap-ledger-deferrals

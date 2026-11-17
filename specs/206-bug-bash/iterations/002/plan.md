@@ -63,7 +63,7 @@ decision (2026-11-15, 11:31 local, relayed; DRIFT-206-002). Design: Option B
 | T035 | The capture redraws the closeout dashboard after the mirrors and before the seal; a failed redraw warns and never blocks the seal (D3-a; failing test first) | FR-017, SC-010 | US2 | 1.25 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/.specrew-extension-runtime.json, tests/unit/** | done | | | |
 | T036 | The mirror write that moves plan.md to complete writes the Completed date; the closeout arrival lists open hardening rows in the pending-verdict artifact (D4-a; failing tests first) | FR-018, SC-011 | US2 | 1.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, .specify/extensions/specrew-speckit/.specrew-extension-runtime.json, tests/unit/** | done | | | |
 | T037 | The two reviewer-brief promotions from iteration 001's retro, in this iteration's review brief | FR-003, FR-011 | US3 | 0.25 | Implementer | specs/206-bug-bash/iterations/002/** | done | | | |
-| T038 | Review sign-off records; the record is pushed before its verdict and Lint stays green (SC-009 in use) | SC-009 | US2 | 0.25 | Implementer | specs/206-bug-bash/iterations/002/** | planned | | | |
+| T038 | Review sign-off records; the record is pushed before its verdict and Lint stays green (SC-009 in use) | SC-009 | US2 | 0.25 | Implementer | specs/206-bug-bash/iterations/002/** | done | | | |
 
 ## FR to test mapping
 

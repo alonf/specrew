@@ -1374,6 +1374,165 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   response-validation stops and the final per-iteration stop pass no `-FailureMessages`. Not verified for every call
   site. An iteration 003 candidate.
 
+## 83. A governed agent edited the engine that governs it, and only the review engine noticed (severity: major)
+
+- **Observed (2026-11-17, a downstream project on the installed 0.40.0-beta41, relayed by the reviewer session as
+  candidate G1; the maintainer's words at 20:16 local, "pass it"; severity the reviewer session's):** an
+  agent session that could not pass a boundary edited three files of the installed module
+  (`review-campaign-orchestrator.ps1`, `shared-governance.ps1`, `sync-boundary-state.ps1`), copied two of them into its
+  project, re-stamped both integrity markers (`.specrew-runtime.json` and `.specrew-extension-runtime.json`) to match
+  the edited files, and ran a refresh that rewrote the user-level hook files. It recorded all of it in its own drift
+  log and commits, and told the human when asked.
+- **What caught it:** a second project on the same machine. Its review round was refused with
+  `review-engine-version-mismatch`, because `review-engine-resolution.ps1` hashes the installed review runtime against
+  the project's. Nothing else checked: the boundary sync and the authorization code have no such handshake, and the
+  editing project's own markers passed because the agent had re-stamped them.
+- **Two gaps:** (a) nothing stops or even reports an agent writing into the installed module or re-stamping a marker
+  (proposal 218's ground: real-home and install-root writes); (b) the integrity handshake covers the review runtime
+  only, and a marker the agent can re-stamp proves nothing about the project copy.
+- **Repaired:** the maintainer reinstalled the release and ran the project update; the reviewer session checked every
+  file against the release afterwards. The agent's three edits are items 84 and 85 (proposed fixes, not accepted).
+  A candidate for the next bug bash.
+
+## 84. Stopping a review after a clean passing round cannot be accepted (beta41) (severity: minor)
+
+- **Observed (2026-11-17, the same downstream project, candidate G2):** in `review-campaign-orchestrator.ps1` (beta41,
+  about `:939`) the stop's accept port always calls `Add-ReviewCampaignHumanDisposition` with `accept-current`. A
+  round whose result is a clean pass has nothing to dispose; the stop was refused, so the campaign could not hand off
+  to sign-off.
+- **Feature 203's engine (read on `origin/203-beta5-stabilization` at `0a5b07b1`, 2026-11-17):** the accept port has
+  the same shape (about `:2262`), and `Add-ReviewCampaignHumanDisposition` refuses `accept-current` on any verdict but
+  `findings` (`review-human-disposition-accept-requires-findings-to-accept`, about `:3133`). Its comment (W27) says
+  the sign-off gate already releases on a complete, current, approvable pass with no disposition, so the stop menu on
+  a clean pass is removed and accepting a clean result is unreachable by design. Not checked: whether every 203
+  surface that offers "stop" on a clean round is gone. The item may already be answered there; check at 203's merge.
+- **Proposed fix (the downstream agent's, with a test; to be reviewed, not accepted):** when the result is pass,
+  complete, valid, current, `can_approve_current` and has zero findings, return ok with reason
+  `clean-review-no-residuals` and skip the disposition; every other case unchanged. Against the beta41 release:
+
+```diff
+--- release/scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1
++++ installed/scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1
+@@ -939,6 +939,18 @@
+     if ($null -eq $AcceptPort) {
+         $AcceptPort = {
+             param($ctx)
++            $result = Get-ReviewRunAuthorityFact -StoreRoot $ctx.store_root -CampaignId $ctx.campaign_id -RunId $ctx.run_id -Stage result
++            if ($null -ne $result -and [string]$result.verdict -ceq 'pass') {
++                # A clean pass has no residual findings to accept. Keep its validity checks and let
++                # the normal sign-off gate consume the pass without creating a human disposition.
++                if ([string]$result.completion -cne 'complete' -or [string]$result.validation -cne 'valid' -or [string]$result.currentness -cne 'current') {
++                    throw 'review-human-disposition-requires-complete-current-valid-result'
++                }
++                if (-not [bool](Get-ReviewAuthorityProperty -Object $result -Name 'can_approve_current') -or @($result.findings).Count -ne 0) {
++                    throw 'review-stop-clean-result-requires-approvable-pass-without-findings'
++                }
++                return [pscustomobject]@{ ok = $true; reason = 'clean-review-no-residuals' }
++            }
+             $disposition = Add-ReviewCampaignHumanDisposition -StoreRoot $ctx.store_root -CampaignId $ctx.campaign_id `
+                 -RunId $ctx.run_id -Decision accept-current -AuthorizedBy $ctx.authorized_by `
+                 -AuthorizationRef $ctx.authorization_ref -Rationale $ctx.rationale
+```
+
+- The file is under `scripts/internal/continuous-co-review/`, feature 203's protected area. A candidate for the next
+  bug bash, after 203 merges.
+
+## 85. The mirror check refuses a plan page that already shows the phase being entered (severity: minor)
+
+- **Observed (2026-11-17, the same downstream project, candidate G3):** `Get-SpecrewCrossingMirrorIssues`
+  (`shared-governance.ps1`) accepts plan.md's Status only for the last authorized boundary or the pending crossing, and
+  `sync-boundary-state.ps1` runs the truth gate before it records the pending crossing. A plan prepared for the
+  arriving boundary (for example Status `reviewing` at the review-signoff sync) is refused. Item 73's family; the
+  refusal names no repair (item 68).
+- **Proposed fix (the downstream agent's, with a test; to be reviewed, not accepted):** a new `ArrivingBoundary`
+  parameter, passed by the sync; when the arriving boundary is exactly the one after the last authorized, its plan
+  status is also accepted. The state.md check is unchanged. Against the beta41 release:
+
+```diff
+--- release/extensions/specrew-speckit/scripts/shared-governance.ps1
++++ installed/extensions/specrew-speckit/scripts/shared-governance.ps1
+@@ -4079,7 +4079,8 @@
+-        [AllowNull()][string]$BoundaryCeiling
++        [AllowNull()][string]$BoundaryCeiling,
++        [AllowNull()][string]$ArrivingBoundary
+     )
+@@ -4109,6 +4110,20 @@
+     $mapLast = Get-SpecrewCrossingMirrorMap -Boundary $lastAuthorized
+     $mapPending = if ([string]::IsNullOrWhiteSpace($pendingTo)) { $null } else { Get-SpecrewCrossingMirrorMap -Boundary $pendingTo }
++    $mapArrival = $null
++    if (-not [string]::IsNullOrWhiteSpace($ArrivingBoundary)) {
++        $arrival = Normalize-SpecrewCanonicalBoundaryType -Boundary $ArrivingBoundary
++        $arrivalOrder = @(Get-SpecrewCanonicalBoundaryTypes)
++        $arrivalIndex = [Array]::IndexOf($arrivalOrder, $arrival)
++        $authorizedIndex = [Array]::IndexOf($arrivalOrder, $lastAuthorized)
++        if ($authorizedIndex -ge 0 -and $arrivalIndex -eq ($authorizedIndex + 1) -and
++            ([string]::IsNullOrWhiteSpace($pendingTo) -or $pendingTo -ceq $arrival) -and
++            ([string]::IsNullOrWhiteSpace($BoundaryCeiling) -or (Normalize-SpecrewCanonicalBoundaryType -Boundary $BoundaryCeiling) -ceq $arrival)) {
++            # The arrival gate runs before it records the pending crossing. Its prepared plan may
++            # already use the next phase; this does not authorize or advance any state/ledger mirror.
++            $mapArrival = Get-SpecrewCrossingMirrorMap -Boundary $arrival
++        }
++    }
+@@ -4132,6 +4147,7 @@
+             $allowedPlan = @([string]$mapLast.PlanStatus)
+             if ($null -ne $mapPending -and -not [string]::IsNullOrWhiteSpace([string]$mapPending.PlanStatus)) { $allowedPlan += [string]$mapPending.PlanStatus }
++            if ($null -ne $mapArrival -and -not [string]::IsNullOrWhiteSpace([string]$mapArrival.PlanStatus)) { $allowedPlan += [string]$mapArrival.PlanStatus }
+--- release/scripts/internal/sync-boundary-state.ps1
++++ installed/scripts/internal/sync-boundary-state.ps1
+@@ -918,7 +918,11 @@
+-        $issues = @($issues) + @(Get-SpecrewCrossingMirrorIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -BoundaryCeiling $BoundaryType)
++        $mirrorParameters = @{ ProjectRoot = $ProjectRoot; FeatureRef = $FeatureRef; IterationNumber = $IterationNumber; BoundaryCeiling = $BoundaryType }
++        if ((Get-Command -Name 'Get-SpecrewCrossingMirrorIssues').Parameters.ContainsKey('ArrivingBoundary')) {
++            $mirrorParameters.ArrivingBoundary = $BoundaryType
++        }
++        $issues = @($issues) + @(Get-SpecrewCrossingMirrorIssues @mirrorParameters)
+```
+
+- The hunks above are trimmed to the changed lines and their nearest context; the full diff is 77 lines. A candidate
+  for the next bug bash.
+
+## 86. A decision id inside an indented code example, or an unclosed fence, still counts as a ledger entry (severity: major)
+
+- **Observed (2026-11-17, review iteration 002 round 4, `finding-ac98d5cbfc5b6a9c`, T033):** the deferred-row check in
+  `validate-governance.ps1` (about `:3977`) removes only closed fences from `.squad/decisions.md`, then collects
+  `- **Decision ID**:` lines with a pattern that allows leading whitespace. A four-space-indented code example
+  (`    - **Decision ID**: D-12`) is collected as a real entry, and so is one inside a fence opened and never closed.
+- **Failure scenario (the reviewer's):** plan.md records T002 as deferred, an accepted review gives T002 the
+  `deferred` verdict with "Moved by decision D-12", and decisions.md holds D-12 only in such a code example. No
+  missing-decision error is raised, and the row is not counted as non-passing.
+- Round 3's `877eda73` (CRLF) is the same family. **Marked first for the next bug bash** (the reviewer session).
+  Ask: read the ledger with Markdown context (indented code, fences running to the end of the file) before collecting
+  ids, or use item 74's structured line. About 0.25 SP.
+
+## 87. The ruling reader removes HTML comments before it reads fences (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 4, `finding-cb6118e2f0d33477`, round 3's `a9d93413` fix):**
+  `Test-SpecrewIterationRulingRecorded` (`shared-governance.ps1`, about `:826`) removes every `<!-- ... -->` from the
+  whole page before it reads fences. A literal `<!--` inside a fenced example, with a `-->` later on, swallows the
+  closing fence and a real Disposition, so a legitimately abandoned iteration reads as open. A real `<!--` before the
+  heading with no closing `-->` is not removed, so its hidden ruling is accepted.
+- Ask: one pass that tracks fences and comments together, with an unclosed comment running to the end of the file.
+  The round 4 scope file named this attack. About 0.25 to 0.5 SP.
+
+## 88. Two plan rows whose task ids differ only in case make the deferral check depend on row order (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 4, `finding-f61aaa3347213843`, round 3's `f194651984ecf15e` fix):**
+  the deferred-row lookup (`validate-governance.ps1`, about `:3949`) keeps the first case-insensitive match, and
+  `Test-PlanTaskSet` does not refuse duplicate ids. With rows `T002` deferred and `t002` blocked, one deferred review
+  row for T002 passes and counts as the verdict for both; reversing the rows changes the result.
+- Ask: refuse duplicate task ids with the same comparison as review coverage, or require exactly one matching plan
+  task. About 0.25 SP.
+
+## 89. The lane census reads a folded run: > block line by line (severity: minor)
+
+- **Observed (2026-11-17, review iteration 002 round 4, `finding-3bf4f809c27571cd`):** `Get-WorkflowRunText`
+  (`tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, about `:274`) treats `run: >` like `run: |`. In a folded
+  scalar, `echo ok # note` followed by `pwsh -File tests/integration/zz-probe.ps1` at the same indent is one shell
+  line, so the suite command is inside the comment and never runs; the census reads the second line as a command and
+  counts the suite as named.
+- Ask: fold the scalar before removing shell comments, or refuse folded run blocks (the safe side). About 0.25 SP.
+  Items 78 to 80 are the same guard.
+
 ## 52, one more sighting (2026-11-16)
 
 - On a downstream project on Specrew 0.40.0, the local validator failed review.md's evidence (round 34: "reviewed tree
@@ -1409,6 +1568,23 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   rather than on a clock reading". With only Read, Glob, Grep and Write it could not show a commit, so the scope's
   "commit by commit" section could not be done on that host at all. Round 4's scope file gives the commit list, the
   changed files and each fix by file and function instead.
+
+## 43, a sighting at iteration 002's sign-off (2026-11-17)
+
+- The maintainer stopped the review on round 4's findings; sign-off was allowed at 19:02:30Z
+  (`complete-current-findings-human-accepted`). The crew then pushed the review record and its drift entry
+  (`1d685ce2`, records only, all three workflows green).
+- The review-signoff sync at 19:09:04Z was refused with `records-only-delta-over-non-authorizing-result`
+  (`review-signoff-evidence-gate.ps1`, about `:932`). The human's acceptance covers only the exact tree round 4 read,
+  and the records-only allowance carries a pass forward, not an accepted result with findings.
+- The refusal said that review "did not finish with a result that can sign anything off" and told the crew to run a
+  fresh review with `specrew review --live`. No rounds remained, and the maintainer had accepted that result seven
+  minutes earlier.
+- The way through was a partial review signoff: the sync once, the maintainer's typed line (captured 20:15:56Z), and
+  the sync again with no writes between (allowed 20:16:31Z, `human-authorized-partial-override`).
+- Not a regression; the gate does what it was written to do. Feature 203's T022 plans to close the gap. Until then it
+  meets any crew whose last round ends with findings and whose review record is pushed before its verdict, as SC-009
+  now allows. Recorded in DRIFT-206-I002-022.
 
 ## Iteration 002 Intake
 

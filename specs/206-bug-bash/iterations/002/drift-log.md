@@ -565,3 +565,24 @@ The following resolution strategies remain available if drift is detected later 
 - **Effort**: no code since round 3's fixes. The iteration's rework stands at about 7.5 SP over 20 by estimate;
   actuals at the retro.
 - **Class closure**: deferred — bug list items 86 to 89.
+
+### DRIFT-206-I002-022 — the review-signoff sync refused a records-only push after the stop; a partial review signoff carried it (human-decision)
+
+- **Recorded**: 2026-11-17, by the crew, after the review-signoff verdict (the stop-to-sign-off rule held it until
+  then).
+- **What happened**: after the stop (sign-off allowed 19:02:30Z), the crew pushed the review record and DRIFT-021 as
+  `1d685ce2` (records only; Test `44155317149`, Specrew CI `44155317228`, Cross-Platform Validation `44155317005`,
+  all green). The review-signoff sync at 19:09:04Z was refused with `records-only-delta-over-non-authorizing-result`:
+  the human's acceptance of round 4's findings covers only the tree round 4 read, and the records-only allowance
+  carries only a pass forward. The refusal advised a fresh review round; none remained.
+- **Decision**: the maintainer typed `approved for partial review signoff - round 4 read the whole iteration and I
+  stopped on it; only review.md and the drift log changed since` (captured 20:15:56Z). The crew ran the sync again
+  with no writes between; it was allowed at 20:16:31Z (`human-authorized-partial-override`, run
+  `run-20261117-175417271-a471ffb6`) and recorded the crossing to review-signoff.
+- **Verdict**: the maintainer typed `approved for review-signoff` (captured 21:42:16Z). The sync's writes were
+  committed as `4fad6f5f`.
+- **Not a regression**: feature 203's T022 plans to close the gap. Until then any crew that pushes its review record
+  before its verdict (SC-009) after a last round with findings meets it. Bug list item 43 carries the sighting. The
+  packet's two discussion prompts (fix item 86 now; warn 205 and 203) were not taken up: item 86 stays on the bug
+  list, and the warning is the reviewer session's to relay.
+- **Class closure**: deferred — feature 203's T022; bug list item 43.
