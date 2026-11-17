@@ -49,6 +49,14 @@ Describe 'T025: one reader of the hook run''s git snapshot' {
         $extension | Should -Not -BeNullOrEmpty
         $bootstrap | Should -BeExactly $extension
     }
+
+    It 'the transcript-tail reader''s two copies are identical too' {
+        $read = { param([string]$Path) [regex]::Match(([IO.File]::ReadAllText($Path) -replace "`r`n", "`n"), '(?s)function Get-SpecrewHookTranscriptTailLines \{.*?\n\}\n').Value }
+        $extension = & $read $script:ExtensionCopy
+        $bootstrap = & $read (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1')
+        $extension | Should -Not -BeNullOrEmpty
+        $bootstrap | Should -BeExactly $extension
+    }
 }
 
 Describe 'T025: a snapshot answers only for the project it was taken in' {

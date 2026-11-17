@@ -1221,6 +1221,51 @@ function New-DispatcherHookGitSnapshot {
     catch { return $null }
 }
 
+function New-DispatcherHookTranscriptTail {
+    # Feature 203 T025 (DRIFT-073): ONE transcript tail read per hook run, handed to the providers. A Stop run read the
+    # tail five times in three processes: three 2 MB windows in the handover's stores and two Get-Content -Tail in the
+    # conformance provider, which is seconds-scale on a large transcript on Windows. The dispatcher reads the same 2 MB
+    # backward window once, writes it beside a small record of what it is (the transcript's full path and its length
+    # then), and names the record in SPECREW_HOOK_TRANSCRIPT_TAIL. Get-SpecrewHookTranscriptTailLines answers from it only
+    # while the transcript is exactly that long - a host still flushing the turn makes it grow, and then the reader reads
+    # the file as before - and only for a window it covers. Returns the record's path and the window's, or $null.
+    param([AllowNull()][string]$TranscriptPath)
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { return $null }
+    try {
+        $source = [System.IO.Path]::GetFullPath($TranscriptPath)
+        if (-not [System.IO.File]::Exists($source)) { return $null }
+        $fs = [System.IO.File]::Open($source, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+        try {
+            $length = $fs.Length
+            if ($length -le 0) { return $null }
+            $window = [int64][Math]::Min($length, [int64]2097152)
+            [void]$fs.Seek(-$window, [System.IO.SeekOrigin]::End)
+            $bytes = New-Object byte[] ([int]$window)
+            $offset = 0
+            while ($offset -lt $window) {
+                $read = $fs.Read($bytes, $offset, ([int]$window - $offset))
+                if ($read -le 0) { break }
+                $offset += $read
+            }
+            if ($offset -ne $window) { return $null }
+        }
+        finally { $fs.Dispose() }
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) 'specrew-hook-run'
+        [void][System.IO.Directory]::CreateDirectory($directory)
+        foreach ($stale in @([System.IO.Directory]::GetFiles($directory, 'tail-*'))) {
+            try { if (([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($stale)).TotalMinutes -gt 30) { [System.IO.File]::Delete($stale) } } catch { $null = $_ }
+        }
+        $stem = Join-Path $directory ('tail-{0}-{1}' -f $PID, [guid]::NewGuid().ToString('N').Substring(0, 12))
+        $tailPath = $stem + '.bin'
+        $metaPath = $stem + '.json'
+        [System.IO.File]::WriteAllBytes($tailPath, $bytes)
+        $meta = [ordered]@{ schema = '1'; source_path = $source; source_length = $length; window_bytes = $window; tail_path = $tailPath }
+        [System.IO.File]::WriteAllText($metaPath, ($meta | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
+        return [pscustomobject]@{ meta = $metaPath; tail = $tailPath }
+    }
+    catch { return $null }
+}
+
 # ---------------------------------------------------------------------------
 # Per-session runtime state (FR-009/FR-010 surface; T007 state-diff + dedupe).
 # State files live under .specrew/runtime/ (gitignored), keyed by the SANITIZED
@@ -2082,9 +2127,15 @@ try {
     # Feature 203 T025: one git snapshot for this hook run, for the providers that read git state; inherited by each
     # provider process through the environment and removed when the providers are done.
     $hookGitSnapshotPath = $null
+    $hookTranscriptTail = $null
     if (@($providers | Where-Object { [string]$_.id -in @('handover', 'conformance', 'co-review-navigator', 'bootstrap') }).Count -gt 0) {
         $hookGitSnapshotPath = New-DispatcherHookGitSnapshot -ProjectRoot $projectRoot
         if (-not [string]::IsNullOrWhiteSpace($hookGitSnapshotPath)) { $env:SPECREW_HOOK_GIT_SNAPSHOT = $hookGitSnapshotPath }
+        # The same hand-over for the transcript's tail, for the providers that read it.
+        if (@($providers | Where-Object { [string]$_.id -in @('handover', 'conformance') }).Count -gt 0) {
+            $hookTranscriptTail = New-DispatcherHookTranscriptTail -TranscriptPath ([string]$turnRecord.transcript_path)
+            if ($null -ne $hookTranscriptTail) { $env:SPECREW_HOOK_TRANSCRIPT_TAIL = [string]$hookTranscriptTail.meta }
+        }
     }
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
@@ -2304,6 +2355,10 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($hookGitSnapshotPath)) {
         Remove-Item Env:\SPECREW_HOOK_GIT_SNAPSHOT -ErrorAction SilentlyContinue
         try { [System.IO.File]::Delete($hookGitSnapshotPath) } catch { $null = $_ }
+    }
+    if ($null -ne $hookTranscriptTail) {
+        Remove-Item Env:\SPECREW_HOOK_TRANSCRIPT_TAIL -ErrorAction SilentlyContinue
+        foreach ($handedOverFile in @([string]$hookTranscriptTail.meta, [string]$hookTranscriptTail.tail)) { try { [System.IO.File]::Delete($handedOverFile) } catch { $null = $_ } }
     }
 
     if ($null -ne $sessionState -and -not $stateCorrupt -and $stateDirty) {

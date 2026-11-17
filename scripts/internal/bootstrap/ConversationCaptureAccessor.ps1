@@ -129,6 +129,51 @@ function Test-SpecrewTurnIsHumanVerdictEvidence {
     return -not (Test-SpecrewConversationMachineryEnvelope -Text ([string](Get-SpecrewConversationProp $Turn 'text')))
 }
 
+function Get-SpecrewHookTranscriptTailLines {
+    # Feature 203 T025 (DRIFT-073): the transcript tail the hook dispatcher read once for this hook run, found through
+    # SPECREW_HOOK_TRANSCRIPT_TAIL; $null whenever it cannot answer exactly what reading $Path now would, and the caller
+    # reads the file itself as before: another transcript, a transcript that has grown since (a host still flushing the
+    # turn), a wider byte window than was handed over, an unknown schema, or anything unreadable.
+    #   -MaxBytes: the backward byte window Get-SpecrewTranscriptTailLines reads (the same clamp, the same dropped partial
+    #              first line when the window starts mid-file); the lines come back as that reader returns them.
+    #   -MinLines: Get-Content -Tail semantics instead - the last MinLines complete lines, answered only when the window
+    #              holds that many complete lines or the whole file.
+    # The same reader lives in scripts/internal/bootstrap/ConversationCaptureAccessor.ps1 for the bootstrap side; a test
+    # keeps the two identical.
+    [OutputType([string[]])]
+    param([AllowNull()][string]$Path, [int]$MaxBytes = 2097152, [int]$MinLines = 0)
+    $metaPath = [string]$env:SPECREW_HOOK_TRANSCRIPT_TAIL
+    if ([string]::IsNullOrWhiteSpace($metaPath) -or [string]::IsNullOrWhiteSpace($Path)) { return $null }
+    try {
+        $cached = Get-Variable -Name 'SpecrewHookTranscriptTailCache' -Scope Script -ValueOnly -ErrorAction SilentlyContinue
+        $handOver = if ($null -ne $cached -and [string]$cached.meta_path -ceq $metaPath) { $cached } else { $null }
+        if ($null -eq $handOver) {
+            if (-not [System.IO.File]::Exists($metaPath)) { return $null }
+            $meta = [System.IO.File]::ReadAllText($metaPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+            if ([string]$meta.schema -cne '1' -or -not [System.IO.File]::Exists([string]$meta.tail_path)) { return $null }
+            $handOver = [pscustomobject]@{ meta_path = $metaPath; meta = $meta; bytes = [System.IO.File]::ReadAllBytes([string]$meta.tail_path) }
+            Set-Variable -Name 'SpecrewHookTranscriptTailCache' -Scope Script -Value $handOver
+        }
+        $meta = $handOver.meta
+        if ([string]$meta.source_path -cne [System.IO.Path]::GetFullPath($Path)) { return $null }
+        $sourceLength = [int64]$meta.source_length
+        if (-not [System.IO.File]::Exists($Path) -or [System.IO.FileInfo]::new($Path).Length -ne $sourceLength) { return $null }
+        $window = [int64]$handOver.bytes.Length
+        if ($window -ne [int64]$meta.window_bytes -or $window -gt $sourceLength) { return $null }
+        $bytesToRead = if ($MinLines -gt 0) { $window } else { [int64][Math]::Min($sourceLength, [int64][Math]::Max(4096, $MaxBytes)) }
+        if ($bytesToRead -gt $window -or $bytesToRead -le 0) { return $null }
+        $text = [System.Text.Encoding]::UTF8.GetString($handOver.bytes, [int]($window - $bytesToRead), [int]$bytesToRead)
+        $parts = @($text -split "`r?`n")
+        $wholeFile = ($bytesToRead -ge $sourceLength)
+        if (-not $wholeFile -and $parts.Count -gt 1) { $parts = @($parts | Select-Object -Skip 1) }
+        if ($MinLines -le 0) { return , @($parts) }
+        if ($parts.Count -gt 0 -and $parts[-1] -eq '') { $parts = @($parts | Select-Object -First ($parts.Count - 1)) }
+        if (-not $wholeFile -and $parts.Count -lt $MinLines) { return $null }
+        return , @($parts | Select-Object -Last $MinLines)
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewTranscriptTailLines {
     # Fast bounded tail reader for hook hot paths. Get-Content -Tail is seconds-scale on large Codex JSONL
     # transcripts on Windows; Stop hooks call this several times, so use a backward byte window and drop the
@@ -141,6 +186,9 @@ function Get-SpecrewTranscriptTailLines {
         [int]$MaxBytes = 2097152
     )
     if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+    # Feature 203 T025: the tail the hook dispatcher read once for this hook run answers when it is exactly this read.
+    $handedOver = Get-SpecrewHookTranscriptTailLines -Path $Path -MaxBytes $MaxBytes
+    if ($null -ne $handedOver) { return @($handedOver | Select-Object -Last $MaxLines) }
     try {
         $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
         try {

@@ -348,7 +348,9 @@ function Get-SpecrewLongTurnSignal {
     $result = [pscustomobject]@{ long = $false; assistant_entries = 0; hash = '' }
     try {
         if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
-        $tail = @(Get-Content -LiteralPath $TranscriptPath -Tail 200 -Encoding UTF8 -ErrorAction Stop)
+        # Feature 203 T025: the tail the hook dispatcher read once for this hook run answers when it holds these 200 lines.
+        $handedTail = if (Get-Command -Name 'Get-SpecrewHookTranscriptTailLines' -ErrorAction SilentlyContinue) { Get-SpecrewHookTranscriptTailLines -Path $TranscriptPath -MinLines 200 } else { $null }
+        $tail = if ($null -ne $handedTail) { @($handedTail) } else { @(Get-Content -LiteralPath $TranscriptPath -Tail 200 -Encoding UTF8 -ErrorAction Stop) }
         $assistantRx = [regex]::new('"type"\s*:\s*"assistant"')
         $userRx = [regex]::new('"type"\s*:\s*"user"')
         $messageIdRx = [regex]::new('"id"\s*:\s*"(msg_[^"]*)"')
@@ -1144,7 +1146,9 @@ try {
     $rawTail = ''
     if (-not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) {
         try {
-            $rawTail = (@(Get-Content -LiteralPath $transcriptPathArg -Tail 40 -Encoding UTF8 -ErrorAction Stop) -join "`n")
+            # Feature 203 T025: the tail the hook dispatcher read once for this hook run answers when it holds these 40 lines.
+            $handedRaw = if (Get-Command -Name 'Get-SpecrewHookTranscriptTailLines' -ErrorAction SilentlyContinue) { Get-SpecrewHookTranscriptTailLines -Path $transcriptPathArg -MinLines 40 } else { $null }
+            $rawTail = if ($null -ne $handedRaw) { (@($handedRaw) -join "`n") } else { (@(Get-Content -LiteralPath $transcriptPathArg -Tail 40 -Encoding UTF8 -ErrorAction Stop) -join "`n") }
             foreach ($mm in ([regex]::new('(?i)\bspecify(?:\.exe)?\s+workflow\b')).Matches($rawTail)) {
                 $pre = $rawTail.Substring([Math]::Max(0, $mm.Index - 24), [Math]::Min(24, $mm.Index))
                 if ($pre.Contains([char]96) -or ($pre -match '(?i)\b(not|never|raw|un|forbidden|avoid|don)\b')) { continue }  # prohibition/quote prose, not an invocation
