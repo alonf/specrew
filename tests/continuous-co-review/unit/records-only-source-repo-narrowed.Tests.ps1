@@ -181,6 +181,16 @@ Describe 'T022 records rule: in the source repository these are source, and a co
         Test-RecordsOnly -Paths @('docs/methodology/README.md') | Should -BeFalse
     }
 
+    It 'on a case-sensitive volume, Markdown and text are told by extension whatever its case' {
+        # The extension says what kind of file it is, not which file it is: notes.MD is Markdown to every agent that loads
+        # it, so on a case-sensitive volume it must not fall back to today's answer (records) by missing the new rule.
+        Mock -CommandName Get-ContinuousCoReviewPathComparison -MockWith { [StringComparison]::Ordinal }
+        Test-RecordsOnly -Paths @('templates/NOTES.MD') | Should -BeFalse -Because 'an upper-case .MD is still Markdown outside a records place'
+        Test-RecordsOnly -Paths @('tests/fixtures/OUTPUT.TXT') | Should -BeFalse -Because 'an upper-case .TXT is still text outside a records place'
+        Test-RecordsOnly -Paths @('docs/beta5-findings.MD') | Should -BeTrue -Because 'a records place keeps its records under any extension case'
+        Test-RecordsOnly -Paths @('docs/examples/check.PS1') | Should -BeFalse -Because 'a non-Markdown file under docs/ is source'
+    }
+
     It 'a records file riding with one source file still stales' {
         Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/drift-log.md', 'templates/coordinator-instructions.md') | Should -BeFalse
     }
