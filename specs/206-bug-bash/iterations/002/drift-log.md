@@ -527,3 +527,41 @@ The following resolution strategies remain available if drift is detected later 
 - It joins the existing list on the same terms: `co-review-service.Tests.ps1:129`, `empty-result-retry.Tests.ps1`, and
   the HookRenderDedupe timing cases (I3a, I4b). This entry ends when 203's T017 reaches this branch through main.
 - **Class closure**: NONE — a decision on the CI rule, not a defect.
+
+### DRIFT-206-I002-021 — round 4 on Codex read the whole iteration; the maintainer stopped the review (human-decision)
+
+- **Recorded**: 2026-11-17, by the crew.
+- **Before the round**: CI green on `266bb3af` (Test `44131785889`, Specrew CI `44131785816`, Cross-Platform Validation
+  `44131785641`) and on the records push `33cffa14` (`44138580455`, `44138580236`, `44138580368`). The six lanes
+  passed in the review layout on `266bb3af` in 1025 s; the home hook files hashed the same before and after.
+- **The approval**: round 3's approval was still unspent, so a fresh typed one would have been folded into it (bug
+  list item 59). The maintainer typed the withdrawal in the crew's session (captured 17:46:15Z: the pending record
+  removed, a withdrawn line in `captures.jsonl` and `.specrew/authority/withdrawals.jsonl`), then the round approval
+  (captured 17:53:35Z, no minted ref, not spent). Each was checked by its date and state fields only. The prompt hook
+  also said the round line "reads as a verdict for 'review'" with no crossing pending; that is the boundary-verdict
+  path, and the round capture landed separately.
+- **The reviewer host**: Codex, on the reviewer session's recommendation and the maintainer's words of 18:58 local,
+  "206: You want the crew to spawn codex to do it, or do you want me?" (the reviewer session's reading: Codex, launched
+  by the crew). Launch: `--host codex --code-writer-host claude --pause-choice 1 --baseline-ref 7c006d67
+  --design-context-ref review-scope-round-4.md --timeout-seconds 3600` (the reviewer session's routine ruling).
+  - Before the round the crew ran `codex --version` from the worktree, against its own rule. The repository did not
+    change; it wrote `~/.codex/tmp/arg0-windows/codex-arg0lDKDkK/` at 16:59:15Z.
+- **Round**: run `run-20261117-175417271-a471ffb6`, head `33cffa14`, harness `codex-cli-file-primary`. Preflight 17:54:24Z
+  to 18:12:57Z (about 1113 s); the reviewer ran 18:12:58Z to 18:21:13Z. Verdict findings, complete, current, valid.
+  - It covered every section, the nine round 1 fixes included, checked the commit list against git, and confirmed the
+    cherry-pick's patch id. It ran no tests.
+  - Findings: `finding-ac98d5cbfc5b6a9c` (major), `finding-cb6118e2f0d33477`, `finding-f61aaa3347213843`,
+    `finding-3bf4f809c27571cd`: bug list items 86 to 89.
+- **Codex in the home**: 147 entries new or changed in `~/.codex`, all inside the round's window: skills (72), plugin
+  cache (50), cache (6), tmp (5), the session's rollout log (3), its sqlite logs and state (9), the sandbox log and a
+  lock directory. Four entries under `tmp/arg0-windows` were removed. The 16:56Z entries seen before the round were
+  already there, most likely the Codex app's own refresh. Nothing else in the home changed.
+- **Decision**: the maintainer typed `stop the review here` in the crew's session (just before 18:33Z). The crew carried it
+  with `--pause-choice 2` at 18:33Z, with 203's sweep running beside it on the reviewer session's scheduling ruling;
+  the final check ran until 19:02:30Z (about 1747 s) and sign-off completed (gate record reason
+  `complete-current-findings-human-accepted`). The home hook files hashed the same after it.
+- **Also recorded at the next records commit** (after the review-signoff verdict, by the stop-to-sign-off rule): bug
+  list items 73 and 83 to 89, the item 59 and 62 additions, and the defer entries for the review's gap ledger.
+- **Effort**: no code since round 3's fixes. The iteration's rework stands at about 7.5 SP over 20 by estimate;
+  actuals at the retro.
+- **Class closure**: deferred — bug list items 86 to 89.
