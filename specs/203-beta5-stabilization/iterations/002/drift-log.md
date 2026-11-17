@@ -686,6 +686,35 @@ The following resolution strategies remain available if drift is detected later 
 - **T021 done**: round E `finding-a537d3f72672e5f5`, the stop-answer fallback on the recovery path, reported at the
   next message, with nothing recorded (`typed-act-writer` case 9b, 52 of 52).
 - **Class closure**: T021 by case 9b's stop-answer case. The trial is NONE — a process decision, measured on T022.
+- **The trial round on T022** (records-rule half; accepted by the reviewer session as reported): RED `ddafb0009`
+  (22:55 local; `records-only-source-repo-narrowed` red 16 of 31, the FR-009 case `:112` amended, red 1 of 11); Codex
+  (CLI 0.166.0, `gpt-6.1-sol`, reasoning high) ran 22:58:58 to 23:02:25, exit 0, first try, no fallback and no
+  follow-up brief; its patch changed only the two named functions and one private helper beside them (+49/−2); the
+  crew's runs: 31 of 31, 11 of 11, the nine other suites that load the gate, and `path-identity` 18 green; committed
+  `adedce10e` at 23:09:32 naming Codex and its model. Codex's tokens: 912,232 input (862,720 cached), 5,101 output.
+- **The method, as run**: a plain clone at the RED commit in a temp folder the crew created, deleted afterwards by
+  its exact path. Removed from the clone before the run: `.agents` (the reviewer session's rule), and the tracked
+  `.specrew` (so that no `.specrew` afterwards proves no hook wrote there), `.codex` (Codex agent definitions) and
+  `AGENTS.md` (Codex loads it as instructions) — the reviewer session ruled these right and part of the method. TEMP
+  and TMP inside the clone; `SPECREW_REFOCUS_DISABLE=1` and `SPECREW_DISABLE_EVENTS` set; the brief limited Codex to
+  two functions and forbade commits, specrew commands and the governed folders. Proof: no `.specrew`, `.codex` or
+  `.agents` in the clone after the run; no hook journal entry with the clone's path; the 12 home hook files identical;
+  the `--json` log shows 14 commands, all in the clone, only the two named test files run, and a read-only probe for
+  `AGENTS.md` up the folder chain to the home folder.
+- **Codex wrote to the user's Codex config**: despite `--ignore-user-config`, `~/.codex/config.toml` gained
+  `[projects.'c:\users\alon\appdata\local\temp\t022-codex-cbf94547'] trust_level = "trusted"` at the run's start
+  (lower-cased, while the `-c` override was mixed case). The `-c` trust override, or Codex itself, persisted an entry
+  for a temp path, so each such run would add one. Left in place; removing it is the maintainer's (the reviewer session
+  is telling them).
+- **The measurement** (the reviewer session's, from the crew's transcript by time window): T020 21 replies and 18,164
+  output tokens; T021 17 replies and 12,006; the trial round 52 replies and 49,442, of which the RED 23 replies and
+  25,377, and the setup, Codex run, verification, commit and report 29 replies and 24,065. The supervision alone cost
+  more than either task the crew wrote whole.
+- **Conclusion** (the reviewer session's, for the maintainer): the pattern is safe and the patch was good, but it does
+  not save Claude budget at this task size, because test-first puts the work in the tests. Unless the maintainer says
+  otherwise, no further Codex-writer rounds in this iteration. T022's gate half is the crew's, with 206's stop-on-
+  findings sequence as its RED, and takes the two minor points of the patch: the helper's header comment, and the
+  extension check on a case-sensitive volume, with a test.
 
 ### DRIFT-030 — Phase 9 swept green at Throttle 3; the split of the two slow suites is deferred with its measurement
 
