@@ -521,7 +521,7 @@ The following resolution strategies remain available if drift is detected later 
 - **Decision**: the maintainer's words of 2026-11-17 19:00 local, relayed by specrewreviewer-98 after it explained the
   test and what the rule allows: "rerun: add reviewer-hook-suppression for 205 and 206".
 - **What it allows**: when Specrew CI fails only on case 1 of
-  `tests/continuous-co-review/integration/reviewer-hook-suppression.Tests.ps1` (the stdout read that feature 203 fixed
+  `tests/continuous-co-review/unit/reviewer-hook-suppression.Tests.ps1` (the stdout read that feature 203 fixed
   in its T017, not yet on this branch), the crew reruns the failed job once and records the sighting with the run and
   job ids. A second failure of the same job stops the work for a report.
 - It joins the existing list on the same terms: `co-review-service.Tests.ps1:129`, `empty-result-retry.Tests.ps1`, and
