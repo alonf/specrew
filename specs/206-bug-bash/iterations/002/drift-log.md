@@ -586,3 +586,14 @@ The following resolution strategies remain available if drift is detected later 
   packet's two discussion prompts (fix item 86 now; warn 205 and 203) were not taken up: item 86 stays on the bug
   list, and the warning is the reviewer session's to relay.
 - **Class closure**: deferred — feature 203's T022; bug list item 43.
+
+### DRIFT-206-I002-023 — the retro scaffold refused review.md's verdict line again; retro.md written without it
+
+- **Recorded**: 2026-11-17, at the retro.
+- **What**: `scaffold-retro-artifact.ps1 -IterationDirectory specs/206-bug-bash/iterations/002 -DryRun` threw
+  "review.md contains an invalid overall verdict: 'accepted: four rounds ...'". It reads the whole verdict line as the
+  value, while the governance check accepts `accepted` followed by its explanation. This is the third sighting, after
+  feature 205's DRIFT-024 and DRIFT-206-I001-028.
+- **Resolution**: retro.md written by hand in iteration 001's retro's sections; review.md unchanged, as approved.
+- **Class closure**: NONE — the scaffold is the installed module's; the retro's improvement action 6 proposes it as a
+  bug list item for the maintainer's word.
