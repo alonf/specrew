@@ -17,6 +17,11 @@ BeforeAll {
     $script:Project = Join-Path $script:Work 'proj'
     $null = & git clone -q --shared --no-checkout $script:RepoRoot $script:Project 2>&1
     $null = & git -C $script:Project -c advice.detachedHead=false checkout -q --detach ([string](& git -C $script:RepoRoot rev-parse HEAD)) 2>&1
+    # The checkout's uncommitted changes to tracked files ride along, so the case judges the code as it stands (in a sweep
+    # or in CI the tree is committed and this applies nothing).
+    $pending = Join-Path $script:Work 'pending.patch'
+    & git -C $script:RepoRoot diff HEAD --binary | Set-Content -LiteralPath $pending -Encoding utf8NoBOM
+    if ((Get-Item -LiteralPath $pending).Length -gt 0) { $null = & git -C $script:Project apply --whitespace=nowarn $pending 2>&1 }
     $context = [ordered]@{
         schema_version       = '1.0'
         session_state        = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = '203-beta5-stabilization'; iteration_number = '002' }

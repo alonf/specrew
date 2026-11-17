@@ -2066,7 +2066,22 @@ function Update-SpecrewRollingHandover {
         # the material change (self-trigger: the untracked .specrew seed made EVERY nested PostToolUse
         # "material", and the parent-scan pin in WritePathRepoRootGate red since the iter-007 scoped-scan
         # change). Materiality means the USER changed something; Specrew's own runtime churn does not.
-        try { $st = (& git -C $ProjectRoot status --porcelain -- . ':(exclude).specrew' 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+        # Feature 203 T025: the hook run's one git snapshot lists the same scope (`-- .`, every untracked file); a change
+        # is any entry outside the project's .specrew, which is what the exclude pathspec below asks git for.
+        $changeSnapshot = if (Get-Command -Name 'Get-SpecrewHookGitSnapshot' -ErrorAction SilentlyContinue) { Get-SpecrewHookGitSnapshot -ProjectRoot $ProjectRoot } else { $null }
+        if ($null -ne $changeSnapshot -and [bool]$changeSnapshot.status_ok) {
+            $changePrefix = ([string]$changeSnapshot.prefix).Trim() -replace '\\', '/'
+            $hasChange = @($changeSnapshot.status_lines | ForEach-Object { [string]$_ } | Where-Object { $_.Length -ge 4 } | Where-Object {
+                    $entryPath = $_.Substring(3).Trim()
+                    if ($entryPath -match ' -> ') { $entryPath = ($entryPath -split ' -> ')[-1] }
+                    $entryPath = $entryPath.Trim('"') -replace '\\', '/'
+                    if ($changePrefix -and $entryPath.StartsWith($changePrefix, [System.StringComparison]::Ordinal)) { $entryPath = $entryPath.Substring($changePrefix.Length) }
+                    -not ($entryPath -ceq '.specrew' -or $entryPath.StartsWith('.specrew/', [System.StringComparison]::Ordinal))
+                }).Count -gt 0
+        }
+        else {
+            try { $st = (& git -C $ProjectRoot status --porcelain -- . ':(exclude).specrew' 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+        }
     }
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
     # Prop-145 round-4 (HIGH): a conversation-only turn (clean tree, same boundary) is NOT a git/boundary "material
@@ -2079,7 +2094,9 @@ function Update-SpecrewRollingHandover {
     $refreshReason = if ($mc.material) { $mc.reason } else { 'end-of-turn conversation refresh (no git/boundary delta)' }
 
     $head = ''
-    try { $head = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
+    $headSnapshot = if (Get-Command -Name 'Get-SpecrewHookGitSnapshot' -ErrorAction SilentlyContinue) { Get-SpecrewHookGitSnapshot -ProjectRoot $ProjectRoot } else { $null }
+    if ($null -ne $headSnapshot -and [bool]$headSnapshot.head_ok) { $head = ([string]$headSnapshot.head_short).Trim() }
+    else { try { $head = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ } }
     $sinceCommit = if ($null -ne $existing) { [string]$existing.from_commit } else { $null }
     $delta = Get-SpecrewSessionDelta -ProjectRoot $ProjectRoot -SinceCommit $sinceCommit
 

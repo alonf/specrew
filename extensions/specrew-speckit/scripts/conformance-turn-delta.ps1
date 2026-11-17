@@ -7,6 +7,30 @@
 $script:SpecrewTurnManagedPathPattern = '^\.(agents|claude|copilot|cursor|github|specify|squad|specrew)[/\\]|^\.(gitattributes|gitignore|markdownlint\.json)$'
 $script:SpecrewTurnStartEvents = @('userpromptsubmit', 'preinvocation')
 
+function Get-SpecrewHookGitSnapshot {
+    # Feature 203 T025 (DRIFT-073): the git snapshot the hook dispatcher took once for this hook run, found through
+    # SPECREW_HOOK_GIT_SNAPSHOT, when it describes $ProjectRoot; $null otherwise, and the caller asks git itself exactly as
+    # before. A snapshot about another root, an unreadable file or an unknown schema is never used. The same reader lives
+    # in scripts/internal/bootstrap/ProjectMetadataAccessor.ps1 for the bootstrap side; a test keeps the two identical.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$ProjectRoot)
+    $path = [string]$env:SPECREW_HOOK_GIT_SNAPSHOT
+    if ([string]::IsNullOrWhiteSpace($path) -or [string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    try {
+        $cached = Get-Variable -Name 'SpecrewHookGitSnapshotCache' -Scope Script -ValueOnly -ErrorAction SilentlyContinue
+        $snapshot = if ($null -ne $cached -and [string]$cached.path -ceq $path) { $cached.snapshot } else { $null }
+        if ($null -eq $snapshot) {
+            if (-not [System.IO.File]::Exists($path)) { return $null }
+            $snapshot = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+            Set-Variable -Name 'SpecrewHookGitSnapshotCache' -Scope Script -Value ([pscustomobject]@{ path = $path; snapshot = $snapshot })
+        }
+        $wanted = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd([char]'\', [char]'/')
+        if ([string]$snapshot.schema -cne '1' -or [string]$snapshot.project_root -cne $wanted) { return $null }
+        return $snapshot
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewTurnHash {
     [CmdletBinding()]
     param([AllowEmptyString()][string]$Text)
@@ -46,16 +70,26 @@ function Get-SpecrewTurnSnapshot {
     }
 
     try {
-        $inside = ([string](& git -C $ProjectRoot rev-parse --is-inside-work-tree 2>$null)).Trim()
-        if ($LASTEXITCODE -ne 0 -or $inside -ne 'true') { return $empty }
-        $prefix = ([string](& git -C $ProjectRoot rev-parse --show-prefix 2>$null)).Trim() -replace '\\', '/'
-        if ($LASTEXITCODE -ne 0) { return $empty }
+        # Feature 203 T025: the hook run's one git snapshot answers these when it describes this project; its listing is
+        # the exact command below (porcelain v1, every untracked file, core.quotepath=false, `-- .`).
+        $hookSnapshot = Get-SpecrewHookGitSnapshot -ProjectRoot $ProjectRoot
+        if ($null -ne $hookSnapshot -and [bool]$hookSnapshot.rev_parse_ok -and [bool]$hookSnapshot.status_ok) {
+            $prefix = ([string]$hookSnapshot.prefix).Trim() -replace '\\', '/'
+            $head = if ([bool]$hookSnapshot.head_ok) { [string]$hookSnapshot.head } else { '(unborn)' }
+            $statusLines = @($hookSnapshot.status_lines | ForEach-Object { [string]$_ })
+        }
+        else {
+            $inside = ([string](& git -C $ProjectRoot rev-parse --is-inside-work-tree 2>$null)).Trim()
+            if ($LASTEXITCODE -ne 0 -or $inside -ne 'true') { return $empty }
+            $prefix = ([string](& git -C $ProjectRoot rev-parse --show-prefix 2>$null)).Trim() -replace '\\', '/'
+            if ($LASTEXITCODE -ne 0) { return $empty }
 
-        $head = ([string](& git -C $ProjectRoot rev-parse HEAD 2>$null)).Trim()
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($head)) { $head = '(unborn)' }
+            $head = ([string](& git -C $ProjectRoot rev-parse HEAD 2>$null)).Trim()
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($head)) { $head = '(unborn)' }
 
-        $statusLines = @(& git -c core.quotepath=false -C $ProjectRoot status --porcelain=v1 --untracked-files=all -- . 2>$null)
-        if ($LASTEXITCODE -ne 0) { return $empty }
+            $statusLines = @(& git -c core.quotepath=false -C $ProjectRoot status --porcelain=v1 --untracked-files=all -- . 2>$null)
+            if ($LASTEXITCODE -ne 0) { return $empty }
+        }
 
         $entries = [System.Collections.Generic.List[object]]::new()
         foreach ($rawLine in $statusLines) {

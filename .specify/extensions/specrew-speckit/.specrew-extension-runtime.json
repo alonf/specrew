@@ -256,7 +256,7 @@
     },
     {
       "path": "scripts/conformance-turn-delta.ps1",
-      "sha256": "fbc786561ece0518e8c12b446453af42a42eb19df1b3e9efb5f06d8b5dd36e79"
+      "sha256": "58972bc8a53244bc22a257f8062899681438221c33b1ff7cf979455ece0942b6"
     },
     {
       "path": "scripts/create-governed-feature.ps1",
@@ -432,7 +432,7 @@
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
-      "sha256": "34a7f8ef4b68834c702e3f44003a2b83f024878862a3bf46bc8c740da85a65d2"
+      "sha256": "76febf4b10c5785a06b8199a89516dcf88f9faa23fd723751d4989605b7c1439"
     },
     {
       "path": "scripts/sync-boundary-state.ps1",

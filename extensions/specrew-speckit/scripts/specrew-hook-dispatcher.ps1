@@ -1169,6 +1169,58 @@ function Invoke-ProviderProcess {
     }
 }
 
+function New-DispatcherHookGitSnapshot {
+    # Feature 203 T025 (F3, the hook cost; DRIFT-073): ONE git snapshot per hook run, handed to the providers. Each
+    # provider is its own pwsh process, and each re-asked the same read-only questions - is this a work tree, the
+    # prefix, HEAD, the short HEAD, the branch, the last subject, the working tree's status: 23 git processes per Stop
+    # run on 3ced8938b, about 0.2 s each. The dispatcher asks them once, in three processes, and writes the answers to a
+    # file the providers find through SPECREW_HOOK_GIT_SNAPSHOT (Get-SpecrewHookGitSnapshot reads it). A provider that
+    # finds no snapshot for its own project root asks git itself, exactly as before, so a missing or failed snapshot
+    # costs time and never changes an answer. The status listing is taken as the turn-delta core always took it
+    # (porcelain v1, every untracked file, core.quotepath=false, confined to the project with `-- .`).
+    # Returns the snapshot file's path, or $null when no snapshot was written.
+    param([AllowNull()][string]$ProjectRoot)
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    try {
+        $root = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd([char]'\', [char]'/')
+        $revParse = @(& git -C $root rev-parse --is-inside-work-tree --show-prefix --abbrev-ref HEAD 2>$null)
+        $revParseOk = ($LASTEXITCODE -eq 0 -and $revParse.Count -eq 3 -and ([string]$revParse[0]).Trim() -ceq 'true')
+        $headLines = @(& git -C $root log -1 '--format=%H%n%h%n%s' 2>$null)
+        $headOk = ($LASTEXITCODE -eq 0 -and $headLines.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$headLines[0]))
+        $statusLines = @()
+        $statusOk = $false
+        if ($revParseOk) {
+            $statusLines = @(& git -c core.quotepath=false -C $root status --porcelain=v1 --untracked-files=all -- . 2>$null | ForEach-Object { [string]$_ })
+            $statusOk = ($LASTEXITCODE -eq 0)
+        }
+        $snapshot = [ordered]@{
+            schema       = '1'
+            project_root = $root
+            taken_at     = [DateTimeOffset]::UtcNow.ToString('o')
+            rev_parse_ok = $revParseOk
+            inside       = $(if ($revParseOk) { ([string]$revParse[0]).Trim() } else { '' })
+            prefix       = $(if ($revParseOk) { ([string]$revParse[1]).Trim() } else { '' })
+            branch       = $(if ($revParseOk) { ([string]$revParse[2]).Trim() } else { '' })
+            head_ok      = $headOk
+            head         = $(if ($headOk) { ([string]$headLines[0]).Trim() } else { '' })
+            head_short   = $(if ($headOk) { ([string]$headLines[1]).Trim() } else { '' })
+            subject      = $(if ($headOk -and $headLines.Count -ge 3) { ([string]$headLines[2]).Trim() } else { '' })
+            status_ok    = $statusOk
+            status_lines = @($statusLines)
+        }
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) 'specrew-hook-run'
+        [void][System.IO.Directory]::CreateDirectory($directory)
+        # Snapshots of earlier runs that did not get to remove their own (a killed hook) are cleared here.
+        foreach ($stale in @([System.IO.Directory]::GetFiles($directory, 'git-*.json'))) {
+            try { if (([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($stale)).TotalMinutes -gt 30) { [System.IO.File]::Delete($stale) } } catch { $null = $_ }
+        }
+        $path = Join-Path $directory ('git-{0}-{1}.json' -f $PID, [guid]::NewGuid().ToString('N').Substring(0, 12))
+        [System.IO.File]::WriteAllText($path, ($snapshot | ConvertTo-Json -Depth 4 -Compress), [System.Text.UTF8Encoding]::new($false))
+        return $path
+    }
+    catch { return $null }
+}
+
 # ---------------------------------------------------------------------------
 # Per-session runtime state (FR-009/FR-010 surface; T007 state-diff + dedupe).
 # State files live under .specrew/runtime/ (gitignored), keyed by the SANITIZED
@@ -2027,6 +2079,13 @@ try {
     $stopBlockProviders = New-Object System.Collections.Generic.List[string]
     # Feature 203 T006: the lines providers marked for the human (Split-DispatcherVisibleLines).
     $visibleLines = New-Object System.Collections.Generic.List[string]
+    # Feature 203 T025: one git snapshot for this hook run, for the providers that read git state; inherited by each
+    # provider process through the environment and removed when the providers are done.
+    $hookGitSnapshotPath = $null
+    if (@($providers | Where-Object { [string]$_.id -in @('handover', 'conformance', 'co-review-navigator', 'bootstrap') }).Count -gt 0) {
+        $hookGitSnapshotPath = New-DispatcherHookGitSnapshot -ProjectRoot $projectRoot
+        if (-not [string]::IsNullOrWhiteSpace($hookGitSnapshotPath)) { $env:SPECREW_HOOK_GIT_SNAPSHOT = $hookGitSnapshotPath }
+    }
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
         $providerId = [string]$provider.id
@@ -2241,6 +2300,10 @@ try {
             # Provider WARNs pass through once (visible, attributable).
             [Console]::Error.Write($result.StdErr)
         }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($hookGitSnapshotPath)) {
+        Remove-Item Env:\SPECREW_HOOK_GIT_SNAPSHOT -ErrorAction SilentlyContinue
+        try { [System.IO.File]::Delete($hookGitSnapshotPath) } catch { $null = $_ }
     }
 
     if ($null -ne $sessionState -and -not $stateCorrupt -and $stateDirty) {

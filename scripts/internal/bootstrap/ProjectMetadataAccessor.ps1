@@ -780,6 +780,30 @@ function Get-SpecrewWorkshopLifecycleState {
     }
 }
 
+function Get-SpecrewHookGitSnapshot {
+    # Feature 203 T025 (DRIFT-073): the git snapshot the hook dispatcher took once for this hook run, found through
+    # SPECREW_HOOK_GIT_SNAPSHOT, when it describes $ProjectRoot; $null otherwise, and the caller asks git itself exactly as
+    # before. A snapshot about another root, an unreadable file or an unknown schema is never used. The same reader lives
+    # in scripts/internal/bootstrap/ProjectMetadataAccessor.ps1 for the bootstrap side; a test keeps the two identical.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$ProjectRoot)
+    $path = [string]$env:SPECREW_HOOK_GIT_SNAPSHOT
+    if ([string]::IsNullOrWhiteSpace($path) -or [string]::IsNullOrWhiteSpace($ProjectRoot)) { return $null }
+    try {
+        $cached = Get-Variable -Name 'SpecrewHookGitSnapshotCache' -Scope Script -ValueOnly -ErrorAction SilentlyContinue
+        $snapshot = if ($null -ne $cached -and [string]$cached.path -ceq $path) { $cached.snapshot } else { $null }
+        if ($null -eq $snapshot) {
+            if (-not [System.IO.File]::Exists($path)) { return $null }
+            $snapshot = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+            Set-Variable -Name 'SpecrewHookGitSnapshotCache' -Scope Script -Value ([pscustomobject]@{ path = $path; snapshot = $snapshot })
+        }
+        $wanted = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd([char]'\', [char]'/')
+        if ([string]$snapshot.schema -cne '1' -or [string]$snapshot.project_root -cne $wanted) { return $null }
+        return $snapshot
+    }
+    catch { return $null }
+}
+
 function Test-SpecrewIsGitRepoRoot {
     # F-174 iter-10 (Prop-145 round-6, HIGH): is $ProjectRoot the TOP-LEVEL of its own git repo (or a worktree
     # root)? `git rev-parse --show-prefix` answers in O(repo-depth), NOT O(tree): empty output + exit 0 ==
@@ -795,6 +819,9 @@ function Test-SpecrewIsGitRepoRoot {
     [OutputType([bool])]
     param([Parameter(Mandatory)][string] $ProjectRoot)
     try {
+        # Feature 203 T025: the hook run's one git snapshot answers this when it describes this project.
+        $hookSnapshot = Get-SpecrewHookGitSnapshot -ProjectRoot $ProjectRoot
+        if ($null -ne $hookSnapshot -and [bool]$hookSnapshot.rev_parse_ok) { return [string]::IsNullOrEmpty(([string]$hookSnapshot.prefix).Trim()) }
         $prefix = (& git -C $ProjectRoot rev-parse --show-prefix 2>$null)
         return (($LASTEXITCODE -eq 0) -and [string]::IsNullOrEmpty(([string]$prefix).Trim()))
     }
@@ -819,6 +846,11 @@ function Get-SpecrewGitScanScope {
     [OutputType([pscustomobject])]
     param([Parameter(Mandatory)][string] $ProjectRoot)
     try {
+        # Feature 203 T025: the hook run's one git snapshot answers this when it describes this project.
+        $hookSnapshot = Get-SpecrewHookGitSnapshot -ProjectRoot $ProjectRoot
+        if ($null -ne $hookSnapshot -and [bool]$hookSnapshot.rev_parse_ok) {
+            return [pscustomobject]@{ InWorkTree = $true; Prefix = ([string]$hookSnapshot.prefix).Trim() }
+        }
         $inside = (& git -C $ProjectRoot rev-parse --is-inside-work-tree 2>$null)
         if ($LASTEXITCODE -ne 0 -or ([string]$inside).Trim() -ne 'true') {
             return [pscustomobject]@{ InWorkTree = $false; Prefix = '' }
@@ -876,9 +908,18 @@ function Get-SpecrewSessionDelta {
     if (-not $scanScope.InWorkTree) { return Get-SpecrewEmptySessionDelta }
 
     $branch = ''; $headShort = ''; $headSubject = ''
-    try { $branch = ([string](& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $null = $_ }
-    try { $headShort = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
-    try { $headSubject = ([string](& git -C $ProjectRoot log -1 --format=%s 2>$null)).Trim() } catch { $null = $_ }
+    # Feature 203 T025: the hook run's one git snapshot carries the branch, the short HEAD and the subject. Its status
+    # listing is taken with core.quotepath=false, so a path with non-ASCII characters reads as itself here rather than
+    # git's octal-quoted form; the files listed are the same.
+    $hookSnapshot = Get-SpecrewHookGitSnapshot -ProjectRoot $ProjectRoot
+    if ($null -ne $hookSnapshot -and [bool]$hookSnapshot.rev_parse_ok -and [bool]$hookSnapshot.head_ok) {
+        $branch = ([string]$hookSnapshot.branch).Trim(); $headShort = ([string]$hookSnapshot.head_short).Trim(); $headSubject = ([string]$hookSnapshot.subject).Trim()
+    }
+    else {
+        try { $branch = ([string](& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $null = $_ }
+        try { $headShort = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
+        try { $headSubject = ([string](& git -C $ProjectRoot log -1 --format=%s 2>$null)).Trim() } catch { $null = $_ }
+    }
 
     $uncommittedFiles = @()
     try {
@@ -887,7 +928,10 @@ function Get-SpecrewSessionDelta {
         # `-- .` confines the scan to $ProjectRoot's subtree (the cwd via -C) so a nested project never walks the
         # parent repo. status --porcelain returns REPO-ROOT-relative paths, so strip the subtree prefix back to
         # project-relative (Prefix='' at the repo root -> the strip is a no-op).
-        $porcelain = @(& git -C $ProjectRoot status --porcelain --untracked-files=all -- . 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        $porcelain = if ($null -ne $hookSnapshot -and [bool]$hookSnapshot.status_ok) {
+            @($hookSnapshot.status_lines | ForEach-Object { [string]$_ }) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        }
+        else { @(& git -C $ProjectRoot status --porcelain --untracked-files=all -- . 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } }
         $uncommittedFiles = @($porcelain | ForEach-Object {
                 $p = ($_ -replace '^..\s+', '').Trim()
                 if ($scanScope.Prefix -and $p) { $p = ($p -replace ('^' + [regex]::Escape($scanScope.Prefix)), '') }
