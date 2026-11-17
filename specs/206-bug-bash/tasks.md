@@ -545,7 +545,9 @@ T034, T033; T035, T036; T037 before the first review round; T038 last.
   - **Acceptance:** both in the brief before the first review round.
   - **Trace:** FR-003; FR-011.
   - **Owns:** `specs/206-bug-bash/iterations/002/**`.
-- [ ] T038 [owner: Implementer] [sp: 0.25] [US2] **Review sign-off records.**
+- [x] T038 [owner: Implementer] [sp: 0.25] [US2] **Review sign-off records.**
+  - **Done (2026-11-17):** review.md `1d685ce2`, pushed before its verdict with Specrew CI, Test and Cross-Platform
+    Validation green (Lint included); the verdict captured 21:42:16Z, boundary commit `4fad6f5f`.
   - **Work:** the review records, pushed before their verdict.
   - **Acceptance:** Lint stays green on that push (SC-009 in use).
   - **Trace:** SC-009.
