@@ -647,3 +647,23 @@ The following resolution strategies remain available if drift is detected later 
   (not a records-only change).
 - **Class closure**: NONE — a limit change on the maintainer's word; the lane's time is reported against 1,500 s in the
   Phase 9 sweep.
+
+### DRIFT-028 — The sweep runs at Throttle 3 (maintainer's decision); the split of the two slow suites waits for a measured trigger (the reviewer session's judgment)
+
+- **Throttle** (the maintainer, relayed by the reviewer session under the wider delegation, "203 throttle: 3", 18:49
+  local on 2026-11-17, answering the reviewer session's recommended line): the next full sweep (Phase 9's) runs with
+  `-Throttle 3` as a launch option. No default changes in `sweep-full.ps1` or `run-suites.ps1`, and no test or cap
+  changes. It is measured against DRIFT-026's Throttle 6 figures: the suite phase's total and each slow suite's time.
+- **Split** (the maintainer, relayed, 18:58 local: "203: split, if you think that it is beneficial and eventually save
+  time, do it now"). The reviewer session's judgment, marked as theirs: not now, with a measured trigger. Today the
+  split is not shown to save time: at Throttle 3 the two suites should return near their alone time (about 500 s
+  against the 1,500 s cap), and then it buys nothing. It would cost about 1 SP with about 0.3 SP of buffer left, and it
+  would add test-file changes to the review campaign's scope.
+- **The trigger** (the reviewer session's): in the Phase 9 sweep at Throttle 3, if `review-budget-loop` or
+  `review-loop-stops` takes more than 1,000 s, or the suite phase's total is more than 1.5 times the Throttle 6
+  total, the crew stops after the sweep and reports the numbers; the reviewer session takes the split to the maintainer
+  as a sized task. Otherwise the split is recorded as a deferred item with the measurement beside it.
+- **T020** done: round E `finding-cf1fe81e0398f883` in two RED-and-fix pairs (`86c320fb5` red 2 of 28, `a9c791614`;
+  `282e655b3` red 1 of 29, `43cc5c5bf`).
+- **Class closure**: the T020 halves by their cases in `authorization-consumers`. The throttle and the split are
+  NONE — process decisions measured in the Phase 9 sweep.

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "002"
-updated_at: "2026-11-17T16:39:09.0006131Z"
+updated_at: "2026-11-17T17:05:19.1798299Z"
 tasks:
   T017:
     title: "The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's \"203 rerun: add reviewer-hook-suppression; T017 first\", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun"
@@ -35,9 +35,9 @@ tasks:
     blocked_reason: ""
   T020:
     title: "F1, round E `finding-cf1fe81e0398f883`: try the exact identity across every window before the message-ID fallback; a compaction summary is never the cited turn (DRIFT-083), test red first"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-11-17T16:44:10.7872209Z"
+    completed_at: "2026-11-17T17:05:19.1769740Z"
     blocked_reason: ""
   T021:
     title: "F2, round E `finding-a537d3f72672e5f5`: a review-stop answer lost on the recovery path is reported; a stop-answer case in `typed-act-writer` case 9b (DRIFT-084), test red first"
