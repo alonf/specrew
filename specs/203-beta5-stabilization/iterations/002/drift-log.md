@@ -820,3 +820,38 @@ The following resolution strategies remain available if drift is detected later 
   function follows the fixed rule.
 - **Class closure**: the plan crossing by `plan-crossing-pending`'s cases; CI's blind spot is NONE here — it is 206's
   item 53, recorded there.
+
+### DRIFT-034 — The Visual Studio Installer replaced Git twice under the Phase 10 sweep; both sweep starts stopped, nothing retried
+
+- **What replaced Git**: an overnight Visual Studio Installer update (the orchestrator `setup.exe update`, PID 79988,
+  started 00:27:07 local on 2026-11-18; logs `%TEMP%\dd_setup_20261118002722*.log` and
+  `%TEMP%\dd_setup_20261118010827*.log`). Each Visual Studio installation carries its own `GitV2` package, and each
+  session's plan uninstalls the version it recorded and installs the new one, by running Git for Windows' own
+  uninstaller over whatever is installed.
+- **Window 1** (the Enterprise 2026 session): planned at 00:27:48 "GitV2,version=2.55.0.5 ... Uninstall" and
+  "GitV2,version=2.56.0.4 ... Install"; ran `C:\Program Files\Git\unins000.exe /VERYSILENT` at 00:38:38, after which
+  `C:\Program Files\Git\mingw64\bin` was empty and every git command failed "error launching git: The system cannot
+  find the path specified"; 2.56.0.4 was installed at 01:03 to 01:04 (`git version 2.56.0.windows.4`). The session
+  finished at 01:06:54. Git 2.56 keeps its binaries under `ucrt64`, not `mingw64`.
+- **Window 2** (the Enterprise 2022 session, 17.14.45, started 01:08:26): planned "GitV2,version=2.51.1.2 ...
+  Uninstall" and "2.56.0.4 ... Install"; its uninstall at 01:12:28 removed the 2.56 just installed; Git worked again at
+  about 01:21 and the session finished at 01:21:49. Build Tools 2019 and Enterprise 2026 Preview were not updated.
+  Version strings: 2.55.0.5 out at 00:38:38; 2.56.0.4 in at 01:04; out at 01:12:28 (that session recorded 2.51.1.2); in
+  at about 01:21. The reviewer session is asking the maintainer to start no further updates during sweeps.
+- **The Phase 10 sweep of `3ced8938b`** (Throttle 3): the first start (about 00:07) was stopped at 00:44 by the
+  reviewer session's ruling, as invalid from 00:38:36; the second (about 01:05) was stopped at 01:13 when git failed
+  again. Neither wrote per-suite results (the listing is written when the suite phase ends), so the suites that failed
+  for this reason are not known by name; the only named failure is the crew's own single run of
+  `tests/bootstrap/RollingHandover.Tests.ps1` at 00:40 and 00:41 ("error launching git"), which passed at 00:29 and
+  again alone at 01:05 on 2.56. Nothing was retried; both sweep checkouts were removed by their exact paths once Git was
+  back, at 01:05 and 01:34. The crew's git commands all completed before each break (the T025 commit `7f601b9e9` at
+  01:09:05); no lock file was left.
+- **On Git 2.56**, alone, before the restart: `RollingHandover`, `HookPacketCapture`, `hook-run-git-snapshot` 5,
+  `dispatcher-stop-block`, `ProviderMirrorParity`, `conformance-material-turn-gate` 3, `flush-race-forensic` 2,
+  `hook-transcript-tail` 6, `hook-git-snapshot-reader` 6, all green (01:05 to 01:07), and again before the third start.
+- **"Back" means no installer activity** (the reviewer session's rule, corrected): no child setup or msiexec and no new
+  installer log, plus a working `git --version`. The orchestrator's window can stay open idle, so "no setup.exe" is the
+  wrong test; the crew's own watcher used a path pattern that missed that process, and the crew went by the reviewer
+  session's word. During the third sweep the crew samples `git --version` every few minutes and stops the sweep at once
+  if it fails.
+- **Class closure**: NONE — a machine event outside the project; the guard is the sampler during sweeps.
