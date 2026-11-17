@@ -314,6 +314,8 @@ Describe 'T009: a recorded ruling is read from the Disposition section of state.
         @{ Name = 'a ruling dated in the future'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2099-01-01.`n" }
         # Invented for this round (iteration 001 retro: every text rule's RED set carries a conditioned phrasing too).
         @{ Name = 'a trailing note that makes it conditional'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (if feature 203 merges first).`n" }
+        # Iteration 002 review round 3, finding-a9d93413b59ece33: a whole Disposition section inside an HTML comment.
+        @{ Name = 'a Disposition section commented out with its heading'; Body = "<!--`n## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14.`n-->`n" }
     ) {
         $dir = Join-Path $script:Root ('ruling-negative-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
         $null = New-Item -ItemType Directory -Path $dir -Force
