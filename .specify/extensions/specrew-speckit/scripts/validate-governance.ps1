@@ -4993,6 +4993,51 @@ function Test-PreReviewCommitGate {
     return $null
 }
 
+function Get-SpecrewPlanCrossingState {
+    # Feature 203 T023 (i) (B5F-083): whether an iteration folder's plan crossing is the NEXT one waiting for the human's
+    # verdict, so a scaffolded folder with no plan.md yet is a normal state. Read through the same enforcement-state reader
+    # as feature 206's T034 (Get-SpecrewRecordApprovalState), and to that function's round-2 rule from the start:
+    #   'pending'  - the pending crossing derived from the last authorized boundary (Get-SpecrewPendingBoundaryCrossing,
+    #                which knows the iteration loop) is the plan crossing itself: after clarify, or after iteration-closeout
+    #                for a new iteration. A later boundary still to come, or one already behind, is not pending.
+    #   'decided'  - anything else, including a start context about another feature or iteration, or one that cannot be
+    #                read: the missing plan.md fails as before. A session that names no iteration can be waiting only on
+    #                the feature's newest iteration folder.
+    #   'unknown'  - .specrew/start-context.json is absent (it is ignored by git, so CI and a fresh clone have none): the
+    #                folder is accepted with a warning naming the file; the local check holds the line where it exists.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    try { $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot } catch { return 'decided' }
+    if (-not [bool]$enforcement.Exists) {
+        Write-TrustHardeningWarning -Category 'plan-before-approval-unverified' -Detail ("The iteration folder '{0}' has no plan.md and is accepted, but .specrew/start-context.json is absent (it is not committed), so whether its plan crossing is still pending cannot be read here." -f (Split-Path -Leaf $IterationDirectory))
+        return 'unknown'
+    }
+
+    $iterationName = Split-Path -Leaf $IterationDirectory
+    $featureRef = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent $IterationDirectory))
+    $context = $enforcement.Context
+    $session = if ($null -ne $context -and $context.Contains('session_state')) { $context['session_state'] } else { $null }
+    if ($null -eq $session) { return 'decided' }
+    if ((Split-Path -Leaf ([string]$session['feature_ref'])) -cne $featureRef) { return 'decided' }
+    $sessionIteration = [string]$session['iteration_number']
+    if ([string]::IsNullOrWhiteSpace($sessionIteration)) {
+        $iterationsRoot = Split-Path -Parent $IterationDirectory
+        $newest = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } | Select-Object -Last 1)
+        if ($newest.Count -eq 0 -or $newest[0].Name -cne $iterationName) { return 'decided' }
+    }
+    elseif ($sessionIteration -cne $iterationName) { return 'decided' }
+
+    $effective = $enforcement.EffectiveState
+    if ($null -eq $effective) { return 'decided' }
+    $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$effective['last_authorized_boundary']) -WorkingBoundary 'plan'
+    if ([bool]$crossing.HasPendingVerdict -and [string]$crossing.PendingToBoundary -ceq 'plan') { return 'pending' }
+    return 'decided'
+}
+
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
@@ -5005,6 +5050,18 @@ function Test-IterationGovernance {
     $planPath = Join-Path -Path $IterationDirectory -ChildPath 'plan.md'
 
     if (-not (Test-Path -Path $planPath -PathType Leaf)) {
+        # Feature 203 T023 (i) (B5F-083): a folder scaffolded before its plan verdict is not missing its plan; it is
+        # accepted with a warning while its plan crossing is the next one pending, and refused as before once it is not.
+        $planCrossing = Get-SpecrewPlanCrossingState -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory
+        if ($planCrossing -ceq 'pending') {
+            Write-TrustHardeningWarning -Category 'plan-before-approval' -Detail ("The iteration folder '{0}' has no plan.md yet; its plan crossing is the next one waiting for your verdict, so it is accepted. plan.md is required once that crossing is behind." -f (Split-Path -Leaf $IterationDirectory))
+        }
+        if ($planCrossing -cin @('pending', 'unknown')) {
+            return [pscustomobject]@{
+                Path = $IterationDirectory
+                Errors = $errors
+            }
+        }
         $errors.Add('Missing required artifact: plan.md')
         return [pscustomobject]@{
             Path = $IterationDirectory
