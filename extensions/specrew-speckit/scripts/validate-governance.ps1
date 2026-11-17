@@ -3970,7 +3970,10 @@ function Test-ReviewArtifact {
                     $ledgerPath = if (-not (Test-IsNullish $ProjectRoot)) { Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot } else { $null }
                     if ($ledgerPath -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
                         # Iteration 002 review round 2, finding 6: an id inside an HTML comment or a code fence is not an entry.
-                        $ledgerText = [regex]::Replace((Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8), '(?s)<!--.*?-->', '')
+                        # Iteration 002 review round 3, finding-877eda7300798107: line endings are made LF first, so the
+                        # fence pattern's '$' matches a closing fence line in a CRLF file too.
+                        $ledgerText = (Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8) -replace "`r`n?", "`n"
+                        $ledgerText = [regex]::Replace($ledgerText, '(?s)<!--.*?-->', '')
                         $ledgerText = [regex]::Replace($ledgerText, '(?ms)^[ ]{0,3}(```+|~~~+).*?^[ ]{0,3}\1[ \t]*$', '')
                         foreach ($idMatch in [regex]::Matches($ledgerText, '(?m)^\s*-\s+\*\*Decision ID\*\*:\s*`?(?<id>[^`\r\n]+?)`?\s*$')) {
                             $script:ReviewLedgerDecisionIds[$idMatch.Groups['id'].Value.Trim()] = $true
