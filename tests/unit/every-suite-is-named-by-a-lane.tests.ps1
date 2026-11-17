@@ -205,15 +205,21 @@ function Get-WorkflowRunText {
     # Iteration 002 round 2, finding 2: a step's run text is held until the step ends, and a job's until the job ends,
     # because an if: may come after the run: key. Each is kept only when its condition runs.
     $stepRun = [Collections.Generic.List[string]]::new(); $stepIf = $null
-    $jobRun = [Collections.Generic.List[string]]::new(); $jobIf = $null; $jobOs = $null
+    # Iteration 002 review round 3, finding-c79fd0045cfa0bb1: a job's runs-on may come after its steps:, so each step's
+    # condition is judged when the job ends, with the job's runner as finally read, not as it stood when the step ended.
+    $jobSteps = [Collections.Generic.List[object]]::new(); $jobIf = $null; $jobOs = $null
     $flushStep = {
-        if ($stepRun.Count -gt 0 -and (Test-WorkflowConditionRuns -Condition $stepIf -RunnerOs $jobOs)) { foreach ($kept in $stepRun) { $jobRun.Add($kept) } }
+        if ($stepRun.Count -gt 0) { $jobSteps.Add([pscustomobject]@{ Run = @($stepRun); If = $stepIf }) }
         $stepRun.Clear(); $stepIf = $null
     }
     $flushJob = {
         . $flushStep
-        if ($jobRun.Count -gt 0 -and (Test-WorkflowConditionRuns -Condition $jobIf -RunnerOs $jobOs)) { foreach ($kept in $jobRun) { $run.Add($kept) } }
-        $jobRun.Clear(); $jobIf = $null; $jobOs = $null
+        if ($jobSteps.Count -gt 0 -and (Test-WorkflowConditionRuns -Condition $jobIf -RunnerOs $jobOs)) {
+            foreach ($step in $jobSteps) {
+                if (Test-WorkflowConditionRuns -Condition $step.If -RunnerOs $jobOs) { foreach ($kept in $step.Run) { $run.Add($kept) } }
+            }
+        }
+        $jobSteps.Clear(); $jobIf = $null; $jobOs = $null
     }
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
