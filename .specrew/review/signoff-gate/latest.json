@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-11-14T18:38:14Z",
+  "recorded_at": "2026-11-17T20:16:31Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-3bec3de853c36be6ea24df85",
-      "target_tree_id": "22667b3a05e097b229aaff8f134d7eb667f26ef9",
-      "campaign_id": "cmp-206-bug-bash-i001",
-      "run_id": "run-20261114-132511846-d1b4bd05",
+      "request_id": "override-7aaeb4d8ef72cd2428caf13b",
+      "target_tree_id": "d8d7953228ecf9911d357e10fde8fc8777b22c59",
+      "campaign_id": "cmp-206-bug-bash-i002",
+      "run_id": "run-20261117-175417271-a471ffb6",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - since round 4 on bb0cc72e only review.md, the drift log and state.md changed, records only, no script, test or configuration file.",
-      "rationale": "since round 4 on bb0cc72e only review.md, the drift log and state.md changed, records only, no script, test or configuration file.",
-      "response_hash": "ae858c3dc9604334e0287e3d3239c983e946606cf04ad4a4e266f6fac5a26148",
+      "verdict_text": "approved for partial review signoff - round 4 read the whole iteration and I stopped on it; only review.md and the drift log changed since",
+      "rationale": "round 4 read the whole iteration and I stopped on it; only review.md and the drift log changed since",
+      "response_hash": "9977e38c078be830c06189df8eec2855dce6a6615c7f1a244c26447147df4f8f",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-11-14T18:37:40.861001Z"
+      "observed_at": "2026-11-17T20:15:56.0453104Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
