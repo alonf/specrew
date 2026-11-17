@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "002"
-updated_at: "2026-11-17T17:18:39.2192373Z"
+updated_at: "2026-11-17T21:58:23.6449158Z"
 tasks:
   T017:
     title: "The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's \"203 rerun: add reviewer-hook-suppression; T017 first\", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun"
@@ -46,10 +46,10 @@ tasks:
     completed_at: "2026-11-17T17:18:39.2160918Z"
     blocked_reason: ""
   T022:
-    title: "F4, the sign-off gate: a human-accepted disposition for the reviewed digest covers a records-only difference after it (DRIFT-078); the ordinary review end takes one approval (DRIFT-091); a finding is resolved by the run that reviews its fix or by the human's stop (B5F-071); a typed override with a reason stays for product code no reviewer read and no test covers. The records rule is narrowed in the Specrew source repository (the maintainer's \"203 T022: 1\", 14:17 local): `.specify/**` with its hash record, non-Markdown files under `docs/`, and Markdown under `extensions/`, `templates/` and the deployed skill directories count as source; the acceptance carry diffs with `--no-renames`; every negative case is a refusing test (tasks.md, T022)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    title: "F4, the sign-off gate: a human-accepted disposition for the reviewed digest covers a records-only difference after it (DRIFT-078); the ordinary review end takes one approval (DRIFT-091); a finding is resolved by the run that reviews its fix or by the human's stop (B5F-071); a typed override with a reason stays for product code no reviewer read and no test covers; the sign-off packet's coverage statement is deferred to the follow-up feature with B5F-075 (DRIFT-032). The records rule is narrowed in the Specrew source repository (the maintainer's \"203 T022: 1\", 14:17 local): `.specify/**` with its hash record, non-Markdown files under `docs/`, and Markdown under `extensions/`, `templates/` and the deployed skill directories count as source; the acceptance carry diffs with `--no-renames`; every negative case is a refusing test (tasks.md, T022)"
+    status: "done"
+    started_at: "2026-11-17T21:58:23.6410615Z"
+    completed_at: "2026-11-17T21:58:23.6410615Z"
     blocked_reason: ""
   T023:
     title: "Phase lines: (i) B5F-083, a scaffolded iteration folder with no plan.md is accepted with a warning while its plan crossing is the next one pending, read through the same enforcement-state reader as feature 206's T034 (`3a3ba803`), 0.5 SP; (ii) a test of the sync and the governance check together over the sign-off and retro sequences (`review.md` with `executing` and last boundary before-implement passes the check, the sync accepts it, afterwards the check requires `reviewing`; the same for `retro.md`), 0.25 SP, written after main is merged in (T030). The rule for `review.md` and `retro.md` beside the earlier phase lines (B5F-050, B5F-059) is 206's T034, the one design; 203 does not build its own"

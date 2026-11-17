@@ -725,10 +725,11 @@ with the plan.
 - [ ] T022 [owner: Implementer] [sp: 4.5] [US1] **F4: the ordinary review end takes one approval, on a narrowed records rule.**
   - **Work (the gate):** one design (DRIFT-078, DRIFT-091, B5F-071; the decision entry `f203-i001-gap-ledger-deferrals`,
     part 3): a human-accepted disposition for the reviewed digest covers a records-only difference after it; a finding
-    is resolved by the run that reviews its fix, or by the human's stop for the open ones; the sign-off packet states
+    is resolved by the run that reviews its fix, or by the human's stop for the open ones; ~~the sign-off packet states
     the coverage (fixed findings and their failing-first tests, open findings and where they go, records and code
-    changed since the last round, apart); a separate typed override with a reason stays for product code no reviewer
-    read and no test covers.
+    changed since the last round, apart)~~ (deferred to the follow-up feature with B5F-075's coverage line, the
+    maintainer's "203 T022 packet statement: defer", 2026-11-17 23:43 local; iteration 002 DRIFT-032); a separate typed
+    override with a reason stays for product code no reviewer read and no test covers.
   - **Work (the records rule, the maintainer's "203 T022: 1", 2026-11-16 14:17 local; B5F-087):** the disposition
     uses the gate's existing classifier, `Test-ReviewCampaignDeltaIsRecordsOnly`
     (`scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1:410`), narrowed inside that function, in

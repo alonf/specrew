@@ -742,8 +742,57 @@ The following resolution strategies remain available if drift is detected later 
   trigger.
 - **The start-command allowance** (DRIFT-023's terms), used for this sweep (301 s, its own 300 s limit): it passed
   alone at `5d1f3c1d1` in 219 s (22:41:39 to 22:45:18, scratch worktree under the crew's temp root, removed by its
-  path; home hook files identical before and after; 0 files written to the redirected home). The CI half is the
-  Contract lane on this push, recorded when CI concludes.
+  path; home hook files identical before and after; 0 files written to the redirected home). The CI half: the
+  Contract lane on `dfe675eea` ran it, "PASS: Bootstrap completed successfully" (job `134368805377`, 21:10:08Z).
+- **CI on `dfe675eea`, every job green** (concluded 23:12 local): Specrew CI `44172885150` (Lint, Self-leak firewall,
+  Deterministic gate `134359629939`, Contract lane `134368805377`); Test `44172885148`; Cross-Platform Validation
+  `44172885295` (all eight jobs).
 - **Next** (the reviewer session's routine rulings): the gated push of Phase 9 and CI on every job; T022's trial starts
   after the push, with CI followed in parallel and the trial stopped where it is if any job goes red.
 - **Class closure**: NONE — a measurement and process decisions; the split stays a deferred item, not a fix.
+
+### DRIFT-031 — T022's gate half: the human's stop counts for the findings it accepted and survives the review record; the packet's coverage statement deferred (DRIFT-032)
+
+- **The sequence** (feature 206 on main's engine, 2026-11-17, relayed by the reviewer session; read on this engine): a
+  round with an open major finding, the stop's `accept-current` disposition for the reviewed digest, then the review
+  record the sign-off sync demands. On this engine (and the pin `da78b600`, `review-signoff-evidence-gate.ps1:1211`) the
+  sign-off already blocked at the reviewed digest, `review-findings-open`: the acceptance never counted for the open
+  findings. After the records commit it refused `records-only-delta-over-non-authorizing-result`: the records-only
+  branch never read the acceptance (DRIFT-078). Either way the human typed a second line (DRIFT-091). The crew's earlier
+  answer to the reviewer session (only the records commit costs a line) was corrected the same evening.
+- **RED** `37e4c0f33` (`tests/unit/review-end-one-approval.Tests.ps1`, a real repository and authority store, entered at
+  `Get-ContinuousCoReviewSignoffGateDecision`): red 3 of 8.
+- **Fix 1** `1cbdb12d5`: when the latest result has a valid `accept-current` disposition for the digest it reviewed
+  (`require-correction` still wins), the findings still open do not hold the sign-off. They stay listed as not covered,
+  rendered "Not covered (open, accepted at your stop)" (an `accepted` flag on the item; the kind stays `not-covered`,
+  so the retro scaffolder in the `.specify` mirror is unchanged). A later round makes a newer latest result, so an
+  earlier stop never covers a finding a later round reports. 7 of 8.
+- **Fix 2** `4f8e4691b`: in the records-only branch the same acceptance authorizes the result, as it does on the
+  reviewed digest. A code commit after the stop still stales. 8 of 8.
+- **Pinned** (passing): no stop, `require-correction`, a code commit after the stop, and a records commit with no stop
+  all block. B5F-071's first half (`70530c56d`): the next round's explicit `resolved` on moved files closes a fixed
+  finding and the sign-off releases without listing it; `still-open` keeps it open. Passing since T008 (`845e212dc`,
+  "an open finding closes only on the reviewer's explicit resolved on moved files"); 203 iteration 001's rounds were
+  launched from a pin older than that. So every case in T022's acceptance list has a named test.
+- **The Codex patch's two minor points** (the reviewer session's ruling): RED `c2781c8ad` (red 1 of 32), fix
+  `9191a8403`: the extension check ignores case on every volume (an upper-case `.MD` no longer falls back to records on
+  a case-sensitive volume), and the helper has its header comment.
+- **Not built: the sign-off packet's coverage statement**, deferred by the maintainer (DRIFT-032). T022 is done
+  without it.
+- **Batch** (local check, not the push gate; the reviewer session's go-ahead): 23 suites at Throttle 3 (the 14 that call the sign-off gate, packet or listing, and the 11 that load the classifier, two shared), 23:32 to 23:57 local, 0 failed, 0 spanned standby, home hook files identical before and after; the longest `review-public-campaign-command` 704 s and `review-loop-stops` 621 s.
+- **Class closure**: the stop's authority by `review-end-one-approval`'s cases; the coverage statement is DRIFT-032's.
+
+### DRIFT-032 — T022's sign-off packet coverage statement is deferred to the follow-up feature (maintainer's decision)
+
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "203 T022 packet statement:
+  defer", 23:43 local on 2026-11-17, answering the reviewer session's recommended line): the statement in T022's Work
+  text - fixed findings and their failing-first tests, open findings and where they go, records and code changed since
+  the last round, apart - is not built in iteration 002. It moves to the follow-up feature, to sit with the coverage
+  line (B5F-075, the work that was T024) as one design. T022 closes without it.
+- **Why** (the reviewer session's two reasons, given to the maintainer): the engine keeps no link from a finding to the
+  test that fixed it, so "fixed behind which failing-first test" has no data to come from; and the statement overlaps
+  the coverage line already in the follow-up, so building both now would build one thing twice.
+- **What changes**: T022's Work text in tasks.md and the plan (its row and the FR-011 line) name the statement as
+  deferred with this entry's id; B5F-075 names the deferred statement beside the coverage line, so the follow-up's
+  triage sees one item (the reviewer session will put it in the first group there). No other wording changes.
+- **Class closure**: NONE — a scope decision; the work is recorded where the follow-up's triage reads it.
