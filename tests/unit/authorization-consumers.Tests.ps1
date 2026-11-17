@@ -307,3 +307,21 @@ Describe 'the exact cited message is looked for in the whole transcript before a
         $match | Should -BeNullOrEmpty
     }
 }
+
+Describe 'a compaction summary is never the cited turn (T020, round E finding-cf1fe81e0398f883; the reviewer session''s ruling, DRIFT-083)' {
+    It 'when the cited message is not in the record and a compaction summary shares its prompt ID, the summary is not used in its place' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Typed
+        $transcript = script:Get-TurnTranscript -Root $root
+        $promptId = script:Get-TurnPromptId -Root $root
+        # The record now holds only the summary under that prompt ID, which quotes the approval line.
+        $summary = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-14T20:00:00.000Z'; isVisibleInTranscriptOnly = $true; isCompactSummary = $true
+            message = [ordered]@{ role = 'user'; content = "This session is being continued from a previous conversation.`n`napproved for tasks" } }
+        [IO.File]::WriteAllText($transcript, (($summary | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turn -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeFalse -Because ('a compaction summary is the host''s text, not the cited message (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -BeNullOrEmpty
+    }
+}
