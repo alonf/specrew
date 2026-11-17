@@ -109,8 +109,13 @@ Describe 'FR-009 the records-only exemption covers what deployment actually writ
         Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths @('.github/agents/x.md') -RepoRoot '' -FeatureId $script:Feature | Should -BeFalse
     }
 
-    It 'the source repo still classifies its own mirrors as machinery, unchanged' {
-        Test-RecordsOnly -Paths @('.github/agents/squad.agent.md') -Root $script:RepoRoot | Should -BeTrue
+    It 'the source repo classifies its own host mirrors as source (feature 203 T022); downstream they stay machinery' {
+        # Amended by feature 203 T022 (the maintainer's "203 T022: 1", 2026-11-16): in the Specrew source repository a
+        # host mirror is what the agents working here load, so a commit of one stales the round. The downstream answer
+        # this case used to pin beside it is kept by the ACCEPTANCE case above and by
+        # records-only-source-repo-narrowed.Tests.ps1.
+        Test-RecordsOnly -Paths @('.github/agents/squad.agent.md') -Root $script:RepoRoot | Should -BeFalse
+        Test-RecordsOnly -Paths @('.github/agents/squad.agent.md') | Should -BeTrue
     }
 }
 
