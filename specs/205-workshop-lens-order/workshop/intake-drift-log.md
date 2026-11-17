@@ -189,3 +189,62 @@ asked them for it. The maintainer typed "approved for feature-closeout" on that 
 drawn before the verdict and is committed reading "awaiting your verdict". The iteration-closeout case is 206's item 41.
 
 **Class closure**: NONE. The ordering belongs to the lifecycle engine (feature 206's area). 205 changes nothing there.
+
+## DRIFT-205-INTAKE-011 — the closeout push's Ubuntu job failed installing PowerShell; one ruled rerun
+
+**Observed**: 2026-11-16, CI on `8ebfef8f` (the feature-closeout records push).
+
+- Cross-Platform Validation run 43954284857 failed in job "Ubuntu Validation" (133604592995), at step "Setup
+  PowerShell". The log lists "Package libicu72 is not installed." through "Package libicu52 is not installed.", then
+  "dpkg: error processing package powershell (--install): dependency problems - leaving unconfigured", "Errors were
+  encountered while processing: powershell", and "##[error]Process completed with exit code 1."
+- No check of the change ran in that job. The other seven Cross-Platform jobs, Specrew CI 43954284899 and Test
+  43954284922 were green. The push changed records only.
+
+**Decided**: the reviewer session's ruling, for this push only and not a standing exception: one rerun of the failed
+job. If "Setup PowerShell" fails again, or anything else is red, the work stops, with no second rerun.
+
+**Attempt 2** (the ruled rerun) failed the same way: job "Ubuntu Validation" (133624011633), step "Setup PowerShell",
+"powershell depends on libicu72 | libicu71 | … | libicu52; however: Package libicu72 is not installed. …", then
+"dpkg: error processing package powershell (--install)". The work stopped there, with no second rerun. Feature 206's
+Cross-Platform run 43956458711 on `7b54d49d` (21:05Z) fails at the same job and step. The last green Ubuntu runs were
+205's `7f841071` (19:26Z) and 203's `5f82692e` (17:34Z). The reviewer session found that 206's failing attempt ran on
+the `ubuntu-26.04` runner image (20261111.196.1): `ubuntu-latest` is moving to 26.04, and the pinned PowerShell 7.4.1
+package cannot install there. It is a rollout, not a flake, and it hits every branch and main. The fix is being written
+on feature 203, in `cross-platform-validation.yml` (its T015).
+
+**Closing state of the feature**: Specrew CI and Test are green on `8ebfef8f`. Cross-Platform Validation is red on one
+job, which cannot install PowerShell on the new runner image. No test of 205's change is affected. The feature closed
+on the maintainer's verdict, and that stands. This entry stays uncommitted until the commit that brings the workflow
+fix to this branch: either a cherry-pick of 203's fix, or main merged in after 206 lands. The maintainer chooses which.
+
+**Fix taken (2026-11-17)**: the maintainer, relayed by the reviewer session under the wider delegation. Their words, at
+10:21 local: "CI fix: cherry-pick to 205". They were answering the option "CI fix: cherry-pick to 205 (recommended), so
+the closed feature's branch goes green too", after the reviewer told them the fix was proven on feature 203 (Ubuntu
+Validation green on ubuntu-26.04 with `f2493ccc1`) and on feature 206 (cherry-picked as `00cef4d5`, all three
+workflows green on `ff6fe55e`). This is not a boundary approval and not a go to merge.
+
+- `0050aacc` is a cherry-pick of `f2493ccc1` from `origin/203-beta5-stabilization`, taken as the commit and not as a
+  patch file. It changes `.github/workflows/cross-platform-validation.yml` only: the three Ubuntu "Setup PowerShell"
+  steps use the runner's pwsh when present, and otherwise install it from Microsoft's package feed. It applied
+  cleanly, and its 38 changed lines are identical to `f2493ccc1`'s.
+- Checks before the push, by the reviewer's ruling for this workflow-only push after the feature's closeout (no full
+  lanes):
+  - the CI-wiring case of `review-cross-platform-fault-matrix.Tests.ps1` (1 passed);
+  - `github-actions-node-runtime-pins.tests.ps1` and `forge-neutralization-sweep.tests.ps1`, the two tests that scan
+    the workflow folder;
+  - markdownlint;
+  - the governance check, which failed only on the standing derived-block item.
+
+  The home hook files showed 0 differences.
+- CI on `0050aacc` was green on all three workflows: Specrew CI 44046637244, Test 44046637280 and Cross-Platform
+  Validation 44046637250. Ubuntu Validation (job 133913839392) ran on "Image: ubuntu-26.04", "Version:
+  20261111.196.1", and logged "Using the runner's PowerShell: /usr/bin/pwsh" and "PowerShell 7.6.10".**Bug-list candidate** (for feature 206's list, through the reviewer session): the Ubuntu validation job installs
+PowerShell with dpkg on every run. It fails when the runner image's libicu version is not one the package accepts,
+and it has no retry, no pinned image and no fallback install.
+
+**Also recorded**: after the feature-closeout verdict was captured, the maintainer typed `approved for
+feature-closeout` a second time. The hook recorded nothing, because no crossing was pending. The engine behaved
+correctly: a typed phrase is refused when nothing is waiting for it.
+
+**Class closure**: NONE. The CI workflow's install step belongs to the repository's CI (feature 206's list), not to 205.
