@@ -2519,13 +2519,17 @@ function Resolve-SpecrewAuthorizationSender {
             $transcriptLength = [long](Get-Item -LiteralPath ([string]$row.transcript_path)).Length
             $windows = @([int]2097152)
             if ($transcriptLength -gt 2097152) { $windows += [int][Math]::Min([long][int]::MaxValue, $transcriptLength) }
+            # Feature 203 T020 (round E finding-cf1fe81e0398f883): THE EXACT CITED MESSAGE IS LOOKED FOR IN EVERY WINDOW,
+            # the whole transcript included, BEFORE the message-ID fallback in any window. Trying the fallback inside the
+            # tail first let a later record under the same prompt ID (a compaction summary, or a message typed into the
+            # running turn) stand in for an approval that lay beyond the tail, and its text then refused the approval.
+            $citations = @($TurnIdentity.Trim())
+            if ($row.PSObject.Properties['message_id'] -and -not [string]::IsNullOrWhiteSpace([string]$row.message_id)) { $citations += [string]$row.message_id }
             try {
-                foreach ($window in $windows) {
-                    $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity $TurnIdentity.Trim() -TranscriptPath ([string]$row.transcript_path) -MaxLines 100000000 -MaxBytes $window
-                    if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
-                    if ($null -eq $turn -and $row.PSObject.Properties['message_id'] -and -not [string]::IsNullOrWhiteSpace([string]$row.message_id)) {
-                        $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity ([string]$row.message_id) -TranscriptPath ([string]$row.transcript_path) -MaxLines 100000000 -MaxBytes $window
-                        if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn }
+                foreach ($citation in $citations) {
+                    foreach ($window in $windows) {
+                        $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity $citation -TranscriptPath ([string]$row.transcript_path) -MaxLines 100000000 -MaxBytes $window
+                        if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn; break }
                     }
                     if ($null -ne $turn) { break }
                 }
