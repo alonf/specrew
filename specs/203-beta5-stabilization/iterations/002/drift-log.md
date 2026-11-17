@@ -667,3 +667,22 @@ The following resolution strategies remain available if drift is detected later 
   `282e655b3` red 1 of 29, `43cc5c5bf`).
 - **Class closure**: the T020 halves by their cases in `authorization-consumers`. The throttle and the split are
   NONE — process decisions measured in the Phase 9 sweep.
+
+### DRIFT-029 — A Codex-writer trial (maintainer's decision); T021 done on Claude, the trial moves to T022
+
+- **Decision** (the maintainer, relayed by the reviewer session under the wider delegation, "203: yes, lets do a single
+  round of implementation and see if it works", 19:11 local on 2026-11-17, answering the reviewer session's line "203:
+  Codex writer trial on T021"): one task's implementation written by Codex under the crew's supervision, to learn
+  whether the pattern saves Claude budget. The crew writes the failing test; Codex makes it green in a plain local clone
+  outside every governed folder; only a patch limited to the task's files comes back; the crew runs the suites, reads
+  the whole diff and commits, and the commit names Codex and its model as the writer.
+- **The task changed from T021 to T022** (the reviewer session's ruling, routine, marked as theirs): the trial message
+  reached the crew after T021's fix was written and green (RED `3151dc407`; fix `8eb755d07`, written by Claude). T021
+  was the reviewer session's choice of task, not the maintainer's, and a six-line fix already written cannot show
+  whether the pattern saves budget; T022 is a real code task and a fair test. T022 starts only after Phase 9 is pushed.
+- **Measurement windows** (local, first tool call to the green commit, on Claude): T020 about 18:44 to 19:03 (green
+  `43cc5c5bf`); T021 about 19:05 to 19:16 (fix written; committed `8eb755d07` at 19:18 after the ruling). T022's
+  window will be noted the same way. The reviewer session computes the Claude tokens per window from the transcripts.
+- **T021 done**: round E `finding-a537d3f72672e5f5`, the stop-answer fallback on the recovery path, reported at the
+  next message, with nothing recorded (`typed-act-writer` case 9b, 52 of 52).
+- **Class closure**: T021 by case 9b's stop-answer case. The trial is NONE — a process decision, measured on T022.
