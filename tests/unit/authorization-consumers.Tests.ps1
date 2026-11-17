@@ -35,6 +35,18 @@ BeforeAll {
         return $turnId
     }
     function script:New-Root { $r = Join-Path $TestDrive ([guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Path $r -Force | Out-Null; return $r }
+    # Feature 203 T020 (round E finding-cf1fe81e0398f883, DRIFT-083): a later record under the cited message's prompt ID,
+    # appended after the later conversation so it lies inside the 2 MiB tail while the cited message does not. 'summary' is
+    # a compaction summary in the shape Claude writes it (tests/fixtures/hook-payloads/claude/compaction: type user,
+    # isCompactSummary, isVisibleInTranscriptOnly, no turnOrigin, promptSource or origin); 'typed' is a typed message.
+    function script:Get-TurnTranscript([string]$Root) { return @(Get-ChildItem -LiteralPath $Root -Filter 'session-*.jsonl' -File)[0].FullName }
+    function script:Get-TurnPromptId([string]$Root) { return [string]((Get-Content -LiteralPath (script:Get-TurnTranscript -Root $Root) -TotalCount 1) | ConvertFrom-Json).promptId }
+    function script:Add-SamePromptRecord([string]$Root, [ValidateSet('summary', 'typed')][string]$Kind, [string]$Text) {
+        $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = (script:Get-TurnPromptId -Root $Root); sessionId = 's'; timestamp = '2026-11-14T20:00:00.000Z'; message = [ordered]@{ role = 'user'; content = $Text } }
+        if ($Kind -ceq 'summary') { $record.isVisibleInTranscriptOnly = $true; $record.isCompactSummary = $true }
+        else { $record.turnOrigin = [string]$script:Typed.turnOrigin; $record.promptSource = [string]$script:Typed.promptSource; if ($script:Typed.origin_kind) { $record.origin = [ordered]@{ kind = [string]$script:Typed.origin_kind } } }
+        [IO.File]::AppendAllText((script:Get-TurnTranscript -Root $Root), (($record | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+    }
     # Iteration review round D finding 1: more than 2 MiB of later conversation after the cited message, as a long session
     # has it (assistant records, as Claude writes them).
     function script:Add-LaterConversation([string]$Root, [int]$Bytes = 2621440) {
@@ -254,6 +266,42 @@ Describe 'an approval followed by more than 2 MiB of conversation is still found
         $root = script:New-Root
         $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Scheduled
         script:Add-LaterConversation -Root $root
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'the exact cited message is looked for in the whole transcript before any message-ID fallback (T020, round E finding-cf1fe81e0398f883)' {
+    It 'approval, 2.5 MiB of later conversation, then a compaction summary under its prompt ID: the approval is found and used' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Typed
+        script:Add-LaterConversation -Root $root
+        script:Add-SamePromptRecord -Root $root -Kind summary -Text "This session is being continued from a previous conversation.`n`n6. All user messages`n   - `"approved for plan`""
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turn -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.text | Should -BeExactly 'approved for tasks' -Because 'the cited message is the approval, not a later record that shares its prompt ID'
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -Not -BeNullOrEmpty
+    }
+
+    It 'approval, 2.5 MiB of later conversation, then a typed message under the same running prompt ID: the approval is found and used' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Typed
+        script:Add-LaterConversation -Root $root
+        script:Add-SamePromptRecord -Root $root -Kind typed -Text 'and please keep the notes short'
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turn -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.text | Should -BeExactly 'approved for tasks'
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -Not -BeNullOrEmpty
+    }
+
+    It 'a scheduled prompt in the same position is still refused' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Scheduled
+        script:Add-LaterConversation -Root $root
+        script:Add-SamePromptRecord -Root $root -Kind summary -Text 'This session is being continued from a previous conversation.'
         $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = 'approved for tasks'; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turn }
         $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
         $match | Should -BeNullOrEmpty
