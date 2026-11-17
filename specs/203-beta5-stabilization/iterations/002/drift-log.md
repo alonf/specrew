@@ -535,3 +535,97 @@ The following resolution strategies remain available if drift is detected later 
   removed download lines).
 - **Class closure**: NONE — whether to pin the runner image is the maintainer's decision, not taken here; the setup
   step itself no longer depends on one image's library versions.
+
+### DRIFT-025 — Phase 8 pushed; two T015 defects found by CI and fixed; the CI fixes pushed without a green sweep (maintainer's decision)
+
+- **The first push**: the sweep of `0e8ccd890` (23:34 to 01:38 local, 2026-11-16/17) was green but for the
+  start-command allowance (301 s in the sweep, 209 s alone at `0e8ccd890`, 01:42); all ten lanes exit 0;
+  `review-budget-loop` 1,478 s and `review-loop-stops` 1,461 s under the 1,500 s limit; home hook files 0 changed.
+  Pushed `5f82692e7..0e8ccd890` at 01:43. Markdownlint ran on the changed Markdown outside `.squad/` and
+  `.specify/`, as CI and `.markdownlintignore` scope it; `.squad/decisions.md` has two MD003 errors that were already
+  on origin.
+- **CI on `0e8ccd890`**: Test green; Cross-Platform Validation red (run `43981760363`); Specrew CI red (run
+  `43981760146`, Deterministic gate; Contract lane skipped). Two separate T015 defects, neither visible to a sweep:
+  1. The Cross-Platform step passed its suite array through `pwsh -File ... -Suite $suites`, which does not bind an
+     array: "A positional parameter cannot be found that accepts argument
+     './tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1'" on all three legs (jobs
+     `133699729756`, `133699729901`, `133699729799`); no suite ran. The runner's own test only ever passed one suite.
+     RED `396825b3b` (the runner tested through the workflow step's own call line and exit check, read from the
+     workflow, with two or more suites; red 3 of 8 with CI's error), fix `95f9bb764` (the step calls the runner in
+     its own process; 8 of 8).
+  2. The runner's child always imported Pester 5.7.1; the Deterministic gate has Pester 5.9.0 only ("The specified
+     module 'Pester' with version '5.7.1' was not loaded", job `133701210065`). RED `527dbc439` (red 1 of 9 under
+     Pester 5.8.0), fix `72ffa5500` (the child imports the caller's Pester, else 5.7.1; 9 of 9 under 5.8.0 and
+     5.7.1).
+  Both reported to the reviewer session before fixing; built on its routine ruling ("203: yes. Build the fix now").
+- **The sweep of `72ffa5500`** (02:12 to 04:27): red on the stop condition. `review-budget-loop` and
+  `review-loop-stops` timed out at 1,500 s and lane `f203-i001-t008-suites` at 900 s; no other failure but the
+  start-command allowance; home 0 changed. Nothing of feature 205 or 206 ran on this machine in that window (the reviewer
+  session, 04:28). What did run is in DRIFT-026. Nothing was pushed.
+- **Decision** (the maintainer, typed directly in this session at about 18:13 local on 2026-11-17): "203: push the CI
+  fixes". A one-time exception to the green-sweep rule for `72ffa5500`. The sweep cannot execute the workflow steps
+  these two fixes change; only CI can. Gate: clean tree, no changed Markdown, governance `-ChangedOnly` green. Pushed
+  `0e8ccd890..72ffa5500` at 18:14.
+- **CI on `72ffa5500`, every job green**: Test `44123440977`; Cross-Platform Validation `44123441228` (all eight jobs,
+  Ubuntu Validation on `ubuntu-26.04`); Specrew CI `44123440978` (Lint, Self-leak firewall, Deterministic gate
+  `134184229332`, Contract lane `134194251903`). The three deterministic jobs ran their suites, each named with its
+  count and time. One line per leg:
+  - Ubuntu (`134180684839`, `ubuntu-26.04`): "--- deterministic suite:
+    ./tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1 | Tests completed in 22.79s
+    | Tests Passed: 13, Failed: 0", 15 suites in all.
+  - Windows (`134180684547`, `windows-2025-vs2026`): "--- deterministic suite:
+    ./tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1 | Tests completed in 63.14s | Tests
+    Passed: 40, Failed: 0", 15 suites.
+  - macOS (`134180685099`, `macos-26-arm64`): "--- deterministic suite:
+    ./tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1 | Tests completed in 19.9s | Tests Passed: 11,
+    Failed: 0", 15 suites.
+- **The start-command allowance** (DRIFT-023's terms), used for the sweeps of `0e8ccd890` and `72ffa5500` (301 s
+  each): it passed alone at `0e8ccd890` in 209 s, and it passed in CI's Contract lane on `72ffa5500` (job
+  `134194251903`, "PASS: Bootstrap completed successfully", 16:36Z). Home hook files 0 changed in every sweep and solo
+  run.
+- **The rerun rules that end** (the reviewer session's wording): on 203's own pushes, reviewer-hook-suppression and
+  empty-result-retry (T017), site 13 (T015) and HookRenderDedupe I4b (T016) end with CI green on this push; I3a
+  continues; for 205 and 206 nothing ends until this reaches main.
+- **Tasks**: T017, T015, T016, T018 and T019 marked done through the task writer, and T026 with DRIFT-026.
+- **Capacity**: the two T015 fixes about 0.5 SP from the stated buffer, an overrun on record beside T015.
+- **Class closure**: the array-binding defect is covered by the runner test that reads and runs the workflow's own call
+  line, and the Pester-version defect by the caller's-Pester case. The sweep's blindness to workflow steps is NONE —
+  it is a property of the sweep that is not fixed here, so a change that only CI can execute still needs CI to show it.
+
+### DRIFT-026 — T026 as widened: the slow suites do not grow alone; in a sweep they wait on something not shown
+
+- **Run alone** (04:30 to 06:19 local, 2026-11-17, one at a time; `a9a13583e` / `da78b600c` / `72ffa5500`):
+  `review-budget-loop` 445 / 440 / 496 s; `review-loop-stops` 486 / 485 / 528 s; `message-identity` 585 / 584 / 620
+  s. There is no growth from `a9a13583e` (just before round D's whole-transcript fix `99223e7d`) to `da78b600c`, so
+  that read, the suspect T026 was opened for, is ruled out. The tip's extra 36 to 56 s is partly T018's case and partly
+  outside disk activity during two of its runs. Lane `f203-i001-t008-suites` alone exceeded its 900 s limit at
+  `da78b600c` and at `72ffa5500`, although it took 837 to 846 s inside earlier sweeps.
+- **The machine, not the code**: `review-budget-loop` at the same suite code took 390 s at 23:05 and 496 to 511 s from
+  04:30 on.
+- **Six at once** (Throttle 6, 06:20 to 06:44): `review-budget-loop` 1,459 s (2.9 times its alone time),
+  `review-loop-stops` 1,454 s (2.75), `message-identity` 1,421 s (2.3). Total CPU averaged 22.8 %, the same as one
+  suite alone, and never reached 90 %; the disk was idle.
+- **Separate homes** (06:47 to 07:12, six `run-suites` processes, each with its own `SPECREW_USER_HOME_OVERRIDE`):
+  within 2 % of the shared-home run, as predicted from reading. These suites keep their repositories under `TestDrive`
+  and never read the home. In the same run: processor performance 167 % of base, no parked cores, processor queue 0,
+  Defender about 20 % of one core, and pwsh about 1.25 cores for all six suites. So there is no CPU cap and no CPU
+  queue: the time is spent waiting.
+- **The temp folder** (07:15 to 07:32): `review-budget-loop` alone took 511 s with TEMP and TMP pointed at a new empty
+  folder and 506 s with the normal one, so it is not the cause. By reading, `%TEMP%\specrew-cited-turns` (7,538 files,
+  2.2 MB) is only written with unique names, and neither the helper nor the product lists it. Separately, the tests
+  leave about 20,000 folders in `%TEMP%` (14,235 `f202-form-*`, 6,031 `f202-msgid-*`): a hygiene finding, not shown
+  to cost time, left to the maintainer.
+- **What else ran during the `72ffa5500` sweep** (Windows logs; the sweep driver logs no process list): a Visual Studio
+  background download (02:31 to 02:50), the 03:29 maintenance batch, and a Defender intelligence update at 04:05.
+  This shows overlap only, not cost. The Kernel-Power log shows Modern Standby entered at 20:57:53 on 2026-11-16 with
+  no exit since.
+- **Mine, for the record**: the first six-way attempt passed its suite array through `pwsh -File`, the defect fixed
+  in T015 the same night, and ran nothing; the rerun used a list file.
+- **Left for the maintainer**: a Windows Performance Recorder trace of a six-way run, or one run with a Defender
+  exclusion on the test temp roots, to find the shared wait. Also the t008 lane's 900 s limit, which the review
+  campaign's preflight would hit today. Also the two suites' cap; splitting each into two files keeps them under it
+  whatever the cause. No throttle, limit or test was changed.
+- **Capacity**: about 1.0 SP against the 0.75 planned (0.5 in the row and 0.25 from the buffer), so a further 0.25
+  from the buffer. About 0.3 SP of the 2.0 SP buffer is left.
+- **Class closure**: NONE — the cause of the shared wait is not shown; the measurement is recorded and the decisions
+  are the maintainer's.
