@@ -14,7 +14,7 @@ BeforeAll {
     $null = New-Item -ItemType Directory -Path $script:Work -Force
 
     function New-ReviewFixture {
-        param([string]$Name, [string]$T002Verdict, [string]$T002Notes, [string]$T002PlanStatus = 'deferred', [string]$LedgerExtra = '')
+        param([string]$Name, [string]$T002Verdict, [string]$T002Notes, [string]$T002PlanStatus = 'deferred', [string]$LedgerExtra = '', [string]$ReviewTaskId = 'T002', [switch]$LedgerCrlf)
         $root = Join-Path $script:Work $Name
         $null = New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force
         $null = New-Item -ItemType Directory -Path (Join-Path $root 'scripts\internal') -Force
@@ -23,7 +23,9 @@ BeforeAll {
         Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1') -Destination (Join-Path $root 'extensions\specrew-speckit\scripts\shared-governance.ps1')
         $null = New-Item -ItemType Directory -Path (Join-Path $root '.squad') -Force
         Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $root '.squad\team.md')
-        Set-Content -LiteralPath (Join-Path $root '.squad\decisions.md') -Encoding UTF8 -Value ("# Decisions`n`n## 2026-11-15T10:00:00Z — Defer T002 to the next iteration`n`n- **Decision ID**: f909-defer-t002`n- **Approving Human**: maintainer`n" + $LedgerExtra)
+        $ledger = "# Decisions`n`n## 2026-11-15T10:00:00Z — Defer T002 to the next iteration`n`n- **Decision ID**: f909-defer-t002`n- **Approving Human**: maintainer`n" + $LedgerExtra
+        if ($LedgerCrlf) { $ledger = $ledger -replace "`r?`n", "`r`n" }
+        [IO.File]::WriteAllText((Join-Path $root '.squad\decisions.md'), $ledger, [Text.UTF8Encoding]::new($false))
         $dir = Join-Path $root 'specs\909-deferred\iterations\001'
         $null = New-Item -ItemType Directory -Path $dir -Force
         Set-Content -LiteralPath (Join-Path $root 'specs\909-deferred\spec.md') -Value '# Feature Specification: 909-deferred' -Encoding UTF8
@@ -40,7 +42,7 @@ BeforeAll {
                 '# Review', '', '**Overall Verdict**: accepted', '', '## Task Verdicts', '',
                 '| Task | Verdict | Notes |', '| --- | --- | --- |',
                 '| T001 | pass | Implemented and tested. |',
-                ('| T002 | {0} | {1} |' -f $T002Verdict, $T002Notes),
+                ('| {2} | {0} | {1} |' -f $T002Verdict, $T002Notes, $ReviewTaskId),
                 '', '## Gap Ledger', '', 'No gaps.'
             ) -join "`n")
         return [pscustomobject]@{ Root = $root; Iteration = $dir }
@@ -98,6 +100,18 @@ Describe 'A deferred task verdict names the decision that deferred it (FR-015, S
     It 'fails a deferred review row for a task the plan does not record as deferred (iteration 002 round 2, finding 6)' {
         $output = Invoke-FixtureValidator -Fixture (New-ReviewFixture -Name 'plan-done' -T002Verdict 'deferred' -T002Notes 'Moved by decision `f909-defer-t002`.' -T002PlanStatus 'done')
         $output | Should -Match "task 'T002' is deferred"
+    }
+
+    # Iteration 002 review round 3, finding-f194651984ecf15e (major): the plan lookup and the verdict-row check must use
+    # one comparison, and a deferred row that matches no plan task fails.
+    It 'fails a deferred row whose task id differs from the plan''s only in case, when the plan does not defer it (round 3)' {
+        $output = Invoke-FixtureValidator -Fixture (New-ReviewFixture -Name 'case-diff' -T002Verdict 'deferred' -T002Notes 'Moved by decision `f909-defer-t002`.' -T002PlanStatus 'done' -ReviewTaskId 't002')
+        $output | Should -Match "task 't002' is deferred"
+    }
+
+    It 'fails a deferred row for a task id that no plan task has (round 3)' {
+        $output = Invoke-FixtureValidator -Fixture (New-ReviewFixture -Name 'no-plan-task' -T002Verdict 'deferred' -T002Notes 'Moved by decision `f909-defer-t002`.' -ReviewTaskId 'T099')
+        $output | Should -Match "task 'T099' is deferred"
     }
 
     It 'still fails needs-work beside an accepted review' {
