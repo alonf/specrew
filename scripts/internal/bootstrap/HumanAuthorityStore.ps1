@@ -1868,7 +1868,10 @@ function Read-SpecrewCitedTypedTurn {
         if ($exact.Count -ge 1) { return [pscustomobject]@{ Turn = $exact[$exact.Count - 1].Turn; Reason = '' } }
         $byKey = @($entries | Where-Object { [string]$_.Base -ceq $cited -or [string]$_.AsCited -ceq $cited })
         if ($byKey.Count -ge 1) { return [pscustomobject]@{ Turn = $byKey[$byKey.Count - 1].Turn; Reason = '' } }
-        $byId = @($entries | Where-Object { [string]$_.Turn.message_id -ceq $cited })
+        # Feature 203 T020 (round E finding-cf1fe81e0398f883; the reviewer session's ruling, DRIFT-083): a compaction
+        # summary (or a Stop-feedback record, the other host record Claude files under a running prompt ID) is the host's
+        # text, never the message a citation names, so the message-ID fallback never returns one in its place.
+        $byId = @($entries | Where-Object { [string]$_.Turn.message_id -ceq $cited -and -not $_.Turn.PSObject.Properties['is_compact_summary'] })
         $distinct = @($byId | ForEach-Object { $_.Base } | Sort-Object -Unique)  # specrew-dedup-not-a-path: act identities are lowercase SHA-256 hex
         if ($distinct.Count -gt 1) { return [pscustomobject]@{ Turn = $null; Reason = 'ambiguous-citation' } }
         if ($byId.Count -ge 1) { return [pscustomobject]@{ Turn = $byId[$byId.Count - 1].Turn; Reason = '' } }
