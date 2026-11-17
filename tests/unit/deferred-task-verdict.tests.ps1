@@ -114,6 +114,18 @@ Describe 'A deferred task verdict names the decision that deferred it (FR-015, S
         $output | Should -Match "task 'T099' is deferred"
     }
 
+    # Iteration 002 review round 3, finding-877eda7300798107: the ledger's code fences are removed whatever its line endings.
+    It 'fails a deferred row whose decision id appears only inside a code fence in a CRLF ledger (round 3)' {
+        $extra = "`n``````text`n- **Decision ID**: f909-fenced-only`n```````n"
+        $output = Invoke-FixtureValidator -Fixture (New-ReviewFixture -Name 'fenced-crlf' -T002Verdict 'deferred' -T002Notes 'Moved by decision `f909-fenced-only`.' -LedgerExtra $extra -LedgerCrlf)
+        $output | Should -Match "task 'T002' is deferred by decision 'f909-fenced-only', which \.squad/decisions\.md does not hold"
+    }
+
+    It 'still accepts a deferred row naming a real entry in a CRLF ledger (round 3)' {
+        $output = Invoke-FixtureValidator -Fixture (New-ReviewFixture -Name 'ok-crlf' -T002Verdict 'deferred' -T002Notes 'Moved to iteration 002 by decision `f909-defer-t002`.' -LedgerCrlf)
+        $output | Should -Not -Match 'is deferred'
+    }
+
     It 'still fails needs-work beside an accepted review' {
         $output = Invoke-FixtureValidator -Fixture (New-ReviewFixture -Name 'needs-work' -T002Verdict 'needs-work' -T002Notes 'Not finished.')
         $output | Should -Match "cannot record overall verdict 'accepted' while tasks remain non-passing: T002"
