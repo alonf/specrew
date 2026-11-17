@@ -999,7 +999,14 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
                         (Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest ([string]$latest.target_digest)).valid -and
                         [string]$_.decision -ceq 'require-correction'
                     }).Count -gt 0
-                $recordsOnlyAuthorizes = (-not $gatingOpen -and -not $correctionRequired)
+                # Feature 203 T022 (F4; DRIFT-078, DRIFT-091): THE HUMAN'S STOP AUTHORIZES ON ITS OWN TERMS TOO. An accept-current
+                # disposition recorded for this result at the digest it reviewed is the human's answer to its open findings -
+                # the same answer that releases it on that exact digest - so the review record the sign-off sync itself
+                # demands, committed after the stop, must not take it away and cost a second typed line. Only for a records-only
+                # difference (this branch); a code change after the stop still stales, and require-correction still wins.
+                $humanAccepted = Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $HumanDispositions -CampaignId $CampaignId `
+                    -RunId $latestRunId -CurrentDigest ([string]$latest.target_digest)
+                $recordsOnlyAuthorizes = ((-not $gatingOpen -and -not $correctionRequired) -or $humanAccepted)
             }
             if (-not $recordsOnlyAuthorizes) {
                 return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'records-only-delta-over-non-authorizing-result' -Message 'Only governance and records files changed since your last review, but that review did not finish with a result that can sign anything off. Run a fresh review of your files as they are now: specrew review --live' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
