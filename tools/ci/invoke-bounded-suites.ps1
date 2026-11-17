@@ -9,11 +9,18 @@
 param(
     [Parameter(Mandatory)][string[]]$Suite,
     [ValidateRange(1, 3600)][int]$SuiteTimeoutSeconds = 300,
-    [string]$PesterVersion = '5.7.1'
+    # Empty: the Pester the calling process has loaded, else 5.7.1 (the Cross-Platform step's pin; that step's
+    # process loads none, so the pin holds there). A fixed 5.7.1 failed every suite where only another version is
+    # installed (Specrew CI's Deterministic gate has 5.9.0; run 43981760146).
+    [string]$PesterVersion = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($PesterVersion)) {
+    $callerPester = @(Get-Module Pester | Sort-Object Version -Descending | Select-Object -First 1)
+    $PesterVersion = if ($callerPester.Count -gt 0) { [string]$callerPester[0].Version } else { '5.7.1' }
+}
 
 function Get-BoundedSuiteChildScript {
     # The child imports the pinned Pester, runs one suite with detailed output, and writes its terminal result
