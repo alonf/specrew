@@ -820,7 +820,11 @@ function Test-SpecrewIterationRulingRecorded {
     $inDisposition = $false
     $fence = $null
     $section = New-Object System.Collections.Generic.List[string]
-    foreach ($line in @(Get-Content -LiteralPath $StatePath -Encoding UTF8)) {
+    # Iteration 002 review round 3, finding-a9d93413b59ece33: HTML comments are removed from the whole page before the
+    # headings are read, so a Disposition heading inside a comment opened above it is no heading.
+    $pageText = [string](Get-Content -LiteralPath $StatePath -Raw -Encoding UTF8)
+    $pageText = [regex]::Replace(($pageText -replace "`r`n?", "`n"), '(?s)<!--.*?-->', '')
+    foreach ($line in @($pageText -split "`n")) {
         if ($null -ne $fence) {
             if ($line -match ('^\s{0,3}' + [regex]::Escape($fence) + '\s*$')) { $fence = $null }
             continue
