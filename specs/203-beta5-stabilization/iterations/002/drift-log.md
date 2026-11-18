@@ -1023,3 +1023,26 @@ The following resolution strategies remain available if drift is detected later 
   The maintainer's "launcher: wait" (2026-11-16 03:13) stands until they answer. The question is asked in session,
   separately from T025's push.
 - **Class closure**: NONE — evidence for a decision.
+
+### DRIFT-040 — The T025 sweep of `77d9b511d` was red on the home-isolation guard: the new suite did not say it writes no home
+
+- **The sweep** (05:16 to 06:30 local on 2026-11-18, Throttle 3, 1,500 s per suite; git sampled every 2 minutes,
+  37 samples, all ok): 282 suites, 1 failed, 2 known red (B5F-036). Nine lanes exit 0, and `f203-i001-t008-suites`
+  exit 1 on the same suite. Home hook files: 0 changed before or during, 0 written to the redirected home, and the
+  crew's 12-file hash identical. Nothing pushed.
+- **The one cause**: `tests/unit/test-home-isolation.Tests.ps1` holds every test file that names a hook-writing entry
+  point to a private home, or to a `# specrew-test-home: not-a-writer - <why>` line. The new
+  `hook-command-plain-refusal.tests.ps1` (DRIFT-038) names the deployer, because it parses its three copies, and had
+  neither. It never runs the deployer; it runs only the hook command it builds, against a stub launcher in a temp
+  folder.
+- **Why the batch missed it**: the commit's batch on `0eaf94b41` ran the class-guard lanes, `f203-i001-suites`,
+  `f203-i001-carried` and seven single suites, but not `f203-i001-t008-suites`, where the home-isolation guard lives.
+  DRIFT-035's standing practice names only the class-guard lanes.
+- **Fix** `cbc50e869`: the not-a-writer line, saying why. There is no separate RED commit, because the guard was red
+  on the swept tip, as recorded here. Alone: `test-home-isolation` exit 0, `hook-command-plain-refusal` 12 of 12,
+  `every-suite-is-named-by-a-lane` exit 0.
+- **Proposed practice** (for the reviewer session): a commit that adds a test file runs the class-guard lanes and
+  `test-home-isolation.Tests.ps1` in its own batch, the home-isolation guard being the other repository-wide check a
+  new test file can fail.
+- **Next**: a full sweep of the new tip, then the gated push of that exact revision.
+- **Class closure**: the existing guard caught it before any push; the batch gap is the proposed practice above.
