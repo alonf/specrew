@@ -885,3 +885,36 @@ The following resolution strategies remain available if drift is detected later 
   push on `c108f00e5`, so the Phase 10 push stays exactly the swept revision.
 - **Class closure**: the guard already existed and caught it; the gap was in the crew's batch, now closed by the
   standing practice above.
+
+### DRIFT-036 — 206's 13 hand-over items checked against 203; five handed back; the records tidied
+
+- **The check** (the reviewer session's request, 2026-11-18, for 206's closeout seed): each of the 13 items feature 206
+  handed to 203 (206's bug-list items 3, 7, 8, 9, 13, 14, 27, 42, 58 to 62) was read against 203's records and code on
+  `597c653c1`. Result: 8 fixed on the 203 branch, none planned in iteration 002, 5 handed back (9, 14, 27, 42, 62).
+- **The hand-back note** (the reviewer session's routine ruling): `specs/203-beta5-stabilization/handback-to-next-bug-bash.md`,
+  readable alone. It lists the five items handed back with their reasons and 203 findings, and the fixed but thinly
+  guarded items as test candidates: 59 and 60 have no named test, 58 is guarded only by the partial case and not by
+  206's sequence, 3's cause is "likely", and 7's hang is unexplained. 206's seed stays as written.
+- **The records behind 58 to 61**, which name no 206 item. 58, 59 and 60 were fixed by T008's redesign in iteration
+  001 (DRIFT-052: "Partial findings", RED `047cd6a0e` and fix `8b98e2ef7`; item 3, what spends a round; one launch per
+  invocation and no automatic retry). That drift log is sealed, so the link to 206's items is this entry:
+  - **206 item 58** (partial findings dropped, "found nothing") is closed by DRIFT-052 "Partial findings".
+  - **206 item 59** (the retry message says "NOT spent" while the spend record says spent) is closed by DRIFT-052
+    item 3 and FR-010.
+  - **206 item 60** (the automatic retry blocked by the first attempt's pause) is closed by the one-launch design
+    (`scripts/specrew-review.ps1:1375-1377`).
+  - **206 item 61** (campaign findings demoted for a missing "Failure scenario:" clause) is B5F-017's cause, fixed by
+    `d3ab3f21c`. B5F-017 now names it.
+
+  All four fixes predate 206's sightings, which ran main's engine.
+- **Headings matched to their bodies** in `docs/beta5-findings.md`:
+  - B5F-039 now reads fixed (`77bd4a2e`, `b69cc5ca`) and names 206's item 8.
+  - B5F-042 now reads fixed (DRIFT-056, and DRIFT-057's case-folding defect). It stays open only for the maintainer's
+    iteration 002 wording item: the changed-real-home refusal should say the change may have come from another
+    session. No iteration 002 task carries that item, and the runner does not say it yet.
+- **Not done: T015 and T017 checked in tasks.md through the task writer.** `Set-TaskStatus ... -Status done` does not
+  change `tasks.md`. On tasks already done, it re-stamped `completed_at` with the time of the call (2026-11-17 16:39 UTC
+  became 2026-11-18 02:14 UTC) and moved state.md's "Last Completed Task". The crew restored both files from HEAD
+  before any commit. In iteration 002, no done task is checked in tasks.md (T015 to T024 are all `- [ ]`), and
+  `tasks-progress.yml` is the record of status. The question of how to check them went back to the reviewer session.
+- **Class closure**: NONE — records only; the open questions are listed above.
