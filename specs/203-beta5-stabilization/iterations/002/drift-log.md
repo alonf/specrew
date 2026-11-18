@@ -997,3 +997,29 @@ The following resolution strategies remain available if drift is detected later 
   maintainer is asked in session when the build is ready, with a scratch dry run's file list, the
   `settings.local.json` diff and the home hash before and after.
 - **Class closure**: the new suite, in lane `f203-i001-suites`, holds the generated command to plain-text refusals.
+
+### DRIFT-039 — The scratch dry run of the Claude hook deploy for T025's launcher half (evidence for the maintainer's question)
+
+- **What ran** (the reviewer session's ruling, 05:13:42 to 05:13:47 local on 2026-11-18): the deployer ran in a temp
+  worktree of `fc286aeca` holding copies of the project's ignored state (`start-context.json`, `last-start-prompt.md`,
+  and the pin record and its bindings). It was the tip's own deployer, run with `-HostKind claude`, with the home
+  redirected by both `-UserHomeOverride` and `SPECREW_USER_HOME_OVERRIDE`. Nothing ran on the real project, whose
+  `.claude/settings.local.json` and `.claude/specrew-hook-launch.ps1` are still dated 2026-11-13 00:52:32. The
+  deployer reads no pin at deploy time: its live-engine text is only written into the launchers it generates.
+- **What it wrote**: exit 0, "claude hooks deployed ... (SessionStart + UserPromptSubmit + Stop + PostToolUse;
+  PreToolUse dormant)". Exactly two files changed, both in the project's `.claude` folder:
+  - `.claude/settings.local.json`: the four hook commands. Each is the same encoded command with the plain-text
+    missing-launcher refusal (DRIFT-038).
+  - `.claude/specrew-hook-launch.ps1`: the three pin refusals and the dispatcher refusal become plain text on
+    stderr with exit 1 (T006, `e85dff7fc`). The baked `$HostBinding` gains one origin rule: a cross-session
+    message counts as host-injected. The new baked binding is byte-identical to the pin's own Claude binding
+    (`.specrew/runtime/live-engine-bindings.json`). The launcher uses the pin's binding whenever a pin record exists,
+    so on this pinned project the baked change has no effect.
+
+  Nothing was written to the redirected home, and the crew's 12-file hash of the real home was identical before and
+  after. The diffs are kept in the crew's scratchpad (`t025-dryrun-settings.diff`, `t025-dryrun-launcher.diff`). The
+  temp copy was removed by its exact path.
+- **For the maintainer**: the deploy writes only the project's two `.claude` files and nothing in the home folder.
+  The maintainer's "launcher: wait" (2026-11-16 03:13) stands until they answer. The question is asked in session,
+  separately from T025's push.
+- **Class closure**: NONE — evidence for a decision.
