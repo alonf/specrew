@@ -779,21 +779,36 @@ Assert-True (-not [string]::IsNullOrWhiteSpace($mfcHelper) -and $mfcVerdicts.Mis
 # verification-plan.signoff-lanes.json, which this guard reads too, so their suites stay named and they can be restored
 # as they were. Get-LanePlanProblems judges the two files' shape and returns one line per problem.
 #
-# AS IT STANDS (feature 206's review plan, maintainer 2026-11-13, option 1; DRIFT-206-I002-008): the active plan must
-# name exactly 206's six lanes, in order, and the parked file must equal the plan at 206's branch base (d3e33550) byte
-# for byte. That held on 206's branch; on main it fails every branch that takes main in and carries its own lanes.
+# The rule is general: no feature's lane list is asserted, and the parked file is not compared with any commit, because
+# every feature brings its own lanes and parks the others' (feature 206 pinned its own six lanes and its base's parked
+# file here, and on main that failed every branch that took main in with its own lanes). What the pin protected,
+# stated for any feature:
+#   - the plan names at least one lane: a round that runs no lane verifies nothing;
+#   - every lane id is unique across the plan and the parked file: one id for two lanes means a round or a restore
+#     picks one and loses the other;
+#   - every suite an active or parked lane names exists on disk: already the stale-suite check above
+#     (Get-StaleLaneSuites), not repeated here;
+#   - every test on disk is named by an active lane, a parked lane, a per-push CI step or the release list: the census
+#     comparison above, unchanged.
 function Get-LanePlanProblems {
     param([Parameter(Mandatory)][string] $Root)
     $problems = [Collections.Generic.List[string]]::new()
-    $f206Lanes = @('f206-unit-suites', 'f206-changed-integration', 'f206-census-guard', 'f206-structural-guards', 'f206-governance-206', 'f206-deployed-hash-record')
-    $planNow = Get-Content -LiteralPath (Join-Path $Root '.specrew/verification-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    $planIds = @($planNow.commands | ForEach-Object { [string]$_.command_id })
-    if (($planIds -join ',') -ne ($f206Lanes -join ',')) { $problems.Add(("the verification plan names exactly 206's six lanes, in order (found: {0})" -f ($planIds -join ', '))) }
-    $parkedPath = Join-Path $Root '.specrew/verification-plan.signoff-lanes.json'
-    $parkedJson = if (Test-Path -LiteralPath $parkedPath -PathType Leaf) { (Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress } else { '' }
-    $basePlan = (& git -C $Root show 'd3e33550:.specrew/verification-plan.json' 2>$null) -join "`n" | ConvertFrom-Json
-    $baseJson = if ($null -ne $basePlan) { $basePlan.commands | ConvertTo-Json -Depth 12 -Compress } else { '' }
-    if (-not (-not [string]::IsNullOrWhiteSpace($baseJson) -and $parkedJson -ceq $baseJson)) { $problems.Add('the ten lanes the plan named at the branch base (d3e33550) are parked unchanged in verification-plan.signoff-lanes.json') }
+    $lanes = [Collections.Generic.List[object]]::new()
+    foreach ($source in @(@{ Name = 'plan'; Path = '.specrew/verification-plan.json' }, @{ Name = 'parked'; Path = '.specrew/verification-plan.signoff-lanes.json' })) {
+        $path = Join-Path $Root $source.Path
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+        $doc = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $commands = if ($null -ne $doc -and $doc.PSObject.Properties.Name -contains 'commands') { @($doc.commands) } else { @() }
+        foreach ($command in $commands) {
+            $id = if ($null -ne $command -and $command.PSObject.Properties.Name -contains 'command_id') { [string]$command.command_id } else { '' }
+            $lanes.Add([pscustomobject]@{ Id = $id; Source = $source.Name })
+        }
+    }
+    if (@($lanes | Where-Object { $_.Source -eq 'plan' }).Count -eq 0) { $problems.Add('no active lane: the verification plan names no lane, so a review round would verify nothing') }
+    foreach ($blank in @($lanes | Where-Object { [string]::IsNullOrWhiteSpace($_.Id) })) { $problems.Add(("a lane with no command_id (in the {0} file)" -f $blank.Source)) }
+    foreach ($group in @($lanes | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Id) } | Group-Object -Property Id |Where-Object { $_.Count -gt 1 })) {
+        $problems.Add(("duplicate lane id: {0} ({1} lanes; in: {2})" -f $group.Name, $group.Count, ((@($group.Group | ForEach-Object { $_.Source }) | Sort-Object -Unique) -join ', ')))
+    }
     return @($problems)
 }
 
