@@ -1101,3 +1101,57 @@ The following resolution strategies remain available if drift is detected later 
   `plan.md`, each quoting the decision.
 - **Class closure**: NONE — a scope decision; the reorder lands as its own RED and fix, then its own measurement,
   sweep and push.
+
+### DRIFT-042 — T025's navigator reorder built and measured: the Stop hook about 0.9 s faster, a quiet Stop 12 git calls to 4
+
+- **Built** (DRIFT-041's decision; the reviewer session's routine conditions, accepted at 11:47 local on 2026-11-18):
+  RED `ae1ca8e74`, red 3 of 7 in `continuous-co-review-navigator.Tests.ps1`, no new test file. Fix `2de23bb06`:
+  `Get-ReviewCampaignNavigatorScopeApplicability -DeferImplementationCheck` leaves only the coverage check to the
+  Stop navigator, which runs it once a stop is found open (where it decides as before) and on an unreadable store
+  (today's order kept). The function's default is unchanged.
+- **The open-stop decision is byte-identical**: captured on the same fixture before (on `d3e89633d`) and after,
+  1,158 identical bytes; the suite pins the block as a literal.
+- **Reasons that change** (both stay quiet, with no block):
+  1. No stop open, at before-implement or implement, over a records-only delta:
+     `campaign-not-applicable:no-implementation-yet (<reason>)` becomes `no-open-stop`.
+  2. A stage after implement where the scope applies (for example review-signoff), over a records-only delta, stop
+     open or not: the same old reason becomes `not-implement-stage`, because the stage check now comes before the
+     coverage check.
+
+  Every other reason is unchanged. The only test that pinned a changed reason is the navigator suite's "an empty
+  stage (fully-resolved records-only delta) is quiet" case. Its expectations are amended in the RED commit, from
+  `-Match 'no-implementation-yet'` to `no-open-stop` (before-implement) and `not-implement-stage` (review-signoff).
+- **Tests alone**:
+  - `continuous-co-review-navigator` 41 of 41;
+  - `campaign-activation-implementation-premise` 5;
+  - `review-navigator-stops` 11;
+  - `campaign-stop-authority` 22;
+  - `review-advisory-session-scope` green.
+
+  Batch: lane `f203-i001-t008-suites` on `2de23bb06` exit 0 in 450 s, in a temp worktree with the home redirected.
+  The crew's 12-file hash was unchanged, and nothing was written to the redirected home.
+- **Measured** (DRIFT-073's method, both engines now, alternating, 11:58:50 to 12:04:12 local; `608b21ba6` before and
+  `2de23bb06` after; one warm-up turn each, not counted):
+
+  | Hook, n=10 | Before (`608b21ba6`) median / worst / best | After (`2de23bb06`) median / worst / best |
+  | --- | --- | --- |
+  | Stop | 8.87 / 8.95 / 8.66 s | 7.97 / 8.15 / 7.81 s |
+  | prompt | 3.98 / 4.05 / 3.93 s | 4.10 / 4.13 / 4.04 s |
+
+  - The Stop median is 0.90 s (10.1%) lower. The before spread was 0.29 s, under the reviewer session's 1.5 s mark.
+  - The prompt hook does not run the navigator. Its 0.11 s difference is in the other direction and is not
+    explained by this change.
+  - A quiet Stop made 12 git calls before and 4 after. The coverage check's eight calls are gone: rev-parse three
+    times, symbolic-ref, merge-base, diff, status and check-ignore. Left are the dispatcher's snapshot (three) and
+    the handover's log.
+  - Every exit was 0, and every Stop output was empty on both engines.
+- **Load** (the reviewer session's conditions): the first start was refused at 11:57:05 (46% on one sample taken
+  during setup). The start check was then made an average of eight samples after setup: 12.2% (18, 3, 21, 29, 14, 6,
+  1, 6). The samples before each turn were 2 to 27%, and the end 6%. No sweep, lane or installer appeared, and nothing
+  was removed as an outlier.
+- **Not comparable with DRIFT-037's 8.69 s**: that was measured at night under 0 to 13% load. This run is daytime, with
+  the maintainer at the machine and the 206 crew active. Only the before and after of this run are compared.
+- **Live only after a pin advance**: the pin (`da78b600`) still runs the old navigator. The pin advance is the
+  maintainer's.
+- **Class closure**: T025's Acceptance is met on the crew's say: the Stop median fell again. The navigator suite's
+  T025 context holds the reorder. The full sweep and the push follow.
