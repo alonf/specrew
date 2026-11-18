@@ -449,11 +449,16 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
     # Paired sibling of the case above (2026-08-10 sharpening): quiet is available ONLY for a
     # fully-resolved delta that contains no implementation. The gate is never consulted there, so the
     # consumer cannot meet an undeclinable pre-code review demand.
+    # Feature 203 T025 (DRIFT-041, DRIFT-042): with no stop open the coverage check no longer runs, so the quiet answer
+    # carries the reason of the step that now decides it: 'no-open-stop' during implement, 'not-implement-stage' after it.
+    # Before the reorder both cases said 'campaign-not-applicable:no-implementation-yet (...)'. The guarantee is unchanged:
+    # quiet, no block, and the packet gate never consulted; an open stop over records only is pinned quiet in the T025
+    # context above.
     It 'campaign <Boundary>: an empty stage (fully-resolved records-only delta) is quiet, never an undeclinable block' -TestCases @(
-        @{ Boundary = 'before-implement' }
-        @{ Boundary = 'review-signoff' }
+        @{ Boundary = 'before-implement'; Reason = 'no-open-stop' }
+        @{ Boundary = 'review-signoff'; Reason = 'not-implement-stage' }
     ) {
-        param($Boundary)
+        param($Boundary, $Reason)
         $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
         try {
             $featureRoot = Join-Path $root 'specs/001-demo'
@@ -472,7 +477,7 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
 
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
             $decision.action | Should -Be 'no-op'
-            $decision.reason | Should -Match 'no-implementation-yet'
+            $decision.reason | Should -Be $Reason
             $decision.stop_block | Should -BeNullOrEmpty
             Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
         }
@@ -515,6 +520,114 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    # Feature 203 T025 (the maintainer's "203 T025: build the navigator reorder", 11:36 local on 2026-11-18; DRIFT-041).
+    # On a Stop the navigator asked "is there implementation to review?" (the coverage delta: about 1 s and eight git
+    # calls, merge-base and diff among them) before the 25 ms read of whether a review stop is open. With no stop open
+    # every answer is a quiet no-op, so the coverage check now runs only when a stop is open, and decides there as before.
+    # Authority, scope state, stage and identity keep their order.
+    Context 'T025: the coverage check runs only when a review stop is open' {
+        BeforeAll {
+            function script:New-NavigatorFeatureProject([string]$Boundary, [switch]$RecordsOnly) {
+                $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
+                $featureRoot = Join-Path $root 'specs/001-demo'
+                New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+                New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+                '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+                if ($RecordsOnly) { Set-Content -LiteralPath (Join-Path $featureRoot 'plan.md') -Value '# Plan' -Encoding UTF8 -NoNewline }
+                else { Set-Content -LiteralPath (Join-Path $root 'src/feature.txt') -Value 'implemented' -Encoding UTF8 -NoNewline }
+                & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' add -A 2>&1 | Out-Null
+                & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' commit -q -m 'boundary(implement): work' 2>&1 | Out-Null
+                return $root
+            }
+            # The navigator's git calls, read from GIT_TRACE (its git children inherit the variable).
+            function script:Invoke-NavigatorTraced([string]$Root) {
+                $trace = Join-Path ([IO.Path]::GetTempPath()) ('nav-trace-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.txt')
+                $saved = $env:GIT_TRACE
+                try { $env:GIT_TRACE = $trace; $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $Root }
+                finally { $env:GIT_TRACE = $saved }
+                $calls = @(if (Test-Path -LiteralPath $trace) { Get-Content -LiteralPath $trace | Where-Object { $_ -match 'trace: built-in: git ' } | ForEach-Object { ($_ -replace '^.*trace: built-in: git ', '') } })
+                Remove-Item -LiteralPath $trace -Force -ErrorAction SilentlyContinue
+                return [pscustomobject]@{ Decision = $decision; Calls = $calls; CoverageCalls = @($calls | Where-Object { $_ -match '^(merge-base|diff --name-only)\b' }) }
+            }
+            # Today's block for this fixture's open stop, captured on d3e89633d before the reorder (DRIFT-042).
+            $script:TodayStopBlock = @(
+                'Specrew review stopped - your decision is needed.'
+                'Why: the crew needs your judgment: should the retry cap count per host or per campaign?'
+                'What happened: 1 of 2 rounds used; 0 findings open.'
+                'Your decision: Decide how the review goes on.'
+                'Send one of these lines as a normal chat message (a reply inside a question UI or picker is not captured):'
+                '  your answer, in your own words - the crew follows it; the review waits for it'
+                '  stop the review here - ends the review now; the sign-off lists every finding still open as not covered'
+            ) -join "`n"
+        }
+        BeforeEach {
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+        }
+
+        It 'a quiet Stop with no open stop makes no coverage-delta git call' {
+            $root = script:New-NavigatorFeatureProject -Boundary 'before-implement'
+            try {
+                $run = script:Invoke-NavigatorTraced -Root $root
+                $run.Decision.reason | Should -Be 'no-open-stop'
+                $run.Decision.stop_block | Should -BeNullOrEmpty
+                $run.CoverageCalls | Should -BeNullOrEmpty -Because ('no stop is open, so whether implementation exists cannot change the answer (git calls: ' + ($run.Calls -join '; ') + ')')
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'an open stop during implement still runs the coverage check and gives today''s block, byte for byte (pinned)' {
+            $root = script:New-NavigatorFeatureProject -Boundary 'before-implement'
+            try {
+                script:Add-NavigatorOpenStop -Root $root
+                $run = script:Invoke-NavigatorTraced -Root $root
+                $run.Decision.reason | Should -Be 'review-stop-open:c-judgment'
+                [string]$run.Decision.route | Should -Be 'pause-pending'
+                ([string]$run.Decision.stop_block -replace "`r`n", "`n") | Should -BeExactly $script:TodayStopBlock
+                $run.CoverageCalls | Should -Not -BeNullOrEmpty -Because 'with a stop open, the coverage check still decides'
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'an open stop over records only is still quiet: the coverage check decides when a stop is open (pinned)' {
+            $root = script:New-NavigatorFeatureProject -Boundary 'before-implement' -RecordsOnly
+            try {
+                script:Add-NavigatorOpenStop -Root $root
+                $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+                $decision.reason | Should -Match '^campaign-not-applicable:no-implementation-yet'
+                $decision.stop_block | Should -BeNullOrEmpty
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'an open stop before implement gives no block (pinned)' {
+            $root = script:New-NavigatorFeatureProject -Boundary 'review-signoff'
+            try {
+                script:Add-NavigatorOpenStop -Root $root
+                $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+                $decision.reason | Should -Be 'not-implement-stage'
+                $decision.stop_block | Should -BeNullOrEmpty
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'an unreadable stop store keeps today''s order: the note on genuine work, quiet over records only (pinned)' {
+            Mock -CommandName Get-ReviewCampaignOpenStop -MockWith { throw 'the store could not be read' }
+            $work = script:New-NavigatorFeatureProject -Boundary 'before-implement'
+            $records = script:New-NavigatorFeatureProject -Boundary 'before-implement' -RecordsOnly
+            try {
+                $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $work
+                $decision.reason | Should -Be 'campaign-stop-unreadable'
+                (@($decision.inject_notes) -join "`n") | Should -Match 'Specrew could not read whether a review stop is waiting: the store could not be read'
+                $quiet = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $records
+                $quiet.reason | Should -Match '^campaign-not-applicable:no-implementation-yet' -Because 'today the coverage check answered before the store was read'
+                @($quiet.inject_notes).Count | Should -Be 0
+            }
+            finally { Remove-Item -LiteralPath $work, $records -Recurse -Force -ErrorAction SilentlyContinue }
+        }
     }
 
     It 'campaign intake: malformed active feature state still fails closed through the packet gate' {
