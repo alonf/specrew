@@ -9,6 +9,7 @@
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+    . (Join-Path $PSScriptRoot '..\support\cited-typed-turn.ps1')
     $script:Roots = New-Object System.Collections.Generic.List[string]
 
     function New-CloseoutArrivalProject {
@@ -38,7 +39,8 @@ BeforeAll {
 
     function Invoke-CloseoutCapture {
         param($Project)
-        return Add-SpecrewBoundaryAuthorization -ProjectRoot $Project.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript'
+        $cite = New-SpecrewCitedVerdictTurn -Text 'approved for iteration-closeout'
+        return Add-SpecrewBoundaryAuthorization -ProjectRoot $Project.Root -CurrentBoundary 'retro' -AuthorizedBoundary 'iteration-closeout' -AuthorizingHuman 'Fixture Human' -VerdictText 'approved for iteration-closeout' -EvidenceSource 'hook-captured-from-transcript' @cite
     }
 }
 
