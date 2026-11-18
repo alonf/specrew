@@ -1592,6 +1592,7 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   again. The second sync wrote a second "Boundary sync: iteration-closeout" entry in `.squad/decisions.md`, a warning
   entry ("Expected next boundary 'feature-closeout' but received 'iteration-closeout'") and a second lifecycle event.
   The warning is wrong: the crossing it re-recorded was still pending. Recorded in DRIFT-206-006.
+
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,
