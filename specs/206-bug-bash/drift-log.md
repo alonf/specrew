@@ -103,3 +103,15 @@
   exception (DRIFT-206-003), and attempt 2 succeeded. This is the second sighting that night, after `1b40bb44`
   (DRIFT-206-I002-025); bug list item 3, feature 203's to fix.
 - **Class closure**: NONE — sightings of bug list items 69 and 3.
+
+## DRIFT-206-007 — feature closeout: the closeout dashboard drawn before the verdict (bug list item 71, a sighting)
+
+- **Recorded**: 2026-11-18, after the feature-closeout verdict (captured 09:50:21Z, crossing iteration-closeout ->
+  feature-closeout, authorization commit `eca038de`).
+- **What happened**: the arrival sync (01:14:05Z) drew `closeout-dashboard.md` before the verdict. The capture
+  rewrote `start-context.json`, `last-start-prompt.md` and `.squad/identity/now.md` and did not redraw the dashboard.
+  It was committed as drawn in the boundary commit `68cd0707`, as feature 205 did (its DRIFT-205-INTAKE-010).
+- **Held records**: the maintainer's sweep answer (11:46 local) and feature 203's hand-back (items 9, 14, 27, 42, 62)
+  were held until after the verdict, because the crossing was recorded against the tree. They are written in
+  `closeout.md` and `follow-up-seed.md` in the commit after the boundary commit.
+- **Class closure**: NONE — a sighting of bug list item 71.

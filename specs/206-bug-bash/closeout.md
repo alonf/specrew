@@ -41,6 +41,11 @@ maintainer's home folder. The hook files were hashed before and after every suit
   place.
 - **Not run at this closeout**: the full release sweep. The REAL CI sets ran on every push; whether a full sweep runs
   before any merge is the maintainer's call, scheduled with feature 203's sweep.
+  - **The maintainer's answer**, typed in the reviewer session at 11:46 local on 2026-11-18 and relayed:
+    "206 closeout sweep: no". There is no full sweep on 206 before the merge. The reasons given and accepted: CI ran
+    the real test sets on every push and the closing head `eca038de` is green on all three workflows; a full local
+    sweep from this worktree cannot run the home-writing files while feature 203 is unmerged; and feature 203 sweeps
+    206's code on the combined tree when it takes main in (its T030).
 
 ## Known Warnings, with Dispositions
 

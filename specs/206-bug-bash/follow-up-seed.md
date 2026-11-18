@@ -86,6 +86,9 @@ T033, T026 and T031 drew 18 of iteration 002's 35 review findings.
 
 - **With feature 203 (13):** 3, 7, 8, 9, 13, 14, 27, 42, 58, 59, 60, 61, 62. Each was handed over by name, and 203
   fixes them or hands them back.
+  - **As of 2026-11-18, per the reviewer session:** feature 203 hands back 9, 14, 27, 42 and 62; the other 8 are fixed
+    on its branch. Its note is `specs/203-beta5-stabilization/handback-to-next-bug-bash.md` on 203's branch. The next
+    bug bash reads both this seed and that note.
 - **Candidates the maintainer has not ruled on:** the retro scaffold refusing an explained verdict line (iteration
   002's DRIFT-023, the third sighting) and iteration 002's retro improvement actions. Both are in
   `iterations/002/retro.md`.
