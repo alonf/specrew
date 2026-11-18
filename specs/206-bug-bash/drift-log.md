@@ -115,3 +115,19 @@
   were held until after the verdict, because the crossing was recorded against the tree. They are written in
   `closeout.md` and `follow-up-seed.md` in the commit after the boundary commit.
 - **Class closure**: NONE — a sighting of bug list item 71.
+
+## DRIFT-206-008 — the merge to main bypassed the required review (the maintainer's word, this pull request only)
+
+- **Recorded**: 2026-11-18, after the merge, on the 206 branch only.
+- **What happened**: pull request #3722 (206-bug-bash to main) was green on every check, 30 of 30, including the
+  four required ones, and had no conflict. GitHub still reported it BLOCKED: main's branch protection requires one
+  approving review, and the PR's author cannot give it. The crew stopped without merging and reported. The bypass was
+  not in the merge go ("206 merge: open the PR, merge commit", 11:47 local).
+- **The maintainer's word**: "206 merge: use --admin for PR 3722", typed in the reviewer session at 13:08 local on
+  2026-11-18 and relayed by it. Scope: this one pull request and this one merge, not a standing permission for any
+  other pull request or other use of `--admin`.
+- **The merge**: just before merging, the crew re-checked that the head was still `62497cf9`, all 30 checks were
+  green, the PR was mergeable and main was still at `d3e33550f`. It then ran `gh pr merge 3722 --merge --admin`:
+  a merge commit, no squash, no rebase, the branch kept. The merge commit is `d5f4af87` (11:08:32Z), first parent
+  `d3e33550f`, second parent `62497cf9`.
+- **Class closure**: NONE — a recorded, maintainer-authorized exception.
