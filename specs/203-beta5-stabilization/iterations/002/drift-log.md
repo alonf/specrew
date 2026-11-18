@@ -855,3 +855,33 @@ The following resolution strategies remain available if drift is detected later 
   session's word. During the third sweep the crew samples `git --version` every few minutes and stops the sweep at once
   if it fails.
 - **Class closure**: NONE — a machine event outside the project; the guard is the sampler during sweeps.
+
+### DRIFT-035 — New suites were added with no lane, and the pre-push batch did not run the class-guard lanes; found by the Phase 10 sweep before any push
+
+- **What happened**: T022 and T023 added three suites (`records-only-source-repo-narrowed`,
+  `review-end-one-approval`, `plan-crossing-pending`), and no lane in `.specrew/verification-plan.json` named them.
+  The crew's pre-push batch ran the new suites and their neighbours, but not the class-guard lanes. The Phase 10 sweep
+  of `3ced8938b` (282 suites, 0 failed, 2 known red B5F-036; ended 02:45 local on 2026-11-18) failed lane
+  `f199-class-guards-a` on `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, the check that every test file on
+  disk is named by a lane. Nothing was pushed. The same check on the local T025 line found T025's three suites
+  (`hook-run-git-snapshot`, `hook-git-snapshot-reader`, `hook-transcript-tail`) unnamed too.
+- **The fix** (the reviewer session's routine ruling, Option 1): the branch was rebuilt on `3ced8938b`. Phase 10
+  gained one commit, `c108f00e5`, which adds the three T022/T023 suites to lane `f203-i001-suites` (only that command's
+  suite list and label changed). T025's four commits and DRIFT-034 were replayed on top with no conflicts, and
+  `597c653c1` adds T025's three suites to the same lane. That keeps T025 local, out of the Phase 10 push. Before the
+  rebuild, the old tip was kept as the local branch `203-backup-before-rebuild` and a bundle of the unpushed commits.
+  The rebuilt tip differs from the old tip only in `.specrew/verification-plan.json`. The only test that reads this
+  repository's own plan is the class guard; other tests build their own copies, and none pins the plan's hash.
+- **Checks on `c108f00e5`**: fail-fast in a temp worktree with a redirected home: `f199-class-guards-a` exit 0 in
+  116 s, `f203-i001-suites` exit 0 in 464 s (under the reviewer session's 700 s mark). Then the full sweep (03:02 to
+  04:05 local, 3 at a time, 1,500 s per suite): 282 suites, 0 failed, 2 known red (B5F-036), all 10 lanes exit 0
+  (`f203-i001-suites` 393 s). Home hook files: 0 changed before or during, 0 written to the redirected home. The
+  crew's 12-file hash was identical before and after. `git --version` was sampled every 2 minutes, 32 samples, all ok.
+  markdownlint and `validate-governance -ChangedOnly` were green on `c108f00e5`, and it was pushed at 04:05:53
+  (`dfe675eea..c108f00e5`).
+- **Standing practice from now** (the reviewer session's ruling): any commit that adds a test file runs the
+  class-guard lanes (`f199-class-guards-a` and `-b`) in its own batch, before the push.
+- **Where this entry lands** (the reviewer session's routine ruling): on T025's local line; there is no records-only
+  push on `c108f00e5`, so the Phase 10 push stays exactly the swept revision.
+- **Class closure**: the guard already existed and caught it; the gap was in the crew's batch, now closed by the
+  standing practice above.
