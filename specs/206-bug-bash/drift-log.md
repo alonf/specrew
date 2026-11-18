@@ -188,3 +188,24 @@
   - Merged with `gh pr merge 3916 --merge --admin`: merge commit `e6732b27` (21:26:18Z), parents `d5f4af87` and
     `f70a7918`. The branch was kept.
 - **Class closure**: NONE — a recorded, maintainer-authorized exception, the second after DRIFT-206-008.
+
+## DRIFT-206-012 — the proposal 166 amendment: merged past the required review by the maintainer's word
+
+- **Recorded**: 2026-11-19, on the 206 branch only. The amendment is outside feature 206: it is documentation only, on
+  `proposal/166-concurrent-hygiene-evidence` off main, in the #3720 form.
+- **The work**: the maintainer's words were "OK, lets do it. And this fix gets priority now since we will work on
+  multiple features concurrently" (20:14 local, 2026-11-18) and "proposal 166 amendment: open the PR" (23:25 local).
+  - Amendment A1 adds the evidence from the first merge with features open side by side (205: 5 conflicting files,
+    203: 8, confirmed with `git merge-tree`).
+  - It also adds six surfaces Pillar 1 did not name, FR-008a (feature-aware "latest entry" readers), FR-010 (no
+    repository-wide guard may assert one feature's names) and the priority.
+  - Three contradictions with current practice are left as open questions for 166's design workshop.
+  - `proposals/INDEX.md` changed only in 166's own row.
+- **Pull request #3917**: 22 of 22 checks green and mergeable, but BLOCKED on the required approving review.
+  - The maintainer's word: "proposal 166 merge: go, use --admin for PR 3917", typed in the reviewer session at 00:02
+    local on 2026-11-19 and relayed by it. It covers this one pull request and this one merge only.
+  - Re-checked just before merging: head `00cc646b`, 22 of 22 green, mergeable, main at `e6732b27`.
+  - Merged with `gh pr merge 3917 --merge --admin`: merge commit `c35392cd` (22:03:07Z, 2026-11-18), parents
+    `e6732b27` and `00cc646b`. The branch was kept.
+  - Main gained exactly two files: the proposal and the index.
+- **Class closure**: NONE — a recorded, maintainer-authorized exception, the third after DRIFT-206-008 and -011.
