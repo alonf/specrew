@@ -922,3 +922,36 @@ The following resolution strategies remain available if drift is detected later 
   goes to the reviewer session then. The re-stamp is filed as B5F-091 (candidate, not planned), with a line in the
   hand-back note.
 - **Class closure**: NONE — records only; the open questions are listed above.
+
+### DRIFT-037 — T025 measured: the Stop hook is about 1.1 s faster per turn; the prompt hook is unchanged
+
+- **Method** (iteration 001's DRIFT-073, unchanged): two scratch worktrees, `c108f00e5` (before T025) and `07ee3efed`
+  (the T025 tip), neither with a pin record, so each runs its own `.specify` dispatcher. Each turn appends a typed prompt
+  to a copy of the same real 53 MB transcript, then runs the prompt hook and the Stop hook through that copy's own
+  `.claude/specrew-hook-launch.ps1` with the same payload. Engines alternate turn by turn: one first turn each, then ten
+  steady turns each. Run from 04:24:16 to 04:30:07 local on 2026-11-18, on the reviewer session's go after its load check
+  (04:22 to 04:23).
+- **Results** (median / worst / best):
+
+  | Turn | Hook | Before (`c108f00e5`) | After (`07ee3efed`) |
+  | --- | --- | --- | --- |
+  | steady, n=10 | Stop | 9.82 / 10.59 / 9.52 s | 8.69 / 8.78 / 8.59 s |
+  | steady, n=10 | prompt | 4.01 / 4.06 / 3.98 s | 3.97 / 4.05 / 3.91 s |
+  | first, n=1 | Stop | 13.42 s | 10.87 s |
+  | first, n=1 | prompt | 8.71 s | 7.71 s |
+
+  - The Stop hook's median is 1.13 s lower (11.5%), its worst 1.8 s lower, and its spread narrows from 1.07 s to 0.19 s.
+  - The prompt hook is unchanged, as expected: T025 hands the snapshot and the tail only to the Stop providers.
+  - Every exit was 0, and every Stop turn returned an empty output on both engines, so the behaviour is the same.
+  - The first-turn numbers are single runs and indicative only.
+- **Load** (the reviewer session's conditions): total CPU was sampled before each turn (24 logical processors): 13% at
+  the start, 3% at the end, 0 to 9% between. No sweep, lane or installer appeared. A VS Code updater was present and near
+  idle. Outliers: none. The before engine's slowest Stop turn (10.59 s) was 0.77 s over its median and is kept in the
+  numbers. Home hook files: the crew's 12-file hash was identical before and after. Both worktrees and the temp folder
+  were removed by their exact paths.
+- **Against DRIFT-073's estimate** (about 14 s to about 5 s with all three proposed changes): T025 built two of the
+  three, one git snapshot per hook run (23 to 12 git processes) and one transcript tail read per hook run, and they
+  give about 1.1 s. The third, the providers in one process or their stores loaded once, is not in T025. By DRIFT-073's
+  breakdown, each provider is its own `pwsh` process, and script loading before each provider's work took 0.75, 1.07
+  and 1.75 s, so most of the remaining Stop time is there. Placing that change is the maintainer's.
+- **Class closure**: NONE — a measurement; T025's launcher half (T006) and its own sweep are still to come.
