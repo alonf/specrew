@@ -144,3 +144,22 @@
   Cross-Platform Validation `44291950876` (8 of 8) and Specrew Project Sync `44291950875`. The publish workflow runs on
   tags only and did not run.
 - **Class closure**: NONE — a sighting of bug list item 13 (HO-206-8), feature 203's to fix.
+
+## DRIFT-206-010 — the records commit after the merge: two different failures, two reruns, then green
+
+- **Recorded**: 2026-11-18, on the 206 branch only. `a847b2b0` is records-only (DRIFT-206-009). Main, at `d5f4af87`,
+  was green and unaffected throughout.
+- **Attempt 1**: Specrew CI run `44299443481`, Lint job `134785017100`, failed in "Setup PowerShell" with exit 100.
+  apt got HTTP 429 "Too Many Requests" from packages.microsoft.com fetching the PowerShell package, before any test
+  ran. Deterministic gate and Contract lane were skipped. This was outside the standing exception, so the crew stopped
+  and asked.
+  - The reviewer session ruled one rerun, because no test result was hidden. It did not count as a use of the
+    exception, and it is a sighting beside bug list item 57 and feature 205's DRIFT-205-INTAKE-011.
+- **Attempt 2**: Lint `134788980801` passed. Deterministic gate `134791308128` failed 1 of 131 suites, only
+  `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`, case "does NOT retry a non-empty result"
+  (expected 1 spawn, got 2). The crew stopped and asked again.
+  - The reviewer session ruled the standing exception's one rerun for this head (item 3).
+- **Attempt 3**: green on all six jobs: Deterministic gate `134798023244` and Contract lane `134807650505` among them.
+  Test `44299443587` and Cross-Platform Validation `44299443482` were green on their first attempt.
+- **Class closure**: NONE. These are sightings of bug list item 3 (the new case is recorded there with the reviewer
+  session's reading) and of item 57.

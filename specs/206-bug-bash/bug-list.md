@@ -67,6 +67,9 @@ Two independent causes.
 | 42743719583 | 1 | 2026-11-10 | `cf01f599` (205, records-only) | ubuntu-latest | failed ("does NOT retry a non-empty result", got 2 spawns); `03bc4c5b` passed ~40 min earlier |
 | 43360279109 | 1 | 2026-11-13 | `c2f2c67d` (203's branch) | ubuntu-latest | failed ("retries once and recovers", line 29); site 12 in 203's B5F-051, relayed by the reviewer session |
 | 43527717688 | 1 | 2026-11-14 | `995851d2` (206) | ubuntu-latest | failed ("retries once and recovers", line 29, the only failure; job 132239118551); rerun once by the reviewer's ruling under the maintainer's delegation, attempt 2 green (job 132243798920) |
+| 44185036150 | 1 | 2026-11-17 | `1b40bb44` (206) | ubuntu-latest | failed ("retries once and recovers", the only failure; job 134401278883); rerun once under the standing exception, attempt 2 green (DRIFT-206-I002-025) |
+| 44202679172 | 1 | 2026-11-17 | `44d7c71b` (206) | ubuntu-latest | failed ("retries once and recovers", the only failure; job 134463069183); rerun once under the standing exception, attempt 2 green (DRIFT-206-006) |
+| 44299443481 | 2 | 2026-11-18 | `a847b2b0` (206, records-only, after the merge) | ubuntu-latest | failed ("does NOT retry a non-empty result", expected 1 spawn, got 2; the only failure; job 134791308128); attempt 1 had failed at Lint's setup on HTTP 429; attempt 3, the exception's one rerun, green (job 134798023244) (DRIFT-206-010) |
 
 - **Four sightings across two branches (2026-11-14).** The standing rerun exception covers item 13 only, so this
   recurrence stopped 206's work until the reviewer ruled a single rerun. The reviewer is asking the maintainer
@@ -1592,6 +1595,15 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   again. The second sync wrote a second "Boundary sync: iteration-closeout" entry in `.squad/decisions.md`, a warning
   entry ("Expected next boundary 'feature-closeout' but received 'iteration-closeout'") and a second lifecycle event.
   The warning is wrong: the crossing it re-recorded was still pending. Recorded in DRIFT-206-006.
+
+## 3, a sighting after the merge (2026-11-18)
+
+- On `a847b2b0` (a records-only commit on the 206 branch after the merge), Specrew CI run `44299443481`, attempt 2,
+  failed only the case "does NOT retry a non-empty result": expected 1 spawn, got 2. This is the second sighting of
+  that case, after 205's `cf01f599` on 2026-11-10. Attempt 3 was green. Recorded in DRIFT-206-010.
+- **The reviewer session's reading (theirs, not established here):** it fits feature 203's T017 cause. The invoker
+  returns before the child's output is drained, so a healthy result reads as empty and is run again. The fix is on
+  feature 203's branch and reaches main with 203's merge.
 
 ## Iteration 002 Intake
 
